@@ -1,0 +1,74 @@
+/**
+ * Module: Balance Config
+ * Purpose: Defines global application constants, configuration settings (Versions, Storage Keys), and custom Error classes.
+ * Usage: Imported by almost all other modules for shared constants and error handling.
+ * Dependencies: None
+ */
+"use strict";
+
+/**
+ * ===================================================================================
+ * BALANCE-APP KONFIGURATION & FEHLERKLASSEN
+ * ===================================================================================
+ */
+
+// Erforderliche Engine-Version
+export const REQUIRED_ENGINE_API_VERSION_PREFIX = "31.";
+
+// Gemeinsame Entprellzeit für Eingabeupdates und deren Testbeobachtung.
+export const BALANCE_UPDATE_DEBOUNCE_MS = 250;
+
+// Reine Ausgabehosts; keine zusätzlichen Formular- oder Engineparameter.
+export const BALANCE_PRESENTATION_OUTPUT_IDS = Object.freeze({
+    balanceAnnualAction: 'balanceAnnualAction',
+    balanceBudgetWhy: 'balanceBudgetWhy',
+    balanceBudgetTrace: 'balanceBudgetTrace',
+    balanceFreeLiquidity: 'balanceFreeLiquidity',
+    balanceReserveTargetMonths: 'balanceReserveTargetMonths',
+    balanceReserveRunway: 'balanceReserveRunway',
+    balanceWealthFooter: 'balanceWealthFooter'
+});
+
+// App-spezifische Konfiguration
+export const CONFIG = {
+    APP: {
+        VERSION: 'v22.0 ES6 Modules (Engine v31)',
+        NAME: 'Ruhestand-Balancing'
+    },
+    STORAGE: {
+        LS_KEY: `ruhestandsmodellValues_v29_guardrails`,
+        MIGRATION_FLAG: 'migration_v29_inflation_sanitized',
+        SNAPSHOT_PREFIX: 'ruhestandsmodell_snapshot_'
+    }
+};
+
+// FEHLERKLASSEN
+export class AppError extends Error {
+    constructor(message, context = {}) {
+        super(message);
+        this.context = context;
+        this.timestamp = new Date();
+    }
+}
+
+export class ValidationError extends AppError {
+    constructor(errors) {
+        super("Einige Eingaben sind ungültig. Bitte korrigieren Sie die markierten Felder.");
+        this.name = 'ValidationError';
+        this.errors = errors; // Array von {field, message}
+    }
+}
+
+export class FinancialCalculationError extends AppError {
+    constructor(message, context) {
+        super(message, context);
+        this.name = 'FinancialCalculationError';
+    }
+}
+
+export class StorageError extends AppError {
+    constructor(message, context) {
+        super(message, context);
+        this.name = 'StorageError';
+    }
+}

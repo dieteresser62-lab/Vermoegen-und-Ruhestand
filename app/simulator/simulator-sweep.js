@@ -1,0 +1,715 @@
+import { requestPageChoice } from '../shared/page-choice-dialog.js';
+import { requestPageConfirmation, showPageAlert } from '../shared/page-dialog.js';
+import { personDataContextFor } from './simulator-person-overrides.js';
+import { renderPersonDataNotice } from './protocol-renderer.js';
+"use strict";
+
+/**
+ * ==========================================================================
+ * Sweep-spezifische Logik (UI-Defaults, Range-Parsing, Simulation)
+ * --------------------------------------------------------------------------
+ * Diese Datei kapselt alle Sweep-bezogenen Funktionen aus simulator-main.js,
+ * um die Hauptdatei zu entschlacken und die Sweep-Interaktionen klar zu
+ * trennen. Die Funktionen bleiben unverändert in ihrem Verhalten
+ * (Seitendialoge, Fortschrittsbalken, Whitelist/Blocklist), erhalten aber
+ * zusätzliche Kommentare zur Fehlerbehandlung.
+ * ==========================================================================
+ */
+
+import { parseRangeInput, cartesianProductLimited } from './simulator-utils.js';
+import { getCommonInputs } from './simulator-portfolio.js';
+import { prepareHistoricalDataOnce } from './simulator-engine-helpers.js';
+import { findBestParameters, shouldMaximizeMetric, displayBestParameters, displayMultiObjectiveOptimization, displayConstraintBasedOptimization } from './simulator-optimizer.js';
+import { displaySensitivityAnalysis, displayParetoFrontier } from './simulator-visualization.js';
+import { deepClone, extractP2Invariants } from './simulator-sweep-utils.js';
+import { renderSweepHeatmapSVG } from './simulator-heatmap.js';
+import { WorkerPool } from '../../workers/worker-pool.js';
+import { WorkerJobRunner, isWorkerRunCancelledError } from './worker-job-runner.js';
+import { buildSweepInputs, runSweepChunkAsync } from './sweep-runner.js';
+import { persistenceStorage } from '../shared/persistence-facade.js';
+import { formatSimulatorValidationError, validateSimulatorInputs } from './simulator-input-validation.js';
+import { readMonteCarloParameters } from './monte-carlo-ui.js';
+import {
+    SWEEP_REQUEST_VERSION,
+    normalizeSweepRequestV1
+} from './monte-carlo-parameters.js';
+import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
+import { SWEEP_METRICS_VERSION } from './sweep-metrics-contract.js';
+
+export const SWEEP_EXECUTION_VERSION = 'SweepExecutionV2';
+const SWEEP_LARGE_WORKLOAD_RUN_YEARS = 5_000_000;
+const sweepIntegerFormat = new Intl.NumberFormat('de-DE');
+let activeSweep = null;
+let nextSweepGeneration = 1;
+let sweepRevision = 0;
+let sweepResultAvailable = false;
+const sweepRegistrations = new WeakMap();
+
+function sweepNavigationRegistration() {
+    const doc = globalThis.document;
+    if (!doc || typeof doc !== 'object') return null;
+    if (!sweepRegistrations.has(doc)) {
+        const guard = getPageNavigationGuard(doc);
+        const registration = guard.register('simulator-sweep', {
+            read: () => ({ phase: activeSweep?.phase || 'idle',
+                operationId: activeSweep?.generationId || null,
+                revision: sweepRevision, result: sweepResultAvailable,
+                message: activeSweep
+                    ? 'Laufende Rechnung wird abgebrochen – trotzdem wechseln?'
+                        + (sweepResultAvailable ? '\nErgebnis geht verloren – trotzdem wechseln?' : '')
+                    : undefined }),
+            cancel: () => cancelParameterSweep().then(() => true)
+        });
+        sweepRegistrations.set(doc, { guard, ...registration });
+    }
+    return sweepRegistrations.get(doc);
+}
+
+export function cancelParameterSweep() {
+    const run = activeSweep;
+    if (!run) return Promise.resolve(false);
+    if (run.cancelPromise) return run.cancelPromise;
+    run.phase = 'cancelling';
+    run.registration?.notify();
+    run.controller.abort();
+    run.pool?.dispose();
+    run.cancelPromise = run.promise.then(() => true);
+    return run.cancelPromise;
+}
+window.cancelParameterSweep = cancelParameterSweep;
+
+function throwIfSweepCancelled(signal) {
+    if (signal?.aborted) throw new DOMException('Sweep abgebrochen.', 'AbortError');
+}
+
+export function calculateSweepWorkload(combinations, monteCarloParameters) {
+    const { anzahl: runs, maxDauer: years } = monteCarloParameters;
+    if (!Number.isSafeInteger(combinations) || combinations < 1
+        || !Number.isSafeInteger(runs) || runs < 1
+        || !Number.isSafeInteger(years) || years < 1
+        || !Number.isSafeInteger(combinations * runs * years)) {
+        throw new Error('Der nominelle Sweep-Aufwand ist nicht berechenbar.');
+    }
+    return { combinations, runs, years, runYears: combinations * runs * years };
+}
+
+export function readSweepWorkload(combinations) {
+    const inputs = getCommonInputs();
+    const parameters = readMonteCarloParameters(inputs, { runsElementId: 'sweepRuns' });
+    return calculateSweepWorkload(combinations, parameters);
+}
+
+export function formatSweepWorkload({ combinations, runs, years, runYears }) {
+    const format = value => sweepIntegerFormat.format(value);
+    const combinationLabel = combinations === 1 ? 'Kombination' : 'Kombinationen';
+    return `${format(combinations)} ${combinationLabel} × ${format(runs)} Läufe × ${format(years)} Jahre = ${format(runYears)} nominelle Laufjahre`;
+}
+
+const SWEEP_FIELDS = [
+    ['liquidityRunwayYears', 'sweepLiquidityRunwayYears', 'Liquiditäts-Runway'],
+    ['goldRebalancingBand', 'sweepGoldRebalancingBand', 'Gold-Rebal Band'],
+    ['maxSkimPct', 'sweepMaxSkimPct', 'Max Skim %'],
+    ['maxBearRefillPct', 'sweepMaxBearRefillPct', 'Max Bear Refill %'],
+    ['goldTargetPct', 'sweepGoldTargetPct', 'Gold Target %'],
+    ['survivalQuantile', 'sweepSurvivalQuantile', 'VPW Survival-Quantile'],
+    ['goGoMultiplier', 'sweepGoGoMultiplier', 'VPW Go-Go Multiplikator']
+];
+
+export function readInteractiveSweepRanges() {
+    const dynamicFlex = document.getElementById('dynamicFlex')?.checked === true;
+    const quantileActive = dynamicFlex && document.getElementById('horizonMethod')?.value === 'survival_quantile';
+    const goGoActive = dynamicFlex && document.getElementById('goGoActive')?.checked === true;
+    const ranges = {};
+    for (const [key, id, label] of SWEEP_FIELDS) {
+        if (key === 'survivalQuantile' && !quantileActive) continue;
+        if (key === 'goGoMultiplier' && !goGoActive) continue;
+        const values = parseRangeInput(document.getElementById(id)?.value ?? '');
+        if (values.length === 0) return { ranges, emptyLabel: label };
+        ranges[key] = values;
+    }
+    return { ranges, emptyLabel: null };
+}
+
+/**
+ * Initialisiert Sweep-Inputfelder und synchronisiert sie mit der Persistenz-Facade.
+ *
+ * Jeder Eintrag im Mapping wird beim Laden mit einem evtl. gespeicherten Wert
+ * vorbelegt. Änderungen werden defensiv sowohl auf "change" als auch
+ * "input"-Events gespeichert, um keine Benutzerinteraktion zu verlieren.
+ */
+export function initSweepDefaultsWithLocalStorageFallback() {
+    // The direct horizon is no longer an interactive Sweep dimension. Remove
+    // its stale UI-only value so a future field cannot silently revive it.
+    persistenceStorage.removeItem('sim.sweep.horizonYears');
+    persistenceStorage.removeItem('sim.sweep.runwayMin');
+    persistenceStorage.removeItem('sim.sweep.runwayTarget');
+    persistenceStorage.removeItem('sim.sweep.targetEq');
+
+    const map = [
+        ['sweepRuns', 'sim.sweep.runs'],
+        ['sweepLiquidityRunwayYears', 'sim.sweep.liquidityRunwayYears'],
+        ['sweepGoldRebalancingBand', 'sim.sweep.goldRebalancingBand'],
+        ['sweepMaxSkimPct', 'sim.sweep.maxSkimPct'],
+        ['sweepMaxBearRefillPct', 'sim.sweep.maxBearRefillPct'],
+        ['sweepGoldTargetPct', 'sim.sweep.goldTarget'],
+        ['sweepSurvivalQuantile', 'sim.sweep.survivalQuantile'],
+        ['sweepGoGoMultiplier', 'sim.sweep.goGoMultiplier']
+    ];
+
+    for (const [elementId, storageKey] of map) {
+        const element = document.getElementById(elementId);
+        if (!element) {
+            // UI fehlt (z.B. in Tests) – bewusst überspringen.
+            continue;
+        }
+
+        const persistedValue = persistenceStorage.getItem(storageKey);
+        if (persistedValue !== null && persistedValue !== undefined
+            && (persistedValue !== '' || elementId === 'sweepRuns')) {
+            element.value = persistedValue;
+        }
+
+        // Speichere Änderungen unabhängig davon, ob das Event über Enter oder Tippen ausgelöst wurde.
+        element.addEventListener('change', () => persistenceStorage.setItem(storageKey, element.value));
+        element.addEventListener('input', () => persistenceStorage.setItem(storageKey, element.value));
+    }
+}
+
+/**
+ * Rendert die Heatmap der Sweep-Ergebnisse basierend auf aktuell ausgewählten
+ * Achsen und Metriken. Bewahrt Benutzerwarnungen und setzt im Fehlerfall eine
+ * klar sichtbare Fehlermeldung im UI.
+ */
+export function displaySweepResults() {
+    try {
+        const metricKey = document.getElementById('sweepMetric').value;
+        const xParam = document.getElementById('sweepAxisX').value;
+        const yParam = document.getElementById('sweepAxisY').value;
+
+        const xValues = window.sweepParamRanges[xParam] || [];
+        const yValues = window.sweepParamRanges[yParam] || [];
+
+        const heatmapHtml = renderSweepHeatmapSVG(
+            window.sweepResults,
+            metricKey,
+            xParam,
+            yParam,
+            xValues,
+            yValues
+        );
+
+        document.getElementById('sweepHeatmap').innerHTML = renderPersonDataNotice(window.sweepExecution?.personDataContext) + heatmapHtml;
+    } catch (error) {
+        // Nutzerfreundliche Meldung beibehalten, ergänzt um Konsolenlog.
+        notifyPage("Fehler beim Rendern der Sweep-Heatmap:\n\n" + error.message);
+        console.error('displaySweepResults Fehler:', error);
+        document.getElementById('sweepHeatmap').innerHTML = '<p style="color: var(--bad);">Fehler beim Rendern der Heatmap. Siehe Konsole für Details.</p>';
+    }
+}
+
+function readSweepWorkerConfig() {
+    const workerCountRaw = document.getElementById('mcWorkerCount')?.value ?? '8';
+    const budgetRaw = document.getElementById('mcWorkerBudget')?.value ?? '500';
+    const workerCount = parseInt(String(workerCountRaw).trim(), 10);
+    const timeBudgetMs = parseInt(String(budgetRaw).trim(), 10);
+    return {
+        // 0 means "auto" (use hardwareConcurrency heuristic).
+        workerCount: Number.isFinite(workerCount) && workerCount > 0 ? workerCount : 0,
+        timeBudgetMs: Number.isFinite(timeBudgetMs) && timeBudgetMs > 0 ? timeBudgetMs : 500
+    };
+}
+
+async function runSweepWithWorkers({
+    baseInputs,
+    paramCombinations,
+    sweepRequest,
+    refP2Invariants,
+    onProgress,
+    signal,
+    onPoolCreated
+}) {
+    const totalCombos = paramCombinations.length;
+    const workerConfig = readSweepWorkerConfig();
+    const desiredWorkers = workerConfig.workerCount ?? 0;
+    const workerCount = Math.max(1, Number.isFinite(desiredWorkers) && desiredWorkers > 0
+        ? desiredWorkers
+        : Math.max(1, (navigator?.hardwareConcurrency || 2) - 1));
+    const timeBudgetMs = workerConfig.timeBudgetMs ?? 200;
+    const workerUrl = new URL('../../workers/mc-worker.js', import.meta.url);
+
+    const pool = new WorkerPool({
+        workerUrl,
+        size: workerCount,
+        type: 'module',
+        telemetryName: 'SweepPool',
+        onError: error => console.error('[SWEEP WorkerPool] Error:', error)
+    });
+    onPoolCreated?.(pool);
+
+    const sweepResults = new Array(totalCombos);
+    const minChunk = 2;
+    const maxChunk = Math.min(80, Math.max(minChunk, Math.ceil(totalCombos / workerCount)));
+    const runner = new WorkerJobRunner({
+        pool,
+        totalItems: totalCombos,
+        workerCount,
+        timeBudgetMs,
+        minChunk,
+        maxChunk,
+        enableStallDetection: false,
+        trackPartialProgress: true,
+        signal,
+        onProgress,
+        buildPayload: (start, count) => ({
+            type: 'sweep',
+            sweepRequest,
+            comboRange: { start, count },
+            refP2Invariants
+        }),
+        mergeResult: result => {
+            // Merge sparse results into the full array by combo index.
+            for (const item of result.results) {
+                sweepResults[item.comboIdx] = {
+                    params: item.params,
+                    metrics: item.metrics,
+                    provenance: item.provenance
+                };
+            }
+        }
+    });
+
+    try {
+        throwIfSweepCancelled(signal);
+        await pool.broadcast({
+            type: 'sweep-init',
+            baseInputs,
+            paramCombinations
+        });
+        throwIfSweepCancelled(signal);
+        await runner.run();
+    } finally {
+        pool.dispose();
+    }
+
+    return sweepResults;
+}
+
+async function runSweepSerial({
+    baseInputs,
+    paramCombinations,
+    sweepRequest,
+    refP2Invariants,
+    onProgress,
+    signal
+}) {
+    const totalCombos = paramCombinations.length;
+    const sweepResults = new Array(totalCombos);
+    let completedCombos = 0;
+    // Chunk serial execution to keep UI responsive.
+    const chunkSize = Math.min(20, Math.max(1, Math.ceil(totalCombos / 20)));
+
+    for (let start = 0; start < totalCombos; start += chunkSize) {
+        throwIfSweepCancelled(signal);
+        const count = Math.min(chunkSize, totalCombos - start);
+        const serial = await runSweepChunkAsync({
+            baseInputs,
+            paramCombinations,
+            comboRange: { start, count },
+            sweepRequest,
+            refP2Invariants,
+            signal,
+            onProgress: completedUnits => {
+                onProgress?.(Math.min(99,
+                    ((completedCombos + completedUnits) / totalCombos) * 100));
+            }
+        });
+        throwIfSweepCancelled(signal);
+        for (const item of serial.results) {
+            sweepResults[item.comboIdx] = {
+                params: item.params,
+                metrics: item.metrics,
+                provenance: item.provenance
+            };
+        }
+        completedCombos += count;
+        onProgress?.(Math.min(99, (completedCombos / totalCombos) * 100));
+    }
+
+    return sweepResults;
+}
+
+/**
+ * Führt den Parameter-Sweep über alle gewählten Parameterkombinationen aus.
+ *
+ * Beachtet weiterhin:
+ * - Seitendialoge für ungültige Eingaben
+ * - Fortschrittsbalken-Updates
+ * - Whitelist/Blocklist-Prüfungen für Sweep-Overrides
+ *
+ * Zusätzliche Kommentare erklären die Fehlerpfade, damit künftige Änderungen
+ * die UI-Fehlerbehandlung nicht versehentlich entfernen.
+ */
+export function runParameterSweep(dependencies = {}) {
+    if (activeSweep) return activeSweep.promise;
+    const registration = sweepNavigationRegistration();
+    if (registration?.guard.isBusy()) return Promise.resolve();
+    const run = { controller: new AbortController(), phase: 'preparing',
+        generationId: `sweep-${nextSweepGeneration++}`, registration,
+        dependencies: dependencies && typeof dependencies === 'object' ? dependencies : {} };
+    activeSweep = run;
+    sweepRevision++;
+    run.promise = Promise.resolve().then(() => executeParameterSweep(run)).finally(() => {
+        if (activeSweep === run) activeSweep = null;
+        registration?.notify();
+    });
+    registration?.notify();
+    return run.promise;
+}
+
+async function executeParameterSweep(run) {
+    const { signal } = run.controller;
+    const dependencies = run.dependencies;
+    const doc = globalThis.document;
+    const sweepButton = doc?.getElementById?.('sweepButton');
+    if (!sweepButton || !doc.getElementById('sweep-progress-bar-container') || !doc.getElementById('sweep-progress-bar')) {
+        console.error('[SWEEP] Die Bedienfläche ist nicht verfügbar.');
+        return;
+    }
+    sweepButton.disabled = true;
+    const cancelButton = document.getElementById('sweepCancelButton');
+    const status = document.getElementById('sweepStatus');
+    if (cancelButton) cancelButton.disabled = false;
+    if (status) status.textContent = '';
+    const progressBarContainer = document.getElementById('sweep-progress-bar-container');
+    const progressBar = document.getElementById('sweep-progress-bar');
+    let progressStarted = false;
+    let completedSuccessfully = false;
+    let visibleProgress = 0;
+    const showProgress = pct => {
+        if (signal.aborted || activeSweep !== run || !Number.isFinite(pct)) return;
+        visibleProgress = Math.max(visibleProgress, Math.min(99, pct));
+        progressBar.style.width = `${visibleProgress}%`;
+        progressBar.textContent = `${Math.round(visibleProgress)}%`;
+    };
+
+    try {
+        throwIfSweepCancelled(signal);
+        await (dependencies.prepareHistoricalData || prepareHistoricalDataOnce)();
+        throwIfSweepCancelled(signal);
+
+        // ========= Parameter-Parsing (mit frühzeitigen, konkreten Hinweisen) =========
+        let paramRanges;
+        try {
+            const selection = (dependencies.readRanges || readInteractiveSweepRanges)();
+            if (selection.emptyLabel) {
+                notifyPage(`Leeres Range-Input für ${selection.emptyLabel}.\n\nBitte gib einen Wert ein:\n- Einzelwert: 24\n- Liste: 24,36,48\n- Range: 24:12:48`);
+                return;
+            }
+            paramRanges = selection.ranges;
+        } catch (error) {
+            // Fehlformate klar melden, bestehender Fachtext beibehalten.
+            notifyPage(`Fehler beim Parsen der Range-Eingaben:\n\n${error.message}\n\nErlaubte Formate:\n- Einzelwert: 24\n- Kommaliste: 50,60,70\n- Range: start:step:end (z.B. 18:6:36)`);
+            return;
+        }
+
+        // ========= Kombinatorik prüfen (Kombinationslimit beibehalten) =========
+        const arrays = Object.values(paramRanges);
+        const { combos, tooMany, size } = cartesianProductLimited(arrays, 300);
+
+        if (tooMany) {
+            notifyPage(`Zu viele Kombinationen: ${size} (theoretisch)\n\nMaximum: 300\n\nBitte reduziere die Anzahl der Parameter-Werte.`);
+            return;
+        }
+
+        if (combos.length === 0) {
+            notifyPage('Keine Parameter-Kombinationen gefunden.');
+            return;
+        }
+
+        // Map zurück in Objektstruktur
+        const paramKeys = Object.keys(paramRanges);
+        const paramCombinations = combos.map(combo => {
+            const obj = {};
+            paramKeys.forEach((key, index) => {
+                obj[key] = combo[index];
+            });
+            return obj;
+        });
+
+        // Basis-Inputs nur EINMAL lesen und einfrieren (Deep Clone)
+        // Clone once so each combo can be safely overridden without side effects.
+        const readInputs = dependencies.getInputs || getCommonInputs;
+        const originalInputs = readInputs();
+        const effectiveInputs = validateSimulatorInputs(originalInputs);
+        const personDataContext = personDataContextFor(effectiveInputs);
+        const baseInputs = deepClone(effectiveInputs);
+        const sweepRequest = normalizeSweepRequestV1({
+            schemaVersion: SWEEP_REQUEST_VERSION,
+            monteCarloParameters: (dependencies.readParameters || readMonteCarloParameters)(baseInputs, { runsElementId: 'sweepRuns' }),
+            useCapeSampling: document.getElementById('useCapeSampling')?.checked === true
+        }, { inputs: baseInputs });
+        const workload = calculateSweepWorkload(paramCombinations.length, sweepRequest.monteCarloParameters);
+        if (workload.runYears > SWEEP_LARGE_WORKLOAD_RUN_YEARS) {
+            const doc = document;
+            const profile = persistenceStorage.getItem('rs_current_profile');
+            const context = () => JSON.stringify({ inputs: readInputs(),
+                ranges: (dependencies.readRanges || readInteractiveSweepRanges)(),
+                parameters: (dependencies.readParameters || readMonteCarloParameters)(baseInputs, { runsElementId: 'sweepRuns' }),
+                cape: doc.getElementById('useCapeSampling')?.checked === true,
+                registry: persistenceStorage.getItem('rs_profiles_v1') });
+            const before = context();
+            const accepted = await requestPageConfirmation({ doc, signal, opener: sweepButton,
+                title: 'Großen Parameter-Sweep starten?',
+                description: `${formatSweepWorkload(workload)}.\n\nDas ist eine Großlast; die tatsächliche Dauer ist nicht zuverlässig vorhersagbar.`,
+                confirmLabel: 'Sweep starten', cancelLabel: 'Abbrechen' });
+            if (!accepted || doc !== globalThis.document || profile !== persistenceStorage.getItem('rs_current_profile') || before !== context()) return;
+        }
+        throwIfSweepCancelled(signal);
+
+        run.phase = 'running';
+        run.registration?.notify();
+        progressBarContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        progressBar.textContent = '0%';
+        progressStarted = true;
+        const sweepResults = new Array(paramCombinations.length);
+
+        // Reference P2 invariants guard against accidental partner changes.
+        const refInputs = buildSweepInputs(baseInputs, paramCombinations[0]);
+        const refP2Invariants = extractP2Invariants(refInputs);
+
+        try {
+            const workerResults = await (dependencies.runWorkers || runSweepWithWorkers)({
+                baseInputs,
+                paramCombinations,
+                sweepRequest,
+                refP2Invariants,
+                onProgress: showProgress,
+                signal,
+                onPoolCreated: pool => { run.pool = pool; }
+            });
+            for (let i = 0; i < workerResults.length; i++) {
+                sweepResults[i] = workerResults[i];
+            }
+        } catch (error) {
+            if (signal.aborted || isWorkerRunCancelledError(error)) throw error;
+            console.error('[SWEEP] Worker execution failed, falling back to serial.', error);
+            const serialResults = await (dependencies.runSerial || runSweepSerial)({
+                baseInputs,
+                paramCombinations,
+                sweepRequest,
+                refP2Invariants,
+                onProgress: showProgress,
+                signal
+            });
+            for (let i = 0; i < serialResults.length; i++) {
+                sweepResults[i] = serialResults[i];
+            }
+        }
+
+        throwIfSweepCancelled(signal);
+        for (let index = 0; index < sweepResults.length; index++) {
+            if (!sweepResults[index]) {
+                throw new Error('Der Sweep hat unvollständige Ergebnisse geliefert.');
+            }
+        }
+        const heatmapHtml = (dependencies.renderResults || renderSweepHeatmapSVG)(
+            sweepResults,
+            document.getElementById('sweepMetric').value,
+            document.getElementById('sweepAxisX').value,
+            document.getElementById('sweepAxisY').value,
+            paramRanges[document.getElementById('sweepAxisX').value] || [],
+            paramRanges[document.getElementById('sweepAxisY').value] || []
+        );
+        throwIfSweepCancelled(signal);
+
+        const representativeResult = sweepResults.find(result => result?.metrics);
+        const sweepExecution = {
+            schemaVersion: SWEEP_EXECUTION_VERSION,
+            personDataContext,
+            request: sweepRequest,
+            metricMetadata: representativeResult?.metrics?.metricMetadata ?? null,
+            comparisonRandomness: representativeResult?.provenance?.comparisonRandomness ?? null,
+            results: sweepResults
+        };
+        const heatmap = document.getElementById('sweepHeatmap');
+        const resultsPanel = document.getElementById('sweepResults');
+        const resultButtons = [
+            document.getElementById('findBestButton'),
+            document.getElementById('sensitivityButton'),
+            document.getElementById('paretoButton')
+        ];
+        const previous = {
+            results: window.sweepResults,
+            execution: window.sweepExecution,
+            ranges: window.sweepParamRanges,
+            heatmapHtml: heatmap.innerHTML,
+            panelDisplay: resultsPanel.style.display,
+            buttonDisplays: resultButtons.map(button => button.style.display)
+        };
+        try {
+            window.sweepResults = sweepResults;
+            window.sweepExecution = sweepExecution;
+            window.sweepParamRanges = paramRanges;
+            heatmap.innerHTML = renderPersonDataNotice(personDataContext) + heatmapHtml;
+            resultsPanel.style.display = 'block';
+            for (const button of resultButtons) button.style.display = 'inline-block';
+        } catch (error) {
+            window.sweepResults = previous.results;
+            window.sweepExecution = previous.execution;
+            window.sweepParamRanges = previous.ranges;
+            heatmap.innerHTML = previous.heatmapHtml;
+            resultsPanel.style.display = previous.panelDisplay;
+            resultButtons.forEach((button, index) => {
+                button.style.display = previous.buttonDisplays[index];
+            });
+            throw error;
+        }
+        sweepResultAvailable = true;
+        sweepRevision++;
+        run.registration?.notify();
+        if (status) status.textContent = 'Abgeschlossen';
+        completedSuccessfully = true;
+    } catch (error) {
+        if (signal.aborted || isWorkerRunCancelledError(error) || error?.name === 'AbortError') {
+            if (status) status.textContent = 'Abgebrochen';
+        } else {
+            // Bewusste, knappe Nutzerwarnung – ergänzt mit Hinweis für Entwickler.
+            notifyPage("Fehler im Parameter-Sweep:\n\n" + formatSimulatorValidationError(error));
+            console.error('Parameter-Sweep Fehler:', error);
+            if (status) status.textContent = 'Fehler';
+        }
+
+        // Reset UI on error (damit der Nutzer einen neuen Versuch starten kann)
+        if (progressStarted) { progressBar.style.width = '0%'; progressBar.textContent = '0%'; }
+    } finally {
+        if (progressStarted && completedSuccessfully) {
+            progressBar.style.width = '100%';
+            progressBar.textContent = '100%';
+        }
+        if (progressStarted) {
+            // Auch der bisher verzögerte UI-Abschluss gehört zum Handlerende.
+            await new Promise(resolve => setTimeout(resolve, 250));
+            if (activeSweep === run) progressBarContainer.style.display = 'none';
+        }
+        sweepButton.disabled = false;
+        if (cancelButton) cancelButton.disabled = true;
+    }
+}
+
+/**
+ * ==========================================================================
+ * Optimierungs-Funktionen (Global für HTML onclick Handler)
+ * ==========================================================================
+ */
+
+/**
+ * Zeigt die im experimentellen Sweep-Vergleich führende Kombination an.
+ */
+window.findAndDisplayBest = function () {
+    if (!window.sweepResults || window.sweepResults.length === 0) {
+        notifyPage('Bitte führe zuerst einen Parameter Sweep durch.');
+        return;
+    }
+
+    const metricKey = document.getElementById('sweepMetric').value;
+    const maximize = shouldMaximizeMetric(metricKey);
+    const bestResult = findBestParameters(window.sweepResults, metricKey, maximize);
+
+    if (bestResult) {
+        displayBestParameters(bestResult, metricKey);
+        // Scroll zu den Ergebnissen
+        document.getElementById('optimizationResults').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+        const hasLegacyShape = window.sweepResults.some(result => (
+            result?.metrics && result.metrics.schemaVersion !== SWEEP_METRICS_VERSION
+        ));
+        notifyPage(hasLegacyShape
+            ? 'Die Sweep-Ergebnisse verwenden einen veralteten oder unversionierten Ergebnisvertrag. Bitte führe den Sweep neu aus.'
+            : 'Keine gültigen versionierten Ergebnisse für die gewählte Metrik gefunden.');
+    }
+};
+
+
+/**
+ * Zeigt Sensitivity Analysis
+ */
+window.showSensitivityAnalysis = function () {
+    displaySensitivityAnalysis();
+};
+
+/**
+ * Zeigt Dialog für Pareto Frontier
+ */
+let paretoPending = false;
+const paretoMetricValues = ['successProbFloor', 'medianEndWealth', 'p10EndWealth', 'p75EndWealth',
+    'meanEndWealth', 'maxEndWealth', 'worst5Drawdown', 'minRunwayObserved'];
+window.showParetoDialog = async function () {
+    if (paretoPending) return;
+    paretoPending = true;
+    const doc = globalThis.document, results = window.sweepResults;
+    try {
+        const options = paretoMetricValues.map(value => ({ value, label: value }));
+        const selected = await requestPageChoice({ doc, title: 'Pareto-Metriken auswählen',
+            description: 'Wähle die beiden Metriken für die X- und Y-Achse der Pareto-Grenze.',
+            confirmLabel: 'Diagramm anzeigen', cancelLabel: 'Abbrechen',
+            rows: [{ id: 'metric1', label: 'Erste Metrik (X-Achse)', selected: 'medianEndWealth', options },
+                { id: 'metric2', label: 'Zweite Metrik (Y-Achse)', selected: 'worst5Drawdown', options }] });
+        if (!selected || doc !== globalThis.document || results !== window.sweepResults
+            || !paretoMetricValues.includes(selected.metric1) || !paretoMetricValues.includes(selected.metric2)) return;
+        window.paretoMetrics = { ...window.paretoMetrics, metric1: selected.metric1, metric2: selected.metric2 };
+        displayParetoFrontier();
+    } catch (error) {
+        console.error('[Pareto] Auswahl konnte nicht geöffnet werden.', error);
+        notifyPage('Die Metrikauswahl konnte nicht geöffnet werden. Bitte lade die Seite neu und versuche es erneut.');
+    } finally { paretoPending = false; }
+};
+
+/**
+ * Demo: Multi-Objective Optimization
+ * Optimiert für Wealth UND Success Probability gleichzeitig
+ */
+window.runMultiObjectiveDemo = function () {
+    const objectives = [
+        { metricKey: 'medianEndWealth', weight: 0.6, maximize: true },
+        { metricKey: 'successProbFloor', weight: 0.4, maximize: true }
+    ];
+    displayMultiObjectiveOptimization(objectives);
+};
+
+/**
+ * Demo: Constraint-Based Optimization
+ * Maximiere Median Wealth unter Einhaltung von Success Rate >= 95%
+ */
+window.runConstraintBasedDemo = function () {
+    const constraints = [
+        { metricKey: 'successProbFloor', operator: '>=', value: 95 }
+    ];
+    displayConstraintBasedOptimization('medianEndWealth', true, constraints);
+};
+
+// Event-Listener für Metrik-Änderung (um Optimierungsergebnisse zu aktualisieren)
+document.addEventListener('DOMContentLoaded', function () {
+    const metricSelector = document.getElementById('sweepMetric');
+    if (metricSelector) {
+        metricSelector.addEventListener('change', function () {
+            // Verstecke alte Optimierungsergebnisse bei Metrik-Wechsel
+            const optimizationResults = document.getElementById('optimizationResults');
+            if (optimizationResults && optimizationResults.style.display !== 'none') {
+                optimizationResults.style.display = 'none';
+            }
+
+            // Verstecke auch Sensitivity-Ergebnisse
+            const sensitivityResults = document.getElementById('sensitivityResults');
+            if (sensitivityResults && sensitivityResults.style.display !== 'none') {
+                sensitivityResults.style.display = 'none';
+            }
+        });
+    }
+});
+
+/** Hinweise besitzen keinen fachlichen Zustimmungswert. */
+function notifyPage(description) {
+    void showPageAlert({ title: 'Parameter-Sweep', description: `${description}\n\nPrüfe die Sweep-Eingaben und führe den Sweep bei Bedarf erneut aus.` })
+        .catch(error => console.error('[Seitendialog] Hinweis konnte nicht geöffnet werden.', error));
+}

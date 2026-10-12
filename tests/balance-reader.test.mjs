@@ -1,0 +1,1123 @@
+"use strict";
+
+import {
+    NUMBER_PARSE_ERROR_CODES,
+    UIUtils as ActualUIUtils,
+    parseLocalizedNumber
+} from '../app/balance/balance-utils.js';
+import {
+    getMarketDataProvenanceViewModel,
+    UIReader as ProductionUIReader,
+    initUIReader as initProductionUIReader,
+    parseBalanceCurrencyInput
+} from '../app/balance/balance-reader.js';
+import { ValidationError } from '../app/balance/balance-config.js';
+import { PersistenceFacade } from '../app/shared/persistence-facade.js';
+import {
+    createBalanceExportDocument,
+    createManualMarketCsvImportPlan,
+    MarketCsvImportError,
+    parseMarketDataCsv
+} from '../app/balance/balance-binder-imports.js';
+import { MarketAnalyzer } from '../engine/analyzers/MarketAnalyzer.mjs';
+
+/**
+ * Tests für balance-reader.js
+ * - UIReader.readAllInputs() mit Mock-DOM
+ * - Profile-Overrides aus localStorage
+ * - Gold-Modul Defaults
+ * - Tranchen-Aggregation
+ * - applyStoredInputs() und applySideEffectsFromInputs()
+ */
+
+console.log('--- Balance Reader Tests ---');
+
+// Mock für localStorage
+class MockLocalStorage {
+    constructor() {
+        this.store = new Map();
+    }
+    getItem(key) {
+        return this.store.has(key) ? this.store.get(key) : null;
+    }
+    setItem(key, value) {
+        this.store.set(key, String(value));
+    }
+    removeItem(key) {
+        this.store.delete(key);
+    }
+    clear() {
+        this.store.clear();
+    }
+    key(index) {
+        return Array.from(this.store.keys())[index] || null;
+    }
+    get length() {
+        return this.store.size;
+    }
+}
+
+// Mock-Element für DOM-Simulation
+class MockElement {
+    constructor(type = 'input', value = '', checked = false) {
+        this.type = type;
+        this.value = value;
+        this.checked = checked;
+        this.disabled = false;
+        this.style = { display: '' };
+        this.classList = {
+            _classes: new Set(),
+            contains(cls) { return this._classes.has(cls); },
+            add(cls) { this._classes.add(cls); },
+            remove(cls) { this._classes.delete(cls); }
+        };
+    }
+}
+
+// Mock für document.getElementById
+function createDocumentMock(elements = {}) {
+    return {
+        getElementById: (id) => elements[id] || null,
+        createElement: (tag) => new MockElement(tag),
+        createDocumentFragment: () => ({ appendChild: () => { } })
+    };
+}
+
+// UIUtils Mock
+const UIUtils = {
+    parseCurrency(value) {
+        if (value === null || value === undefined || value === '') return 0;
+        const raw = String(value).trim().replace(/\s/g, '');
+        if (!raw) return 0;
+        const lastComma = raw.lastIndexOf(',');
+        const lastDot = raw.lastIndexOf('.');
+        let normalized = raw.replace(/[^\d,.-]/g, '');
+        if (lastComma !== -1 && lastDot !== -1) {
+            if (lastComma > lastDot) {
+                normalized = normalized.replace(/\./g, '').replace(',', '.');
+            } else {
+                normalized = normalized.replace(/,/g, '');
+            }
+        } else if (lastComma !== -1) {
+            normalized = normalized.replace(/\./g, '').replace(',', '.');
+        } else if (lastDot !== -1) {
+            const parts = normalized.split('.');
+            const tail = parts[parts.length - 1];
+            if (tail.length === 3) {
+                normalized = normalized.replace(/\./g, '');
+            }
+        }
+        const parsed = parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    },
+    formatNumber(num) {
+        return new Intl.NumberFormat('de-DE').format(num);
+    }
+};
+
+// calculateAggregatedValues Mock
+function calculateAggregatedValues() {
+    const saved = localStorage.getItem('depot_tranchen');
+    if (!saved) return null;
+    try {
+        const tranchen = JSON.parse(saved);
+        if (!Array.isArray(tranchen) || tranchen.length === 0) return null;
+
+        let depotwertAlt = 0, depotwertNeu = 0, geldmarktEtf = 0, goldWert = 0;
+        let costBasisAlt = 0, costBasisNeu = 0, goldCost = 0;
+
+        for (const t of tranchen) {
+            const wert = t.wert || 0;
+            const cost = t.einstand || 0;
+            switch (t.type) {
+                case 'alt': depotwertAlt += wert; costBasisAlt += cost; break;
+                case 'neu': depotwertNeu += wert; costBasisNeu += cost; break;
+                case 'geldmarkt': geldmarktEtf += wert; break;
+                case 'gold': goldWert += wert; goldCost += cost; break;
+            }
+        }
+        return { depotwertAlt, depotwertNeu, geldmarktEtf, goldWert, costBasisAlt, costBasisNeu, goldCost };
+    } catch {
+        return null;
+    }
+}
+
+// Vereinfachter UIReader für Tests (aus balance-reader.js extrahiert)
+let dom = null;
+
+function initUIReader(domRefs) {
+    dom = domRefs;
+}
+
+const UIReader = {
+    readAllInputs() {
+        const num = (id) => dom.inputs[id] ? UIUtils.parseCurrency(dom.inputs[id].value) : 0;
+        const val = (id) => dom.inputs[id] ? dom.inputs[id].value : '';
+        const checked = (id) => dom.inputs[id] ? dom.inputs[id].checked : false;
+
+        const readProfileNumber = (key) => {
+            const raw = localStorage.getItem(key);
+            if (raw === null || raw === undefined || raw === '') return null;
+            const n = UIUtils.parseCurrency(raw);
+            return Number.isFinite(n) ? n : null;
+        };
+        const readProfileBool = (key) => {
+            const raw = localStorage.getItem(key);
+            if (raw === null || raw === undefined || raw === '') return null;
+            const normalized = String(raw).toLowerCase();
+            if (normalized === 'true') return true;
+            if (normalized === 'false') return false;
+            return null;
+        };
+
+        const profileTagesgeld = readProfileNumber('profile_tagesgeld');
+        const profileRenteAktiv = readProfileBool('profile_rente_aktiv');
+        const profileRenteMonatlich = readProfileNumber('profile_rente_monatlich');
+        const profileSonstigeEinkuenfte = readProfileNumber('profile_sonstige_einkuenfte');
+        const profileAlter = readProfileNumber('profile_aktuelles_alter');
+        const profileGoldAktiv = readProfileBool('profile_gold_aktiv');
+        const profileGoldZiel = readProfileNumber('profile_gold_ziel_pct');
+        const profileGoldFloor = readProfileNumber('profile_gold_floor_pct');
+        const profileGoldSteuerfrei = readProfileBool('profile_gold_steuerfrei');
+        const profileGoldRebalBand = readProfileNumber('profile_gold_rebal_band');
+
+        let detailledTranches = null;
+        try {
+            const saved = localStorage.getItem('depot_tranchen');
+            if (saved) {
+                detailledTranches = JSON.parse(saved);
+            }
+        } catch { }
+
+        const aggregated = (detailledTranches && Array.isArray(detailledTranches) && detailledTranches.length)
+            ? calculateAggregatedValues()
+            : null;
+
+        const useAggregates = aggregated && (
+            aggregated.depotwertAlt > 0 ||
+            aggregated.depotwertNeu > 0 ||
+            aggregated.geldmarktEtf > 0 ||
+            aggregated.goldWert > 0
+        );
+
+        const DEFAULT_GOLD_ZIEL = 7.5;
+        const DEFAULT_GOLD_FLOOR = 1;
+        const DEFAULT_GOLD_BAND = 25;
+        const finiteNumber = (id, fallback = 0) => {
+            const raw = String(val(id) ?? '').trim();
+            if (!raw || (raw.includes('.') && raw.includes(','))) return fallback;
+            const normalized = raw.includes(',') ? raw.replace(',', '.') : raw;
+            if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(normalized)) return fallback;
+            const parsed = Number(normalized);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        };
+
+        let goldAktivFinal = (typeof profileGoldAktiv === 'boolean') ? profileGoldAktiv : checked('goldAktiv');
+        let goldZielFinal = Number.isFinite(profileGoldZiel)
+            ? profileGoldZiel
+            : finiteNumber('goldZielProzent', Number.NaN);
+        let goldFloorFinal = Number.isFinite(profileGoldFloor) ? profileGoldFloor : (parseFloat(val('goldFloorProzent')) || 0);
+        let goldSteuerfreiFinal = (typeof profileGoldSteuerfrei === 'boolean') ? profileGoldSteuerfrei : checked('goldSteuerfrei');
+        let rebalancingBandFinal = Number.isFinite(profileGoldRebalBand)
+            ? profileGoldRebalBand
+            : finiteNumber('rebalancingBand', Number.NaN);
+
+        if (!Number.isFinite(goldZielFinal) || goldZielFinal < 0 || goldZielFinal > 50) {
+            goldZielFinal = DEFAULT_GOLD_ZIEL;
+        }
+        if (!Number.isFinite(goldFloorFinal) || goldFloorFinal < 0 || goldFloorFinal > 50) {
+            goldFloorFinal = DEFAULT_GOLD_FLOOR;
+        }
+        if (goldAktivFinal && (!Number.isFinite(rebalancingBandFinal) || rebalancingBandFinal < 0)) {
+            rebalancingBandFinal = DEFAULT_GOLD_BAND;
+        } else if (!Number.isFinite(rebalancingBandFinal)) {
+            rebalancingBandFinal = 0;
+        }
+
+        const hasProfileRenteSum = Number.isFinite(profileRenteMonatlich)
+            || Number.isFinite(profileSonstigeEinkuenfte);
+        const renteMonatlichFinal = hasProfileRenteSum
+            ? (Number.isFinite(profileRenteMonatlich) ? profileRenteMonatlich : 0)
+            + (Number.isFinite(profileSonstigeEinkuenfte) ? profileSonstigeEinkuenfte : 0)
+            : num('renteMonatlich');
+        const renteAktivFinal = hasProfileRenteSum
+            ? renteMonatlichFinal > 0
+            : ((typeof profileRenteAktiv === 'boolean') ? profileRenteAktiv : val('renteAktiv') === 'ja');
+
+        return {
+            aktuellesAlter: Number.isFinite(profileAlter) ? profileAlter : (parseInt(val('aktuellesAlter')) || 0),
+            floorBedarf: num('floorBedarf'),
+            flexBedarf: num('flexBedarf'),
+            inflation: parseFloat(val('inflation')) || 0,
+            tagesgeld: Number.isFinite(profileTagesgeld) ? profileTagesgeld : num('tagesgeld'),
+            geldmarktEtf: useAggregates ? aggregated.geldmarktEtf : num('geldmarktEtf'),
+            depotwertAlt: useAggregates ? aggregated.depotwertAlt : num('depotwertAlt'),
+            depotwertNeu: useAggregates ? aggregated.depotwertNeu : num('depotwertNeu'),
+            goldWert: useAggregates ? aggregated.goldWert : num('goldWert'),
+            endeVJ: parseFloat(val('endeVJ')) || 0,
+            ath: parseFloat(val('ath')) || 0,
+            jahreSeitAth: parseFloat(val('jahreSeitAth')) || 0,
+            renteAktiv: renteAktivFinal,
+            renteMonatlich: renteMonatlichFinal,
+            goldAktiv: goldAktivFinal,
+            goldZielProzent: goldZielFinal,
+            goldFloorProzent: goldFloorFinal,
+            goldSteuerfrei: goldSteuerfreiFinal,
+            rebalancingBand: rebalancingBandFinal,
+            costBasisAlt: useAggregates ? aggregated.costBasisAlt : num('costBasisAlt'),
+            costBasisNeu: useAggregates ? aggregated.costBasisNeu : num('costBasisNeu'),
+            goldCost: useAggregates ? aggregated.goldCost : num('goldCost'),
+            kirchensteuerSatz: parseFloat(val('kirchensteuerSatz')) || 0,
+            sparerPauschbetrag: num('sparerPauschbetrag'),
+            detailledTranches
+        };
+    },
+
+    applyStoredInputs(storedInputs = {}) {
+        Object.keys(dom.inputs).forEach(key => {
+            const el = dom.inputs[key];
+            if (el && key in storedInputs) {
+                if (el.type === 'checkbox') {
+                    el.checked = storedInputs[key];
+                } else if (el.classList.contains('currency')) {
+                    el.value = UIUtils.formatNumber(UIUtils.parseCurrency(storedInputs[key]));
+                } else if (key === 'renteAktiv' && typeof storedInputs[key] === 'boolean') {
+                    el.value = storedInputs[key] ? 'ja' : 'nein';
+                } else {
+                    el.value = storedInputs[key];
+                }
+            }
+        });
+        this.applySideEffectsFromInputs();
+    },
+
+    applySideEffectsFromInputs() {
+        const goldAktivInput = dom.inputs.goldAktiv;
+        const goldPanel = dom.controls.goldPanel;
+        const isGoldActive = goldAktivInput ? goldAktivInput.checked : false;
+        if (goldPanel) {
+            goldPanel.style.display = isGoldActive ? 'block' : 'none';
+        }
+
+        const renteAktivInput = dom.inputs.renteAktiv;
+        const renteMonatlichInput = dom.inputs.renteMonatlich;
+        if (renteAktivInput && renteMonatlichInput) {
+            const isRenteAktiv = renteAktivInput.value === 'ja';
+            renteMonatlichInput.disabled = !isRenteAktiv;
+            if (!isRenteAktiv) {
+                renteMonatlichInput.value = UIUtils.formatNumber(0);
+            }
+        }
+    }
+};
+
+// Setup
+const mockLocalStorage = new MockLocalStorage();
+global.localStorage = mockLocalStorage;
+
+// ===== TESTS =====
+
+// Test 0: Produktiver Zahlen- und Markt-CSV-Parser arbeitet strikt und fail-closed.
+console.log('Test 0: Striktes Zahlen- und Markt-CSV-Parsing');
+{
+    const validNumbers = [
+        ['1.234,56 €', 1234.56],
+        ['1,234.56', 1234.56],
+        ['1 234,56', 1234.56],
+        ['-12,5', -12.5],
+        ['0', 0]
+    ];
+    validNumbers.forEach(([raw, expected]) => {
+        const result = ActualUIUtils.parseCurrencyResult(raw);
+        assertEqual(result.valid, true, `${raw} sollte vollstaendig akzeptiert werden`);
+        assertClose(result.value, expected, 1e-9, `${raw} sollte exakt normalisiert werden`);
+    });
+
+    const optionalMissing = parseLocalizedNumber('', { required: false });
+    assertEqual(optionalMissing.valid, true, 'Leerer optionaler Wert bleibt ein gueltiges Missing');
+    assertEqual(optionalMissing.value, null, 'Missing bleibt von der gueltigen Zahl 0 unterscheidbar');
+    assertEqual(ActualUIUtils.parseCurrencyResult('0').value, 0, 'Gueltige Null wird nicht als Missing behandelt');
+
+    const invalidNumbers = [
+        ['12abc', NUMBER_PARSE_ERROR_CODES.INVALID_FORMAT],
+        ['1,23.4', NUMBER_PARSE_ERROR_CODES.AMBIGUOUS_SEPARATOR],
+        ['Infinity', NUMBER_PARSE_ERROR_CODES.NON_FINITE],
+        ['', NUMBER_PARSE_ERROR_CODES.REQUIRED]
+    ];
+    invalidNumbers.forEach(([raw, expectedCode]) => {
+        const result = ActualUIUtils.parseCurrencyResult(raw);
+        assertEqual(result.valid, false, `${raw || '<leer>'} sollte abgewiesen werden`);
+        assertEqual(result.error.code, expectedCode, `${raw || '<leer>'} sollte einen strukturierten Fehler liefern`);
+    });
+
+    assertEqual(ActualUIUtils.parseCurrency('12abc'), 0, 'Legacy-Zahlenaufrufer behalten vorerst den kompatiblen 0-Fallback');
+
+    const expectFieldError = (fieldId, raw, expectedCode, expectedMessage) => {
+        let error = null;
+        try {
+            parseBalanceCurrencyInput(fieldId, raw);
+        } catch (caught) {
+            error = caught;
+        }
+        assertEqual(error instanceof ValidationError, true, `${fieldId} liefert einen feldbezogenen ValidationError`);
+        assertEqual(error.errors[0].fieldId, fieldId, `${fieldId} bleibt im Fehler erhalten`);
+        assertEqual(error.errors[0].code, expectedCode, `${fieldId} behaelt den Parsercode`);
+        assertEqual(error.errors[0].message, expectedMessage, `${fieldId} liefert den erwarteten Nutzertext`);
+    };
+    expectFieldError(
+        'minimumFlexAnnual',
+        '',
+        NUMBER_PARSE_ERROR_CODES.REQUIRED,
+        'Mindest-Flex p.a. darf nicht leer sein.'
+    );
+    expectFieldError(
+        'minimumFlexAnnual',
+        'Infinity',
+        NUMBER_PARSE_ERROR_CODES.NON_FINITE,
+        'Mindest-Flex p.a. muss eine endliche Zahl sein.'
+    );
+    expectFieldError(
+        'floorBedarf',
+        '12abc',
+        NUMBER_PARSE_ERROR_CODES.INVALID_FORMAT,
+        'Floor-Bedarf p.a. enthaelt keine gueltige vollstaendige Zahl.'
+    );
+    assertEqual(parseBalanceCurrencyInput('tagesgeld', ''), 0, 'Leeres optionales Waehrungsfeld bleibt kompatibel bei 0');
+    assertEqual(parseBalanceCurrencyInput('minimumFlexAnnual', '0'), 0, 'Gueltige Mindest-Flex-Null bleibt von Missing unterscheidbar');
+
+    const parsedMarket = parseMarketDataCsv([
+        'Datum;Schluss',
+        '14.07.2023;100,00',
+        '14.07.2024;120,00',
+        '14.07.2025;150,00',
+        '14.07.2026;140,00'
+    ].join('\n'));
+    assertEqual(parsedMarket.rowCount, 4, 'Markt-CSV zaehlt alle validierten Datenzeilen');
+    assertEqual(parsedMarket.values.endeVJ, 140, 'Markt-CSV uebernimmt den letzten Schlusswert');
+    assertEqual(parsedMarket.values.endeVJ_1, 150, 'Markt-CSV bindet VJ-1 an das korrekte Zieljahr');
+    assertEqual(parsedMarket.values.endeVJ_2, 120, 'Markt-CSV bindet VJ-2 an das korrekte Zieljahr');
+    assertEqual(parsedMarket.values.endeVJ_3, 100, 'Markt-CSV bindet VJ-3 an das korrekte Zieljahr');
+    assertEqual(parsedMarket.values.ath, undefined, 'Vier CSV-Zeilen werden nicht als historisches ATH ausgegeben');
+    assertEqual(parsedMarket.high.value, 150, 'Das Maximum bleibt als lokales Fensterhoch verfügbar');
+    assertEqual(parsedMarket.high.scope, 'windowHigh', 'Das lokale Maximum ist explizit als windowHigh klassifiziert');
+    assertEqual(parsedMarket.high.verifiedAllTimeHighAvailable, false,
+        'Das Fensterhoch darf nicht als verifiziertes Allzeithoch gelten');
+
+    const currentImportPlan = createManualMarketCsvImportPlan(parsedMarket, {
+        mode: 'current',
+        targetYear: 2026,
+        expectedAsOf: '2026-07-14',
+        instrument: 'vwce.de',
+        sourceFileName: 'markt-2026.csv',
+        currentPeriodYear: 2026,
+        importedAt: '2026-07-27T10:00:00.000Z'
+    });
+    assertEqual(currentImportPlan.engineValues.ath, 150,
+        'Das Fensterhoch wird intern als konservative ATH-Untergrenze verwendet');
+    assertEqual(currentImportPlan.engineValues.jahreSeitAth, 0,
+        'Die Engine-Referenz übernimmt ausschließlich die beobachteten Jahre seit dem Fensterhoch');
+    assertEqual(currentImportPlan.provenance.instrument, 'VWCE.DE', 'Instrument wird normalisiert und persistierbar');
+    assertEqual(currentImportPlan.provenance.asOf, '2026-07-14', 'Provenienz bindet den bestätigten Stichtag');
+    assertEqual(currentImportPlan.provenance.periodMode, 'current', 'Provenienz unterscheidet aktuellen Importmodus');
+    assertEqual(currentImportPlan.provenance.highScope, 'windowHigh', 'Provenienz konserviert die eingeschränkte Hoch-Semantik');
+    assertEqual(
+        currentImportPlan.provenance.engineReference.policy,
+        'window_high_as_conservative_ath_lower_bound',
+        'Die konservative Engine-Nutzung ist maschinenlesbar von einer echten ATH-Behauptung getrennt'
+    );
+    assertEqual(currentImportPlan.provenance.engineReference.applied, true,
+        'Ein positives Fensterhoch-Gefälle wird als gerichtete Engine-Untergrenze angewendet');
+
+    const bearParsedMarket = parseMarketDataCsv([
+        'Datum;Schluss',
+        '14.07.2023;100,00',
+        '14.07.2024;90,00',
+        '14.07.2025;80,00',
+        '14.07.2026;55,00'
+    ].join('\n'));
+    const bearImportPlan = createManualMarketCsvImportPlan(bearParsedMarket, {
+        mode: 'current',
+        targetYear: 2026,
+        expectedAsOf: '2026-07-14',
+        instrument: 'VWCE.DE',
+        sourceFileName: 'markt-bear-2026.csv',
+        currentPeriodYear: 2026,
+        importedAt: '2026-07-27T10:00:00.000Z'
+    });
+    const bearAnalysis = MarketAnalyzer.analyzeMarket({
+        ...bearImportPlan.engineValues,
+        inflation: 2,
+        capeRatio: 25
+    });
+    assertEqual(bearAnalysis.sKey, 'bear_deep',
+        'Ein belegter 45-Prozent-Einbruch aus dem CSV-Fenster aktiviert weiterhin die Baerenmarkterkennung');
+
+    const risingParsedMarket = parseMarketDataCsv([
+        'Datum;Schluss',
+        '14.07.2023;80,00',
+        '14.07.2024;95,00',
+        '14.07.2025;110,00',
+        '14.07.2026;130,00'
+    ].join('\n'));
+    const risingImportPlan = createManualMarketCsvImportPlan(risingParsedMarket, {
+        mode: 'current',
+        targetYear: 2026,
+        expectedAsOf: '2026-07-14',
+        instrument: 'VWCE.DE',
+        sourceFileName: 'markt-steigend-2026.csv',
+        currentPeriodYear: 2026,
+        importedAt: '2026-07-27T10:00:00.000Z'
+    });
+    const risingAnalysis = MarketAnalyzer.analyzeMarket({
+        ...risingImportPlan.engineValues,
+        inflation: 2,
+        capeRatio: 25
+    });
+    assertEqual(risingImportPlan.engineValues.ath, 0,
+        'Ein Fensterhoch am letzten Datenpunkt wird nicht als Allzeithoch an die Engine gereicht');
+    assertEqual(risingImportPlan.engineValues.jahreSeitAth, 0,
+        'Ohne anwendbare ATH-Untergrenze bleibt auch das Referenzalter neutral');
+    assertEqual(risingImportPlan.provenance.engineReference.applied, false,
+        'Die Provenienz kennzeichnet die nicht tragende Untergrenze explizit als nicht angewendet');
+    assertEqual(risingImportPlan.provenance.engineReference.value, null,
+        'Eine nicht angewendete Engine-Referenz behauptet keinen ATH-Wert');
+    assertEqual(risingAnalysis.sKey, 'side_long',
+        'Ein steigendes CSV-Fenster ohne Vollhistorie nutzt den neutralen Markt-Fallback');
+    assertEqual(risingAnalysis.reasons.includes('Neues Allzeithoch'), false,
+        'Der steigende CSV-Fall behauptet kein unbelegtes Allzeithoch');
+
+    let staleCurrentError = null;
+    try {
+        createManualMarketCsvImportPlan(parsedMarket, {
+            mode: 'current',
+            targetYear: 2025,
+            expectedAsOf: '2025-07-14',
+            instrument: 'VWCE.DE',
+            sourceFileName: 'markt-alt.csv',
+            currentPeriodYear: 2026
+        });
+    } catch (error) {
+        staleCurrentError = error;
+    }
+    assertEqual(staleCurrentError?.code, 'market_csv_period_mismatch', 'Veraltete CSV wird im aktuellen Modus periodenscharf blockiert');
+
+    const historicalImportPlan = createManualMarketCsvImportPlan(parsedMarket, {
+        mode: 'historical',
+        targetYear: 2026,
+        expectedAsOf: '2026-07-14',
+        instrument: 'VWCE.DE',
+        sourceFileName: 'markt-historisch.csv',
+        currentPeriodYear: 2027,
+        importedAt: '2026-07-27T10:00:00.000Z'
+    });
+    assertEqual(historicalImportPlan.provenance.periodMode, 'historical', 'Expliziter historischer Modus erlaubt eine abgeschlossene Vorperiode');
+    assertEqual(historicalImportPlan.provenance.periodId, 'calendar-year:2026', 'Historische Zielperiode bleibt eindeutig');
+
+    let wrongAsOfError = null;
+    try {
+        createManualMarketCsvImportPlan(parsedMarket, {
+            mode: 'historical',
+            targetYear: 2026,
+            expectedAsOf: '2026-07-13',
+            instrument: 'VWCE.DE',
+            sourceFileName: 'markt-historisch.csv',
+            currentPeriodYear: 2027
+        });
+    } catch (error) {
+        wrongAsOfError = error;
+    }
+    assertEqual(wrongAsOfError?.code, 'market_csv_asof_mismatch', 'Abweichender erwarteter Stichtag wird vor jeder Mutation blockiert');
+
+    const leapDayMarket = parseMarketDataCsv([
+        'Datum;Schluss',
+        '28.02.2021;100',
+        '28.02.2022;110',
+        '28.02.2023;120',
+        '01.03.2023;999',
+        '29.02.2024;140'
+    ].join('\n'));
+    assertEqual(leapDayMarket.values.endeVJ_1, 120, 'Schalttag-Stichtag faellt im Nicht-Schaltjahr auf den 28. Februar zurueck');
+
+    const expectMarketError = (csv, code, message) => {
+        let error = null;
+        try {
+            parseMarketDataCsv(csv);
+        } catch (caught) {
+            error = caught;
+        }
+        assertEqual(error instanceof MarketCsvImportError, true, message);
+        assertEqual(error.code, code, `${message}: stabiler Fehlercode`);
+        return error;
+    };
+
+    const invalidDate = expectMarketError([
+        'Datum;Schluss',
+        '14.07.2023;100',
+        '14.07.2024;120',
+        '14.07.2025;130',
+        '31.02.2026;140'
+    ].join('\n'), 'market_csv_invalid_rows', 'Ungueltige Kalenderdaten werden abgewiesen');
+    assertEqual(invalidDate.details.rejectedRows[0].lineNumber, 5, 'Kalenderfehler nennt die exakte CSV-Zeile');
+
+    const missingYear = expectMarketError([
+        'Datum;Schluss',
+        '14.07.2023;100',
+        '14.07.2025;130',
+        '14.07.2026;140'
+    ].join('\n'), 'market_csv_missing_years', 'Unvollstaendige Jahresreihen werden abgewiesen');
+    assertEqual(missingYear.details.missingYears.join(','), '2024', 'Fehler nennt exakt das fehlende Zieljahr');
+
+    expectMarketError([
+        'Datum;Schluss',
+        '14.07.2023;100',
+        '14.07.2024;120',
+        '14.07.2025;130',
+        '14.07.2026;12abc'
+    ].join('\n'), 'market_csv_invalid_rows', 'Teilstrings in Marktdaten werden nicht akzeptiert');
+    console.log('✓ Striktes Zahlen- und Markt-CSV-Parsing OK');
+}
+
+// Test 1: readAllInputs - Basis mit DOM-Werten
+console.log('Test 1: readAllInputs - Basis mit DOM-Werten');
+{
+    mockLocalStorage.clear();
+
+    const inputs = {
+        aktuellesAlter: new MockElement('input', '67'),
+        // Punkt als Tausendertrenner soll korrekt geparst werden.
+        floorBedarf: new MockElement('input', '24.000'),
+        flexBedarf: new MockElement('input', '12.000'),
+        inflation: new MockElement('input', '2.5'),
+        tagesgeld: new MockElement('input', '50.000'),
+        geldmarktEtf: new MockElement('input', '20.000'),
+        depotwertAlt: new MockElement('input', '200.000'),
+        depotwertNeu: new MockElement('input', '300.000'),
+        goldWert: new MockElement('input', '30.000'),
+        endeVJ: new MockElement('input', '150'),
+        ath: new MockElement('input', '160'),
+        jahreSeitAth: new MockElement('input', '1'),
+        renteAktiv: new MockElement('select', 'ja'),
+        renteMonatlich: new MockElement('input', '1.500'),
+        goldAktiv: new MockElement('checkbox', '', false),
+        goldZielProzent: new MockElement('input', '10'),
+        goldFloorProzent: new MockElement('input', '2'),
+        goldSteuerfrei: new MockElement('checkbox', '', true),
+        rebalancingBand: new MockElement('input', '20'),
+        costBasisAlt: new MockElement('input', '150.000'),
+        costBasisNeu: new MockElement('input', '250.000'),
+        goldCost: new MockElement('input', '25.000'),
+        kirchensteuerSatz: new MockElement('input', '8'),
+        sparerPauschbetrag: new MockElement('input', '1.000')
+    };
+
+    initUIReader({ inputs, controls: {} });
+
+    // Ergebnis: numerisch normalisierte Werte aus dem DOM.
+    const result = UIReader.readAllInputs();
+
+    assertEqual(result.aktuellesAlter, 67, 'aktuellesAlter sollte 67 sein');
+    assertEqual(result.floorBedarf, 24000, 'floorBedarf sollte 24000 sein');
+    assertEqual(result.flexBedarf, 12000, 'flexBedarf sollte 12000 sein');
+    assertClose(result.inflation, 2.5, 0.01, 'inflation sollte 2.5 sein');
+    assertEqual(result.tagesgeld, 50000, 'tagesgeld sollte 50000 sein');
+    assertEqual(result.depotwertAlt, 200000, 'depotwertAlt sollte 200000 sein');
+    assertEqual(result.renteAktiv, true, 'renteAktiv sollte true sein');
+    assertEqual(result.renteMonatlich, 1500, 'renteMonatlich sollte 1500 sein');
+    const readerExport = createBalanceExportDocument({ inputs: result });
+    assertEqual(readerExport.schemaVersion, 2, 'Realer Reader-Zustand wird im aktuellen Exportvertrag gesichert');
+    assert(
+        readerExport.validationWarnings?.[0]?.message.includes('kirchensteuerSatz'),
+        'Erreichbare, aber ausserhalb des Importvertrags liegende Reader-Werte bleiben exportierbar und feldgenau markiert'
+    );
+    console.log('✓ readAllInputs Basis OK');
+}
+
+// Test 2: Profile-Override hat Vorrang vor DOM
+console.log('Test 2: Profile-Override hat Vorrang vor DOM');
+{
+    mockLocalStorage.clear();
+
+    // Setze Profile-Werte (localStorage überschreibt DOM).
+    mockLocalStorage.setItem('profile_aktuelles_alter', '70');
+    mockLocalStorage.setItem('profile_tagesgeld', '100000');
+    mockLocalStorage.setItem('profile_rente_monatlich', '2000');
+
+    const inputs = {
+        aktuellesAlter: new MockElement('input', '67'), // DOM sagt 67
+        tagesgeld: new MockElement('input', '50.000'), // DOM sagt 50000
+        renteMonatlich: new MockElement('input', '1.500'), // DOM sagt 1500
+        renteAktiv: new MockElement('select', 'nein')
+    };
+
+    initUIReader({ inputs, controls: {} });
+
+    const result = UIReader.readAllInputs();
+
+    assertEqual(result.aktuellesAlter, 70, 'Profile-Alter (70) sollte DOM (67) überschreiben');
+    assertEqual(result.tagesgeld, 100000, 'Profile-Tagesgeld (100000) sollte DOM (50000) überschreiben');
+    assertEqual(result.renteMonatlich, 2000, 'Profile-Rente (2000) sollte DOM (1500) überschreiben');
+    assertEqual(result.renteAktiv, true, 'renteAktiv sollte true sein wenn Profile-Rente > 0');
+    console.log('✓ Profile-Override OK');
+}
+
+// Test 3: Gold-Modul Nullgrenzen und Defaults
+console.log('Test 3: Gold-Modul Nullgrenzen und Defaults');
+{
+    mockLocalStorage.clear();
+
+    const inputs = {
+        goldAktiv: new MockElement('checkbox', '', true), // Aktiv
+        goldZielProzent: new MockElement('input', '0'), // Explizite Null bleibt bis zur Engine erhalten
+        goldFloorProzent: new MockElement('input', '-5'), // Ungültig -> Default
+        rebalancingBand: new MockElement('input', '0') // Nullband bleibt als kanonischer Wert erhalten
+    };
+
+    initUIReader({ inputs, controls: {} });
+
+    const result = UIReader.readAllInputs();
+
+    assertEqual(result.goldZielProzent, 0, 'goldZielProzent=0 sollte bis zur Engine-Validierung erhalten bleiben');
+    assertClose(result.goldFloorProzent, 1, 0.01, 'goldFloorProzent sollte Default 1 sein');
+    assertEqual(result.rebalancingBand, 0, 'rebalancingBand=0 sollte als Nulltoleranz erhalten bleiben');
+
+    initUIReader({
+        inputs: {
+            goldAktiv: new MockElement('checkbox', '', true),
+            goldZielProzent: new MockElement('input', 'ungueltig'),
+            goldFloorProzent: new MockElement('input', '1'),
+            rebalancingBand: new MockElement('input', '')
+        },
+        controls: {}
+    });
+    const defaults = UIReader.readAllInputs();
+    assertClose(defaults.goldZielProzent, 7.5, 0.01, 'Ungültiges Goldziel sollte den dokumentierten Default verwenden');
+    assertEqual(defaults.rebalancingBand, 25, 'Fehlendes Goldband sollte bei aktivem Gold den Default verwenden');
+    console.log('✓ Gold-Modul Nullgrenzen und Defaults OK');
+}
+
+// Test 4: Profile-Gold-Werte überschreiben Defaults
+console.log('Test 4: Profile-Gold-Werte überschreiben Defaults');
+{
+    mockLocalStorage.clear();
+
+    mockLocalStorage.setItem('profile_gold_aktiv', 'true');
+    mockLocalStorage.setItem('profile_gold_ziel_pct', '15');
+    mockLocalStorage.setItem('profile_gold_floor_pct', '3');
+    mockLocalStorage.setItem('profile_gold_rebal_band', '30');
+
+    const inputs = {
+        goldAktiv: new MockElement('checkbox', '', false), // DOM sagt inaktiv
+        goldZielProzent: new MockElement('input', '5'),
+        goldFloorProzent: new MockElement('input', '1'),
+        rebalancingBand: new MockElement('input', '20')
+    };
+
+    initUIReader({ inputs, controls: {} });
+
+    const result = UIReader.readAllInputs();
+
+    assertEqual(result.goldAktiv, true, 'Profile-goldAktiv sollte DOM überschreiben');
+    assertEqual(result.goldZielProzent, 15, 'Profile-goldZiel sollte DOM überschreiben');
+    assertEqual(result.goldFloorProzent, 3, 'Profile-goldFloor sollte DOM überschreiben');
+    assertEqual(result.rebalancingBand, 30, 'Profile-rebalBand sollte DOM überschreiben');
+
+    mockLocalStorage.setItem('profile_gold_ziel_pct', '0');
+    mockLocalStorage.setItem('profile_gold_rebal_band', '0');
+    const zeroResult = UIReader.readAllInputs();
+    assertEqual(zeroResult.goldZielProzent, 0, 'Profile-goldZiel=0 sollte erhalten bleiben');
+    assertEqual(zeroResult.rebalancingBand, 0, 'Profile-rebalBand=0 sollte erhalten bleiben');
+    console.log('✓ Profile-Gold-Werte OK');
+}
+
+// Test 5: Tranchen-Aggregation
+console.log('Test 5: Tranchen-Aggregation');
+{
+    mockLocalStorage.clear();
+
+    const tranchen = [
+        { type: 'alt', wert: 100000, einstand: 80000 },
+        { type: 'alt', wert: 50000, einstand: 40000 },
+        { type: 'neu', wert: 200000, einstand: 180000 },
+        { type: 'geldmarkt', wert: 30000, einstand: 30000 },
+        { type: 'gold', wert: 25000, einstand: 20000 }
+    ];
+    mockLocalStorage.setItem('depot_tranchen', JSON.stringify(tranchen));
+
+    const inputs = {
+        depotwertAlt: new MockElement('input', '999.999'), // Wird durch Aggregate überschrieben
+        depotwertNeu: new MockElement('input', '888.888'),
+        geldmarktEtf: new MockElement('input', '777.777'),
+        goldWert: new MockElement('input', '666.666'),
+        costBasisAlt: new MockElement('input', '555.555'),
+        costBasisNeu: new MockElement('input', '444.444'),
+        goldCost: new MockElement('input', '333.333')
+    };
+
+    initUIReader({ inputs, controls: {} });
+
+    const result = UIReader.readAllInputs();
+
+    assertEqual(result.depotwertAlt, 150000, 'Aggregiertes depotwertAlt sollte 150000 sein');
+    assertEqual(result.depotwertNeu, 200000, 'Aggregiertes depotwertNeu sollte 200000 sein');
+    assertEqual(result.geldmarktEtf, 30000, 'Aggregiertes geldmarktEtf sollte 30000 sein');
+    assertEqual(result.goldWert, 25000, 'Aggregiertes goldWert sollte 25000 sein');
+    assertEqual(result.costBasisAlt, 120000, 'Aggregiertes costBasisAlt sollte 120000 sein');
+    assertEqual(result.costBasisNeu, 180000, 'Aggregiertes costBasisNeu sollte 180000 sein');
+    assertEqual(result.goldCost, 20000, 'Aggregiertes goldCost sollte 20000 sein');
+    assert(result.detailledTranches !== null, 'detailledTranches sollte gesetzt sein');
+    assertEqual(result.detailledTranches.length, 5, 'detailledTranches sollte 5 Positionen haben');
+    console.log('✓ Tranchen-Aggregation OK');
+}
+
+// Test 6: Sonstige Einkünfte werden zu Rente addiert
+console.log('Test 6: Sonstige Einkünfte werden zu Rente addiert');
+{
+    mockLocalStorage.clear();
+
+    mockLocalStorage.setItem('profile_rente_monatlich', '1500');
+    mockLocalStorage.setItem('profile_sonstige_einkuenfte', '500');
+
+    const inputs = {
+        renteAktiv: new MockElement('select', 'nein'),
+        renteMonatlich: new MockElement('input', '0')
+    };
+
+    initUIReader({ inputs, controls: {} });
+
+    const result = UIReader.readAllInputs();
+
+    assertEqual(result.renteMonatlich, 2000, 'renteMonatlich sollte Summe aus Rente + Sonstige sein');
+    assertEqual(result.renteAktiv, true, 'renteAktiv sollte true sein wenn Summe > 0');
+    console.log('✓ Sonstige Einkünfte OK');
+}
+
+// Test 7: applyStoredInputs - Checkbox
+console.log('Test 7: applyStoredInputs - Checkbox');
+{
+    mockLocalStorage.clear();
+
+    const inputs = {
+        goldAktiv: new MockElement('checkbox', '', false),
+        goldSteuerfrei: new MockElement('checkbox', '', false)
+    };
+
+    initUIReader({ inputs, controls: { goldPanel: new MockElement() } });
+
+    UIReader.applyStoredInputs({
+        goldAktiv: true,
+        goldSteuerfrei: true
+    });
+
+    assertEqual(inputs.goldAktiv.checked, true, 'goldAktiv sollte checked sein');
+    assertEqual(inputs.goldSteuerfrei.checked, true, 'goldSteuerfrei sollte checked sein');
+    console.log('✓ applyStoredInputs Checkbox OK');
+}
+
+// Test 8: applyStoredInputs - Currency-Formatierung
+console.log('Test 8: applyStoredInputs - Currency-Formatierung');
+{
+    mockLocalStorage.clear();
+
+    const currencyInput = new MockElement('input', '0');
+    currencyInput.classList.add('currency');
+
+    const inputs = {
+        floorBedarf: currencyInput
+    };
+
+    initUIReader({ inputs, controls: {} });
+
+    UIReader.applyStoredInputs({
+        floorBedarf: 24000
+    });
+
+    // Prüfe formatierte Ausgabe (de-DE Format)
+    assert(inputs.floorBedarf.value.includes('24'), 'Currency sollte formatiert sein');
+    console.log('✓ applyStoredInputs Currency OK');
+}
+
+// Test 9: applyStoredInputs - renteAktiv Boolean zu "ja"/"nein"
+console.log('Test 9: applyStoredInputs - renteAktiv Boolean');
+{
+    mockLocalStorage.clear();
+
+    const inputs = {
+        renteAktiv: new MockElement('select', 'nein')
+    };
+
+    initUIReader({ inputs, controls: {} });
+
+    UIReader.applyStoredInputs({
+        renteAktiv: true
+    });
+
+    assertEqual(inputs.renteAktiv.value, 'ja', 'renteAktiv boolean true sollte zu "ja" werden');
+
+    UIReader.applyStoredInputs({
+        renteAktiv: false
+    });
+
+    assertEqual(inputs.renteAktiv.value, 'nein', 'renteAktiv boolean false sollte zu "nein" werden');
+    console.log('✓ applyStoredInputs renteAktiv Boolean OK');
+}
+
+// Test 10: applySideEffectsFromInputs - Gold-Panel
+console.log('Test 10: applySideEffectsFromInputs - Gold-Panel');
+{
+    mockLocalStorage.clear();
+
+    const goldPanel = new MockElement();
+    const inputs = {
+        goldAktiv: new MockElement('checkbox', '', true)
+    };
+
+    initUIReader({ inputs, controls: { goldPanel } });
+
+    UIReader.applySideEffectsFromInputs();
+
+    assertEqual(goldPanel.style.display, 'block', 'Gold-Panel sollte sichtbar sein wenn goldAktiv');
+
+    inputs.goldAktiv.checked = false;
+    UIReader.applySideEffectsFromInputs();
+
+    assertEqual(goldPanel.style.display, 'none', 'Gold-Panel sollte versteckt sein wenn nicht goldAktiv');
+    console.log('✓ applySideEffectsFromInputs Gold-Panel OK');
+}
+
+// Test 11: applySideEffectsFromInputs - Rente disabled
+console.log('Test 11: applySideEffectsFromInputs - Rente disabled');
+{
+    mockLocalStorage.clear();
+
+    const inputs = {
+        renteAktiv: new MockElement('select', 'nein'),
+        renteMonatlich: new MockElement('input', '1500')
+    };
+
+    initUIReader({ inputs, controls: {} });
+
+    UIReader.applySideEffectsFromInputs();
+
+    assertEqual(inputs.renteMonatlich.disabled, true, 'renteMonatlich sollte disabled sein bei renteAktiv=nein');
+    assertEqual(inputs.renteMonatlich.value, '0', 'renteMonatlich sollte auf 0 gesetzt werden bei renteAktiv=nein');
+
+    inputs.renteAktiv.value = 'ja';
+    inputs.renteMonatlich.value = '1500';
+    UIReader.applySideEffectsFromInputs();
+
+    assertEqual(inputs.renteMonatlich.disabled, false, 'renteMonatlich sollte enabled sein bei renteAktiv=ja');
+    console.log('✓ applySideEffectsFromInputs Rente disabled OK');
+}
+
+// Test 12: Leere Tranchen werden ignoriert
+console.log('Test 12: Leere Tranchen werden ignoriert');
+{
+    mockLocalStorage.clear();
+
+    mockLocalStorage.setItem('depot_tranchen', JSON.stringify([]));
+
+    const inputs = {
+        depotwertAlt: new MockElement('input', '100.000')
+    };
+
+    initUIReader({ inputs, controls: {} });
+
+    const result = UIReader.readAllInputs();
+
+    assertEqual(result.depotwertAlt, 100000, 'Bei leeren Tranchen sollte DOM-Wert verwendet werden');
+    console.log('✓ Leere Tranchen OK');
+}
+
+// Test 13: Der echte Balance-Reader nutzt Status, Klassifikation und Leersemantik.
+console.log('Test 13: Produktionsreader für Tranchenstatus und Aggregation');
+{
+    mockLocalStorage.clear();
+    PersistenceFacade.resetPersistenceRuntimeForTests();
+    mockLocalStorage.setItem('profile_kirchensteuer_pct', '9');
+    mockLocalStorage.setItem('profile_person_schema_version', '1');
+    mockLocalStorage.setItem('profile_aktuelles_alter', '67');
+    const previousWindow = global.window;
+    const previousDocument = global.document;
+    const inputs = {
+        depotwertAlt: new MockElement('input', '999.000'),
+        depotwertNeu: new MockElement('input', '888.000'),
+        geldmarktEtf: new MockElement('input', '777.000'),
+        goldWert: new MockElement('input', '666.000'),
+        costBasisAlt: new MockElement('input', '555.000'),
+        costBasisNeu: new MockElement('input', '444.000'),
+        goldCost: new MockElement('input', '333.000'),
+        kirchensteuerSatz: new MockElement('select', '0.09'),
+        runwayMinMonths: new MockElement('input', '24'),
+        runwayTargetMonths: new MockElement('input', '36'),
+        minCashBufferMonths: new MockElement('input', '0'),
+        targetEq: new MockElement('input', '60')
+    };
+    global.document = createDocumentMock(inputs);
+    global.window = { __profilverbundTranchenOverride: null };
+    initProductionUIReader({ inputs, controls: {} });
+
+    mockLocalStorage.setItem('depot_tranchen', JSON.stringify([
+        { trancheId: 'equity', name: 'Equity', shares: 10, purchasePrice: 80, currentPrice: 100, type: 'aktien_neu', category: 'equity', tqf: 0.30 },
+        { trancheId: 'money', name: 'Money', shares: 5, purchasePrice: 100, currentPrice: 100, type: 'geldmarkt', category: 'money_market', tqf: 0 },
+        { trancheId: 'gold', name: 'Gold', shares: 2, purchasePrice: 90, currentPrice: 100, type: 'gold', category: 'gold', tqf: 0 }
+    ]));
+    const aggregated = ProductionUIReader.readAllInputs();
+    assertEqual(aggregated.depotwertNeu, 1000, 'Production reader should aggregate canonical equity exactly once');
+    assertEqual(aggregated.geldmarktEtf, 500, 'Production reader should keep money market out of equity');
+    assertEqual(aggregated.goldWert, 200, 'Production reader should keep gold out of equity');
+    assertEqual(aggregated.detailledTranches.length, 3, 'Production reader should pass normalized lots to the engine input');
+    assertClose(aggregated.kirchensteuerSatz, 0.09, 1e-9, 'Production reader should preserve the Balance UI decimal church-tax unit');
+    assertEqual(aggregated.minCashBufferMonths, 0, 'Production reader should preserve an explicit zero cash buffer');
+
+    global.window.__profilverbundTranchenOverride = [];
+    const explicitEmpty = ProductionUIReader.readAllInputs();
+    assertEqual(explicitEmpty.depotwertNeu, 0, 'Explicit empty household override must suppress the current profile lot');
+    assertEqual(explicitEmpty.geldmarktEtf, 0, 'Explicit empty household override must not reuse a DOM money-market value');
+    assertEqual(explicitEmpty.detailledTranches.length, 0, 'Explicit empty household override should reach the engine as []');
+
+    global.window.__profilverbundTranchenOverride = null;
+    mockLocalStorage.setItem('depot_tranchen', 'nicht-json{{{');
+    let corruptError = null;
+    try {
+        ProductionUIReader.readAllInputs();
+    } catch (error) {
+        corruptError = error;
+    }
+    assert(corruptError instanceof ValidationError, 'Corrupt production storage must fail closed');
+    assertEqual(corruptError.errors[0].code, 'TRANCHE_STORAGE_CORRUPT', 'Corrupt production storage should expose its stable status code');
+
+    if (previousWindow === undefined) delete global.window;
+    else global.window = previousWindow;
+    if (previousDocument === undefined) delete global.document;
+    else global.document = previousDocument;
+    console.log('✓ Produktionsreader für Tranchenstatus und Aggregation OK');
+}
+
+// Test 14: Der echte Balance-Reader erhaelt explizite Gold-Nullwerte.
+console.log('Test 14: Produktionsreader für Gold-Nullgrenzen');
+{
+    mockLocalStorage.clear();
+    PersistenceFacade.resetPersistenceRuntimeForTests();
+    mockLocalStorage.setItem('profile_kirchensteuer_pct', '9');
+    mockLocalStorage.setItem('profile_person_schema_version', '1');
+    mockLocalStorage.setItem('profile_aktuelles_alter', '67');
+    const previousWindow = global.window;
+    const previousDocument = global.document;
+    const inputs = {
+        goldAktiv: new MockElement('checkbox', '', true),
+        goldZielProzent: new MockElement('input', '0'),
+        goldFloorProzent: new MockElement('input', '1'),
+        rebalancingBand: new MockElement('input', '0')
+    };
+    global.document = createDocumentMock(inputs);
+    global.window = { __profilverbundTranchenOverride: null };
+    initProductionUIReader({ inputs, controls: {} });
+
+    const domZero = ProductionUIReader.readAllInputs();
+    assertEqual(domZero.goldZielProzent, 0, 'Production reader should preserve DOM gold target zero');
+    assertEqual(domZero.rebalancingBand, 0, 'Production reader should preserve DOM gold band zero');
+
+    mockLocalStorage.setItem('profile_gold_aktiv', 'true');
+    mockLocalStorage.setItem('profile_gold_ziel_pct', '0');
+    mockLocalStorage.setItem('profile_gold_rebal_band', '0');
+    inputs.goldZielProzent.value = '10';
+    inputs.rebalancingBand.value = '25';
+    const profileZero = ProductionUIReader.readAllInputs();
+    assertEqual(profileZero.goldZielProzent, 0, 'Production reader should preserve profile gold target zero');
+    assertEqual(profileZero.rebalancingBand, 0, 'Production reader should preserve profile gold band zero');
+
+    if (previousWindow === undefined) delete global.window;
+    else global.window = previousWindow;
+    if (previousDocument === undefined) delete global.document;
+    else global.document = previousDocument;
+    console.log('✓ Produktionsreader für Gold-Nullgrenzen OK');
+}
+
+// Test 15: Gespeicherte Booleans und Marktdaten-Provenienz bleiben typ- und reload-sicher.
+console.log('Test 15: Strikte Boolean-Anwendung und Marktdaten-Provenienz');
+{
+    mockLocalStorage.setItem('profile_kirchensteuer_pct', '9');
+    mockLocalStorage.setItem('profile_person_schema_version', '1');
+    mockLocalStorage.setItem('profile_aktuelles_alter', '67');
+    const previousWindow = global.window;
+    const previousDocument = global.document;
+    const inputs = {
+        goldAktiv: new MockElement('checkbox', '', true),
+        goldSteuerfrei: new MockElement('checkbox', '', true),
+        dynamicFlex: new MockElement('checkbox', '', true),
+        goGoActive: new MockElement('checkbox', '', true),
+        renteAktiv: new MockElement('select', 'ja'),
+        renteMonatlich: new MockElement('input', '1000')
+    };
+    const provenanceOutput = new MockElement('p');
+    provenanceOutput.dataset = {};
+    global.document = createDocumentMock(inputs);
+    global.window = { __profilverbundTranchenOverride: null };
+    initProductionUIReader({
+        inputs,
+        controls: { goldPanel: new MockElement() },
+        outputs: { marketDataProvenance: provenanceOutput }
+    });
+
+    ProductionUIReader.applyStoredInputs({
+        goldAktiv: 'false',
+        goldSteuerfrei: '0',
+        dynamicFlex: 'false',
+        goGoActive: '0',
+        renteAktiv: 'true'
+    });
+    assertEqual(inputs.goldAktiv.checked, false, 'String "false" darf Checkboxen nicht aktivieren');
+    assertEqual(inputs.goldSteuerfrei.checked, false, 'String "0" darf Checkboxen nicht aktivieren');
+    assertEqual(inputs.dynamicFlex.checked, false, 'String "false" darf Dynamic Flex nicht aktivieren');
+    assertEqual(inputs.goGoActive.checked, false, 'String "0" darf Go-Go nicht aktivieren');
+    assertEqual(inputs.renteAktiv.value, 'nein', 'String "true" darf den Rentenmodus nicht aktivieren');
+
+    ProductionUIReader.applyStoredInputs({
+        goldAktiv: true,
+        goldSteuerfrei: false,
+        dynamicFlex: true,
+        goGoActive: false,
+        renteAktiv: true
+    });
+    assertEqual(inputs.goldAktiv.checked, true, 'Nur echter Boolean true aktiviert eine Checkbox');
+    assertEqual(inputs.goldSteuerfrei.checked, false, 'Echter Boolean false deaktiviert eine Checkbox');
+    assertEqual(inputs.dynamicFlex.checked, true, 'Echter Boolean true aktiviert Dynamic Flex');
+    assertEqual(inputs.goGoActive.checked, false, 'Echter Boolean false deaktiviert Go-Go');
+    assertEqual(inputs.renteAktiv.value, 'ja', 'Nur echter Boolean true aktiviert den Rentenmodus');
+
+    const provenance = {
+        schemaVersion: 1,
+        periodId: 'calendar-year:2026',
+        asOf: '2026-07-14',
+        instrument: 'VWCE.DE',
+        source: 'Manuelle CSV: markt.csv',
+        importedAt: '2026-07-27T10:00:00.000Z',
+        coverage: {
+            start: '2023-07-14',
+            end: '2026-07-14',
+            rowCount: 4
+        },
+        highScope: 'windowHigh'
+    };
+    const view = getMarketDataProvenanceViewModel(provenance);
+    assertEqual(view.highScope, 'windowHigh', 'Provenienzmodell gibt die eingeschränkte Hoch-Semantik aus');
+    assert(view.text.includes('markt.csv'), 'Provenienzmodell benennt die gespeicherte Quelle');
+    ProductionUIReader.renderMarketDataProvenance(null);
+    assertEqual(provenanceOutput.textContent, 'Herkunft der Marktdaten unbekannt – mit dem Jahres-Update aktualisieren', 'Fehlende Herkunft hat einen alltagssprachlichen Kartenhinweis');
+    ProductionUIReader.renderMarketDataProvenance(provenance);
+    assertEqual(provenanceOutput.textContent, `${view.instrument} · ${view.asOf} · ${view.source}`, 'Herkunftszeile zeigt Instrument, Stichtag und Quelle kurz');
+    assertEqual(provenanceOutput.title, view.text, 'Ausführliche Herkunft bleibt als Erläuterung erhalten');
+    assertEqual(provenanceOutput.dataset.periodId, 'calendar-year:2026', 'Gerenderte Provenienz ist für Reload-/Browserprüfung adressierbar');
+    assertEqual(provenanceOutput.dataset.highScope, 'windowHigh', 'Gerenderte Provenienz erhält den Hoch-Scope');
+
+    if (previousWindow === undefined) delete global.window;
+    else global.window = previousWindow;
+    if (previousDocument === undefined) delete global.document;
+    else global.document = previousDocument;
+    console.log('✓ Strikte Boolean-Anwendung und Marktdaten-Provenienz OK');
+}
+
+// Cleanup
+mockLocalStorage.clear();
+
+console.log('--- Balance Reader Tests Abgeschlossen ---');

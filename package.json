@@ -1,0 +1,43 @@
+{
+  "name": "ruhestand-app-final",
+  "version": "1.0.0",
+  "description": "Die Ruhestand-App ist ein vollst\u00c3\u00a4ndig lokal ausf\u00c3\u00bchrbares Planungstool mit zwei Oberfl\u00c3\u00a4chen:",
+  "main": "balance-binder.js",
+  "scripts": {
+    "docs:evidence": "node scripts/check-architecture-evidence.mjs",
+    "build:global-equity-data": "node scripts/build-global-equity-research-chain.mjs",
+    "verify:global-equity-data": "node scripts/build-global-equity-research-chain.mjs --verify-only",
+    "build:german-cpi-data": "node scripts/build-german-cpi-chain.mjs",
+    "verify:german-cpi-data": "node scripts/build-german-cpi-chain.mjs --verify-only",
+    "build:german-cash-money-market-data": "node scripts/build-german-cash-money-market-chain.mjs",
+    "verify:german-cash-money-market-data": "node scripts/build-german-cash-money-market-chain.mjs --verify-only",
+    "build:gold-german-investor-data": "node scripts/build-gold-german-investor-chain.mjs",
+    "verify:gold-german-investor-data": "node scripts/build-gold-german-investor-chain.mjs --verify-only",
+    "build:us-shiller-cape-data": "node scripts/build-us-shiller-cape-chain.mjs",
+    "verify:us-shiller-cape-data": "node scripts/build-us-shiller-cape-chain.mjs --verify-only",
+    "build:german-gross-wage-data": "node scripts/build-german-gross-wage-growth-chain.mjs",
+    "verify:german-gross-wage-data": "node scripts/build-german-gross-wage-growth-chain.mjs --verify-only",
+    "build:german-demography-data": "node scripts/build-german-demography-care-survivor-contract.mjs",
+    "verify:german-demography-data": "node scripts/build-german-demography-care-survivor-contract.mjs --verify-only",
+    "verify:poppler-toolchain": "node scripts/check-poppler-toolchain.mjs",
+    "build:engine": "node build-engine.mjs",
+    "build:engine:strict": "node -e \"process.env.ENGINE_BUILD_STRICT='1'; import('./build-engine.mjs')\"",
+    "test": "node tests/run-tests.mjs",
+    "test:browser": "node tests/browser-smoke.test.mjs",
+    "test:coverage": "node tests/run-coverage.mjs",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "serve": "node scripts/serve.mjs",
+    "sync-dist": "node scripts/sync-dist.mjs",
+    "build:desktop": "npm run sync-dist && npm run tauri:build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0",
+    "playwright": "^1.60.0"
+  }
+}

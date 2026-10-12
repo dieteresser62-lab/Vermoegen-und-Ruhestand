@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="de" data-suite-page="expenses">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ausgaben · Vermögen &amp; Ruhestand</title>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/fonts.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/expenses.css">
+    <link rel="stylesheet" href="css/suite-frame.css">
+    <script type="module" src="app/shared/suite-frame.js"></script>
+</head>
+
+<body>
+    <a class="suite-skip" href="#suiteMain">Zur Hauptaufgabe</a>
+    <div class="suite-shell">
+        <header class="suite-header">
+            <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
+            <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span id="expensesContext" class="expenses-chip">Haushalt wird geladen</span><a href="Balance.html" data-profile-handoff class="expenses-chip" id="expensesBudgetSource">Budget aus dem Plan</a></div>
+            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Probelauf …</button>
+        </header>
+        <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
+        <div id="suiteNavigationStatus" class="suite-navigation-status" role="alert" hidden></div>
+        <div class="suite-layout">
+            <nav class="suite-navigation" aria-label="Hauptnavigation" id="suiteNavigation">
+                <button id="suiteSidebarToggle" class="suite-sidebar-toggle ds-button ds-button-secondary ds-icon-button" type="button" aria-label="Leiste einklappen" title="Leiste einklappen" aria-controls="suiteNavigation" aria-expanded="true">
+                    <span data-suite-icon="panel-left-close" aria-hidden="true"></span><span data-suite-icon="panel-left" aria-hidden="true"></span>
+                </button>
+                <a href="index.html" data-profile-handoff aria-label="Übersicht" title="Übersicht"><span data-suite-icon="house" aria-hidden="true"></span><span>Übersicht</span></a>
+                <a href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false" aria-label="Personen &amp; Vermögen – Rente, Depot, Gold" title="Personen &amp; Vermögen"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Personen &amp; Vermögen<small class="ds-navigation-subtitle">Rente, Depot, Gold</small></span></a>
+                <a href="Ausgaben.html" data-profile-handoff aria-current="page" aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
+                <a href="Balance.html" data-profile-handoff aria-label="Balance – Jahresplanung" title="Balance"><span data-suite-icon="scale" aria-hidden="true"></span><span>Balance<small class="ds-navigation-subtitle">Jahresplanung</small></span></a>
+                <a href="Simulator.html" data-profile-handoff aria-label="Simulator" title="Simulator"><span data-suite-icon="chart-no-axes-combined" aria-hidden="true"></span><span>Simulator</span></a>
+                <a href="Handbuch.html" data-profile-handoff aria-label="Handbuch" title="Handbuch"><span data-suite-icon="book-open" aria-hidden="true"></span><span>Handbuch</span></a>
+                <a href="Daten-Sicherung.html" data-profile-handoff data-suite-backup aria-label="Daten &amp; Sicherung" title="Daten &amp; Sicherung"><span data-suite-icon="landmark" aria-hidden="true"></span><span>Daten &amp; Sicherung</span></a>
+            </nav>
+            <main class="suite-content" id="suiteMain" tabindex="-1">
+                <aside id="probelaufBand" class="probelauf-band" aria-label="Probelauf" hidden>
+                    <strong id="probelaufBandText"></strong>
+                    <div class="ds-actions">
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="day">+1 Tag</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="month">+1 Monat</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="date">Datum wählen …</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Probelauf beenden</button>
+                    </div>
+                </aside>
+
+<div class="expenses-page" id="ausgaben">
+
+    <header class="ds-page-head"><p class="expenses-eyebrow">Ausgaben</p><h1 id="expensesHeading">Was ihr dieses Jahr ausgegeben habt.</h1><p class="expenses-lead">Monat für Monat gegen euer Budget. Importiert wird hier oder direkt im Monatsabschluss.</p></header>
+    <p id="expensesStatus" role="status" aria-live="polite"></p>
+    <p id="expensesRecoveryLinks" hidden><a href="Daten-Sicherung.html" data-profile-handoff>Daten &amp; Sicherung</a> · <a href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false">Personen verwalten</a></p>
+    <aside id="overviewFocus" class="expenses-callout" hidden><span id="expensesDueText"></span><div class="ds-actions"><button id="expensesDueImport" type="button" class="ds-button ds-button-secondary">CSV importieren</button><button id="expensesClose" type="button" class="ds-button ds-button-primary">Monatsabschluss starten</button></div></aside>
+    <div class="expenses-toolbar"><div><label class="expenses-year-label" for="expensesYearSelect" hidden>Jahr</label><select id="expensesYearSelect" class="ds-select" hidden></select><div id="expensesYearSegments" role="group" aria-label="Jahr" class="expenses-segments"></div></div><div id="expensesPersonSegments" role="group" aria-label="Wer" class="expenses-segments"></div></div>
+    <section class="expenses-kpis" aria-label="Jahreskennzahlen">
+        <div><span>Jahresbudget</span><b id="expensesAnnualBudget">—</b><small id="expensesBudgetNote"></small></div>
+        <div><span>Ausgegeben</span><b id="expensesSpent">—</b><small id="expensesSpentNote"></small></div>
+        <div><span>Noch frei</span><b id="expensesRemaining">—</b><small id="expensesRemainingNote"></small></div>
+        <div><span>Hochrechnung</span><b id="expensesForecast">—</b><small id="expensesForecastNote"></small></div>
+    </section>
+    <div class="expenses-grid">
+        <section class="ds-card expenses-card" aria-labelledby="expensesMonthsTitle"><h2 id="expensesMonthsTitle">Monate</h2><div class="expenses-table-region" tabindex="0" role="region" aria-label="Monatsausgaben" aria-describedby="expensesMatrixScrollHint"><div id="expensesTable"></div></div><p id="expensesMatrixScrollHint" class="expenses-note" hidden>Die Tabelle kann seitlich gescrollt werden.</p><p class="expenses-note">Details öffnen die Kategorien des Monats und die bestätigte Löschung. CSV importieren zeigt zuerst eine Vorschau. Ein Nullimport zählt als erfasst.</p></section>
+        <section class="ds-card expenses-card" aria-labelledby="expensesCategoriesTitle"><h2 id="expensesCategoriesTitle">Wofür? Nach Kategorien</h2><div id="expensesCategories"></div><p class="expenses-note">Summe der importierten Kategorien im gewählten Jahr und Bereich. Erstattungen sind enthalten.</p></section>
+    </div>
+    <section class="ds-card expenses-card" aria-labelledby="expensesHistoryTitle"><h2 id="expensesHistoryTitle">Ausgaben je Jahr</h2><p class="expenses-note">Vergleich aller gespeicherten Personen, unabhängig vom Anzeigefilter.</p><p id="expensesHistoryHint" role="status" aria-live="polite"></p><div id="expensesHistoryChart" class="expenses-table-region" tabindex="0" role="region" aria-label="Jahresdiagramm"></div><details><summary>Wertetabelle anzeigen</summary><div id="expensesHistoryTable" class="expenses-table-region" tabindex="0" role="region" aria-label="Jahreswerte" aria-describedby="expensesHistoryScrollHint"></div><p id="expensesHistoryScrollHint" hidden>Die Tabelle kann seitlich gescrollt werden.</p></details></section>
+    <div id="overviewMonthStatus" role="status" aria-live="polite"></div><div id="overviewAnnualStatus" role="status" aria-live="polite"></div><button id="overviewAnnualLog" type="button" class="ds-button ds-button-secondary" hidden>Abschlussprotokoll anzeigen</button><div id="overviewExampleExpensesStatus" role="status"></div><div id="overviewExpensesWealthStatus" role="status"></div>
+    <input type="file" id="expensesCsvInput" accept=".csv,text/csv" hidden>
+    <dialog id="expensesDetailDialog" class="expenses-detail-dialog ds-card" aria-labelledby="expensesDetailTitle"><h2 id="expensesDetailTitle"></h2><div id="expensesDetailBody"></div><div class="ds-actions"><button id="expensesDetailDelete" type="button" class="ds-button ds-button-danger">Monatsdaten löschen</button><button id="expensesDetailClose" type="button" class="ds-button ds-button-secondary" autofocus>Schließen</button></div></dialog>
+</div>
+<script type="module" src="app/expenses/expenses-main.js"></script>
+            </main>
+        </div>
+    </div>
+    <dialog id="navigationGuardDialog" class="navigation-guard-dialog ds-card" aria-labelledby="navigationGuardTitle" aria-describedby="navigationGuardDescription">
+        <h2 id="navigationGuardTitle">Seite verlassen?</h2>
+        <p id="navigationGuardDescription"></p>
+        <div class="navigation-guard-actions">
+            <button id="navigationGuardStay" type="button" class="ds-button ds-button-secondary">Bleiben</button>
+            <button id="navigationGuardLeave" type="button" class="ds-button ds-button-primary">Trotzdem wechseln</button>
+        </div>
+    </dialog>
+</body>
+
+</html>

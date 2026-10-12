@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="de" data-suite-page="index">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Übersicht · Vermögen &amp; Ruhestand</title>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/fonts.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/overview.css">
+    <link rel="stylesheet" href="css/wealth-history.css">
+    <link rel="stylesheet" href="css/suite-frame.css">
+    <script type="module" src="app/shared/suite-frame.js"></script>
+</head>
+
+<body>
+    <a class="suite-skip" href="#suiteMain">Zur Hauptaufgabe</a>
+    <div class="suite-shell">
+        <header class="suite-header">
+            <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
+            <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><a id="overviewHousehold" class="overview-pill" href="depot-tranchen-manager.html#personen" data-profile-handoff data-profile-handoff-export="false"><svg class="overview-pill-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7"/></svg><span id="overviewHouseholdLabel">Haushalt:</span> <b id="overviewHouseholdNames" class="overview-pill-names">wird geladen</b></a>
+            <div class="overview-price-context">
+                <a id="overviewPrices" class="overview-pill" href="#kursdetails"><svg class="overview-pill-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/></svg><b id="overviewPricesValue">Kurszeit unbekannt</b></a>
+                <details id="kursdetails" class="overview-price-details ds-startup-prices">
+                    <summary>Kursdetails schließen</summary>
+                    <div id="startupPriceStatus" role="status" aria-live="polite">Kursabruf wartet auf Profil und Speicher.</div>
+                </details>
+            </div>
+            <span id="overviewPlanningYear" class="overview-pill">Planungsjahr <b id="overviewPlanningYearValue">wird geladen</b></span>
+            <a id="overviewBackup" class="overview-pill" href="Daten-Sicherung.html" data-profile-handoff><svg class="overview-pill-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg><span id="overviewBackupLabel"></span> <b id="overviewBackupValue">Noch keine Vollsicherung</b></a></div>
+            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Probelauf …</button>
+        </header>
+        <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
+        <div id="suiteNavigationStatus" class="suite-navigation-status" role="alert" hidden></div>
+        <div class="suite-layout">
+            <nav class="suite-navigation" aria-label="Hauptnavigation" id="suiteNavigation">
+                <button id="suiteSidebarToggle" class="suite-sidebar-toggle ds-button ds-button-secondary ds-icon-button" type="button" aria-label="Leiste einklappen" title="Leiste einklappen" aria-controls="suiteNavigation" aria-expanded="true">
+                    <span data-suite-icon="panel-left-close" aria-hidden="true"></span><span data-suite-icon="panel-left" aria-hidden="true"></span>
+                </button>
+                <a href="index.html" data-profile-handoff aria-current="page" aria-label="Übersicht" title="Übersicht"><span data-suite-icon="house" aria-hidden="true"></span><span>Übersicht</span></a>
+                <a href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false" aria-label="Personen &amp; Vermögen – Rente, Depot, Gold" title="Personen &amp; Vermögen"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Personen &amp; Vermögen<small class="ds-navigation-subtitle">Rente, Depot, Gold</small></span></a>
+                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
+                <a href="Balance.html" data-profile-handoff aria-label="Balance – Jahresplanung" title="Balance"><span data-suite-icon="scale" aria-hidden="true"></span><span>Balance<small class="ds-navigation-subtitle">Jahresplanung</small></span></a>
+                <a href="Simulator.html" data-profile-handoff aria-label="Simulator" title="Simulator"><span data-suite-icon="chart-no-axes-combined" aria-hidden="true"></span><span>Simulator</span></a>
+                <a href="Handbuch.html" data-profile-handoff aria-label="Handbuch" title="Handbuch"><span data-suite-icon="book-open" aria-hidden="true"></span><span>Handbuch</span></a>
+                <a href="Daten-Sicherung.html" data-profile-handoff data-suite-backup aria-label="Daten &amp; Sicherung" title="Daten &amp; Sicherung"><span data-suite-icon="landmark" aria-hidden="true"></span><span>Daten &amp; Sicherung</span></a>
+            </nav>
+            <main class="suite-content" id="suiteMain" tabindex="-1">
+                <aside id="probelaufBand" class="probelauf-band" aria-label="Probelauf" hidden>
+                    <strong id="probelaufBandText"></strong>
+                    <div class="ds-actions">
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="day">+1 Tag</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="month">+1 Monat</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="date">Datum wählen …</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Probelauf beenden</button>
+                    </div>
+                </aside>
+
+    <div class="overview-page">
+        <div id="overviewPersistenceRecovery"></div>
+        <div id="overviewProfileRecovery" role="status" aria-live="polite"></div>
+
+        <aside id="overviewBackupReminder" class="ds-note ds-note-warning" hidden>Eine Vollsicherung ist fällig. <a href="Daten-Sicherung.html" data-profile-handoff>Jetzt sichern</a></aside>
+        <header class="overview-heading ds-page-head">
+            <p class="overview-eyebrow">Übersicht · <time id="overviewDate"></time></p>
+            <h1 id="overviewTitle">Deine Übersicht</h1>
+            <p id="overviewLead" class="overview-lead">Vermögen und zuletzt gerechneter Plan aus deinen gespeicherten Daten.</p>
+        </header>
+        <div id="overviewWelcome" class="overview-welcome" hidden>
+            <section class="ds-card overview-welcome-card" aria-labelledby="overviewWelcomeTitle">
+                <h2 id="overviewWelcomeTitle">Wie möchtest du anfangen?</h2>
+                <a class="overview-welcome-option" href="depot-tranchen-manager.html#personen" data-profile-handoff data-profile-handoff-export="false"><b>Eigene Daten anlegen</b><span>Person, Rente, Tagesgeld und Depot eintragen – etwa 15 Minuten.</span></a>
+                <button id="overviewWelcomeImport" type="button" class="overview-welcome-option"><b>Sicherung einspielen</b><span>Eine vorhandene Vollsicherung der Suite laden.</span></button>
+                <button id="overviewWelcomeDemo" type="button" class="overview-welcome-option" hidden disabled><b>Mit Muster-Haushalt ausprobieren</b><span>Alles gefahrlos ausprobieren – mit einem erfundenen Haushalt. Deine Daten bleiben unberührt.</span></button>
+            </section>
+            <section class="ds-card overview-welcome-card" aria-labelledby="overviewWelcomeRhythm">
+                <h2 id="overviewWelcomeRhythm">Wann du was tust</h2>
+                <ol>
+                    <li><b>Im Januar: Jahresabschluss</b><p>Inflation, Kurse und Alter prüfen. Danach steht der Plan für das Jahr fest.</p></li>
+                    <li><b>Zum Monatsanfang: Monatsabschluss</b><p>Ausgaben des Vormonats importieren, Budget vergleichen und Monatsbetrag bereitstellen.</p></li>
+                    <li><b>Zwischendrin: durchspielen</b><p>Den Plan mit historischen Jahren und möglichen Zukünften prüfen.</p></li>
+                </ol>
+            </section>
+        </div>
+        <div id="overviewNormal" class="overview-grid">
+            <section id="overviewFocus" class="ds-card overview-focus" aria-labelledby="overviewFocusTitle"></section>
+            <div id="overviewMetrics" class="overview-metrics">
+            <section class="ds-card overview-assets" aria-labelledby="overviewAssetTitle">
+                <header class="overview-card-heading"><h2 id="overviewAssetTitle">Dein Vermögen</h2><span id="overviewQuoteDate" class="ds-badge">Kurszeit unbekannt</span></header>
+                <a class="overview-card-link overview-manage" href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false">Verwalten</a>
+                <div class="overview-asset-number"><span id="overviewAssets" class="overview-hero-number">—</span><span id="overviewAssetUnit" class="overview-euro" hidden>€</span></div>
+                <p id="overviewAssetStatus" class="overview-muted">Bestand wird geladen</p>
+                <p id="overviewComparison" class="overview-muted">Kein vollständiger Vergleichsstand</p>
+            </section>
+            <section class="ds-card overview-budget" aria-labelledby="overviewBudgetTitle">
+                <h2 id="overviewBudgetTitle">Monatsbudget</h2>
+                <strong id="overviewBudgetValue" class="overview-kpi-number">—</strong>
+                <p id="overviewBudgetSource" class="overview-muted">Noch kein passender Plan</p>
+                <a class="overview-card-link" href="Balance.html" data-profile-handoff>Budget in Balance ansehen</a>
+            </section>
+            <section class="ds-card overview-plan-metric" aria-labelledby="overviewPlanMetricTitle">
+                <h2 id="overviewPlanMetricTitle">Plan</h2>
+                <strong id="overviewPlanMetricValue" class="overview-kpi-number">—</strong>
+                <p id="overviewPlanMetricSource" class="overview-muted">Noch kein festgeschriebener Plan</p>
+                <a class="overview-card-link" href="#overviewPlanComparison">Plan und Vorschau vergleichen</a>
+            </section>
+            </div>
+            <section id="overviewHistory" class="ds-card overview-history" aria-labelledby="overviewHistoryTitle">
+                <header class="history-heading"><div><h3 id="overviewHistoryTitle">Vermögensverlauf</h3><p id="overviewHistoryStand" class="overview-muted"></p></div>
+                    <div id="overviewHistoryPeriods" class="history-periods" role="group" aria-label="Zeitraum">
+                        <button type="button" data-history-period="all" aria-pressed="true">Seit Beginn der Aufzeichnung</button>
+                        <button type="button" data-history-period="year" aria-pressed="false">Laufendes Jahr</button>
+                        <button type="button" data-history-period="12m" aria-pressed="false">12 Monate</button>
+                    </div>
+                </header>
+                <p id="overviewHistoryStatus" class="overview-muted" role="status" aria-live="polite"></p>
+                <div id="overviewHistoryChart" class="history-chart"></div>
+                <div id="overviewHistoryLegend" class="history-legend"></div>
+                <div id="overviewHistoryMetrics" class="history-metrics"></div>
+                <p id="overviewHistorySource" class="overview-muted"></p>
+            </section>
+            <section id="overviewYearBand" class="ds-card overview-year" aria-labelledby="overviewYearTitle">
+                <header class="overview-card-heading"><div><h2 id="overviewYearTitle">Dein Jahr</h2><p id="overviewYearNote" class="overview-muted"></p></div><a id="overviewYearExpensesLink" class="overview-card-link" href="Ausgaben.html#ausgaben" data-profile-handoff>Ausgaben ansehen</a></header>
+                <p id="overviewYearStand" class="overview-muted"></p>
+                <div class="overview-year-plot">
+                    <p id="overviewYearBudget" class="overview-year-budget overview-muted" hidden></p>
+                    <div id="overviewYearChart" class="overview-year-chart" aria-label="Ausgaben in zwölf Kalendermonaten" aria-describedby="overviewYearBudget overviewYearStand"></div>
+                </div>
+                <div id="overviewYearLegend" class="overview-legend"></div>
+                <div id="overviewYearMetrics" class="overview-year-metrics"></div>
+            </section>
+            <section id="overviewAssetDetails" class="ds-card overview-asset-details" aria-labelledby="overviewAssetDetailsTitle">
+                <h2 id="overviewAssetDetailsTitle">Allokation und Personen</h2>
+                <div id="overviewAllocation" class="overview-allocation" aria-label="Vermögensallokation"></div>
+                <div id="overviewLegend" class="overview-legend"></div>
+                <div id="overviewPeople" class="overview-people"></div>
+            </section>
+            <section class="ds-card overview-plan" aria-labelledby="overviewPlanTitle">
+                <header class="overview-card-heading"><h2 id="overviewPlanTitle">Dein Plan</h2><span id="overviewPlanStatus" class="ds-badge" hidden></span></header>
+                <p id="overviewPlanEmpty">Noch kein festgeschriebener Plan – er entsteht im nächsten Jahresabschluss.</p>
+                <div id="overviewPlanComparison" aria-label="Planbeleg und Vorschau"></div>
+                <div id="overviewPlanRows" class="overview-plan-rows" hidden>
+                    <div class="overview-plan-row"><div>Monatsbetrag<small id="overviewPlanBudget"></small></div><strong id="overviewWithdrawal"></strong></div>
+                    <div class="overview-plan-row"><div>Handlungsanweisung<small id="overviewPlanNote"></small></div><strong id="overviewPlanAction"></strong></div>
+                    <div class="overview-plan-row"><div>Liquidität<small id="overviewLiquidityNote"></small></div><strong id="overviewLiquidity"></strong></div>
+                    <div class="overview-plan-row"><div>Marktphase<small id="overviewPlanTime"></small></div><strong id="overviewMarket"></strong></div>
+                </div>
+                <a href="Balance.html" class="ds-button ds-button-secondary overview-plan-button" data-profile-handoff>Zur Balance</a>
+            </section>
+        </div>
+        <p id="overviewAnnualStatus" role="status" aria-live="polite"></p>
+        <button type="button" id="overviewAnnualLog" class="ds-button ds-button-secondary" hidden>Abschlussprotokoll anzeigen</button>
+        <div id="overviewMonthStatus" role="status" aria-live="polite"></div>
+        <div id="fullBackupStatus" role="status" aria-live="polite"></div>
+    </div>
+    <script type="module" src="app/overview/overview-main.js"></script>
+
+    <div id="devTools" style="display:none; position:fixed; bottom:10px; right:10px; background:var(--text-main); color:var(--surface); padding:10px; border-radius:5px; z-index:9999;">
+        <label>
+            <input type="checkbox" class="ds-checkbox" id="telemetryToggle" />
+            Worker Telemetry
+        </label>
+    </div>
+
+    <script>
+        if (window.location.search.includes('dev=true')) {
+            const devTools = document.getElementById('devTools');
+            const toggle = document.getElementById('telemetryToggle');
+            if (devTools && toggle) {
+                devTools.style.display = 'block';
+                toggle.checked = localStorage.getItem('enableWorkerTelemetry') === 'true';
+                toggle.addEventListener('change', e => {
+                    localStorage.setItem('enableWorkerTelemetry', e.target.checked);
+                    alert('Telemetry ' + (e.target.checked ? 'aktiviert' : 'deaktiviert') + '. Seite neu laden.');
+                });
+            }
+        }
+    </script>
+            </main>
+        </div>
+    </div>
+    <dialog id="navigationGuardDialog" class="navigation-guard-dialog ds-card" aria-labelledby="navigationGuardTitle" aria-describedby="navigationGuardDescription">
+        <h2 id="navigationGuardTitle">Seite verlassen?</h2>
+        <p id="navigationGuardDescription"></p>
+        <div class="navigation-guard-actions">
+            <button id="navigationGuardStay" type="button" class="ds-button ds-button-secondary">Bleiben</button>
+            <button id="navigationGuardLeave" type="button" class="ds-button ds-button-primary">Trotzdem wechseln</button>
+        </div>
+    </dialog>
+</body>
+
+</html>

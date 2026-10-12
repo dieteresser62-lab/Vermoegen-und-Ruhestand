@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="de" data-suite-page="manager">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personen &amp; Vermögen · Vermögen &amp; Ruhestand</title>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/fonts.css">
+    <link rel="stylesheet" href="css/components.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            color: var(--text-main);
+            background: var(--page);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            container: manager / inline-size;
+            width: 100%;
+            min-width: 0;
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: var(--shadow-card);
+            padding: 30px;
+        }
+
+        h1 {
+            font-family: var(--font-serif);
+            font-weight: 500;
+            color: var(--text-main);
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .hint {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+
+        .persistence-panel {
+            margin-bottom: 20px;
+            padding: 14px 16px;
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            background: var(--surface-sunken);
+        }
+
+        .persistence-status {
+            color: var(--text-main);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .persistence-status[data-kind="error"] {
+            color: var(--bad);
+        }
+
+        .persistence-status[data-kind="pending"] {
+            color: var(--warn);
+        }
+
+        .recovery-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 14px;
+        }
+
+        .recovery-actions[hidden],
+        .recovery-actions button[hidden],
+        .raw-payload[hidden] {
+            display: none;
+        }
+
+        .recovery-link {
+            display: inline-flex;
+            align-items: center;
+            min-height: 38px;
+            padding: 8px 14px;
+            border-radius: 6px;
+            background: var(--text-main);
+            color: var(--surface);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .raw-payload {
+            flex-basis: 100%;
+            max-height: 220px;
+            overflow: auto;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            padding: 12px;
+            border-radius: 6px;
+            background: var(--surface-sunken);
+            color: var(--text-main);
+            font: 12px/1.4 var(--font-mono);
+            user-select: text;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .api-key {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .api-key label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .api-key input {
+            font-family: var(--font-sans);
+            padding: 8px 10px;
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            min-width: 260px;
+            font-size: 12px;
+        }
+
+        .api-key small {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        button {
+            font-family: var(--font-sans);
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-card);
+        }
+
+        button:focus-visible,
+        a:focus-visible,
+        [tabindex="0"]:focus-visible {
+            outline: var(--ring-width) solid var(--ring-color);
+            outline-offset: var(--ring-offset);
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            color: var(--text-muted);
+            background: var(--surface-sunken);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-primary {
+            background: var(--text-main);
+            color: var(--surface);
+        }
+
+        .btn-success {
+            background: var(--good);
+            color: var(--surface);
+        }
+
+        .btn-danger {
+            background: var(--bad);
+            color: var(--surface);
+        }
+
+        .btn-secondary {
+            background: var(--text-main);
+            color: var(--surface);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .profile-values {
+            min-width: 0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+            background: var(--surface-sunken);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        #activeProfileName { overflow-wrap: anywhere; }
+
+        .profile-values h3 {
+            font-family: var(--font-serif);
+            font-weight: 500;
+            grid-column: 1 / -1;
+            font-size: 16px;
+            color: var(--text-main);
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            margin: 0;
+        }
+
+        .profile-validation-status {
+            grid-column: 1 / -1;
+            color: var(--bad);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .profile-validation-status[hidden] {
+            display: none;
+        }
+
+        .profile-values small {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        .reconciliation-panel {
+            min-width: 0;
+            margin-bottom: 24px;
+            padding: 18px;
+            border: 2px solid var(--border-strong);
+            border-radius: 10px;
+            background: var(--surface-sunken);
+        }
+
+        .reconciliation-panel h2 {
+            font-family: var(--font-serif);
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-main);
+            font-size: 20px;
+        }
+
+        .reconciliation-intro {
+            margin-bottom: 16px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .reconciliation-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 12px;
+        }
+
+        .reconciliation-form-grid .form-group {
+            margin-bottom: 0;
+        }
+
+        .reconciliation-recommendation,
+        .reconciliation-actions,
+        .reconciliation-status,
+        .reconciliation-preview {
+            grid-column: 1 / -1;
+        }
+
+        .reconciliation-recommendation {
+            padding: 10px 0;
+        }
+
+        .reconciliation-recommendation summary {
+            cursor: pointer;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .reconciliation-recommendation-fields {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .reconciliation-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .reconciliation-status {
+            min-height: 20px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .reconciliation-status[data-kind="error"] {
+            color: var(--bad);
+        }
+
+        .reconciliation-status[data-kind="ok"] {
+            color: var(--good);
+        }
+
+        .reconciliation-preview {
+            margin-top: 4px;
+            padding: 14px;
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            background: var(--surface);
+        }
+
+        .reconciliation-preview[hidden],
+        .reconciliation-actions button[hidden] {
+            display: none;
+        }
+
+        .reconciliation-preview pre {
+            margin: 0 0 14px;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+            color: var(--text-main);
+            font: 14px/1.55 inherit;
+        }
+
+        .gold-row,
+        .health-bucket-row {
+            min-width: 0;
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        @container manager (max-width: 980px) {
+            .gold-row,
+            .health-bucket-row {
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+            }
+        }
+
+        .stat-card {
+            background: var(--surface-sunken);
+            color: var(--text-main);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            min-width: 1080px;
+            border-collapse: collapse;
+            margin: 0;
+        }
+
+        #tranchenTable {
+            min-width: 0;
+        }
+
+        @container manager (max-width: 60rem) {
+            .stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+        }
+
+        .table-scroll {
+            max-width: 100%;
+            overflow-x: auto;
+            overscroll-behavior-inline: contain;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--surface-sunken);
+            font-weight: 600;
+            color: var(--text-main);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background: var(--surface-sunken);
+        }
+
+        .tranche-row td {
+            font-size: 14px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-alt {
+            background: var(--surface-sunken);
+            color: var(--text-muted);
+        }
+
+        .badge-neu {
+            background: var(--surface-sunken);
+            color: var(--text-muted);
+        }
+
+        .badge-geldmarkt {
+            background: var(--surface-sunken);
+            color: var(--text-muted);
+        }
+
+        .badge-gold {
+            background: var(--accent-soft);
+            color: var(--accent);
+        }
+
+        .classification-category {
+            display: inline-block;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .badge-steuerfrei {
+            background: var(--surface-sunken);
+            color: var(--text-muted);
+        }
+
+        .positive {
+            color: var(--good);
+            font-weight: 600;
+        }
+
+        .negative {
+            color: var(--bad);
+            font-weight: 600;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: color-mix(in srgb, var(--text-main) 50%, transparent);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .form-error {
+            margin: 12px 0 18px;
+            padding: 12px;
+            border: 1px solid var(--bad);
+            border-radius: 6px;
+            background: var(--bad-soft);
+            color: var(--bad);
+            font-weight: 600;
+        }
+
+        .form-error[hidden] {
+            display: none;
+        }
+
+        [aria-invalid="true"] {
+            border-color: var(--bad) !important;
+            box-shadow: 0 0 0 3px var(--bad) !important;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: var(--ring-width) solid var(--ring-color);
+            outline-offset: var(--ring-offset);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .delete-btn {
+            background: var(--bad);
+            color: var(--surface);
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .delete-btn:hover {
+            background: var(--bad);
+        }
+
+        .table-actions {
+            white-space: nowrap;
+        }
+
+        .icon-action {
+            padding: 6px 10px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .code-block {
+            background: var(--surface-sunken);
+            color: var(--text-main);
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+
+            .container {
+                padding: 16px;
+                border-radius: 8px;
+            }
+
+            h1 {
+                font-family: var(--font-serif);
+                font-weight: 500;
+                font-size: 23px;
+            }
+
+            .controls,
+            .form-actions {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .profile-values,
+            .gold-row,
+            .health-bucket-row {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .stat-card {
+                padding: 16px;
+            }
+
+            .modal-content {
+                width: calc(100% - 16px);
+                padding: 18px;
+                max-height: calc(100vh - 16px);
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="css/suite-frame.css">
+    <link rel="stylesheet" href="css/personen-vermoegen.css">
+    <link rel="stylesheet" href="css/wealth-history.css">
+    <script type="module" src="app/shared/suite-frame.js"></script>
+</head>
+<body class="personen-vermoegen-page">
+    <a class="suite-skip" href="#suiteMain">Zur Hauptaufgabe</a>
+    <div class="suite-shell">
+        <header class="suite-header">
+            <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
+            <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span id="managerQuoteContext" class="pv-context-pill pv-quote-context">Kursdatum unbekannt</span><span class="pv-context-pill">Profilwerte speichern <strong>automatisch</strong> · Tranchen beim <strong>Bestätigen</strong></span></div>
+            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Probelauf …</button>
+        </header>
+        <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
+        <div id="suiteNavigationStatus" class="suite-navigation-status" role="alert" hidden></div>
+        <div class="suite-layout">
+            <nav class="suite-navigation" aria-label="Hauptnavigation" id="suiteNavigation">
+                <button id="suiteSidebarToggle" class="suite-sidebar-toggle ds-button ds-button-secondary ds-icon-button" type="button" aria-label="Leiste einklappen" title="Leiste einklappen" aria-controls="suiteNavigation" aria-expanded="true">
+                    <span data-suite-icon="panel-left-close" aria-hidden="true"></span><span data-suite-icon="panel-left" aria-hidden="true"></span>
+                </button>
+                <a href="index.html" data-profile-handoff id="managerBackLink" aria-label="Übersicht" title="Übersicht"><span data-suite-icon="house" aria-hidden="true"></span><span>Übersicht</span></a>
+                <a href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false" aria-current="page" aria-label="Personen &amp; Vermögen – Rente, Depot, Gold" title="Personen &amp; Vermögen"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Personen &amp; Vermögen<small class="ds-navigation-subtitle">Rente, Depot, Gold</small></span></a>
+                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
+                <a href="Balance.html" data-profile-handoff aria-label="Balance – Jahresplanung" title="Balance"><span data-suite-icon="scale" aria-hidden="true"></span><span>Balance<small class="ds-navigation-subtitle">Jahresplanung</small></span></a>
+                <a href="Simulator.html" data-profile-handoff aria-label="Simulator" title="Simulator"><span data-suite-icon="chart-no-axes-combined" aria-hidden="true"></span><span>Simulator</span></a>
+                <a href="Handbuch.html" data-profile-handoff aria-label="Handbuch" title="Handbuch"><span data-suite-icon="book-open" aria-hidden="true"></span><span>Handbuch</span></a>
+                <a href="Daten-Sicherung.html" data-profile-handoff data-suite-backup aria-label="Daten &amp; Sicherung" title="Daten &amp; Sicherung"><span data-suite-icon="landmark" aria-hidden="true"></span><span>Daten &amp; Sicherung</span></a>
+            </nav>
+            <main class="suite-content" id="suiteMain" tabindex="-1">
+                <aside id="probelaufBand" class="probelauf-band" aria-label="Probelauf" hidden>
+                    <strong id="probelaufBandText"></strong>
+                    <div class="ds-actions">
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="day">+1 Tag</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="month">+1 Monat</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="date">Datum wählen …</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Probelauf beenden</button>
+                    </div>
+                </aside>
+
+    <div class="container">
+
+        <header class="pv-heading ds-page-head"><div class="ds-page-copy"><p class="pv-eyebrow">Personen &amp; Vermögen</p><h1 id="managerPageTitle">Alles über dich, an einem Ort.</h1>
+            <p class="subtitle">Person, Einkommen und Vermögen an einem Ort.</p></div>
+            <div class="pv-heading-actions ds-page-actions">
+                <button type="button" id="updatePricesBtn" class="ds-button ds-button-secondary"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/></svg>Kurse aktualisieren</button>
+            </div>
+        </header>
+        <nav id="managerSectionNav" class="pv-section-nav" role="tablist" aria-label="Ansichten"></nav>
+        <div id="managerProfileRecovery" class="ds-note ds-note-error" role="alert" hidden></div>
+
+        <div id="priceUpdateStatus" class="hint" role="status" aria-live="polite"></div>
+
+        <section class="persistence-panel ds-note" aria-labelledby="tranchePersistenceStatus">
+            <div id="tranchePersistenceStatus" class="persistence-status" role="status" aria-live="polite"></div>
+            <div id="trancheRecoveryActions" class="recovery-actions" hidden>
+                <a class="recovery-link ds-button ds-button-primary" href="index.html">Abbrechen und zur Startseite</a>
+                <a class="recovery-link ds-button ds-button-primary" href="Daten-Sicherung.html#fullBackupImportBtn" data-profile-handoff data-profile-handoff-export="false">Zentrales Backup wiederherstellen</a>
+                <button id="revealCorruptPayloadBtn" class="btn-secondary ds-button ds-button-secondary" type="button">Rohdaten lokal anzeigen</button>
+                <button id="copyCorruptPayloadBtn" class="btn-secondary ds-button ds-button-secondary" type="button" hidden>Rohdaten kopieren</button>
+                <button id="resetCorruptPayloadBtn" class="btn-danger ds-button ds-button-danger" type="button">Beschädigte Daten zurücksetzen</button>
+                <pre id="corruptPayloadPreview" class="raw-payload" hidden></pre>
+            </div>
+            <div class="recovery-actions">
+                <button id="retryTrancheLoadBtn" class="btn-secondary ds-button ds-button-secondary" type="button" hidden>Speicher erneut lesen</button>
+                <button id="retryTrancheSaveBtn" class="btn-secondary ds-button ds-button-secondary" type="button" hidden>Speichern erneut versuchen</button>
+            </div>
+        </section>
+        <button id="managePeopleBtn" type="button" class="ds-button pv-add-person" aria-haspopup="dialog" aria-controls="managerPeopleModal">+ Person anlegen</button>
+        <div id="managerPlanPanel" role="tabpanel" aria-labelledby="managerPlanTab" tabindex="-1" hidden>
+        <div class="pv-plan-overview">
+        <div id="managerHousehold" class="pv-household-grid" aria-label="Haushalt und Personen"></div>
+        <p id="managerHistoryStartStatus" class="history-note" role="status" aria-live="polite"></p>
+        </div>
+        <section id="managerHouseholdPlan" class="ds-card pv-household-plan" aria-labelledby="haushalt-plan">
+            <header><h2 id="haushalt-plan" tabindex="-1">Haushalt &amp; Plan</h2>
+                <div class="pv-plan-scope"><span>Gilt für</span><span id="managerPlanScope" class="ds-plan-chip">Bestätigter Planbereich</span><span>· Änderungen werden automatisch gespeichert · <span id="managerPlanInflation">Inflationsfortschreibung noch nicht belegt</span></span></div>
+            </header>
+            <p id="managerPlanStatus" role="status" aria-live="polite">Planbereich wird geprüft …</p>
+            <details id="managerPlanTechnical" hidden><summary>Technische Details</summary><p id="managerPlanTechnicalMessage"></p></details>
+            <div class="ds-actions"><button id="managerPlanResume" type="button" class="ds-button ds-button-secondary" hidden>Planungsdaten zusammenführen</button><button id="managerPlanRetry" type="button" class="ds-button ds-button-secondary" hidden>Speichern wiederholen</button></div>
+            <div class="pv-plan-groups household-plan-groups">
+                <section class="pv-plan-group household-plan-group"><h3>Bedarf <small>pro Jahr, heutige Euro</small></h3>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_floorBedarf">Grundbedarf (Floor)<small>muss immer gedeckt sein</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_floorBedarf" data-manager-plan-field="floorBedarf" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBedarf">Wunschbedarf (Flex)<small>wird in schwachen Jahren gekürzt</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBedarf" data-manager-plan-field="flexBedarf" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_minimumFlexAnnual">Mindest-Flex<small>Untergrenze der Kürzung</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_minimumFlexAnnual" data-manager-plan-field="minimumFlexAnnual" disabled></div>
+                    <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div></section>
+                <section class="pv-plan-group household-plan-group"><h3>Flex-Budget <small>Puffer für Kürzungsjahre</small></h3>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBudgetAnnual">Budget pro Jahr</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBudgetAnnual" data-manager-plan-field="flexBudgetAnnual" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBudgetYears">Reicht für</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBudgetYears" data-manager-plan-field="flexBudgetYears" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBudgetRecharge">Wiederauffüllen pro Jahr</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBudgetRecharge" data-manager-plan-field="flexBudgetRecharge" disabled></div>
+                    <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div></section>
+                <section class="pv-plan-group household-plan-group"><h3>Reserven <small></small></h3>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_liquidityRunwayYears">Liquiditäts-Reichweite<small>Tagesgeld + Geldmarkt in Jahren Entnahme</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_liquidityRunwayYears" data-manager-plan-field="liquidityRunwayYears" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_minCashBufferMonths">Mindest-Liquidität<small>eiserne Reserve</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_minCashBufferMonths" data-manager-plan-field="minCashBufferMonths" disabled></div>
+                    <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div></section>
+                <section class="pv-plan-group household-plan-group"><h3>Entnahme &amp; Umschichten <small></small></h3>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_decumulation_mode">Strategie</label><select class="ds-select" id="managerPlan_decumulation_mode" data-manager-plan-field="decumulation.mode" disabled><option value="standard">Standard</option><option value="3_bucket_jilge">3-Töpfe</option></select></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_decumulation_bondTargetFactor">Anleihen-Zielfaktor<small>Jahre Entnahme</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_decumulation_bondTargetFactor" data-manager-plan-field="decumulation.bondTargetFactor" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_decumulation_drawdownTrigger">Rückgang für Auffüllen</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_decumulation_drawdownTrigger" data-manager-plan-field="decumulation.drawdownTrigger" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_decumulation_bondRefillThreshold">Anleihen-Auffüllschwelle<small>leer: automatisch</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_decumulation_bondRefillThreshold" data-manager-plan-field="decumulation.bondRefillThreshold" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_maxSkimPctOfEq">Max. Abschöpfen<small>vom Aktienwert in guten Jahren</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_maxSkimPctOfEq" data-manager-plan-field="maxSkimPctOfEq" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_maxBearRefillPctOfEq">Max. Auffüllen im Bärenmarkt</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_maxBearRefillPctOfEq" data-manager-plan-field="maxBearRefillPctOfEq" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_householdWithdrawalMode">Verteilung im Haushalt<small>wer entnimmt zuerst · nacheinander: Reichweite zuerst</small></label><select class="ds-select" id="managerPlan_householdWithdrawalMode" data-manager-plan-field="householdWithdrawalMode" disabled><option value="tax_optimized">Steueroptimiert</option><option value="proportional">Anteilig</option><option value="runway_first">Reichweite zuerst</option></select></div>
+                    <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div></section>
+                <section class="pv-plan-group household-plan-group"><h3>Dynamik <small>nur mit CAPE</small></h3><p class="pv-plan-note household-plan-note">Der Horizont wird aus der Lebenserwartung ermittelt.</p>
+                    <div data-plan-dynamic-presets-host></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_dynamicFlex">Dynamische Entnahme<small>Nur mit CAPE wirksam</small></label><input class="ds-checkbox" type="checkbox" id="managerPlan_dynamicFlex" data-manager-plan-field="dynamicFlex" disabled></div>
+                    <div data-plan-dynamic-details hidden>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_horizonMethod">Planungshorizont<small>Methode</small></label><select class="ds-select" id="managerPlan_horizonMethod" data-manager-plan-field="horizonMethod" disabled><option value="mean">Mittlere Lebenserwartung</option><option value="survival_quantile">Überlebensquantil</option></select></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_horizonYears">Planungshorizont</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_horizonYears" data-manager-plan-field="horizonYears" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_survivalQuantile">Überlebensquantil</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_survivalQuantile" data-manager-plan-field="survivalQuantile" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_goGoActive">Go-Go-Jahre</label><input class="ds-checkbox" type="checkbox" id="managerPlan_goGoActive" data-manager-plan-field="goGoActive" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_goGoMultiplier">Go-Go-Faktor</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_goGoMultiplier" data-manager-plan-field="goGoMultiplier" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_longevityMode">Langlebigkeit</label><select class="ds-select" id="managerPlan_longevityMode" data-manager-plan-field="longevityMode" disabled><option value="none">Ohne Zusatz</option><option value="quantile_shift">Quantil-Aufschlag</option><option value="relative_horizon_buffer">Relativer Horizont-Puffer</option><option value="buffer_years">Zusätzliche Jahre</option></select></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_longevityQuantileShift">Quantil-Aufschlag</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_longevityQuantileShift" data-manager-plan-field="longevityQuantileShift" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_longevityRelativePct">Relativer Horizont-Puffer</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_longevityRelativePct" data-manager-plan-field="longevityRelativePct" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_longevityBufferYears">Zusätzlicher Horizont-Puffer</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_longevityBufferYears" data-manager-plan-field="longevityBufferYears" disabled></div>
+                    </div>
+                    <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div></section>
+                <section class="pv-plan-group household-plan-group"><h3>Marktdaten <small>aus dem Jahresabschluss</small></h3>
+                    <div class="pv-plan-field household-plan-field"><span>CAPE<small id="managerPlanCapeOrigin">Stand und Quelle nicht belegt</small></span><output id="managerPlanCape">—</output></div>
+                    <p class="pv-plan-note household-plan-note">Wird im Jahresabschluss aktualisiert; der Simulator nimmt ihn als Startwert.</p>
+                    <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div>
+                </section>
+            </div>
+            <p class="pv-plan-note household-plan-note">Nicht hier, weil schon pro Person zentral: Gold/Bonds-Ziele, Steuern, Pflegebucket, Tagesgeld, Renten. Nur im Simulator: Monte-Carlo, Zeitraum, Stresstests, Pflegemodell.</p>
+        </section>
+        <section id="managerPlanComparisonCard" class="ds-card pv-plan-comparison-card" aria-labelledby="managerPlanComparisonTitle">
+            <h2 id="managerPlanComparisonTitle">Planvergleich</h2>
+            <div id="managerPlanComparison" aria-label="Planbeleg und Vorschau"></div>
+            <a href="Balance.html" data-profile-handoff class="ds-button ds-button-secondary">Vorschau in der Balance rechnen</a>
+        </section>
+
+        </div>
+        <div id="managerPersonPanel" role="tabpanel" tabindex="-1" hidden>
+        <div id="managerProfileValues" class="profile-values pv-profile-grid">
+            <div id="profileValidationStatus" class="profile-validation-status" role="alert" aria-live="assertive" hidden></div>
+<div id="personendaten" class="pv-person-data-heading"><div><h2>Personendaten · <span id="managerPersonProfileName">–</span></h2><p>Einmal hier pflegen – Balance und Simulator übernehmen die Werte. Ein Klick auf eine Zeile klappt sie auf.</p></div><a class="ds-text-link" href="#managerDepotTitle">Depot</a><button id="managerCardsToggleAll" aria-expanded="false" type="button" class="ds-button ds-button-secondary" aria-controls="managerPersonBody managerAssetsBody managerCareBody">Alle aufklappen</button></div>
+<div id="managerBirthSupplement" class="ds-note ds-note-warning pv-birth-supplement" hidden><div><strong>Geburtsdatum einmal ergänzen</strong><p id="managerBirthSuggestion"></p></div><label for="managerBirthDate">Vollständiges Geburtsdatum (TT.MM.JJJJ)</label><input id="managerBirthDate" type="text" class="ds-input" placeholder="TT.MM.JJJJ" aria-describedby="managerBirthSuggestion managerBirthError"><button id="managerBirthApply" type="button" class="ds-button ds-button-primary">Übernehmen</button><p id="managerBirthError" role="status" aria-live="polite"></p></div>
+<section class="ds-card pv-profile-card pv-person-disclosure"><button id="managerPersonToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerPersonBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span><span><strong>Person &amp; Einkommen</strong><span id="managerPersonSummary" class="ds-help"></span></span><span class="pv-chevron" aria-hidden="true">⌄</span></button><div id="managerPersonBody" class="pv-card-body" role="region" aria-labelledby="managerPersonToggle" hidden><div class="pv-fields">
+<div class="pv-person-group"><h4>Person</h4><div class="form-group" data-person-field="profileGeburtsdatum"><label for="profileGeburtsdatum">Geburtsdatum</label><input id="profileGeburtsdatum" type="text" class="ds-input" placeholder="TT.MM.JJJJ" aria-describedby="profilePersonDateStatus"></div><p id="profilePersonDateStatus" class="ds-help"></p>
+<div class="form-group" data-person-field="profileGeschlecht"><label for="profileGeschlecht">Geschlecht</label><select id="profileGeschlecht" class="ds-select" aria-describedby="profileGenderStatus"><option value="m">Männlich</option><option value="w">Weiblich</option><option value="d">Divers</option></select><p id="profileGenderStatus" class="ds-help" role="status"></p><button type="button" id="profileGenderConfirm" class="ds-button ds-button-quiet ds-text-link">Auswahl bestätigen</button></div>
+</div><div class="pv-person-group"><h4>Rente</h4><div class="form-group" data-person-field="profileRentenbeginn"><label for="profileRentenbeginn">Rentenbeginn (Datum)</label><input id="profileRentenbeginn" aria-describedby="managerPensionStatus" type="text" class="ds-input" placeholder="TT.MM.JJJJ"><p id="managerPensionStatus" class="ds-help"></p></div>
+<div class="form-group" data-person-field="profileRentenanpassungArt"><label for="profileRentenanpassungArt">Rentenanpassung</label><select id="profileRentenanpassungArt" class="ds-select" hidden><option value="wage">Lohnentwicklung</option><option value="cpi">Inflation</option><option value="fix">Fester Satz (0 = keine)</option></select><div id="profilePensionSegments" class="pv-person-segments" role="group" aria-label="Rentenanpassung"></div></div>
+<div class="form-group" data-person-field="profileRentenanpassungPct"><label for="profileRentenanpassungPct">Fester Rentenanpassungssatz (% p.a.)</label><input id="profileRentenanpassungPct" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de"></div>
+<div class="form-group"><input id="profileRenteAktiv" class="ds-input" type="hidden" disabled value="false" aria-describedby="managerPensionStatus"><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Rentenstatus erläutern" aria-describedby="managerRenteExplanation">i</button><span id="managerRenteExplanation" class="ds-info-pop" role="tooltip">Der Rentenbeginn bestimmt, ab wann und mit wie vielen Monaten die Rente im Planungsjahr wirkt. Sonstige Einkünfte werden unabhängig ganzjährig berücksichtigt. Der Status bleibt abgeleitet.</span></span></div>
+<div class="form-group">
+                <label for="profileRenteMonatlich">Monatliche Rente, netto</label>
+                <div class="ds-unit-frame"><input type="text" id="profileRenteMonatlich" placeholder="0" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileRenteMonatlichUnit"><span id="profileRenteMonatlichUnit">€</span></div>
+                <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Rente und Einkünfte" aria-describedby="managerFieldHelp2">i</button><span id="managerFieldHelp2" class="ds-info-pop" role="tooltip">Erwartete Nettorente (nach Kranken- und Pflegeversicherung) in heutigen Werten, z. B. aus der Renteninformation; bis zum Rentenbeginn passt die App sie gemäß Rentenanpassung an. Bestehende Nettowerte bleiben netto; eine übernommene Legacy-Jahresbruttorente behält die bisherige gerundete Monatsbasis, ohne neue Netto-/Bruttoumrechnung.</span></span>
+            </div>
+</div><div class="pv-person-group"><h4>Steuer &amp; Sonstiges</h4><div class="form-group" data-person-field="profileKirchensteuerPct"><label for="profileKirchensteuerPct">Kirchensteuer (%)</label><input id="profileKirchensteuerPct" type="hidden" class="ds-input" placeholder="0" inputmode="decimal" lang="de"><div id="profileChurchSegments" class="pv-person-segments" role="group" aria-label="Kirchensteuer"></div></div>
+<div class="form-group" data-person-field="profileSparerPauschbetrag"><label for="profileSparerPauschbetrag">Sparer-Pauschbetrag (€ pro Person)</label><input id="profileSparerPauschbetrag" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de"></div>
+<div class="form-group" data-person-field="profileRenteSteuerquotePct"><label for="profileRenteSteuerquotePct">Steuerquote der Rente (%)</label><input id="profileRenteSteuerquotePct" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de"></div>
+<div class="form-group">
+                <label for="profileSonstigeEinkuenfte">Sonstige Einkünfte im Monat</label>
+                <div class="ds-unit-frame"><input type="text" id="profileSonstigeEinkuenfte" placeholder="0" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileSonstigeEinkuenfteUnit"><span id="profileSonstigeEinkuenfteUnit">€</span></div>
+                <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Sonstige Einkünfte" aria-describedby="managerFieldHelp3">i</button><span id="managerFieldHelp3" class="ds-info-pop" role="tooltip">Gehalt, Unterhalt, sonstige Zuflüsse.</span></span>
+            </div></div></div><p>Änderungen werden automatisch gespeichert.</p><p class="ds-help">Im Haushalt wirken Rentenanpassung und Pflegekonfiguration des Hauptprofils.</p><button type="button" id="profileManagePeopleBtn" class="ds-button ds-button-secondary" aria-label="Aktive Person verwalten" aria-haspopup="dialog" aria-controls="managerPeopleModal">Person verwalten …</button></div></section><section class="ds-card pv-profile-card pv-assets-disclosure"><button id="managerAssetsToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerAssetsBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="M3 10h18"></path></svg></span><span><strong>Tagesgeld &amp; Gold</strong><span id="managerAssetsSummary" class="ds-help"></span></span><span class="pv-chevron" aria-hidden="true">⌄</span></button><div id="managerAssetsBody" class="pv-card-body" role="region" aria-labelledby="managerAssetsToggle" hidden><div class="pv-fields"><div class="form-group">
+                <label for="profileTagesgeld">Tagesgeld / Girokonto</label>
+                <div class="ds-unit-frame"><input type="text" id="profileTagesgeld" placeholder="0" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileTagesgeldUnit"><span id="profileTagesgeldUnit">€</span></div>
+                <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Tagesgeld" aria-describedby="managerFieldHelp4">i</button><span id="managerFieldHelp4" class="ds-info-pop" role="tooltip">Wird in der Balance-App als Tagesgeld genutzt.</span></span>
+            </div>
+<div class="form-group">
+                    <label class="ds-toggle" for="profileGoldAktivToggle"><input type="checkbox" class="ds-checkbox" role="switch" id="profileGoldAktivToggle" aria-controls="profileGoldAktiv"><span class="ds-slider" aria-hidden="true"></span><span>Gold-Strategie aktiv</span></label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Gold-Strategie" aria-describedby="managerFieldHelp5">i</button><span id="managerFieldHelp5" class="ds-info-pop" role="tooltip">Steuert, ob Gold in der Planung aktiv ist.</span></span>
+                    <select id="profileGoldAktiv" class="ds-select" hidden>
+                        <option value="false">Nein</option>
+                        <option value="true">Ja</option>
+                    </select>
+                </div>
+<div class="pv-gold-ratios"><div class="form-group">
+                    <div class="pv-label-help"><label for="profileGoldZiel">Ziel-Anteil</label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zum Gold-Zielanteil" aria-describedby="managerFieldHelp8">i</button><span id="managerFieldHelp8" class="ds-info-pop" role="tooltip">Zielanteil von Gold am Depot in Prozent.</span></span></div>
+                    <div class="ds-unit-frame"><input type="text" id="profileGoldZiel" placeholder="7,5" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileGoldZielUnit"><span id="profileGoldZielUnit">%</span></div>
+                </div>
+<div class="form-group">
+                    <label for="profileGoldFloor">Floor-Anteil</label>
+                    <div class="ds-unit-frame"><input type="text" id="profileGoldFloor" placeholder="1" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileGoldFloorUnit"><span id="profileGoldFloorUnit">%</span></div>
+                </div>
+<div class="form-group">
+                    <label for="profileGoldBand">Rebal.-Band</label>
+                    <div class="ds-unit-frame"><input type="text" id="profileGoldBand" placeholder="25" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileGoldBandUnit"><span id="profileGoldBandUnit">± %</span></div>
+                </div>
+</div><div class="form-group">
+                    <label class="ds-toggle" for="profileGoldSteuerfreiToggle"><input type="checkbox" class="ds-checkbox" role="switch" id="profileGoldSteuerfreiToggle" aria-controls="profileGoldSteuerfrei"><span class="ds-slider" aria-hidden="true"></span><span>Gold-Verkäufe steuerfrei</span></label>
+                    <select id="profileGoldSteuerfrei" class="ds-select" hidden>
+                        <option value="false">Nein</option>
+                        <option value="true">Ja</option>
+                    </select>
+                </div></div></div></section><section class="ds-card pv-profile-card pv-care-disclosure"><button id="managerCareToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerCareBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg></span><span><strong>Pflegereserve</strong><span id="managerCareSummary" class="ds-help"></span></span><span class="pv-chevron" aria-hidden="true">⌄</span></button><div id="managerCareBody" class="pv-card-body" role="region" aria-labelledby="managerCareToggle" hidden><span id="managerCareActive" class="ds-badge pv-care-chip" hidden>aktiv</span><div class="pv-fields"><div class="form-group">
+                    <label class="ds-toggle" for="profileHealthBucketEnabledToggle"><input type="checkbox" class="ds-checkbox" role="switch" id="profileHealthBucketEnabledToggle" aria-controls="profileHealthBucketEnabled"><span class="ds-slider" aria-hidden="true"></span><span>Pflegereserve aktiv</span></label>
+                    <select id="profileHealthBucketEnabled" class="ds-select" hidden>
+                        <option value="false">Nein</option>
+                        <option value="true">Ja</option>
+                    </select>
+                    <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Pflegereserve" aria-describedby="managerFieldHelp6">i</button><span id="managerFieldHelp6" class="ds-info-pop" role="tooltip">Ziel innerhalb der Liquidität.</span></span>
+                </div>
+<div class="form-group">
+                    <div class="pv-label-help"><label for="profileHealthBucketInitialAmount">Zielbetrag</label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Pflegebucket-Zielbetrag" aria-describedby="managerFieldHelp7">i</button><span id="managerFieldHelp7" class="ds-info-pop" role="tooltip">Diagnostisch inflationsindexiert, nominal gehalten.</span></span></div>
+                    <div class="ds-unit-frame"><input type="text" id="profileHealthBucketInitialAmount" placeholder="150000" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileHealthBucketInitialAmountUnit"><span id="profileHealthBucketInitialAmountUnit">€</span></div>
+                </div>
+<div class="form-group">
+                    <label for="profileHealthBucketAssetSource">Quelle</label>
+                    <select id="profileHealthBucketAssetSource" class="ds-select">
+                        <option value="money_market_first_then_cash">Geldmarkt-ETF, dann Tagesgeld</option>
+                    </select>
+                </div>
+<div class="form-group">
+                    <label for="profileHealthBucketTriggerMinGrade">Trigger ab Pflegegrad</label>
+                    <select id="profileHealthBucketTriggerMinGrade" class="ds-select">
+                        <option value="1">PG1</option>
+                        <option value="2">PG2</option>
+                        <option value="3">PG3</option>
+                        <option value="4">PG4</option>
+                        <option value="5">PG5</option>
+                    </select>
+                </div>
+<div class="form-group">
+                    <label for="profileHealthBucketTriggerMode">Haushalts-Trigger</label>
+                    <select id="profileHealthBucketTriggerMode" class="ds-select">
+                        <option value="OR">P1 oder P2</option>
+                        <option value="AND">P1 und P2</option>
+                    </select>
+                </div>
+<div class="form-group">
+                    <label for="profileHealthBucketCoverageMode">Deckungsmodus</label>
+                    <select id="profileHealthBucketCoverageMode" class="ds-select">
+                        <option value="care_additional_floor_only">Nur Pflege-Mehrkosten</option>
+                        <option value="floor_when_care_active">Floor-Shortfall bei Pflege</option>
+                    </select>
+                </div>
+<div class="form-group">
+                    <label for="profileHealthBucketReturnMode">Verzinsung</label>
+                    <select id="profileHealthBucketReturnMode" class="ds-select">
+                        <option value="cash_return">Geldmarkt-/Cash-Rendite</option>
+                    </select>
+                </div>
+<div class="form-group">
+                    <label for="profileHealthBucketTargetMode">Inflationssicht</label>
+                    <select id="profileHealthBucketTargetMode" class="ds-select">
+                        <option value="inflation_indexed_diagnostic">Zielwert inflationsindexiert anzeigen</option>
+                        <option value="nominal_fixed">Nominal fix</option>
+                    </select>
+                </div></div><p>Im Haushalt wirkt die Konfiguration des Hauptprofils; die Zielsumme oben ist nur Anzeige.</p></div></section>
+        </div>
+
+
+
+        <section class="ds-card pv-depot" aria-labelledby="managerDepotTitle">
+            <header class="pv-depot-header"><div><h2 id="managerDepotTitle">Depot · <span id="managerDepotProfileName">–</span></h2><p id="managerDepotCount" class="pv-depot-count"></p></div><div class="pv-heading-actions"><button type="button" id="depotAddTrancheBtn" class="ds-button ds-button-secondary">+ Kauf eintragen</button><button type="button" id="depotOpenSaleEntryBtn" class="ds-button ds-button-primary">Verkauf eintragen</button></div></header>
+            <div class="stats" id="stats"></div>
+            <div id="tranchenTable"></div>
+        </section>
+
+        <section class="reconciliation-panel ds-card pv-sales" aria-labelledby="reconciliationTitle">
+            <h2 id="reconciliationTitle">Verkäufe &amp; Cashstatus</h2>
+            <p><strong>Tagesgeld wird immer von Hand nachgeführt.</strong> Verkäufe und Cashnachweise bleiben getrennte Schritte.</p>
+            <div id="reconciliationStatus" class="reconciliation-status" role="status" aria-live="polite"></div>
+            <div id="reconciliationCashStatuses" aria-live="polite"></div>
+        </section>
+        <details id="managerTechnical" class="ds-card pv-technical"><summary>Technik</summary><p id="managerTechnicalProfile">Profil-Kennung wird geladen</p><p>Profil-Kennung, Kursdienst-Verweis und geschütztes Löschen aller Tranchen. Speicher- und Recoveryfehler erscheinen oberhalb der Profilwerte.</p><div class="controls"><a id="proxyHealthBtn" class="btn-secondary ds-button ds-button-secondary" href="Daten-Sicherung.html#kursdienst" data-profile-handoff data-profile-handoff-export="false">Kursdienst prüfen</a><button type="button" id="clearTranchesBtn" class="btn-danger ds-button ds-button-danger">Alle Tranchen löschen</button></div></details>
+        </div>
+        <div id="managerHistoryPanel" role="tabpanel" aria-labelledby="managerHistoryTab" tabindex="-1" hidden>
+        <section id="managerWealthHistory" class="ds-plan-card manager-wealth-history" aria-labelledby="managerWealthTitle">
+            <header class="ds-plan-card-head"><div class="ds-card-title"><h2 id="managerWealthTitle">Vermögensverlauf</h2><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Erläuterung zum Vermögensverlauf" aria-expanded="false" aria-describedby="managerWealthInfo" aria-controls="managerWealthInfo">ⓘ</button><span id="managerWealthInfo" class="ds-info-pop" role="tooltip">
+            <span id="managerWealthContext"></span>
+            <span>Die Tageslinie zeigt die Entwicklung aus Beständen und Tageskursen. Rauten zeigen unverändert erfasste Stände, die davon abweichen können. Erfasste Stände, Tabelle und Kennzahlen enthalten Tagesgeld, Geldmarkt-ETF und Aktien-ETF (Alt- und Neu-Depot), ohne Gold und separate Anleihen. Die Tageslinie behält alle ihre Anlageformen.</span>
+            <span>Automatische Erfassung nach Ausgabenimport, wenn die Kurse höchstens sieben Tage alt sind. „Stand jetzt erfassen“ verwendet dieselbe Kursgrenze; ohne kursabhängige Bestände ist die Erfassung ebenfalls möglich.</span>
+            <span id="managerWealthDailyNote"></span></span></span></div>
+                <button id="managerCaptureWealthBtn" type="button" class="ds-button ds-button-secondary">Stand jetzt erfassen</button></header>
+            <div id="managerHistorySwitch" class="manager-history-switch" aria-label="Verlauf für Haushalt oder Person"></div>
+            <div id="managerWealthMetrics" class="wealth-metrics ds-kpi-strip ds-metric"></div>
+            <p id="managerWealthStatus" role="status"></p><p id="managerWealthHint"></p>
+            <div id="managerWealthChart" class="ds-chart-surface manager-wealth-chart"></div>
+            <ul id="managerWealthLegend" class="history-legend" aria-label="Diagrammlegende"></ul>
+            <div id="managerWealthTable" class="ds-table-scroll ds-table-box" tabindex="0" role="region" aria-label="Erfasste Vermögensstände"></div>
+        </section>
+        </div>
+    </div>
+
+    <div class="modal" id="saleModal" role="dialog" aria-modal="true" aria-labelledby="saleModalTitle" aria-describedby="saleDescription" aria-hidden="true">
+        <div class="modal-content ds-card pv-tranche-dialog" role="document">
+            <header class="pv-dialog-header"><div><p id="saleProfileName" class="pv-eyebrow"></p><h2 id="saleModalTitle">Verkauf eintragen</h2>
+                <p id="saleDescription">Erfasst eine tatsächliche Broker-Ausführung. Das Tagesgeld wird nicht automatisch verändert.</p></div>
+                <button type="button" id="dismissSaleModalBtn" class="ds-button ds-button-secondary" aria-label="Verkaufsdialog schließen">Schließen</button>
+            </header>
+            <ol class="pv-sale-progress" aria-label="Verkaufsschritte"><li id="saleProgress1">1 · Ausführung</li><li id="saleProgress2">2 · Cash</li><li id="saleProgress3">3 · Vorschau</li></ol>
+            <div id="saleStatus" class="ds-note" role="status" aria-live="polite"></div>
+            <form id="reconciliationForm" novalidate>
+                <fieldset id="saleStep1" class="pv-sale-step"><legend>Ausführung beim Broker</legend><div class="pv-dialog-fields">
+                <div class="form-group">
+                    <label for="reconcileActionId">Ausführungs-Kennung *</label>
+                    <input id="reconcileActionId" type="text" maxlength="128" autocomplete="off" required
+                        placeholder="z. B. Broker-Order-ID" class="ds-input">
+                    <small>Dieselbe ID verhindert eine doppelte Anwendung nach Reload oder Retry.</small>
+                </div>
+                <div class="form-group">
+                    <label for="reconcileTrancheId">Tranche *</label>
+                    <select id="reconcileTrancheId" required class="ds-select" aria-describedby="reconcileTrancheId-fulltext">
+                        <option value="">Keine Tranche verfügbar</option>
+                    </select>
+                    <span id="reconcileTrancheId-fulltext" class="ds-selection-text"></span>
+                </div>
+                <div class="form-group">
+                    <label for="reconcileExecutedAt">Ausführungstag *</label>
+                    <input id="reconcileExecutedAt" type="date" required class="ds-input">
+                </div>
+                <div class="form-group">
+                    <label for="reconcileSharesSold">Tatsächlich verkaufte Stücke *</label>
+                    <input id="reconcileSharesSold" type="text" required class="ds-input" inputmode="decimal" lang="de">
+                </div>
+                <div class="form-group">
+                    <label for="reconcileGrossProceeds">Tatsächlicher Bruttoerlös (€) *</label>
+                    <input id="reconcileGrossProceeds" type="text" required class="ds-input" inputmode="decimal" lang="de">
+                </div>
+                <div class="form-group">
+                    <label for="reconcileFees">Tatsächliche Kosten (€) *</label>
+                    <input id="reconcileFees" type="text" value="0" required class="ds-input" inputmode="decimal" lang="de">
+                </div>
+                <details class="reconciliation-recommendation">
+                    <summary>Optionale Empfehlung zum Abweichungsvergleich erfassen</summary>
+                    <div class="reconciliation-recommendation-fields">
+                        <div class="form-group">
+                            <label for="reconcileRecommendedShares">Empfohlene Stückzahl</label>
+                            <input id="reconcileRecommendedShares" type="text" class="ds-input" inputmode="decimal" lang="de">
+                        </div>
+                        <div class="form-group">
+                            <label for="reconcileRecommendedGross">Empfohlener Bruttoerlös (€)</label>
+                            <input id="reconcileRecommendedGross" type="text" class="ds-input" inputmode="decimal" lang="de">
+                        </div>
+                    </div>
+                </details>
+                </div></fieldset>
+                <fieldset id="saleStep2" class="pv-sale-step" hidden><legend>Cash nach dem Verkauf</legend>
+                    <div id="reconciliationCashChoice" class="reconciliation-cash-choice">
+                        <div class="form-group"><label for="reconcileCashStatus">Ist der Nettoerlös bereits im Tagesgeld enthalten?</label>
+                            <select id="reconcileCashStatus" class="ds-select"><option value="pending_manual_posting">Nein – manuell offen halten</option><option value="confirmed_already_reflected">Ja – schon enthalten</option></select>
+                            <small>Keine automatische Cashbuchung. Offene Verkäufe bleiben sichtbar, bis Sie den Cashstand bestätigen.</small>
+                        </div>
+                        <div id="reconcileInitialCashBalanceGroup" class="form-group" hidden><label for="reconcileInitialCashBalance">Bestätigter Cashstand nach Berücksichtigung (€) *</label><input id="reconcileInitialCashBalance" type="text" class="ds-input" inputmode="decimal" lang="de"><small>Der Stand wird mit Nettoerlös und Nachweiszeitpunkt dokumentiert.</small></div>
+                    </div>
+                </fieldset>
+                <fieldset id="saleStep3" class="pv-sale-step" hidden><legend>Schreibfreie Vorschau</legend>
+                <div id="reconciliationPreview" class="reconciliation-preview" hidden>
+                    <pre id="reconciliationPreviewContent"></pre>
+                    <div class="reconciliation-actions">
+                        <button id="reconciliationCancelBtn" type="button" class="btn-secondary ds-button ds-button-secondary" hidden>Abbrechen – nichts ändern</button>
+                        <button id="reconciliationConfirmBtn" type="button" class="btn-danger ds-button ds-button-danger" hidden>Dauerhafte Bestandsänderung bestätigen</button>
+                    </div>
+                </div>
+                </fieldset>
+                <footer class="pv-dialog-footer">
+                    <button id="saleCancelBtn" type="button" class="ds-button ds-button-secondary">Abbrechen – nichts ändern</button>
+                    <div class="reconciliation-actions"><button id="saleBackBtn" type="button" class="ds-button ds-button-secondary" hidden>Zurück</button><button id="saleNextBtn" type="button" class="ds-button ds-button-primary">Weiter</button><button id="reconciliationPreviewBtn" type="submit" class="ds-button ds-button-primary" hidden>Schreibfreie Vorschau</button><button id="retrySaleSaveBtn" type="button" class="ds-button ds-button-secondary" hidden>Speichern erneut versuchen</button></div>
+                </footer>
+            </form>
+        </div>
+    </div>
+    <div class="modal" id="managerPeopleModal" role="dialog" aria-modal="true" aria-labelledby="managerPeopleTitle" aria-hidden="true">
+        <div class="modal-content ds-card pv-people-dialog" role="document">
+            <header class="pv-dialog-header"><div><h2 id="managerPeopleTitle">Personen verwalten</h2><p>Alle Profile und ihre Haushaltsmitgliedschaft. Neue Personen werden aktiv; Finanzwerte pflegen Sie im jeweiligen Reiter.</p></div><button id="dismissPeopleModalBtn" type="button" class="ds-button ds-button-secondary" aria-label="Personenverwaltung schließen">Schließen</button></header>
+            <div id="managerPeopleStatus" class="ds-note" role="status" aria-live="polite"></div>
+            <div id="managerPeopleList"></div>
+            <form id="managerPeopleForm"><div class="pv-fields"><div class="form-group"><label for="managerPersonName" id="managerPersonNameLabel">Neue Person</label><input id="managerPersonName" class="ds-input" placeholder="Name" required></div><div class="reconciliation-actions"><button id="managerPersonCreateBtn" type="submit" class="ds-button ds-button-primary">Anlegen</button><button id="managerPersonRenameBtn" type="button" class="ds-button ds-button-primary" hidden>Umbenennen</button><button id="managerPersonRenameCancelBtn" type="button" class="ds-button ds-button-secondary" hidden>Abbrechen</button></div></div></form>
+        </div>
+    </div>
+
+    <!-- Modal für Tranche hinzufügen/bearbeiten -->
+    <div class="modal" id="trancheModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="trancheModalDescription trancheFormError" aria-hidden="true">
+        <div class="modal-content ds-card pv-tranche-dialog" role="document">
+            <header class="pv-dialog-header"><div><h2 id="modalTitle">Kauf eintragen</h2>
+                <p id="trancheModalDescription">Legt eine neue Tranche an. Pflichtfelder sind markiert. Das Tagesgeld wird nicht automatisch verringert.</p></div>
+                <button type="button" id="dismissTrancheModalBtn" class="ds-button ds-button-secondary ds-icon-button" aria-label="Tranchendialog schließen"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+            </header>
+            <div id="trancheFormError" class="form-error ds-note ds-note-error" role="alert" aria-live="assertive" hidden></div>
+            <div class="reconciliation-actions">
+                <button id="retryTrancheDialogSaveBtn" class="btn-secondary ds-button ds-button-secondary" type="button" hidden>Speichern erneut versuchen</button>
+            </div>
+            <form id="trancheForm">
+                <div class="pv-dialog-classification"><div class="form-group">
+                    <label for="category">Anlageform *</label>
+                    <div id="trancheCategoryChoices" class="ds-segment pv-tranche-choices" role="group" aria-label="Anlageform">
+                        <button type="button" class="ds-button" data-tranche-category="equity" aria-pressed="true">Aktien</button>
+                        <button type="button" class="ds-button" data-tranche-category="bonds" aria-pressed="false">Anleihen</button>
+                        <button type="button" class="ds-button" data-tranche-category="gold" aria-pressed="false">Gold</button>
+                        <button type="button" class="ds-button" data-tranche-category="money_market" aria-pressed="false">Geldmarkt</button>
+                    </div>
+                    <select id="category" required class="ds-select" hidden>
+                        <option value="equity">Aktien / ETFs</option>
+                        <option value="bonds">Anleihen</option>
+                        <option value="gold">Gold</option>
+                        <option value="money_market">Geldmarkt</option>
+                    </select>
+                </div><div class="form-group">
+                    <label for="type">Bestand / Typ *</label>
+                    <div id="trancheTypeChoices" class="ds-segment pv-tranche-choices" role="group" aria-label="Bestand / Typ">
+                        <button type="button" class="ds-button" data-tranche-type="aktien_alt" aria-pressed="false">Altbestand</button>
+                        <button type="button" class="ds-button" data-tranche-type="aktien_neu" aria-pressed="true">Neubestand</button>
+                        <button type="button" class="ds-button" data-tranche-type="anleihe" aria-pressed="false" hidden>Anleihe</button>
+                        <button type="button" class="ds-button" data-tranche-type="gold" aria-pressed="false" hidden>Gold-ETC</button>
+                        <button type="button" class="ds-button" data-tranche-type="geldmarkt" aria-pressed="false" hidden>Geldmarkt-ETF</button>
+                    </div>
+                    <select id="type" required class="ds-select" hidden>
+                        <option value="aktien_alt">Altbestand</option>
+                        <option value="aktien_neu">Neubestand</option>
+                        <option value="anleihe">Anleihe</option>
+                        <option value="geldmarkt">Geldmarkt-ETF</option>
+                        <option value="gold">Gold-ETC</option>
+                    </select>
+                </div></div>
+                <div class="pv-dialog-fields"><div class="form-group pv-form-name">
+                    <label for="name">Name / Bezeichnung *</label>
+                    <input type="text" id="name" required class="ds-input">
+                </div><div class="form-group">
+                    <label for="purchaseDate">Kaufdatum</label>
+                    <input type="date" id="purchaseDate" class="ds-input">
+                </div><div class="form-group">
+                    <label for="isin">ISIN</label>
+                    <input type="text" id="isin" placeholder="z.B. DE0007164600" class="ds-input">
+                </div><div class="form-group">
+                    <label for="ticker">Ticker / Symbol</label>
+                    <input type="text" id="ticker" placeholder="z.B. SAP.DE oder VWCE.DE" class="ds-input">
+                    <small style="color: var(--text-muted); display: block; margin-top: 5px;">
+                        Für den Kursabruf: Ticker mit Börsenkürzel, z. B. .DE, .L oder .MI.
+                    </small>
+                </div><div class="form-group">
+                    <label for="shares">Anzahl Stücke *</label>
+                    <input type="text" id="shares" required class="ds-input" inputmode="decimal" lang="de">
+                </div><div class="form-group">
+                    <label for="purchasePrice">Kaufpreis pro Stück (€) *</label>
+                    <input type="text" id="purchasePrice" required class="ds-input" inputmode="decimal" lang="de">
+                </div><div class="form-group">
+                    <label for="currentPrice">Aktueller Kurs (€)</label>
+                    <input type="text" id="currentPrice" placeholder="Leer = Kaufpreis" class="ds-input" inputmode="decimal" lang="de">
+                </div><div class="form-group">
+                    <label for="tqf">Teilfreistellung *</label>
+                    <input type="text" id="tqf" value="0" required class="ds-input" inputmode="decimal" lang="de">
+                    <small style="color: var(--text-muted); display: block; margin-top: 5px;">
+                        Aktienfonds: 0,30 · Einzelaktien, Geldmarkt, Anleihen: 0. Steuerfreiheit separat bestätigen.
+                    </small>
+                </div></div>
+                <div class="form-group pv-tax-choice">
+                    <label for="taxExempt">
+                        <input type="checkbox" id="taxExempt" class="ds-checkbox">
+                        Diese Tranche ist im heutigen Startzustand vollständig steuerfrei
+                    </label>
+                    <small style="color: var(--text-muted); display: block; margin-top: 5px;">
+                        Wird nicht aus Name, Notiz, Kaufdatum oder Alt-/Neubestand abgeleitet.
+                    </small>
+                </div><div class="form-group">
+                    <label for="notes">Notizen</label>
+                    <input type="text" id="notes" placeholder="Freie Notiz ohne automatische Steuerwirkung" class="ds-input">
+                </div>
+                <div class="pv-dialog-footer">
+                    <p id="trancheFormPreview" class="pv-form-preview" aria-live="polite">Einstand und Marktwert erscheinen nach gültiger Eingabe.</p>
+                    <div class="form-actions">
+                        <button type="button" id="closeTrancheModalBtn" class="btn-secondary ds-button ds-button-secondary">Abbrechen</button>
+                        <button type="submit" id="saveTrancheBtn" class="btn-primary ds-button ds-button-primary">Tranche speichern</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="app/profile/profile-bridge.js"></script>
+    <script type="module">
+        import { startTranchenManagerPage } from './app/tranches/tranchen-manager-page.js';
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await startTranchenManagerPage();
+        });
+    </script>
+            </main>
+        </div>
+    </div>
+    <dialog id="navigationGuardDialog" class="navigation-guard-dialog ds-card" aria-labelledby="navigationGuardTitle" aria-describedby="navigationGuardDescription">
+        <h2 id="navigationGuardTitle">Seite verlassen?</h2>
+        <p id="navigationGuardDescription"></p>
+        <div class="navigation-guard-actions">
+            <button id="navigationGuardStay" type="button" class="ds-button ds-button-secondary">Bleiben</button>
+            <button id="navigationGuardLeave" type="button" class="ds-button ds-button-primary">Trotzdem wechseln</button>
+        </div>
+    </dialog>
+</body>
+</html>

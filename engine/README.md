@@ -1,0 +1,251 @@
+# Engine Module – Übersicht
+
+Die Berechnungs-Engine wurde aus dem historischen Monolithen extrahiert und besteht aus klar getrennten ES-Modulen unter `engine/`. Das aktuelle `engine.js` ist ein reiner generierter Modul-Wrapper: Er importiert `EngineAPI` aus `engine/index.mjs`, stellt bei vorhandenem `window` die globale API samt Legacy-Alias bereit und exportiert beide Namen. Balance und Simulator laden ihn als ES-Modul; Fachtests und Worker importieren die Module direkt.
+
+---
+
+## Verzeichnisstruktur
+
+```
+engine/
+├── config.mjs                    # Schwellenwerte, Profile, Texte, Build-ID
+├── core.mjs                      # Orchestrierung & EngineAPI
+├── errors.mjs                    # Fehlerklassen (AppError, ValidationError, FinancialCalculationError)
+├── index.mjs                     # Modul-Einstieg, re-exportiert API
+├── tax-settlement.mjs            # Jahres-Settlement (Verlusttopf, SPB, finale Steuer)
+├── analyzers/
+│   └── MarketAnalyzer.mjs        # Marktanalyse & Regime-Klassifikation
+├── planners/
+│   ├── SpendingPlanner.mjs       # Guardrails & Entnahmeplanung
+│   ├── alarm-policy.mjs          # Alarm-Aktivierung und Deeskalation
+│   ├── final-rate-policy.mjs     # Finale jährliche Flex-Rate-Delta-Limits
+│   ├── flex-budget-policy.mjs    # Flex-Budget-Cap, Recharge und Min-Rate
+│   ├── flex-rate-policy.mjs      # Flex-Rate, S-Kurve und harte Caps
+│   ├── flex-trace.mjs            # Aufruflokale, unveränderliche Flex-Momentaufnahmen
+│   ├── minimum-flex-policy.mjs   # Bedingte Mindest-Flex-Untergrenze
+│   ├── spending-diagnosis.mjs    # Diagnose-Shape, Guardrail-Uebersicht und Runway-Ziel
+│   ├── spending-guardrails.mjs   # Recovery-/Caution-Guardrails und Budget-Floor
+│   ├── spending-policy-pipeline.mjs # Policy-Reihenfolge nach initialer Flex-Rate
+│   ├── spending-policy-helpers.mjs # Reine Helper fuer Quantisierung, S-Kurven, Flex-Anteil
+│   └── wealth-reduction.mjs      # Vermoegensbasierte Reduktionsdaempfung
+├── transactions/
+│   ├── TransactionEngine.mjs     # Transaktionslogik & Liquiditätsziele
+│   ├── transaction-action.mjs    # Orchestrierung der Transaktionsentscheidungen
+│   ├── transaction-opportunistic.mjs  # Opportunistisches Rebalancing (Refill)
+│   ├── transaction-surplus.mjs   # Surplus-Investments (Cash-Abbau)
+│   ├── sale-engine.mjs           # Verkauf/Steuer/Tranchensortierung
+│   ├── three-bucket-logic.mjs    # 3-Bucket-Jilge: Bond-Verkauf und Bond-Refill
+│   └── transaction-utils.mjs     # Ziel-Liquidität, Quantisierung, Min-Trade
+└── validators/
+    └── InputValidator.mjs        # Eingabevalidierung
+```
+
+`engine/index.mjs` ist der gemeinsame Import-Einstieg. Der aktuelle Wrapper verweist darauf, ohne Engine-Logik zu kopieren. `build-engine.mjs` kann den Wrapper oder ein echtes Bundle erzeugen; die Varianten stehen im Build-Prozess.
+
+---
+
+## Wichtige Exporte
+
+| Modul | Export | Beschreibung |
+|-------|--------|--------------|
+| `errors.mjs` | `{ AppError, ValidationError, FinancialCalculationError }` | Fehler-Objekte für Engine & UI |
+| `config.mjs` | `{ ENGINE_API_VERSION, ENGINE_BUILD_ID, CONFIG }` | Versionsinfo & Konfiguration |
+| `validators/InputValidator.mjs` | `InputValidator` | Validierung der Benutzereingaben |
+| `analyzers/MarketAnalyzer.mjs` | `MarketAnalyzer` | Regimeerkennung & Kennzahlen |
+| `planners/SpendingPlanner.mjs` | `SpendingPlanner` | Guardrails, Diagnose, Glättung, Flex-S-Kurve, harte Caps, Flex-Budget, vermögensbasierte Flex-Dämpfung (Flex-Bedarf + Gesamtvermögen) |
+| `planners/flex-trace.mjs` | `{ createFlexTraceCollector }` | Lesender Collector für `spendingResult.flexTrace`; eingefrorene Liste, Einträge und primitive Kennzahlen |
+| `planners/alarm-policy.mjs` | `{ evaluateAlarmConditions, shouldDeescalateInPeak, shouldDeescalateInRecovery }` | Alarm-Aktivierung, Peak-/Recovery-Deeskalation und Wealth-Sufficient-Unterdrueckung |
+| `planners/final-rate-policy.mjs` | `{ applyFinalRateLimits }` | Finale jährliche Flex-Rate-Delta-Limits |
+| `planners/flex-budget-policy.mjs` | `{ applyFlexBudgetCap }` | Flex-Budget-Cap, Topfverbrauch, Recharge und Min-Rate |
+| `planners/flex-rate-policy.mjs` | `{ calculateFlexRate, applyFlexShareCurve }` | Flex-Rate-Berechnung, Alarmmodus, S-Kurve und harte Bear-/Runway-Caps |
+| `planners/minimum-flex-policy.mjs` | `{ applyMinimumFlexFloor }` | Bedingte Mindest-Flex-Untergrenze als Rate nach Guardrails und vor Flex-Budget |
+| `planners/spending-diagnosis.mjs` | `{ buildSpendingDiagnosis, resolveRunwayTarget }` | Finale Spending-Diagnose, Guardrail-Uebersicht, Key-Parameter-Kopie und Runway-Ziel |
+| `planners/spending-guardrails.mjs` | `{ applyGuardrails }` | Recovery-Cap, Caution-Inflationscap, Budget-Floor und Guardrail-Diagnosen |
+| `planners/spending-policy-pipeline.mjs` | `{ applySpendingPolicyPipeline, SPENDING_POLICY_ORDER_CONTRACT }` | Laufzeitgepruefter `SpendingPolicyOrderV2`: Alarm, Guardrails, Mindest-Flex, Flex-Budget, finale Glaettung und abschliessender Safety-Cap |
+| `planners/spending-policy-helpers.mjs` | `{ quantizeMonthly, smoothstep, calcFlexShare, calculateFinalWithdrawal }` | Reine Helper fuer Spending-Policies |
+| `planners/wealth-reduction.mjs` | `{ calculateWealthAdjustedReductionFactor }` | Vermoegensbasierte Daempfung der Flex-Reduktion |
+| `transactions/TransactionEngine.mjs` | `TransactionEngine` | Liquiditätsziele, Rebalancing |
+| `transactions/three-bucket-logic.mjs` | `{ getThreeBucketInputs, applyThreeBucketLogic, reservePlannedLotInventory, appendBondReplenishment, finalizeThreeBucketAction }` | 3-Bucket-Jilge-Logik fuer profilbezogene Lot-Reservierung, Bond-Verkauf, Bond-Refill, finale Lot-Pruefung und Bond-Klassifikation |
+| `core.mjs` | `{ EngineAPI, _internal_calculateModel, _allocateFinalTaxToActionSources }` | Öffentliche API sowie interne Pipeline- und Quellensteuer-Contract-Helfer |
+
+
+`SpendingPlanner.determineSpending(params, { includeFlexTrace = true } = {})`
+liefert zusätzlich `spendingResult.flexTrace`. Der interne zweite Parameter
+schaltet nur die Erfassung ab. Die Engine-Einstiege
+`EngineAPI.simulateSingleYear(input, lastState, { includeFlexTrace = false } = {})`
+und `_internal_calculateModel` erfassen standardmäßig keinen Trace. Eine
+UI-Diagnose wird mit dem optionalen dritten Argument `{ includeFlexTrace: true }`
+angefordert; bestehende Zwei-Argument-Aufrufe und sämtliche Fachwerte bleiben gleich.
+Der Collector liest die vorhandenen Rate-Zuweisungen und die finale
+`quantization` (einschließlich `stepMonthly` und Floor-Schutz), ohne Policies
+erneut auszuwerten. `core.mjs` reicht die Liste über das bestehende
+`ui.spending` weiter, wenn sie angefordert wurde. State, Vorjahresdaten und
+bestehende Simulator-/Worker-/Exportpfade erhalten keinen Trace und erzeugen
+keinen Collector. Nicht endliche Diagnosekennzahlen, etwa unbegrenzte Runway
+bei Bedarf null, werden ausschließlich im Trace als `null` ausgegeben.
+Der Gleichheits- und Stationsnachweis liegt in `tests/spending-flex-trace.test.mjs`.
+
+### `EngineAPI`-Methodenoberfläche
+
+Das enumerable `EngineAPI`-Objekt exponiert acht Methoden. Fünf davon bilden
+den unterstützten operativen Vertrag; drei weitere bleiben als deprecated
+No-op-Kompatibilitäts-Stubs sichtbar:
+
+| Klasse | Methoden | Vertrag |
+|--------|----------|---------|
+| **Unterstützte operative API** | `getVersion()`, `getConfig()`, `analyzeMarket()`, `calculateTargetLiquidity()`, `simulateSingleYear()` | Fachlich implementierte und für Aufrufer vorgesehene Methoden |
+| **Deprecated Kompatibilitäts-Stubs** | `addDecision()`, `updateDecision()`, `removeDecision()` | Enumerable Legacy-Oberfläche ohne Implementierung, Rückgabewert oder fachliche Seiteneffekte; nicht für neue Aufrufer verwenden |
+
+Damit besteht die exponierte Methodenoberfläche aus acht, der unterstützte
+fachliche Vertrag aus fünf Methoden. Eine spätere Entfernung der drei Stubs
+würde die sichtbare Objektoberfläche ändern und benötigt deshalb eine separate
+EngineAPI-Contractentscheidung samt zugehöriger Validierung. Der separat aus
+`core.mjs` exportierte `_internal_calculateModel` ist kein Mitglied des
+`EngineAPI`-Objekts und bleibt ein interner Pipeline-Einstieg.
+
+### Marktdatenqualitaets-Contract
+
+`MarketAnalyzer` exponiert `marketDataStatus` als `missing`, `partial` oder `complete`. Ein ATH-/Drawdown-Signal setzt endliche positive Werte fuer `endeVJ` und `ath` voraus. Ohne diese Basis bleiben `abstandVomAthProzent` und `seiATH` fachlich unbekannt (`null`); fehlende Kerndaten verwenden `side_long` als operativen Fallback und duerfen nicht als neues Allzeithoch diagnostiziert werden. Ein gueltiger CAPE-Wert wird davon unabhaengig ausgewertet.
+
+### Verkaufs-/Tranchen-Contract
+
+`transactions/sale-engine.mjs` baut fuer detaillierte Tranchen eine `breakdown[]`-Liste. Die Eingangsgrenze erwartet die kanonische, disjunkte Kategorie-/Typ-Matrix aus `types/tranche-contract.js`; doppelte Lot-IDs und widerspruechliche Klassifikationen werden vor der Berechnung abgelehnt. Neben Verkaufsbetrag, Steuer- und Rohgewinnfeldern bleiben `trancheId` und, falls vorhanden, `sourceProfileId` erhalten. Mehrprofilige Simulator-Inputs koennen dadurch gleichartige Positionen aus unterschiedlichen Profilen eindeutig auf die urspruengliche Profil-Tranche zurueckfuehren.
+
+Ein fehlendes Equity-Gesamtbudget bedeutet unbegrenzt; ein explizites `maxEquityBudgetTotal=0` ist dagegen eine harte Nullgrenze. Derselbe Vertrag gilt fuer `maxSkimPctOfEq=0` in Opportunistic- und Surplus-Pfaden. Der Dry-Run reicht das Gesamtbudget unveraendert an die finale Verkaufsrechnung weiter. Mehrere Goldlots teilen einen einmalig aus dem aggregierten Goldbestand abgeleiteten Floor-Headroom, sodass weder Equity-, Gold- noch Lotbestand mehrfach verplant werden.
+
+Die Engine plant nur. Sie schreibt weder Empfehlungen noch simulierte Lotmutationen in `depot_tranchen`. Eine reale Bestandsfortschreibung erfolgt ausschliesslich nach Broker-Ausfuehrung ueber den bestaetigten Reconcile-Pfad des Profil-Assets-Managers. Siehe `../docs/reference/TRANCHEN_MODULES_README.md`.
+
+Die Top-Level-Felder trennen konservative Planung von finaler Cash-Wahrheit: `bruttoVerkaufGesamt`, `steuerPlanGesamt` und `nettoErlösPlan` beschreiben den Verkauf vor Jahres-Settlement; `steuer` kommt aus `tax-settlement.mjs`, und `taxCashAdjustment = steuerPlanGesamt - steuer` wird genau einmal `verwendungen.liquiditaet` zugeschlagen. Die finale Steuer wird nach positiver Steuerbasis beziehungsweise Bruttoquelle auf `quellen[]` attribuiert; `steuerPlan` bewahrt dort bei Abweichung die Plansteuer. Die Attribution ist je Quelle durch deren Bruttoverkauf begrenzt und verteilt einen nach Saettigung verbleibenden Steuerrest auf weitere Quellen. Positive Steuer ohne positive Bruttokapazitaet, Steuer oberhalb des Gesamtbruttos und nicht vollstaendig verteilbare Steuer blockieren fail-closed. Nach jeder Core-Assettransaktion, nicht nur im Balance-3-Bucket-Pfad, gelten mit 0,01 EUR Toleranz `bruttoVerkaufGesamt - steuer = nettoErlös`, `sum(quellen.netto) = nettoErlös` und `sum(verwendungen) = nettoErlös`. Nicht-Verkaufsaktionen exponieren die Verkaufs-/Steuerfelder neutral mit `0`.
+
+### 3-Bucket-Jilge-Contract
+
+`transactions/three-bucket-logic.mjs` normalisiert die Strategieparameter fuer `3_bucket_jilge`, erkennt Bond-/Anleihen-Tranchen ueber Typ oder Kategorie (`bond`, `bonds`, `anleihe`) und stellt gemeinsame Funktionen fuer Bond-Verkauf in schlechten Jahren sowie Bond-Wiederauffuellung in guten Jahren bereit. `realReturnEq` ist ein endlicher Ratio-Wert (`-0.30` entspricht -30 Prozent). Der Bond-Refill verwendet den von der Spending-Engine tatsaechlich entschiedenen Jahresbedarf, reserviert vorher alle bereits geplanten Lotverkaeufe mit dem zusammengesetzten Schluessel `sourceProfileId:trancheId` und skaliert nur die verbleibende Cost Basis dieses Profil-Lots proportional.
+
+Balance aktiviert den internen Final-Action-Modus auf einem nicht persistierten Input-Clone. `finalizeThreeBucketAction()` schliesst Quellen, Rohsteueraggregate und Verwendungen vor dem einzigen Jahres-Settlement ab, fasst Mehrfachzeilen desselben Profil-Lots zusammen und blockiert fehlende Provenienz oder Ueberbuchung mit einem handlungsleitenden `FinancialCalculationError`. Single Profile settled im Core; der Profilverbund defert das Haushaltssettlement, attribuiert die finalen Quellen und settled danach genau einmal je Steuer-Owner. Nach dem Settlement veraendert kein Balance-Postprozessor mehr Quellen oder Mengen. Die eigenstaendige Simulator-3-Bucket-Wiederauffuellung bleibt ein separater Vertrag und erhaelt durch diesen Balance-Final-Action-Modus keine zusaetzliche Bestandszusage.
+
+### Dynamic-Flex Vertragsfelder (`simulateSingleYear`)
+
+Bei aktivem Dynamic-Flex (`dynamicFlex=true`) werden folgende Eingaben genutzt:
+
+* `horizonYears` (1..60), `horizonMethod` (`mean` | `survival_quantile`), `survivalQuantile` (0.5..0.99)
+* `goGoActive` (Boolean), `goGoMultiplier` (1.0..1.5)
+* `capeRatio` (kanonisch; `marketCapeRatio` wird als Alias-Fallback akzeptiert)
+
+Ausgabe für UI/Diagnostik erfolgt in `result.ui.vpw` (u. a. `enabled`, `horizonYears`, `vpwRate`, `expectedRealReturn`, `status`).
+Die erwartete Realrendite laeuft ueber `engine/planners/vpw-return-policy.mjs`. Der Default bleibt `CONFIG.SPENDING_MODEL.DYNAMIC_FLEX.RETURN_POLICY='legacy_step'`; `cape_continuous` ist nur explizit per Config aktiv. Continuous normalisiert ungueltige CAPE-Werte auf den dokumentierten Fallback, klammert Aktien- und Portfolio-Realrendite separat und diagnostiziert `returnPolicy`, `expectedReturnSource`, `capeInputStatus`, `expectedRealReturnRaw`, `expectedRealReturnClamped`, `safeRealReturn` und `safeRealReturnSource`.
+Bei `dynamicFlex=false` bleibt das bisherige Flex-Verhalten unverändert.
+
+### Mindest-Flex Vertragsfeld (`simulateSingleYear`)
+
+`minimumFlexAnnual` ist ein optionaler nicht-negativer Jahresbetrag. Ein fehlender oder leerer Wert bedeutet `0`; nicht-finite oder negative Engine-Werte werden abgelehnt. Werte über `flexBedarf` werden bereits an den Simulator-/Profilgrenzen fail-closed abgelehnt, damit der Flex-Bedarf die fachliche Obergrenze bleibt. Im Profilverbund werden die profilbezogenen Werte addiert; ihre Summe darf den aggregierten Haushalts-Flexbedarf nicht uebersteigen.
+
+Die Spending-Wirkung erfolgt in `applyMinimumFlexFloor()` als Rate nach Guardrails und vor Flex-Budget sowie finaler Glaettung; `0` verändert bestehende Simulationen nicht. Das Ziel ist haushaltsweit: Ein nach Floor-Deckung verbleibender Rentenueberschuss deckt zuerst Mindest-Flex, nur der Rest ist ein Depotziel. Alarm oder unzureichende Gesamtvermoegens-/Runway-Deckung blockieren die Anhebung. Die finale Monatsquantisierung schreibt Rentenueberschuss plus tatsaechlich wirksamen Depotflex und einen moeglichen Fehlbetrag in `minimumFlexEffectiveFinal`, `minimumFlexShortfallAnnual` und `minimumFlexFulfilled`; `minimumFlexStatus` unterscheidet Policy-Blockaden, nachgelagerte Limits, unzureichenden Gesamt-Flex und Quantisierung.
+
+### Safety-Cap und schwere Flex-Notlage
+
+`SpendingPolicyOrderV2` fuehrt nach Alarm, Guardrails, Mindest-Flex,
+Flex-Budget und finaler Glaettung einen abschliessenden `safety_cap` aus.
+Strukturierte Kandidaten entstehen durch aktiven Alarm, einen positiven
+`bear_deep`-Rohcut oder einen tatsaechlich bindenden Flexraten-/Spending-
+Guardrail. Die niedrigste Kandidatenrate ist das normale Policy-Ziel gegen
+spaetere Komfortanhebungen. Seine im aktuellen Jahr wirksame Obergrenze
+respektiert weiterhin die konfigurierten jaehrlichen Flex-Aenderungsgrenzen;
+ein noch nicht erreichbares Ziel wird als aufgeschoben diagnostiziert. Bei rein
+marktbedingten Safety-Caps bleibt
+Mindest-Flex ausserhalb der schweren Notlage die Untergrenze, sofern kein
+bestehender Alarm-, Solvenz- oder Runway-Blocker greift.
+
+Die schwere Flex-Notlage verlangt gleichzeitig `bear_deep`, mehr als 25
+Prozent realen Drawdown des aktiven Gesamtvermoegens und eine geschuetzte
+Portfolioentnahmequote von mindestens 3,5 Prozent. Die Quote verwendet den
+Netto-Floor aus dem Portfolio plus den nach Rentenueberschuss offenen
+Mindest-Flex im Zaehler und das aktive Gesamtvermoegen im Nenner; ihre Schwelle
+stammt aus `WEALTH_ADJUSTED_REDUCTION.FULL_WITHDRAWAL_RATE`. Exakt 25 Prozent
+Drawdown, ein lokaler Extrembaer allein, Alarm, ein historischer
+Entnahmebelastungsfaktor oder ein bei hohem Drawdown komfortabel tragbarer
+Mindest-Flex reichen nicht. Bei aktivem Gate wird der Flex einschliesslich
+Mindest-Flex auf 0 gesetzt und mit `overridden_by_severe_flex_emergency`
+diagnostiziert. Die
+Nullrate wird als Istwert gespeichert, waehrend ein getrennter Vor-Gate-Wert
+als Glaettungsanker fuer das erste Erholungsjahr erhalten bleibt. Der
+separate Floor bleibt unveraendert. Fehlende oder nicht-endliche Gatewerte
+scheitern fail-closed; ein endlicher negativer Vor-Peak-Drawdown wird als neues
+reales Hoch auf 0 normalisiert.
+
+---
+
+## Build-Prozess
+
+Im aktuellen Modulbetrieb werden Fach-, Versions- und API-Methodenänderungen
+hinter demselben Import beim nächsten Laden der Module übernommen. Sie
+benötigen keinen Neuaufbau von `engine.js`; Fachtests und Vertragsprüfungen
+bleiben verpflichtend. Das Artefakt niemals manuell editieren.
+
+Neuerzeugung ist nur erforderlich, wenn das Artefakt fehlt oder sich Generator,
+Import-Einstieg oder Wrapper-/Global-/Exportvertrag ändern. Generator,
+erzeugtes Artefakt und Test-Erwartung müssen gemeinsam geprüft werden:
+
+```bash
+npm run build:engine
+```
+
+`build-engine.mjs` versucht zuerst einen echten `esbuild`-Build mit
+`engine/index.mjs` als Einstieg, Format IIFE und globalem Bundlenamen
+`RuhestandEngineBundle`; der Footer stellt `globalThis.EngineAPI` und den
+Legacy-Alias bereit. Fehlt `esbuild`, schreibt der nicht strikte Modus den
+konstanten Modul-Fallback mit Import, Browser-Globals und benannten Exporten.
+Andere Buildfehler werden nicht durch einen erfolgreichen Fallback verdeckt.
+`esbuild` ist keine deklarierte Projektabhängigkeit; ein verfügbarer Bundler
+kann bereits beim normalen Build den Wrapper durch ein Bundle ersetzen.
+
+Ein echtes Bundle enthält eine Kopie der Engine-Implementierung und müsste
+nach Änderungen seiner Quellen neu gebaut werden. Es übernimmt Quelländerungen
+nicht automatisch und entspricht nicht dem heutigen geprüften Wrappervertrag.
+[tests/engine-wrapper-contract.test.mjs](../tests/engine-wrapper-contract.test.mjs)
+prüft in `npm test` den vollständigen reinen Wrapper und weist auch ein frisch
+erzeugtes Bundle ab. Ein bewusster Bundlewechsel benötigt eine eigene geprüfte
+Vertragsänderung; den Test dafür nicht still abschwächen oder überspringen.
+Fokuslauf ohne Build:
+
+```bash
+node tests/run-single.mjs tests/engine-wrapper-contract.test.mjs
+```
+
+Für einen bewusst gewählten Auslieferungspfad, der tatsächlich ein Bundle
+verlangt, steht optional das Strict-Gate bereit:
+
+```bash
+npm run build:engine:strict
+```
+
+Ohne `esbuild` scheitert Strict vor dem Schreiben des Fallbacks. Der normale
+Build ist ebenfalls strikt, wenn `ENGINE_BUILD_STRICT` oder `CI` den Wert `1`
+oder `true` tragen (jeweils ohne Beachtung der Groß-/Kleinschreibung).
+Tests sowie der bestehende Browser-/Tauri-Wrapperpfad setzen keinen
+Strict-Build voraus.
+
+`scripts/sync-dist.mjs` übernimmt `engine/` und `engine.js` zusammen aus
+demselben gewählten Git-Commit und führt keinen Engine-Build aus. Ohne `--rev`
+müssen alle versionierten Quellen sauber und sämtliche Laufzeitdateien
+versioniert sein, auch normalerweise ignorierte Dateien; mit `--rev` wird
+gezielt dieser Commit gewählt. Desktop-Build und fachliche Testgates bleiben
+getrennte Anforderungen.
+
+**Historischer Nachweis, hier nicht neu gemessen:** Der damalige
+Suite-Datenintegritäts-Abschluss band die bestehenden Engine-Orakel für
+Jahressettlement, 3-Bucket-Final-Action, Flex-/Renteninvarianten und
+Requestparität an `tests/fixtures/suite-data-integrity/oracle-traceability-v1.json`,
+ohne die Engine-Semantik zu ändern. Nach dem damaligen Slice-16-Build blieb der
+Git-Blob-Hash von `engine.js` `ec49961ed58134928723be5ddb6185e11f7fbcb5`;
+das Artefakt wurde ausschließlich über `build-engine.mjs` erzeugt.
+Dieser historische Build begründet keine heutige Neubaupflicht nach
+Engine-Fachänderungen.
+
+---
+
+## Entwicklungstipps
+
+1. Änderungen immer im jeweiligen Modul vornehmen, nicht in `engine.js`.
+2. Fachtests und Vertragsprüfungen nach Engine- oder öffentlichen API-Änderungen ausführen; ein unveränderter Wrapper ist erwartbar. Neuerzeugungsanlässe stehen im Build-Prozess.
+3. Balance-App und Simulator testen – beide nutzen über den Wrapper dieselben Engine-Module.
+4. Für Regressionstests steht `npm test` bereit.

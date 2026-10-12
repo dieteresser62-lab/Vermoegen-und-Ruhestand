@@ -1,0 +1,567 @@
+import { showPageAlert } from '../shared/page-dialog.js';
+
+function showSyncNotice(description) {
+    void showPageAlert({ title: 'Tranchen synchronisieren', description: `${description}\n\nPrüfe den Bestand im Tranchen-Manager und versuche es erneut.` }).catch(error => console.error('Synchronisationshinweis konnte nicht angezeigt werden:', error));
+}
+import { formatDisplayFixed } from '../shared/designsystem-number-format.js';
+/**
+ * Module: Depot Tranchen Status
+ * Purpose: Manages and displays the status of detailed portfolio tranches.
+ *          Loads tranches from localStorage, calculates aggregates, and updates UI badges/inputs.
+ * Usage: Used by Balance App and Simulator to sync detailed tranche data.
+ * Dependencies: shared-formatting.js
+ */
+"use strict";
+
+import { EUR_NO_DEC_FORMATTER } from '../shared/shared-formatting.js';
+import { persistenceStorage } from '../shared/persistence-facade.js';
+import { getActiveProfileId, getCurrentProfileId } from '../profile/profile-storage.js';
+import { PROFILE_STORAGE_KEYS } from '../profile/profile-state.js';
+import { loadTranchesFromStorage } from './tranchen-manager-state.js';
+import { projectReconciliationCashStatuses } from './tranche-reconciliation.js';
+import {
+    classifyTranche,
+    normalizeTrancheCollection
+} from '../../types/tranche-contract.js';
+
+export const TRANCHE_STATUS_STATES = Object.freeze({
+    NOT_LOADED: 'not_loaded',
+    EMPTY: 'empty',
+    VALID: 'valid',
+    ERROR: 'error'
+});
+
+export function getReconciliationCashStatus({ storage = persistenceStorage, profileId = undefined } = {}) {
+    let resolvedProfileId = profileId;
+    if (resolvedProfileId === undefined) {
+        try {
+            resolvedProfileId = getActiveProfileId() || getCurrentProfileId() || null;
+        } catch {
+            resolvedProfileId = null;
+        }
+    }
+    if (!resolvedProfileId) {
+        return Object.freeze({
+            state: 'not_loaded', profileId: null, statuses: [], pendingCount: 0,
+            legacyCount: 0, confirmedCount: 0, errorCode: null
+        });
+    }
+    let raw;
+    try {
+        raw = storage.getItem(PROFILE_STORAGE_KEYS.registry);
+    } catch {
+        return Object.freeze({
+            state: 'error', profileId: resolvedProfileId, statuses: [], pendingCount: 0,
+            legacyCount: 0, confirmedCount: 0, errorCode: 'RECONCILIATION_REGISTRY_UNAVAILABLE'
+        });
+    }
+    if (!raw) {
+        return Object.freeze({
+            state: 'not_loaded', profileId: resolvedProfileId, statuses: [], pendingCount: 0,
+            legacyCount: 0, confirmedCount: 0, errorCode: null
+        });
+    }
+    try {
+        const statuses = projectReconciliationCashStatuses(raw, resolvedProfileId);
+        return Object.freeze({
+            state: 'valid',
+            profileId: resolvedProfileId,
+            statuses,
+            pendingCount: statuses.filter(status => status.isPending).length,
+            legacyCount: statuses.filter(status => status.isLegacy).length,
+            confirmedCount: statuses.filter(status => status.isConfirmed).length,
+            errorCode: null
+        });
+    } catch (error) {
+        return Object.freeze({
+            state: 'error',
+            profileId: resolvedProfileId,
+            statuses: [],
+            pendingCount: 0,
+            legacyCount: 0,
+            confirmedCount: 0,
+            errorCode: error?.code || 'RECONCILIATION_HISTORY_INVALID'
+        });
+    }
+}
+
+function buildCashStatusNotice(status) {
+    if (status.state === 'error') {
+        return '<div class="tranchen-warning ds-note ds-note-error" role="alert" style="color: var(--bad); background: var(--bad-soft);">⚠️ Cashstatus-Audit ist beschädigt oder nicht unterstützt; Cashaussagen sind blockiert.</div>';
+    }
+    if (status.state !== 'valid' || status.statuses.length === 0) return '';
+    const legacyNotice = status.legacyCount > 0
+        ? ` ${status.legacyCount} Altverkauf/Altverkäufe besitzen keinen dokumentierten Cashstatus; sie gelten operativ als abgeschlossen, nicht als cashbestätigt.`
+        : '';
+    if (status.pendingCount > 0) {
+        return `<div class="tranchen-warning ds-note ds-note-warning">⚠️ ${status.pendingCount} Realverkauf/Realverkäufe mit offener manueller Cashbuchung.${legacyNotice}</div>`;
+    }
+    if (status.legacyCount > 0) {
+        return `<div style="margin-top: 8px;">ℹ️ Kein offener manueller Cashrückstand.${legacyNotice}</div>`;
+    }
+    return '<div class="ds-note" style="margin-top: var(--space-2);">✅ Kein offener manueller Cashrückstand aus Realverkäufen.</div>';
+}
+
+function emptyWarnings() {
+    return {
+        missingMarketValueCount: 0,
+        missingCostBasisCount: 0
+    };
+}
+
+function resolveTrancheMarketValue(tranche) {
+    // Priorität: expliziter MarketValue > Shares * CurrentPrice.
+    const mv = Number(tranche?.marketValue);
+    if (Number.isFinite(mv) && mv > 0) {
+        return mv;
+    }
+    const shares = Number(tranche?.shares);
+    const currentPrice = Number(tranche?.currentPrice);
+    if (Number.isFinite(shares) && shares > 0 && Number.isFinite(currentPrice) && currentPrice > 0) {
+        return shares * currentPrice;
+    }
+    return 0;
+}
+
+function resolveTrancheCostBasis(tranche) {
+    // Priorität: expliziter CostBasis > Shares * PurchasePrice.
+    const cb = Number(tranche?.costBasis);
+    if (Number.isFinite(cb) && cb > 0) {
+        return cb;
+    }
+    const shares = Number(tranche?.shares);
+    const purchasePrice = Number(tranche?.purchasePrice);
+    if (Number.isFinite(shares) && shares > 0 && Number.isFinite(purchasePrice) && purchasePrice > 0) {
+        return shares * purchasePrice;
+    }
+    return 0;
+}
+
+function hasMarketValueInput(tranche) {
+    const mv = Number(tranche?.marketValue);
+    const shares = Number(tranche?.shares);
+    const currentPrice = Number(tranche?.currentPrice);
+    return (Number.isFinite(mv) && mv > 0)
+        || (Number.isFinite(shares) && shares > 0 && Number.isFinite(currentPrice) && currentPrice > 0);
+}
+
+function hasCostBasisInput(tranche) {
+    const cb = Number(tranche?.costBasis);
+    const shares = Number(tranche?.shares);
+    const purchasePrice = Number(tranche?.purchasePrice);
+    return (Number.isFinite(cb) && cb > 0)
+        || (Number.isFinite(shares) && shares > 0 && Number.isFinite(purchasePrice) && purchasePrice > 0);
+}
+
+
+function summarizeValidTranches(tranches, source) {
+    let missingMarketValueCount = 0;
+    let missingCostBasisCount = 0;
+    const totalValue = tranches.reduce((sum, tranche) => {
+        if (!hasMarketValueInput(tranche)) missingMarketValueCount += 1;
+        return sum + resolveTrancheMarketValue(tranche);
+    }, 0);
+    const totalCost = tranches.reduce((sum, tranche) => {
+        if (!hasCostBasisInput(tranche)) missingCostBasisCount += 1;
+        return sum + resolveTrancheCostBasis(tranche);
+    }, 0);
+    const totalGain = totalValue - totalCost;
+    return {
+        state: TRANCHE_STATUS_STATES.VALID,
+        source,
+        loaded: true,
+        count: tranches.length,
+        totalValue,
+        totalCost,
+        totalGain,
+        gainPct: totalCost > 0 ? (totalGain / totalCost) * 100 : 0,
+        tranches,
+        warnings: {
+            missingMarketValueCount,
+            missingCostBasisCount
+        },
+        errorCode: null,
+        error: null
+    };
+}
+
+function createNonValidStatus(state, source, errorCode = null) {
+    return {
+        state,
+        source,
+        loaded: false,
+        count: 0,
+        totalValue: 0,
+        totalCost: 0,
+        totalGain: 0,
+        gainPct: 0,
+        tranches: [],
+        warnings: emptyWarnings(),
+        errorCode,
+        error: errorCode
+    };
+}
+
+/**
+ * Liefert den expliziten Status des kanonischen Tranchenbestands.
+ * Ein Profilverbund-Override hat auch als leeres Array Vorrang vor dem
+ * aktuell im Profil-Storage liegenden Bestand.
+ */
+export function getTranchenStatus({ storage = persistenceStorage } = {}) {
+    const override = (typeof window !== 'undefined') ? window.__profilverbundTranchenOverride : null;
+    if (Array.isArray(override)) {
+        if (override.length === 0) {
+            return createNonValidStatus(TRANCHE_STATUS_STATES.EMPTY, 'override');
+        }
+        try {
+            const tranches = normalizeTrancheCollection(override, { mode: 'engine' });
+            return summarizeValidTranches(tranches, 'override');
+        } catch (error) {
+            return createNonValidStatus(
+                TRANCHE_STATUS_STATES.ERROR,
+                'override',
+                error?.code || 'TRANCHE_OVERRIDE_INVALID'
+            );
+        }
+    }
+
+    const loaded = loadTranchesFromStorage(storage);
+    if (loaded.status === 'valid') {
+        return summarizeValidTranches(loaded.tranches, 'storage');
+    }
+    if (loaded.status === 'empty') {
+        const state = loaded.raw === null || loaded.raw === ''
+            ? TRANCHE_STATUS_STATES.NOT_LOADED
+            : TRANCHE_STATUS_STATES.EMPTY;
+        return createNonValidStatus(state, 'storage');
+    }
+    return createNonValidStatus(
+        TRANCHE_STATUS_STATES.ERROR,
+        'storage',
+        loaded.errorCode || 'TRANCHE_STORAGE_ERROR'
+    );
+}
+
+/**
+ * Rendert eine Status-Badge, die anzeigt, ob Tranchen geladen sind
+ * @param {string} containerId - ID des Container-Elements
+ */
+export function renderTranchenStatusBadge(containerId) {
+    if (typeof document === 'undefined') {
+        return;
+    }
+    const container = document.getElementById(containerId);
+    if (!container) {
+        return;
+    }
+
+    const status = getTranchenStatus();
+    const reconciliationCashStatus = getReconciliationCashStatus();
+    const cashStatusNotice = buildCashStatusNotice(reconciliationCashStatus);
+    if (reconciliationCashStatus.pendingCount > 0
+        || reconciliationCashStatus.state === 'error') {
+        const collapsedDetails = container.closest?.('details');
+        if (collapsedDetails) collapsedDetails.open = true;
+    }
+
+    if (status.state !== TRANCHE_STATUS_STATES.VALID) {
+        const variants = {
+            [TRANCHE_STATUS_STATES.NOT_LOADED]: {
+                icon: 'ℹ️',
+                title: 'Keine detaillierten Tranchen geladen',
+                detail: 'Nutzen Sie das vereinfachte Alt/Neu-Modell.',
+                className: 'ds-note',
+                background: 'var(--surface-sunken)',
+                color: 'var(--text-main)'
+            },
+            [TRANCHE_STATUS_STATES.EMPTY]: {
+                icon: 'ℹ️',
+                title: 'Tranchenbestand ist leer',
+                detail: 'FIFO ist erst mit mindestens einer gültigen Tranche aktiv.',
+                className: 'ds-note',
+                background: 'var(--surface-sunken)',
+                color: 'var(--text-main)'
+            },
+            [TRANCHE_STATUS_STATES.ERROR]: {
+                icon: '⚠️',
+                title: 'Tranchenbestand ist fehlerhaft',
+                detail: 'Die Daten werden nicht als leerer Bestand oder Alt/Neu-Fallback verwendet.',
+                className: 'ds-note ds-note-error',
+                background: 'var(--bad-soft)',
+                color: 'var(--bad)'
+            }
+        };
+        const variant = variants[status.state] || variants[TRANCHE_STATUS_STATES.ERROR];
+        container.innerHTML = `
+            <div class="${variant.className}" data-tranchen-state="${status.state}" style="
+                padding: 10px 15px;
+                background: ${variant.background};
+                border-radius: 8px;
+                margin-top: 10px;
+                text-align: center;
+                font-size: 0.9rem;
+                color: ${variant.color};
+            ">
+                ${variant.icon} <strong>${variant.title}</strong><br>
+                <span style="font-size: 0.85rem;">
+                    ${variant.detail}
+                </span>
+                ${cashStatusNotice}
+            </div>
+        `;
+        return;
+    }
+
+    const formatCurrency = (val) => EUR_NO_DEC_FORMATTER.format(val);
+
+    container.innerHTML = `
+        <div class="ds-card" data-tranchen-state="${status.state}" style="
+            padding: 12px 15px;
+            background: var(--surface-sunken);
+            border-radius: 8px;
+            margin-top: 10px;
+            color: var(--text-main);
+            box-shadow: var(--shadow-card);
+        ">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.2rem;">✅</span>
+                    <strong style="font-size: 1rem;">${status.count} Tranchen geladen (FIFO aktiv)</strong>
+                </div>
+                <div></div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 0.85rem;">
+                <div>
+                    <div class="ds-metric-label" style="color: var(--text-muted);">Gesamtwert</div>
+                    <div class="ds-metric-value" style="font-weight: 600; font-size: 0.95rem;">${formatCurrency(status.totalValue)}</div>
+                </div>
+                <div>
+                    <div class="ds-metric-label" style="color: var(--text-muted);">Einstand</div>
+                    <div class="ds-metric-value" style="font-weight: 600; font-size: 0.95rem;">${formatCurrency(status.totalCost)}</div>
+                </div>
+                <div>
+                    <div class="ds-metric-label" style="color: var(--text-muted);">Gewinn</div>
+                    <div class="ds-metric-value" style="font-weight: 600; font-size: 0.95rem;">${status.gainPct > 0 ? '+' : ''}${formatDisplayFixed(status.gainPct, 1)}\u00a0%</div>
+                </div>
+            </div>
+            ${cashStatusNotice}
+
+            ${status.warnings && (status.warnings.missingMarketValueCount > 0 || status.warnings.missingCostBasisCount > 0)
+            ? `<div class="tranchen-warning ds-note ds-note-warning">
+                    Hinweis: ${status.warnings.missingMarketValueCount} Tranche(n) ohne Marktwert und ${status.warnings.missingCostBasisCount} ohne Einstand.
+                   </div>`
+            : ''}
+        </div>
+    `;
+}
+
+/**
+ * Berechnet aggregierte Werte aus Tranchen für die Eingabefelder
+ */
+export function calculateAggregatedValues(tranchesOverride = null) {
+    const status = Array.isArray(tranchesOverride)
+        ? (tranchesOverride.length > 0
+            ? summarizeValidTranches(normalizeTrancheCollection(tranchesOverride, { mode: 'engine' }), 'argument')
+            : createNonValidStatus(TRANCHE_STATUS_STATES.EMPTY, 'argument'))
+        : getTranchenStatus();
+
+    if (status.state === TRANCHE_STATUS_STATES.ERROR) {
+        const error = new Error('Der Tranchenbestand ist fehlerhaft und kann nicht aggregiert werden.');
+        error.code = status.errorCode || 'TRANCHE_STATUS_ERROR';
+        throw error;
+    }
+    if (status.state !== TRANCHE_STATUS_STATES.VALID) {
+        return null;
+    }
+
+    // Gruppiere nach Kategorien
+    let altbestand = { marketValue: 0, costBasis: 0 };
+    let neubestand = { marketValue: 0, costBasis: 0 };
+    let geldmarkt = { marketValue: 0, costBasis: 0 };
+    let gold = { marketValue: 0, costBasis: 0 };
+    let bonds = { marketValue: 0, costBasis: 0 };
+
+    status.tranches.forEach(t => {
+        const mv = resolveTrancheMarketValue(t);
+        const cb = resolveTrancheCostBasis(t);
+        const type = t.type;
+        const category = classifyTranche(t, { allowLegacy: true });
+
+        if (category === 'bonds') {
+            // Also adding to neubestand for backwards compatibility, 
+            // but tracking bonds independently for the UI.
+            neubestand.marketValue += mv;
+            neubestand.costBasis += cb;
+            bonds.marketValue += mv;
+            bonds.costBasis += cb;
+            return;
+        }
+
+        if (category === 'gold') {
+            gold.marketValue += mv;
+            gold.costBasis += cb;
+            return;
+        }
+
+        if (category === 'money_market') {
+            geldmarkt.marketValue += mv;
+            geldmarkt.costBasis += cb;
+            return;
+        }
+
+        if (category === 'equity' && type === 'aktien_alt') {
+            altbestand.marketValue += mv;
+            altbestand.costBasis += cb;
+            return;
+        }
+
+        if (category === 'equity' && type === 'aktien_neu') {
+            neubestand.marketValue += mv;
+            neubestand.costBasis += cb;
+            return;
+        }
+
+    });
+
+    return {
+        depotwertAlt: altbestand.marketValue,
+        costBasisAlt: altbestand.costBasis,
+        depotwertNeu: neubestand.marketValue,
+        costBasisNeu: neubestand.costBasis,
+        geldmarktEtf: geldmarkt.marketValue,
+        goldWert: gold.marketValue,
+        goldCost: gold.costBasis,
+        bondsWert: bonds.marketValue,
+        bondsCost: bonds.costBasis
+    };
+}
+
+/**
+ * Synchronisiert die Tranchen-Werte in die Balance-Eingabefelder
+ */
+export function syncTranchenToInputs(options = {}) {
+    const { silent = false } = options;
+    const override = (typeof window !== 'undefined') ? window.__profilverbundTranchenOverride : null;
+    const preferAggregates = (typeof window !== 'undefined') && window.__profilverbundPreferAggregates;
+    if (preferAggregates && !Array.isArray(override)) {
+        return false;
+    }
+    const status = getTranchenStatus();
+    if (status.state === TRANCHE_STATUS_STATES.ERROR) {
+        if (!silent) {
+            showSyncNotice('Der Tranchenbestand ist fehlerhaft und wurde nicht synchronisiert.');
+        }
+        return false;
+    }
+    const values = status.state === TRANCHE_STATUS_STATES.VALID
+        ? calculateAggregatedValues(status.tranches)
+        : null;
+
+    if (!values) {
+        if (!silent) {
+            showSyncNotice('Keine Tranchen zum Synchronisieren vorhanden.');
+        }
+        return false;
+    }
+
+    // Formatierungsfunktion für Währung
+    const formatNumber = (num) => {
+        return Math.round(num).toLocaleString('de-DE');
+    };
+
+    const readNumericValue = (element) => {
+        if (!element) return 0;
+        if (element.type === 'number') {
+            const n = Number(element.value);
+            return Number.isFinite(n) ? n : 0;
+        }
+        const raw = String(element.value || '').replace(/\./g, '').replace(/,/g, '.');
+        const n = Number(raw);
+        return Number.isFinite(n) ? n : 0;
+    };
+
+    const computed = {
+        simStartVermoegen: (values.depotwertAlt || 0)
+            + (values.depotwertNeu || 0)
+            + (values.goldWert || 0)
+            + (values.geldmarktEtf || 0)
+            + (readNumericValue(document.getElementById('tagesgeld')))
+    };
+
+    // Setze Werte in die Eingabefelder
+    const fields = [
+        { id: 'simStartVermoegen', value: computed.simStartVermoegen },
+        { id: 'depotwertAlt', value: values.depotwertAlt },
+        { id: 'costBasisAlt', value: values.costBasisAlt },
+        { id: 'einstandAlt', value: values.costBasisAlt },
+        { id: 'depotwertNeu', value: values.depotwertNeu },
+        { id: 'costBasisNeu', value: values.costBasisNeu },
+        { id: 'einstandNeu', value: values.costBasisNeu },
+        { id: 'geldmarktEtf', value: values.geldmarktEtf },
+        { id: 'goldWert', value: values.goldWert },
+        { id: 'goldCost', value: values.goldCost }
+    ];
+
+    const setFieldValue = (element, value) => {
+        // Hidden fields are application boundaries, not localized displays.
+        // Keep them canonical so readNumber("1.234") cannot turn 1234 into 1.234.
+        if (element.type === 'number' || element.type === 'hidden') {
+            element.value = String(Math.round(value));
+        } else {
+            element.value = formatNumber(value);
+        }
+    };
+
+    let updated = 0;
+    fields.forEach(({ id, value }) => {
+        const element = document.getElementById(id);
+        if (element && value !== undefined && Number.isFinite(value)) {
+            setFieldValue(element, value);
+            updated++;
+        }
+    });
+
+    // Trigger Change-Event, damit Balance neu berechnet
+    const event = new Event('input', { bubbles: true });
+    document.getElementById('depotwertAlt')?.dispatchEvent(event);
+
+    return true;
+}
+
+/**
+ * Initialisiert die Status-Anzeige und überwacht Änderungen
+ * @param {string} containerId - ID des Container-Elements
+ */
+export function initTranchenStatus(containerId) {
+    // Initial rendern
+    renderTranchenStatusBadge(containerId);
+    syncTranchenToInputs({ silent: true });
+
+    // Auf localStorage-Änderungen reagieren (z.B. wenn Tranchen-Manager in neuem Tab geöffnet ist)
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'depot_tranchen') {
+            renderTranchenStatusBadge(containerId);
+            syncTranchenToInputs({ silent: true });
+        }
+    });
+
+    // Periodisch prüfen (alle 5 Sekunden), falls localStorage im selben Tab geändert wurde
+    const intervalId = setInterval(() => {
+        renderTranchenStatusBadge(containerId);
+    }, 5000);
+    if (intervalId && typeof intervalId.unref === 'function') {
+        intervalId.unref();
+    }
+    return intervalId;
+}
+
+// Browser-Kompatibilität
+if (typeof window !== 'undefined') {
+    window.DepotTranchenStatus = {
+        getStatus: getTranchenStatus,
+        renderBadge: renderTranchenStatusBadge,
+        init: initTranchenStatus,
+        syncToInputs: () => syncTranchenToInputs(),
+        calculateAggregated: calculateAggregatedValues
+    };
+}

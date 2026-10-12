@@ -1,0 +1,24 @@
+import { createWealthFan, createWealthFanPath, recordWealthFanYear, commitWealthFanPath } from '../app/simulator/wealth-fan-aggregation.js';
+import { renderWealthFanChart } from '../app/simulator/wealth-fan-chart.js';
+import { renderScenarioWealthChart, buildScenarioWealthPath } from '../app/simulator/scenario-wealth-chart.js';
+const fan = createWealthFan(3);
+const path = createWealthFanPath(3, 100000);
+recordWealthFanYear(path, 1, 200000, 100000);
+recordWealthFanYear(path, 2, 0, 0, true); commitWealthFanPath(fan, path);
+assert(renderWealthFanChart(null).includes('keine Jahresbänder'), 'Referenz-02-Platzhalter');
+const real = renderWealthFanChart(fan, { startYear: 2026, startAge: 65 });
+const nominal = renderWealthFanChart(fan, { mode: 'nominal' });
+assert(real.includes('heutige Euro') && nominal.includes('nominale Euro'), 'Maßstabbeschriftung folgt Daten');
+assert(real.includes('P5–P95') && real.includes('P25–P75') && real.includes('Median'), 'Beide Bänder und Median');
+assert(real.includes('2029 · 68'), 'Horizont mit Kalenderjahr und Alter');
+assert(real.includes('davon 1 ruiniert'), 'Lebens-/Ruinleiste');
+assert(real.includes('wealth-fan-start'), 'Startreferenz');
+const chart = renderScenarioWealthChart([], { wealthFan: fan });
+assert(chart.includes('data-fan-background="true"'), 'Fächerhintergrund auch ohne Szenariolinien');
+const endPricePath = buildScenarioWealthPath({ logDataRows: [{ jahr: 1, portfolio_total_end: 110000, inflation_factor_cum: 1, inflation: 10 }] }, { initialWealth: 100000, yearEndRealBasis: true });
+assertClose(endPricePath.points[1].value, 100000, 1e-8, 'Szenariolinie und Fächer teilen Jahresendpreisbasis ohne Rohlogänderung');
+const labels = [...real.matchAll(/class="wealth-fan-end-label" x="[^"]+" y="([^"]+)"/g)].map(match => Number(match[1]));
+assertEqual(new Set(labels).size, labels.length, 'Zusammenfallende Nullquantile haben getrennte Endbeschriftungen');
+
+assert(real.includes('width="1400" height="490" viewBox="0 0 1400 490"'), 'Vermögensfächer: native Pixelmaße');
+assert(real.includes('class="scenario-chart-scroll ds-chart-scroll" role="region" tabindex="0" aria-label='), 'Fächer hat eine benannte per Tastatur bedienbare innere Scrollregion');

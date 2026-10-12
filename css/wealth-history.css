@@ -1,0 +1,63 @@
+/* Gemeinsame lokale Verlaufsdarstellung; Farben ausschließlich über Tokens. */
+.wealth-history-svg { display: block; width: 100%; height: auto; font-family: var(--font-sans); overflow: visible; }
+.history-axis { fill: var(--text-muted); font-size: 12px; }
+.history-grid { stroke: var(--border); stroke-width: 1; }
+.history-axis-break { fill: none; stroke: var(--text-muted); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.history-year-line { stroke: var(--border-strong); stroke-dasharray: 4 5; }
+.history-area { fill-opacity: .86; }
+.history-aktien_alt { fill: var(--history-aktien_alt); background: var(--history-aktien_alt); }
+.history-aktien { fill: var(--history-aktien_alt); background: var(--history-aktien_alt); }
+.history-aktien_neu { fill: var(--history-aktien_neu); background: var(--history-aktien_neu); }
+.history-anleihe { fill: var(--history-anleihe); background: var(--history-anleihe); }
+.history-geldmarkt { fill: var(--history-geldmarkt); background: var(--history-geldmarkt); }
+.history-gold { fill: var(--history-gold); background: var(--history-gold); }
+.history-cash { fill: var(--history-cash); background: var(--history-cash); }
+.history-total { fill: none; stroke: var(--history-total); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.history-total-point { fill: var(--history-total); }
+.history-end-value { fill: var(--text-main); font-weight: 600; font-size: 15px; }
+.history-hatch { fill: none; stroke: var(--text-muted); stroke-opacity: .55; stroke-width: 1; }
+.history-event { font-size: 13px; }
+.history-buy { fill: var(--good); }
+.history-sell { fill: var(--bad); }
+.history-purchase-line { stroke: var(--accent); stroke-dasharray: 6 4; }
+.history-sparkline { width: 100%; height: auto; display: block; }
+.history-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4); }
+.history-periods { display: flex; flex-wrap: wrap; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-sunken); }
+.history-periods button { appearance: none; border: 0; background: transparent; color: var(--text-muted); font: 500 var(--balance-help) var(--font-sans); padding: 8px 13px; min-height: 38px; border-radius: var(--radius-sm); cursor: pointer; }
+.history-periods button[aria-pressed="true"] { color: var(--text-main); background: var(--surface); box-shadow: var(--shadow-card); }
+.history-periods button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.history-legend { display: flex; flex-wrap: wrap; gap: 10px 24px; color: var(--text-muted); font-size: var(--balance-help); }
+.history-legend i { display: inline-block; width: 12px; height: 12px; margin-right: 6px; border-radius: 3px; }
+.history-legend b { color: var(--text-main); font-weight: 500; margin-left: 6px; }
+.history-total-key { background: var(--history-total); height: 3px !important; vertical-align: middle; }
+.history-buy-key { background: var(--good); }
+.history-sell-key { background: var(--bad); }
+.history-gap-key { background: repeating-linear-gradient(135deg,var(--surface) 0 3px,var(--text-muted) 3px 4px); }
+.history-metrics { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 22px; border-top: 1px solid var(--border); padding-top: 20px; }
+.history-metric { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.history-metric > span, .history-metric small { font-size: var(--balance-help); color: var(--text-muted); overflow-wrap: anywhere; }
+.history-metric strong { font-family: var(--font-serif); font-size: var(--balance-kpi); font-weight: 500; line-height: 1.12; overflow-wrap: anywhere; }
+@container suite-content (max-width: 70rem) { .history-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.history-note { color: var(--text-muted); font-size: var(--balance-help); line-height: 1.5; }
+.history-measurement { display: block; color: var(--text-muted); font-size: var(--balance-help); line-height: 1.5; }
+.history-coverage { margin-block: var(--space-4); font-size: var(--balance-help); }
+.history-coverage-bar { display: flex; height: 10px; width: 100%; overflow: hidden; background: var(--surface-sunken); border-radius: var(--radius-sm); margin-block: 8px; }
+.history-coverage-bar span { min-width: 0; flex-basis: 0; }
+.history-coverage-queried { background: var(--good); opacity: .55; }
+.history-coverage-neutral { background: var(--surface-sunken); }
+.history-coverage-gap { background: repeating-linear-gradient(135deg,var(--surface) 0 3px,var(--text-muted) 3px 4px); }
+
+.history-course { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.history-course-point { fill: var(--accent); }
+.history-positive, .pv-history-change.history-positive { color: var(--good); }
+.history-negative, .pv-history-change.history-negative { color: var(--bad); }
+.history-neutral, .pv-history-change.history-neutral { color: var(--text-muted); }
+.history-course-svg .history-event { font-size: 12px; }
+
+.history-total-area { fill: var(--history-aktien_alt); fill-opacity: .16; }
+.wealth-history-svg:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: var(--radius-md); }
+.history-day-guide { stroke: var(--text-main); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
+.history-day-field { pointer-events: none; }
+.history-day-content { box-sizing: border-box; width: 100%; height: 100%; padding: 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-main); font: 13px/24px var(--font-sans); overflow: hidden; overflow-wrap: anywhere; }
+.history-day-content > div:first-child { font-weight: 600; }
+.history-day-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

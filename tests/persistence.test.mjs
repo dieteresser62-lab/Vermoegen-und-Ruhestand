@@ -1,0 +1,2609 @@
+import { StorageManager } from '../app/balance/balance-storage.js';
+import { createNavigationGuard } from '../app/shared/navigation-guard.js';
+import { SnapshotArchive, SNAPSHOT_KINDS } from '../app/shared/snapshot-archive.js';
+import { captureSaleWealthLots } from '../app/profile/profile-wealth-history.js';
+import { historyDay, commitDailyPriceResult, readDailyPrices } from '../app/tranches/tranchen-history-store.js';
+import { readWealthHistory } from '../types/wealth-history-contract.js';
+import { detectRuntime, isTauriRuntime } from '../app/shared/runtime-env.js';
+import {
+    isAllowedPersistenceImportKey,
+    isAllowedSnapshotCaptureKey,
+    isAllowedSnapshotRestoreLiveKey,
+    listAllowedPersistenceImportKeys,
+    LEGACY_MIGRATION_MARKER_KEYS,
+    STRESS_REPLAY_ACTIVE_STORAGE_KEY,
+    PROBELAUF_STATE_KEY
+} from '../app/shared/persistence-key-policy.js';
+import { createLocalStorageAdapter } from '../app/shared/persistence-adapter-localstorage.js';
+import { createIndexedDbAdapter } from '../app/shared/persistence-adapter-indexeddb.js';
+import { createTauriJsonFileAdapter } from '../app/shared/persistence-adapter-tauri.js';
+import {
+    withProbelaufOperation,
+    blockSyncWrites,
+    hasSyncWriteBlocks,
+    configurePersistence,
+    exportAllSync,
+    flush,
+    getDirtyState,
+    getPersistenceStatus,
+    getItemSync,
+    importAll,
+    init,
+    keysSync,
+    listSnapshots,
+    readSnapshot,
+    writeSnapshot,
+    deleteSnapshot,
+    migrateLegacySnapshotsIfNeeded,
+    persistenceStorage,
+    replaceLiveRecords,
+    removeItemSync,
+    resetPersistenceForTests,
+    resetPersistenceRuntimeForTests,
+    replaceRecordsTransactional,
+    setItemSync
+} from '../app/shared/persistence-facade.js';
+import {
+    bindFullBackupImport,
+    buildFullPersistenceBackup,
+    buildRecoveryPersistenceBackup,
+    createFullBackupFilename,
+    createRecoveryBackupFilename,
+    FULL_BACKUP_APP_ID,
+    FULL_BACKUP_LEGACY_SCHEMA_VERSION,
+    FULL_BACKUP_SCHEMA_VERSION,
+    FULL_BACKUP_TYPE,
+    importFullPersistenceBackup,
+    normalizeFullPersistenceBackup
+} from '../app/shared/persistence-backup.js';
+import { CONFIG } from '../app/balance/balance-config.js';
+import { PROFILE_STORAGE_KEYS } from '../app/profile/profile-state.js';
+import {
+    commitTrancheReconciliation,
+    readReconciliationHistory
+} from '../app/tranches/tranche-reconciliation.js';
+import { loadTranchesFromStorage } from '../app/tranches/tranchen-manager-state.js';
+import { switchProfile } from '../app/profile/profile-storage.js';
+
+console.log('--- Persistence Tests ---');
+
+class MockStorage {
+    constructor() {
+        this.store = new Map();
+    }
+    getItem(key) {
+        return this.store.has(String(key)) ? this.store.get(String(key)) : null;
+    }
+    setItem(key, value) {
+        this.store.set(String(key), String(value));
+    }
+    removeItem(key) {
+        this.store.delete(String(key));
+    }
+    clear() {
+        this.store.clear();
+    }
+    key(index) {
+        return Array.from(this.store.keys())[index] || null;
+    }
+    get length() {
+        return this.store.size;
+    }
+}
+
+function createMemoryAdapter(initial = {}, options = {}) {
+    const store = new Map(Object.entries(initial).map(([key, value]) => [key, String(value)]));
+    const batches = [];
+    const snapshots = new Map();
+    let saveCalls = 0;
+    return {
+        name: 'memory',
+        batches,
+        snapshots,
+        store,
+        async open() {},
+        async loadAll() {
+            return Object.fromEntries(store.entries());
+        },
+        async saveBatch(batch) {
+            saveCalls += 1;
+            batches.push({
+                upserts: batch.upserts.map(([key, value]) => [key, value]),
+                deletes: [...batch.deletes]
+            });
+            if (options.failSave) {
+                throw new Error('save failed');
+            }
+            batch.deletes.forEach(key => store.delete(key));
+            const appliedUpserts = options.acknowledgeWithoutFirstUpsertOnce && saveCalls === 1
+                ? batch.upserts.slice(1)
+                : batch.upserts;
+            appliedUpserts.forEach(([key, value]) => store.set(key, String(value)));
+            if (options.failAfterApplyOnce && saveCalls === 1) {
+                throw new Error('save failed after partial apply');
+            }
+            if (options.failAfterApplyAlways) {
+                throw new Error('save failed after every apply');
+            }
+        },
+        async readMetadata(key) {
+            return store.get(`metadata.${key}`) || null;
+        },
+        async writeMetadata(key, value) {
+            store.set(`metadata.${key}`, JSON.stringify(value));
+        },
+        async listSnapshots() {
+            return Array.from(snapshots.values()).map(({ records, ...entry }) => entry);
+        },
+        async readSnapshot(id) {
+            const snapshot = snapshots.get(String(id));
+            if (!snapshot) throw new Error(`Snapshot ${id} fehlt.`);
+            return snapshot;
+        },
+        async writeSnapshot(snapshot) {
+            if (options.failSnapshotWrite) throw new Error('snapshot write failed');
+            snapshots.set(String(snapshot.id), structuredClone(snapshot));
+            return true;
+        },
+        async deleteSnapshot(id) {
+            return snapshots.delete(String(id));
+        }
+    };
+}
+
+function deferred() {
+    let resolve;
+    let reject;
+    const promise = new Promise((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    return { promise, resolve, reject };
+}
+
+function nextTick() {
+    return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+function createFullBackupPayload(records, overrides = {}) {
+    const canonicalRecords = { ...records };
+    return {
+        backupType: FULL_BACKUP_TYPE,
+        schemaVersion: FULL_BACKUP_SCHEMA_VERSION,
+        app: FULL_BACKUP_APP_ID,
+        exportedAt: '2026-07-28T12:00:00.000Z',
+        runtime: 'browser',
+        recordScope: 'authorized-application-records',
+        recordCount: Object.keys(canonicalRecords).length,
+        excludedRecordCount: 0,
+        excludedKeys: [],
+        records: canonicalRecords,
+        localStorage: { ...canonicalRecords },
+        ...overrides
+    };
+}
+
+function createFakeIndexedDB(options = {}) {
+    class FakeObjectStore {
+        constructor(db, storeName, store) {
+            this.db = db;
+            this.storeName = storeName;
+            this.store = store;
+        }
+        put(row) {
+            this.store.set(String(row.key), { ...row });
+        }
+        delete(key) {
+            this.store.delete(String(key));
+        }
+        get(key) {
+            const request = {};
+            setTimeout(() => {
+                request.result = this.store.get(String(key));
+                request.onsuccess?.();
+            }, 0);
+            return request;
+        }
+        openCursor() {
+            this.db.cursorCounts[this.storeName] = (this.db.cursorCounts[this.storeName] || 0) + 1;
+            const request = {};
+            const entries = Array.from(this.store.values());
+            let index = 0;
+            const advance = () => {
+                if (index >= entries.length) {
+                    request.result = null;
+                    request.onsuccess?.();
+                    return;
+                }
+                request.result = {
+                    value: entries[index],
+                    continue() {
+                        index += 1;
+                        setTimeout(advance, 0);
+                    }
+                };
+                request.onsuccess?.();
+            };
+            setTimeout(advance, 0);
+            return request;
+        }
+    }
+
+    class FakeTransaction {
+        constructor(db, storeNames) {
+            this.db = db;
+            this.storeNames = Array.isArray(storeNames) ? storeNames : [storeNames];
+            setTimeout(() => this.oncomplete?.(), 0);
+        }
+        objectStore(storeName) {
+            if (!this.storeNames.includes(storeName)) {
+                throw new Error(`Store ${storeName} ist nicht Teil der Transaktion.`);
+            }
+            const store = this.db.stores.get(storeName);
+            if (!store) throw new Error(`Store ${storeName} existiert nicht.`);
+            return new FakeObjectStore(this.db, storeName, store);
+        }
+    }
+
+    class FakeDatabase {
+        constructor() {
+            this.stores = new Map();
+            this.cursorCounts = Object.create(null);
+            this.version = 0;
+            this.closed = false;
+            this.objectStoreNames = {
+                contains: (name) => this.stores.has(name)
+            };
+        }
+        createObjectStore(name) {
+            if (this.stores.has(name)) return;
+            this.stores.set(name, new Map());
+        }
+        transaction(storeNames) {
+            if (this.closed) throw new Error('Database is closed');
+            return new FakeTransaction(this, storeNames);
+        }
+        close() {
+            this.closed = true;
+        }
+        reopen() {
+            this.closed = false;
+        }
+        triggerVersionChange() {
+            this.onversionchange?.();
+        }
+    }
+
+    const db = new FakeDatabase();
+    return {
+        db,
+        open(_name, version = 1) {
+            const request = {};
+            setTimeout(() => {
+                if (options.blocked) {
+                    request.onblocked?.();
+                    return;
+                }
+                db.reopen();
+                request.result = db;
+                if (version > db.version) {
+                    db.version = version;
+                    request.onupgradeneeded?.();
+                }
+                request.onsuccess?.();
+            }, 0);
+            return request;
+        },
+        deleteDatabase(name) {
+            const request = {};
+            setTimeout(() => {
+                if (options.deleteBlocked && name === 'snapshotDB') {
+                    request.onblocked?.();
+                    return;
+                }
+                if (name === 'snapshotDB') {
+                    db.deletedSnapshotDb = true;
+                }
+                request.result = true;
+                request.onsuccess?.();
+            }, 0);
+            return request;
+        }
+    };
+}
+
+const prevLocalStorage = global.localStorage;
+const prevWindow = global.window;
+const prevDocument = global.document;
+const prevDispatchEvent = global.dispatchEvent;
+const prevCustomEvent = global.CustomEvent;
+
+try {
+    console.log('Test 1: runtime detection');
+    {
+        assertEqual(detectRuntime(null), 'unknown', 'Ohne Window ist Runtime unknown');
+        assertEqual(detectRuntime({}), 'browser', 'Normales Window ist Browser');
+        assertEqual(detectRuntime({ __TAURI_INTERNALS__: {} }), 'tauri', 'Tauri Internals werden erkannt');
+        assert(isTauriRuntime({ __TAURI__: {} }), 'Tauri v1 Marker wird erkannt');
+    }
+
+    console.log('Test 2: persistence key policy');
+    {
+        const storage = new MockStorage();
+        storage.setItem(CONFIG.STORAGE.LS_KEY, '{}');
+        storage.setItem('sim_dynamicFlex', 'true');
+        storage.setItem('sim.dynamicFlex', 'true');
+        storage.setItem('balance_expenses_v1', '{}');
+        storage.setItem(STRESS_REPLAY_ACTIVE_STORAGE_KEY, '{"workspace":true}');
+        storage.setItem(LEGACY_MIGRATION_MARKER_KEYS.target, 'indexeddb');
+        storage.setItem('private_unrelated_key', 'secret');
+
+        assert(isAllowedPersistenceImportKey(CONFIG.STORAGE.LS_KEY), 'Balance-Key ist erlaubt');
+        assert(isAllowedPersistenceImportKey('sim_dynamicFlex'), 'sim_ Key ist erlaubt');
+        assert(isAllowedPersistenceImportKey('sim.dynamicFlex'), 'sim. Key ist erlaubt');
+        assert(isAllowedPersistenceImportKey('balance_expenses_v1'), 'Ausgaben-Key ist erlaubt');
+        assert(isAllowedPersistenceImportKey(LEGACY_MIGRATION_MARKER_KEYS.target), 'Migrationsmarker ist erlaubt');
+        assert(isAllowedPersistenceImportKey(STRESS_REPLAY_ACTIVE_STORAGE_KEY), 'Full-Backup-Policy erlaubt den Replay-Arbeitsstand');
+        assert(!isAllowedSnapshotCaptureKey(STRESS_REPLAY_ACTIVE_STORAGE_KEY), 'Snapshots schliessen den Replay-Arbeitsstand explizit aus');
+        assert(!isAllowedSnapshotRestoreLiveKey(STRESS_REPLAY_ACTIVE_STORAGE_KEY, { mode: 'full' }), 'Auch Full-Snapshot-Restore schliesst Replay explizit aus');
+        assert(!isAllowedPersistenceImportKey('private_unrelated_key'), 'Fremder Key ist nicht erlaubt');
+
+        const keys = listAllowedPersistenceImportKeys(storage);
+        assert(keys.includes(CONFIG.STORAGE.LS_KEY), 'Allowlist-Listing enthaelt Balance-Key');
+        assert(keys.includes(STRESS_REPLAY_ACTIVE_STORAGE_KEY), 'Full-Backup-Listing enthaelt den Replay-Arbeitsstand');
+        assert(!keys.includes('private_unrelated_key'), 'Allowlist-Listing filtert fremden Key');
+    }
+
+    console.log('Test 3: uninitialized facade delegates to localStorage adapter');
+    {
+        const storage = new MockStorage();
+        global.localStorage = storage;
+        resetPersistenceForTests(createLocalStorageAdapter(() => global.localStorage));
+
+        setItemSync('phase1_key', 'value');
+        assertEqual(storage.getItem('phase1_key'), 'value', 'Uninitialisierte Facade schreibt direkt ins Legacy-Backend');
+        assertEqual(getItemSync('phase1_key'), 'value', 'Uninitialisierte Facade liest direkt aus Legacy-Backend');
+        removeItemSync('phase1_key');
+        assertEqual(storage.getItem('phase1_key'), null, 'Uninitialisierte Facade loescht im Legacy-Backend');
+    }
+
+    console.log('Test 4: initialized facade reads/writes synchronously from cache and flushes batch');
+    {
+        const adapter = createMemoryAdapter({ existing: 'old' });
+        resetPersistenceForTests(adapter);
+        configurePersistence({ debounceMs: 0 });
+        await init();
+
+        assertEqual(getItemSync('existing'), 'old', 'Init laedt Backend in Memory-Cache');
+        setItemSync('new_key', 'new_value');
+        assertEqual(getItemSync('new_key'), 'new_value', 'setItemSync ist sofort im Cache sichtbar');
+        assertEqual(adapter.store.get('new_key'), undefined, 'Backend wird erst beim Flush geschrieben');
+
+        await flush();
+        assertEqual(adapter.store.get('new_key'), 'new_value', 'Flush schreibt Upsert ins Backend');
+        assertEqual(adapter.batches.length, 1, 'Flush erzeugt genau einen Batch');
+
+        removeItemSync('existing');
+        assertEqual(getItemSync('existing'), null, 'removeItemSync entfernt sofort aus Cache');
+        await flush();
+        assertEqual(adapter.store.has('existing'), false, 'Flush schreibt Delete ins Backend');
+    }
+
+    console.log('Test 5: failed flush keeps dirty keys queued');
+    {
+        const adapter = createMemoryAdapter({}, { failSave: true });
+        resetPersistenceForTests(adapter);
+        await init();
+
+        setItemSync('will_retry', '1');
+        let thrown = false;
+        try {
+            await flush();
+        } catch {
+            thrown = true;
+        }
+        assert(thrown, 'Flush-Fehler wird weitergegeben');
+        assert(getDirtyState().dirtyKeys.includes('will_retry'), 'Dirty Key bleibt nach Fehler in Queue');
+    }
+
+    console.log('Test 6: export/import bundle and runtime writes are not allowlist-blocked');
+    {
+        const adapter = createMemoryAdapter();
+        resetPersistenceForTests(adapter);
+        await init();
+
+        setItemSync('new_future_runtime_key', 'allowed-at-runtime');
+        const bundle = exportAllSync();
+        assertEqual(bundle.records.new_future_runtime_key, 'allowed-at-runtime', 'Runtime-Key wird exportiert');
+
+        await importAll({
+            records: {
+                [CONFIG.STORAGE.LS_KEY]: '{"inputs":{}}',
+                unrelated: 'blocked'
+            }
+        }, {
+            replace: true,
+            allowKey: isAllowedPersistenceImportKey
+        });
+
+        assertEqual(getItemSync(CONFIG.STORAGE.LS_KEY), '{"inputs":{}}', 'Import schreibt erlaubten Key');
+        assertEqual(getItemSync('unrelated'), null, 'Import blockiert nicht erlaubten Fremd-Key');
+    }
+
+    console.log('Test 7: persistenceStorage exposes storage-like API');
+    {
+        const adapter = createMemoryAdapter();
+        resetPersistenceForTests(adapter);
+        await init();
+
+        persistenceStorage.setItem('a', '1');
+        persistenceStorage.setItem('b', '2');
+        assertEqual(persistenceStorage.length, 2, 'Storage-like API liefert length');
+        assert(keysSync().includes(persistenceStorage.key(0)), 'Storage-like key() liefert vorhandenen Key');
+        persistenceStorage.clear();
+        assertEqual(persistenceStorage.length, 0, 'Storage-like clear leert Cache');
+    }
+
+    console.log('Test 8: flush calls are serialized to preserve write order');
+    {
+        const first = deferred();
+        const second = deferred();
+        const store = new Map();
+        const calls = [];
+        const adapter = {
+            async open() {},
+            async loadAll() {
+                return {};
+            },
+            async saveBatch(batch) {
+                calls.push({
+                    upserts: batch.upserts.map(([key, value]) => [key, value]),
+                    deletes: [...batch.deletes]
+                });
+                if (calls.length === 1) await first.promise;
+                if (calls.length === 2) await second.promise;
+                batch.deletes.forEach(key => store.delete(key));
+                batch.upserts.forEach(([key, value]) => store.set(key, String(value)));
+            }
+        };
+
+        resetPersistenceForTests(adapter);
+        await init();
+
+        setItemSync('race_key', 'old');
+        const flushOne = flush();
+        await Promise.resolve();
+        assertEqual(calls.length, 1, 'Erster Flush startet sofort');
+
+        setItemSync('race_key', 'new');
+        const flushTwo = flush();
+        await Promise.resolve();
+        assertEqual(calls.length, 1, 'Zweiter Flush wartet auf den ersten Flush');
+
+        first.resolve();
+        await nextTick();
+        assertEqual(calls.length, 2, 'Zweiter Flush startet nach Abschluss des ersten');
+        second.resolve();
+        await Promise.all([flushOne, flushTwo]);
+
+        assertEqual(store.get('race_key'), 'new', 'Serialisierte Flushes bewahren den neuesten Wert');
+    }
+
+    console.log('Test 9: reset unregisters lifecycle listeners');
+    {
+        const listeners = new Map();
+        let removeCount = 0;
+        const doc = {
+            visibilityState: 'visible',
+            addEventListener(type, handler) {
+                listeners.set(`doc:${type}`, handler);
+            },
+            removeEventListener(type, handler) {
+                if (listeners.get(`doc:${type}`) === handler) removeCount += 1;
+            }
+        };
+        const win = {
+            addEventListener(type, handler) {
+                listeners.set(`win:${type}`, handler);
+            },
+            removeEventListener(type, handler) {
+                if (listeners.get(`win:${type}`) === handler) removeCount += 1;
+            }
+        };
+
+        global.document = doc;
+        global.window = win;
+        resetPersistenceForTests(createMemoryAdapter());
+        await init();
+
+        assert(listeners.has('doc:visibilitychange'), 'visibilitychange Listener wird registriert');
+        assert(listeners.has('win:pagehide'), 'pagehide Listener wird registriert');
+
+        resetPersistenceForTests(createMemoryAdapter());
+        assertEqual(removeCount, 2, 'resetPersistenceForTests entfernt beide Lifecycle-Listener');
+    }
+
+    console.log('Test 10: Tauri close event flushes cache before confirming close');
+    {
+        const adapter = createMemoryAdapter();
+        let closeHandler = null;
+        const responses = [];
+        const win = {
+            addEventListener() {},
+            removeEventListener() {},
+            __TAURI__: {
+                event: {
+                    async listen(event, handler) {
+                        if (event === 'ruhestand://close-requested') closeHandler = handler;
+                        return () => {};
+                    }
+                },
+                core: {
+                    async invoke(command, payload) {
+                        if (command === 'confirm_app_close') responses.push(payload.response);
+                        if (payload.response === 'allow') assertEqual(adapter.store.get('close_key'), 'persisted', 'Finale Antwort erfolgt erst nach Backendflush');
+                        return true;
+                    }
+                }
+            }
+        };
+
+        global.window = win;
+        resetPersistenceForTests(adapter);
+        await init();
+        await nextTick();
+
+        setItemSync('close_key', 'persisted');
+        await closeHandler({ payload: { attemptId: '1' } });
+
+        assertEqual(adapter.store.get('close_key'), 'persisted', 'Tauri Close-Handshake flusht offene Writes');
+        assertEqual(responses.join(','), 'hold,allow', 'Tauri Close-Handshake übernimmt zuerst und bestätigt erst nach Flush');
+    }
+
+    console.log('Test 11: full persistence backup contains all records and runtime metadata');
+    {
+        const adapter = createMemoryAdapter({
+            sim_alpha: '1',
+            featureFlags: '{"strict":true}',
+            unknown_runtime_key: 'not-exported'
+        });
+        resetPersistenceForTests(adapter);
+        await init();
+
+        const backup = buildFullPersistenceBackup({ window: { __TAURI__: {} } });
+        assertEqual(backup.backupType, FULL_BACKUP_TYPE, 'Backup-Typ ist eindeutig');
+        assertEqual(backup.app, FULL_BACKUP_APP_ID, 'Backup schreibt die stabile App-ID');
+        assertEqual(backup.schemaVersion, FULL_BACKUP_SCHEMA_VERSION, 'Backup schreibt das aktuelle Schema');
+        assertEqual(backup.runtime, 'tauri', 'Runtime-Metadaten werden geschrieben');
+        assertEqual(backup.recordCount, 2, 'Backup zaehlt ausschliesslich erlaubte Records');
+        assertEqual(backup.recordScope, 'authorized-application-records',
+            'Backup benennt seinen fachlichen Record-Scope');
+        assertEqual(backup.excludedRecordCount, 1, 'Backup weist ausgeschlossene UI-/Fremdkeys aus');
+        assertEqual(backup.excludedKeys[0], 'unknown_runtime_key', 'Backup nennt den ausgeschlossenen Key');
+        assertEqual(backup.records.sim_alpha, '1', 'Backup enthaelt erlaubten Simulator-Key');
+        assertEqual(backup.records.featureFlags, '{"strict":true}', 'Backup enthaelt erlaubten technischen Key');
+        assertEqual(backup.records.unknown_runtime_key, undefined, 'Backup exportiert keinen unbekannten Runtime-Key');
+        assertEqual(backup.localStorage.sim_alpha, '1', 'Legacy localStorage-Alias bleibt im Backup');
+        const recovery = buildRecoveryPersistenceBackup({ reason: 'test-import' });
+        assertEqual(recovery.backupPurpose, 'recovery-before-import', 'Recovery-Backup markiert seinen Zweck');
+        assertEqual(recovery.recoveryReason, 'test-import', 'Recovery-Backup uebernimmt den Grund');
+        assert(
+            createFullBackupFilename(new Date('2026-05-25T12:13:14Z')).startsWith('ruhestand-suite-full-backup-2026-05-25_'),
+            'Backup-Dateiname enthaelt Datum'
+        );
+        assert(
+            createRecoveryBackupFilename(new Date('2026-05-25T12:13:14Z')).startsWith('ruhestand-suite-recovery-before-import-2026-05-25_'),
+            'Recovery-Dateiname enthaelt Datum'
+        );
+    }
+
+    console.log('Test 11: full persistence backup import replaces current records');
+    {
+        const adapter = createMemoryAdapter({ sim_old: 'remove-me' });
+        resetPersistenceForTests(adapter);
+        await init();
+
+        const invalid = normalizeFullPersistenceBackup({ records: { x: '1' } });
+        assertEqual(invalid.ok, false, 'Import lehnt Dateien ohne Backup-Typ ab');
+
+        const numericValue = normalizeFullPersistenceBackup(createFullBackupPayload({ sim_next: 42 }));
+        assertEqual(numericValue.ok, false, 'Import stringifiziert numerische Werte nicht still');
+        const unknownKey = normalizeFullPersistenceBackup(createFullBackupPayload({ arbitrary: 'blocked' }));
+        assertEqual(unknownKey.ok, false, 'Import weist unbekannte Keys ab');
+        const legacyGeneratedRecords = {
+            sim_legacy: '42',
+            ui_theme_dark: 'true'
+        };
+        const legacyGenerated = normalizeFullPersistenceBackup({
+            backupType: FULL_BACKUP_TYPE,
+            schemaVersion: FULL_BACKUP_LEGACY_SCHEMA_VERSION,
+            app: FULL_BACKUP_APP_ID,
+            exportedAt: '2026-07-27T12:00:00.000Z',
+            recordCount: Object.keys(legacyGeneratedRecords).length,
+            records: legacyGeneratedRecords,
+            localStorage: { ...legacyGeneratedRecords }
+        });
+        assertEqual(legacyGenerated.ok, true, 'App-generiertes Schema-1-Backup wird definiert migriert');
+        assertEqual(legacyGenerated.backup.schemaVersion, FULL_BACKUP_SCHEMA_VERSION,
+            'Schema-1-Backup wird auf den aktuellen Vertrag normalisiert');
+        assertEqual(legacyGenerated.backup.sourceSchemaVersion, FULL_BACKUP_LEGACY_SCHEMA_VERSION,
+            'Migration behaelt die Quellversion fuer Diagnose');
+        assertEqual(legacyGenerated.backup.records.sim_legacy, '42',
+            'Schema-1-Migration behaelt gueltige String-Werte unveraendert');
+        assertEqual(legacyGenerated.backup.records.ui_theme_dark, undefined,
+            'Schema-1-Migration verwirft nicht mehr autorisierte UI-Keys kontrolliert');
+        assertEqual(legacyGenerated.backup.excludedKeys[0], 'ui_theme_dark',
+            'Schema-1-Migration weist ausgelassene Keys aus');
+        const legacyNumericValue = normalizeFullPersistenceBackup({
+            backupType: FULL_BACKUP_TYPE,
+            schemaVersion: FULL_BACKUP_LEGACY_SCHEMA_VERSION,
+            app: FULL_BACKUP_APP_ID,
+            exportedAt: '2026-07-27T12:00:00.000Z',
+            recordCount: 1,
+            records: { sim_legacy_numeric: 42 },
+            localStorage: { sim_legacy_numeric: 42 }
+        });
+        assertEqual(legacyNumericValue.ok, false,
+            'Schema-1-Migration darf numerische Werte nicht still stringifizieren');
+
+        const legacyLocalStorageOnly = normalizeFullPersistenceBackup({
+            backupType: FULL_BACKUP_TYPE,
+            schemaVersion: FULL_BACKUP_LEGACY_SCHEMA_VERSION,
+            app: FULL_BACKUP_APP_ID,
+            exportedAt: '2026-07-27T12:00:00.000Z',
+            recordCount: 1,
+            localStorage: { sim_legacy_alias: 'ok' }
+        });
+        assertEqual(legacyLocalStorageOnly.ok, true,
+            'Schema-1-Backup mit historischem localStorage-Alias bleibt importierbar');
+        assertEqual(legacyLocalStorageOnly.backup.records.sim_legacy_alias, 'ok',
+            'localStorage-only-Migration uebernimmt erlaubte Records');
+        const wrongCount = normalizeFullPersistenceBackup(createFullBackupPayload(
+            { sim_next: '42' },
+            { recordCount: 99 }
+        ));
+        assertEqual(wrongCount.ok, false, 'Import weist einen falschen recordCount ab');
+        const wrongApp = normalizeFullPersistenceBackup(createFullBackupPayload(
+            { sim_next: '42' },
+            { app: 'fremde-app' }
+        ));
+        assertEqual(wrongApp.ok, false, 'Import weist eine fremde App-ID ab');
+        const wrongSchema = normalizeFullPersistenceBackup(createFullBackupPayload(
+            { sim_next: '42' },
+            { schemaVersion: 99 }
+        ));
+        assertEqual(wrongSchema.ok, false, 'Import weist eine unbekannte Schemaversion ab');
+        const corruptContext = normalizeFullPersistenceBackup(createFullBackupPayload({
+            [PROFILE_STORAGE_KEYS.registry]: 'not-json',
+            [PROFILE_STORAGE_KEYS.current]: 'ghost'
+        }));
+        assertEqual(corruptContext.ok, false, 'Korrupte Registry und Ghost-Current werden im Preflight abgewiesen');
+        const corruptInflation = normalizeFullPersistenceBackup(createFullBackupPayload({
+            [CONFIG.STORAGE.LS_KEY]: JSON.stringify({
+                lastState: { cumulativeInflationFactor: 0 }
+            })
+        }));
+        assertEqual(corruptInflation.ok, false, 'Vollbackup-Preflight weist Inflationsfaktor 0 fachlich ab');
+
+        const result = await importFullPersistenceBackup(createFullBackupPayload({
+            sim_next: '42',
+            enableWorkerTelemetry: 'true'
+        }));
+
+        assertEqual(result.ok, true, 'Komplettimport ist erfolgreich');
+        assertEqual(getItemSync('sim_old'), null, 'Komplettimport ersetzt alte erlaubte Daten');
+        assertEqual(getItemSync('sim_next'), '42', 'Komplettimport schreibt kanonischen Stringwert');
+        assertEqual(getItemSync('enableWorkerTelemetry'), 'true', 'Komplettimport schreibt erlaubten globalen Key');
+        assert(Boolean(result.recoverySnapshotId), 'Komplettimport liefert den bestaetigten Recovery-Snapshot');
+        assertEqual(adapter.snapshots.size, 1, 'Recovery-Snapshot wurde persistent im Adapterarchiv geschrieben');
+        const recoverySnapshot = adapter.snapshots.get(result.recoverySnapshotId);
+        assertEqual(recoverySnapshot.records.sim_old, 'remove-me', 'Recovery-Snapshot enthaelt den vorherigen Livebestand');
+    }
+
+    console.log('Test: Komplettbackup erhält profilgetrennte Verläufe und validiert vor Importwrites');
+    {
+        const entry = { id: 'manual:2026-12-31', asOf: '2026-12-31', reason: 'manual', periodId: null,
+            tagesgeld: 12000, geldmarktEtf: 23000, depotwertAlt: 34000, depotwertNeu: 45000, aktienEtf: 79000, total: 114000 };
+        const historyA = { schemaVersion: 1, entries: [entry, { ...entry, id: 'annual:2026', reason: 'annual_close', periodId: 'calendar-year:2026' }] };
+        const historyB = { schemaVersion: 1, entries: [{ ...entry, tagesgeld: 0, total: 102000 }] };
+        const stateA = JSON.stringify({ inputs: {}, wealthHistory: historyA });
+        const stateB = JSON.stringify({ inputs: {}, wealthHistory: historyB });
+        const registry = { version: 1, profiles: {
+            a: { meta: { id: 'a', name: 'A' }, data: { [CONFIG.STORAGE.LS_KEY]: stateA } },
+            b: { meta: { id: 'b', name: 'B' }, data: { [CONFIG.STORAGE.LS_KEY]: stateB } }
+        } };
+        const source = createMemoryAdapter({ [CONFIG.STORAGE.LS_KEY]: stateA, [PROFILE_STORAGE_KEYS.registry]: JSON.stringify(registry),
+            [PROFILE_STORAGE_KEYS.current]: 'a', [PROFILE_STORAGE_KEYS.active]: 'a' });
+        resetPersistenceForTests(source);
+        await init();
+        const backup = JSON.parse(JSON.stringify(buildFullPersistenceBackup()));
+        const destination = createMemoryAdapter({ sim_previous: 'alt' });
+        resetPersistenceForTests(destination);
+        await init();
+        assertEqual((await importFullPersistenceBackup(backup)).ok, true, 'Ein exportiertes und serialisiertes Vollbackup ist importierbar');
+        assertEqual(JSON.stringify(JSON.parse(getItemSync(CONFIG.STORAGE.LS_KEY)).wealthHistory), JSON.stringify(historyA), 'Vollbackup-Roundtrip erhält jedes Live-Verlauffeld');
+        const restored = JSON.parse(getItemSync(PROFILE_STORAGE_KEYS.registry));
+        for (const [id, history] of [['a', historyA], ['b', historyB]]) {
+            assertEqual(JSON.stringify(JSON.parse(restored.profiles[id].data[CONFIG.STORAGE.LS_KEY]).wealthHistory), JSON.stringify(history), 'Vollbackup erhält getrennte Registryverläufe');
+        }
+        const before = JSON.stringify(exportAllSync().records);
+        const batchesBefore = destination.batches.length;
+        const snapshotsBefore = destination.snapshots.size;
+        const invalidValues = [null, { schemaVersion: 99, entries: [] }, { schemaVersion: 1, entries: [{ ...entry, total: 1 }] }];
+        for (const invalid of invalidValues) {
+            for (const target of ['live', 'inactive']) {
+                const records = { ...backup.records };
+                const corruptState = JSON.stringify({ inputs: {}, wealthHistory: invalid });
+                if (target === 'live') records[CONFIG.STORAGE.LS_KEY] = corruptState;
+                else {
+                    const corruptRegistry = JSON.parse(records[PROFILE_STORAGE_KEYS.registry]);
+                    corruptRegistry.profiles.b.data[CONFIG.STORAGE.LS_KEY] = corruptState;
+                    records[PROFILE_STORAGE_KEYS.registry] = JSON.stringify(corruptRegistry);
+                }
+                const result = await importFullPersistenceBackup(createFullBackupPayload(records));
+                assertEqual(result.ok, false, 'Beschädigter Live- oder inaktiver Profilverlauf verhindert Vollimport');
+                assertEqual(destination.batches.length, batchesBefore, 'Preflight schreibt keine Live-Batches');
+                assertEqual(destination.snapshots.size, snapshotsBefore, 'Preflight schreibt auch keinen Recovery-Snapshot');
+                assertEqual(JSON.stringify(exportAllSync().records), before, 'Abgewiesenes Backup lässt sämtliche Records unverändert');
+            }
+        }
+        const legacyRegistry = JSON.parse(JSON.stringify(registry));
+        for (const profile of Object.values(legacyRegistry.profiles)) profile.data[CONFIG.STORAGE.LS_KEY] = JSON.stringify({ inputs: {} });
+        const legacyRecords = { ...backup.records, [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ inputs: {} }),
+            [PROFILE_STORAGE_KEYS.registry]: JSON.stringify(legacyRegistry) };
+        const legacy = createFullBackupPayload(legacyRecords, { schemaVersion: FULL_BACKUP_LEGACY_SCHEMA_VERSION });
+        assertEqual((await importFullPersistenceBackup(legacy)).ok, true, 'Legacy-Vollbackup ohne Verlauf bleibt importierbar');
+        assertEqual(readWealthHistory(JSON.parse(getItemSync(CONFIG.STORAGE.LS_KEY))).entries.length, 0, 'Legacy-Replace übernimmt keinen bisherigen Live-Verlauf');
+        const cleared = JSON.parse(getItemSync(PROFILE_STORAGE_KEYS.registry));
+        assertEqual(readWealthHistory(JSON.parse(cleared.profiles.b.data[CONFIG.STORAGE.LS_KEY])).entries.length, 0, 'Legacy-Replace leert auch den bisher inaktiven Verlauf');
+    }
+
+    console.log('Test: Vollbackup erhält Kurszeiten und validiert vor Importwrites');
+    {
+        const state = JSON.stringify({ inputs: {}, wealthHistory: { schemaVersion: 1, entries: [
+            { id: 'manual:2026-01-02', asOf: '2026-01-02', reason: 'manual', periodId: null,
+                tagesgeld: 0, geldmarktEtf: 0, depotwertAlt: 0, depotwertNeu: 0, aktienEtf: 0, total: 0 }
+        ] } });
+        const dated = [{ schemaVersion: 2, trancheId: 'dated', name: 'ETF', shares: 2,
+            purchasePrice: 100, currentPrice: 120, category: 'equity', type: 'aktien_neu',
+            tqf: 0.3, taxExempt: false, asOf: 1700000000 }];
+        const undated = dated.map(({ asOf, ...lot }) => lot);
+        const registry = { version: 1, profiles: {
+            a: { meta: { id: 'a', name: 'A' }, data: { depot_tranchen: JSON.stringify(dated), [CONFIG.STORAGE.LS_KEY]: state } },
+            b: { meta: { id: 'b', name: 'B' }, data: { depot_tranchen: JSON.stringify(undated), [CONFIG.STORAGE.LS_KEY]: state } }
+        } };
+        const source = createMemoryAdapter({ depot_tranchen: JSON.stringify(dated),
+            [CONFIG.STORAGE.LS_KEY]: state,
+            balance_expenses_v1: JSON.stringify({ version: 1, activeYear: 2026, years: { '2026': { months: {} } } }),
+            [PROFILE_STORAGE_KEYS.registry]: JSON.stringify(registry),
+            [PROFILE_STORAGE_KEYS.current]: 'a', [PROFILE_STORAGE_KEYS.active]: 'a' });
+        resetPersistenceForTests(source);
+        await init();
+        const backup = JSON.parse(JSON.stringify(buildFullPersistenceBackup()));
+        assertEqual(JSON.parse(backup.records.depot_tranchen)[0].asOf, dated[0].asOf, 'Vollbackup exportiert exakt die Kurszeit');
+        const destination = createMemoryAdapter({ sim_previous: 'alt', ui_theme: 'fremder Zustand' });
+        resetPersistenceForTests(destination);
+        await init();
+        assertEqual((await importFullPersistenceBackup(backup)).ok, true, 'Exportiertes Vollbackup importiert erfolgreich');
+        assertEqual(loadTranchesFromStorage(persistenceStorage).tranches[0].asOf, dated[0].asOf, 'Live-Import erhält Kurszeit');
+        assertEqual(switchProfile('b'), true, 'Importiertes inaktives Profil kann geladen werden');
+        assert(!('asOf' in loadTranchesFromStorage(persistenceStorage).tranches[0]), 'Importierte Altdaten bleiben undatiert');
+        assertEqual(switchProfile('a'), true, 'Rückwechsel auf datiertes Profil gelingt');
+        await flush();
+        assertEqual(loadTranchesFromStorage(persistenceStorage).tranches[0].asOf, dated[0].asOf, 'Profilwechsel erhält Zeit');
+        const before = JSON.stringify(exportAllSync().records);
+        const batches = destination.batches.length;
+        const snapshots = destination.snapshots.size;
+        for (const target of ['live', 'active', 'inactive']) {
+            for (const asOf of ['', '1700000000', 0, -1, 1.5, 8640000000001]) {
+                const records = { ...backup.records };
+                const raw = JSON.stringify([{ ...dated[0], asOf }]);
+                if (target === 'live') records.depot_tranchen = raw;
+                else {
+                    const corruptRegistry = JSON.parse(records[PROFILE_STORAGE_KEYS.registry]);
+                    corruptRegistry.profiles[target === 'active' ? 'a' : 'b'].data.depot_tranchen = raw;
+                    records[PROFILE_STORAGE_KEYS.registry] = JSON.stringify(corruptRegistry);
+                }
+                assertEqual((await importFullPersistenceBackup(createFullBackupPayload(records))).ok, false,
+                    'Ungültige Live-/Profilkurszeit verhindert Vollimport');
+                assertEqual(destination.batches.length, batches, 'Preflight schreibt keine Batches');
+                assertEqual(destination.snapshots.size, snapshots, 'Preflight erzeugt keinen Recovery-Snapshot');
+                assertEqual(JSON.stringify(exportAllSync().records), before, 'Alle bestehenden Records bleiben bytegleich');
+            }
+        }
+    }
+
+    console.log('P8: Kurscommit mit echtem Facadecache und verzögertem Backend');
+    {
+        const original = JSON.stringify({ version: 1, symbols: {} });
+        const adapter = createMemoryAdapter({ rs_daily_prices_v1: original });
+        const save = adapter.saveBatch.bind(adapter); let release, saves = 0;
+        const gate = new Promise(resolve => { release = resolve; });
+        adapter.saveBatch = async batch => { if (++saves === 1) await gate; return save(batch); };
+        resetPersistenceForTests(adapter); await init();
+        const result = { currency: 'EUR', days: [historyDay('2026-01-02')], closes: [123.456789], interval: [historyDay('2026-01-01'), historyDay('2026-01-02')] };
+        const commit = commitDailyPriceResult('TEST.DE', result);
+        for (let i = 0; i < 20; i++) await Promise.resolve();
+        assertEqual(adapter.store.get('rs_daily_prices_v1'), original, 'Blockierter Backendflush veröffentlicht keine neue Abdeckung');
+        assertEqual(JSON.stringify(readDailyPrices().value), original, 'Bestätigter Leser zeigt während Facadeflush nur alten Record');
+        release(); await commit;
+        const confirmed = adapter.store.get('rs_daily_prices_v1');
+        assertEqual(JSON.stringify(readDailyPrices().value), confirmed, 'Reader und bestätigter Backendrecord stimmen nach Flush überein');
+        assertEqual(JSON.parse(confirmed).symbols['TEST.DE'].closes[0], 123.456789, 'Backend bestätigt Fachpreis ohne Rundung');
+        let failures = 0;
+        adapter.saveBatch = async batch => { if (++failures === 1) throw new Error('P8 Fehlflush'); return save(batch); };
+        let failed = false; try { await commitDailyPriceResult('TEST.DE', { error: 'HISTORY_HTTP_404' }); } catch { failed = true; }
+        assert(failed, 'Backendfehlflush meldet unbestätigten Symbolrecord');
+        assertEqual(adapter.store.get('rs_daily_prices_v1'), confirmed, 'Backendfehlflush schreibt alten Preis-/Intervall-/Fehlerrecord zurück');
+        assertEqual(getItemSync('rs_daily_prices_v1'), confirmed, 'Cache und Backend sind nach Rückschreiben bytegleich');
+    }
+
+    console.log('P8: Komplettbackup erhält globale Kurse, Beginn, zwei Cashhistorien und Totalverkaufsstammdaten');
+    {
+        const lot = { schemaVersion: 1, trancheId: 'p8-lot', name: 'Synthetisch', ticker: 'TEST.DE', shares: 10,
+            purchasePrice: 100, currentPrice: 120, purchaseDate: '2020-01-02', category: 'equity', type: 'aktien_neu', tqf: 0, notes: '' };
+        const lots = JSON.stringify(captureSaleWealthLots(null, [lot], [], 'p8-lot', '2026-01-02'));
+        const cashA = JSON.stringify({ version: 1, baselineValue: 1000, entries: [{ date: '2026-01-02', value: 900 }] });
+        const cashB = JSON.stringify({ version: 1, baselineValue: 500, entries: [{ date: '2026-01-02', value: 400 }] });
+        const state = JSON.stringify({ inputs: {}, lastState: null });
+        const registry = { version: 1, profiles: {
+            a: { meta: { id: 'a', name: 'A' }, data: { depot_tranchen: '[]', profile_cash_history_v1: cashA,
+                profile_wealth_history_lots_v1: lots, [CONFIG.STORAGE.LS_KEY]: state } },
+            b: { meta: { id: 'b', name: 'B' }, data: { depot_tranchen: JSON.stringify([lot]), profile_cash_history_v1: cashB, [CONFIG.STORAGE.LS_KEY]: state } }
+        } };
+        const records = { depot_tranchen: '[]', profile_cash_history_v1: cashA, profile_wealth_history_lots_v1: lots,
+            rs_wealth_history_start_v1: JSON.stringify({ version: 1, startDate: '2020-01-01' }),
+            rs_daily_prices_v1: JSON.stringify({ version: 1, symbols: { 'TEST.DE': { currency: 'EUR', days: [historyDay('2026-01-02')], closes: [123.456789],
+                queried: [[historyDay('2026-01-01'), historyDay('2026-01-09')]], failures: 3, lastError: 'HISTORY_HTTP_404' } } }),
+            [CONFIG.STORAGE.LS_KEY]: state, balance_expenses_v1: JSON.stringify({ version: 1, activeYear: 2026, years: { '2026': { months: {} } } }),
+            rs_profiles_v1: JSON.stringify(registry), rs_current_profile: 'a', rs_active_profile: 'a' };
+        resetPersistenceForTests(createMemoryAdapter(records)); await init();
+        const backup = JSON.parse(JSON.stringify(buildFullPersistenceBackup()));
+        const destination = createMemoryAdapter({ sim_previous: 'alt' }); resetPersistenceForTests(destination); await init();
+        assertEqual((await importFullPersistenceBackup(backup)).ok, true, 'Komplettbackup mit allen P8-Records ist importierbar');
+        for (const [key, raw] of Object.entries(records)) assertEqual(getItemSync(key), raw, 'Rundreise erhält alte und neue Records bytegleich: ' + key);
+        assertEqual(switchProfile('b'), true, 'Zweites Profil lädt nach Vollbackup');
+        assertEqual(getItemSync('profile_cash_history_v1'), cashB, 'Zweites Profil erhält eigene Cashhistorie');
+        assertEqual(getItemSync('profile_wealth_history_lots_v1'), null, 'Stammdatenkopie des ersten Profils gelangt nicht in zweites');
+        assertEqual(getItemSync('rs_daily_prices_v1'), records.rs_daily_prices_v1, 'Globale Kurs-/Abdeckungs-/Fehlerbytes bleiben beim Wechsel erhalten');
+        assertEqual(getItemSync('rs_wealth_history_start_v1'), records.rs_wealth_history_start_v1, 'Globaler Beginn bleibt beim Wechsel erhalten');
+        assertEqual(switchProfile('a'), true, 'Rückwechsel erhält Totalverkaufsprovenienz'); await flush();
+        const before = JSON.stringify(exportAllSync().records), batches = destination.batches.length, snapshots = destination.snapshots.size;
+        for (const key of ['rs_wealth_history_start_v1', 'rs_daily_prices_v1', 'profile_cash_history_v1', 'profile_wealth_history_lots_v1']) {
+            for (const target of key.startsWith('profile_') ? ['live', 'inactive'] : ['live']) {
+                const invalid = structuredClone(backup.records);
+                if (target === 'live') invalid[key] = '{}';
+                else { const r = JSON.parse(invalid.rs_profiles_v1); r.profiles.b.data[key] = '{}'; invalid.rs_profiles_v1 = JSON.stringify(r); }
+                assertEqual((await importFullPersistenceBackup(createFullBackupPayload(invalid))).ok, false, 'Ungültiger neuer Record verhindert Import: ' + key + '/' + target);
+                assertEqual(destination.batches.length, batches, 'Preflight verhindert sämtliche Livewrites');
+                assertEqual(destination.snapshots.size, snapshots, 'Preflight erzeugt keinen Recovery-Snapshot');
+                assertEqual(JSON.stringify(exportAllSync().records), before, 'Ungültiger Import lässt Bestand bytegleich');
+            }
+        }
+    }
+
+    console.log('P10c: Vollbackup-Rundreise erhält historische Registrystrings und eigene Importpolicy');
+    {
+        const legacyKey = 'ruhestandsmodell_snapshot_2026-01-20T11:48:21.709Z--Muster A';
+        const historical = { [legacyKey]: '{ "alt": true }', ui_panel_state: ' { "offen": true } ',
+            layout_person_panel: 'links\nrechts', featureFlags: '{ "strict": true }',
+            'sim.stressReplay.active.v1': '{ "registry": true }' };
+        const makeRecords = label => ({
+            rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
+                a: { meta: { id: 'a', name: 'Muster A' }, data: { profile_rente_monatlich: '1000', ...historical } },
+                b: { meta: { id: 'b', name: 'Muster B' }, data: { profile_rente_monatlich: '900', ...historical } }
+            } }), rs_current_profile: 'a', rs_active_profile: 'a', profile_rente_monatlich: '1000',
+            [legacyKey]: JSON.stringify({ label, values: {} }), featureFlags: JSON.stringify({ label }),
+            'sim.stressReplay.active.v1': JSON.stringify({ label }), sim_mcSeed: label
+        });
+        const sourceRecords = makeRecords('Quelle'), source = createMemoryAdapter(sourceRecords);
+        resetPersistenceForTests(source); await init({ installLifecycleHooks: false });
+        const backup = JSON.parse(JSON.stringify(buildFullPersistenceBackup()));
+        assert(normalizeFullPersistenceBackup(backup).ok, 'Historische technische Registrybeigaben werden normalisiert');
+        const initial = { ...makeRecords('Ziel'), ui_panel_state: 'Live UI', layout_person_panel: 'Live Layout' };
+        const destination = createMemoryAdapter(initial);
+        resetPersistenceForTests(destination); await init({ installLifecycleHooks: false });
+        const before = await destination.loadAll();
+        const imported = await importFullPersistenceBackup(backup);
+        assertEqual(imported.ok, true, 'Historisches Vollbackup importiert über produktive Facade');
+        const actual = await destination.loadAll();
+        assertEqual(actual.rs_profiles_v1, sourceRecords.rs_profiles_v1, 'Vollimport übernimmt vollständigen Registrystring');
+        for (const id of ['a', 'b']) for (const [key, value] of Object.entries(historical)) {
+            assertEqual(JSON.parse(actual.rs_profiles_v1).profiles[id].data[key], value, 'Vollimport erhält historischen Einzelstring: ' + id + '/' + key);
+        }
+        for (const key of [legacyKey, 'featureFlags', 'sim.stressReplay.active.v1']) {
+            assertEqual(actual[key], sourceRecords[key], 'Vollimport erhält ausdrücklich erlaubten Top-Level-Key: ' + key);
+        }
+        for (const key of ['ui_panel_state', 'layout_person_panel']) assertEqual(actual[key], initial[key], 'Registrybeigabe erzeugt keinen technischen Livewrite: ' + key);
+        const archiveBefore = new Map([...destination.snapshots].map(([id, snapshot]) => [id, JSON.stringify(snapshot)]));
+        const recovery = await StorageManager.restoreSnapshot(imported.recoverySnapshotId, null, {
+            guard: createNavigationGuard({ decide: async () => true }), reload: () => true
+        });
+        assertEqual(recovery.status, 'restored', 'Import-Recoverysnapshot mit historischen Profildaten wird produktiv zurückgeholt');
+        const canonical = data => JSON.stringify(Object.entries(data).sort());
+        assertEqual(canonical(await destination.loadAll()), canonical(before), 'Import-Recovery übernimmt Registry und erlaubte Top-Level-Bytes vollständig');
+        assertEqual(destination.snapshots.size, archiveBefore.size + 1, 'Import-Recovery ergänzt genau einen Rückkehrpunkt');
+        for (const [id, raw] of archiveBefore) {
+            assertEqual(JSON.stringify(destination.snapshots.get(id)), raw, 'Import-Recovery erhält bisherigen Archivpunkt bytegleich: ' + id);
+        }
+        const addedIds = [...destination.snapshots.keys()].filter(id => !archiveBefore.has(id));
+        assertEqual(addedIds.length, 1, 'Import-Recovery ersetzt keinen bisherigen Archivpunkt');
+        assertEqual(addedIds[0], recovery.recoverySnapshotId, 'Restore bestätigt die ID des einzigen neuen Rückkehrpunkts');
+        const returnPoint = await SnapshotArchive.readSnapshot(recovery.recoverySnapshotId);
+        assertEqual(JSON.stringify(returnPoint), JSON.stringify(destination.snapshots.get(recovery.recoverySnapshotId)), 'Rückkehrpunkt wird vollständig aus dem Backend zurückgelesen');
+        assertEqual(returnPoint.kind, SNAPSHOT_KINDS.beforeRestoreRecovery, 'Zusätzlicher Punkt ist eine Sicherung vor Benutzer-Restore');
+        assertEqual(returnPoint.label, 'vor Zurückholen', 'Zusätzlicher Punkt trägt den vereinbarten Anlass');
+        assertEqual(canonical(returnPoint.records), canonical(Object.fromEntries(Object.entries(actual).filter(([key]) => isAllowedPersistenceImportKey(key)))), 'Rückkehrpunkt sichert die vorherigen Bytes im tatsächlichen Vollimportumfang');
+        assertEqual(returnPoint.restoreScope.profileRegistryMode, 'replace-all-rollback', 'Rückkehrpunkt sichert sämtliche Profile');
+        assertEqual(returnPoint.restoreScope.profileLiveDataMode, 'replace-all-rollback', 'Rückkehrpunkt sichert die vollständigen Profillivewerte');
+        assertEqual(returnPoint.restoreScope.liveKeyMode, 'full-import', 'Rückkehrpunkt verwendet denselben Live-Keyumfang wie das Import-Recovery');
+
+        const invalidData = [
+            ['unknown_finance_key', 'fremd'], ['ui_panel_state', 7], ['layout_person_panel', null],
+            ['constructor', 'gefährlich'], ['prototype', 'gefährlich'], ['__proto__', 'gefährlich'],
+            ['profile_person_schema_version', '2'], ['profile_rente_monatlich', 'NaN'],
+            ['depot_tranchen', '{"ungueltig":true}'], ['profile_cash_history_v1', '{}'],
+            ['profile_wealth_history_lots_v1', '{}'],
+            [CONFIG.STORAGE.LS_KEY, '{"lastState":{"cumulativeInflationFactor":0}}']
+        ];
+        for (const id of ['a', 'b']) for (const [key, value] of invalidData) {
+            const invalid = { ...backup.records }, registry = JSON.parse(invalid.rs_profiles_v1);
+            Object.defineProperty(registry.profiles[id].data, key, { value, enumerable: true, configurable: true });
+            invalid.rs_profiles_v1 = JSON.stringify(registry);
+            const bytes = canonical(await destination.loadAll()), writes = destination.batches.length, snapshots = destination.snapshots.size;
+            const rejected = await importFullPersistenceBackup(createFullBackupPayload(invalid));
+            assertEqual(rejected.ok, false, 'Historische Beigaben lockern Fach-/Keyprüfung nicht: ' + id + '/' + key);
+            assertEqual(destination.batches.length, writes, 'Negative Registryprobe erfolgt vor Bestandswrites');
+            assertEqual(destination.snapshots.size, snapshots, 'Negative Registryprobe erzeugt keine Importsicherung');
+            assertEqual(canonical(await destination.loadAll()), bytes, 'Negative Registryprobe erhält Fachbytes');
+        }
+        for (const key of ['ui_panel_state', 'layout_person_panel', 'unknown_finance_key', '__proto__', 'constructor', 'prototype']) {
+            const invalid = { ...backup.records };
+            Object.defineProperty(invalid, key, { value: 'fremd', enumerable: true });
+            const writes = destination.batches.length, snapshots = destination.snapshots.size;
+            assertEqual((await importFullPersistenceBackup(createFullBackupPayload(invalid))).ok, false, 'Top-Level-Importpolicy bleibt strikt: ' + key);
+            assertEqual(destination.batches.length, writes, 'Top-Level-Gegenprobe schreibt keinen Bestand');
+            assertEqual(destination.snapshots.size, snapshots, 'Top-Level-Gegenprobe erzeugt keine Importsicherung');
+        }
+        const personRecords = { ...backup.records }, personRegistry = JSON.parse(personRecords.rs_profiles_v1);
+        personRegistry.profiles.b.data.profile_person_schema_version = '1';
+        personRegistry.profiles.b.data.profile_geburtsdatum = 'kein Datum';
+        personRecords.rs_profiles_v1 = JSON.stringify(personRegistry);
+        assertEqual((await importFullPersistenceBackup(createFullBackupPayload(personRecords))).ok, false, 'Technische Beigaben lockern Personenvalidierung unter Schema 1 nicht');
+    }
+
+    console.log('Test 11a2: konkrete Vollimportabbrüche erhalten Handlung, Bytes und Recovery');
+    {
+        const payload = createFullBackupPayload({ sim_next: 'must-not-write' });
+        const bytes = records => JSON.stringify(Object.entries(records).sort());
+        const assertSafeMessage = result => {
+            assert(!/\[|probelauf_backup_|full_backup_import_failed|SYNTHETIC/.test(result.message),
+                'Nutzerhinweis enthält keine technischen Codes oder Backenddetails');
+            if (result.recoverySnapshotId) assert(!result.message.includes(result.recoverySnapshotId),
+                'Snapshotkennung steht ausschließlich im Resultatfeld');
+            else assert(!result.message.includes('wurde angelegt'), 'Ohne Kennung keine behauptete Snapshotanlage');
+        };
+        for (const source of ['cache-record', 'persisted-record', 'controller']) {
+            const adapter = createMemoryAdapter({ sim_old: 'keep-me' });
+            resetPersistenceForTests(adapter); await init({ installLifecycleHooks: false });
+            const controller = { state: null };
+            if (source === 'cache-record') setItemSync(PROBELAUF_STATE_KEY, 'blocked');
+            if (source === 'persisted-record') adapter.store.set(PROBELAUF_STATE_KEY, 'blocked');
+            if (source === 'controller') controller.state = { phase: 'active' };
+            const before = bytes(await adapter.loadAll()), cacheBefore = bytes(exportAllSync().records);
+            const result = await importFullPersistenceBackup(payload, { probelaufController: controller });
+            assertEqual(result.ok, false, source + ': gültiger Import bleibt gesperrt');
+            assertEqual(result.code, 'probelauf_backup_blocked', source + ': bisheriger Sperrcode');
+            assert(result.message.includes('Probelauf') && result.message.includes('Probelauf beenden')
+                && !result.message.includes('erneut versuchen'), source + ': konkrete Beenden-Aufforderung');
+            assertEqual(result.recoverySnapshotId, null, source + ': kein Recovery vor erster Grenze');
+            assertSafeMessage(result);
+            assertEqual(bytes(await adapter.loadAll()), before, source + ': Backendbytes unverändert');
+            assertEqual(bytes(exportAllSync().records), cacheBefore, source + ': Cachebytes unverändert');
+            assertEqual(adapter.batches.length, 0, source + ': kein Importbatch');
+            assertEqual(adapter.snapshots.size, 0, source + ': keine Snapshotanlage');
+        }
+        for (const late of [false, true]) {
+            const adapter = createMemoryAdapter({ sim_old: 'keep-me' });
+            resetPersistenceForTests(adapter); await init({ installLifecycleHooks: false });
+            const originalLoad = adapter.loadAll, originalRead = adapter.readSnapshot;
+            const before = bytes(await adapter.loadAll()), cacheBefore = bytes(exportAllSync().records);
+            let failRead = !late, recoveryRead = false;
+            adapter.loadAll = async () => {
+                if (failRead) throw new Error('SYNTHETIC_BACKEND_SECRET');
+                return originalLoad();
+            };
+            adapter.readSnapshot = async id => {
+                const snapshot = await originalRead(id);
+                recoveryRead = true; failRead = true;
+                return snapshot;
+            };
+            let result;
+            try { result = await importFullPersistenceBackup(payload); }
+            finally { adapter.loadAll = originalLoad; adapter.readSnapshot = originalRead; }
+            assertEqual(result.ok, false, 'Fehlgeschlagene Probelauflesung blockiert den Import');
+            assertEqual(result.code, 'probelauf_backup_state_unavailable', 'Dauerhafte Lesung bleibt als Ursache erkennbar');
+            assert(result.message.includes('Bitte neu laden.'), 'Unsicherer Probelaufzustand fordert Neuladen');
+            assertSafeMessage(result);
+            assertEqual(recoveryRead, late, 'Lesefehler trifft die gewählte Prüfgrenze');
+            assertEqual(bytes(await adapter.loadAll()), before, 'Lesefehler erhält Backendbytes');
+            assertEqual(bytes(exportAllSync().records), cacheBefore, 'Lesefehler erhält Cachebytes');
+            assertEqual(adapter.batches.length, 0, 'Lesefehler erzeugt keinen Importbatch');
+            assertEqual(adapter.snapshots.size, late ? 1 : 0, 'Nur spätere Grenze besitzt einen Recoverypunkt');
+            if (late) assertEqual((await SnapshotArchive.readSnapshot(result.recoverySnapshotId)).records.sim_old,
+                'keep-me', 'Recoverypunkt bleibt nach spätem Lesefehler lesbar');
+            else assertEqual(result.recoverySnapshotId, null, 'Früher Lesefehler hat keine Recoverykennung');
+        }
+        {
+            const adapter = createMemoryAdapter({ sim_old: 'keep-me' });
+            resetPersistenceForTests(adapter); await init({ installLifecycleHooks: false });
+            const controller = { state: null }, originalRead = adapter.readSnapshot;
+            const before = bytes(await adapter.loadAll()), cacheBefore = bytes(exportAllSync().records);
+            let recoveryRead = false;
+            adapter.readSnapshot = async id => {
+                const snapshot = await originalRead(id);
+                recoveryRead = true; controller.state = { phase: 'active' };
+                return snapshot;
+            };
+            let result;
+            try { result = await importFullPersistenceBackup(payload, { probelaufController: controller }); }
+            finally { adapter.readSnapshot = originalRead; }
+            assertEqual(recoveryRead, true, 'Späte Sperre tritt erst bei bestätigter Recoverylesung ein');
+            assertEqual(result.ok, false, 'Späte Probelaufsperre verhindert Ersatz');
+            assertEqual(result.code, 'probelauf_backup_blocked', 'Zweite Grenze erhält Sperrcode');
+            assert(result.message.includes('Probelauf beenden') && !result.message.includes('erneut versuchen'),
+                'Zweite Grenze nennt denselben konkreten Probelaufhinweis');
+            assertSafeMessage(result);
+            assertEqual((await SnapshotArchive.readSnapshot(result.recoverySnapshotId)).records.sim_old,
+                'keep-me', 'Bestätigter Recoverypunkt bleibt lesbar');
+            assertEqual(adapter.snapshots.size, 1, 'Späte Sperre legt keinen zweiten Recoverypunkt an');
+            assertEqual(adapter.batches.length, 0, 'Späte Sperre schreibt keinen Importbatch');
+            assertEqual(bytes(await adapter.loadAll()), before, 'Späte Sperre erhält Backendbytes');
+            assertEqual(bytes(exportAllSync().records), cacheBefore, 'Späte Sperre erhält Cachebytes');
+        }
+        {
+            const adapter = createMemoryAdapter({ sim_old: 'before-recovery' });
+            resetPersistenceForTests(adapter); await init({ installLifecycleHooks: false });
+            const previousRecords = exportAllSync().records;
+            const snapshot = await SnapshotArchive.createSnapshot({ records: previousRecords, kind: SNAPSHOT_KINDS.fullBackupImportRecovery });
+            const confirmed = await SnapshotArchive.readSnapshot(snapshot.id);
+            setItemSync('sim_old', 'changed-live'); await flush();
+            const before = bytes(await adapter.loadAll()), cacheBefore = bytes(exportAllSync().records), batches = adapter.batches.length;
+            for (const recoverySnapshotId of [confirmed.id, null]) {
+                const result = await importFullPersistenceBackup(payload, {
+                    preparedRecovery: { recoverySnapshotId, previousRecords: confirmed.records }
+                });
+                assertEqual(result.ok, false, 'Geänderter Livebestand blockiert den Ersatz');
+                assertEqual(result.code, 'full_backup_import_failed', 'Livebestandabbruch behält bisherigen öffentlichen Code');
+                assert(result.message.includes('Livebestand') && result.message.includes('Bitte erneut importieren.'),
+                    'Livebestandabbruch fordert erneuten Import');
+                assertSafeMessage(result);
+                assertEqual(result.recoverySnapshotId, recoverySnapshotId, 'Verfügbare beziehungsweise fehlende Recoverykennung bleibt erhalten');
+                assertEqual(bytes(await adapter.loadAll()), before, 'Geänderter Backendbestand bleibt erhalten');
+                assertEqual(bytes(exportAllSync().records), cacheBefore, 'Geänderter Cachebestand bleibt erhalten');
+                assertEqual(getItemSync('sim_next'), null, 'Kein Importzielrecord im Cache');
+                assertEqual(adapter.batches.length, batches, 'Kein weiterer Batch nach Liveänderung');
+                assertEqual(adapter.snapshots.size, 1, 'Kein zusätzlicher Snapshot bei vorbereitetem Recoverypunkt');
+                assertEqual((await SnapshotArchive.readSnapshot(confirmed.id)).records.sim_old,
+                    'before-recovery', 'Ursprünglicher Recoverybestand bleibt lesbar');
+            }
+        }
+        {
+            const adapter = createMemoryAdapter({ sim_old: 'keep-me' });
+            resetPersistenceForTests(adapter); await init({ installLifecycleHooks: false });
+            const originalWrite = adapter.writeSnapshot;
+            adapter.writeSnapshot = async () => {
+                throw new Error('Der Livebestand hat sich nach der Importsicherung geändert. Bitte erneut importieren. SYNTHETIC_BACKEND_SECRET');
+            };
+            let result;
+            try { result = await importFullPersistenceBackup(payload); }
+            finally { adapter.writeSnapshot = originalWrite; }
+            assertEqual(result.code, 'full_backup_import_failed', 'Unbekannter Backendfehler behält den Sammelcode');
+            assert(!result.message.includes('Livebestand') && result.message.includes('erneut versuchen'),
+                'Ähnlicher Backendtext wird nicht als lokaler Livebestandabbruch behandelt');
+            assertSafeMessage(result);
+            assertEqual(result.recoverySnapshotId, null, 'Snapshotwritefehler liefert keine Recoverykennung');
+            assertEqual(adapter.batches.length, 0, 'Unbekannter Snapshotfehler schreibt keinen Importbatch');
+            assertEqual(adapter.snapshots.size, 0, 'Unbekannter Snapshotfehler erzeugt keinen Archivpunkt');
+            assertEqual(getItemSync('sim_old'), 'keep-me', 'Unbekannter Snapshotfehler erhält Cachebestand');
+            assertEqual(adapter.store.get('sim_old'), 'keep-me', 'Unbekannter Snapshotfehler erhält Backendbestand');
+        }
+        {
+            const adapter = createMemoryAdapter({ sim_old: 'keep-me' });
+            resetPersistenceForTests(adapter); await init({ installLifecycleHooks: false });
+            const originalRead = adapter.readSnapshot;
+            adapter.readSnapshot = async id => ({ ...await originalRead(id), records: { sim_old: 'mismatched' } });
+            let result;
+            try { result = await importFullPersistenceBackup(payload); }
+            finally { adapter.readSnapshot = originalRead; }
+            assertEqual(result.code, 'recovery_snapshot_mismatch', 'Recoverymismatch behält den konkreten Fehlercode');
+            assert(result.message.includes('Wiederherstellungspunkt stimmt nicht') && result.message.includes('prüfen'),
+                'Recoverymismatch erhält seinen konkreten Prüfhinweis');
+            assertSafeMessage(result);
+            assertEqual(adapter.batches.length, 0, 'Recoverymismatch schreibt keinen Importbatch');
+            const invalid = await importFullPersistenceBackup(createFullBackupPayload({ profile_tagesgeld: 'NaN' }));
+            assertEqual(invalid.ok, false, 'Preflight weist ungültige Fachwerte zurück');
+            assert(invalid.message.includes('profile_tagesgeld'), 'Preflight behält seinen konkreten Validierungshinweis');
+            const abort = Object.assign(new Error('aborted'), { name: 'AbortError' });
+            let caught;
+            try { await importFullPersistenceBackup(payload, { navigationOperation: { check() { throw abort; } } }); }
+            catch (error) { caught = error; }
+            assertEqual(caught, abort, 'AbortError wird als identisches Fehlerobjekt weitergeworfen');
+        }
+    }
+
+    console.log('Test 11b: full backup import UI creates recovery backup before replacing records');
+    {
+        const adapter = createMemoryAdapter({ sim_old: 'keep-me' });
+        resetPersistenceForTests(adapter);
+        await init();
+
+        const handlers = new Map();
+        const button = {
+            addEventListener(type, handler) {
+                handlers.set(`button:${type}`, handler);
+            }
+        };
+        const fileInput = {
+            files: [{ name: 'backup.json' }],
+            value: '',
+            click() {},
+            addEventListener(type, handler) {
+                handlers.set(`file:${type}`, handler);
+            }
+        };
+        const status = { dataset: {}, textContent: '' };
+        const doc = {
+            getElementById(id) {
+                return {
+                    fullBackupImportBtn: button,
+                    fullBackupImportFile: fileInput,
+                    fullBackupStatus: status
+                }[id] || null;
+            }
+        };
+        const prevFileReader = global.FileReader;
+        let reloadCount = 0;
+        let recoverySawOldValue = false;
+
+        try {
+            global.FileReader = class {
+                readAsText() {
+                    this.result = JSON.stringify({
+                        ...createFullBackupPayload({ sim_next: 'imported' })
+                    });
+                    setTimeout(() => this.onload?.(), 0);
+                }
+            };
+
+            bindFullBackupImport({
+                document: doc,
+                confirmImport: () => true,
+                reload: () => { reloadCount += 1; },
+                createRecoveryBackup: async () => {
+                    recoverySawOldValue = getItemSync('sim_old') === 'keep-me';
+                    return { filename: 'recovery.json', backup: buildRecoveryPersistenceBackup(), skipped: false };
+                }
+            });
+
+            handlers.get('file:change')();
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            assertEqual(recoverySawOldValue, true, 'Recovery-Backup wird vor dem Ersetzen erzeugt');
+            assertEqual(getItemSync('sim_old'), null, 'Import ersetzt nach Recovery die alten Daten');
+            assertEqual(getItemSync('sim_next'), 'imported', 'Import schreibt die neuen Daten nach Recovery');
+            assertEqual(reloadCount, 1, 'Import triggert nach Erfolg einen Reload');
+            assert(status.textContent.includes('Wiederherstellungssicherung wurde vorher erstellt'), 'Status nennt vorheriges Recovery-Backup');
+        } finally {
+            if (prevFileReader === undefined) delete global.FileReader; else global.FileReader = prevFileReader;
+        }
+    }
+
+    console.log('Test 11b2: echter Binder zeigt Probelaufsperre zwischen Vorbereitung und Mutation');
+    {
+        const adapter = createMemoryAdapter({ sim_old: 'keep-me' });
+        resetPersistenceForTests(adapter); await init({ installLifecycleHooks: false });
+        const handlers = new Map();
+        const button = { addEventListener(type, handler) { handlers.set('button:' + type, handler); } };
+        const fileInput = { files: [{ name: 'backup.json' }], value: '',
+            addEventListener(type, handler) { handlers.set('file:' + type, handler); } };
+        const status = { dataset: {}, textContent: '' };
+        const doc = { getElementById: id => ({ fullBackupImportBtn: button,
+            fullBackupImportFile: fileInput, fullBackupStatus: status })[id] || null };
+        const controller = { state: null }, guard = createNavigationGuard();
+        const originalReload = guard.reload, previousReader = global.FileReader;
+        let reloads = 0, mutations = 0, recoveryId;
+        // Echte Navigationsmutation und echter Importdienst; nur die Eintrittsgrenze wird instrumentiert.
+        guard.reload = async options => {
+            assertEqual(adapter.snapshots.size, 1, 'Binder hat Recovery vor guard.reload dauerhaft angelegt');
+            recoveryId = [...adapter.snapshots.keys()][0];
+            controller.state = { phase: 'active' };
+            return originalReload({ ...options, mutate: async operation => {
+                mutations += 1; return options.mutate(operation);
+            } });
+        };
+        try {
+            global.FileReader = class {
+                readAsText() { this.result = JSON.stringify(createFullBackupPayload({ sim_next: 'must-not-write' })); this.onload(); }
+            };
+            bindFullBackupImport({ document: doc, guard, probelaufController: controller,
+                confirmImport: () => true, reload: () => { reloads += 1; },
+                createRecoveryBackup: async () => ({ skipped: false }) });
+            await handlers.get('file:change')();
+            assertEqual(mutations, 1, 'Sperre wird vom echten mutate-Callback des Binders behandelt');
+            assertEqual(status.dataset.kind, 'error', '#fullBackupStatus erhält Fehlerstatus');
+            assert(status.textContent.includes('Probelauf beenden') && !status.textContent.includes('erneut versuchen'),
+                '#fullBackupStatus nennt die konkrete Beenden-Aufforderung');
+            assert(!status.textContent.includes(recoveryId) && !status.textContent.includes('probelauf_backup_'),
+                'Sichtbarer Binderstatus enthält weder Kennung noch Code');
+            assert(!status.textContent.includes('wurde angelegt'), 'Frühe Dienstsperre ohne übernommene Kennung behauptet keine Anlage');
+            assertEqual(reloads, 0, 'Fehlgeschlagene Mutation löst keinen Erfolgsreload aus');
+            assertEqual(adapter.batches.length, 0, 'Binder schreibt keinen Importbatch');
+            assertEqual(JSON.stringify(await adapter.loadAll()), JSON.stringify({ sim_old: 'keep-me' }), 'Backendbytes bleiben erhalten');
+            assertEqual(JSON.stringify(exportAllSync().records), JSON.stringify({ sim_old: 'keep-me' }), 'Cachebytes bleiben erhalten');
+            assertEqual((await SnapshotArchive.readSnapshot(recoveryId)).records.sim_old,
+                'keep-me', 'Vorbereiteter Binder-Recoverypunkt bleibt lesbar');
+            assertEqual(fileInput.value, '', 'Binder räumt die Dateiauswahl auf');
+        } finally {
+            guard.reload = originalReload;
+            if (previousReader === undefined) delete global.FileReader; else global.FileReader = previousReader;
+        }
+    }
+
+    console.log('Test 11c: full backup fault injection restores every allowed live key');
+    {
+        const adapter = createMemoryAdapter({
+            sim_old: 'keep-me',
+            enableWorkerTelemetry: 'false',
+            unknown_runtime_key: 'untouched'
+        }, { failAfterApplyOnce: true });
+        resetPersistenceForTests(adapter);
+        await init();
+
+        const result = await importFullPersistenceBackup(createFullBackupPayload({
+            sim_next: 'new-value',
+            enableWorkerTelemetry: 'true'
+        }));
+
+        assertEqual(result.ok, false, 'Teilweiser Backendfehler laesst den Import scheitern');
+        assertEqual(result.code, 'restore_rolled_back', 'Teilweiser Backendfehler meldet bestaetigten Rollback');
+        assertEqual(getItemSync('sim_old'), 'keep-me', 'Facade-Cache enthaelt wieder den alten Simulator-Key');
+        assertEqual(getItemSync('sim_next'), null, 'Facade-Cache enthaelt keinen partiellen Ziel-Key');
+        assertEqual(adapter.store.get('sim_old'), 'keep-me', 'Backend enthaelt wieder den alten Simulator-Key');
+        assertEqual(adapter.store.has('sim_next'), false, 'Backend enthaelt keinen partiellen Ziel-Key');
+        assertEqual(adapter.store.get('enableWorkerTelemetry'), 'false', 'Backend stellt den alten Globalwert wieder her');
+        assertEqual(adapter.store.get('unknown_runtime_key'), 'untouched', 'Nicht erlaubter Fremdkey bleibt unangetastet');
+        assertEqual(adapter.snapshots.size, 1, 'Recovery-Snapshot bleibt nach dem Rollback lesbar');
+        assertEqual(result.recoverySnapshotId, Array.from(adapter.snapshots.keys())[0],
+            'Fehlerresultat nennt den persistenten Recovery-Snapshot');
+        assert(result.message.includes('Wiederherstellungspunkt') && result.message.includes('Daten & Sicherung'),
+            'Fehlerresultat nennt den bedienbaren Recovery-Weg');
+        assert(result.message.includes('Dein bisheriger Stand ist unverändert.'), 'Bestätigter Rollback erhält die bisherige Standbestätigung');
+    }
+
+    console.log('Test 11c2: backend verification rejects acknowledged but unapplied writes');
+    {
+        const adapter = createMemoryAdapter({
+            sim_old: 'keep-backend'
+        }, { acknowledgeWithoutFirstUpsertOnce: true });
+        resetPersistenceForTests(adapter);
+        await init();
+
+        const result = await importFullPersistenceBackup(createFullBackupPayload({
+            sim_next: 'must-be-verified'
+        }));
+
+        assertEqual(result.ok, false, 'Ein nur bestaetigter, aber nicht persistierter Write darf nicht erfolgreich sein');
+        assertEqual(result.code, 'restore_rolled_back', 'Backend-Mismatch loest einen bestaetigten Rollback aus');
+        assertEqual(adapter.store.get('sim_old'), 'keep-backend', 'Rollback stellt den Backend-Altbestand wieder her');
+        assertEqual(adapter.store.has('sim_next'), false, 'Nicht persistiertes Ziel bleibt auch nach Rollback abwesend');
+        assertEqual(getItemSync('sim_old'), 'keep-backend', 'Facade-Cache wird auf den bestaetigten Altbestand zurueckgesetzt');
+    }
+
+    console.log('Test 11c3: transactional replacement requires backend readback support');
+    {
+        const adapterWithoutReadback = {
+            name: 'memory-without-readback',
+            async open() {},
+            async saveBatch() {}
+        };
+        resetPersistenceForTests(adapterWithoutReadback);
+
+        let readbackError = null;
+        try {
+            await replaceRecordsTransactional(
+                { sim_next: 'must-be-verifiable' },
+                { allowKey: isAllowedPersistenceImportKey }
+            );
+        } catch (error) {
+            readbackError = error;
+        }
+
+        assertEqual(readbackError?.code, 'persistence_backend_read_unavailable',
+            'Transaktionaler Ersatz darf ohne Backend-Readback nicht auf den Cache ausweichen');
+    }
+
+    console.log('Test 11c4: transactional readback mismatch retains stable failure metadata');
+    {
+        const adapter = createMemoryAdapter({ sim_old: 'keep-backend' }, {
+            acknowledgeWithoutFirstUpsertOnce: true
+        });
+        resetPersistenceForTests(adapter);
+        await init();
+
+        let mismatchError = null;
+        try {
+            await replaceRecordsTransactional(
+                { sim_next: 'must-be-verified' },
+                { allowKey: isAllowedPersistenceImportKey }
+            );
+        } catch (error) {
+            mismatchError = error;
+        }
+
+        assertEqual(mismatchError?.code, 'restore_rolled_back',
+            'Readback-Mismatch meldet einen bestaetigten Rollback');
+        assertEqual(mismatchError?.failureCode, 'persistence_readback_mismatch',
+            'Readback-Mismatch behaelt seinen stabilen primaeren Fehlercode');
+        assertEqual(mismatchError?.rollbackCode, null,
+            'Bestaetigter Rollback meldet keinen Rollbackfehlercode');
+        assertEqual(adapter.store.get('sim_old'), 'keep-backend',
+            'Readback-Mismatch stellt den vorherigen Backendwert wieder her');
+        assertEqual(adapter.store.has('sim_next'), false,
+            'Readback-Mismatch hinterlaesst keinen Zielwert');
+    }
+
+    console.log('Test 11d: recovery and post-load fault injection remain fail-closed');
+    {
+        const snapshotFailureAdapter = createMemoryAdapter({
+            sim_old: 'keep-before-snapshot'
+        }, { failSnapshotWrite: true });
+        resetPersistenceForTests(snapshotFailureAdapter);
+        await init();
+
+        const snapshotFailure = await importFullPersistenceBackup(createFullBackupPayload({
+            sim_next: 'must-not-write'
+        }));
+        assertEqual(snapshotFailure.ok, false, 'Fehlender Recovery-Snapshot blockiert den Import');
+        assertEqual(getItemSync('sim_old'), 'keep-before-snapshot', 'Snapshotfehler erhaelt den Livebestand');
+        assertEqual(getItemSync('sim_next'), null, 'Snapshotfehler schreibt kein Zielrecord');
+        assertEqual(snapshotFailureAdapter.batches.length, 0, 'Snapshotfehler tritt vor dem ersten fachlichen Batch ein');
+        assert(!snapshotFailure.recoverySnapshotId && !snapshotFailure.message.includes('wurde angelegt'), 'Fehler vor Recovery behauptet keinen angelegten Punkt');
+        assert(!snapshotFailure.message.includes('snapshot write failed'), 'Snapshotfehler gibt keine rohe Backendmeldung aus');
+
+        const postLoadAdapter = createMemoryAdapter({
+            sim_old: 'keep-after-validation'
+        });
+        resetPersistenceForTests(postLoadAdapter);
+        await init();
+        const postLoadFailure = await importFullPersistenceBackup(createFullBackupPayload({
+            sim_next: 'rollback-after-validation'
+        }), {
+            validateAfterLoad: () => ({ ok: false, message: 'fault after post-load validation' })
+        });
+        assertEqual(postLoadFailure.ok, false, 'Post-Load-Fehler laesst den Import scheitern');
+        assertEqual(postLoadFailure.code, 'restore_rolled_back', 'Post-Load-Fehler meldet bestaetigten Rollback');
+        assertEqual(getItemSync('sim_old'), 'keep-after-validation', 'Post-Load-Rollback stellt alten Key wieder her');
+        assertEqual(getItemSync('sim_next'), null, 'Post-Load-Rollback entfernt den Ziel-Key');
+        assertEqual(postLoadAdapter.store.get('sim_old'), 'keep-after-validation',
+            'Post-Load-Rollback stellt auch den Backendbestand wieder her');
+        assertEqual(postLoadAdapter.store.has('sim_next'), false,
+            'Post-Load-Rollback entfernt den Ziel-Key auch im Backend');
+    }
+
+    console.log('Test 11e: unverifiable rollback is surfaced explicitly');
+    {
+        const adapter = createMemoryAdapter({
+            sim_old: 'old-value'
+        }, { failAfterApplyAlways: true });
+        resetPersistenceForTests(adapter);
+        await init();
+
+        const result = await importFullPersistenceBackup(createFullBackupPayload({
+            sim_next: 'new-value'
+        }));
+
+        assertEqual(result.ok, false, 'Dauerhafter Backendfehler darf nicht als Erfolg erscheinen');
+        assertEqual(result.code, 'rollback_failed', 'Nicht verifizierbarer Rollback bleibt explizit sichtbar');
+        assert(result.message.includes('nicht bestätigt') && result.message.includes('wiederherstellen') && !result.message.includes('ist unverändert'), 'Unbestätigter Rollback beschreibt den nötigen Recoveryweg ehrlich');
+        assert(Boolean(result.rollbackError), 'Rollbackfehler bleibt fuer Recovery-Diagnose erhalten');
+        assertEqual(adapter.snapshots.size, 1, 'Recovery-Snapshot bleibt trotz Rollbackfehler lesbar');
+    }
+
+    console.log('Test 12: IndexedDB adapter stores kv records and metadata');
+    {
+        const fakeIndexedDB = createFakeIndexedDB();
+        const adapter = createIndexedDbAdapter({
+            indexedDB: fakeIndexedDB,
+            dbName: 'test-ruhestand-suite'
+        });
+
+        await adapter.open();
+        assertEqual(fakeIndexedDB.db.version, 2, 'IndexedDB Adapter oeffnet Version 2');
+        assert(fakeIndexedDB.db.stores.has('kv'), 'IndexedDB Adapter erstellt kv Store');
+        assert(fakeIndexedDB.db.stores.has('metadata'), 'IndexedDB Adapter erstellt metadata Store');
+        assert(fakeIndexedDB.db.stores.has('snapshots'), 'IndexedDB Adapter erstellt snapshots Store');
+
+        await adapter.saveBatch({
+            upserts: [['a', '1'], ['b', 2]],
+            deletes: []
+        });
+        assertEqual(fakeIndexedDB.db.stores.get('kv').get('a').value, '1', 'IndexedDB Adapter schreibt String-Werte');
+        assertEqual(fakeIndexedDB.db.stores.get('kv').get('b').value, '2', 'IndexedDB Adapter normalisiert Werte auf String');
+
+        const loaded = await adapter.loadAll();
+        assertEqual(loaded.a, '1', 'IndexedDB Adapter laedt ersten KV-Eintrag');
+        assertEqual(loaded.b, '2', 'IndexedDB Adapter laedt zweiten KV-Eintrag');
+
+        await adapter.saveBatch({
+            upserts: [['c', '3']],
+            deletes: ['a']
+        });
+        const afterDelete = await adapter.loadAll();
+        assertEqual(afterDelete.a, undefined, 'IndexedDB Adapter loescht KV-Eintraege');
+        assertEqual(afterDelete.c, '3', 'IndexedDB Adapter schreibt Upserts im Delete-Batch');
+
+        await adapter.writeMetadata('migration', { done: true });
+        const metadata = await adapter.readMetadata('migration');
+        assertEqual(metadata.done, true, 'IndexedDB Adapter liest Metadata getrennt vom KV-Store');
+
+        const snapshot = {
+            id: 'snapshot_2026-06-03T10-00-00-000Z--IndexedDB',
+            schemaVersion: 1,
+            snapshotType: 'persistence-records-v1',
+            label: 'IndexedDB',
+            createdAt: '2026-06-03T10:00:00.000Z',
+            activeProfileId: 'default',
+            recordCount: 1,
+            records: { balance_expenses_v1: '{}' }
+        };
+        await adapter.writeSnapshot(snapshot);
+        assert(fakeIndexedDB.db.stores.get('snapshots').has(snapshot.id), 'IndexedDB Adapter schreibt Snapshot in separaten Store');
+        assert(!fakeIndexedDB.db.stores.get('kv').has(snapshot.id), 'Snapshot-ID landet nicht im Live-KV-Store');
+        const listedSnapshots = await adapter.listSnapshots();
+        assertEqual(listedSnapshots.length, 1, 'IndexedDB Adapter listet Snapshot-Index');
+        assertEqual(listedSnapshots[0].records, undefined, 'IndexedDB Snapshot-Index enthaelt keinen Vollpayload');
+        const readSnapshot = await adapter.readSnapshot(snapshot.id);
+        assertEqual(readSnapshot.records.balance_expenses_v1, '{}', 'IndexedDB Adapter liest Vollsnapshot');
+        const deletedSnapshot = await adapter.deleteSnapshot(snapshot.id);
+        assertEqual(deletedSnapshot, true, 'IndexedDB Adapter loescht vorhandenen Snapshot');
+        const deletedAgain = await adapter.deleteSnapshot(snapshot.id);
+        assertEqual(deletedAgain, false, 'IndexedDB Adapter meldet fehlenden Snapshot beim zweiten Delete');
+
+        const replaceResult = await adapter.replaceLiveRecords({}, {
+            deleteKeys: ['b'],
+            upserts: [['d', 4]]
+        });
+        assertEqual(replaceResult.ok, true, 'IndexedDB Adapter ersetzt Live-Records ueber eigenen Contract');
+        const afterReplace = await adapter.loadAll();
+        assertEqual(afterReplace.b, undefined, 'IndexedDB replaceLiveRecords loescht Live-Key');
+        assertEqual(afterReplace.d, '4', 'IndexedDB replaceLiveRecords schreibt Live-Upsert');
+
+        const migrationReport = await adapter.migrateLegacySnapshotsIfNeeded();
+        assertEqual(migrationReport.migratedCount, 0, 'IndexedDB Snapshot-Migration liefert neutralen Report');
+    }
+
+    console.log('Test 12b: IndexedDB adapter handles versionchange as outdated');
+    {
+        const events = [];
+        global.CustomEvent = class {
+            constructor(type, options = {}) {
+                this.type = type;
+                this.detail = options.detail;
+            }
+        };
+        global.dispatchEvent = (event) => {
+            events.push(event);
+            return true;
+        };
+        const fakeIndexedDB = createFakeIndexedDB();
+        const adapter = createIndexedDbAdapter({
+            indexedDB: fakeIndexedDB,
+            dbName: 'versionchange-test'
+        });
+
+        await adapter.open();
+        fakeIndexedDB.db.triggerVersionChange();
+
+        let thrown = false;
+        try {
+            await adapter.loadAll();
+        } catch (err) {
+            thrown = err?.code === 'indexeddb-outdated';
+        }
+        assertEqual(thrown, true, 'IndexedDB Adapter blockiert Calls nach versionchange');
+        assert(events.some(event => event.type === 'persistence:outdated'), 'IndexedDB Adapter dispatcht Outdated-Event');
+    }
+
+    console.log('Test 12c: IndexedDB adapter rejects blocked upgrades');
+    {
+        const events = [];
+        global.CustomEvent = class {
+            constructor(type, options = {}) {
+                this.type = type;
+                this.detail = options.detail;
+            }
+        };
+        global.dispatchEvent = (event) => {
+            events.push(event);
+            return true;
+        };
+        const adapter = createIndexedDbAdapter({
+            indexedDB: createFakeIndexedDB({ blocked: true }),
+            dbName: 'blocked-upgrade-test'
+        });
+
+        let thrown = false;
+        try {
+            await adapter.open();
+        } catch (err) {
+            thrown = err?.code === 'indexeddb-upgrade-blocked';
+        }
+        assertEqual(thrown, true, 'IndexedDB Adapter lehnt blockiertes Upgrade klar ab');
+        assert(events.some(event => event.type === 'persistence:upgrade-blocked'), 'IndexedDB Adapter dispatcht Upgrade-Blocked-Event');
+    }
+
+    console.log('Test 12d: IndexedDB adapter migrates legacy full-localstorage snapshots and cleans snapshotDB');
+    {
+        const fakeIndexedDB = createFakeIndexedDB();
+        const adapter = createIndexedDbAdapter({
+            indexedDB: fakeIndexedDB,
+            dbName: 'legacy-snapshot-migration-test'
+        });
+        const legacyKey = `${CONFIG.STORAGE.SNAPSHOT_PREFIX}2026-legacy`;
+        const nonRestorableKey = `${CONFIG.STORAGE.SNAPSHOT_PREFIX}2026-no-profile`;
+        await adapter.open();
+        await adapter.saveBatch({
+            upserts: [
+                [legacyKey, JSON.stringify({
+                    snapshotType: 'full-localstorage',
+                    label: 'Legacy Profil',
+                    timestamp: '2026-06-01T08:00:00.000Z',
+                    localStorage: {
+                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":66}}',
+                        [PROFILE_STORAGE_KEYS.current]: 'default',
+                        [PROFILE_STORAGE_KEYS.registry]: JSON.stringify({
+                            profiles: {
+                                default: { meta: { name: 'Standard' }, data: {} }
+                            }
+                        }),
+                        [`${CONFIG.STORAGE.SNAPSHOT_PREFIX}nested`]: 'must-not-migrate',
+                        ui_panel_state: 'technical-keep-out'
+                    }
+                })],
+                [nonRestorableKey, JSON.stringify({
+                    snapshotType: 'full-localstorage',
+                    createdAt: '2026-06-02T08:00:00.000Z',
+                    localStorage: {
+                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":67}}',
+                        [PROFILE_STORAGE_KEYS.registry]: JSON.stringify({ profiles: {} })
+                    }
+                })]
+            ],
+            deletes: []
+        });
+
+        const report = await adapter.migrateLegacySnapshotsIfNeeded();
+        const snapshots = await adapter.listSnapshots();
+        const migrated = await adapter.readSnapshot('snapshot_legacy_2026-legacy');
+        const nonRestorable = await adapter.readSnapshot('snapshot_legacy_2026-no-profile');
+        const liveRecords = await adapter.loadAll();
+        const cleanupMarker = await adapter.readMetadata('legacySnapshotDbCleanup');
+
+        assertEqual(report.migratedCount, 2, 'IndexedDB Migration migriert beide Legacy-Snapshots');
+        assertEqual(report.skippedCount, 0, 'IndexedDB Migration ueberspringt keine gueltigen Legacy-Snapshots');
+        assertEqual(report.notStandardRestorableCount, 1, 'IndexedDB Migration markiert Snapshot ohne Profil-ID als nicht standard-restore-faehig');
+        assertEqual(report.errors.length, 0, 'IndexedDB Migration bleibt fehlerfrei');
+        assertEqual(snapshots.length, 2, 'IndexedDB Migration listet migrierte Snapshots im Archiv');
+        assertEqual(migrated.activeProfileId, 'default', 'IndexedDB Migration uebernimmt aktive Profil-ID');
+        assertEqual(migrated.activeProfileName, 'Standard', 'IndexedDB Migration uebernimmt Profilnamen');
+        assertEqual(migrated.records[CONFIG.STORAGE.LS_KEY], '{"inputs":{"alter":66}}', 'IndexedDB Migration uebernimmt fachliche Records');
+        assertEqual(migrated.records[`${CONFIG.STORAGE.SNAPSHOT_PREFIX}nested`], undefined, 'IndexedDB Migration filtert verschachtelte Legacy-Snapshot-Keys');
+        assertEqual(migrated.records.ui_panel_state, undefined, 'IndexedDB Migration filtert technische UI-Keys');
+        assertEqual(nonRestorable.activeProfileId, '', 'IndexedDB Migration laesst nicht ableitbare Profil-ID leer');
+        assertEqual(liveRecords[legacyKey], undefined, 'IndexedDB Migration loescht erfolgreich migrierten Legacy-Key aus Live-KV');
+        assertEqual(fakeIndexedDB.db.deletedSnapshotDb, true, 'IndexedDB Migration bereinigt alte snapshotDB');
+        assert(cleanupMarker.completedAt, 'IndexedDB Migration schreibt Cleanup-Marker');
+    }
+
+    console.log('Test 12e: IndexedDB legacy migration is idempotent and supports direct readSnapshot');
+    {
+        const fakeIndexedDB = createFakeIndexedDB();
+        const adapter = createIndexedDbAdapter({
+            indexedDB: fakeIndexedDB,
+            dbName: 'legacy-direct-read-test'
+        });
+        const legacyKey = `${CONFIG.STORAGE.SNAPSHOT_PREFIX}direct-read`;
+        await adapter.open();
+        await adapter.saveBatch({
+            upserts: [
+                [legacyKey, JSON.stringify({
+                    snapshotType: 'full-localstorage',
+                    createdAt: '2026-06-04T08:00:00.000Z',
+                    localStorage: {
+                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":69}}',
+                        [PROFILE_STORAGE_KEYS.active]: 'fallback-profile',
+                        [PROFILE_STORAGE_KEYS.registry]: JSON.stringify({
+                            profiles: {
+                                'fallback-profile': { meta: { name: 'Fallback Profil' }, data: {} }
+                            }
+                        })
+                    }
+                })]
+            ],
+            deletes: []
+        });
+
+        const directRead = await adapter.readSnapshot(legacyKey);
+        const afterDirectReadKvScans = fakeIndexedDB.db.cursorCounts.kv;
+        const secondReport = await adapter.migrateLegacySnapshotsIfNeeded();
+        const afterSecondMigrationKvScans = fakeIndexedDB.db.cursorCounts.kv;
+        await adapter.listSnapshots();
+
+        assertEqual(directRead.id, 'snapshot_legacy_direct-read', 'Direktes readSnapshot auf Legacy-Key migriert und liest kanonische ID');
+        assertEqual(directRead.activeProfileId, 'fallback-profile', 'Migration nutzt rs_active_profile als Fallback');
+        assertEqual(directRead.activeProfileName, 'Fallback Profil', 'Migration leitet Profilnamen aus rs_active_profile ab');
+        assertEqual(secondReport.migratedCount, 0, 'Zweiter Migrationslauf migriert nichts erneut');
+        assertEqual(afterSecondMigrationKvScans, afterDirectReadKvScans, 'Migrationsmarker verhindert zweiten KV-Cursor-Scan');
+        assertEqual(fakeIndexedDB.db.cursorCounts.kv, afterDirectReadKvScans, 'listSnapshots nutzt Fast-Path ohne erneuten KV-Cursor-Scan');
+    }
+
+    console.log('Test 12f: blocked legacy snapshotDB cleanup remains bounded and retryable');
+    {
+        const fakeIndexedDB = createFakeIndexedDB({ deleteBlocked: true });
+        const adapter = createIndexedDbAdapter({
+            indexedDB: fakeIndexedDB,
+            dbName: 'legacy-snapshot-cleanup-blocked-test'
+        });
+        await adapter.open();
+
+        const outcome = await Promise.race([
+            adapter.migrateLegacySnapshotsIfNeeded().then(report => ({ report })),
+            new Promise(resolve => setTimeout(() => resolve({ timedOut: true }), 100))
+        ]);
+        const cleanupMarker = await adapter.readMetadata('legacySnapshotDbCleanup');
+
+        assertEqual(outcome.timedOut, undefined, 'Blockiertes snapshotDB-Cleanup haengt die Migration nicht auf');
+        assert(
+            outcome.report.errors.some(error => error.key === 'snapshotDB'),
+            'Blockiertes snapshotDB-Cleanup wird im Migrationsreport sichtbar'
+        );
+        assertEqual(cleanupMarker, null, 'Blockiertes snapshotDB-Cleanup setzt keinen falschen Abschlussmarker');
+    }
+
+    console.log('Test 13: Tauri JSON adapter stores records via Rust commands');
+    {
+        let liveFileContent = '';
+        let snapshotFileContent = '';
+        const calls = [];
+        const adapter = createTauriJsonFileAdapter({
+            invoke: async (command, args = {}) => {
+                calls.push([command, args]);
+                if (command === 'load_app_state') {
+                    return args.target === 'snapshots' ? snapshotFileContent : liveFileContent;
+                }
+                if (command === 'save_app_state') {
+                    if (args.target === 'snapshots') {
+                        snapshotFileContent = args.content;
+                    } else {
+                        liveFileContent = args.content;
+                    }
+                    return null;
+                }
+                if (command === 'quarantine_app_state') {
+                    liveFileContent = '';
+                    return 'corrupt-file.json';
+                }
+                throw new Error(`unknown command ${command}`);
+            }
+        });
+
+        await adapter.open();
+        await adapter.saveBatch({ upserts: [['alpha', 1], ['beta', '2']], deletes: [] });
+        let loaded = await adapter.loadAll();
+        assertEqual(loaded.alpha, '1', 'Tauri Adapter schreibt String-Werte');
+        assertEqual(loaded.beta, '2', 'Tauri Adapter schreibt zweiten Wert');
+        await adapter.writeMetadata('migration', { done: true });
+        const metadata = await adapter.readMetadata('migration');
+        assertEqual(metadata.done, true, 'Tauri Adapter liest Metadata');
+        await adapter.saveBatch({ upserts: [], deletes: ['alpha'] });
+        loaded = await adapter.loadAll();
+        assertEqual(loaded.alpha, undefined, 'Tauri Adapter loescht Records');
+        assert(calls.some(([command, args]) => command === 'save_app_state' && !args.target), 'Tauri Adapter schreibt Live-State ohne explizites Target');
+        const liveSaves = calls.filter(([command, args]) => command === 'save_app_state' && !args.target);
+        const latestLiveSave = liveSaves[liveSaves.length - 1]?.[1] || {};
+        const latestLivePayload = JSON.parse(latestLiveSave.content);
+        assertEqual(latestLivePayload.schemaVersion, 1, 'Tauri Live-Payload nutzt Schema-Version 1');
+        assertEqual(latestLivePayload.records.beta, '2', 'Tauri Live-Payload serialisiert Records als Strings');
+        assertEqual(latestLivePayload.metadata.migration.done, true, 'Tauri Live-Payload enthaelt Metadata');
+
+        const snapshot = {
+            id: 'snapshot_2026-06-03T10-00-00-000Z--Tauri',
+            schemaVersion: 1,
+            snapshotType: 'balance-annual-close-v1',
+            label: 'Tauri',
+            createdAt: '2026-06-03T10:00:00.000Z',
+            activeProfileId: 'default',
+            recordCount: 1,
+            records: { balance_expenses_v1: '{}' }
+        };
+        await adapter.writeSnapshot(snapshot);
+        const listedSnapshots = await adapter.listSnapshots();
+        assertEqual(listedSnapshots.length, 1, 'Tauri Adapter listet Snapshot-Index aus separatem Target');
+        assertEqual(listedSnapshots[0].records, undefined, 'Snapshot-Index enthaelt keinen Vollpayload');
+        const readSnapshot = await adapter.readSnapshot(snapshot.id);
+        assertEqual(readSnapshot.records.balance_expenses_v1, '{}', 'Tauri Adapter liest Vollsnapshot aus separatem Target');
+        assert(snapshotFileContent.includes(snapshot.id), 'Snapshot-Datei enthaelt Snapshot-ID');
+        assert(!liveFileContent.includes(snapshot.id), 'Live-Datei enthaelt keine Snapshot-Archivdaten');
+        assert(
+            calls.some(([command, args]) => command === 'save_app_state' && args.target === 'snapshots'),
+            'Tauri Adapter schreibt Snapshot-Archiv mit target snapshots'
+        );
+        assert(
+            calls.some(([command, args]) => command === 'load_app_state' && args.target === 'snapshots'),
+            'Tauri Adapter laedt Snapshot-Archiv mit target snapshots'
+        );
+        const snapshotSaves = calls.filter(([command, args]) => command === 'save_app_state' && args.target === 'snapshots');
+        const latestSnapshotSave = snapshotSaves[snapshotSaves.length - 1]?.[1] || {};
+        const latestSnapshotPayload = JSON.parse(latestSnapshotSave.content);
+        assertEqual(latestSnapshotPayload.schemaVersion, 1, 'Tauri Snapshot-Payload nutzt Schema-Version 1');
+        assertEqual(latestSnapshotPayload.snapshots.length, 1, 'Tauri Snapshot-Payload enthaelt Snapshot-Liste');
+        assertEqual(latestSnapshotPayload.snapshots[0].id, snapshot.id, 'Tauri Snapshot-Payload serialisiert kanonische Snapshot-ID');
+        const deleted = await adapter.deleteSnapshot(snapshot.id);
+        assertEqual(deleted, true, 'Tauri Adapter loescht vorhandenen Snapshot');
+        const deletedAgain = await adapter.deleteSnapshot(snapshot.id);
+        assertEqual(deletedAgain, false, 'Tauri Adapter meldet fehlenden Snapshot beim zweiten Delete');
+    }
+
+    console.log('Test 13b: Tauri JSON adapter migrates legacy full-localstorage snapshots out of live state');
+    {
+        let snapshotFileContent = '';
+        let liveFileContent = JSON.stringify({
+            schemaVersion: 1,
+            records: {
+                [`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-legacy`]: JSON.stringify({
+                    snapshotType: 'full-localstorage',
+                    label: 'Tauri Legacy',
+                    createdAt: '2026-06-03T08:00:00.000Z',
+                    localStorage: {
+                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":68}}'
+                    }
+                })
+            },
+            metadata: {}
+        });
+        const adapter = createTauriJsonFileAdapter({
+            invoke: async (command, args = {}) => {
+                if (command === 'load_app_state') {
+                    return args.target === 'snapshots' ? snapshotFileContent : liveFileContent;
+                }
+                if (command === 'save_app_state') {
+                    if (args.target === 'snapshots') {
+                        snapshotFileContent = args.content;
+                    } else {
+                        liveFileContent = args.content;
+                    }
+                    return null;
+                }
+                throw new Error(`unknown command ${command}`);
+            }
+        });
+
+        await adapter.open();
+        const report = await adapter.migrateLegacySnapshotsIfNeeded();
+        const snapshots = await adapter.listSnapshots();
+        const migrated = await adapter.readSnapshot('snapshot_legacy_tauri-legacy');
+        const live = await adapter.loadAll();
+
+        assertEqual(report.migratedCount, 1, 'Tauri Migration migriert Legacy-Snapshot');
+        assertEqual(report.notStandardRestorableCount, 0, 'Tauri Migration nutzt default-Fallback fuer Vor-Profilverbund-Snapshot');
+        assertEqual(snapshots.length, 1, 'Tauri Migration schreibt Snapshot ins separate Archiv');
+        assertEqual(migrated.activeProfileId, 'default', 'Tauri Migration setzt default-Fallback');
+        assertEqual(migrated.records[CONFIG.STORAGE.LS_KEY], '{"inputs":{"alter":68}}', 'Tauri Migration uebernimmt fachliche Records');
+        assertEqual(live[`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-legacy`], undefined, 'Tauri Migration entfernt Legacy-Key aus Live-State');
+        assert(!liveFileContent.includes(`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-legacy`), 'Tauri Live-Datei enthaelt keinen Legacy-Snapshot-Key mehr');
+        assert(snapshotFileContent.includes('snapshot_legacy_tauri-legacy'), 'Tauri Snapshot-Datei enthaelt kanonischen Snapshot');
+    }
+
+    console.log('Test 13c: Tauri JSON adapter supports direct readSnapshot for legacy ids');
+    {
+        let snapshotFileContent = '';
+        let liveFileContent = JSON.stringify({
+            schemaVersion: 1,
+            records: {
+                [`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-direct`]: JSON.stringify({
+                    snapshotType: 'full-localstorage',
+                    createdAt: '2026-06-04T09:00:00.000Z',
+                    localStorage: {
+                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":70}}',
+                        [PROFILE_STORAGE_KEYS.active]: 'tauri-fallback',
+                        [PROFILE_STORAGE_KEYS.registry]: JSON.stringify({
+                            profiles: {
+                                'tauri-fallback': { meta: { name: 'Tauri Fallback' }, data: {} }
+                            }
+                        })
+                    }
+                })
+            },
+            metadata: {}
+        });
+        const adapter = createTauriJsonFileAdapter({
+            invoke: async (command, args = {}) => {
+                if (command === 'load_app_state') {
+                    return args.target === 'snapshots' ? snapshotFileContent : liveFileContent;
+                }
+                if (command === 'save_app_state') {
+                    if (args.target === 'snapshots') {
+                        snapshotFileContent = args.content;
+                    } else {
+                        liveFileContent = args.content;
+                    }
+                    return null;
+                }
+                throw new Error(`unknown command ${command}`);
+            }
+        });
+
+        await adapter.open();
+        const directRead = await adapter.readSnapshot(`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-direct`);
+
+        assertEqual(directRead.id, 'snapshot_legacy_tauri-direct', 'Tauri readSnapshot migriert Legacy-ID direkt');
+        assertEqual(directRead.activeProfileId, 'tauri-fallback', 'Tauri Direktmigration nutzt rs_active_profile');
+        assertEqual(directRead.activeProfileName, 'Tauri Fallback', 'Tauri Direktmigration uebernimmt Profilnamen');
+        assert(!liveFileContent.includes(`${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-direct`), 'Tauri Direktmigration entfernt Legacy-Key nach erfolgreichem Archivwrite');
+    }
+
+    console.log('Test 13d: Tauri JSON adapter keeps legacy keys when snapshot archive persistence fails');
+    {
+        const legacyKey = `${CONFIG.STORAGE.SNAPSHOT_PREFIX}tauri-failing-archive`;
+        let failSnapshotPersist = true;
+        let snapshotFileContent = '';
+        let liveFileContent = JSON.stringify({
+            schemaVersion: 1,
+            records: {
+                [legacyKey]: JSON.stringify({
+                    snapshotType: 'full-localstorage',
+                    createdAt: '2026-06-04T10:00:00.000Z',
+                    localStorage: {
+                        [CONFIG.STORAGE.LS_KEY]: '{"inputs":{"alter":71}}'
+                    }
+                })
+            },
+            metadata: {}
+        });
+        const adapter = createTauriJsonFileAdapter({
+            invoke: async (command, args = {}) => {
+                if (command === 'load_app_state') {
+                    return args.target === 'snapshots' ? snapshotFileContent : liveFileContent;
+                }
+                if (command === 'save_app_state') {
+                    if (args.target === 'snapshots') {
+                        if (failSnapshotPersist) throw new Error('snapshot persist failed');
+                        snapshotFileContent = args.content;
+                    } else {
+                        liveFileContent = args.content;
+                    }
+                    return null;
+                }
+                throw new Error(`unknown command ${command}`);
+            }
+        });
+
+        await adapter.open();
+        let thrown = false;
+        try {
+            await adapter.migrateLegacySnapshotsIfNeeded();
+        } catch (err) {
+            thrown = err?.message === 'snapshot persist failed';
+        }
+        const liveAfterFailure = await adapter.loadAll();
+        await adapter.saveBatch({ upserts: [['after_failure', 'still-safe']], deletes: [] });
+
+        assertEqual(thrown, true, 'Tauri Migration gibt Snapshot-Archivfehler weiter');
+        assert(liveAfterFailure[legacyKey], 'Tauri Memory-State behaelt Legacy-Key nach Archivfehler');
+        assert(liveFileContent.includes(legacyKey), 'Spaeterer Live-State-Save verliert Legacy-Key nach Archivfehler nicht');
+        failSnapshotPersist = false;
+    }
+
+    console.log('Test 14: Tauri JSON adapter quarantines corrupt state');
+    {
+        const adapter = createTauriJsonFileAdapter({
+            invoke: async (command) => {
+                if (command === 'load_app_state') return '{broken json';
+                if (command === 'quarantine_app_state') return 'quarantined.json';
+                throw new Error(`unexpected command ${command}`);
+            }
+        });
+        try {
+            await adapter.open();
+            assert(false, 'Korruptes Tauri JSON sollte einen Fehler werfen');
+        } catch (err) {
+            assertEqual(err.code, 'tauri-state-corrupt', 'Korruptes Tauri JSON setzt Fehlercode');
+            assertEqual(err.quarantinePath, 'quarantined.json', 'Korruptes Tauri JSON merkt Quarantaene-Pfad');
+        }
+    }
+
+    console.log('Test 15: Tauri runtime uses JSON file adapter and migrates allowed legacy localStorage records');
+    {
+        let fileContent = '';
+        const storage = new MockStorage();
+        storage.setItem(CONFIG.STORAGE.LS_KEY, '{"inputs":{"alter":67}}');
+        storage.setItem('sim_dynamicFlex', 'true');
+        storage.setItem('unrelated_secret', 'blocked');
+        resetPersistenceRuntimeForTests();
+
+        await init({
+            window: { __TAURI__: {} },
+            localStorage: storage,
+            invoke: async (command, args = {}) => {
+                if (command === 'load_app_state') return fileContent;
+                if (command === 'save_app_state') {
+                    fileContent = args.content;
+                    return null;
+                }
+                if (command === 'quarantine_app_state') return 'quarantined.json';
+                throw new Error(`unknown command ${command}`);
+            }
+        });
+
+        assertEqual(getPersistenceStatus().backend, 'Tauri JSON File', 'Tauri Runtime nutzt JSON-Dateiadapter');
+        assertEqual(getItemSync(CONFIG.STORAGE.LS_KEY), '{"inputs":{"alter":67}}', 'Tauri Migration uebernimmt erlaubten Balance-Key');
+        assertEqual(getItemSync('sim_dynamicFlex'), 'true', 'Tauri Migration uebernimmt erlaubten Simulator-Key');
+        assertEqual(getItemSync('unrelated_secret'), null, 'Tauri Migration filtert nicht erlaubten Legacy-Key');
+        assertEqual(storage.getItem(LEGACY_MIGRATION_MARKER_KEYS.target), 'tauri-json-file', 'Tauri Migration setzt Target-Marker');
+    }
+
+    console.log('Test 16: Tauri corrupt state starts with recovery warning instead of failing init');
+    {
+        resetPersistenceRuntimeForTests();
+        await init({
+            window: { __TAURI__: {} },
+            invoke: async (command) => {
+                if (command === 'load_app_state') return '{broken json';
+                if (command === 'quarantine_app_state') return 'quarantined.json';
+                if (command === 'save_app_state') return null;
+                throw new Error(`unknown command ${command}`);
+            }
+        });
+        assertEqual(getPersistenceStatus().backend, 'Tauri JSON File', 'Tauri Recovery bleibt auf Dateiadapter');
+        assertEqual(getPersistenceStatus().migrationWarning.code, 'tauri-state-corrupt', 'Tauri Recovery setzt Warnzustand');
+        assertEqual(getPersistenceStatus().recordCount, 0, 'Tauri Recovery startet ohne geladene Records');
+    }
+
+    console.log('Test 17: browser migration copies allowed legacy localStorage records to IndexedDB');
+    {
+        const storage = new MockStorage();
+        storage.setItem(CONFIG.STORAGE.LS_KEY, '{"inputs":{"alter":65}}');
+        storage.setItem('sim_dynamicFlex', 'true');
+        storage.setItem('unrelated_secret', 'blocked');
+        const adapter = createIndexedDbAdapter({
+            indexedDB: createFakeIndexedDB(),
+            dbName: 'migration-test'
+        });
+        resetPersistenceForTests(adapter);
+
+        await init({ localStorage: storage });
+
+        assertEqual(getItemSync(CONFIG.STORAGE.LS_KEY), '{"inputs":{"alter":65}}', 'Migration uebernimmt erlaubten Balance-Key');
+        assertEqual(getItemSync('sim_dynamicFlex'), 'true', 'Migration uebernimmt erlaubten Simulator-Key');
+        assertEqual(getItemSync('unrelated_secret'), null, 'Migration filtert nicht erlaubten Legacy-Key');
+        assertEqual(storage.getItem(LEGACY_MIGRATION_MARKER_KEYS.target), 'indexeddb', 'Migration setzt Target-Marker im localStorage');
+        assert(storage.getItem(LEGACY_MIGRATION_MARKER_KEYS.completedAt), 'Migration setzt Zeitstempel-Marker');
+        assert(storage.getItem(LEGACY_MIGRATION_MARKER_KEYS.checksum), 'Migration setzt Checksum-Marker');
+        assertEqual(getPersistenceStatus().backend, 'IndexedDB', 'Aktives Backend ist IndexedDB');
+    }
+
+    console.log('Test 17b: tranche legacy migration matrix is deterministic and raw-preserving');
+    {
+        const legacyBase = {
+            name: 'Synthetischer Altbestand',
+            shares: 2,
+            purchasePrice: 90,
+            type: 'aktien_neu',
+            tqf: 0.3
+        };
+        const cases = [
+            {
+                name: 'valid legacy classification and generated id',
+                raw: JSON.stringify([{ ...legacyBase, kind: 'aktien_neu', type: undefined }]),
+                expectedStatus: 'valid'
+            },
+            {
+                name: 'missing optional fields',
+                raw: JSON.stringify([{ ...legacyBase, id: 'legacy-optional' }]),
+                expectedStatus: 'valid'
+            },
+            {
+                name: 'historic independent-select money-market classification',
+                raw: JSON.stringify([{ ...legacyBase, id: 'legacy-money-market', category: 'money_market', tqf: 0 }]),
+                expectedStatus: 'valid',
+                expectedType: 'geldmarkt'
+            },
+            {
+                name: 'historic money-market classification with unsupported equity TQF',
+                raw: JSON.stringify([{ ...legacyBase, id: 'legacy-money-market-tqf', category: 'money_market' }]),
+                expectedStatus: 'valid',
+                expectedType: 'geldmarkt',
+                expectedTqf: 0,
+                expectedTaxExempt: false
+            },
+            {
+                name: 'schema-one contradictory category and type',
+                raw: JSON.stringify([{
+                    ...legacyBase,
+                    schemaVersion: 1,
+                    trancheId: 'schema-one-mismatch',
+                    currentPrice: 90,
+                    category: 'gold'
+                }]),
+                expectedStatus: 'corrupt'
+            },
+            {
+                name: 'duplicate ids',
+                raw: JSON.stringify([
+                    { ...legacyBase, id: 'legacy-duplicate' },
+                    { ...legacyBase, id: 'legacy-duplicate', name: 'Zweiter synthetischer Altbestand' }
+                ]),
+                expectedStatus: 'corrupt'
+            },
+            { name: 'explicit empty override', raw: '[]', expectedStatus: 'empty' },
+            { name: 'corrupt raw payload', raw: '{not-json', expectedStatus: 'corrupt' }
+        ];
+
+        for (const [index, testCase] of cases.entries()) {
+            const storage = new MockStorage();
+            storage.setItem('depot_tranchen', testCase.raw);
+            const adapter = createIndexedDbAdapter({
+                indexedDB: createFakeIndexedDB(),
+                dbName: `tranche-migration-matrix-${index}`
+            });
+            resetPersistenceForTests(adapter);
+
+            await init({ localStorage: storage });
+
+            assertEqual(
+                getItemSync('depot_tranchen'),
+                testCase.raw,
+                `${testCase.name}: Facade-Migration muss Rohbytes unveraendert uebernehmen`
+            );
+            const facadeStorage = { getItem: key => getItemSync(key) };
+            const first = loadTranchesFromStorage(facadeStorage);
+            const second = loadTranchesFromStorage(facadeStorage);
+            assertEqual(first.status, testCase.expectedStatus, `${testCase.name}: erwarteter Ladezustand`);
+            assertEqual(second.status, first.status, `${testCase.name}: wiederholtes Laden bleibt idempotent`);
+            assertEqual(getItemSync('depot_tranchen'), testCase.raw, `${testCase.name}: Laden darf Migration nicht zurueckschreiben`);
+
+            if (first.status === 'valid') {
+                assertEqual(JSON.stringify(second.tranches), JSON.stringify(first.tranches), `${testCase.name}: kanonische Ausgabe ist deterministisch`);
+                assert(first.tranches.every(tranche => tranche.schemaVersion === 2), `${testCase.name}: Ausgabe verwendet Schema 2`);
+                if (testCase.expectedType) {
+                    assertEqual(first.tranches[0].type, testCase.expectedType, `${testCase.name}: historischer Typ wird eindeutig migriert`);
+                }
+                if (testCase.expectedTqf !== undefined) {
+                    assertEqual(first.tranches[0].tqf, testCase.expectedTqf, `${testCase.name}: unbelegte Legacy-TQF wird explizit entfernt`);
+                }
+                if (testCase.expectedTaxExempt !== undefined) {
+                    assertEqual(first.tranches[0].taxExempt, testCase.expectedTaxExempt, `${testCase.name}: Steuerfreiheit wird explizit migriert`);
+                }
+            } else if (first.status === 'corrupt') {
+                assertEqual(first.raw, testCase.raw, `${testCase.name}: nicht automatisch behebbare Daten bleiben raw-preserving`);
+                assertEqual(first.tranches, null, `${testCase.name}: korrupte Daten duerfen keine Teilmigration liefern`);
+            } else {
+                assertEqual(first.tranches.length, 0, `${testCase.name}: leeres Override bleibt explizit leer`);
+            }
+        }
+    }
+
+    console.log('Test 18: browser migration blocks silent reversion when IndexedDB is empty after migration');
+    {
+        const storage = new MockStorage();
+        storage.setItem(CONFIG.STORAGE.LS_KEY, '{"inputs":{"alter":60}}');
+        storage.setItem(LEGACY_MIGRATION_MARKER_KEYS.target, 'indexeddb');
+        const adapter = createIndexedDbAdapter({
+            indexedDB: createFakeIndexedDB(),
+            dbName: 'silent-reversion-test'
+        });
+        resetPersistenceForTests(adapter);
+
+        await init({ localStorage: storage });
+
+        assertEqual(getItemSync(CONFIG.STORAGE.LS_KEY), null, 'Veralteter localStorage-Stand wird nicht still erneut migriert');
+        assertEqual(getPersistenceStatus().migrationWarning.code, 'indexeddb-empty-after-migration', 'Silent-Reversion-Warnung wird gesetzt');
+        assertEqual(getPersistenceStatus().recordCount, 0, 'IndexedDB bleibt leer statt Legacy-Daten zu uebernehmen');
+    }
+
+    console.log('Test 19: runtime cache accepts prototype-like keys without prototype pollution');
+    {
+        const adapter = createMemoryAdapter();
+        resetPersistenceForTests(adapter);
+        await init();
+
+        setItemSync('__proto__', 'runtime-value');
+        setItemSync('constructor', 'runtime-constructor');
+        setItemSync('prototype', 'runtime-prototype');
+
+        assertEqual(getItemSync('__proto__'), 'runtime-value', 'Cache behandelt __proto__ als normalen Key');
+        assertEqual(getItemSync('constructor'), 'runtime-constructor', 'Cache behandelt constructor als normalen Key');
+        assertEqual(getItemSync('prototype'), 'runtime-prototype', 'Cache behandelt prototype als normalen Key');
+        assertEqual(Object.getPrototypeOf(exportAllSync().records), null, 'Exportiertes Record-Objekt hat keinen Prototyp');
+        assertEqual({}.polluted, undefined, 'Object-Prototyp bleibt unveraendert');
+    }
+
+    console.log('Test 20: failed flush does not override concurrent delete/write changes on same key');
+    {
+        const def = deferred();
+        const adapter = {
+            async open() {},
+            async loadAll() { return {}; },
+            async saveBatch(batch) {
+                await def.promise;
+                throw new Error('simulated save failure');
+            }
+        };
+        resetPersistenceForTests(adapter);
+        await init();
+
+        setItemSync('concurrency_key', 'initial');
+        const flushPromise = flush();
+        
+        removeItemSync('concurrency_key');
+        
+        def.resolve();
+        try {
+            await flushPromise;
+        } catch {
+            // expected
+        }
+
+        assertEqual(getItemSync('concurrency_key'), null, 'Concurrent deletion is preserved after failed flush');
+        assert(!getDirtyState().dirtyKeys.includes('concurrency_key'), 'Key is not in dirty list since it was deleted');
+        assert(getDirtyState().deletedKeys.includes('concurrency_key'), 'Key is in deleted list');
+    }
+
+    console.log('Test 21: failed flush does not override concurrent write changes on deleted key');
+    {
+        const def = deferred();
+        const adapter = {
+            async open() {},
+            async loadAll() { return { 'concurrency_key2': 'initial' }; },
+            async saveBatch(batch) {
+                await def.promise;
+                throw new Error('simulated save failure');
+            }
+        };
+        resetPersistenceForTests(adapter);
+        await init();
+
+        removeItemSync('concurrency_key2');
+        const flushPromise = flush();
+
+        setItemSync('concurrency_key2', 'new_val');
+
+        def.resolve();
+        try {
+            await flushPromise;
+        } catch {
+            // expected
+        }
+
+        assertEqual(getItemSync('concurrency_key2'), 'new_val', 'Concurrent write is preserved after failed flush');
+        assert(getDirtyState().dirtyKeys.includes('concurrency_key2'), 'Key is in dirty list');
+        assert(!getDirtyState().deletedKeys.includes('concurrency_key2'), 'Key is not in deleted list');
+    }
+
+    console.log('Test 22: snapshot facade methods delegate to adapter contract');
+    {
+        const calls = [];
+        const adapter = {
+            name: 'snapshot-memory',
+            async open() {},
+            async loadAll() { return {}; },
+            async saveBatch() {},
+            async listSnapshots() {
+                calls.push('list');
+                return [{ id: 's1', createdAt: '2026-06-03T10:00:00.000Z' }];
+            },
+            async readSnapshot(id) {
+                calls.push(`read:${id}`);
+                return { id, records: { a: '1' } };
+            },
+            async writeSnapshot(snapshot) {
+                calls.push(`write:${snapshot.id}`);
+            },
+            async deleteSnapshot(id) {
+                calls.push(`delete:${id}`);
+            },
+            async migrateLegacySnapshotsIfNeeded() {
+                calls.push('migrate');
+                return { migratedCount: 1, skippedCount: 0, notStandardRestorableCount: 0, errors: [] };
+            }
+        };
+        resetPersistenceForTests(adapter);
+        await init();
+
+        const listed = await listSnapshots();
+        const read = await readSnapshot('s1');
+        await writeSnapshot({ id: 's2' });
+        await deleteSnapshot('s1');
+        const migrationReport = await migrateLegacySnapshotsIfNeeded();
+
+        assertEqual(listed[0].id, 's1', 'listSnapshots delegiert an Adapter');
+        assertEqual(read.records.a, '1', 'readSnapshot delegiert an Adapter');
+        assertEqual(migrationReport.migratedCount, 1, 'Legacy-Migration delegiert an Adapter');
+        assertEqual(calls.join(','), 'list,read:s1,write:s2,delete:s1,migrate', 'Snapshot-Methoden werden in erwarteter Reihenfolge delegiert');
+    }
+
+    console.log('Test 23: localStorage facade fallback stores snapshots outside normal records');
+    {
+        const storage = new MockStorage();
+        global.localStorage = storage;
+        resetPersistenceForTests(createLocalStorageAdapter(() => global.localStorage));
+        await init();
+
+        await writeSnapshot({
+            id: 'local-snapshot',
+            createdAt: '2026-06-03T10:00:00.000Z',
+            records: { [CONFIG.STORAGE.LS_KEY]: '{}' }
+        });
+        const listed = await listSnapshots();
+        const read = await readSnapshot('local-snapshot');
+        const deleted = await deleteSnapshot('local-snapshot');
+        const migrationReport = await migrateLegacySnapshotsIfNeeded();
+
+        assertEqual(listed.length, 1, 'localStorage-Fallback listet Snapshot');
+        assertEqual(listed[0].records, undefined, 'localStorage-Fallback listet nur Indexdaten');
+        assertEqual(read.records[CONFIG.STORAGE.LS_KEY], '{}', 'localStorage-Fallback liest Vollsnapshot');
+        assertEqual(deleted, true, 'localStorage-Fallback loescht Snapshot');
+        assertEqual((await listSnapshots()).length, 0, 'localStorage-Fallback ist nach Delete leer');
+        assertEqual(migrationReport.migratedCount, 0, 'localStorage-Fallback liefert neutralen Migrationsreport');
+        assert(storage.getItem('rs_snapshot_archive_v1'), 'Snapshot-Fallback nutzt separaten Archiv-Key');
+    }
+
+    console.log('Test 24: replaceLiveRecords applies allowKey and rolls back cache on failure');
+    {
+        const adapter = createMemoryAdapter({ keep: 'old', remove: 'gone', blocked: 'stay' }, { failSave: true });
+        resetPersistenceForTests(adapter);
+        await init();
+
+        let thrown = false;
+        try {
+            await replaceLiveRecords({}, {
+                deleteKeys: ['remove', 'blocked'],
+                upserts: [['keep', 'new'], ['added', '1'], ['blocked', 'changed']],
+                allowKey: (key) => key !== 'blocked'
+            });
+        } catch {
+            thrown = true;
+        }
+
+        assertEqual(thrown, true, 'replaceLiveRecords gibt Adapterfehler weiter');
+        assertEqual(getItemSync('keep'), 'old', 'Rollback stellt geaenderten Cache-Key wieder her');
+        assertEqual(getItemSync('remove'), 'gone', 'Rollback stellt geloeschten Cache-Key wieder her');
+        assertEqual(getItemSync('added'), null, 'Rollback entfernt neuen Cache-Key');
+        assertEqual(getItemSync('blocked'), 'stay', 'allowKey blockiert Delete und Upsert');
+        assertEqual(adapter.store.get('keep'), 'old', 'Fehlgeschlagener Fake-Adapter bleibt unveraendert');
+    }
+
+    console.log('Test 25: replaceLiveRecords writes filtered live records all-or-nothing on success');
+    {
+        const adapter = createMemoryAdapter({ remove: 'old', blocked: 'stay' });
+        resetPersistenceForTests(adapter);
+        await init();
+
+        const result = await replaceLiveRecords({}, {
+            deleteKeys: ['remove', 'blocked'],
+            upserts: [['added', 2], ['blocked', 'changed']],
+            allowKey: (key) => key !== 'blocked'
+        });
+
+        assertEqual(result.ok, true, 'replaceLiveRecords meldet Erfolg');
+        assertEqual(getItemSync('remove'), null, 'Erlaubter Delete ist im Cache sichtbar');
+        assertEqual(getItemSync('added'), '2', 'Erlaubter Upsert ist im Cache sichtbar');
+        assertEqual(getItemSync('blocked'), 'stay', 'Nicht erlaubter Key bleibt erhalten');
+        assertEqual(adapter.store.has('remove'), false, 'Erlaubter Delete ist im Adapter sichtbar');
+        assertEqual(adapter.store.get('added'), '2', 'Erlaubter Upsert ist im Adapter sichtbar');
+    }
+
+    console.log('Test 26: browser runtime falls back to localStorage when IndexedDB is unavailable');
+    {
+        const storage = new MockStorage();
+        storage.setItem(CONFIG.STORAGE.LS_KEY, '{"inputs":{"alter":64}}');
+        storage.setItem('sim_dynamicFlex', 'false');
+        global.localStorage = storage;
+        resetPersistenceRuntimeForTests();
+
+        await init({
+            window: {},
+            localStorage: storage,
+            indexedDB: null
+        });
+
+        assertEqual(getPersistenceStatus().backend, 'localStorage', 'Browser ohne IndexedDB nutzt localStorage-Fallback');
+        assertEqual(getItemSync(CONFIG.STORAGE.LS_KEY), '{"inputs":{"alter":64}}', 'localStorage-Fallback laedt vorhandene Balance-Daten');
+        assertEqual(getItemSync('sim_dynamicFlex'), 'false', 'localStorage-Fallback laedt vorhandene Simulator-Daten');
+        assertEqual(storage.getItem(LEGACY_MIGRATION_MARKER_KEYS.target), null, 'localStorage-Fallback setzt keinen Ziel-Migrationsmarker');
+
+        setItemSync('fallback_write', 'ok');
+        await flush();
+        assertEqual(storage.getItem('fallback_write'), 'ok', 'localStorage-Fallback schreibt ueber Facade zurueck');
+    }
+
+    console.log('Test 27: reconciliation persists live lot and audit in one facade batch');
+    {
+        const trancheRaw = JSON.stringify([{
+            schemaVersion: 1,
+            trancheId: 'facade-lot',
+            name: 'Synthetischer Bestand',
+            isin: '',
+            ticker: 'FACADE.DE',
+            shares: 2,
+            purchasePrice: 80,
+            currentPrice: 100,
+            purchaseDate: '2020-01-02',
+            category: 'equity',
+            type: 'aktien_neu',
+            tqf: 0.3,
+            notes: ''
+        }]);
+        const registryRaw = JSON.stringify({
+            version: 1,
+            profiles: {
+                default: {
+                    meta: { id: 'default', name: 'Default' },
+                    data: { depot_tranchen: trancheRaw }
+                }
+            }
+        });
+        const batches = [];
+        const adapter = createMemoryAdapter({
+            depot_tranchen: trancheRaw,
+            [PROFILE_STORAGE_KEYS.registry]: registryRaw,
+            [PROFILE_STORAGE_KEYS.current]: 'default',
+            [PROFILE_STORAGE_KEYS.active]: 'default'
+        });
+        const originalSaveBatch = adapter.saveBatch.bind(adapter);
+        adapter.saveBatch = async batch => {
+            batches.push(batch);
+            return originalSaveBatch(batch);
+        };
+        resetPersistenceForTests(adapter);
+        await init();
+
+        const result = await commitTrancheReconciliation({
+            profileId: 'default',
+            expectedTranchesRaw: trancheRaw,
+            action: {
+                actionId: 'facade-order-1',
+                profileId: 'default',
+                trancheId: 'facade-lot',
+                executedAt: '2026-07-14',
+                sharesSold: 1,
+                grossProceeds: 100,
+                fees: 1
+            }
+        }, { clock: () => '2026-07-14T12:00:00.000Z' });
+
+        assertEqual(result.status, 'applied', 'Facade-Reconcile wird bestaetigt');
+        assertEqual(batches.length, 1, 'Live-Bestand und Registry werden in genau einem Flush geschrieben');
+        const upsertKeys = batches[0].upserts.map(([key]) => key);
+        assert(upsertKeys.includes('depot_tranchen'), 'Facade-Batch enthaelt den Live-Tranchenbestand');
+        assert(upsertKeys.includes(PROFILE_STORAGE_KEYS.registry), 'Facade-Batch enthaelt Profilbestand und Audit');
+        assertEqual(JSON.parse(adapter.store.get('depot_tranchen'))[0].shares, 1,
+            'Adapter enthaelt den resultierenden Stueckbestand');
+        assertEqual(readReconciliationHistory(adapter.store.get(PROFILE_STORAGE_KEYS.registry)).length, 1,
+            'Adapter enthaelt die stabile Action-ID fuer Reload-Idempotenz');
+    }
+
+    // Bestehender vollständiger Opt-out bleibt; Handbuch aktiviert den EXE-Hook separat.
+    {
+        const savedDoc = global.document, savedWin = global.window;
+        try {
+            for (const installLifecycleHooks of [undefined, false]) {
+                const events = [], writes = [];
+                global.document = { addEventListener: type => events.push(type), removeEventListener() {} };
+                global.window = { addEventListener: type => events.push(type), removeEventListener() {},
+                    __TAURI__: { core: { invoke() {} }, event: { listen: async type => { events.push(type); return () => {}; } } } };
+                resetPersistenceForTests({ name: 'test', loadAll: async () => ({}), saveBatch: async batch => writes.push(batch) });
+                await init({ installLifecycleHooks });
+                assertEqual(events.join(','), installLifecycleHooks === false ? '' : 'visibilitychange,pagehide,pagehide,ruhestand://close-requested',
+                    'Standard behält Speicher-/Schließhooks, Handbuchoption installiert keine');
+                await init();
+                assertEqual(events.length, installLifecycleHooks === false ? 0 : 4, 'Erneuter Init verändert den gewählten Hookvertrag nicht');
+                setItemSync('profile_tagesgeld', '123');
+                assertEqual(await flush(), true, 'Expliziter Flush bleibt ohne Lifecyclehooks möglich');
+                assertEqual(writes.length, 1, 'Expliziter Flush schreibt den ausstehenden Bestand');
+            }
+        } finally {
+            resetPersistenceForTests(createLocalStorageAdapter());
+            global.document = savedDoc; global.window = savedWin;
+        }
+    }
+
+    {
+        resetPersistenceForTests(createLocalStorageAdapter());
+        assertEqual(hasSyncWriteBlocks(), false, 'Ohne Besitzer meldet die reine Abfrage keine Schreibsperre');
+        const releaseRegistry = blockSyncWrites(['rs_profiles_v1'], 'Restore aktiv');
+        const releasePrefix = blockSyncWrites([], 'Reset aktiv', { prefixes: ['sim_'] });
+        assertEqual(hasSyncWriteBlocks(), true, 'Schlüssel- und Präfixbesitzer sind lesbar');
+        releaseRegistry();
+        assertEqual(hasSyncWriteBlocks(), true, 'Ein beendeter Besitzer löst keine fremde Sperre');
+        assertEqual(hasSyncWriteBlocks(), true, 'Wiederholte Abfrage verändert keine Sperre');
+        let error;
+        try { setItemSync('sim_guard_probe', 'veraltet'); } catch (failure) { error = failure; }
+        assertEqual(error?.code, 'PERSISTENCE_RELOAD_REQUIRED', 'Reine Abfrage erhält den bestehenden Schreibschutzvertrag');
+        setItemSync('unrelated_probe', 'zulässig');
+        assertEqual(getItemSync('unrelated_probe'), 'zulässig', 'Schlüsselbezogene Writevalidierung bleibt unverändert');
+        resetPersistenceForTests(createLocalStorageAdapter());
+        assertEqual(hasSyncWriteBlocks(), false, 'Testreset entfernt auch noch aktive Sperrbesitzer');
+        releasePrefix();
+        assertEqual(hasSyncWriteBlocks(), false, 'Spätes Besitzerende nach Reset erzeugt keine neue Sperre');
+    }
+
+    console.log('Persistence tests passed');
+} finally {
+    resetPersistenceForTests(createLocalStorageAdapter());
+    if (prevLocalStorage === undefined) delete global.localStorage; else global.localStorage = prevLocalStorage;
+    if (prevWindow === undefined) delete global.window; else global.window = prevWindow;
+    if (prevDocument === undefined) delete global.document; else global.document = prevDocument;
+    if (prevDispatchEvent === undefined) delete global.dispatchEvent; else global.dispatchEvent = prevDispatchEvent;
+    if (prevCustomEvent === undefined) delete global.CustomEvent; else global.CustomEvent = prevCustomEvent;
+}
+
+console.log('--- Persistence Tests Completed ---');
+
+// Besitzerabfrage ist Klassifikation; nur exklusiver Erwerb erlaubt Ausführung.
+for (const scenario of ['local', 'foreign', 'unknown', 'changed-owner', 'timeout']) {
+    let elapsed = 0, executions = 0, progress = 0;
+    const held = new Map([['rs-probelauf-operation', { clientId: scenario === 'foreign' ? 'other-page' : scenario === 'unknown' ? undefined : 'this-page' }]]);
+    let exclusive = 0;
+    const locks = {
+        async query() { return { held: [...held].map(([name, value]) => ({ name, mode: 'exclusive', ...value })), pending: [] }; },
+        async request(name, options, run) {
+            assertEqual(options.ifAvailable, true, 'Koordinator reiht keinen unbeschränkten Web-Lock-Auftrag ein');
+            if (held.has(name)) return run(null);
+            held.set(name, { clientId: 'this-page' });
+            if (name === 'rs-probelauf-operation') { exclusive++; assertEqual(exclusive, 1, 'Höchstens ein exklusiver Aktionsbesitzer'); }
+            try { return await run({ name }); }
+            finally { held.delete(name); if (name === 'rs-probelauf-operation') exclusive--; }
+        }
+    };
+    let error;
+    try {
+        await withProbelaufOperation(() => { executions++; assert(![...held.keys()].some(name => name.startsWith('rs-probelauf-client-')), 'Hilfssperre vor echter Aktion freigegeben'); }, { navigator: { locks } }, {
+            clock: () => elapsed, onWait: text => { assertEqual(text, 'Speichert noch …', 'Lockwartestatus'); progress++; },
+            wait: async ms => { elapsed += ms; if (scenario === 'local') held.delete('rs-probelauf-operation'); if (scenario === 'changed-owner') held.set('rs-probelauf-operation', { clientId: 'other-page' }); }
+        });
+    } catch (cause) { error = cause; }
+    assertEqual(executions, scenario === 'local' ? 1 : 0, 'Nur nach Freigabe des lokalen Besitzers ausgeführt');
+    if (['foreign', 'changed-owner'].includes(scenario)) assertEqual(error?.message, 'Eine andere Seite führt gerade eine Probelauf-Aktion aus.', 'Identifizierte andere Seite behält Meldung');
+    if (['unknown', 'timeout'].includes(scenario)) assertEqual(error?.code, 'PROBELAUF_COMMIT_BUSY', 'Unbekannter Besitzer und Timeout umgehen keinen Lock');
+    if (scenario === 'timeout') assertEqual(elapsed, 10000, 'Web-Lock-Warteepisode endet nach zehn Sekunden');
+    assertEqual([...held.keys()].filter(name => name.startsWith('rs-probelauf-client-')).length, 0, 'Keine übrig gebliebene Hilfssperre');
+}
+{
+    const entered = (() => { let resolve; return { promise: new Promise(done => { resolve = done; }), resolve: () => resolve() }; })();
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    let executions = 0;
+    const values = {};
+    const adapter = { name: 'fallback-wait', async loadAll() { return { ...values }; }, async saveBatch({ upserts }) { entered.resolve(); await gate; upserts.forEach(([key, value]) => values[key] = value); } };
+    try {
+        resetPersistenceForTests(adapter); await init({ installLifecycleHooks: false });
+        setItemSync('profile_tagesgeld', '123'); const writer = flush(); await entered.promise;
+        let error;
+        try { await withProbelaufOperation(() => { executions++; }, null, { timeoutMs: 5 }); } catch (cause) { error = cause; }
+        assertEqual(error?.code, 'PROBELAUF_COMMIT_BUSY', 'Fallbackwarteschlange besitzt begrenzte Wartegrenze');
+        const cancelled = new AbortController();
+        const discarded = withProbelaufOperation(() => { executions++; }, null, { signal: cancelled.signal });
+        cancelled.abort(new Error('Expliziter Abbruch')); let aborted = false;
+        try { await discarded; } catch (cause) { aborted = cause.message === 'Expliziter Abbruch'; }
+        assert(aborted, 'Signalabbruch bereinigt wartenden Fallbackauftrag unmittelbar');
+        release(); await writer; await Promise.resolve(); await Promise.resolve();
+        assertEqual(executions, 0, 'Nach Timeout wird eingereihte Aktion niemals später ausgeführt');
+        assertEqual(values.profile_tagesgeld, '123', 'Timeout beendet den begonnenen fremden Flush nicht');
+        await withProbelaufOperation(() => { executions++; }, null);
+        assertEqual(executions, 1, 'Fallbackqueue nach Timeout erneut verwendbar');
+    } finally { release(); resetPersistenceForTests(); }
+}
+
+{
+    let borrowed;
+    await withProbelaufOperation(ownedFlush => { borrowed = ownedFlush; }, null);
+    let denied = false; try { await borrowed(); } catch (error) { denied = error.message === 'PROBELAUF_OPERATION_ENDED'; }
+    assert(denied, 'Entliehener Flushbesitz kann nach Operationsende keine fremde Sperre umgehen');
+}
+
+// P14: bestätigte Dateiausgabe synchronisiert beide globalen Metadaten atomar.
+{
+    const { downloadFullPersistenceBackup, validatePersistenceDomainRecords } = await import('../app/shared/persistence-backup.js');
+    const { DATA_BACKUP_SUMMARY_KEY, buildBackupSummary } = await import('../app/data/data-backup-summary.js');
+    const { PersistenceFacade } = await import('../app/shared/persistence-facade.js');
+    const timeKey = 'overview_last_full_backup_v1';
+    const oldTime = '2026-08-01T12:00:00.000Z';
+    const source = { profile_tagesgeld: '100', depot_tranchen: '[]', [timeKey]: oldTime };
+    const oldBasis = JSON.stringify(await buildBackupSummary(source, oldTime));
+    source[DATA_BACKUP_SUMMARY_KEY] = oldBasis;
+    for (const failure of ['none', 'download', 'declined', 'flush', 'metadata', 'readback']) {
+        let records = { ...source }, failNext = false, writes = 0, downloads = 0;
+        const adapter = { name: 'synthetic-backup', loadAll: async () => ({ ...records }),
+            async saveBatch({ deletes, upserts }) {
+                writes++;
+                deletes.forEach(key => delete records[key]);
+                upserts.forEach(([key, value]) => { records[key] = value; });
+                if (failNext && failure === 'metadata') { failNext = false; throw new Error('SYNTHETIC_METADATA_WRITE'); }
+                if (failNext && failure === 'readback') { failNext = false; records[timeKey] = 'synthetic-readback-mismatch'; }
+            } };
+        resetPersistenceForTests(adapter);
+        await PersistenceFacade.init({ installLifecycleHooks: false, installTauriCloseHook: false });
+        const originalFlush = PersistenceFacade.flush;
+        if (failure === 'flush') PersistenceFacade.flush = async () => false;
+        let error = null, result = null;
+        try {
+            result = await downloadFullPersistenceBackup({ download(backup) {
+                downloads++;
+                assertEqual(records[timeKey], oldTime, 'Dateiausgabe erfolgt vor Sicherungszeitmutation');
+                assertEqual(records[DATA_BACKUP_SUMMARY_KEY], oldBasis, 'Dateiausgabe erfolgt vor Vergleichsbasismutation');
+                assertEqual(JSON.parse(backup.records[DATA_BACKUP_SUMMARY_KEY]).exportedAt, backup.exportedAt, 'Dateibasis und Dateizeit sind synchron');
+                if (failure === 'download') throw new Error('SYNTHETIC_DOWNLOAD_FAILURE');
+                if (failure === 'declined') return false;
+                failNext = true;
+            } });
+        } catch (cause) { error = cause; }
+        finally { PersistenceFacade.flush = originalFlush; }
+        if (failure === 'none') {
+            assert(result && !error, 'Bestätigte Vollsicherung meldet Erfolg');
+            assertEqual(records[timeKey], result.backup.exportedAt, 'Bestätigter Zeitrecord entspricht der Datei');
+            assertEqual(JSON.parse(records[DATA_BACKUP_SUMMARY_KEY]).exportedAt, records[timeKey], 'Bestätigte Vergleichsbasis entspricht der Datei');
+            assertEqual(normalizeFullPersistenceBackup(result.backup).ok, true, 'Vollbackup Version 2 mit Basis bleibt importierbar');
+        } else {
+            assert(error && !result, failure + ': kein Erfolg bei Sicherungsfehler');
+            assertEqual(records[timeKey], oldTime, failure + ': vorherige Zeit bleibt erhalten');
+            assertEqual(records[DATA_BACKUP_SUMMARY_KEY], oldBasis, failure + ': vorherige Basis bleibt erhalten');
+            assertEqual(PersistenceFacade.getItemSync(timeKey), oldTime, failure + ': Cache erhält vorherige Zeit');
+            assertEqual(PersistenceFacade.getItemSync(DATA_BACKUP_SUMMARY_KEY), oldBasis, failure + ': Cache erhält vorherige Basis');
+            if (['download', 'declined', 'flush'].includes(failure)) assertEqual(writes, 0, failure + ': keine Metadatenwrites');
+            if (failure === 'flush') assertEqual(downloads, 0, 'Vorflushfehler startet keine Dateiausgabe');
+        }
+        assertEqual(validatePersistenceDomainRecords({ ...source, [DATA_BACKUP_SUMMARY_KEY]: JSON.stringify({ version: 2 }) }).ok, false, 'Ungültige Vergleichsbasis wird vor Vollimport abgewiesen');
+        assertEqual(validatePersistenceDomainRecords({ ...source, [timeKey]: '2026-08-02T12:00:00.000Z' }).ok, false, 'Zeit und Basis dürfen beim Import nicht auseinanderlaufen');
+        resetPersistenceForTests();
+    }
+}
+
+// H1: beide globalen Domänenkeys durchlaufen den echten Vollimport und Snapshotrestore.
+{
+    const { HOUSEHOLD_PLAN_KEY, PLAN_DEFAULTS, planScope, buildPlanRecord } = await import('../app/profile/household-plan.js');
+    const { ANNUAL_PLAN_RECORD_KEY, annualPlanEntryKey } = await import('../app/profile/annual-plan-record.js');
+    const scope = planScope('single', ['a']);
+    const plan = buildPlanRecord(null, [{ scope, values: structuredClone(PLAN_DEFAULTS) }], { now: () => new Date('2026-01-01') });
+    const outcome = { monthlyWithdrawal: 1500, monthlyBudget: 3000, action: { type: 'NONE', title: 'Kein Handlungsbedarf' }, liquidityBefore: 100, liquidityAfter: 100, marketPhase: 'Normal', flexRate: 100 };
+    const annual = { year: 2026, scope, periodId: 'calendar-year:2026', committedAt: '2025-12-31T12:00:00Z', recommended: outcome,
+        adopted: { ...outcome, snapshot: { plan: structuredClone(PLAN_DEFAULTS), inflation: 2, ageByPerson: { a: 67 } } }, adjusted: false, adjustedFields: [] };
+    const records = { [HOUSEHOLD_PLAN_KEY]: JSON.stringify(plan.record, null, 2),
+        [ANNUAL_PLAN_RECORD_KEY]: JSON.stringify({ version: 1, entries: { [annualPlanEntryKey(2026, scope)]: annual } }, null, 2),
+        rs_profiles_v1: JSON.stringify({ version: 1, profiles: { a: { meta: { id: 'a', name: 'Synthetische Person' }, data: {} } } }), rs_current_profile: 'a', rs_active_profile: 'a' };
+    resetPersistenceForTests(createMemoryAdapter(records)); await init({ installLifecycleHooks: false });
+    const backup = JSON.parse(JSON.stringify(buildFullPersistenceBackup()));
+    const capture = SnapshotArchive.captureCurrentRecords({ keys: keysSync, getItem: getItemSync });
+    const point = await SnapshotArchive.createSnapshot({ id: 'h1-plan-roundtrip', records: capture, activeProfileId: 'a' });
+    const confirmed = await SnapshotArchive.readSnapshot(point.id);
+    for (const key of [HOUSEHOLD_PLAN_KEY, ANNUAL_PLAN_RECORD_KEY]) {
+        assertEqual(backup.records[key], records[key], 'Vollbackup erhält Plan-/Belegbytes: ' + key);
+        assertEqual(confirmed.records[key], records[key], 'Archivreadback erhält Plan-/Belegbytes: ' + key);
+    }
+    const imported = createMemoryAdapter({ sim_old: 'alt' }); resetPersistenceForTests(imported); await init({ installLifecycleHooks: false });
+    assertEqual((await importFullPersistenceBackup(backup)).ok, true, 'Plan und Jahresbeleg sind gemeinsam importierbar');
+    for (const key of [HOUSEHOLD_PLAN_KEY, ANNUAL_PLAN_RECORD_KEY]) assertEqual(getItemSync(key), records[key], 'Vollimport stellt Rohrecord bytegleich wieder her: ' + key);
+    await replaceRecordsTransactional({ [HOUSEHOLD_PLAN_KEY]: '{"version":1,"entries":{}}', [ANNUAL_PLAN_RECORD_KEY]: '{"version":1,"entries":{}}' },
+        { allowKey: key => [HOUSEHOLD_PLAN_KEY, ANNUAL_PLAN_RECORD_KEY].includes(key) });
+    // Der Archivpunkt stammt aus dem ursprünglichen Backend, Restore verwendet dessen bestätigte Records.
+    await replaceRecordsTransactional(confirmed.records, { allowKey: key => isAllowedSnapshotRestoreLiveKey(key, { mode: 'full' }) });
+    for (const key of [HOUSEHOLD_PLAN_KEY, ANNUAL_PLAN_RECORD_KEY]) assertEqual(getItemSync(key), records[key], 'Wiederherstellungspolicy holt globalen Rohrecord zurück: ' + key);
+    for (const key of [HOUSEHOLD_PLAN_KEY, ANNUAL_PLAN_RECORD_KEY]) for (const raw of ['{', '{"version":2,"entries":{}}']) {
+        const before = JSON.stringify(exportAllSync().records), batches = imported.batches.length;
+        assertEqual((await importFullPersistenceBackup(createFullBackupPayload({ ...records, [key]: raw }))).ok, false, 'Beschädigte oder zukünftige Plan-/Belegversion wird vor Import abgewiesen: ' + key);
+        assertEqual(JSON.stringify(exportAllSync().records), before, 'Abgewiesener Import erhält gültige Rohbytes');
+        assertEqual(imported.batches.length, batches, 'Abgewiesener Plan-/Belegimport führt keinen Write aus');
+    }
+    resetPersistenceRuntimeForTests();
+}

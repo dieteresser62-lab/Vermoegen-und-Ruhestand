@@ -1,0 +1,63 @@
+# Backup files
+*.backup
+*.bak
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dual-Agent-Orchestrator
+.orchestrator/
+inbox/
+outbox/
+task.md
+
+# Python
+__pycache__/
+
+dist/
+
+# Executables
+*.exe
+release-archive/
+
+# Screenshots
+Screenshots/
+
+# Lock files
+.~lock.*
+
+# Local debug/output artifacts
+diskussion*.md
+audit/logs/
+.coverage/
+log.txt
+out*.txt
+parity_failure.log
+test_output.txt
+
+# Codex sessions
+.codex/
+
+# Alte Aufgabendateien (lokal, aus der Zeit vor dem Dual-Agent-Orchestrator)
+Aufgabe.md
+aufgabe.md
+feedback.md
+
+# Local scratch and settings
+scratch/
+.obsidian/
+*.log
+node_modules/

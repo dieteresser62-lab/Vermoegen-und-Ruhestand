@@ -1,0 +1,163 @@
+import { createDiagnosisHandlers } from '../app/balance/balance-binder-diagnosis.js';
+
+console.log('--- Balance Diagnosis Copy Contract Tests ---');
+
+function countOccurrences(text, needle) {
+    return text.split(needle).length - 1;
+}
+
+const dom = {
+    diagnosis: {
+        filterToggle: { checked: false }
+    }
+};
+
+const appState = {
+    lastUpdateTimestamp: '2026-05-12T08:30:00.000Z',
+    diagnosisData: {
+        general: {
+            marketSzenario: 'bear_deep',
+            alarmActive: false,
+            safetyCapActive: true,
+            safetyCapFlexRatePct: 0,
+            safetyCapSource: 'severe_bear_wealth_emergency',
+            safetyCapAnchorStage: 'post_total_wealth_drawdown_gate',
+            finalLimitingPolicy: 'safety_cap',
+            severeFlexEmergencyActive: true,
+            realTotalWealthDrawdownRatio: 0.2501,
+            realTotalWealthDrawdownThresholdRatio: 0.25,
+            protectedPortfolioWithdrawalRate: 0.035,
+            protectedPortfolioWithdrawalRateThreshold: 0.035,
+            protectedPortfolioWithdrawalCapacityCritical: true,
+            alarmActiveDiagnostic: false,
+            deckungVorher: 72,
+            deckungNachher: 105,
+            runwayMonate: 18,
+            runwayTargetMonate: 36,
+            runwayTargetQuelle: 'profil:smoothed',
+            runwayTargetSmoothing: {
+                smoothingActive: true,
+                smoothingApplied: true,
+                rawTargetMonths: 60,
+                targetMonths: 48,
+                lowerTargetMonths: 36,
+                upperTargetMonths: 60,
+                severity: 0.5,
+                severityPct: 50,
+                hardMinimumMonths: 24
+            },
+            runwayStatus: 'warn'
+        },
+        keyParams: {
+            entnahmequoteDepot: 0.041,
+            realerDepotDrawdown: 0.2501,
+            peakRealVermoegen: 1000000,
+            currentRealVermoegen: 820000,
+            cumulativeInflationFactor: 1.18,
+            aktuelleFlexRate: 78,
+            minFlexRatePct: 65,
+            minimumFlexAnnual: 10000,
+            minimumFlexStatus: 'overridden_by_severe_flex_emergency',
+            minimumFlexBlockReason: 'minimum_runway_not_restorable',
+            kuerzungProzent: 22,
+            jahresentnahme: 42000,
+            vpw: {
+                enabled: true,
+                status: 'active',
+                horizonMethod: 'survival_quantile',
+                horizonYears: 12,
+                horizonYearsRaw: 10,
+                survivalQuantile: 0.9,
+                longevityMode: 'quantile_shift',
+                longevityApplied: true,
+                longevityAppliedShift: 0,
+                longevityAppliedBufferYears: 2,
+                longevityRelativePct: 0,
+                longevityClampReason: 'quantile_cap',
+                survivalQuantileRaw: 0.95,
+                survivalQuantileAdjusted: 0.95,
+                longevityTransitionSmoothingApplied: true,
+                longevityTransitionSmoothingFloor: 11,
+                vpwRate: 0.085,
+                expectedRealReturn: -0.01,
+                expectedReturnCape: 0.052,
+                capeRatioUsed: 30.5,
+                goGoActive: true,
+                goGoMultiplier: 1.15,
+                safetyStage: 2,
+                gesamtwert: 820000,
+                vpwTotal: 65000,
+                staticFlexBaseline: 36000,
+                dynamicFlex: 52000
+            },
+            healthBucket: {
+                enabled: true,
+                lockedAmount: 150000,
+                operativeLiquidity: 40000,
+                targetCoveragePct: 75,
+                targetGap: 50000,
+                releaseReason: 'Balance zeigt den Pflegebucket nur als Zweckbindung.'
+            }
+        },
+        decisionTree: [
+            { status: 'active', step: 'Runway pruefen', impact: 'Refill noetig' },
+            { status: 'inactive', step: 'Gold kaufen', impact: 'Nicht ausgeloest' }
+        ],
+        guardrails: [
+            { name: 'Runway', value: '18 Monate', threshold: '> 36 Monate', status: 'danger' },
+            { name: 'Drawdown', value: '-18,0 %', threshold: '< 20,0 %', status: 'ok' }
+        ],
+        transactionDiagnostics: {
+            wasTriggered: true,
+            blockReason: 'cap_active',
+            blockedAmount: 12500,
+            potentialTrade: {
+                direction: 'Verkauf',
+                netAmount: 50000
+            },
+            equityThresholds: {
+                maxSellAmount: 50000,
+                capRatePct: 12
+            },
+            goldThresholds: {
+                targetGoldValue: 45000,
+                currentGoldValue: 30000
+            }
+        }
+    }
+};
+
+const handlers = createDiagnosisHandlers({ dom, appState });
+const text = handlers.generateDiagnosisText(appState.diagnosisData);
+
+assertEqual(countOccurrences(text, '--- Status-Übersicht ---'), 1, 'Diagnose-Copytext sollte den Statusblock nur einmal enthalten');
+assert(text.includes('--- Transaktionsdiagnostik ---'), 'Copytext sollte Transaktionsdiagnostik enthalten');
+assert(text.includes('Runway-Ziel-Glättung: Runway-Ziel geglättet'), 'Copytext sollte Runway-Glättung benennen');
+assert(text.includes('50% Drawdown-Severity'), 'Copytext sollte Severity der Runway-Glättung ausgeben');
+assert(text.includes('Harte Mindestgrenze'), 'Copytext sollte harte Mindestgrenze ausgeben');
+assert(text.includes('Status: WARN (Obergrenze begrenzt Handel)'), 'Copytext sollte Blockgrund lesbar uebersetzen');
+assert(text.includes('Hypothetischer Handel: Verkauf'), 'Copytext sollte geplante Aktion ausgeben');
+assert(text.includes('Aktien-Grenzen:'), 'Copytext sollte Aktien-Grenzen ausgeben');
+assert(text.includes('Gold-Grenzen:'), 'Copytext sollte Gold-Grenzen ausgeben');
+assert(text.includes('--- Dynamic Flex (VPW) ---'), 'Copytext sollte VPW-Block enthalten');
+assert(text.includes('Raw-Horizont: 10 Jahre'), 'Copytext sollte VPW-Raw-Horizont ausgeben');
+assert(text.includes('Langlebigkeits-Puffer: Quantil-Shift'), 'Copytext sollte Longevity-Modus ausgeben');
+assert(text.includes('Longevity-Clamp: Quantil-Cap erreicht'), 'Copytext sollte Longevity-Clamp ausgeben');
+assert(text.includes('Quantil raw/effektiv: 0.95 -> 0.95'), 'Copytext sollte Quantil-Raw/Effektiv ausgeben');
+assert(text.includes('Joint-to-Single-Glättung: 11 Jahre'), 'Copytext sollte Longevity-Smoothing ausgeben');
+assert(text.includes('Longevity-Quantil-Shift ohne Effekt'), 'Copytext sollte wirkungslosen Quantil-Shift warnen');
+assert(text.includes('VPW-Sicherheitsmodus: Stufe 2'), 'Copytext sollte VPW-Sicherheitsmodus ausgeben');
+assert(text.includes('Warnsignale:'), 'Copytext sollte VPW-Warnsignale ausgeben');
+assert(text.includes('Mindest-Flex p.a.:'), 'Copytext sollte Mindest-Flex ausgeben');
+assert(text.includes('Mindest-Runway nicht wiederherstellbar'), 'Copytext sollte Mindest-Flex-Blockgrund ausgeben');
+assert(text.includes('Realer Drawdown aktives Gesamtvermögen'), 'Copytext sollte die tatsaechliche Drawdown-Basis benennen');
+assert(text.includes('Safety-Flex-Obergrenze: 0.0%'), 'Copytext sollte den exakten Null-Flex-Cap ausgeben');
+assert(text.includes('Schwere Flex-Notlage: AKTIV'), 'Copytext sollte die schwere Flex-Notlage sichtbar benennen');
+assert(text.includes('Flex einschließlich Mindest-Flex 0%; geplanter Floor bleibt geschützt'), 'Copytext sollte Mindest-Flex und Floor trennen');
+assert(text.includes('Alarm-Diagnose separat: inaktiv/unterdrückt'), 'Copytext sollte den unterdrueckten Alarm getrennt ausweisen');
+assert(text.includes('In schwerer Flex-Notlage bewusst überstimmt'), 'Copytext sollte den neuen Mindest-Flex-Status uebersetzen');
+assert(text.includes('automatische Freigabe: Nein'), 'Copytext sollte die Balance-Freigabepolicy ausgeben');
+assert(text.includes('Pflegebucket-Policy:'), 'Copytext sollte die Pflegebucket-Policy begruenden');
+
+console.log('Balance diagnosis copy contract tests passed');
+console.log('--- Balance Diagnosis Copy Contract Tests Completed ---');

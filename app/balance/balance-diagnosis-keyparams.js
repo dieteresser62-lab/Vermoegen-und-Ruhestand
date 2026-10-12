@@ -1,0 +1,467 @@
+import { formatDisplayFixed } from '../shared/designsystem-number-format.js';
+import { formatDisplayPercentValue, formatDisplayPercentRatio, formatDisplayMonths } from '../shared/shared-formatting.js';
+/**
+ * Module: Balance Diagnosis Key Params
+ * Purpose: Renders the "Key Parameters" grid in the Diagnosis Panel.
+ *          Visualizes high-level metrics like Peak Wealth, Current Real Wealth, and Inflation.
+ * Usage: Used by balance-renderer-diagnosis.js to show key financial indicators.
+ * Dependencies: balance-utils.js
+ */
+"use strict";
+import { displayDiagnosisText } from './balance-diagnosis-transaction.js';
+
+import { UIUtils } from './balance-utils.js';
+
+export function buildKeyParams(params = {}) {
+    const metrics = [];
+    const vpw = (params && typeof params.vpw === 'object') ? params.vpw : null;
+    const healthBucket = (params && typeof params.healthBucket === 'object') ? params.healthBucket : null;
+    const runwayTargetSmoothing = (params && typeof params.runwayTargetSmoothing === 'object') ? params.runwayTargetSmoothing : null;
+    const marketDataProvenance = (
+        params &&
+        typeof params.marketDataProvenance === 'object' &&
+        !Array.isArray(params.marketDataProvenance)
+    ) ? params.marketDataProvenance : null;
+
+    const formatCurrencySafe = (value) => {
+        if (typeof value !== 'number' || !isFinite(value)) {
+            return null;
+        }
+        return UIUtils.formatBalanceCurrency(value);
+    };
+
+    const pushMetric = ({ label, value, meta = null, trend = 'neutral' }) => {
+        if (typeof value !== 'string' || !value.trim()) {
+            return;
+        }
+        metrics.push({ label, value, meta, trend });
+    };
+
+    const peakValue = formatCurrencySafe(params.peakRealVermoegen);
+    if (peakValue) {
+        pushMetric({
+            label: 'Peak (real)',
+            value: peakValue,
+            meta: 'Historischer Höchststand'
+        });
+    }
+
+    const currentValue = formatCurrencySafe(params.currentRealVermoegen);
+    if (currentValue) {
+        let deltaMeta = null;
+        let trend = 'neutral';
+        if (typeof params.peakRealVermoegen === 'number' && isFinite(params.peakRealVermoegen) && params.peakRealVermoegen !== 0) {
+            const delta = params.currentRealVermoegen - params.peakRealVermoegen;
+            const deltaAbs = Math.abs(delta);
+            const deltaPercent = (delta / params.peakRealVermoegen) * 100;
+            const sign = delta >= 0 ? '+' : '−';
+            const formattedDelta = UIUtils.formatBalanceCurrency(deltaAbs).replace(/^[-–−]/, '').trim();
+            const deltaPercentText = formatDisplayPercentValue(Math.abs(deltaPercent), { fractionDigits: 1, invalid: '0,0\u00a0%' });
+            deltaMeta = `${sign}${formattedDelta} vs. Peak (${deltaPercent >= 0 ? '+' : '−'}${deltaPercentText})`;
+            trend = delta > 0 ? 'up' : delta < 0 ? 'down' : 'neutral';
+        }
+        pushMetric({
+            label: 'Aktuell (real)',
+            value: currentValue,
+            meta: deltaMeta,
+            trend
+        });
+    }
+
+    const inflationPercent = (typeof params.cumulativeInflationFactor === 'number' && isFinite(params.cumulativeInflationFactor))
+        ? (params.cumulativeInflationFactor - 1)
+        : null;
+    const formattedInflation = formatDisplayPercentRatio(inflationPercent, { fractionDigits: 1, prefixPlus: true, invalid: null });
+    if (formattedInflation) {
+        pushMetric({
+            label: 'Kumulierte Inflation',
+            value: formattedInflation,
+            meta: 'Seit Modellstart'
+        });
+    }
+
+    if (marketDataProvenance) {
+        const instrument = String(
+            marketDataProvenance.instrument ||
+            marketDataProvenance.ticker ||
+            'unbekannt'
+        );
+        const period = String(marketDataProvenance.periodId || 'ohne Periode');
+        const asOf = String(marketDataProvenance.asOf || 'ohne Stichtag');
+        const source = String(marketDataProvenance.source || 'unbekannte Quelle');
+        const highScope = String(
+            marketDataProvenance.highScope ||
+            marketDataProvenance.high?.scope ||
+            marketDataProvenance.ath?.scope ||
+            (Number.isFinite(marketDataProvenance.ath?.value) ? 'allTimeHigh' : null) ||
+            'unbekannt'
+        );
+        const engineReference = marketDataProvenance.engineReference?.policy ===
+            'window_high_as_conservative_ath_lower_bound'
+            ? (
+                marketDataProvenance.engineReference?.applied === true
+                    ? '; Engine-Referenz konservative ATH-Untergrenze angewendet'
+                    : '; Engine-Referenz nicht angewendet (kein belegter Fensterabstand)'
+            )
+            : '';
+        pushMetric({
+            label: 'Marktdaten-Provenienz',
+            value: `${instrument} · ${asOf}`,
+            meta: `${period}; ${source}; Hoch-Scope ${highScope}${engineReference}`,
+            trend: highScope === 'windowHigh' ? 'neutral' : 'up'
+        });
+    }
+
+    if (typeof params.aktuelleFlexRate === 'number' && isFinite(params.aktuelleFlexRate)) {
+        pushMetric({
+            label: 'Effektive Flex-Rate',
+            value: formatDisplayPercentValue(params.aktuelleFlexRate, { fractionDigits: 1, invalid: null }),
+            meta: 'Geplante Entnahmedynamik'
+        });
+    }
+    if (params.safetyCapActive === true && Number.isFinite(params.safetyCapFlexRatePct)) {
+        const sourceLabels = {
+            severe_bear_wealth_emergency: 'Schwere Flex-Notlage',
+            spending_guardrail: 'bindende Entnahmeleitplanke',
+            flex_rate_hard_cap: 'bindende harte Flexratenobergrenze',
+            alarm: 'aktiver Alarm',
+            bear_deep: 'positive Rohkürzung im tiefen Bärenmarkt'
+        };
+        const source = sourceLabels[params.safetyCapSource] || params.safetyCapSource || 'unbekannte Quelle';
+        const rawCandidate = Number.isFinite(params.safetyCapRawCandidateFlexRatePct)
+            ? `; Rohkandidat ${formatDisplayPercentValue(params.safetyCapRawCandidateFlexRatePct, { fractionDigits: 1, invalid: 'n/a' })}`
+            : '';
+        const effectiveCap = Number.isFinite(params.safetyCapEffectiveFlexRatePct)
+            ? params.safetyCapEffectiveFlexRatePct
+            : params.safetyCapFlexRatePct;
+        const rateLimit = params.safetyCapDeferredByRateLimit === true
+            ? `; Policy-Ziel ${formatDisplayPercentValue(params.safetyCapFlexRatePct, { fractionDigits: 1, invalid: 'n/a' })} wird wegen der bestehenden Änderungsgrenze schrittweise erreicht`
+            : '';
+        pushMetric({
+            label: 'Safety-Flex-Obergrenze',
+            value: formatDisplayPercentValue(effectiveCap, { fractionDigits: 1, invalid: null }),
+            meta: `${source}${rawCandidate}${rateLimit}; final begrenzende Policy: ${params.finalLimitingPolicy || 'n/a'}`,
+            trend: params.safetyCapApplied === true ? 'down' : 'neutral'
+        });
+    }
+    if (params.severeFlexEmergencyActive === true) {
+        const threshold = Number.isFinite(params.realTotalWealthDrawdownThresholdRatio)
+            ? formatDisplayPercentRatio(params.realTotalWealthDrawdownThresholdRatio, { fractionDigits: 1, invalid: 'n/a' })
+            : 'n/a';
+        const drawdown = Number.isFinite(params.realTotalWealthDrawdownRatio)
+            ? formatDisplayPercentRatio(params.realTotalWealthDrawdownRatio, { fractionDigits: 1, invalid: 'n/a' })
+            : 'n/a';
+        const protectedRate = Number.isFinite(params.protectedPortfolioWithdrawalRate)
+            ? formatDisplayPercentRatio(params.protectedPortfolioWithdrawalRate, { fractionDigits: 1, invalid: 'n/a' })
+            : 'n/a';
+        const protectedThreshold = Number.isFinite(params.protectedPortfolioWithdrawalRateThreshold)
+            ? formatDisplayPercentRatio(params.protectedPortfolioWithdrawalRateThreshold, { fractionDigits: 1, invalid: 'n/a' })
+            : 'n/a';
+        pushMetric({
+            label: 'Schwere Flex-Notlage',
+            value: 'AKTIV · Flex 0\u00a0%',
+            meta: `Tiefer Bärenmarkt UND realer Drawdown des aktiven Gesamtvermögens ${drawdown} > ${threshold} UND geschützte Portfolioentnahmequote ${protectedRate} ≥ ${protectedThreshold}. Mindest-Flex bewusst überstimmt; Floor bleibt geschützt.`,
+            trend: 'down'
+        });
+        if (params.alarmActiveDiagnostic === false) {
+            pushMetric({
+                label: 'Alarm-Diagnose',
+                value: 'Inaktiv (separat)',
+                meta: 'Die historische Entnahmebelastung ist nur Diagnose; die geschützte aktuelle Portfolioentnahmequote steuert das dritte Notfallkriterium.',
+                trend: 'neutral'
+            });
+        }
+    } else if (params.safetyCapSource === 'alarm' && Number.isFinite(params.baseAlarmCutPct)) {
+        pushMetric({
+            label: 'Alarm-Cut',
+            value: formatDisplayPercentValue(params.effectiveAlarmCutPct, { fractionDigits: 1, invalid: null }),
+            meta: `Basis ${formatDisplayPercentValue(params.baseAlarmCutPct, { fractionDigits: 1, invalid: 'n/a' })} × Entnahmebelastungsfaktor ${Number.isFinite(params.withdrawalBurdenFactor) ? formatDisplayFixed(params.withdrawalBurdenFactor, 2) : 'n/a'}`,
+            trend: 'down'
+        });
+    }
+    if (typeof params.minFlexRatePct === 'number' && isFinite(params.minFlexRatePct)) {
+        pushMetric({
+            label: 'Flex-Min-Rate',
+            value: formatDisplayPercentValue(params.minFlexRatePct, { fractionDigits: 1, invalid: null }),
+            meta: 'Regime-Mindestwert'
+        });
+    }
+
+    if (runwayTargetSmoothing) {
+        const smoothingInfo = UIUtils.describeRunwayTargetSmoothing(runwayTargetSmoothing);
+        const trend = runwayTargetSmoothing.smoothingFallback ? 'down'
+            : (runwayTargetSmoothing.smoothingActive ? 'neutral' : 'neutral');
+        pushMetric({
+            label: 'Runway-Ziel',
+            value: formatDisplayMonths(runwayTargetSmoothing.targetMonths, { fractionDigits: 1, invalid: 'n/a', suffix: 'Monate' }),
+            meta: smoothingInfo.explanation,
+            trend
+        });
+    }
+
+    if (typeof params.minimumFlexAnnual === 'number' && isFinite(params.minimumFlexAnnual)) {
+        const statusLabels = {
+            inactive_zero: 'Nicht gesetzt',
+            not_needed: 'Nicht benötigt',
+            applied: 'Angewandt',
+            applied_limited_by_final_smoothing: 'Geglättet angewandt',
+            limited_by_final_quantization: 'Durch Endrundung begrenzt',
+            limited_by_available_flex: 'Durch verfügbaren Flex begrenzt',
+            blocked_emergency: 'Blockiert',
+            limited_by_flex_budget: 'Durch Flex-Budget begrenzt',
+            overridden_by_severe_flex_emergency: 'In schwerer Flex-Notlage bewusst überstimmt'
+        };
+        const blockReasonLabels = {
+            alarm_active: 'Alarmmodus aktiv',
+            no_open_flex_need: 'kein offener Flex-Bedarf',
+            floor_minimum_flex_not_covered: 'Floor-/Mindest-Flex-Deckung unzureichend',
+            minimum_runway_not_restorable: 'Mindest-Runway nicht wiederherstellbar'
+        };
+        const status = params.minimumFlexStatus || 'inactive_zero';
+        const blockReason = params.minimumFlexBlockReason || null;
+        const hasShortfall = Number.isFinite(params.minimumFlexShortfallAnnual)
+            && params.minimumFlexShortfallAnnual > 0.01;
+        const trend = status === 'blocked_emergency'
+            || status === 'overridden_by_severe_flex_emergency'
+            || hasShortfall ? 'down'
+            : (status === 'applied' ? 'up' : 'neutral');
+        pushMetric({
+            label: 'Mindest-Flex p.a.',
+            value: UIUtils.formatBalanceCurrency(params.minimumFlexAnnual),
+            meta: blockReason
+                ? `${statusLabels[status] || status}: ${blockReasonLabels[blockReason] || blockReason}`
+                : (statusLabels[status] || status),
+            trend
+        });
+        if (typeof params.minimumFlexRequiredRate === 'number' && isFinite(params.minimumFlexRequiredRate) && params.minimumFlexAnnual > 0) {
+            pushMetric({
+                label: 'Mindest-Flex Rate',
+                value: formatDisplayPercentValue(params.minimumFlexRequiredRate, { fractionDigits: 1, invalid: null }),
+                meta: 'Erforderliche Flex-Rate für den gesetzten Mindest-Flex'
+            });
+        }
+        if (
+            typeof params.minimumFlexEffectiveBefore === 'number' && isFinite(params.minimumFlexEffectiveBefore) &&
+            typeof params.minimumFlexEffectiveAfter === 'number' && isFinite(params.minimumFlexEffectiveAfter) &&
+            params.minimumFlexAnnual > 0
+        ) {
+            pushMetric({
+                label: 'Mindest-Flex Effekt',
+                value: `${UIUtils.formatBalanceCurrency(params.minimumFlexEffectiveBefore)} -> ${UIUtils.formatBalanceCurrency(params.minimumFlexEffectiveAfter)}`,
+                meta: 'Effektiver Flex vor/nach Mindest-Flex-Schritt',
+                trend
+            });
+        }
+        if (
+            typeof params.minimumFlexEffectiveFinal === 'number' && isFinite(params.minimumFlexEffectiveFinal) &&
+            typeof params.minimumFlexShortfallAnnual === 'number' && isFinite(params.minimumFlexShortfallAnnual) &&
+            params.minimumFlexApplicable === true
+        ) {
+            pushMetric({
+                label: 'Mindest-Flex final',
+                value: `${UIUtils.formatBalanceCurrency(params.minimumFlexEffectiveFinal)} / ${UIUtils.formatBalanceCurrency(params.minimumFlexAnnual)}`,
+                meta: `Nominaler Fehlbetrag: ${UIUtils.formatBalanceCurrency(params.minimumFlexShortfallAnnual)}`,
+                trend: hasShortfall ? 'down' : 'up'
+            });
+        }
+    }
+
+    if (typeof params.kuerzungProzent === 'number' && isFinite(params.kuerzungProzent)) {
+        const trend = params.kuerzungProzent > 0 ? 'down' : params.kuerzungProzent < 0 ? 'up' : 'neutral';
+        pushMetric({
+            label: 'Kürzung ggü. Flex-Bedarf',
+            value: formatDisplayPercentValue(params.kuerzungProzent, { fractionDigits: 1, invalid: null }),
+            meta: 'Abweichung zum Soll',
+            trend
+        });
+    }
+
+    if (typeof params.jahresentnahme === 'number' && isFinite(params.jahresentnahme)) {
+        pushMetric({
+            label: 'Jahresentnahme (brutto)',
+            value: formatCurrencySafe(params.jahresentnahme),
+            meta: 'Geplante Auszahlung'
+        });
+    }
+
+    if (vpw) {
+        const methodLabel = vpw.horizonMethod === 'mean'
+            ? 'Mean'
+            : (vpw.horizonMethod === 'survival_quantile' ? 'Survival-Quantil' : (vpw.horizonMethod || 'n/a'));
+        const statusLabelMap = {
+            active: 'Aktiv',
+            disabled: 'Inaktiv',
+            contract_ready: 'Bereit (noch nicht aktiv)',
+            safety_static_flex: 'Statisch (Safety)'
+        };
+        const statusLabel = statusLabelMap[vpw.status] || (vpw.enabled ? 'Aktiv' : 'Inaktiv');
+        pushMetric({
+            label: 'Dynamic Flex (VPW)',
+            value: statusLabel,
+            meta: vpw.enabled ? `Methode: ${methodLabel}` : 'statisches Flex-Budget aktiv'
+        });
+
+        if (typeof vpw.vpwRate === 'number' && isFinite(vpw.vpwRate)) {
+            const vpwRatePct = vpw.vpwRate * 100;
+            const isHigh = vpwRatePct >= 8;
+            const isElevated = vpwRatePct >= 6;
+            pushMetric({
+                label: 'VPW-Rate',
+                value: formatDisplayPercentValue(vpw.vpwRate * 100, { fractionDigits: 1, invalid: null }),
+                meta: isHigh
+                    ? 'Warnsignal: hoher Entnahmesatz'
+                    : (isElevated ? 'Erhöht: Entnahmesatz beobachten' : 'Entnahmesatz aus Restlaufzeit und Rendite'),
+                trend: isHigh ? 'down' : 'neutral'
+            });
+        }
+        if (typeof vpw.horizonYears === 'number' && isFinite(vpw.horizonYears)) {
+            const roundedHorizon = Math.round(vpw.horizonYears);
+            const veryShort = roundedHorizon <= 12;
+            const shortish = roundedHorizon <= 18;
+            const q = (typeof vpw.survivalQuantile === 'number' && isFinite(vpw.survivalQuantile))
+                ? `, q=${formatDisplayFixed(vpw.survivalQuantile, 2)}`
+                : '';
+            pushMetric({
+                label: 'VPW-Horizont',
+                value: `${roundedHorizon}\u00a0Jahre`,
+                meta: veryShort
+                    ? `Warnsignal: sehr kurzer Horizont (${methodLabel}${q})`
+                    : (shortish ? `Kurzfristig (${methodLabel}${q})` : `${methodLabel}${q}`),
+                trend: veryShort ? 'down' : 'neutral'
+            });
+        }
+        if (typeof vpw.expectedRealReturn === 'number' && isFinite(vpw.expectedRealReturn)) {
+            const negativeReal = vpw.expectedRealReturn < 0;
+            pushMetric({
+                label: 'ER(real)',
+                value: formatDisplayPercentValue(vpw.expectedRealReturn * 100, { fractionDigits: 1, invalid: null }),
+                meta: negativeReal ? 'Warnsignal: negative Realrendite' : 'Glättete Realrendite für VPW',
+                trend: negativeReal ? 'down' : 'neutral'
+            });
+        }
+        if (typeof vpw.expectedReturnCape === 'number' && isFinite(vpw.expectedReturnCape)) {
+            let capeMeta = 'Nominale CAPE-basierte Rendite';
+            if (typeof vpw.capeRatioUsed === 'number' && isFinite(vpw.capeRatioUsed)) {
+                capeMeta += ` (CAPE ${formatDisplayFixed(vpw.capeRatioUsed, 1)})`;
+            }
+            pushMetric({
+                label: 'ER(CAPE)',
+                value: formatDisplayPercentValue(vpw.expectedReturnCape * 100, { fractionDigits: 1, invalid: null }),
+                meta: capeMeta
+            });
+        }
+        const goGoValue = vpw.goGoActive
+            ? `Aktiv x${Number.isFinite(vpw.goGoMultiplier) ? formatDisplayFixed(vpw.goGoMultiplier, 2) : '1,00'}`
+            : 'Inaktiv';
+        pushMetric({
+            label: 'Go-Go-Phase',
+            value: goGoValue,
+            meta: 'Multiplikator auf VPW-Gesamtentnahme'
+        });
+        if (Number.isFinite(vpw.safetyStage)) {
+            const stage = Math.max(0, Math.round(vpw.safetyStage));
+            const stageLabel = stage === 0
+                ? 'Normal'
+                : (stage === 1 ? 'Stufe 1: Go-Go aus' : 'Stufe 2: Statischer Flex');
+            pushMetric({
+                label: 'VPW-Sicherheitsmodus',
+                value: stageLabel,
+                meta: stage === 0 ? 'Keine Eskalation aktiv' : 'Automatische Stabilisierung aktiv',
+                trend: stage >= 2 ? 'down' : (stage === 1 ? 'neutral' : 'up')
+            });
+        }
+        if (typeof vpw.gesamtwert === 'number' && isFinite(vpw.gesamtwert)) {
+            pushMetric({
+                label: 'VPW-Basisvermögen',
+                value: UIUtils.formatBalanceCurrency(vpw.gesamtwert),
+                meta: 'Gesamtvermögen für VPW-Formel'
+            });
+        }
+        if (typeof vpw.vpwTotal === 'number' && isFinite(vpw.vpwTotal)) {
+            pushMetric({
+                label: 'VPW-Rahmen',
+                value: UIUtils.formatBalanceCurrency(vpw.vpwTotal),
+                meta: 'Maximal freigegebener VPW-Rahmen, keine Konsumpflicht'
+            });
+        }
+        if (typeof vpw.staticFlexBaseline === 'number' && isFinite(vpw.staticFlexBaseline)) {
+            pushMetric({
+                label: 'Statischer Flex-Bedarf',
+                value: UIUtils.formatBalanceCurrency(vpw.staticFlexBaseline),
+                meta: 'Flex-Bedarf ohne VPW-Neuberechnung'
+            });
+        }
+        if (typeof vpw.dynamicFlex === 'number' && isFinite(vpw.dynamicFlex)) {
+            pushMetric({
+                label: 'Flex freigegeben',
+                value: UIUtils.formatBalanceCurrency(vpw.dynamicFlex),
+                meta: 'Zusätzlicher Spielraum nach netto Floor und Sicherheitslogik'
+            });
+        }
+        if (typeof params.jahresentnahme === 'number' && isFinite(params.jahresentnahme) && typeof vpw.vpwTotal === 'number' && isFinite(vpw.vpwTotal)) {
+            const unusedRoom = Math.max(0, vpw.vpwTotal - params.jahresentnahme);
+            pushMetric({
+                label: 'Nicht genutzter Rahmen',
+                value: UIUtils.formatBalanceCurrency(unusedRoom),
+                meta: 'VPW-Rahmen minus empfohlene Entnahme'
+            });
+        }
+    }
+
+    if (healthBucket?.enabled) {
+        pushMetric({
+            label: 'Pflegebucket',
+            value: UIUtils.formatBalanceCurrency(healthBucket.lockedAmount || 0),
+            meta: `Operativ frei: ${UIUtils.formatBalanceCurrency(healthBucket.operativeLiquidity || 0)}; keine automatische Freigabe`
+        });
+        if (typeof healthBucket.targetCoveragePct === 'number' && isFinite(healthBucket.targetCoveragePct)) {
+            pushMetric({
+                label: 'Pflegebucket-Zieldeckung',
+                value: formatDisplayPercentValue(healthBucket.targetCoveragePct, { fractionDigits: 0, invalid: 'n/a' }),
+                meta: healthBucket.targetGap > 0
+                    ? `Kaufkraftlücke: ${UIUtils.formatBalanceCurrency(healthBucket.targetGap)}`
+                    : 'Inflationsziel gedeckt',
+                trend: healthBucket.targetGap > 0 ? 'down' : 'up'
+            });
+        }
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'key-param-grid';
+
+    if (!metrics.length) {
+        const empty = document.createElement('p');
+        empty.textContent = 'Keine Schlüsselparameter vorhanden.';
+        empty.style.fontSize = 'var(--balance-help)';
+        empty.style.color = 'var(--secondary-text)';
+        grid.append(empty);
+        return grid;
+    }
+
+    metrics.forEach(metric => {
+        const card = document.createElement('div');
+        card.className = 'key-param-card';
+        card.dataset.trend = metric.trend;
+
+        const label = document.createElement('span');
+        label.className = 'label';
+        label.textContent = metric.label;
+
+        const value = document.createElement('span');
+        value.className = 'value';
+        value.textContent = displayDiagnosisText(metric.value);
+
+        card.append(label, value);
+
+        if (metric.meta) {
+            const meta = document.createElement('span');
+            meta.className = 'meta';
+            meta.textContent = displayDiagnosisText(metric.meta);
+            card.append(meta);
+        }
+
+        grid.append(card);
+    });
+
+    return grid;
+}

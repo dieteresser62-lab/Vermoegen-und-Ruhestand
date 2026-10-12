@@ -1,0 +1,251 @@
+/**
+ * Module: Transaction Utils
+ * Purpose: Helper functions for transactions.
+ *          Includes Target Liquidity calculation, Min-Trade-Gate logic, and Anti-Pseudo-Accuracy quantization.
+ * Usage: Shared utility for transaction modules.
+ * Dependencies: config.mjs
+ */
+import { CONFIG } from '../config.mjs';
+import {
+    deriveLiquidityRunwayPolicy,
+    resolveLiquidityRunwayYears
+} from '../../types/liquidity-runway-contract.js';
+
+/**
+ * Berechnet Ziel-Liquidität und Diagnose-Metadaten aus dem vom Aufrufer
+ * gelieferten Netto-Bedarf. Neue Entnahmepfade liefern direkt den geplanten
+ * Jahresbetrag; Objektkomponenten bleiben für bestehende API-Aufrufer erhalten.
+ */
+export function calculateTargetLiquidityDetails(profil, market, annualNeedInput, input = null) {
+    const runwayPolicy = deriveLiquidityRunwayPolicy(resolveLiquidityRunwayYears(input || {}).years);
+    if (typeof annualNeedInput === 'number' && (!Number.isFinite(annualNeedInput) || annualNeedInput < 0)) {
+        throw new RangeError('annualNeedInput must be a finite non-negative annual amount');
+    }
+    const annualNeed = typeof annualNeedInput === 'number'
+        ? annualNeedInput
+        : Math.max(0, Number(annualNeedInput?.floor) || 0)
+            + Math.max(0, Number(annualNeedInput?.flex) || 0);
+    let calculatedTarget = (annualNeed / 12) * runwayPolicy.targetMonths;
+    const runwayTargetDiagnostics = {
+        contractVersion: 'LiquidityRunwayContractV1',
+        targetYears: runwayPolicy.targetYears,
+        smoothingEnabled: false,
+        smoothingActive: false,
+        smoothingApplied: false,
+        smoothingFallback: false,
+        fallbackReason: null,
+        rawTargetMonths: runwayPolicy.targetMonths,
+        targetMonths: runwayPolicy.targetMonths,
+        lowerTargetMonths: null,
+        upperTargetMonths: null,
+        severity: 0,
+        severityPct: 0,
+        minRunwayMonths: runwayPolicy.hardMinimumMonths,
+        hardMinimumMonths: runwayPolicy.hardMinimumMonths,
+        hardMinimumSource: runwayPolicy.hardMinimumSource,
+        source: 'input:liquidityRunwayYears'
+    };
+
+    // 2. Mindest-Puffer (Brutto)
+    // "sicherheitsPuffer" im Sinne von: Waschmaschine muss bezahlbar sein.
+    // Auch wenn durch Rente monatliche Entnahme 0 ist.
+    const minBufferMonths = (input && input.minCashBufferMonths !== undefined)
+        ? input.minCashBufferMonths
+        : CONFIG.THRESHOLDS.STRATEGY.minCashBufferMonths;
+
+    // annualNeedInput ist bereits um die Rente reduziert (Netto).
+    // Wir brauchen hier aber den Brutto-Bedarf für den "Waschmaschinen-Puffer".
+    // Daher nutzen wir die Werte aus dem Input, falls verfügbar.
+    let bruttoJahresbedarf = annualNeed;
+
+    if (input && (input.floorBedarf !== undefined || input.flexBedarf !== undefined)) {
+        const fBedarf = Number(input.floorBedarf) || 0;
+        const flexB = Number(input.flexBedarf) || 0;
+        bruttoJahresbedarf = fBedarf + flexB;
+    }
+
+    const bruttoMonatsbedarf = bruttoJahresbedarf / 12;
+    const absoluteBufferTarget = bruttoMonatsbedarf * minBufferMonths;
+
+    calculatedTarget = Math.max(calculatedTarget, absoluteBufferTarget);
+
+    // Rundung auf 100er
+    const targetLiquidity = Math.ceil(calculatedTarget / 100) * 100;
+    return {
+        targetLiquidity,
+        runwayTargetDiagnostics
+    };
+}
+
+/**
+ * Berechnet Ziel-Liquidität basierend auf Profil und Markt.
+ */
+export function calculateTargetLiquidity(profil, market, annualNeedInput, input = null) {
+    return calculateTargetLiquidityDetails(profil, market, annualNeedInput, input).targetLiquidity;
+}
+
+/**
+ * Berechnet gewichtete Allokation
+ */
+export function computeWeights(input, gesamtwert) {
+    if (gesamtwert <= 0) {
+        return { eqWeight: 0, goldWeight: 0, liqWeight: 0 };
+    }
+
+    const aktienwert = input.depotwertAlt + input.depotwertNeu;
+    const goldwert = input.goldAktiv ? input.goldWert : 0;
+    const liquiditaet = input.tagesgeld + input.geldmarktEtf;
+
+    return {
+        eqWeight: aktienwert / gesamtwert,
+        goldWeight: goldwert / gesamtwert,
+        liqWeight: liquiditaet / gesamtwert
+    };
+}
+
+/**
+ * Quantisiert einen Betrag gemäß Anti-Pseudo-Accuracy Regeln
+ */
+export function quantizeAmount(amount, mode = 'ceil') {
+    if (!CONFIG.ANTI_PSEUDO_ACCURACY.ENABLED) return amount;
+
+    const tiers = CONFIG.ANTI_PSEUDO_ACCURACY.QUANTIZATION_TIERS;
+    const tier = tiers.find(t => amount < t.limit);
+    const step = tier ? tier.step : 25000;
+
+    if (mode === 'ceil') {
+        return Math.ceil(amount / step) * step;
+    }
+    return Math.floor(amount / step) * step;
+}
+
+/**
+ * Berechnet begrenztes Auffüllen (mit Cap)
+ */
+export function computeCappedRefill({
+    isBearContext,
+    liquiditaetsbedarf,
+    aktienwert,
+    input,
+    isCriticalLiquidity = false
+}) {
+    const capConfig = isBearContext
+        ? {
+            pct: input.maxBearRefillPctOfEq,
+            title: 'Bärenmarkt-Auffüllung (Drip)',
+            diagStep: 'Cap wirksam (Bär)'
+        }
+        : {
+            pct: input.maxSkimPctOfEq,
+            title: 'Opportunistisches Rebalancing (Skim & Fill)',
+            diagStep: 'Cap wirksam (Skim)'
+        };
+
+    const maxCapEuro = (capConfig.pct / 100) * aktienwert;
+    // Bei kritischer Liquidität: erhöhtes Cap erlauben
+    // Wenn keine Aktien vorhanden (nur Gold), Cap auf Liquiditätsbedarf setzen,
+    // um Verkauf aus Gold zu ermöglichen
+    let effectiveMaxCap;
+    let effectiveCapLabel = `${capConfig.pct}%`;
+    if (isCriticalLiquidity) {
+        if (aktienwert > 0) {
+            const effectiveEmergencyCapPct = Math.max(capConfig.pct, 10);
+            effectiveMaxCap = (effectiveEmergencyCapPct / 100) * aktienwert;
+            effectiveCapLabel = `${effectiveEmergencyCapPct}% Notfall-Cap`;
+        } else {
+            // Kein Aktienbestand - Cap auf Bedarf setzen um Gold-Verkauf zu erlauben
+            effectiveMaxCap = liquiditaetsbedarf;
+            effectiveCapLabel = 'Liquiditaetsbedarf ohne Aktienbasis';
+        }
+    } else {
+        effectiveMaxCap = maxCapEuro;
+    }
+
+    // ANTI-PSEUDO-ACCURACY: Auch das Cap runden (abrunden, um Limit einzuhalten)
+    effectiveMaxCap = quantizeAmount(effectiveMaxCap, 'floor');
+
+    // ANTI-PSEUDO-ACCURACY: Liquiditätsbedarf 'aufrunden', um glatte Summe zu erhalten
+    const quantizedBedarf = quantizeAmount(liquiditaetsbedarf, 'ceil');
+
+    const nettoBedarf = Math.min(quantizedBedarf, effectiveMaxCap);
+    const isCapped = nettoBedarf < liquiditaetsbedarf;
+
+    // Bei kritischer Liquidität: stark reduzierte Mindestschwelle verwenden
+    // Wenn isCriticalLiquidity true ist, setzen wir das Limit auf 0, um JEDE notwendige Auffüllung zu erlauben
+    // und so den "Notfall-Verkauf" im Folgejahr zu verhindern.
+    const effectiveMinRefill = isCriticalLiquidity
+        ? 0
+        : CONFIG.THRESHOLDS.STRATEGY.minRefillAmount;
+
+    if (nettoBedarf < effectiveMinRefill) {
+        if (liquiditaetsbedarf >= effectiveMinRefill) {
+            return {
+                bedarf: 0,
+                title: '',
+                diagnosisEntries: [{
+                    step: "Aktion unterdrückt",
+                    impact: `Geplanter Verkauf (${nettoBedarf.toFixed(0)}€) unter Mindestgröße nach Capping.`,
+                    status: 'inactive',
+                    severity: 'guardrail'
+                }],
+                isCapped
+            };
+        }
+        return { bedarf: 0, title: '', diagnosisEntries: [], isCapped };
+    }
+
+    const title = isCapped ? `${capConfig.title} (Cap aktiv)` : capConfig.title;
+    const diagnosisEntries = isCapped
+        ? [{
+            step: capConfig.diagStep,
+            impact: `Auffüllen auf ${nettoBedarf.toFixed(0)}€ (${effectiveCapLabel}) begrenzt.`,
+            status: 'active',
+            severity: 'guardrail'
+        }]
+        : [];
+
+    return { bedarf: nettoBedarf, title, diagnosisEntries, isCapped };
+}
+
+/**
+ * Ermittelt die anwendbare Mindest-Trade-Schwelle für liquiditätsgetriebene Aktionen.
+ *
+ * @param {Object} params - Parameterobjekt
+ * @param {number} params.investiertesKapital - Gesamtwert des Portfolios inkl. Liquidität
+ * @param {number} params.liquiditaetsBedarf - Geplanter Liquiditätszufluss (ohne Gold)
+ * @param {number} params.totalerBedarf - Gesamter Zielzufluss (inklusive etwaiger Gold-Beschaffungen)
+ * @returns {{ appliedMinTradeGate: number, minTradeResultOverride: (number|null), diagnosisEntry: (Object|null) }}
+ */
+export function computeAppliedMinTradeGate({ investiertesKapital, liquiditaetsBedarf, totalerBedarf }) {
+    const basisMinTrade = Math.max(
+        CONFIG.THRESHOLDS.STRATEGY.minTradeAmountStatic,
+        investiertesKapital * CONFIG.THRESHOLDS.STRATEGY.minTradeAmountDynamicFactor
+    );
+    const liquidityEmergencyGate = Math.max(
+        CONFIG.THRESHOLDS.STRATEGY.minRefillAmount || 0,
+        CONFIG.THRESHOLDS.STRATEGY.cashRebalanceThreshold || 0
+    );
+
+    let appliedMinTradeGate = basisMinTrade;
+    let minTradeResultOverride = null;
+    let diagnosisEntry = null;
+
+    const shouldRelaxMinTradeGate =
+        liquiditaetsBedarf > 0 && totalerBedarf > 0 && totalerBedarf < basisMinTrade;
+
+    if (shouldRelaxMinTradeGate) {
+        appliedMinTradeGate = Math.min(basisMinTrade, liquidityEmergencyGate);
+
+        if (appliedMinTradeGate < basisMinTrade) {
+            minTradeResultOverride = appliedMinTradeGate;
+            diagnosisEntry = {
+                step: 'Liquiditäts-Priorität',
+                impact: `Mindestschwelle temporär auf ${appliedMinTradeGate.toFixed(0)}€ gesenkt (statt ${basisMinTrade.toFixed(0)}€).`,
+                status: 'active',
+                severity: 'info'
+            };
+        }
+    }
+
+    return { appliedMinTradeGate, minTradeResultOverride, diagnosisEntry };
+}

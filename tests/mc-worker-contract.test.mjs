@@ -1,0 +1,893 @@
+import { Worker } from 'node:worker_threads';
+import { EngineAPI } from '../engine/index.mjs';
+import {
+    compileScenario,
+    getDataVersion,
+    prepareHistoricalDataOnce
+} from '../app/simulator/simulator-engine-helpers.js';
+import { annualData } from '../app/simulator/simulator-data.js';
+import {
+    MONTE_CARLO_HOUSEHOLD_LIFE_CONTRACT_VERSION,
+    runMonteCarloChunk
+} from '../app/simulator/monte-carlo-runner.js';
+import { runSweepChunk } from '../app/simulator/sweep-runner.js';
+import { SWEEP_REQUEST_VERSION } from '../app/simulator/monte-carlo-parameters.js';
+import { assertWealthFan } from '../app/simulator/wealth-fan-aggregation.js';
+import {
+    MONTE_CARLO_CHUNK_RESULT_VERSION,
+    MONTE_CARLO_OUTCOME_CODE,
+    assertMonteCarloChunkResultV1
+} from '../app/simulator/monte-carlo-chunk-result.js';
+
+console.log('--- MC Worker Entrypoint Contract Tests ---');
+
+if (typeof global.window === 'undefined') {
+    global.window = {};
+}
+global.window.EngineAPI = EngineAPI;
+
+const workerUrl = new URL('../workers/mc-worker.js', import.meta.url);
+
+function createWorkerHarness({ observe = false } = {}) {
+    const probeLoader = `export async function load(url, context, nextLoad) {
+        const result = await nextLoad(url, context);
+        if (!url.endsWith('/simulator-utils.js') && !url.endsWith('/simulator-engine-wrapper.js')) return result;
+        let source = String(result.source);
+        if (url.endsWith('/simulator-utils.js')) source = source.replace('const generator = () => (', 'const generator = () => (globalThis.__p7WorkerCounts.rng++, ');
+        if (url.endsWith('/simulator-engine-wrapper.js')) source = source.replace('    const performanceMonitoring =', '    globalThis.__p7WorkerCounts.years++;\\n    const performanceMonitoring =');
+        return { ...result, source };
+    }`;
+    const harnessSource = `
+        import { parentPort } from 'node:worker_threads';
+        import { register } from 'node:module';
+        ${observe ? `globalThis.__p7WorkerCounts = { rng: 0, years: 0 }; register(${JSON.stringify(`data:text/javascript,${encodeURIComponent(probeLoader)}`)});` : ''}
+
+        globalThis.self = {
+            postMessage(message, transferables = []) {
+                if (${observe} && message.type === 'result') {
+                    const core = [...Object.values(message.buffers || {}).map(value => value.buffer),
+                        ...(message.heatmap || []).map(row => row.buffer)];
+                    const fan = message.wealthFan ? ['real', 'nominal', 'alive', 'ruined', 'missingReal', 'missingNominal']
+                        .map(field => message.wealthFan[field].buffer) : [];
+                    const bytes = values => values.reduce((sum, buffer) => sum + buffer.byteLength, 0);
+                    const p7TransferProbe = {
+                        count: transferables.length, uniqueCount: new Set(transferables).size,
+                        byteLength: bytes(transferables), coreCount: core.length, coreBytes: bytes(core),
+                        fanCount: fan.length, fanBytes: bytes(fan),
+                        allCoreIncluded: core.every(buffer => transferables.includes(buffer)),
+                        allFanIncluded: fan.every(buffer => transferables.includes(buffer)),
+                        unexpectedCount: transferables.filter(buffer => !core.includes(buffer) && !fan.includes(buffer)).length,
+                        fanUniqueCount: new Set(fan).size,
+                        disjoint: fan.every(buffer => !core.includes(buffer))
+                    };
+                    parentPort.postMessage({ ...message, p7ProbeCounts: { ...globalThis.__p7WorkerCounts }, p7TransferProbe }, transferables);
+                    parentPort.postMessage({ type: 'p7-transfer', jobId: message.jobId,
+                        detached: transferables.every(buffer => buffer.byteLength === 0) });
+                } else parentPort.postMessage(message, transferables);
+            },
+            onmessage: null
+        };
+
+        const pendingMessages = [];
+        parentPort.on('message', data => {
+            if (${observe} && data.type === 'job') globalThis.__p7WorkerCounts = { rng: 0, years: 0 };
+            if (typeof globalThis.self.onmessage === 'function') {
+                globalThis.self.onmessage({ data });
+            } else pendingMessages.push(data);
+        });
+
+        await import(${JSON.stringify(workerUrl.href)});
+        for (const data of pendingMessages) globalThis.self.onmessage({ data });
+    `;
+    return new Worker(
+        new URL(`data:text/javascript,${encodeURIComponent(harnessSource)}`),
+        { type: 'module' }
+    );
+}
+
+function terminateWorker(worker) {
+    return worker.terminate().catch(() => undefined);
+}
+
+function postAndWait(worker, payload, { timeoutMs = 12000, terminalTypes = ['ready', 'result', 'error', 'disposed'] } = {}) {
+    const progress = [];
+    let pendingResult = null;
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            cleanup();
+            reject(new Error(`Timed out waiting for worker response to ${payload.type}`));
+        }, timeoutMs);
+
+        const cleanup = () => {
+            clearTimeout(timer);
+            worker.off('message', onMessage);
+            worker.off('error', onError);
+            worker.off('exit', onExit);
+        };
+
+        const onMessage = message => {
+            if (message?.type === 'p7-transfer' && pendingResult && message.jobId === payload.jobId) {
+                pendingResult.p7TransferProbe.detached = message.detached;
+                cleanup();
+                resolve({ message: pendingResult, progress });
+                return;
+            }
+            if (message?.type === 'progress') {
+                progress.push(message);
+                return;
+            }
+            if (!terminalTypes.includes(message?.type)) {
+                return;
+            }
+            if (message.p7TransferProbe) {
+                pendingResult = message;
+                return;
+            }
+            cleanup();
+            resolve({ message, progress });
+        };
+
+        const onError = error => {
+            cleanup();
+            reject(error);
+        };
+
+        const onExit = code => {
+            if (code !== 0) {
+                cleanup();
+                reject(new Error(`Worker exited with code ${code}`));
+            }
+        };
+
+        worker.on('message', onMessage);
+        worker.on('error', onError);
+        worker.on('exit', onExit);
+        worker.postMessage(payload);
+    });
+}
+
+function createInputs() {
+    return {
+        startAlter: 65,
+        geschlecht: 'm',
+        startVermoegen: 750000,
+        depotwertAlt: 250000,
+        einstandAlt: 200000,
+        zielLiquiditaet: 45000,
+        startFloorBedarf: 24000,
+        startFlexBedarf: 12000,
+        rebalancingBand: 25,
+        maxSkimPctOfEq: 10,
+        maxBearRefillPctOfEq: 5,
+        liquidityRunwayYears: 3,
+        goldAktiv: false,
+        goldZielProzent: 0,
+        goldFloorProzent: 0,
+        goldSteuerfrei: true,
+        startSPB: 1000,
+        kirchensteuerSatz: 0,
+        rentAdjMode: 'fix',
+        rentAdjPct: 0,
+        renteMonatlich: 0,
+        renteStartOffsetJahre: 0,
+        dynamicFlex: false,
+        horizonMethod: 'survival_quantile',
+        horizonYears: 30,
+        survivalQuantile: 0.85,
+        goGoActive: false,
+        goGoMultiplier: 1.0,
+        capeRatio: 0,
+        marketCapeRatio: 0,
+        stressPreset: 'NONE',
+        pflegefallLogikAktivieren: false,
+        partner: { aktiv: false },
+        accumulationPhase: { enabled: false },
+        transitionYear: 0
+    };
+}
+
+const widowOptions = {
+    mode: 'stop',
+    percent: 0,
+    marriageOffsetYears: 0,
+    minMarriageYears: 0
+};
+
+const monteCarloParams = {
+    anzahl: 6,
+    maxDauer: 18,
+    blockSize: 4,
+    seed: 24680,
+    methode: 'block',
+    rngMode: 'per-run-seed'
+};
+
+// Test 1: init/dispose lifecycle through the real worker entrypoint.
+console.log('Test 1: init/dispose lifecycle');
+{
+    const worker = createWorkerHarness();
+    try {
+        const inputs = createInputs();
+        const { scenarioKey, compiledScenario } = compileScenario(
+            inputs,
+            widowOptions,
+            monteCarloParams.methode,
+            false,
+            inputs.stressPreset
+        );
+        const dataVersion = getDataVersion();
+
+        const init = await postAndWait(worker, {
+            type: 'init',
+            jobId: 'init-1',
+            scenarioKey,
+            compiledScenario,
+            dataVersion
+        });
+        assertEqual(init.message.type, 'ready', 'init should return ready');
+        assertEqual(init.message.jobId, 'init-1', 'init should echo jobId');
+        assertEqual(init.message.scenarioKey, scenarioKey, 'init should echo scenarioKey');
+        assertEqual(
+            JSON.stringify(init.message.dataVersion),
+            JSON.stringify(dataVersion),
+            'init should echo dataVersion'
+        );
+
+        const disposed = await postAndWait(worker, { type: 'dispose', jobId: 'dispose-1' });
+        assertEqual(disposed.message.type, 'disposed', 'dispose should return disposed');
+        console.log('✓ init/dispose lifecycle OK');
+    } finally {
+        await terminateWorker(worker);
+    }
+}
+
+// Test 2: unknown message types stay controlled.
+console.log('Test 2: unknown message type');
+{
+    const worker = createWorkerHarness();
+    try {
+        const response = await postAndWait(worker, { type: 'nope', jobId: 'unknown-1' });
+        assertEqual(response.message.type, 'error', 'unknown type should return error');
+        assertEqual(response.message.jobId, 'unknown-1', 'unknown type should echo jobId');
+        assert(
+            response.message.message.includes('Unknown worker message type: nope'),
+            'unknown type should include controlled error message'
+        );
+        console.log('✓ unknown message type OK');
+    } finally {
+        await terminateWorker(worker);
+    }
+}
+
+// Test 3: job without cached scenario returns an error response, not a process crash.
+console.log('Test 3: missing scenario cache');
+{
+    const worker = createWorkerHarness();
+    try {
+        const response = await postAndWait(worker, {
+            type: 'job',
+            jobId: 'missing-scenario-1',
+            scenarioKey: 'missing',
+            runRange: { start: 0, count: 1 },
+            monteCarloParams,
+            useCapeSampling: false,
+            logIndices: []
+        });
+        assertEqual(response.message.type, 'error', 'missing scenario should return error');
+        assert(
+            response.message.message.includes('Unknown scenarioKey: missing'),
+            'missing scenario should include scenarioKey'
+        );
+        console.log('✓ missing scenario cache OK');
+    } finally {
+        await terminateWorker(worker);
+    }
+}
+
+// Test 4: valid job returns result structure and progress through the entrypoint.
+console.log('Test 4: valid Monte-Carlo job');
+{
+    const worker = createWorkerHarness();
+    try {
+        const inputs = createInputs();
+        const { scenarioKey, compiledScenario } = compileScenario(
+            inputs,
+            widowOptions,
+            monteCarloParams.methode,
+            false,
+            inputs.stressPreset
+        );
+
+        await postAndWait(worker, {
+            type: 'init',
+            jobId: 'init-valid-job',
+            scenarioKey,
+            compiledScenario,
+            dataVersion: getDataVersion()
+        });
+
+        const response = await postAndWait(worker, {
+            type: 'job',
+            jobId: 'job-1',
+            generationId: 'generation-valid-job',
+            scenarioKey,
+            runRange: { start: 0, count: monteCarloParams.anzahl },
+            monteCarloParams,
+            dataVersion: getDataVersion(),
+            useCapeSampling: false,
+            logIndices: [0]
+        });
+
+        const result = response.message;
+        assertEqual(result.type, 'result', 'valid job should return result');
+        assertEqual(result.jobId, 'job-1', 'valid job should echo jobId');
+        assertEqual(result.generationId, 'generation-valid-job', 'valid job should echo generationId');
+        assert(Number.isFinite(result.elapsedMs), 'result should include elapsedMs');
+        assert(result.buffers?.finalOutcomes instanceof Float64Array, 'result should include finalOutcomes buffer');
+        assertEqual(result.buffers.finalOutcomes.length, monteCarloParams.anzahl, 'finalOutcomes should match run count');
+        assert(result.buffers.finalOutcomes.buffer.byteLength > 0, 'finalOutcomes should have a transferable buffer');
+        assertEqual(result.schemaVersion, MONTE_CARLO_CHUNK_RESULT_VERSION, 'worker should return the central chunk schema');
+        assertMonteCarloChunkResultV1(result, { expectedStart: 0, expectedCount: monteCarloParams.anzahl });
+        assertEqual(result.wealthFan, null, 'Job ohne Opt-in liefert keinen Jahresfächer');
+        assertEqual(
+            result.samplingDiagnostics.modelContracts?.householdLife?.schemaVersion,
+            MONTE_CARLO_HOUSEHOLD_LIFE_CONTRACT_VERSION,
+            'worker result preserves the versioned household life contract'
+        );
+        assertEqual(
+            result.samplingDiagnostics.modelContracts?.householdLife?.householdFlexProfilePolicy,
+            'partner-activation-independent-of-care-metadata',
+            'worker result preserves the care-independent household flex policy'
+        );
+        assert(
+            result.samplingDiagnostics.modelContracts?.householdLife?.deltaLedgerIds?.includes('A08-8'),
+            'worker result preserves the A08-8 delta-ledger reference'
+        );
+        assert(result.pathSummaries?.globalRunIndex instanceof Uint32Array, 'worker should transfer indexed path summaries');
+        assert(result.pathMissingness?.path instanceof Uint8Array, 'worker should transfer path missingness');
+        assert(Array.isArray(result.heatmap), 'result should include heatmap rows');
+        assert(result.heatmap[0] instanceof Uint32Array, 'heatmap rows should be typed arrays');
+        assert(result.totals && Number.isFinite(result.totals.failCount), 'result should include totals.failCount');
+        assert(Array.isArray(result.lists?.entryAges), 'result should include list payloads');
+        assert(response.progress.length > 0, 'valid job should emit progress messages');
+        assert(
+            response.progress.every(item => item.jobId === 'job-1'
+                && item.generationId === 'generation-valid-job'
+                && item.phase === 'run'),
+            'progress messages should carry jobId, generationId and phase'
+        );
+        console.log('✓ valid Monte-Carlo job OK');
+    } finally {
+        await terminateWorker(worker);
+    }
+}
+
+// Test 5: stationary bootstrap runs through the real worker entrypoint with data-end restarts.
+console.log('Test 5: stationary bootstrap Monte-Carlo job');
+{
+    const worker = createWorkerHarness();
+    try {
+        const inputs = createInputs();
+        const lastHistoricalYear = annualData[annualData.length - 1]?.jahr;
+        const stationaryParams = {
+            anzahl: 6,
+            maxDauer: 7,
+            blockSize: 30,
+            seed: 86420,
+            methode: 'stationary',
+            rngMode: 'per-run-seed',
+            startYearMode: 'FILTER',
+            startYearFilter: lastHistoricalYear,
+            startYearHalfLife: 20,
+            excludeEstimatedHistory: false
+        };
+        const { scenarioKey, compiledScenario } = compileScenario(
+            inputs,
+            widowOptions,
+            stationaryParams.methode,
+            false,
+            inputs.stressPreset
+        );
+
+        await postAndWait(worker, {
+            type: 'init',
+            jobId: 'init-stationary-job',
+            scenarioKey,
+            compiledScenario,
+            dataVersion: getDataVersion()
+        });
+
+        const response = await postAndWait(worker, {
+            type: 'job',
+            jobId: 'stationary-job-1',
+            collectWealthFan: true,
+            scenarioKey,
+            runRange: { start: 0, count: stationaryParams.anzahl },
+            monteCarloParams: stationaryParams,
+            useCapeSampling: false,
+            logIndices: [0, 5]
+        });
+        const serial = await runMonteCarloChunk({
+            inputs,
+            widowOptions,
+            monteCarloParams: stationaryParams,
+            useCapeSampling: false,
+            runRange: { start: 0, count: stationaryParams.anzahl },
+            logIndices: [0, 5],
+            collectWealthFan: true,
+            engine: EngineAPI
+        });
+
+        const result = response.message;
+        assertEqual(result.type, 'result', 'stationary job should return result');
+        assertEqual(result.jobId, 'stationary-job-1', 'stationary job should echo jobId');
+        assertEqual(result.buffers.finalOutcomes.length, stationaryParams.anzahl, 'stationary finalOutcomes should match run count');
+        assertEqual(
+            JSON.stringify(Array.from(result.buffers.finalOutcomes)),
+            JSON.stringify(Array.from(serial.buffers.finalOutcomes)),
+            'stationary worker finalOutcomes should match serial chunk'
+        );
+        assertEqual(result.totals.failCount, serial.totals.failCount, 'stationary worker failCount should match serial');
+        const fanBytes = fan => JSON.stringify(fan, (_, value) => ArrayBuffer.isView(value) ? Array.from(value) : value);
+        assertWealthFan(result.wealthFan, stationaryParams.anzahl);
+        assertEqual(fanBytes(result.wealthFan), fanBytes(serial.wealthFan), 'Echter Workertransfer liefert bytegleichen Jahresfächer');
+        assert(result.wealthFan.real.buffer !== result.wealthFan.nominal.buffer, 'Real-/Nominaltransfer besitzt eindeutige ArrayBuffer');
+        assertEqual(result.runMeta.length, stationaryParams.anzahl, 'stationary worker runMeta should include all runs');
+        const workerRun0 = (result.runMeta || []).find(meta => meta.index === 0);
+        const serialRun0 = (serial.runMeta || []).find(meta => meta.index === 0);
+        assert(workerRun0?.logDataRows?.length >= 2, 'stationary worker should log repeated data-end samples');
+        assertEqual(
+            JSON.stringify(workerRun0.logDataRows.map(row => row.histJahr)),
+            JSON.stringify(serialRun0.logDataRows.map(row => row.histJahr)),
+            'stationary worker histJahr sequence should match serial'
+        );
+        assert(
+            workerRun0.logDataRows.every(row => row.histJahr === lastHistoricalYear),
+            'stationary worker should keep data-end restarts inside the filtered last year'
+        );
+        console.log('✓ stationary bootstrap Monte-Carlo job OK');
+    } finally {
+        await terminateWorker(worker);
+    }
+}
+
+// Test 6: cache is bounded and a changed data version invalidates older scenarios.
+console.log('Test 6: bounded scenario cache and dataVersion invalidation');
+{
+    const worker = createWorkerHarness();
+    try {
+        const inputs = createInputs();
+        const { compiledScenario } = compileScenario(
+            inputs,
+            widowOptions,
+            monteCarloParams.methode,
+            false,
+            inputs.stressPreset
+        );
+        const version = getDataVersion();
+
+        let latestInit = null;
+        for (let index = 0; index < 9; index++) {
+            latestInit = await postAndWait(worker, {
+                type: 'init',
+                jobId: `init-cache-${index}`,
+                scenarioKey: `scenario-${index}`,
+                compiledScenario,
+                dataVersion: version
+            });
+        }
+        assertEqual(latestInit.message.scenarioCacheSize, 8, 'worker scenario cache should be bounded to eight entries');
+
+        const evicted = await postAndWait(worker, {
+            type: 'job',
+            jobId: 'evicted-scenario-job',
+            scenarioKey: 'scenario-0',
+            runRange: { start: 0, count: 1 },
+            monteCarloParams: { ...monteCarloParams, anzahl: 1 },
+            dataVersion: version,
+            useCapeSampling: false,
+            logIndices: []
+        });
+        assertEqual(evicted.message.type, 'error', 'oldest scenario should be evicted at the cache limit');
+        assert(evicted.message.message.includes('Unknown scenarioKey'), 'evicted scenario should fail closed');
+
+        const nextVersion = {
+            ...version,
+            annualDataHash: `${version.annualDataHash}-changed`
+        };
+        const changed = await postAndWait(worker, {
+            type: 'init',
+            jobId: 'init-data-version-change',
+            scenarioKey: 'scenario-new-version',
+            compiledScenario,
+            dataVersion: nextVersion
+        });
+        assertEqual(changed.message.scenarioCacheSize, 1, 'dataVersion change should clear the previous scenario cache');
+
+        const stale = await postAndWait(worker, {
+            type: 'job',
+            jobId: 'stale-data-version-job',
+            scenarioKey: 'scenario-new-version',
+            runRange: { start: 0, count: 1 },
+            monteCarloParams: { ...monteCarloParams, anzahl: 1 },
+            dataVersion: version,
+            useCapeSampling: false,
+            logIndices: []
+        });
+        assertEqual(stale.message.type, 'error', 'stale job dataVersion should be rejected');
+        assert(stale.message.message.includes('dataVersion mismatch'), 'stale dataVersion error should be explicit');
+        console.log('✓ bounded scenario cache and dataVersion invalidation OK');
+    } finally {
+        await terminateWorker(worker);
+    }
+}
+
+// Test 7: malformed data versions fail as controlled init errors.
+console.log('Test 7: invalid dataVersion fails closed');
+{
+    const worker = createWorkerHarness();
+    try {
+        const response = await postAndWait(worker, {
+            type: 'init',
+            jobId: 'init-invalid-version',
+            scenarioKey: 'invalid-version',
+            compiledScenario: { inputs: createInputs(), widowOptions },
+            dataVersion: { annualDataHash: 'only-one-hash' }
+        });
+        assertEqual(response.message.type, 'error', 'invalid dataVersion should return a controlled error');
+        assert(response.message.message.includes('annualDataHash and regimeHash'), 'invalid dataVersion error should name required hashes');
+        console.log('✓ invalid dataVersion fails closed OK');
+    } finally {
+        await terminateWorker(worker);
+    }
+}
+
+// Test 8: the worker entrypoint applies MonteCarloParametersV1 before execution.
+console.log('Test 8: invalid Monte-Carlo parameters fail closed in worker');
+{
+    const worker = createWorkerHarness();
+    try {
+        const inputs = createInputs();
+        const { scenarioKey, compiledScenario } = compileScenario(
+            inputs,
+            widowOptions,
+            monteCarloParams.methode,
+            false,
+            inputs.stressPreset
+        );
+        await postAndWait(worker, {
+            type: 'init',
+            jobId: 'init-invalid-parameters',
+            scenarioKey,
+            compiledScenario,
+            dataVersion: getDataVersion()
+        });
+        const response = await postAndWait(worker, {
+            type: 'job',
+            jobId: 'job-invalid-parameters',
+            scenarioKey,
+            runRange: { start: 0, count: 6 },
+            monteCarloParams: { ...monteCarloParams, anzahl: '6runs' },
+            useCapeSampling: false,
+            logIndices: []
+        });
+        assertEqual(response.message.type, 'error', 'worker rejects a suffixed run count');
+        assert(response.message.message.includes('ganze Zahl'), 'worker exposes the shared integer-contract error');
+        console.log('✓ invalid Monte-Carlo parameters fail closed in worker OK');
+    } finally {
+        await terminateWorker(worker);
+    }
+}
+
+// Test 9: the real worker consumes the same versioned SweepRequest as serial.
+console.log('Test 9: versioned Sweep request worker parity');
+{
+    const worker = createWorkerHarness();
+    try {
+        prepareHistoricalDataOnce();
+        const baseInputs = createInputs();
+        const paramCombinations = [{
+            liquidityRunwayYears: 3,
+            goldRebalancingBand: 25,
+            maxSkimPct: 10,
+            maxBearRefillPct: 5,
+            goldTargetPct: 0
+        }];
+        const sweepRequest = {
+            schemaVersion: SWEEP_REQUEST_VERSION,
+            monteCarloParameters: {
+                anzahl: 2,
+                maxDauer: 2,
+                blockSize: 1,
+                seed: 0,
+                methode: 'stationary',
+                rngMode: 'per-run-seed',
+                startYearMode: 'FILTER',
+                startYearFilter: 1970,
+                startYearHalfLife: 20,
+                excludeEstimatedHistory: true
+            },
+            useCapeSampling: false
+        };
+        const initialized = await postAndWait(worker, {
+            type: 'sweep-init',
+            jobId: 'sweep-init-v1',
+            baseInputs,
+            paramCombinations
+        });
+        assertEqual(initialized.message.type, 'ready', 'worker accepts Sweep cache initialization');
+
+        const valid = await postAndWait(worker, {
+            type: 'sweep',
+            jobId: 'sweep-v1',
+            sweepRequest,
+            comboRange: { start: 0, count: 1 }
+        });
+        assertEqual(valid.message.type, 'result', 'worker accepts versioned SweepRequestV1');
+        assertEqual(valid.message.sweepRequest.schemaVersion, SWEEP_REQUEST_VERSION, 'worker returns normalized Sweep request version');
+        assertEqual(valid.message.sweepRequest.monteCarloParameters.seed, 0, 'worker preserves explicit Sweep seed zero');
+        assertEqual(valid.message.results[0].provenance.appliedSamplingMethod, 'stationary', 'worker result exposes applied sampling method');
+        assertEqual(valid.message.results[0].provenance.samplingDiagnostics.contract.excludeEstimatedHistory, true, 'worker result exposes applied history exclusion');
+        const serial = runSweepChunk({
+            baseInputs,
+            paramCombinations,
+            comboRange: { start: 0, count: 1 },
+            sweepRequest,
+            engine: EngineAPI
+        });
+        assertEqual(
+            JSON.stringify(valid.message.results[0].provenance),
+            JSON.stringify(serial.results[0].provenance),
+            'worker and serial Sweep return identical request and sampling provenance'
+        );
+
+        let missingSerialError = null;
+        try {
+            runSweepChunk({
+                baseInputs,
+                paramCombinations,
+                comboRange: { start: 0, count: 1 },
+                engine: EngineAPI
+            });
+        } catch (error) {
+            missingSerialError = error;
+        }
+        const missing = await postAndWait(worker, {
+            type: 'sweep',
+            jobId: 'sweep-missing-request-v1',
+            comboRange: { start: 0, count: 1 }
+        });
+        assertEqual(missing.message.type, 'error', 'worker rejects a missing Sweep request');
+        assertEqual(
+            missing.message.code,
+            'SWEEP_REQUEST_OBJECT_REQUIRED',
+            'worker rejects missing Sweep requests before applying the 10,000-run MC default'
+        );
+        assertEqual(
+            missing.message.message,
+            missingSerialError?.message,
+            'worker and serial Sweep expose the same missing-request error'
+        );
+
+        const emptyRegimePoolRequest = {
+            ...sweepRequest,
+            monteCarloParameters: {
+                ...sweepRequest.monteCarloParameters,
+                methode: 'regime_markov',
+                startYearFilter: annualData.at(-1).jahr
+            }
+        };
+        let emptyPoolSerialError = null;
+        try {
+            runSweepChunk({
+                baseInputs,
+                paramCombinations,
+                comboRange: { start: 0, count: 1 },
+                sweepRequest: emptyRegimePoolRequest,
+                engine: EngineAPI
+            });
+        } catch (error) {
+            emptyPoolSerialError = error;
+        }
+        const emptyPool = await postAndWait(worker, {
+            type: 'sweep',
+            jobId: 'sweep-empty-regime-pool-v1',
+            sweepRequest: emptyRegimePoolRequest,
+            comboRange: { start: 0, count: 1 }
+        });
+        assertEqual(emptyPool.message.type, 'error', 'worker rejects an empty drawable regime pool');
+        assertEqual(
+            emptyPool.message.code,
+            'MC_SAMPLING_REGIME_POOL_EMPTY',
+            'worker exposes the stable empty-regime-pool code'
+        );
+        assertEqual(
+            emptyPool.message.message,
+            emptyPoolSerialError?.message,
+            'worker and serial Sweep expose the same empty-regime-pool error'
+        );
+
+        const invalidSweepRequest = {
+            ...sweepRequest,
+            monteCarloParameters: {
+                ...sweepRequest.monteCarloParameters,
+                methode: 'unknown_sampler'
+            }
+        };
+        let serialError = null;
+        try {
+            runSweepChunk({
+                baseInputs,
+                paramCombinations,
+                comboRange: { start: 0, count: 1 },
+                sweepRequest: invalidSweepRequest,
+                engine: EngineAPI
+            });
+        } catch (error) {
+            serialError = error;
+        }
+        const invalid = await postAndWait(worker, {
+            type: 'sweep',
+            jobId: 'sweep-invalid-v1',
+            sweepRequest: invalidSweepRequest,
+            comboRange: { start: 0, count: 1 }
+        });
+        assertEqual(invalid.message.type, 'error', 'worker rejects unsupported Sweep method');
+        assertEqual(invalid.message.code, serialError?.code, 'worker and serial Sweep expose the same structured error code');
+        assertEqual(invalid.message.message, serialError?.message, 'worker and serial Sweep expose the same error message');
+
+        const householdRiskInputs = {
+            ...baseInputs,
+            startAlter: 50,
+            partner: {
+                aktiv: true,
+                geschlecht: 'w',
+                startAlter: 80,
+                startInJahren: 0,
+                monatsrente: 5000,
+                brutto: 60000,
+                steuerquotePct: 0
+            },
+            widowOptions: {
+                mode: 'percent',
+                percent: 0.5,
+                marriageOffsetYears: 0,
+                minMarriageYears: 0
+            },
+            tailRiskEnabled: true,
+            tailRiskAnnualProbabilityPct: 5,
+            tailRiskReturnShockPct: -35,
+            tailRiskInflationShockPct: 6,
+            tailRiskDurationYears: 2,
+            tailRiskCooldownYears: 1
+        };
+        const householdRiskRequest = {
+            schemaVersion: SWEEP_REQUEST_VERSION,
+            monteCarloParameters: {
+                anzahl: 1,
+                maxDauer: 8,
+                blockSize: 3,
+                seed: 4,
+                methode: 'block',
+                rngMode: 'per-run-seed',
+                startYearMode: 'UNIFORM',
+                startYearHalfLife: 20,
+                excludeEstimatedHistory: false
+            },
+            useCapeSampling: false
+        };
+        const householdRiskInitialized = await postAndWait(worker, {
+            type: 'sweep-init',
+            jobId: 'sweep-init-household-risk-v1',
+            baseInputs: householdRiskInputs,
+            paramCombinations
+        });
+        assertEqual(
+            householdRiskInitialized.message.type,
+            'ready',
+            'worker accepts Sweep household/risk cache initialization'
+        );
+        const householdRiskWorker = await postAndWait(worker, {
+            type: 'sweep',
+            jobId: 'sweep-household-risk-v1',
+            sweepRequest: householdRiskRequest,
+            comboRange: { start: 0, count: 1 }
+        });
+        const householdRiskSerial = runSweepChunk({
+            baseInputs: householdRiskInputs,
+            paramCombinations,
+            comboRange: { start: 0, count: 1 },
+            sweepRequest: householdRiskRequest,
+            engine: EngineAPI
+        });
+        assertEqual(householdRiskWorker.message.type, 'result', 'worker executes Sweep household/risk request');
+        assertEqual(
+            JSON.stringify(householdRiskWorker.message.results[0].provenance.householdRiskDiagnostics),
+            JSON.stringify(householdRiskSerial.results[0].provenance.householdRiskDiagnostics),
+            'worker and serial Sweep return identical household/risk diagnostics'
+        );
+        assertEqual(
+            householdRiskWorker.message.results[0].provenance.householdRiskDiagnostics.household.p2DeathEvents,
+            1,
+            'worker/serial parity witness includes the deterministic P2 death'
+        );
+        assert(
+            householdRiskWorker.message.results[0].provenance.householdRiskDiagnostics.household.widowP1ActiveYears > 0,
+            'worker/serial parity witness includes the resulting P1 widow years'
+        );
+        console.log('✓ versioned Sweep request worker parity OK');
+    } finally {
+        await terminateWorker(worker);
+    }
+}
+
+console.log('--- MC Worker Entrypoint Contract Tests Completed ---');
+
+// Echte Nachrichten schalten die Beobachtung; der identische Harness misst nur
+// RNG-/Jahresaufrufe und die tatsächliche Transferliste vor/nach dem Versand.
+const transportBytes = (value, excluded = []) => JSON.stringify(value, (key, item) =>
+    excluded.includes(key) ? undefined : ArrayBuffer.isView(item) ? {
+        type: item.constructor.name, length: item.length,
+        bytes: Buffer.from(item.buffer, item.byteOffset, item.byteLength).toString('hex')
+    } : item);
+for (const inputs of [createInputs(), { ...createInputs(), startAlter: 110 },
+    { ...createInputs(), startAlter: 20, startVermoegen: 1, depotwertAlt: 1, einstandAlt: 1, zielLiquiditaet: 0, startFloorBedarf: 1000000, startFlexBedarf: 0 }]) {
+    const params = { ...monteCarloParams, anzahl: 3, maxDauer: inputs.startAlter === 110 ? 1 : 5 };
+    const { scenarioKey, compiledScenario } = compileScenario(inputs, widowOptions, params.methode, false, inputs.stressPreset);
+    // Leere Logs entsprechen dem Optimize-Sender; ausgewählte Logs sichern
+    // zusätzlich Byteparität und Quellindizes der bisherigen Szenariotransporte.
+    for (const logIndices of [[], [0, 1, 2]]) {
+        const worker = createWorkerHarness({ observe: true });
+        const responses = [];
+        try {
+            await postAndWait(worker, { type: 'init', jobId: 'probe-init', scenarioKey, compiledScenario, dataVersion: getDataVersion() });
+            for (const optIn of [undefined, false, 'true', true, undefined]) {
+                const response = await postAndWait(worker, { type: 'job', jobId: 'probe-job', scenarioKey,
+                    runRange: { start: 0, count: 3 }, monteCarloParams: params, useCapeSampling: false, logIndices,
+                    ...(optIn === undefined ? {} : { collectWealthFan: optIn }) });
+                const result = response.message;
+                assertEqual(result.type, 'result', 'Instrumentierter echter Worker liefert Ergebnis');
+                assertMonteCarloChunkResultV1(result, { expectedStart: 0, expectedCount: 3 });
+                if (optIn === true) assertWealthFan(result.wealthFan, 3);
+                else assertEqual(result.wealthFan, null, 'Ohne boolesches Opt-in bleibt auch ein Folgejob fächerfrei');
+
+                const probe = result.p7TransferProbe;
+                const core = [...Object.values(result.buffers).map(value => value.buffer), ...result.heatmap.map(row => row.buffer)];
+                const fan = optIn === true ? ['real', 'nominal', 'alive', 'ruined', 'missingReal', 'missingNominal']
+                    .map(field => result.wealthFan[field].buffer) : [];
+                const bytes = values => values.reduce((sum, buffer) => sum + buffer.byteLength, 0);
+                assertEqual(probe.coreCount, core.length, 'Beobachtete Kernpufferzahl entspricht dem empfangenen Ergebnis');
+                assertEqual(probe.coreBytes, bytes(core), 'Beobachtete Kernbytes sind vollständig empfangen');
+                assertEqual(probe.fanCount, optIn === true ? 6 : 0, 'Nur Opt-in überträgt sechs Fächerpuffer');
+                assertEqual(probe.fanUniqueCount, fan.length, 'Fächerpuffer sind eindeutig');
+                assertEqual(new Set(fan).size, fan.length, 'Auch empfangene Fächerpuffer sind eindeutig');
+                assertEqual(probe.fanBytes, bytes(fan), 'Beobachtete Fächerbytes sind vollständig empfangen');
+                assertEqual(probe.count, core.length + fan.length, 'Transferliste enthält ausschließlich Kern-/Heatmap- und optierte Fächerpuffer');
+                assertEqual(probe.uniqueCount, probe.count, 'Tatsächliche Transferliste hat keine Duplikate');
+                assertEqual(probe.byteLength, bytes(core) + bytes(fan), 'Alle übertragenen Bytes gehören zum erwarteten Ergebnis');
+                assertEqual(probe.unexpectedCount, 0, 'Keine zusätzlichen Transferpuffer');
+                assert(probe.allCoreIncluded && probe.allFanIncluded && probe.disjoint && probe.detached,
+                    'Alle erwarteten Puffer werden tatsächlich übertragen und im Sender abgelöst');
+                responses.push(result);
+            }
+        } finally { await terminateWorker(worker); }
+        const excluded = ['wealthFan', 'elapsedMs', 'p7ProbeCounts', 'p7TransferProbe'];
+        for (const result of responses.slice(1)) {
+            assertEqual(transportBytes(result, excluded), transportBytes(responses[0], excluded),
+                'Echter Worker: sämtliche bisherigen Ergebnis-/Logbytes gleich');
+            assertEqual(JSON.stringify(result.p7ProbeCounts), JSON.stringify(responses[0].p7ProbeCounts),
+                'Echter Worker: RNG- und Jahresaufrufe einschließlich Ruin/Tod gleich');
+        }
+        assert(responses[0].p7ProbeCounts.rng > 0, 'Echte Worker-RNG-Instrumentierung beobachtet Aufrufe');
+        assertEqual(responses[3].wealthFan.validRuns, 3, 'Echter Worker zählt drei gültige Pfade');
+        const expectedOutcome = inputs.startAlter === 110 ? MONTE_CARLO_OUTCOME_CODE.ALL_DEAD
+            : inputs.startAlter === 20 ? MONTE_CARLO_OUTCOME_CODE.RUIN : MONTE_CARLO_OUTCOME_CODE.HORIZON_EXHAUSTED;
+        assert(responses[0].pathSummaries.outcomeCode.includes(expectedOutcome), 'Paritätsfixture erreicht ihren Normal-/Tod-/Ruinpfad');
+        if (inputs.startAlter !== 110) assert(responses[0].p7ProbeCounts.years > 0, 'Jahresaufrufinstrumentierung beobachtet Finanzjahre');
+        const serial = await runMonteCarloChunk({ inputs, widowOptions, monteCarloParams: params, useCapeSampling: false,
+            runRange: { start: 0, count: 3 }, logIndices, collectWealthFan: true, engine: EngineAPI });
+        assertWealthFan(serial.wealthFan, 3);
+        assertEqual(transportBytes(responses[3].wealthFan), transportBytes(serial.wealthFan),
+            'Validierter tatsächlich übertragener Fächer ist bytegleich zum seriellen optierten Lauf');
+    }
+}

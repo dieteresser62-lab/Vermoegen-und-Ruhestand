@@ -1,0 +1,353 @@
+import { CONFIG } from '../config.mjs';
+import { calcFlexShare } from './spending-policy-helpers.mjs';
+import { calculateWealthAdjustedReductionFactor } from './wealth-reduction.mjs';
+import {
+    deriveLiquidityRunwayPolicy,
+    resolveLiquidityRunwayYears
+} from '../../types/liquidity-runway-contract.js';
+
+export const SAFETY_RATE_TOLERANCE_PCT = 1e-9;
+export const SAFETY_CAP_INTERNAL_ANCHOR = 'post_internal_smoothing_and_flex_rate_hard_caps';
+export const BASE_ALARM_CUT_PCT = 10;
+
+function createSafetyEvidence({
+    source = null,
+    candidateFlexRatePct = null,
+    positiveBearDeepRawCut = false,
+    flexRateHardCapApplied = false,
+    flexRateHardCapSource = null,
+    alarmActive = false,
+    baseAlarmCutPct,
+    effectiveAlarmCutPct
+}) {
+    return {
+        active: source !== null,
+        source,
+        candidateFlexRatePct: Number.isFinite(candidateFlexRatePct)
+            ? Math.max(0, Math.min(100, candidateFlexRatePct))
+            : null,
+        anchorStage: source === null ? null : SAFETY_CAP_INTERNAL_ANCHOR,
+        positiveBearDeepRawCut,
+        flexRateHardCapApplied,
+        flexRateHardCapSource,
+        alarmActive,
+        baseAlarmCutPct,
+        effectiveAlarmCutPct
+    };
+}
+
+export function applyFlexShareCurve(flexRate, inflatedBedarf, addDecision, wealthFactor = 1, trace) {
+    const curve = CONFIG.SPENDING_MODEL?.FLEX_SHARE_S_CURVE;
+    if (!curve?.ENABLED) {
+        trace?.record('flex_share_curve', flexRate, flexRate, 'Flex-Anteil', { aktiviert: false });
+        return { rate: flexRate, applied: false };
+    }
+
+    const floor = Math.max(0, Number(inflatedBedarf?.floor) || 0);
+    const flex = Math.max(0, Number(inflatedBedarf?.flex) || 0);
+    const total = floor + flex;
+    if (total <= 0 || flex <= 0 || flexRate <= 0) {
+        trace?.record('flex_share_curve', flexRate, flexRate, 'Flex-Anteil', { aktiviert: true, anwendbar: false });
+        return { rate: flexRate, applied: false };
+    }
+
+    const share = Math.min(1, Math.max(0, flex / total));
+    const s = 1 / (1 + Math.exp(-curve.A * (share - curve.B)));
+    const baseCap = Math.max(0, Math.min(100, 100 - (curve.K * 100 * s)));
+    const w = Number.isFinite(wealthFactor) ? Math.min(1, Math.max(0, wealthFactor)) : 1;
+    const cap = Math.max(0, Math.min(100, 100 - (w * (100 - baseCap))));
+    const adjusted = Math.max(0, Math.min(100, Math.min(flexRate, cap)));
+
+    const applied = adjusted + 0.05 < flexRate;
+    if (applied) {
+        addDecision(
+            'Flex-S-Kurve',
+            `Flex-Anteil ${Math.round(share * 100)}% -> Cap ${(cap).toFixed(1)}%.`,
+            'active'
+        );
+    }
+
+    trace?.record('flex_share_curve', flexRate, applied ? adjusted : flexRate, 'Flex-Anteil', {
+        flexAnteilRatio: share,
+        basisCapProzent: baseCap,
+        vermoegensfaktorRatio: w,
+        effektiverCapProzent: cap,
+        uebernommen: applied
+    });
+    return { rate: adjusted, applied };
+}
+
+/**
+ * Mutates state.keyParams with wealthReductionFactor and entnahmequoteUsed.
+ */
+export function calculateFlexRate(state, alarmStatus, params, addDecision, trace) {
+    const p = params;
+    const wealthReduction = calculateWealthAdjustedReductionFactor(p);
+    const wealthFactor = Number.isFinite(wealthReduction.factor)
+        ? Math.min(1, Math.max(0, wealthReduction.factor))
+        : 1;
+    if (state.keyParams) {
+        state.keyParams.wealthReductionFactor = wealthFactor;
+        state.keyParams.withdrawalBurdenFactor = wealthFactor;
+        state.keyParams.baseAlarmCutPct = BASE_ALARM_CUT_PCT;
+        state.keyParams.effectiveAlarmCutPct = BASE_ALARM_CUT_PCT * wealthFactor;
+        if (Number.isFinite(wealthReduction.entnahmequoteUsed)) {
+            state.keyParams.entnahmequoteUsed = wealthReduction.entnahmequoteUsed;
+        }
+    }
+
+    if (alarmStatus.active) {
+        const kuerzungQuelle = 'Guardrail (Alarm)';
+        let geglätteteFlexRate = state.flexRate;
+        trace?.record('previous_rate', 100, geglätteteFlexRate, 'Vorjahresbezug', {
+            vorjahresrateProzent: state.flexRate,
+            vorjahresAuszahlungsrateProzent: state.keyParams?.previousActualFlexRate ?? state.flexRate
+        });
+
+        if (alarmStatus.newlyTriggered) {
+            const zielCutScaled = BASE_ALARM_CUT_PCT * wealthFactor;
+            geglätteteFlexRate = Math.max(35, state.flexRate - zielCutScaled);
+            addDecision(
+                'Anpassung im Alarm-Modus',
+                `Flex-Rate wird auf ${geglätteteFlexRate.toFixed(1)}% gesetzt.`,
+                'active',
+                'alarm'
+            );
+            if (wealthFactor < 1) {
+                addDecision(
+                    'Vermögensbasierte Dämpfung',
+                    'Alarm-Kürzung wird aufgrund hoher Vermögensdeckung reduziert.',
+                    'active',
+                    'info'
+                );
+            }
+        } else {
+            geglätteteFlexRate = Math.max(35, state.flexRate);
+            addDecision(
+                'Anpassung im Alarm-Modus',
+                `Alarm-Modus ist weiterhin aktiv, Rate auf ${geglätteteFlexRate.toFixed(1)}% (Min. 35%) gehalten.`,
+                'active',
+                'alarm'
+            );
+        }
+        trace?.record('alarm', state.flexRate, geglätteteFlexRate,
+            alarmStatus.newlyTriggered ? 'Alarm' : 'Anhaltender Alarm', {
+                neuAusgeloest: alarmStatus.newlyTriggered,
+                basisKuerzungProzentpunkte: BASE_ALARM_CUT_PCT,
+                effektiveKuerzungProzentpunkte: BASE_ALARM_CUT_PCT * wealthFactor,
+                vermoegensfaktorRatio: wealthFactor
+            });
+        return {
+            geglätteteFlexRate,
+            kuerzungQuelle,
+            safetyEvidence: createSafetyEvidence({
+                source: 'alarm',
+                candidateFlexRatePct: geglätteteFlexRate,
+                alarmActive: true,
+                baseAlarmCutPct: BASE_ALARM_CUT_PCT,
+                effectiveAlarmCutPct: BASE_ALARM_CUT_PCT * wealthFactor
+            })
+        };
+    }
+
+    const { market } = p;
+    const {
+        FLEX_RATE_SMOOTHING_ALPHA,
+        RATE_CHANGE_MAX_UP_PP,
+        RATE_CHANGE_AGILE_UP_PP,
+        RATE_CHANGE_MAX_DOWN_PP,
+        RATE_CHANGE_MAX_DOWN_IN_BEAR_PP,
+        RATE_CHANGE_RELAX_MAX_DOWN_PP
+    } = CONFIG.SPENDING_MODEL;
+
+    let kuerzungQuelle = 'Profil';
+    let roheKuerzungProzent = 0;
+    let basisKuerzungProzent = 0;
+
+    if (market.sKey === 'bear_deep') {
+        const reductionFactor = wealthFactor;
+        const basisKuerzung = 50 + Math.max(0, market.abstandVomAthProzent - 20);
+        basisKuerzungProzent = basisKuerzung;
+        roheKuerzungProzent = basisKuerzung * reductionFactor;
+
+        if (reductionFactor === 0) {
+            kuerzungQuelle = 'Vermögen ausreichend';
+            addDecision(
+                'Vermögensbasierte Anpassung',
+                'Keine Reduktion nötig – Entnahmequote unter dem Safe-Wert.',
+                'active',
+                'info'
+            );
+        } else if (reductionFactor < 1) {
+            kuerzungQuelle = 'Tiefer Bär (vermögensadj.)';
+            addDecision(
+                'Vermögensbasierte Anpassung',
+                `Reduktion auf ${(reductionFactor * 100).toFixed(0)}% skaliert wegen niedriger Entnahmequote.`,
+                'active',
+                'info'
+            );
+        } else {
+            kuerzungQuelle = 'Tiefer Bär';
+        }
+    }
+
+    const positiveBearDeepRawCut = market.sKey === 'bear_deep'
+        && roheKuerzungProzent > SAFETY_RATE_TOLERANCE_PCT;
+
+    const roheFlexRate = 100 - roheKuerzungProzent;
+    trace?.record('raw_target', 100, roheFlexRate,
+        market.sKey === 'bear_deep' ? 'Bärenmarkt' : 'Ungekürzter Flex', {
+            athAbstandProzent: market.abstandVomAthProzent ?? 0,
+            basisKuerzungProzent,
+            roheKuerzungProzent: roheKuerzungProzent,
+            vermoegensfaktorRatio: wealthFactor,
+            entnahmequoteRatio: wealthReduction.entnahmequoteUsed
+        });
+    const prevFlexRate = state.flexRate ?? 100;
+    const alphaEff = FLEX_RATE_SMOOTHING_ALPHA + (1 - wealthFactor) * (1 - FLEX_RATE_SMOOTHING_ALPHA);
+    let geglätteteFlexRate = alphaEff * roheFlexRate +
+        (1 - alphaEff) * prevFlexRate;
+    trace?.record('internal_smoothing', roheFlexRate, geglätteteFlexRate, 'Glättung', {
+        vorjahresrateProzent: prevFlexRate,
+        vorjahresAuszahlungsrateProzent: state.keyParams?.previousActualFlexRate ?? prevFlexRate,
+        effektivesAlphaRatio: alphaEff
+    });
+    const rateBeforeChangeLimit = geglätteteFlexRate;
+
+    const delta = geglätteteFlexRate - prevFlexRate;
+    const regime = CONFIG.TEXTS.REGIME_MAP[market.sKey];
+    const baseMaxUp = (regime === 'peak' || regime === 'hot_neutral' || regime === 'recovery_in_bear')
+        ? RATE_CHANGE_AGILE_UP_PP
+        : RATE_CHANGE_MAX_UP_PP;
+    const baseMaxDown = (market.sKey === 'bear_deep')
+        ? RATE_CHANGE_MAX_DOWN_IN_BEAR_PP
+        : RATE_CHANGE_MAX_DOWN_PP;
+    const maxUp = baseMaxUp;
+    const relaxCap = Number.isFinite(RATE_CHANGE_RELAX_MAX_DOWN_PP)
+        ? RATE_CHANGE_RELAX_MAX_DOWN_PP
+        : 20;
+    const relaxScale = 1 - wealthFactor;
+    const relax = relaxScale * relaxScale;
+    const MAX_DOWN = baseMaxDown + (relax * (relaxCap - baseMaxDown));
+
+    if (delta > maxUp) {
+        geglätteteFlexRate = prevFlexRate + maxUp;
+        kuerzungQuelle = 'Glättung (Anstieg)';
+    } else if (delta < -MAX_DOWN) {
+        geglätteteFlexRate = prevFlexRate - MAX_DOWN;
+        kuerzungQuelle = 'Glättung (Abfall)';
+    }
+
+    if (kuerzungQuelle.startsWith('Glättung')) {
+        addDecision(
+            'Glättung der Rate',
+            `Veränderung auf max. ${delta > 0 ? maxUp : MAX_DOWN} pp begrenzt.`,
+            'active'
+        );
+    }
+    trace?.record('annual_change_limit', rateBeforeChangeLimit, geglätteteFlexRate, 'Änderungsgrenze', {
+        anstiegMaxProzentpunkte: maxUp,
+        abfallMaxProzentpunkte: MAX_DOWN,
+        vorjahresrateProzent: prevFlexRate
+    });
+
+    const flexShare = calcFlexShare(p.inflatedBedarf);
+    const curveResult = applyFlexShareCurve(geglätteteFlexRate, p.inflatedBedarf, addDecision, wealthFactor, trace);
+    if (curveResult.applied) {
+        geglätteteFlexRate = curveResult.rate;
+        if (['Profil', 'Glättung (Anstieg)', 'Glättung (Abfall)'].includes(kuerzungQuelle)) {
+            kuerzungQuelle = 'Flex-Anteil (S-Kurve)';
+        }
+    }
+
+    const hardCaps = CONFIG.SPENDING_MODEL?.FLEX_RATE_HARD_CAPS;
+    const shareRelief = Math.max(0, hardCaps?.FLEX_SHARE_RELIEF_MAX_PP ?? 0);
+    const relief = shareRelief * (1 - flexShare);
+    let flexRateHardCapApplied = false;
+    let flexRateHardCapSource = null;
+    const rateBeforeBearCap = geglätteteFlexRate;
+    let bearBaseCap = null;
+    let bearEffectiveCap = null;
+    if (hardCaps?.BEAR_DEEP_MAX_RATE && market.sKey === 'bear_deep') {
+        const baseCap = Math.min(100, hardCaps.BEAR_DEEP_MAX_RATE + relief);
+        const cap = Math.min(100, 100 - (wealthFactor * (100 - baseCap)));
+        bearBaseCap = baseCap;
+        bearEffectiveCap = cap;
+        if (geglätteteFlexRate > cap) {
+            geglätteteFlexRate = cap;
+            flexRateHardCapApplied = true;
+            flexRateHardCapSource = 'bear_deep_max_rate';
+            kuerzungQuelle = 'Guardrail (Bären-Cap)';
+            addDecision(
+                'Guardrail (Bären-Cap)',
+                `Flex-Rate im tiefen Bärenmarkt auf ${geglätteteFlexRate.toFixed(1)}% gekappt (Flex-Anteil ${Math.round(flexShare * 100)}%).`,
+                'active',
+                'guardrail'
+            );
+        }
+    }
+    trace?.record('bear_cap', rateBeforeBearCap, geglätteteFlexRate, 'Bären-Obergrenze', {
+        basisCapProzent: hardCaps?.BEAR_DEEP_MAX_RATE ?? null,
+        reliefProzentpunkte: relief,
+        capMitReliefProzent: bearBaseCap,
+        effektiverCapProzent: bearEffectiveCap,
+        vermoegensfaktorRatio: wealthFactor
+    });
+
+    const rateBeforeRunwayCap = geglätteteFlexRate;
+    let runwayMetrics = { anwendbar: false };
+    if (hardCaps?.RUNWAY_COVERAGE_CAPS?.length) {
+        const targetMonths = deriveLiquidityRunwayPolicy(resolveLiquidityRunwayYears(p.input || {}).years).hardMinimumMonths;
+        if (targetMonths > 0) {
+            const coverage = p.runwayMonate / targetMonths;
+            const rules = hardCaps.RUNWAY_COVERAGE_CAPS
+                .slice()
+                .sort((a, b) => a.maxCoverage - b.maxCoverage);
+            const match = rules.find(r => coverage < r.maxCoverage);
+            const baseCap = match ? Math.min(100, match.maxRate + relief) : null;
+            const cap = baseCap === null ? null : Math.min(100, 100 - (wealthFactor * (100 - baseCap)));
+            if (trace) runwayMetrics = {
+                runwayMonate: p.runwayMonate,
+                hartesMinimumMonate: targetMonths,
+                deckungRatio: coverage,
+                basisCapProzent: match?.maxRate ?? null,
+                reliefProzentpunkte: relief,
+                capMitReliefProzent: baseCap,
+                effektiverCapProzent: cap,
+                vermoegensfaktorRatio: wealthFactor
+            };
+            if (cap !== null && geglätteteFlexRate > cap) {
+                geglätteteFlexRate = cap;
+                flexRateHardCapApplied = true;
+                flexRateHardCapSource = 'runway_coverage_cap';
+                kuerzungQuelle = 'Guardrail (Runway-Cap)';
+                addDecision(
+                    'Guardrail (Runway-Cap)',
+                    `Runway-Deckung ${(coverage * 100).toFixed(0)}% -> Flex-Rate auf ${geglätteteFlexRate.toFixed(1)}% gekappt (Flex-Anteil ${Math.round(flexShare * 100)}%).`,
+                    'active',
+                    'guardrail'
+                );
+            }
+        }
+    }
+    trace?.record('runway_cap', rateBeforeRunwayCap, geglätteteFlexRate, 'Liquiditäts-Obergrenze', runwayMetrics);
+
+    const safetySource = flexRateHardCapApplied
+        ? 'flex_rate_hard_cap'
+        : (positiveBearDeepRawCut ? 'bear_deep' : null);
+
+    return {
+        geglätteteFlexRate,
+        kuerzungQuelle,
+        safetyEvidence: createSafetyEvidence({
+            source: safetySource,
+            candidateFlexRatePct: safetySource === null ? null : geglätteteFlexRate,
+            positiveBearDeepRawCut,
+            flexRateHardCapApplied,
+            flexRateHardCapSource,
+            alarmActive: false,
+            baseAlarmCutPct: BASE_ALARM_CUT_PCT,
+            effectiveAlarmCutPct: BASE_ALARM_CUT_PCT * wealthFactor
+        })
+    };
+}

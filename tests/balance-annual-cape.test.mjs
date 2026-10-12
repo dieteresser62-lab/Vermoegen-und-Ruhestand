@@ -1,0 +1,191 @@
+import { getAppTestDate, setAppTestDate } from '../app/shared/app-clock.js';
+import { createMarketdataHandlers } from '../app/balance/balance-annual-marketdata.js';
+import { CONFIG } from '../app/balance/balance-config.js';
+
+console.log('--- Balance Annual CAPE Tests ---');
+// Interne CAPE-Handlerprüfung; Nutzerpfad und Toasttyp prüft der UI-Jahresabschluss separat.
+
+function createLocalStorageMock() {
+    const store = new Map();
+    return {
+        getItem: (key) => (store.has(key) ? store.get(key) : null),
+        setItem: (key, value) => { store.set(String(key), String(value)); },
+        removeItem: (key) => { store.delete(String(key)); },
+        clear: () => { store.clear(); }
+    };
+}
+
+function mockFetchWithSequence(sequence) {
+    let call = 0;
+    const fetcher = async url => {
+        fetcher.calls.push(url);
+        const next = sequence[Math.min(call, sequence.length - 1)];
+        call += 1;
+        if (next instanceof Error) {
+            throw next;
+        }
+        return next;
+    };
+    fetcher.calls = [];
+    return fetcher;
+}
+
+function okTextResponse(text) {
+    return {
+        ok: true,
+        text: async () => text
+    };
+}
+
+const prevLocalStorage = global.localStorage;
+const prevFetch = global.fetch;
+const prevTestDate = getAppTestDate();
+
+try {
+    setAppTestDate(null);
+    global.localStorage = createLocalStorageMock();
+
+    const dom = {
+        inputs: {
+            marketCapeRatio: { value: '' },
+            capeRatio: { value: '' }
+        },
+        controls: {}
+    };
+    const appState = {};
+
+    let updateCalls = 0;
+    const handlers = createMarketdataHandlers({
+        dom,
+        appState,
+        debouncedUpdate: () => { updateCalls += 1; },
+        applyAnnualInflation: () => {}
+    });
+
+    // Test 1: Primary source success.
+    {
+        updateCalls = 0;
+        const now = new Date();
+        const primaryDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const primaryDateStr = `${primaryDate.getFullYear()}.${String(primaryDate.getMonth() + 1).padStart(2, '0')}`;
+        global.fetch = mockFetchWithSequence([
+            okTextResponse(`${primaryDateStr} foo bar 31.2`)
+        ]);
+        const result = await handlers.handleFetchCapeAuto();
+        assertEqual(global.fetch.calls.length, 1, 'Normalbetrieb: Yale genau einmal');
+        assert(global.fetch.calls[0].includes('econ.yale.edu'), 'Normalbetrieb: Primäranbieter Yale');
+        assertEqual(result.capeFetchStatus, 'ok_primary', 'primary source should succeed');
+        assertClose(result.capeRatio, 31.2, 1e-9, 'cape value should parse from primary');
+        assert(updateCalls >= 1, 'successful fetch should trigger debounced update');
+    }
+
+    // Test 2: Primary fails, mirror succeeds.
+    {
+        updateCalls = 0;
+        const now = new Date();
+        const mirrorDate = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+        const mirrorDateStr = `${mirrorDate.getFullYear()}.${String(mirrorDate.getMonth() + 1).padStart(2, '0')}`;
+        global.fetch = mockFetchWithSequence([
+            new Error('primary down'),
+            okTextResponse(`${mirrorDateStr} x y 29.8`)
+        ]);
+        const result = await handlers.handleFetchCapeAuto();
+        assertEqual(global.fetch.calls.length, 2, 'Normalbetrieb: Yale und Mirror genau einmal');
+        assert(global.fetch.calls[1].includes('shillerdata.com'), 'Normalbetrieb: Mirror folgt Yale');
+        assertEqual(result.capeFetchStatus, 'ok_fallback_mirror', 'mirror should be used as fallback');
+        assertClose(result.capeRatio, 29.8, 1e-9, 'cape value should parse from mirror');
+        assert(result.errors.some(e => e.includes('Primary fehlgeschlagen')), 'primary failure should be tracked');
+    }
+
+    // Test 3: No source available, stored fallback should be used.
+    {
+        const recentCapeAsOf = new Date();
+        recentCapeAsOf.setMonth(recentCapeAsOf.getMonth() - 6);
+        localStorage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify({
+            capeMeta: { capeRatio: 27.4, capeAsOf: recentCapeAsOf.toISOString().slice(0, 10), capeSource: 'stored_last_value' }
+        }));
+        global.fetch = mockFetchWithSequence([
+            new Error('primary down'),
+            new Error('mirror down')
+        ]);
+        const result = await handlers.handleFetchCapeAuto();
+        assertEqual(global.fetch.calls.length, 2, 'Normalbetrieb: Stored erst nach beiden echten Quellen');
+        assertEqual(result.capeFetchStatus, 'ok_fallback_stored', 'stored CAPE should be used when sources fail');
+        assertClose(result.capeRatio, 27.4, 1e-9, 'stored CAPE ratio should be returned');
+    }
+
+    // Test 4: No source and no stored value.
+    {
+        localStorage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify({}));
+        global.fetch = mockFetchWithSequence([
+            new Error('primary down'),
+            new Error('mirror down')
+        ]);
+        const result = await handlers.handleFetchCapeAuto();
+        assertEqual(result.capeFetchStatus, 'error_no_source_no_stored', 'should report hard CAPE source failure');
+        assert(Array.isArray(result.errors) && result.errors.length >= 2, 'source errors should be included');
+    }
+
+    // Test 5: Stale source warning.
+    {
+        global.fetch = mockFetchWithSequence([
+            okTextResponse('2020.01 old old 24.0')
+        ]);
+        const result = await handlers.handleFetchCapeAuto();
+        assertEqual(result.capeFetchStatus, 'warn_stale_source', 'very old CAPE should be marked stale');
+    }
+
+    // Test 6: Timeout/Abort should be reported with a useful message.
+    {
+        localStorage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify({}));
+        const aborted = new Error('signal is aborted without reason');
+        aborted.name = 'AbortError';
+        global.fetch = mockFetchWithSequence([aborted, aborted]);
+        const result = await handlers.handleFetchCapeAuto();
+        assertEqual(result.capeFetchStatus, 'error_no_source_no_stored', 'timeout should still be treated as source failure');
+        assert(result.errors.every(e => e.includes('Timeout nach')), 'abort errors should be normalized to timeout messages');
+    }
+
+    {
+        setAppTestDate('2027-01-02');
+        localStorage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify({ capeMeta: { capeRatio: 34, capeAsOf: '2020-01-01', capeSource: 'yale_ie_data_xls' } }));
+        let calls = 0;
+        global.fetch = () => { calls++; throw new Error('Kein Netz'); };
+        const result = await handlers.handleFetchCapeAuto();
+        assertEqual(result.capeRatio, 28.5, 'Synthetischer CAPE verdrängt realen gespeicherten Stand');
+        assertEqual(result.capeAsOf, '2026-12-31', 'Datenstand stammt aus Abschlussjahr');
+        assertEqual(result.capeSource, 'Probelauf · synthetisch', 'Persistierte Herkunft');
+        assertEqual(result.sourceLabel, result.capeSource, 'Rendererlabel ist synthetisch statt Stored');
+        assertEqual(result.capeFetchStatus, 'ok_synthetic', 'Synthetische Daten erhalten keinen Stalestatus');
+        assertEqual(JSON.parse(localStorage.getItem(CONFIG.STORAGE.LS_KEY)).capeMeta.capeRatio, 28.5, 'Produktiver Persistenzpfad');
+        setAppTestDate('2027-10-08');
+        const later = await handlers.handleFetchCapeAuto();
+        assertEqual(later.capeRatio, result.capeRatio, 'Späterer Testtag erhält CAPE');
+        assertEqual(later.capeAsOf, result.capeAsOf, 'Späterer Testtag erhält Datenstand');
+        assertEqual(calls, 0, 'Yale/Mirror nie erreicht');
+        setAppTestDate(null);
+    }
+    {
+        setAppTestDate(null);
+        localStorage.setItem(CONFIG.STORAGE.LS_KEY, JSON.stringify({ marker: 'cape-read-only' }));
+        const before = localStorage.getItem(CONFIG.STORAGE.LS_KEY);
+        global.fetch = mockFetchWithSequence([okTextResponse('2026.09 values 28.7')]);
+        const prepared = await handlers.prepareCape({ targetYear: 2025 });
+        assertEqual(localStorage.getItem(CONFIG.STORAGE.LS_KEY), before, 'CAPE-Vorababruf erhält sämtliche Rohbytes');
+        await handlers.handleFetchCapeAuto({ preparedResult: prepared });
+        assertEqual(global.fetch.calls.length, 1, 'CAPE-Anwendung lädt erfolgreich vorbereitete Quelle nicht erneut');
+        localStorage.setItem(CONFIG.STORAGE.LS_KEY, before);
+        global.fetch = mockFetchWithSequence([new Error('primary down'), new Error('mirror down')]);
+        const failed = await handlers.prepareCape({ targetYear: 2025 });
+        assertEqual(failed.capeFetchStatus, 'error_no_source_no_stored', 'CAPE-Vorabruf meldet beide Quellenfehler');
+        assertEqual(localStorage.getItem(CONFIG.STORAGE.LS_KEY), before, 'CAPE-Vorabfehler schreibt auch keinen Fehlerstatus');
+        assertEqual(global.fetch.calls.length, 2, 'Ein logischer CAPE-Abruf umfasst zulässigen Quellenfallback');
+    }
+    console.log('✅ Balance annual CAPE tests passed');
+} finally {
+    setAppTestDate(prevTestDate);
+    if (prevFetch === undefined) delete global.fetch; else global.fetch = prevFetch;
+    if (prevLocalStorage === undefined) delete global.localStorage; else global.localStorage = prevLocalStorage;
+}
+
+console.log('--- Balance Annual CAPE Tests Completed ---');

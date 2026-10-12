@@ -1,0 +1,972 @@
+import strict from 'node:assert/strict';
+import { createAnnualSnapshot } from '../app/shared/annual-coordinator.js';
+import { readyAnnualFixture, annualTestMarketData, installAnnualLocks } from './helpers/balance-storage-fixtures.mjs';
+import { commitAnnualPlanUpdate } from '../app/balance/balance-annual-storage-commit.js';
+import { EngineAPI } from '../engine/index.mjs';
+import { buildPlanRecord, planScope, PLAN_DEFAULTS } from '../app/profile/household-plan.js';
+import { createBalanceWealthHistoryService, createManualWealthHistoryController } from '../app/balance/balance-wealth-history.js';
+import { BALANCE_UPDATE_MODE } from '../app/balance/balance-update-pipeline.js';
+import { createSnapshotHandlers } from '../app/balance/balance-binder-snapshots.js';
+import { UIBinder, initUIBinder } from '../app/balance/balance-binder.js';
+import { loadProfilverbundProfiles } from '../app/profile/profilverbund-balance.js';
+import { createProfilverbundHandlers } from '../app/balance/balance-main-profilverbund.js';
+import { BALANCE_UPDATE_DEBOUNCE_MS, CONFIG } from '../app/balance/balance-config.js';
+import { StorageManager } from '../app/balance/balance-storage.js';
+import { UIRenderer } from '../app/balance/balance-renderer.js';
+import { UIReader, initUIReader } from '../app/balance/balance-reader.js';
+import { createBalanceExportDocument } from '../app/balance/balance-binder-imports.js';
+import { refreshBalanceWealthHistory } from '../app/balance/balance-wealth-history-renderer.js';
+import { PROFILE_STORAGE_KEYS } from '../app/profile/profile-state.js';
+import { SnapshotArchive, SNAPSHOT_KINDS } from '../app/shared/snapshot-archive.js';
+import {
+    PersistenceFacade, persistenceStorage, resetPersistenceForTests,
+    resetPersistenceRuntimeForTests
+} from '../app/shared/persistence-facade.js';
+import { createManualWealthHistoryEntry } from '../types/wealth-history-contract.js';
+import { EXPENSES_STORAGE_KEY } from '../app/balance/balance-expenses-storage.js';
+import { runInNewContext } from 'node:vm';
+import { installWealthBrowserUpdateObserver } from './wealth-browser-update-observer.mjs';
+
+console.log('--- Vermögensverlauf: Persistenz und Jahresabschluss ---');
+
+// addInitScript serialisiert den Hook in jedes neue Seitendokument. Ein bereits
+// beim Start geplanter Timer muss vor der späteren Idle-/Tabprüfung sichtbar sein.
+assertEqual(BALANCE_UPDATE_DEBOUNCE_MS, 250, 'Produktentprellzeit bleibt 250 ms');
+for (const documentPhase of ['Start', 'Reload'])
+for (const debounceMs of [BALANCE_UPDATE_DEBOUNCE_MS, 417])
+for (const replaceTimers of [false, true]) {
+    const phase = `${documentPhase}, ${debounceMs} ms, ${replaceTimers ? 'nach Timerzuweisung' : 'ursprüngliche Timer'}`;
+    const nativeScheduled = new Map();
+    let scheduled = nativeScheduled;
+    let nextId = 0;
+    let schedules = 0;
+    let cancels = 0;
+    const window = {
+        setTimeout(callback, delay, ...args) {
+            schedules += 1;
+            const id = ++nextId;
+            nativeScheduled.set(id, () => callback(...args));
+            return id;
+        },
+        clearTimeout(id) { cancels += 1; nativeScheduled.delete(id); }
+    };
+    const install = () => runInNewContext(`(${installWealthBrowserUpdateObserver.toString()})(debounceMs)`, { window, debounceMs });
+    const fire = id => {
+        const callback = scheduled.get(id);
+        scheduled.delete(id);
+        callback();
+    };
+    install();
+    if (replaceTimers) {
+        const originalScheduled = scheduled;
+        const clockScheduled = new Map();
+        // Wie page.clock beide Timerfunktionen erst nach dem Init-Skript zuweisen.
+        window.setTimeout = (callback, delay, ...args) => {
+            schedules += 1;
+            const id = ++nextId;
+            clockScheduled.set(id, () => callback(...args));
+            return id;
+        };
+        window.clearTimeout = id => { cancels += 1; clockScheduled.delete(id); };
+        scheduled = clockScheduled;
+        const assigned = window.setTimeout(() => {}, debounceMs);
+        assert(scheduled.has(assigned), `${phase}: Timer erreicht den neuen Scheduler`);
+        assert(window.__wealthPendingUpdates.has(assigned), `${phase}: neuer Scheduler bleibt beobachtet`);
+        window.clearTimeout(assigned);
+        assert(!scheduled.has(assigned), `${phase}: neuer Cancelpfad entfernt den Timer`);
+        assertEqual(window.__wealthPendingUpdates.size, 0, `${phase}: neuer Cancelpfad beendet die Beobachtung`);
+        assertEqual(originalScheduled.size, 0, `${phase}: ursprünglicher Scheduler bleibt unbenutzt`);
+        schedules = 0;
+        cancels = 0;
+    }
+    let updates = 0;
+    const startup = window.setTimeout(() => { updates += 1; }, debounceMs);
+    const hook = window.setTimeout;
+    const cancelHook = window.clearTimeout;
+    install();
+    assertEqual(window.setTimeout, hook, `${phase}: erneute Installation verschachtelt keinen Hook`);
+    assertEqual(window.clearTimeout, cancelHook, `${phase}: erneute Installation erhält den Cancelhook`);
+    assertEqual(schedules, 1, `${phase}: genau eine Planung im aktuellen Scheduler`);
+    assert(window.__wealthPendingUpdates.has(startup), `${phase}: vor Idle geplanter Startupdate ist ausstehend`);
+    assertEqual(updates, 0, `${phase}: Beobachtung führt Startupdate nicht vorzeitig aus`);
+    window.clearTimeout(startup);
+    assertEqual(cancels, 1, `${phase}: genau ein Abbruch im aktuellen Scheduler`);
+    assertEqual(window.__wealthPendingUpdates.size, 0, `${phase}: Abbruch entfernt den Starttimer`);
+    assert(!scheduled.has(startup), `${phase}: Abbruch erreicht den ursprünglichen Scheduler`);
+    let followup;
+    const replacement = window.setTimeout(amount => {
+        updates += amount;
+        assert(window.__wealthPendingUpdates.has(replacement), `${phase}: laufender Callback bleibt ausstehend`);
+        followup = window.setTimeout(() => { updates += 1; }, debounceMs);
+    }, debounceMs, 2);
+    fire(replacement);
+    assertEqual(updates, 2, `${phase}: Callbackargumente bleiben erhalten`);
+    assertEqual(window.__wealthPendingUpdates.size, 1, `${phase}: Folgeupdate verhindert vorzeitiges Idle`);
+    assert(window.__wealthPendingUpdates.has(followup), `${phase}: Folgeupdate bleibt beobachtet`);
+    fire(followup);
+    assertEqual(updates, 3, `${phase}: Folgeupdate ausgeführt`);
+    assertEqual(window.__wealthPendingUpdates.size, 0, `${phase}: Idle erst nach letztem Callback`);
+    const unrelated = window.setTimeout(() => {}, 3500);
+    assertEqual(window.__wealthPendingUpdates.size, 0, `${phase}: Meldungstimer blockiert Idle nicht`);
+    fire(unrelated);
+    if (debounceMs !== BALANCE_UPDATE_DEBOUNCE_MS) {
+        const otherDelay = window.setTimeout(() => {}, BALANCE_UPDATE_DEBOUNCE_MS);
+        assertEqual(window.__wealthPendingUpdates.size, 0, `${phase}: nur die übergebene Verzögerung wird beobachtet`);
+        fire(otherDelay);
+    }
+    const failure = window.setTimeout(() => { throw new Error('Startupdate fehlgeschlagen'); }, debounceMs);
+    let error;
+    try { fire(failure); } catch (caught) { error = caught; }
+    assertEqual(error?.message, 'Startupdate fehlgeschlagen', `${phase}: Callbackfehler bleibt sichtbar`);
+    assertEqual(window.__wealthPendingUpdates.size, 0, `${phase}: fehlerhafter Callback hinterlässt keinen Timer`);
+}
+
+const STATE = CONFIG.STORAGE.LS_KEY;
+const REGISTRY = PROFILE_STORAGE_KEYS.registry;
+const SOURCE = { tagesgeld: 12000, geldmarktEtf: 23000, depotwertAlt: 34000, depotwertNeu: 45000 };
+const RESULT = { ok: true, inputData: SOURCE, modelResult: { newState: { tagesgeld: 999999 } } };
+const manual = createManualWealthHistoryEntry(SOURCE, '2026-06-01');
+const reference = new Date(2027, 0, 15, 12);
+
+function historyDom(open = false) {
+    const tabCalls = { add: 0, remove: 0 };
+    return {
+        tabCalls,
+        panel: { classList: { contains: name => name === 'active' && open,
+            add: () => { tabCalls.add += 1; open = true; }, remove: () => { tabCalls.remove += 1; open = false; } } },
+        date: { textContent: '' },
+        count: { textContent: '' }, chart: { innerHTML: '' }, table: { innerHTML: '' },
+        hint: { textContent: '' }, status: { textContent: '' }
+    };
+}
+
+
+function deferred() {
+    let resolve;
+    const promise = new Promise(r => { resolve = r; });
+    return { promise, resolve };
+}
+
+async function rejects(operation, message) {
+    let failed = false;
+    try { await operation(); } catch { failed = true; }
+    assert(failed, message);
+}
+
+async function setup() {
+    const initialState = {
+        inputs: { aktuellesAlter: 67, tagesgeld: 4, geldmarktEtf: 5, depotwertAlt: 6, depotwertNeu: 7 },
+        lastState: { cumulativeInflationFactor: 1 },
+        wealthHistory: { schemaVersion: 1, entries: [manual] }
+    };
+    const initial = {
+        [STATE]: JSON.stringify(initialState),
+        profile_person_schema_version: '1', profile_aktuelles_alter: '67',
+        [PROFILE_STORAGE_KEYS.current]: 'a',
+        [PROFILE_STORAGE_KEYS.active]: 'a',
+        [REGISTRY]: JSON.stringify({ version: 1, profiles: {
+            a: { meta: { id: 'a', name: 'A' }, data: { profile_person_schema_version: '1', profile_aktuelles_alter: '67', [STATE]: JSON.stringify(initialState), profile_tagesgeld: '4' } },
+            b: { meta: { id: 'b', name: 'B' }, data: { profile_person_schema_version: '1', profile_aktuelles_alter: '67', [STATE]: JSON.stringify({ wealthHistory: { schemaVersion: 1, entries: [manual] } }) } }
+        } })
+    };
+    const seed = readyAnnualFixture('Einzelprofil');
+    const seededProfile = JSON.parse(seed.records.rs_profiles_v1).profiles.muster_a;
+    const registry = JSON.parse(initial[REGISTRY]);
+    for (const id of ['a', 'b']) {
+        const profile = registry.profiles[id];
+        profile.meta.belongsToHousehold = true;
+        profile.data = { ...seededProfile.data, ...profile.data,
+            profile_geburtsdatum: '1959-01-01',
+            profile_tagesgeld: id === 'a' ? '12000' : '0',
+            depot_tranchen: JSON.stringify(id === 'a' ? [
+                { trancheId: 'a-alt', name: 'Alt', shares: 1, purchasePrice: 17000, currentPrice: 34000, type: 'aktien_alt', category: 'equity', tqf: 0 },
+                { trancheId: 'a-neu', name: 'Neu', shares: 1, purchasePrice: 22500, currentPrice: 45000, type: 'aktien_neu', category: 'equity', tqf: 0 },
+                { trancheId: 'a-money', name: 'Geldmarkt', shares: 1, purchasePrice: 23000, currentPrice: 23000, type: 'geldmarkt', category: 'money_market', tqf: 0 }
+            ] : []),
+            balance_expenses_v1: JSON.stringify({ version: 1, activeYear: 2026, years: {} }) };
+    }
+    for (const profile of Object.values(registry.profiles)) delete profile.data.profile_cash_history_v1;
+    initial[REGISTRY] = JSON.stringify(registry);
+    Object.assign(initial, registry.profiles.a.data);
+    initial.household_plan_v1 = buildPlanRecord(null, [{ scope: planScope('household', ['a', 'b']), values: structuredClone(PLAN_DEFAULTS) }]).raw;
+    initial[CONFIG.STORAGE.MIGRATION_FLAG] = '1';
+    const store = new Map(Object.entries(initial));
+    const snapshots = new Map();
+    const faults = { write: false, readback: false, flush: false, readGate: null, annualReadGate: null, manual: false };
+    let corruptNextRead = false;
+    const adapter = {
+        name: 'wealth-test-memory',
+        async open() {},
+        async loadAll() {
+            if (faults.readGate) {
+                const gate = faults.readGate;
+                faults.readGate = null;
+                gate.entered.resolve();
+                await gate.release.promise;
+            }
+            const records = Object.fromEntries(store);
+            if (corruptNextRead) {
+                corruptNextRead = false;
+                records[STATE] = '{}';
+            }
+            return records;
+        },
+        async saveBatch({ upserts, deletes }) {
+            if (faults.flush) { faults.flush = false; throw new Error('flush failed'); }
+            const isFinal = upserts.some(([key, raw]) => key === STATE &&
+                (JSON.parse(raw).annualPeriodMetadata?.lastCommittedPeriod === 'calendar-year:2026'
+                    || (faults.manual && JSON.parse(raw).wealthHistory?.entries.some(entry => entry.id === `manual:${faults.manualAsOf || '2026-12-31'}`))));
+            if (isFinal && faults.write) { faults.write = false; throw new Error('write failed'); }
+            deletes.forEach(key => store.delete(key));
+            upserts.forEach(([key, value]) => store.set(key, value));
+            if (isFinal && faults.readback) { faults.readback = false; corruptNextRead = true; }
+            if (isFinal && faults.annualReadGate) {
+                faults.readGate = faults.annualReadGate;
+                faults.annualReadGate = null;
+            }
+        },
+        async listSnapshots() { return [...snapshots.values()].map(({ records, ...entry }) => entry); },
+        async readSnapshot(id) { return structuredClone(snapshots.get(id)); },
+        async writeSnapshot(snapshot) { snapshots.set(snapshot.id, structuredClone(snapshot)); },
+        async deleteSnapshot(id) { snapshots.delete(id); }
+    };
+    resetPersistenceForTests(adapter);
+    await PersistenceFacade.init();
+    const service = createBalanceWealthHistoryService();
+    const dom = {
+        inputs: { profilName: { value: 'A' }, aktuellesAlter: { value: '67' }, tagesgeld: { value: '999' } },
+        expenses: { yearSelect: { value: '2026' } },
+        outputs: { snapshotList: null }, controls: {}
+    };
+    const counts = { commits: 0, updates: 0, renders: 0, confirmations: 0 };
+    let snapshotSequence = 0;
+    const createHandlers = (overrides = {}) => {
+        const beforeCommit = overrides.commitLiveState;
+        return createSnapshotHandlers({ dom, appState: { snapshotHandle: null }, wealthHistory: service,
+            confirmAnnual: async () => ({}), decide: async () => true,
+            onAnnualWealthSaved: () => { counts.confirmations++; },
+            getReferenceDate: () => reference, getLegacyDecision: () => 'not_committed',
+            engineLoader: { load: async () => EngineAPI },
+            createAnnualSnapshot: options => createAnnualSnapshot({ ...options, snapshotId: `wealth-annual-${++snapshotSequence}` }),
+            validateLiveState: () => RESULT, flushLiveState: () => PersistenceFacade.flush(),
+            runAnnualUpdate: async () => { counts.updates++; return { ok: true, marketData: structuredClone(annualTestMarketData), results: { errors: [] } }; },
+            ...overrides,
+            commitLiveState: async options => {
+                counts.commits++;
+                await beforeCommit?.(options);
+                return commitAnnualPlanUpdate({ ...options, engineApi: EngineAPI, now: () => reference });
+            }
+        });
+    };
+    return { service, dom, counts, createHandlers, store, snapshots, faults, initialState, adapter };
+}
+
+const restoreAnnualLocks = installAnnualLocks();
+const previous = {
+    confirm: global.confirm, location: global.location, window: global.window,
+    toast: UIRenderer.toast, error: UIRenderer.handleActionError, document: global.document,
+    snapshot: StorageManager.createSnapshot,
+    applyInputs: UIReader.applyStoredInputs
+};
+const messages = [];
+const recordToast = text => { messages.push(text); };
+const annualConfirmationsSince = index => messages.slice(index).filter(text => text.includes('Vermögensstand gesichert.'));
+
+function assertFinalizedAnnual(env, label) {
+    const state = StorageManager.loadState();
+    assertEqual(state.annualPeriodMetadata.lastCommittedPeriod, 'calendar-year:2026', `${label}: finale Periode`);
+    assertEqual(state.annualPeriodMetadata.pendingCommit, null, `${label}: kein Recoverymarker`);
+    assertEqual(state.wealthHistory.entries.length, 2, `${label}: vorheriger Stand und bestätigter Jahresrecord bleiben erhalten`);
+    const entries = state.wealthHistory.entries.filter(entry => entry.id === 'annual:2026');
+    assertEqual(entries.length, 1, `${label}: genau ein Jahresrecord`);
+    assertEqual(entries[0].total, 114000, `${label}: bestätigte fachliche Bestände`);
+    assertEqual(env.store.get(STATE), JSON.stringify(state), `${label}: Cache und dauerhaft gespeicherter State gleich`);
+    assertEqual(env.store.get(STATE), JSON.parse(env.store.get(REGISTRY)).profiles.a.data[STATE], `${label}: aktive Registrykopie gleich`);
+    assertEqual(persistenceStorage.getItem(REGISTRY), env.store.get(REGISTRY), `${label}: Registrycache ebenfalls bestätigt`);
+}
+try {
+    global.confirm = () => true;
+    global.location = { reload() {} };
+    UIRenderer.toast = recordToast;
+    UIRenderer.handleActionError = () => {};
+
+    function manualController(env, overrides = {}) {
+        const button = { disabled: false };
+        const annualButton = { disabled: false };
+        const status = { textContent: '' };
+        const calls = { preview: 0, toast: 0, refresh: 0 };
+        const controller = createManualWealthHistoryController({
+            service: env.service, button, status, annualButtons: [annualButton],
+            now: () => new Date(2026, 11, 31, 12),
+            update: request => {
+                assertEqual(request.mode, BALANCE_UPDATE_MODE.PREVIEW, 'Manueller Knopf startet nur eine frische Vorschau');
+                calls.preview += 1;
+                return RESULT;
+            },
+            refresh: () => { calls.refresh += 1; }, toast: () => { calls.toast += 1; },
+            ...overrides
+        });
+        return { controller, button, annualButton, status, calls };
+    }
+
+    console.log('Manueller Klick erfasst frische Werte, ersetzt nur denselben Tag und lässt Jahresstand/Engine-State unverändert');
+    {
+        const env = await setup();
+        await env.createHandlers().handleJahresabschluss();
+        const before = StorageManager.loadState();
+        const stateBefore = JSON.stringify(before.lastState);
+        const metadataBefore = JSON.stringify(before.annualPeriodMetadata);
+        let current = { ...SOURCE, tagesgeld: 42.25 };
+        const ui = manualController(env, { update: request => {
+            assertEqual(request.mode, BALANCE_UPDATE_MODE.PREVIEW, 'Ausstehende Debounce-Eingaben werden ohne Periodencommit gelesen');
+            return { ...RESULT, inputData: current };
+        } });
+        assertEqual((await ui.controller.capture()).status, 'saved', 'Manueller Stand nach Readback bestätigt');
+        current = { ...SOURCE, tagesgeld: 99.75 };
+        await ui.controller.capture();
+        const captured = StorageManager.loadState();
+        assertEqual(captured.wealthHistory.entries.filter(entry => entry.id === 'manual:2026-12-31').length, 1, 'Wiederholung ersetzt genau denselben manuellen Tag');
+        assertEqual(captured.wealthHistory.entries.find(entry => entry.id === 'manual:2026-12-31').tagesgeld, 99.75, 'Frische Eingaben statt alter Persistenz oder Simulation');
+        assertEqual(captured.wealthHistory.entries.find(entry => entry.id === 'annual:2026').tagesgeld, 12000, 'Jahresrecord am selben Datum bleibt erhalten');
+        const tomorrow = manualController(env, { now: () => new Date(2027, 0, 1) });
+        await tomorrow.controller.capture();
+        const final = StorageManager.loadState();
+        assertEqual(final.wealthHistory.entries.length, 4, 'Neuer lokaler Tag fügt einen Record hinzu');
+        assertEqual(JSON.stringify(final.lastState), stateBefore, 'Kein zusätzlicher Engine-State-Commit');
+        assertEqual(JSON.stringify(final.annualPeriodMetadata), metadataBefore, 'Kein zusätzlicher Periodenmarker');
+        assertEqual(ui.calls.toast, 2, 'Erfolg erst nach bestätigtem Speichern');
+        assertEqual(env.store.get(STATE), JSON.parse(env.store.get(REGISTRY)).profiles.a.data[STATE], 'Manuelle Werte in Live-State und Registry gleich');
+    }
+
+    console.log('Klickdatum bleibt trotz Wartezeit lokal; Doppelklick und Jahresknopf sind bis zum Ende gesperrt');
+    {
+        const savedTZ = process.env.TZ;
+        process.env.TZ = 'Europe/Berlin';
+        try {
+            const env = await setup();
+            const gate = { entered: deferred(), release: deferred() };
+            env.faults.readGate = gate;
+            let clock = new Date('2026-12-31T23:30:00Z');
+            const ui = manualController(env, { now: () => clock });
+            const first = ui.controller.capture();
+            await gate.entered.promise;
+            assert(ui.button.disabled && ui.annualButton.disabled, 'Erfassung sperrt beide Bedienwege');
+            assertEqual(ui.calls.toast, 0, 'Während Readback keine Erfolgsmeldung');
+            assertEqual((await ui.controller.capture()).status, 'in_flight', 'Doppelklick ohne zweite Erfassung');
+            let annualCalls = 0;
+            assertEqual((await ui.controller.withAnnual(() => { annualCalls += 1; })).status, 'in_flight', 'Jahresknopf während manueller Erfassung blockiert');
+            assertEqual(annualCalls, 0, 'Kein zwischenzeitlicher Jahresprozess');
+            clock = new Date('2027-01-02T12:00:00Z');
+            gate.release.resolve();
+            assertEqual((await first).status, 'saved', 'Erster Klick bestätigt');
+            assert(StorageManager.loadState().wealthHistory.entries.some(entry => entry.id === 'manual:2027-01-01'), 'Lokales Klickdatum statt UTC- oder späterem Schreibdatum');
+            assertEqual(ui.calls.preview, 1, 'Doppelklick führt nur eine Vorschau aus');
+            assert(!ui.button.disabled && !ui.annualButton.disabled, 'Nach Abschluss wieder entsperrt');
+        } finally { if (savedTZ === undefined) delete process.env.TZ; else process.env.TZ = savedTZ; }
+    }
+
+    console.log('Validierungs-, Write-, Readback- und Flushfehler melden keinen manuellen Erfolg');
+    for (const fault of ['validation', 'write', 'readback', 'flush', 'pending', 'corrupt']) {
+        const env = await setup();
+        env.faults.manual = true;
+        const rawBefore = persistenceStorage.getItem(STATE);
+        if (['write', 'readback', 'flush'].includes(fault)) env.faults[fault] = true;
+        if (fault === 'flush') persistenceStorage.setItem('profile_tagesgeld', '100');
+        if (fault === 'pending') persistenceStorage.setItem(STATE, JSON.stringify({ ...env.initialState, annualPeriodMetadata: { pendingCommit: { periodId: 'calendar-year:2026' } } }));
+        if (fault === 'corrupt') persistenceStorage.setItem(STATE, JSON.stringify({ ...env.initialState, wealthHistory: { schemaVersion: 9, entries: [] } }));
+        const ui = manualController(env, fault === 'validation' ? { update: () => ({ ok: false, error: new Error('Ungültige Eingaben') }) } : {});
+        assertEqual((await ui.controller.capture()).status, 'failed', `${fault}: keine falsche Bestätigung`);
+        assertEqual(ui.calls.toast, 0, `${fault}: keine Erfolgsmeldung`);
+        assert(ui.status.textContent.includes('nicht bestätigt'), `${fault}: sichtbarer Fehler`);
+        assert(!ui.button.disabled && !ui.annualButton.disabled, `${fault}: Bedienung entsperrt`);
+        if (fault === 'corrupt') assertEqual(JSON.parse(persistenceStorage.getItem(STATE)).wealthHistory.schemaVersion, 9, 'Beschädigter Verlauf wird nicht überschrieben');
+        else if (fault !== 'pending') assertEqual(persistenceStorage.getItem(STATE), rawBefore, `${fault}: bisheriger Stand unverändert`);
+    }
+
+    for (const active of [false, true]) for (const fault of ['write', 'readback']) {
+        const env = await setup();
+        env.faults.manual = true;
+        env.faults[fault] = true;
+        const view = historyDom(active);
+        refreshBalanceWealthHistory(view);
+        const chartBefore = view.chart.innerHTML;
+        const tableBefore = view.table.innerHTML;
+        const ui = manualController(env, { status: view.status, refresh: () => refreshBalanceWealthHistory(view) });
+        assertEqual((await ui.controller.capture()).status, 'failed', `${fault}: Erfassung im aktuellen Tab scheitert ohne Bestätigung`);
+        assertEqual(view.panel.classList.contains('active'), active, 'Speicherfehler erhält Tabaktivität');
+        assertEqual(JSON.stringify(view.tabCalls), '{"add":0,"remove":0}', 'Fehlerhafte Capture aktiviert oder deaktiviert keinen Tab');
+        assertEqual(view.date.textContent, 'Zuletzt erfasst am 01.06.2026', 'Speicherfehler erhält bestätigtes Datum');
+        assertEqual(view.chart.innerHTML, chartBefore, 'Speicherfehler erhält gültiges Diagramm beziehungsweise leeren inaktiven Container');
+        assertEqual(view.table.innerHTML, tableBefore, 'Speicherfehler erhält gültige Tabelle beziehungsweise leeren inaktiven Container');
+        assertEqual(ui.calls.toast, 0, 'Kein Erfolg bei Speicherfehler');
+        assert(view.status.textContent.includes('Stand nicht bestätigt'), 'Speicherfehler im Panel gemeldet');
+    }
+
+    console.log('Profilwechsel im manuellen Readback und laufender Jahresprozess verhindern fremde/vorläufige Bestätigung');
+    {
+        const env = await setup();
+        const gate = { entered: deferred(), release: deferred() };
+        env.faults.readGate = gate;
+        const ui = manualController(env);
+        const capture = ui.controller.capture();
+        await gate.entered.promise;
+        const foreign = JSON.parse(persistenceStorage.getItem(REGISTRY)).profiles.b.data[STATE];
+        persistenceStorage.setItem(PROFILE_STORAGE_KEYS.current, 'b');
+        persistenceStorage.setItem(PROFILE_STORAGE_KEYS.active, 'b');
+        persistenceStorage.setItem(STATE, foreign);
+        gate.release.resolve();
+        assertEqual((await capture).status, 'failed', 'Profilwechsel verhindert Bestätigung');
+        assertEqual(ui.calls.toast, 0, 'Kein Erfolg für fremdes Profil');
+        assertEqual(persistenceStorage.getItem(STATE), foreign, 'Fremder Verlauf unverändert');
+        assert(!ui.button.disabled, 'Profilwechselfehler entsperrt den Knopf');
+    }
+    {
+        const env = await setup();
+        const gate = deferred();
+        const ui = manualController(env);
+        const annual = ui.controller.withAnnual(() => gate.promise);
+        assert(ui.button.disabled, 'Jahreslauf sperrt manuellen Knopf');
+        assertEqual((await ui.controller.capture()).status, 'in_flight', 'Kein vorläufiger Stand während Jahreslauf');
+        assertEqual(ui.calls.preview, 0, 'Nicht einmal eine manuelle Vorschau während Jahreslauf');
+        gate.resolve();
+        await annual;
+        assert(!ui.button.disabled, 'Jahresabschluss entsperrt Knopf');
+        try { await ui.controller.withAnnual(() => { throw new Error('Jahresfehler'); }); } catch {}
+        assert(!ui.button.disabled, 'Auch Jahresfehler entsperrt Knopf');
+    }
+
+    console.log('Binder bindet den manuellen Listener einmal, auch bei erneuter Initialisierung');
+    {
+        const env = await setup();
+        const element = () => ({ listeners: {}, addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); } });
+        const dom = {
+            ...env.dom,
+            controls: Object.fromEntries(['resetBtn', 'copyAction', 'btnJahresUpdate', 'btnNachruecken', 'btnUndoNachruecken', 'btnCsvImport', 'csvFileInput', 'jahresabschlussBtn', 'connectFolderBtn', 'captureWealthBtn'].map(key => [key, element()])),
+            wealthHistory: historyDom(),
+            outputs: { snapshotList: element() },
+            containers: { form: element(), tabButtons: element(), bedarfAnpassung: element() },
+            diagnosis: Object.fromEntries(['drawer', 'overlay', 'openBtn', 'closeBtn', 'copyBtn', 'filterToggle'].map(key => [key, element()]))
+        };
+        global.document = { addEventListener() {}, querySelectorAll: () => [], getElementById: () => null };
+        let previews = 0;
+        let invalidPreview = false;
+        let debounceResumed = 0;
+        const binderState = {};
+        const initialize = () => initUIBinder(dom, binderState, request => { assertEqual(request.mode, BALANCE_UPDATE_MODE.PREVIEW, 'Binder nutzt PREVIEW'); previews += 1; return invalidPreview ? { ok: false, error: new Error('Ungültige Eingaben') } : RESULT; }, () => { debounceResumed += 1; });
+        initialize(); UIBinder.bindUI(); UIBinder.bindUI();
+        initialize(); UIBinder.bindUI();
+        assertEqual(dom.controls.captureWealthBtn.listeners.click.length, 1, 'Genau ein Capture-Listener trotz erneuter Bindung');
+        assertEqual(dom.containers.tabButtons.listeners.click.length, 1, 'Genau ein Tablistener trotz erneuter Bindung');
+        const persistedBeforeTab = env.store.get(STATE);
+        const registryBeforeTab = env.store.get(REGISTRY);
+        const buttons = ['overview', 'strategy', 'expenses', 'history', 'diagnosis'].map(tab => ({ dataset: { tab },
+            focus() {}, setAttribute() {}, classList: historyDom(tab === 'overview').panel.classList }));
+        buttons.forEach(button => { button.classList.toggle = (name, enabled) => enabled ? button.classList.add(name) : button.classList.remove(name); });
+        const panels = buttons.map(button => button.dataset.tab === 'history' ? dom.wealthHistory.panel : historyDom(button.dataset.tab === 'overview').panel);
+        panels.forEach((panel, index) => { panel.id = 'tab-' + buttons[index].dataset.tab; panel.classList.toggle = (name, enabled) => enabled ? panel.classList.add(name) : panel.classList.remove(name); });
+        dom.containers.tabPanels = panels;
+        dom.containers.tabButtons.querySelectorAll = () => buttons;
+        dom.containers.tabButtons.querySelector = () => buttons.find(button => button.classList.contains('active'));
+        global.document.getElementById = id => panels[['tab-overview', 'tab-strategy', 'tab-expenses', 'tab-history', 'tab-diagnosis'].indexOf(id)];
+        const clearError = UIRenderer.clearError;
+        let clears = 0;
+        UIRenderer.clearError = () => { clears += 1; };
+        try {
+            for (const index of [3, 0, 3, 1, 3, 2, 3, 0]) {
+                dom.containers.tabButtons.listeners.click[0]({ target: { closest: () => buttons[index] } });
+                assertEqual(dom.wealthHistory.panel.classList.contains('active'), index === 3, 'Tabaktivität aus bestehender Mechanik');
+                assertEqual(Boolean(dom.wealthHistory.chart.innerHTML), index === 3, 'Aktivierung zeichnet, Verlassen leert');
+                assertEqual(previews, 0, `${buttons[index].dataset.tab}: kein synchrones Update oder Erfassung`);
+                assertEqual(debounceResumed, 0, `${buttons[index].dataset.tab}: keine Entprellplanung`);
+                assertEqual(clears, 0, `${buttons[index].dataset.tab}: keine Fehlerbereinigung`);
+                assertEqual(env.store.get(STATE), persistedBeforeTab, `${buttons[index].dataset.tab}: kein Statewrite`);
+                assertEqual(env.store.get(REGISTRY), registryBeforeTab, `${buttons[index].dataset.tab}: kein Registrywrite`);
+            }
+            assertEqual(clears, 0, 'Tabwechsel ohne Fehlerbereinigung');
+        } finally { UIRenderer.clearError = clearError; }
+        assertEqual(previews, 0, 'Tabwechsel startet kein Engineupdate');
+        assertEqual(debounceResumed, 0, 'Tabwechsel plant keinen Inputwrite');
+        assertEqual(env.store.get(STATE), persistedBeforeTab, 'Tabwechsel ohne Statewrite oder Erfassung');
+        assertEqual(env.store.get(REGISTRY), registryBeforeTab, 'Tabwechsel ohne Registrywrite');
+        binderState.debounceTimer = setTimeout(() => { throw new Error('Der alte Timer darf nicht laufen'); }, 10000);
+        const tabState = () => JSON.stringify({
+            buttons: buttons.map(button => button.classList.contains('active')),
+            panels: panels.map(panel => panel.classList.contains('active')),
+            calls: dom.wealthHistory.tabCalls
+        });
+        const beforeCapture = tabState();
+        await dom.controls.captureWealthBtn.listeners.click[0]();
+        assertEqual(tabState(), beforeCapture, 'Gebundene Capture öffnet den inaktiven Verlauf nicht');
+        assertEqual(previews, 1, 'Ein Klick erzeugt nur eine Erfassung');
+        assertEqual(binderState.debounceTimer, null, 'Ausstehender Inputwrite während Transaktion angehalten');
+        assertEqual(debounceResumed, 1, 'Inputpersistenz nach bestätigter Erfassung wieder eingeplant');
+        for (const index of [0, 1, 2, 3]) for (const fault of [null, 'write', 'readback', 'validation']) {
+            dom.containers.tabButtons.listeners.click[0]({ target: { closest: () => buttons[index] } });
+            env.faults.manual = true;
+            const today = new Date();
+            env.faults.manualAsOf = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')].join('-');
+            env.faults.write = fault === 'write';
+            env.faults.readback = fault === 'readback';
+            invalidPreview = fault === 'validation';
+            const before = tabState();
+            await dom.controls.captureWealthBtn.listeners.click[0]();
+            assertEqual(tabState(), before, `${buttons[index].dataset.tab}/${fault || 'Erfolg'}: gebundene Capture wechselt keinen Button oder Panel und öffnet keinen Tab`);
+            assertEqual(dom.wealthHistory.status.textContent.includes('Stand nicht bestätigt'), Boolean(fault), 'Clicklistener durchläuft den angeforderten Erfolgs- oder Fehlerpfad');
+        }
+    }
+
+    console.log('Reale Importe erhalten aktiven und inaktiven Tab bei Erfolg, Ablehnung, Legacy und Rollback');
+    for (const active of [false, true]) for (const kind of ['legacy', 'history', 'reject', 'rollback']) {
+        const env = await setup();
+        const view = env.dom.wealthHistory = historyDom(active);
+        refreshBalanceWealthHistory(view);
+        const previousChart = view.chart.innerHTML;
+        const errors = [];
+        UIRenderer.handleActionError = error => { errors.push(error); };
+        UIReader.applyStoredInputs = () => {};
+        initUIBinder(env.dom, {}, request => {
+            assertEqual(view.panel.classList.contains('active'), active, 'Importupdate erhält Tabaktivität');
+            refreshBalanceWealthHistory(view);
+            return kind === 'rollback' && request.mode === BALANCE_UPDATE_MODE.PERSIST_INPUTS ? { ok: false } : RESULT;
+        }, () => {});
+        await UIBinder.handleImport({ target: { files: [] } });
+        assertEqual(view.panel.classList.contains('active'), active, 'Dateidialog ohne Auswahl wirkungslos');
+        const imported = createManualWealthHistoryEntry({ ...SOURCE, tagesgeld: 42 }, '2026-08-01');
+        const doc = createBalanceExportDocument({
+            inputs: { aktuellesAlter: 67, floorBedarf: 24000, flexBedarf: 12000, ...SOURCE },
+            lastState: { cumulativeInflationFactor: 1 },
+            ...(kind === 'history' ? { wealthHistory: { schemaVersion: 1, entries: [imported] } } : {})
+        });
+        await UIBinder.handleImport({ target: { value: 'datei', files: [{ text: async () => {
+            assertEqual(view.panel.classList.contains('active'), active, 'Dateilesen ohne Tabwechsel');
+            return kind === 'reject' ? '{ungueltig' : JSON.stringify(doc);
+        } }] } });
+        assertEqual(view.panel.classList.contains('active'), active, 'Jedes Importergebnis erhält Tabaktivität');
+        assertEqual(view.status.textContent, '', 'Vorherige Erfassungsbestätigung entfernt');
+        if (!active) assertEqual(view.chart.innerHTML + view.table.innerHTML, '', 'Inaktiver Import erzeugt keine Inhalte');
+        if (kind === 'rollback' || kind === 'reject') {
+            assertEqual(StorageManager.loadState().wealthHistory.entries.length, 1, 'Fehler bewahrt bisherigen Verlauf');
+            assert(errors.length > 0, 'Importfehler bleibt gemeldet');
+            assertEqual(view.chart.innerHTML, previousChart, 'Darstellung entspricht endgültigen Rollbackdaten');
+            assertEqual(view.date.textContent, 'Zuletzt erfasst am 01.06.2026', 'Fehler bewahrt bestätigtes Datum');
+        } else if (kind === 'history') {
+            assertEqual(view.count.textContent, '1 Stand', 'Importierte Anzahl aktualisiert');
+            assertEqual(view.date.textContent, 'Zuletzt erfasst am 01.08.2026', 'Importdatum unmittelbar aktualisiert');
+            if (active) assert(view.table.innerHTML.includes('01.08.2026'), 'Aktive Tabelle zeigt nur importierte Historie');
+            assertEqual(JSON.stringify(StorageManager.loadState().wealthHistory.entries), JSON.stringify([imported]), 'Replace übernimmt exakt den Import');
+        } else {
+            assert(!Object.hasOwn(StorageManager.loadState(), 'wealthHistory'), 'Legacy mischt keine alte Historie bei');
+            assertEqual(view.date.textContent, 'Noch keine Stände erfasst', 'Legacy ersetzt Datum mit Leertext');
+            if (active) assert(view.hint.textContent.includes('Noch keine Stände'), 'Aktiver Legacy-Leerhinweis');
+        }
+        view.panel.classList.add('active');
+        refreshBalanceWealthHistory(view);
+        if (kind === 'rollback' || kind === 'reject') assert(view.table.innerHTML.includes('01.06.2026'), 'Spätere Aktivierung zeigt Rollbackdaten');
+    }
+    UIRenderer.handleActionError = () => {};
+    UIReader.applyStoredInputs = previous.applyInputs;
+
+    console.log('Reale Verbund-/Tranchenaggregation liefert die Quelle trotz abweichender Felder und Simulation');
+    {
+        const env = await setup();
+        global.window = {};
+        const registry = JSON.parse(persistenceStorage.getItem(REGISTRY));
+        const tranche = (id, value, type, category = 'equity') => ({
+            trancheId: id, name: id, shares: 1, purchasePrice: value / 2,
+            currentPrice: value, category, type, tqf: 0
+        });
+        registry.profiles.a.data.profile_tagesgeld = '7000';
+        registry.profiles.a.data.depot_tranchen = JSON.stringify([
+            tranche('a-alt', 14000, 'aktien_alt'), tranche('a-neu', 15000, 'aktien_neu'),
+            tranche('a-money', 10000, 'geldmarkt', 'money_market')
+        ]);
+        registry.profiles.b.data.profile_tagesgeld = '5000';
+        registry.profiles.b.data.depot_tranchen = JSON.stringify([
+            tranche('b-alt', 20000, 'aktien_alt'), tranche('b-neu', 30000, 'aktien_neu'),
+            tranche('b-money', 13000, 'geldmarkt', 'money_market'), tranche('b-gold', 100000, 'gold', 'gold')
+        ]);
+        persistenceStorage.setItem(REGISTRY, JSON.stringify(registry));
+        persistenceStorage.setItem('profile_tagesgeld', registry.profiles.a.data.profile_tagesgeld);
+        persistenceStorage.setItem('depot_tranchen', registry.profiles.a.data.depot_tranchen);
+        const foreignBefore = JSON.stringify(registry.profiles.b);
+        initUIReader(env.dom);
+        const compound = createProfilverbundHandlers({ dom: env.dom, PROFILVERBUND_STORAGE_KEYS: { mode: 'profilverbund_withdrawal_mode' } });
+        const capture = manualController(env, { update: request => {
+            assertEqual(request.mode, BALANCE_UPDATE_MODE.PREVIEW, 'Reale manuelle Aggregation verwendet Vorschau');
+            const inputData = { tagesgeld: 999, geldmarktEtf: 888, depotwertAlt: 777, depotwertNeu: 666 };
+            compound.updateProfilverbundGlobals(loadProfilverbundProfiles(), inputData);
+            return { ...RESULT, inputData };
+        } });
+        const capturedResult = await capture.controller.capture();
+        assertEqual(capturedResult.status, 'saved', 'Manueller aggregierter Stand bestätigt');
+        const captured = StorageManager.loadState().wealthHistory.entries.find(entry => entry.id === 'manual:2026-12-31');
+        for (const field of Object.keys(SOURCE)) assertEqual(captured[field], SOURCE[field], `Manueller Record enthält reale aggregierte Quelle für ${field}`);
+        assertEqual(JSON.stringify(JSON.parse(persistenceStorage.getItem(REGISTRY)).profiles.b), foreignBefore, 'Manuelle Verbunderfassung schreibt nur aktives Profil');
+        // H3 liest bestätigte Teilnehmerquellen direkt, ohne DOM-/Globalaggregation.
+        const handler = env.createHandlers();
+        assertEqual((await handler.handleJahresabschluss()).status, 'already_committed', 'Aggregierter Jahresabschluss erfolgreich');
+        const annual = StorageManager.loadState().wealthHistory.entries.find(entry => entry.reason === 'annual_close');
+        for (const field of Object.keys(SOURCE)) assertEqual(annual[field], SOURCE[field], `Reale aggregierte Quelle für ${field}`);
+        assertEqual(annual.total, 114000, 'Gold wird nicht zusätzlich addiert');
+        assertEqual(JSON.stringify(JSON.parse(JSON.parse(persistenceStorage.getItem(REGISTRY)).profiles.b.data[STATE]).wealthHistory), JSON.stringify(JSON.parse(JSON.parse(foreignBefore).data[STATE]).wealthHistory), 'H3 bestätigt Teilnehmerstate ohne zweiten Haushaltsverlaufwrite');
+
+        // Die beiden öffentlichen Binder-Einstiege prüfen denselben gespeicherten Abschluss.
+        const SystemDate = global.Date;
+        global.Date = class extends SystemDate {
+            constructor(...args) { super(...(args.length ? args : [reference.getTime()])); }
+        };
+        try {
+            let updates = 0;
+            initUIBinder(env.dom, { snapshotHandle: null }, () => { updates += 1; return RESULT; }, () => {});
+            assertEqual((await UIBinder.handleJahresUpdate()).status, 'already_committed', 'Jahres-Update-Knopf erkennt abgeschlossene Periode');
+            assertEqual((await UIBinder.handleJahresabschluss()).status, 'already_committed', 'Jahresabschluss-Knopf erkennt dieselbe Periode');
+            assertEqual(updates, 0, 'Beide Binder-Knöpfe starten keinen weiteren Engine-Lauf');
+        } finally { global.Date = SystemDate; }
+    }
+
+    console.log('Jahresbestätigung folgt erst freigegebenem Readback, danach bleibt derselbe Handler ein No-op');
+    {
+        const env = await setup();
+        const gate = { entered: deferred(), release: deferred() };
+        const handler = env.createHandlers({ commitLiveState: async () => {
+            env.faults.annualReadGate = gate;
+            return RESULT;
+        } });
+        const messageIndex = messages.length;
+        const running = handler.handleJahresabschluss();
+        await gate.entered.promise;
+        assertEqual(annualConfirmationsSince(messageIndex).length, 0, 'Während blockiertem Jahres-Readback kein Zusatz');
+        assertEqual(env.counts.confirmations, 0, 'Während blockiertem Readback kein UI-Rückruf');
+        assertEqual(JSON.parse(env.store.get(STATE)).annualPeriodMetadata.lastCommittedPeriod, 'calendar-year:2026', 'Gate blockiert den Readback nach dem finalen Backendwrite');
+        gate.release.resolve();
+        assertEqual((await running).status, 'already_committed', 'Abschluss nach freigegebenem Readback');
+        assertEqual(annualConfirmationsSince(messageIndex).length, 1, 'Genau ein Zusatz nach Readbackfreigabe');
+        assertEqual(annualConfirmationsSince(messageIndex)[0], 'Ausgaben-Check auf 2027 umgestellt. Vermögensstand gesichert.', 'Exakte neue Kurzmeldung');
+        assertEqual(env.counts.confirmations, 1, 'Genau ein UI-Rückruf nach Readbackfreigabe');
+        assertFinalizedAnnual(env, 'Freigegebener Readback');
+        const repeatIndex = messages.length;
+        assertEqual((await handler.handleJahresabschluss()).status, 'already_committed', 'Derselbe Handler erkennt die abgeschlossene Periode');
+        assertEqual(env.counts.updates, 1, 'Wiederholung erreicht den fachlichen No-op ohne weiteren Marktdatenabruf');
+        assertEqual(annualConfirmationsSince(repeatIndex).length, 0, 'No-op ohne neuen Zusatz');
+        assertEqual(env.counts.confirmations, 1, 'No-op ohne weiteren UI-Rückruf');
+        assertEqual(env.counts.commits, 1, 'No-op ohne weiteren Engine-Commit');
+        assertFinalizedAnnual(env, 'No-op nach Readback');
+    }
+
+    console.log('Finale Write-/Readback-/Flushfehler erhalten Historie und Recovery; echter Restore erlaubt einen Abschluss');
+    for (const fault of ['write', 'readback', 'flush']) {
+        const env = await setup();
+        const handler = env.createHandlers({
+            commitLiveState: async () => {
+                    env.faults[fault] = true;
+                // Ein ausstehender fachlicher Write macht den finalen Flush prüfbar.
+                if (fault === 'flush') persistenceStorage.setItem('profile_tagesgeld', '12');
+                return RESULT;
+            }
+        });
+        const messageIndex = messages.length;
+        const failed = await handler.handleJahresabschluss();
+        assertEqual(failed.status, 'incomplete_recovery', `${fault}: kein falscher Erfolg`);
+        assertEqual(annualConfirmationsSince(messageIndex).length, 0, `${fault}: kein Zusatz nach fehlgeschlagener Finalisierung`);
+        assertEqual(env.counts.confirmations, 0, 'Fehlgeschlagener Abschluss bestätigt keinen Stand');
+        const state = StorageManager.loadState();
+        assertEqual(JSON.stringify(state.wealthHistory), JSON.stringify(env.initialState.wealthHistory), `${fault}: vorheriger Verlauf erhalten`);
+        assertEqual(state.annualPeriodMetadata.lastCommittedPeriod, null, `${fault}: kein finaler Periodenmarker`);
+        assertEqual(state.annualPeriodMetadata.pendingCommit.phase, 'validating', `${fault}: Pending-Recovery erhalten`);
+        const repeatIndex = messages.length;
+        assertEqual((await handler.handleJahresabschluss()).status, 'incomplete_recovery', `${fault}: Wiederholung bleibt blockiert`);
+        assertEqual(annualConfirmationsSince(repeatIndex).length, 0, `${fault}: blockierte Wiederholung ohne Zusatz`);
+        assertEqual(env.counts.commits, 1, `${fault}: kein weiterer Engine-Commit`);
+        const id = state.annualPeriodMetadata.pendingCommit.snapshotId;
+        assert(env.snapshots.has(id), `${fault}: tatsächlicher Recovery-Snapshot vorhanden`);
+        const recoveryBefore = JSON.stringify(env.snapshots.get(id));
+        // Der absichtlich fehlgeschlagene Flush lässt Livewrites offen. Vor der
+        // Restorevorschau müssen sie bestätigt sein, sonst ist diese sofort veraltet.
+        await PersistenceFacade.flush();
+        const recordsBefore = await PersistenceFacade.readPersistedRecords();
+        const restored = await StorageManager.restoreSnapshot(id, null);
+        assertEqual(restored.status, 'restored', `${fault}: Restore bestätigt`);
+        assert(PersistenceFacade.hasSyncWriteBlocks(), `${fault}: altes Dokument bleibt nach Restore schreibgesperrt`);
+        const returnPoint = await SnapshotArchive.readSnapshot(restored.recoverySnapshotId);
+        assertEqual(returnPoint.kind, SNAPSHOT_KINDS.beforeRestoreRecovery, `${fault}: bestätigter Punkt vor Zurückholen`);
+        strict.deepEqual({ ...returnPoint.records }, { ...recordsBefore }, `${fault}: Rückkehrpunkt enthält vollständigen vorherigen Bestand mit bytegleichen Rohrecords`);
+        assertEqual(env.snapshots.size, 2, `${fault}: Restore erhält Recovery und ergänzt genau einen Rückkehrpunkt`);
+        // Das Reload-Doppel ersetzt kein Dokument: nach Ende der Navigation
+        // eine neue Persistenzgeneration aus demselben Backend laden.
+        await new Promise(resolve => setTimeout(resolve, 0));
+        resetPersistenceForTests(env.adapter);
+        await PersistenceFacade.init({ installLifecycleHooks: false });
+        env.dom.inputs.aktuellesAlter.value = '67';
+        // Der schnelle Speicheradapter kann beide Versuche in derselben Millisekunde
+        // ausführen. Eigene Labels trennen die Fixtures ohne Wartezeit oder Echtzeituhr.
+        env.dom.inputs.profilName.value = `A-Wiederholung-${fault}`;
+        const restoredHandler = env.createHandlers();
+        const restoredIndex = messages.length;
+        assertEqual((await restoredHandler.handleJahresabschluss()).status, 'already_committed', `${fault}: Abschluss nach Restore erfolgreich`);
+        assertEqual(annualConfirmationsSince(restoredIndex).length, 1, `${fault}: neuer Abschluss nach Restore bestätigt genau einmal`);
+        assertEqual(env.snapshots.size, 3, `${fault}: Wiederholung ergänzt genau einen eigenen Recovery-Snapshot`);
+        assertEqual(JSON.stringify(env.snapshots.get(id)), recoveryBefore, `${fault}: ursprünglicher Recovery-Snapshot bleibt unverändert`);
+        assertEqual(JSON.stringify(await SnapshotArchive.readSnapshot(returnPoint.id)), JSON.stringify(returnPoint), `${fault}: Rückkehrpunkt bleibt unverändert`);
+        const entries = StorageManager.loadState().wealthHistory.entries;
+        assertEqual(entries.length, 2, `${fault}: manueller Stand und genau ein Jahresstand`);
+        assertEqual(JSON.stringify(entries[0]), JSON.stringify(manual), `${fault}: Snapshot bewahrt manuelle Historie`);
+        assertEqual(entries.filter(entry => entry.id === 'annual:2026').length, 1, `${fault}: genau ein Jahresrecord nach Restore`);
+        assertEqual(env.store.get(STATE), JSON.parse(env.store.get(REGISTRY)).profiles.a.data[STATE], `${fault}: bestätigter Live-State und Registry gleich`);
+    }
+
+    console.log('Beide Jahresknöpfe teilen den Coordinator; auch Legacy-Persistenz ist gegen Doppelklick gesperrt');
+    {
+        const env = await setup();
+        const gate = deferred();
+        const entered = deferred();
+        let firstFlush = true;
+        const handler = env.createHandlers({ flushLiveState: async () => {
+            if (firstFlush) { firstFlush = false; entered.resolve(); await gate.promise; }
+            await PersistenceFacade.flush();
+        } });
+        const first = handler.handleJahresabschluss();
+        await entered.promise;
+        assertEqual((await handler.handleJahresabschluss()).status, 'in_flight', 'Doppelklick schon beim Legacy-Flush gesperrt');
+        await rejects(() => env.service.captureManual({ result: RESULT, asOf: '2026-12-31' }), 'Manuelle Erfassung während Jahresabschluss gesperrt');
+        gate.resolve();
+        assertEqual((await first).status, 'already_committed', 'Erster Knopf schließt ab');
+        assertEqual((await handler.handleJahresabschluss()).status, 'already_committed', 'Zweiter Knopf bleibt ein No-op');
+        assertEqual(env.counts.confirmations, 1, 'No-op bestätigt keinen neuen Stand');
+        assertEqual(env.counts.commits, 1, 'Beide Knöpfe erzeugen nur einen Engine-Commit');
+    }
+
+    console.log('Profilwechsel in wartenden Jahres-/Persistenzschritten schreiben keine fremde Historie');
+    for (const step of ['annual', 'flush', 'read']) {
+        const env = await setup();
+        const gate = { entered: deferred(), release: deferred() };
+        const foreign = JSON.parse(persistenceStorage.getItem(REGISTRY)).profiles.b.data[STATE];
+        const handler = env.createHandlers({
+            runAnnualUpdate: async () => {
+                if (step === 'annual') { gate.entered.resolve(); await gate.release.promise; }
+                env.dom.inputs.aktuellesAlter.value = '67';
+                return { ok: true, marketData: structuredClone(annualTestMarketData), results: { errors: [] } };
+            },
+            commitLiveState: async () => {
+                if (step === 'flush') {
+                    gate.entered.resolve(); await gate.release.promise;
+                }
+                if (step === 'read') env.faults.readGate = gate;
+                return RESULT;
+            }
+        });
+        const running = handler.handleJahresabschluss();
+        await gate.entered.promise;
+        persistenceStorage.setItem(PROFILE_STORAGE_KEYS.current, 'b');
+        persistenceStorage.setItem(PROFILE_STORAGE_KEYS.active, 'b');
+        persistenceStorage.setItem(STATE, foreign);
+        gate.release.resolve();
+        assertEqual((await running).status, 'incomplete_recovery', `${step}: Profilwechsel bricht Abschluss ab`);
+        assertEqual(persistenceStorage.getItem(STATE), foreign, `${step}: fremder Live-State unverändert`);
+        assertEqual(JSON.parse(persistenceStorage.getItem(REGISTRY)).profiles.b.data[STATE], foreign, `${step}: fremde Registryhistorie unverändert`);
+    }
+
+    console.log('Gemeinsame Warteschlange übernimmt keine veralteten States und verliert keine manuellen Einträge');
+    {
+        const env = await setup();
+        const firstService = env.service;
+        const secondService = createBalanceWealthHistoryService();
+        const gate = { entered: deferred(), release: deferred() };
+        env.faults.readGate = gate;
+        const first = firstService.captureManual({ result: RESULT, asOf: '2026-07-01' });
+        await gate.entered.promise;
+        const second = secondService.captureManual({ result: { ok: true, inputData: { ...SOURCE, tagesgeld: 1 } }, asOf: '2026-07-02' });
+        const annual = env.createHandlers().handleJahresabschluss();
+        gate.release.resolve();
+        await first;
+        await second;
+        assertEqual((await annual).status, 'in_flight', 'Aktive Verlaufsvorbereitung weist den fremden Jahresstart am Handler ab');
+        await env.createHandlers().handleJahresabschluss();
+        const entries = StorageManager.loadState().wealthHistory.entries;
+        assertEqual(entries.length, 4, 'Beide manuellen Stände, vorheriger Stand und Jahresstand bleiben erhalten');
+        assertEqual(entries.find(entry => entry.asOf === '2026-07-02').tagesgeld, 1, 'Zweiter manueller Stand bewahrt eigene Quelle');
+        assertEqual(entries.find(entry => entry.id === 'annual:2026').total, 114000, 'Jahresabschluss verwendet seine Commit-Quelle');
+    }
+
+    console.log('Beschädigter Verlauf, Pending-Recovery und gewechseltes Profil blockieren manuelle Writes');
+    {
+        const env = await setup();
+        const state = StorageManager.loadState();
+        StorageManager.saveState({ ...state, annualPeriodMetadata: { pendingCommit: { periodId: 'calendar-year:2026' } } });
+        await rejects(() => env.service.captureManual({ result: RESULT, asOf: '2026-07-01' }), 'Pending-Recovery verhindert manuellen Record');
+        persistenceStorage.setItem(STATE, JSON.stringify({ ...state, wealthHistory: { schemaVersion: 9, entries: [] } }));
+        await rejects(() => env.service.captureManual({ result: RESULT, asOf: '2026-07-01' }), 'Beschädigter Verlauf wird nicht überschrieben');
+        assertEqual(JSON.parse(persistenceStorage.getItem(STATE)).wealthHistory.schemaVersion, 9, 'Beschädigtes Original bleibt erhalten');
+    }
+    {
+        const env = await setup();
+        const gate = { entered: deferred(), release: deferred() };
+        env.faults.readGate = gate;
+        const pending = env.service.captureManual({ result: RESULT, asOf: '2026-07-01' });
+        await gate.entered.promise;
+        const foreign = JSON.parse(persistenceStorage.getItem(REGISTRY)).profiles.b.data[STATE];
+        persistenceStorage.setItem(PROFILE_STORAGE_KEYS.current, 'b');
+        persistenceStorage.setItem(PROFILE_STORAGE_KEYS.active, 'b');
+        persistenceStorage.setItem(STATE, foreign);
+        gate.release.resolve();
+        await rejects(() => pending, 'Profilwechsel während manueller Persistenz wird erkannt');
+        assertEqual(persistenceStorage.getItem(STATE), foreign, 'Manueller Write lässt fremden Live-State unverändert');
+    }
+
+    console.log('Aktive und inaktive Erfassung aktualisieren die bestätigte Datenbasis ohne Zustandswechsel');
+    for (const open of [false, true]) {
+        const env = await setup();
+        const view = historyDom(open);
+        let current = { ...SOURCE, tagesgeld: 42 };
+        const ui = manualController(env, {
+            status: view.status,
+            update: () => ({ ...RESULT, inputData: current }),
+            refresh: () => refreshBalanceWealthHistory(view)
+        });
+        for (const amount of [42, 99]) {
+            current = { ...SOURCE, tagesgeld: amount };
+            await ui.controller.capture();
+            assertEqual(view.status.textContent, 'Stand gesichert', 'Kurze Bestätigung nach Readback');
+            assertEqual(view.panel.classList.contains('active'), open, 'Erfassung erhält Sichtbarkeit');
+            assertEqual(JSON.stringify(view.tabCalls), '{"add":0,"remove":0}', 'Capture öffnet oder wechselt bei aktivem/inaktivem Verlauf keinen Tab');
+            assertEqual(view.count.textContent, '2 Stände', 'Tagesersetzung zählt nicht doppelt');
+            assertEqual(view.date.textContent, 'Zuletzt erfasst am 31.12.2026', 'Erfassung aktualisiert Datum unmittelbar');
+            if (open) assert(view.table.innerHTML.includes(amount.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 })), 'Aktive Tabelle zeigt neuen Tageswert');
+            else assertEqual(view.chart.innerHTML + view.table.innerHTML, '', 'Inaktive Erfassung ohne Inhalte');
+        }
+        const tomorrow = manualController(env, { now: () => new Date(2027, 0, 1), refresh: () => refreshBalanceWealthHistory(view) });
+        await tomorrow.controller.capture();
+        assertEqual(view.panel.classList.contains('active'), open, 'Capture am neuen Tag erhält den aktiven/inaktiven Tab');
+        assertEqual(JSON.stringify(view.tabCalls), '{"add":0,"remove":0}', 'Capture am neuen Tag ohne Tabaktivierung');
+        const annualIndex = messages.length;
+        const annual = env.createHandlers({ onAnnualWealthSaved: () => {
+            env.counts.confirmations += 1;
+            assertEqual(annualConfirmationsSince(annualIndex).length, 1, 'Kurzmeldung bereits vor UI-Rückruf ausgegeben');
+            assertEqual(env.store.get(STATE), JSON.parse(env.store.get(REGISTRY)).profiles.a.data[STATE], 'Bestätigung erst nach State-/Registry-Readback');
+            view.status.textContent = 'Stand gesichert';
+        } });
+        await ui.controller.withAnnual(() => annual.handleJahresabschluss());
+        assertEqual(annualConfirmationsSince(annualIndex).length, 1, `Verlauf ${open ? 'aktiv' : 'inaktiv'}: neuer Abschluss genau einmal bestätigt`);
+        assertEqual(view.panel.classList.contains('active'), open, 'Jahresabschluss erhält Sichtbarkeit');
+        assertEqual(view.count.textContent, '4 Stände', 'Zusätzlicher Tag und Jahresstand gezählt');
+        assertEqual(view.date.textContent, 'Zuletzt erfasst am 01.01.2027', 'Älterer Jahresstichtag vermindert Datum nicht');
+        if (open) assert(view.chart.innerHTML.includes('Jahresabschluss') && view.table.innerHTML.includes('01.01.2027'), 'Aktive Darstellung zeigt Tag und Jahresstand');
+        else assertEqual(view.chart.innerHTML + view.table.innerHTML, '', 'Inaktiver Jahresabschluss ohne Inhalte');
+        const repeatIndex = messages.length;
+        await ui.controller.withAnnual(() => annual.handleJahresabschluss());
+        assertEqual(view.status.textContent, '', 'Jahres-No-op ohne neue Erfolgsmeldung');
+        assertEqual(annualConfirmationsSince(repeatIndex).length, 0, 'Aktiver/inaktiver Jahres-No-op ohne neuen Zusatz');
+        assertEqual(env.counts.confirmations, 1, 'Aktiver/inaktiver Jahres-No-op ohne weiteren UI-Rückruf');
+        assertEqual(env.counts.commits, 1, 'Aktiver/inaktiver Jahres-No-op ohne zweiten Engine-Commit');
+    }
+
+    console.log('Abschluss vor 2026 behält seinen Vertrag ohne Record und ohne Vermögensbestätigung');
+    {
+        // Ein belegter Beginn 2025 hält den Legacy-Pfad offen; ein Erststart
+        // 2026 dürfte dagegen keinen Abschluss für 2025 anbieten.
+        const env = await setup();
+        const priorExpenses = JSON.stringify({ version: 1, activeYear: 2025,
+            years: { 2025: { months: { 6: { profiles: { a: { categories: { total: 100 } } } } } } } });
+        persistenceStorage.setItem(EXPENSES_STORAGE_KEY, priorExpenses);
+        const handler = env.createHandlers({
+            getReferenceDate: () => new Date(2026, 0, 15), getTargetYear: () => 2025,
+            runAnnualUpdate: async () => ({ ok: true, marketData: {
+                ...structuredClone(annualTestMarketData), inflation: { ...annualTestMarketData.inflation, year: 2025 },
+                etf: { ...annualTestMarketData.etf, targetYear: 2025, date: new Date('2025-12-31'), asOf: '2025-12-31' } }, results: { errors: [] } })
+        });
+        const messageIndex = messages.length;
+        assertEqual((await handler.handleJahresabschluss()).status, 'already_committed', 'Legacy-Jahr weiterhin abschließbar');
+        assert(messages.slice(messageIndex).includes('Ausgaben-Check auf 2026 umgestellt.'), 'Legacy-Jahr behält bisherige Kurzmeldung');
+        assertEqual(annualConfirmationsSince(messageIndex).length, 0, 'Abschluss 2025 ohne Vermögenszusatz');
+        assertEqual(env.counts.confirmations, 0, 'Vor 2026 keine Verlaufsbestätigung');
+        assertEqual(StorageManager.loadState().wealthHistory.entries.length, 1, 'Vor 2026 kein Jahresrecord');
+        assertEqual(JSON.stringify(StorageManager.loadState().wealthHistory.entries[0]), JSON.stringify(manual), 'Legacy-Abschluss bewahrt den vorhandenen Vermögensstand');
+        strict.deepEqual(JSON.parse(persistenceStorage.getItem(EXPENSES_STORAGE_KEY)).years['2025'], JSON.parse(priorExpenses).years['2025'], 'Legacy-Abschluss bewahrt den Vorjahresbeleg');
+        assertEqual(JSON.parse(persistenceStorage.getItem(EXPENSES_STORAGE_KEY)).activeYear, 2026, 'Legacy-Abschluss zeigt das Folgejahr');
+        assertEqual(StorageManager.loadState().annualPeriodMetadata.lastCommittedPeriod, 'calendar-year:2025', 'Legacy-Periodenvertrag erhalten');
+    }
+    console.log('UI-Rückruf- und Toastfehler sowie entfernte Balance-Liste ändern bestätigten Abschluss und No-op nicht');
+    for (const fault of ['callback', 'removed-list', 'toast']) {
+        const env = await setup();
+        const messageIndex = messages.length;
+        let uiFailures = 0;
+        const failUi = () => { uiFailures += 1; throw new Error(`${fault} failed`); };
+        const handler = env.createHandlers({ onAnnualWealthSaved: () => {
+            env.counts.confirmations += 1;
+            assertEqual(annualConfirmationsSince(messageIndex).length, 1, `${fault}: Bestätigung vor Rückruf`);
+            if (fault === 'callback') failUi();
+        } });
+        // Die Archivliste liegt allein auf Daten & Sicherung. Selbst ein Zugriff
+        // auf ihre entfernten Balance-Hosts wäre nach bestätigtem Write falsch.
+        if (fault === 'removed-list') {
+            Object.defineProperty(env.dom.outputs, 'snapshotList', { get: failUi });
+            Object.defineProperty(env.dom.controls, 'snapshotStatus', { get: failUi });
+        }
+        if (fault === 'toast') UIRenderer.toast = text => {
+            if (text.includes('Ausgaben-Check auf')) failUi();
+            recordToast(text);
+        };
+        assertEqual((await handler.handleJahresabschluss()).status, 'already_committed', `${fault}: UI-Fehler meldet keinen falschen Persistenzfehler`);
+        assertEqual(uiFailures, fault === 'removed-list' ? 0 : 1,
+            `${fault}: entfernte Listenhosts ungelesen, bestehende UI-Fehler tatsächlich erreicht`);
+        assertEqual(annualConfirmationsSince(messageIndex).length, fault === 'toast' ? 0 : 1, `${fault}: Zusatz vor nachgelagertem UI-Fehler, außer beim defekten Toast selbst`);
+        assertFinalizedAnnual(env, `${fault}: nach UI-Fehler`);
+        const repeatIndex = messages.length;
+        assertEqual((await handler.handleJahresabschluss()).status, 'already_committed', `${fault}: Wiederholung bleibt abgeschlossen`);
+        assertEqual(env.counts.updates, 1, `${fault}: fachlicher No-op nach UI-Fehler ohne neuen Abruf`);
+        assertEqual(annualConfirmationsSince(repeatIndex).length, 0, `${fault}: kein Zusatz bei Wiederholung`);
+        assertEqual(env.counts.confirmations, fault === 'toast' ? 0 : 1, `${fault}: kein erneuter UI-Rückruf`);
+        assertEqual(env.counts.commits, 1, `${fault}: kein zweiter Engine-Commit`);
+        assertFinalizedAnnual(env, `${fault}: nach Wiederholung`);
+        if (fault === 'removed-list') assertEqual(uiFailures, 0, 'Wiederholung liest ebenfalls keine entfernten Balance-Listenhosts');
+        UIRenderer.toast = recordToast;
+    }
+    // Echte Jahreswriter: Cash, Periode und Jahrespunkt mit getrenntem Backend.
+    for (const fault of [null, 'write', 'readback']) {
+        const env = await setup();
+        persistenceStorage.setItem('profile_tagesgeld', '100');
+        const registry = JSON.parse(persistenceStorage.getItem(REGISTRY));
+        registry.profiles.a.data.profile_tagesgeld = '100';
+        registry.profiles.b.data.profile_tagesgeld = '200';
+        delete registry.profiles.b.meta.belongsToHousehold;
+        registry.profiles.c = { meta: { id: 'c', name: 'C', belongsToHousehold: false }, data: { profile_tagesgeld: '999', foreign: ' original ' } };
+        persistenceStorage.setItem(REGISTRY, JSON.stringify(registry));
+        await PersistenceFacade.flush();
+        const outside = JSON.stringify(registry.profiles.c);
+        const handlers = env.createHandlers({ confirmAnnual: async ({ people }) => {
+            assertEqual(people.map(person => person.id).join(','), 'a,b', 'Jahresvorbereitung erfasst genau den Haushalt');
+            assertEqual(persistenceStorage.getItem('profile_tagesgeld'), '100', 'Vor Jahresbestätigung keine Cashwrites');
+            return { cash: { people, values: { a: 90.125, b: 180.25 } } };
+        } });
+        if (fault) env.faults[fault] = true;
+        const result = await handlers.handleJahresabschluss();
+        if (fault) {
+            assertEqual(result.status, 'incomplete_recovery', 'Finalisierungsfehler fordert Jahres-Recovery');
+            assertEqual(persistenceStorage.getItem('profile_tagesgeld'), '100', 'Fehlgeschlagene Jahresfinalisierung erhält Cash');
+            assertEqual(persistenceStorage.getItem('profile_cash_history_v1'), null, 'Fehler hinterlässt keinen halben Cashbeleg');
+        } else {
+            assertEqual(result.status, 'already_committed', 'Jahresabschluss dauerhaft bestätigt');
+            const backend = await PersistenceFacade.readPersistedRecords();
+            const state = JSON.parse(backend[STATE]);
+            const cashRegistry = JSON.parse(backend[REGISTRY]);
+            assertEqual(backend.profile_tagesgeld, '90.125', 'Jahresfinalisierung bestätigt Cash A im Backend');
+            assertEqual(cashRegistry.profiles.b.data.profile_tagesgeld, '180.25', 'Jahresfinalisierung bestätigt Cash B im Backend');
+            assertEqual(state.wealthHistory.entries.find(entry => entry.id === 'annual:2026').tagesgeld, 270.375, 'Jahrespunkt enthält bestätigte Haushaltssumme statt alter Enginequelle');
+            assertEqual(JSON.stringify(cashRegistry.profiles.c), outside, 'Jahresfinalisierung erhält Außenprofil');
+            await handlers.handleJahresabschluss();
+            assertEqual(JSON.parse(persistenceStorage.getItem('profile_cash_history_v1')).entries.length, 1, 'Bereits finalisierte Periode hängt keinen zweiten Cashbeleg an');
+        }
+        assertEqual(env.snapshots.size, 1, 'Jahresabschluss hat einen ursprünglichen Sicherungspunkt');
+        const snapshot = [...env.snapshots.values()][0];
+        assertEqual(snapshot.records.profile_tagesgeld, '100', 'Jahressnapshot enthält ursprünglichen Tagesgeldstand');
+    }
+} finally {
+    StorageManager.createSnapshot = previous.snapshot;
+    UIRenderer.toast = previous.toast;
+    UIRenderer.handleActionError = previous.error;
+    UIReader.applyStoredInputs = previous.applyInputs;
+    if (previous.confirm === undefined) delete global.confirm; else global.confirm = previous.confirm;
+    if (previous.location === undefined) delete global.location; else global.location = previous.location;
+    if (previous.window === undefined) delete global.window; else global.window = previous.window;
+    if (previous.document === undefined) delete global.document; else global.document = previous.document;
+    restoreAnnualLocks(); resetPersistenceRuntimeForTests();
+}

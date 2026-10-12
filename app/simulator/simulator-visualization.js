@@ -1,0 +1,420 @@
+import { showPageAlert } from '../shared/page-dialog.js';
+"use strict";
+
+import { formatDisplayFixed } from '../shared/designsystem-number-format.js';
+
+/**
+ * Erweiterte Visualisierungen für Parameter Sweep
+ *
+ * Features:
+ * 1. Sensitivity Analysis - Zeigt wie stark jeder Parameter die Ergebnisse beeinflusst
+ * 2. Pareto Frontier - Multi-objective optimization visualization
+ * 3. Parameter Distribution Charts
+ */
+
+import { formatDisplayPercentValue as formatPercentValue } from '../shared/shared-formatting.js';
+import { readSweepMetricValue } from './sweep-metrics-contract.js';
+
+// Kleine Format-Helfer, damit die UI-Strings konsistent sind.
+const formatFixed = (value, digits = 1) => formatDisplayFixed(value, digits);
+const formatPercent = (value, digits = 0) => formatPercentValue(value, { fractionDigits: digits, invalid: '0\u00a0%' }).replace('.', ',');
+const formatRangeLine = (min, max, range) => `Range: ${formatFixed(min, 1)} → ${formatFixed(max, 1)} (Δ ${formatFixed(range, 1)})`;
+const isValidSweepResult = (result, metricKeys = []) => (
+    Boolean(result)
+    && result.metrics?.invalidCombination !== true
+    && Array.isArray(metricKeys)
+    && metricKeys.length > 0
+    && metricKeys.every(metricKey => readSweepMetricValue(result, metricKey) !== null)
+);
+
+function buildDrawdownSaturationNotice(results, metricKeys) {
+    if (!metricKeys.includes('worst5Drawdown')) return '';
+    const validResults = results.filter(result => (
+        readSweepMetricValue(result, 'worst5Drawdown') !== null
+    ));
+    const saturatedCount = validResults.filter(result => (
+        result.metrics?.comparison?.drawdownQuantile?.quantileInTerminalRuinBlock === true
+    )).length;
+    if (saturatedCount === 0) return '';
+    const allSaturated = saturatedCount === validResults.length;
+    return `<p class="pareto-saturation-notice ds-note ds-note-warning" style="color:var(--bad); font-size: var(--balance-help);"><strong>Drawdown-P95 ist durch terminale Ruine gesättigt:</strong> ${saturatedCount} von ${validResults.length} Kombinationen liegen bei 100 %.${allSaturated ? ' Diese Zielgröße trägt keine Unterscheidung zur Frontier bei.' : ''}</p>`;
+}
+
+/**
+ * Berechnet Sensitivity für jeden Parameter
+ * @param {Array} sweepResults - Sweep-Ergebnisse
+ * @param {string} metricKey - Metrik zum Analysieren
+ * @returns {Object} Sensitivity-Daten für jeden Parameter
+ */
+export function calculateSensitivity(sweepResults, metricKey) {
+    if (!sweepResults || sweepResults.length === 0) return null;
+    const validSweepResults = sweepResults.filter(result => isValidSweepResult(result, [metricKey]));
+    if (validSweepResults.length === 0) return null;
+
+    // Parameterräume kommen aus der Sweep-UI und sind global gepuffert.
+    const paramRanges = window.sweepParamRanges;
+    if (!paramRanges) return null;
+
+    const sensitivity = {};
+
+    // Für jeden Parameter separat die Spannweite der Zielmetrik bestimmen.
+    for (const [paramKey, values] of Object.entries(paramRanges)) {
+        if (values.length <= 1) {
+            // Konstanter Parameter - keine Sensitivity (Impact = 0).
+            sensitivity[paramKey] = {
+                impact: 0,
+                min: null,
+                max: null,
+                range: 0,
+                normalized: 0
+            };
+            continue;
+        }
+
+        // Werte nach Parameterausprägung gruppieren, um Mittelwerte zu bilden.
+        const metricsByParamValue = {};
+        for (const result of validSweepResults) {
+            const paramValue = result.params[paramKey];
+            const metricValue = readSweepMetricValue(result, metricKey);
+
+            if (!metricsByParamValue[paramValue]) {
+                metricsByParamValue[paramValue] = [];
+            }
+            metricsByParamValue[paramValue].push(metricValue);
+        }
+
+        // Mittelwerte je Parameterausprägung (reduziert Rauschen durch andere Parameter).
+        const avgByParamValue = {};
+        for (const [paramValue, metricValues] of Object.entries(metricsByParamValue)) {
+            avgByParamValue[paramValue] = metricValues.reduce((sum, val) => sum + val, 0) / metricValues.length;
+        }
+
+        const avgValues = Object.values(avgByParamValue);
+        const minMetric = Math.min(...avgValues);
+        const maxMetric = Math.max(...avgValues);
+        const range = maxMetric - minMetric;
+
+        sensitivity[paramKey] = {
+            impact: range,
+            min: minMetric,
+            max: maxMetric,
+            range: range,
+            avgByParamValue: avgByParamValue
+        };
+    }
+
+    // Normalisiere Sensitivity relativ zum größten Impact (0-100).
+    const maxImpact = Math.max(...Object.values(sensitivity).map(s => s.impact));
+    if (maxImpact > 0) {
+        for (const key of Object.keys(sensitivity)) {
+            sensitivity[key].normalized = (sensitivity[key].impact / maxImpact) * 100;
+        }
+    }
+
+    return sensitivity;
+}
+
+/**
+ * Rendert ein Sensitivity-Analysis Balkendiagramm
+ * @param {Object} sensitivity - Sensitivity-Daten
+ * @param {string} metricKey - Metrik-Name
+ * @returns {string} HTML für das Diagramm
+ */
+export function renderSensitivityChart(sensitivity, metricKey) {
+    if (!sensitivity) return '<p>Keine Sensitivity-Daten verfügbar.</p>';
+
+    const paramLabels = {
+        liquidityRunwayYears: 'Liquiditäts-Runway',
+        goldRebalancingBand: 'Gold-Rebal Band',
+        maxSkimPct: 'Max Skim %',
+        maxBearRefillPct: 'Max Bear Refill %',
+        goldTargetPct: 'Gold Target %',
+        horizonYears: 'VPW Horizon',
+        survivalQuantile: 'VPW Quantile',
+        goGoMultiplier: 'VPW Go-Go Mult'
+    };
+
+    // Sortiere Parameter nach Impact (höchster zuerst) für ein lesbares Ranking.
+    const sorted = Object.entries(sensitivity)
+        .filter(([key, data]) => data.impact > 0)
+        .sort(([, a], [, b]) => b.normalized - a.normalized);
+
+    if (sorted.length === 0) {
+        return '<p>Alle Parameter sind konstant - keine Sensitivity-Analyse möglich.</p>';
+    }
+
+    let html = '<p class="ds-scroll-hint">Grafik bei Bedarf horizontal scrollen.</p><div class="ds-chart-scroll" role="region" tabindex="0" aria-label="Sensitivitätsvergleich horizontal scrollbar"><div class="ds-sensitivity-chart" style="min-width: 440px; padding: 20px; background: var(--surface); border-radius: 8px; box-shadow: var(--shadow-card);">';
+    html += '<h4 style="margin-top: 0;"> Parameter Sensitivity Analysis</h4>';
+    html += `<p style="color: var(--text-muted); font-size: var(--balance-help);">Zeigt wie stark jeder Parameter die Metrik "${metricKey}" beeinflusst</p>`;
+    html += '<div style="margin-top: 20px;">';
+
+    const maxWidth = 400;
+
+    for (const [paramKey, data] of sorted) {
+        const barWidth = (data.normalized / 100) * maxWidth;
+        const label = paramLabels[paramKey] || paramKey;
+
+        html += '<div style="margin-bottom: 15px;">';
+        html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">`;
+        html += `<strong>${label}</strong>`;
+        html += `<span style="color: var(--text-muted); font-size: var(--balance-help);">${formatPercent(data.normalized, 0)} Impact</span>`;
+        html += `</div>`;
+        html += `<div style="background: var(--surface-sunken); height: 24px; border-radius: 4px; position: relative;">`;
+        html += `<div style="background: linear-gradient(90deg, var(--chart-2), var(--chart-4)); height: 100%; width: ${barWidth}px; border-radius: 4px; transition: width 0.3s;"></div>`;
+        html += `</div>`;
+        html += `<div style="font-size: var(--balance-help); color: var(--text-muted); margin-top: 2px;">`;
+        html += formatRangeLine(data.min, data.max, data.range);
+        html += `</div>`;
+        html += '</div>';
+    }
+
+    html += '</div>';
+    html += '</div></div>';
+
+    return html;
+}
+
+/**
+ * Berechnet Pareto-Frontier für zwei Metriken
+ * @param {Array} sweepResults - Sweep-Ergebnisse
+ * @param {string} metricKey1 - Erste Metrik
+ * @param {string} metricKey2 - Zweite Metrik
+ * @param {boolean} maximize1 - Maximiere erste Metrik?
+ * @param {boolean} maximize2 - Maximiere zweite Metrik?
+ * @returns {Array} Pareto-optimale Punkte
+ */
+export function calculateParetoFrontier(sweepResults, metricKey1, metricKey2, maximize1 = true, maximize2 = true) {
+    if (!sweepResults || sweepResults.length === 0) return [];
+    const validSweepResults = sweepResults.filter(result => (
+        isValidSweepResult(result, [metricKey1, metricKey2])
+    ));
+    if (validSweepResults.length === 0) return [];
+
+    const paretoPoints = [];
+
+    for (let i = 0; i < validSweepResults.length; i++) {
+        const point = validSweepResults[i];
+        const m1 = readSweepMetricValue(point, metricKey1);
+        const m2 = readSweepMetricValue(point, metricKey2);
+
+        let isDominated = false;
+
+    // Prüfe ob dieser Punkt von einem anderen dominiert wird.
+    for (let j = 0; j < validSweepResults.length; j++) {
+        if (i === j) continue;
+
+            const other = validSweepResults[j];
+            const om1 = readSweepMetricValue(other, metricKey1);
+            const om2 = readSweepMetricValue(other, metricKey2);
+
+            // Dominanz hängt von der Maximierungs-/Minimierungsrichtung ab.
+            const better1 = maximize1 ? (om1 > m1) : (om1 < m1);
+            const better2 = maximize2 ? (om2 > m2) : (om2 < m2);
+            const equal1 = om1 === m1;
+            const equal2 = om2 === m2;
+
+            // Andere Punkt dominiert wenn er in mindestens einer Dimension besser und in keiner schlechter ist
+            if ((better1 || equal1) && (better2 || equal2) && (better1 || better2)) {
+                isDominated = true;
+                break;
+            }
+        }
+
+        if (!isDominated) {
+            paretoPoints.push({
+                ...point,
+                metric1: m1,
+                metric2: m2,
+                index: i
+            });
+        }
+    }
+
+    // Sortiere Pareto-Punkte für eine glatte Verbindungslinie.
+    paretoPoints.sort((a, b) => a.metric1 - b.metric1);
+
+    return paretoPoints;
+}
+
+/**
+ * Rendert Pareto-Frontier als Scatter-Plot (SVG)
+ * @param {Array} paretoPoints - Pareto-optimale Punkte
+ * @param {Array} allPoints - Alle Punkte
+ * @param {string} metricKey1 - X-Achsen Metrik
+ * @param {string} metricKey2 - Y-Achsen Metrik
+ * @returns {string} SVG HTML
+ */
+export function renderParetoFrontier(paretoPoints, allPoints, metricKey1, metricKey2) {
+    const width = 600;
+    const height = 400;
+    const margin = { top: 40, right: 40, bottom: 60, left: 80 };
+    const plotWidth = width - margin.left - margin.right;
+    const plotHeight = height - margin.top - margin.bottom;
+
+    const metricLabels = {
+        successProbFloor: 'Success Prob Floor (%)',
+        p10EndWealth: 'P10 End Wealth (€)',
+        p25EndWealth: 'P25 End Wealth (€)',
+        medianEndWealth: 'Median End Wealth (€)',
+        p75EndWealth: 'P75 End Wealth (€)',
+        meanEndWealth: 'Mean End Wealth (€)',
+        maxEndWealth: 'Max End Wealth (€)',
+        worst5Drawdown: 'Worst 5% Drawdown (%)',
+        minRunwayObserved: 'Min Runway Observed'
+    };
+
+    const renderablePoints = allPoints.filter(point => (
+        isValidSweepResult(point, [metricKey1, metricKey2])
+    ));
+    if (renderablePoints.length === 0) {
+        return '<p>Keine gültigen, versionierten Sweep-Metriken für die Pareto-Darstellung vorhanden. Bei importierten Altständen den Sweep bitte neu ausführen.</p>';
+    }
+
+    // Extrahiere Metrik-Werte für Achsenskalierung.
+    const m1Values = renderablePoints.map(p => readSweepMetricValue(p, metricKey1));
+    const m2Values = renderablePoints.map(p => readSweepMetricValue(p, metricKey2));
+
+    const minX = Math.min(...m1Values);
+    const maxX = Math.max(...m1Values);
+    const minY = Math.min(...m2Values);
+    const maxY = Math.max(...m2Values);
+
+    // Lineare Skalierung von Metrikraum in SVG-Koordinaten.
+    const rangeX = maxX - minX;
+    const rangeY = maxY - minY;
+    const scaleX = (val) => margin.left + (rangeX === 0
+        ? plotWidth / 2
+        : ((val - minX) / rangeX) * plotWidth);
+    const scaleY = (val) => height - margin.bottom - (rangeY === 0
+        ? plotHeight / 2
+        : ((val - minY) / rangeY) * plotHeight);
+
+    let svg = `<svg class="ds-pareto-svg" fill="var(--text-main)" width="${width}" height="${height}" style="background: var(--surface); border-radius: 8px; box-shadow: var(--shadow-card);">`;
+
+    // Titel
+    svg += `<text x="${width / 2}" y="20" text-anchor="middle" style="font-size: var(--balance-help); font-weight: bold;">Pareto Frontier</text>`;
+
+    // Achsen
+    svg += `<line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="var(--text-main)" stroke-width="2"/>`;
+    svg += `<line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="var(--text-main)" stroke-width="2"/>`;
+
+    // Achsenbeschriftungen
+    svg += `<text x="${width / 2}" y="${height - 10}" text-anchor="middle" style="font-size: var(--balance-help);">${metricLabels[metricKey1] || metricKey1}</text>`;
+    svg += `<text x="15" y="${height / 2}" text-anchor="middle" transform="rotate(-90, 15, ${height / 2})" style="font-size: var(--balance-help);">${metricLabels[metricKey2] || metricKey2}</text>`;
+
+    // Alle Punkte (grau) als Kontextwolke.
+    for (const point of renderablePoints) {
+        const x = scaleX(readSweepMetricValue(point, metricKey1));
+        const y = scaleY(readSweepMetricValue(point, metricKey2));
+        svg += `<circle cx="${x}" cy="${y}" r="4" fill="var(--chart-5)" opacity="0.6"/>`;
+    }
+
+    // Pareto-Punkte (grün, größer) für Fokus.
+    for (const point of paretoPoints) {
+        const x = scaleX(point.metric1);
+        const y = scaleY(point.metric2);
+        svg += `<circle cx="${x}" cy="${y}" r="6" fill="var(--chart-3)" stroke="var(--chart-1)" stroke-width="2"/>`;
+    }
+
+    // Verbinde Pareto-Punkte, um die Frontier visuell zu betonen.
+    if (paretoPoints.length > 1) {
+        let pathData = `M ${scaleX(paretoPoints[0].metric1)} ${scaleY(paretoPoints[0].metric2)}`;
+        for (let i = 1; i < paretoPoints.length; i++) {
+            pathData += ` L ${scaleX(paretoPoints[i].metric1)} ${scaleY(paretoPoints[i].metric2)}`;
+        }
+        svg += `<path d="${pathData}" fill="none" stroke="var(--chart-3)" stroke-width="2" stroke-dasharray="5,5"/>`;
+    }
+
+    svg += '</svg>';
+
+    return `${buildDrawdownSaturationNotice(renderablePoints, [metricKey1, metricKey2])}<p class="ds-scroll-hint">Grafik bei Bedarf horizontal scrollen.</p><div class="ds-chart-scroll" role="region" tabindex="0" aria-label="Paretovergleich horizontal scrollbar">${svg}</div>`;
+}
+
+/**
+ * Zeigt Sensitivity Analysis in der UI
+ */
+export function displaySensitivityAnalysis() {
+    if (!window.sweepResults || window.sweepResults.length === 0) {
+        notifyPage('Bitte führe zuerst einen Parameter Sweep durch.');
+        return;
+    }
+
+    const metricKey = document.getElementById('sweepMetric').value;
+    const sensitivity = calculateSensitivity(window.sweepResults, metricKey);
+
+    if (!sensitivity) {
+        notifyPage('Fehler beim Berechnen der Sensitivity-Analyse.');
+        return;
+    }
+
+    const html = renderSensitivityChart(sensitivity, metricKey);
+
+    const container = document.getElementById('sensitivityResults');
+    if (container) {
+        container.innerHTML = html;
+        container.style.display = 'block';
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+/**
+ * Zeigt Pareto-Frontier in der UI
+ */
+export function displayParetoFrontier() {
+    if (!window.sweepResults || window.sweepResults.length === 0) {
+        notifyPage('Bitte führe zuerst einen Parameter Sweep durch.');
+        return;
+    }
+
+    // Verwende gespeicherte Metriken aus Dialog (UI pflegt window.paretoMetrics).
+    const metric1 = window.paretoMetrics?.metric1 || 'medianEndWealth';
+    const metric2 = window.paretoMetrics?.metric2 || 'worst5Drawdown';
+
+    // Lokale Kopie zur Maximierungslogik, um keine UI-Abhängigkeit zu ziehen.
+    const maximize1 = shouldMaximizeMetricLocal(metric1);
+    const maximize2 = shouldMaximizeMetricLocal(metric2);
+
+    const paretoPoints = calculateParetoFrontier(window.sweepResults, metric1, metric2, maximize1, maximize2);
+    const svg = renderParetoFrontier(paretoPoints, window.sweepResults, metric1, metric2);
+
+    let html = '<div style="padding: 20px;">';
+    html += '<h4>Pareto Frontier</h4>';
+    const comparison = window.sweepResults.find(result => (
+        isValidSweepResult(result, [metric1, metric2])
+    ))?.metrics?.comparison;
+    html += comparison
+        ? `<p class="ds-note ds-note-warning" style="color:var(--warn); font-size: var(--balance-help);">Experimenteller Vergleich mit ${comparison.runCount} ${comparison.runCount === 1 ? 'Lauf' : 'Läufen'} je Kombination und ${comparison.commonRandomNumbers === true ? 'gemeinsamen Zufallspfaden (CRN)' : 'nicht belegter CRN-Policy'}. Quantilwerte besitzen kein geschätztes Konfidenzintervall. Der Sweep-Drawdown enthält terminale Ruine und ist nicht direkt mit der unversionierten Monte-Carlo-Drawdownkennzahl vergleichbar.</p>`
+        : '<p class="ds-note ds-note-error" style="color:var(--bad); font-size: var(--balance-help);">Vergleichsdiagnostik fehlt; Frontier nicht als belastbares Ranking interpretieren.</p>';
+    html += `<p style="color: var(--text-muted); font-size: var(--balance-help);">Grüne Punkte = Pareto-optimal (nicht von anderen dominiert)</p>`;
+    html += `<p style="color: var(--text-muted); font-size: var(--balance-help);">Gefunden: ${paretoPoints.length} von ${window.sweepResults.length} Punkten sind Pareto-optimal</p>`;
+    html += svg;
+    html += '</div>';
+
+    const container = document.getElementById('paretoResults');
+    if (container) {
+        container.innerHTML = html;
+        container.style.display = 'block';
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// Helper function (lokale Kopie von shouldMaximizeMetric)
+function shouldMaximizeMetricLocal(metricKey) {
+    const maximizeMetrics = [
+        'successProbFloor',
+        'p10EndWealth',
+        'p25EndWealth',
+        'medianEndWealth',
+        'p75EndWealth',
+        'meanEndWealth',
+        'maxEndWealth',
+        'minRunwayObserved'
+    ];
+    return maximizeMetrics.includes(metricKey);
+}
+
+/** Hinweise besitzen keinen fachlichen Zustimmungswert. */
+function notifyPage(description) {
+    void showPageAlert({ title: 'Sweep-Auswertung', description: `${description}\n\nFühre einen Parameter-Sweep aus und prüfe die gewählten Metriken.` })
+        .catch(error => console.error('[Seitendialog] Hinweis konnte nicht geöffnet werden.', error));
+}

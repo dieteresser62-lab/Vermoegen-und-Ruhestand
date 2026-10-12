@@ -1,0 +1,190 @@
+/**
+ * Module: Simulator Engine Direct Utils
+ * Purpose: Utility functions for the Direct Engine implementation.
+ *          Provides target liquidity calculation, tranche helpers, and type safety (euros).
+ * Usage: Helper module for simulator-engine-direct.js.
+ * Dependencies: engine/config.mjs, engine/transactions/TransactionEngine.mjs
+ */
+"use strict";
+
+import { CONFIG } from '../../engine/config.mjs';
+import { isAvailableSimulationLot } from './simulator-portfolio-inventory.js';
+import { MarketAnalyzer } from '../../engine/analyzers/MarketAnalyzer.mjs';
+import TransactionEngine from '../../engine/transactions/TransactionEngine.mjs';
+import {
+    deriveLiquidityRunwayPolicy,
+    resolveLiquidityRunwayYears
+} from '../../types/liquidity-runway-contract.js';
+
+/**
+ * Stellt sicher, dass ein Wert eine nicht-negative Zahl ist
+ * @param {*} x - Eingabewert
+ * @returns {number} Wert >= 0
+ */
+export function euros(x) {
+    return Math.max(0, Number(x) || 0);
+}
+
+/**
+ * Normalisiert einen signierten Euro-Flow, ohne negative Werte als fehlend zu
+ * behandeln. Bestandswerte muessen weiterhin mit `euros()` normalisiert
+ * werden.
+ *
+ * @param {*} x - Eingabewert
+ * @returns {number} Endlicher signierter Wert
+ */
+export function signedEuros(x) {
+    const value = Number(x);
+    return Number.isFinite(value) ? value : 0;
+}
+
+/**
+ * Berechnet die benötigte Liquidität für den Floor-Bedarf.
+ */
+export function computeLiqNeedForFloor(ctx) {
+    const hasInflatedFloor = ctx.inflatedFloor !== undefined && ctx.inflatedFloor !== null;
+    const normalizedStartFloor = euros(ctx.inputs?.startFloorBedarf ?? 0);
+    const floorBasis = hasInflatedFloor ? euros(ctx.inflatedFloor) : normalizedStartFloor;
+
+    if (hasInflatedFloor && floorBasis === 0) {
+        return 0;
+    }
+
+    const floorMonthlyNet = euros(Number(floorBasis) / 12);
+    const runwayPolicy = deriveLiquidityRunwayPolicy(resolveLiquidityRunwayYears(ctx?.inputs || {}).years);
+    return euros(runwayPolicy.targetMonths * floorMonthlyNet);
+}
+
+/**
+ * Stellt sicher, dass simulateOneYear immer valide Haushaltsdaten erhält.
+ */
+export function normalizeHouseholdContext(context) {
+    const defaultContext = {
+        p1Alive: true,
+        p2Alive: true,
+        widowBenefits: {
+            p1FromP2: false,
+            p2FromP1: false,
+            p1FromP2Percent: 0,
+            p2FromP1Percent: 0
+        }
+    };
+    if (!context) return defaultContext;
+    return {
+        p1Alive: context.p1Alive !== false,
+        p2Alive: context.p2Alive !== false,
+        widowBenefits: {
+            p1FromP2: !!context?.widowBenefits?.p1FromP2,
+            p2FromP1: !!context?.widowBenefits?.p2FromP1,
+            p1FromP2Percent: Math.max(
+                0,
+                Math.min(1, Number(context?.widowBenefits?.p1FromP2Percent) || 0)
+            ),
+            p2FromP1Percent: Math.max(
+                0,
+                Math.min(1, Number(context?.widowBenefits?.p2FromP1Percent) || 0)
+            )
+        },
+        care: {
+            p1: context?.care?.p1 ?? context?.careMetaP1 ?? null,
+            p2: context?.care?.p2 ?? context?.careMetaP2 ?? null
+        }
+    };
+}
+
+export function calculateTargetLiquidityBalanceLike(inputs, marketData, floorBedarf, flexBedarf, pensionAnnual) {
+    // Aligns Simulator-Liquiditätsziel mit Balance-App Logik (Profil + MarketAnalyzer).
+    const profil = CONFIG.PROFIL_MAP[inputs?.risikoprofil] || CONFIG.PROFIL_MAP['sicherheits-dynamisch'];
+    const market = MarketAnalyzer.analyzeMarket({
+        ...marketData,
+        inflation: marketData?.inflation ?? 0,
+        capeRatio: marketData?.capeRatio ?? inputs?.marketCapeRatio ?? 0
+    });
+
+    const renteJahr = Number(pensionAnnual) || 0;
+    const pensionSurplus = Math.max(0, renteJahr - floorBedarf);
+    const inflatedBedarf = {
+        floor: Math.max(0, floorBedarf - renteJahr),
+        flex: Math.max(0, flexBedarf - pensionSurplus)
+    };
+
+    const inputForTarget = {
+        ...inputs,
+        liquidityRunwayYears: resolveLiquidityRunwayYears(inputs || {}).years,
+        floorBedarf,
+        flexBedarf,
+        renteAktiv: renteJahr > 0,
+        renteMonatlich: renteJahr / 12
+    };
+    delete inputForTarget.runwayTargetMonths;
+    delete inputForTarget.runwayMinMonths;
+    delete inputForTarget.targetEq;
+
+    return TransactionEngine.calculateTargetLiquidity(profil, market, inflatedBedarf, inputForTarget);
+}
+
+export function buildDetailedTranchesFromPortfolio(portfolio) {
+    const list = [];
+    const usedIds = new Set();
+    let generatedSequence = 0;
+    const pushTranche = (t, fallbackCategory) => {
+        if (!t) return;
+        const marketValue = Number(t.marketValue) || 0;
+        if (!isAvailableSimulationLot(t)) return;
+        const type = t.type || t.kind || '';
+        const category = t.category
+            || (type === 'gold' ? 'gold' : (type === 'geldmarkt' ? 'money_market' : (fallbackCategory || 'equity')));
+        let trancheId = String(t.trancheId || '').trim();
+        if (!trancheId) {
+            const source = encodeURIComponent(String(t.sourceProfileId || portfolio?.simulationSourceProfileId || 'simulation'));
+            do {
+                generatedSequence += 1;
+                trancheId = `simbase:${source}:${category}:${generatedSequence}`;
+            } while (usedIds.has(trancheId));
+            t.trancheId = trancheId;
+        }
+        usedIds.add(trancheId);
+        const shares = Number(t.shares);
+        const purchasePrice = Number(t.purchasePrice);
+        const currentPrice = Number(t.currentPrice);
+        list.push({
+            schemaVersion: 2,
+            trancheId,
+            ...(t.sourceProfileId ? { sourceProfileId: String(t.sourceProfileId) } : {}),
+            name: t.name || null,
+            isin: t.isin || null,
+            ...(Number.isFinite(shares) && shares > 0 ? { shares } : {}),
+            ...(Number.isFinite(purchasePrice) && purchasePrice > 0 ? { purchasePrice } : {}),
+            purchaseDate: t.purchaseDate || null,
+            ...(Number.isFinite(currentPrice) && currentPrice > 0 ? { currentPrice } : {}),
+            marketValue,
+            costBasis: Number(t.costBasis) || 0,
+            tqf: Number.isFinite(Number(t.tqf)) ? Number(t.tqf) : 0,
+            taxExempt: t.taxExempt === true,
+            type: type || (fallbackCategory === 'gold' ? 'gold' : (fallbackCategory === 'money_market' ? 'geldmarkt' : 'aktien_alt')),
+            category
+        });
+    };
+
+    (portfolio?.depotTranchesAktien || []).forEach(t => pushTranche(t, 'equity'));
+    (portfolio?.depotTranchesGold || []).forEach(t => pushTranche(t, 'gold'));
+    (portfolio?.depotTranchesGeldmarkt || []).forEach(t => pushTranche(t, 'money_market'));
+
+    return list;
+}
+
+/**
+ * Hilfsfunktion für CAPE-Ratio Resolution
+ */
+export function resolveCapeRatio(yearSpecificCape, inputCape, historicalCape) {
+    if (typeof yearSpecificCape === 'number' && Number.isFinite(yearSpecificCape) && yearSpecificCape > 0) {
+        return yearSpecificCape;
+    }
+    if (typeof inputCape === 'number' && Number.isFinite(inputCape) && inputCape > 0) {
+        return inputCape;
+    }
+    if (typeof historicalCape === 'number' && Number.isFinite(historicalCape) && historicalCape > 0) {
+        return historicalCape;
+    }
+    return 0;
+}

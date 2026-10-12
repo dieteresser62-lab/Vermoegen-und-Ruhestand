@@ -1,0 +1,583 @@
+import fs from 'node:fs';
+import {
+    MONTE_CARLO_PARAMETER_LIMITS,
+    SWEEP_REQUEST_VERSION,
+    SWEEP_SAMPLING_METHOD_RESOLUTION,
+    estimateMonteCarloResourcesV1,
+    normalizeMonteCarloParametersV1,
+    normalizeMonteCarloResourceConfigV1,
+    normalizeSweepRequestV1,
+    resolveMonteCarloDurationMaximumV1,
+    resolveMonteCarloWorkerCountV1
+} from '../app/simulator/monte-carlo-parameters.js';
+import { SimulatorValidationError } from '../app/simulator/simulator-input-validation.js';
+import { runMonteCarloSimulation } from '../app/simulator/monte-carlo-runner.js';
+import { runMonteCarlo } from '../app/simulator/simulator-monte-carlo.js';
+import {
+    createMonteCarloUI,
+    initMonteCarloResourceControls,
+    readMonteCarloParameters
+} from '../app/simulator/monte-carlo-ui.js';
+
+console.log('--- MonteCarloParametersV1 Contract Tests ---');
+
+{
+    const calls = {
+        workerConfig: 0,
+        confirmation: 0,
+        progress: 0,
+        serial: 0,
+        workers: 0,
+        errors: []
+    };
+    const ui = {
+        bindCancel() {}, beginRun() {}, disableStart() {}, hideError() {}, clearRunExport() {},
+        readUseCapeSampling: () => false,
+        readWorkerConfig: () => { calls.workerConfig++; return { workerCount: 1, timeBudgetMs: 50 }; },
+        requireLargeRunConfirmation: () => { calls.confirmation++; },
+        showProgress: () => { calls.progress++; },
+        updateProgress() {}, hideCompareResults() {},
+        showError: message => calls.errors.push(message),
+        finishProgress: async () => {}, unbindCancel() {}, finishRun() {}, enableStart() {}
+    };
+    const originalConsoleError = console.error;
+    console.error = () => {};
+    try {
+        await runMonteCarlo({
+            createUI: () => ui,
+            prepareHistoricalData: () => {},
+            getInputs: () => ({ startAlter: 65, partner: { aktiv: false }, stressPreset: 'NONE' }),
+            validateInputs: inputs => inputs,
+            readParameters: () => ({
+                anzahl: 100001,
+                maxDauer: 35,
+                blockSize: 5,
+                seed: 12345,
+                methode: 'block',
+                rngMode: 'per-run-seed',
+                startYearMode: 'FILTER',
+                startYearFilter: 2025,
+                startYearHalfLife: 20,
+                excludeEstimatedHistory: false
+            }),
+            annualData: [],
+            runSerial: async () => { calls.serial++; },
+            runWorkers: async () => { calls.workers++; }
+        });
+    } finally {
+        console.error = originalConsoleError;
+    }
+    assertEqual(calls.workerConfig, 0,
+        'real runMonteCarlo path rejects sampling before reading worker configuration');
+    assertEqual(calls.confirmation, 0,
+        'real runMonteCarlo path does not consume large-run confirmation before sampling preflight');
+    assertEqual(calls.progress, 0,
+        'real runMonteCarlo path does not show progress before sampling preflight');
+    assertEqual(calls.serial + calls.workers, 0,
+        'real runMonteCarlo path cannot dispatch serial or worker execution after failed preflight');
+    assert(calls.errors[0]?.includes('historische Jahresdatenbestand'),
+        'real runMonteCarlo path localizes the coded sampling failure');
+}
+
+function expectRejected(action, message) {
+    let rejected = false;
+    try {
+        const result = action();
+        if (result?.then) {
+            return result.then(
+                () => assert(false, message),
+                error => {
+                    assert(error instanceof Error, `${message}: rejection exposes an Error`);
+                    return error;
+                }
+            );
+        }
+    } catch (error) {
+        rejected = error instanceof Error;
+    }
+    assert(rejected, message);
+    return null;
+}
+
+const validParameters = Object.freeze({
+    anzahl: 10000,
+    maxDauer: 35,
+    blockSize: 5,
+    seed: 12345,
+    methode: 'regime_markov',
+    rngMode: 'per-run-seed',
+    startYearMode: 'UNIFORM',
+    startYearFilter: 1970,
+    startYearHalfLife: 20,
+    excludeEstimatedHistory: false
+});
+
+{
+    const defaults = normalizeMonteCarloParametersV1();
+    assertEqual(defaults.anzahl, 10000, 'central MC fallback uses 10,000 runs');
+    assertEqual(defaults.maxDauer, 35, 'central MC fallback retains 35 years');
+    assert(Object.isFrozen(defaults), 'normalized MC parameters are immutable');
+
+    const boundary = normalizeMonteCarloParametersV1({
+        ...validParameters,
+        anzahl: 1000000,
+        seed: 4294967295
+    }, { inputs: { startAlter: 76, partner: { aktiv: false } } });
+    assertEqual(boundary.anzahl, 1000000, 'one million runs remains startable at the hard boundary');
+    assertEqual(boundary.seed, 4294967295, 'uint32 seed maximum is accepted');
+}
+
+{
+    const sweepRequest = normalizeSweepRequestV1({
+        schemaVersion: SWEEP_REQUEST_VERSION,
+        monteCarloParameters: {
+            ...validParameters,
+            anzahl: 12,
+            maxDauer: 10,
+            seed: 0,
+            methode: 'stationary',
+            startYearMode: 'FILTER',
+            startYearFilter: 1980,
+            excludeEstimatedHistory: true
+        },
+        useCapeSampling: true
+    }, {
+        inputs: { startAlter: 65, partner: { aktiv: false } }
+    });
+    assertEqual(sweepRequest.schemaVersion, SWEEP_REQUEST_VERSION, 'Sweep request is explicitly versioned');
+    assertEqual(sweepRequest.monteCarloParameters.seed, 0, 'Sweep request preserves explicit seed zero');
+    assertEqual(sweepRequest.monteCarloParameters.startYearMode, 'FILTER', 'Sweep request transports start-year mode');
+    assertEqual(sweepRequest.monteCarloParameters.startYearFilter, 1980, 'Sweep request transports start-year filter');
+    assertEqual(sweepRequest.monteCarloParameters.excludeEstimatedHistory, true, 'Sweep request transports estimated-history exclusion');
+    assertEqual(sweepRequest.requestedSamplingMethod, 'stationary', 'Sweep request records requested method');
+    assertEqual(sweepRequest.appliedSamplingMethod, 'stationary', 'Sweep request records applied method');
+    assertEqual(
+        sweepRequest.samplingMethodResolution,
+        SWEEP_SAMPLING_METHOD_RESOLUTION,
+        'Sweep request records that unsupported sampling methods are rejected instead of substituted'
+    );
+    assertEqual(sweepRequest.useCapeSampling, true, 'Sweep request transports CAPE sampling');
+    assert(Object.isFrozen(sweepRequest), 'normalized Sweep request is immutable');
+
+    const legacyRequest = normalizeSweepRequestV1({
+        anzahlRuns: 7,
+        maxDauer: 8,
+        blockSize: 3,
+        baseSeed: 0,
+        methode: 'block',
+        rngMode: 'per-run-seed'
+    }, {
+        inputs: { startAlter: 65, partner: { aktiv: false } }
+    });
+    assertEqual(legacyRequest.monteCarloParameters.anzahl, 7, 'legacy Sweep run count maps into canonical MC parameters');
+    assertEqual(legacyRequest.monteCarloParameters.seed, 0, 'legacy Sweep seed zero maps without a falsy default');
+
+    const renormalizedRequest = normalizeSweepRequestV1(sweepRequest, {
+        inputs: { startAlter: 65, partner: { aktiv: false } }
+    });
+    assertEqual(
+        JSON.stringify(renormalizedRequest),
+        JSON.stringify(sweepRequest),
+        'normalizing an already canonical Sweep request preserves method provenance byte-for-byte'
+    );
+}
+
+{
+    const invalidSweepFixtures = [
+        ['run count', { anzahl: 0 }, 'MC_PARAMETER_BELOW_MINIMUM'],
+        ['duration', { maxDauer: 0 }, 'MC_PARAMETER_BELOW_MINIMUM'],
+        ['block length', { blockSize: 31 }, 'MC_PARAMETER_ABOVE_MAXIMUM'],
+        ['method', { methode: 'unknown' }, 'MC_PARAMETER_ENUM_INVALID'],
+        ['seed', { seed: -1 }, 'MC_PARAMETER_BELOW_MINIMUM']
+    ];
+    for (const [name, override, expectedCode] of invalidSweepFixtures) {
+        let thrown = null;
+        try {
+            normalizeSweepRequestV1({
+                schemaVersion: SWEEP_REQUEST_VERSION,
+                monteCarloParameters: { ...validParameters, ...override }
+            });
+        } catch (error) {
+            thrown = error;
+        }
+        assertEqual(thrown?.code, expectedCode, `Sweep request rejects invalid ${name} through the MC contract`);
+    }
+
+    let versionError = null;
+    try {
+        normalizeSweepRequestV1({
+            schemaVersion: 'SweepRequestV0',
+            monteCarloParameters: validParameters
+        });
+    } catch (error) {
+        versionError = error;
+    }
+    assertEqual(versionError?.code, 'SWEEP_REQUEST_VERSION_INVALID', 'Sweep request rejects unknown contract versions');
+
+    let missingRequestError = null;
+    try {
+        normalizeSweepRequestV1();
+    } catch (error) {
+        missingRequestError = error;
+    }
+    assertEqual(
+        missingRequestError?.code,
+        'SWEEP_REQUEST_OBJECT_REQUIRED',
+        'Sweep normalization rejects a missing request instead of applying the 10,000-run MC default'
+    );
+
+    let provenanceError = null;
+    try {
+        normalizeSweepRequestV1({
+            schemaVersion: SWEEP_REQUEST_VERSION,
+            requestedSamplingMethod: 'stationary',
+            appliedSamplingMethod: 'regime_markov',
+            monteCarloParameters: validParameters
+        });
+    } catch (error) {
+        provenanceError = error;
+    }
+    assertEqual(
+        provenanceError?.code,
+        'SWEEP_REQUEST_METHOD_PROVENANCE_MISMATCH',
+        'Sweep normalization rejects inconsistent requested/applied method provenance'
+    );
+}
+
+{
+    const rejectFixtures = [
+        ['decimal run count', { anzahl: '100.5' }],
+        ['run count suffix', { anzahl: '100runs' }],
+        ['NaN run count', { anzahl: Number.NaN }],
+        ['infinite run count', { anzahl: Number.POSITIVE_INFINITY }],
+        ['run count above hard maximum', { anzahl: 1000001 }],
+        ['decimal duration', { maxDauer: '35.0' }],
+        ['block length above configured maximum', { blockSize: 31 }],
+        ['negative seed', { seed: -1 }],
+        ['unsupported method', { methode: 'magic_bootstrap' }],
+        ['unsupported RNG mode', { rngMode: 'random' }],
+        ['unsupported start-year mode', { startYearMode: 'LATEST' }],
+        ['string boolean', { excludeEstimatedHistory: 'false' }]
+    ];
+    for (const [name, override] of rejectFixtures) {
+        expectRejected(
+            () => normalizeMonteCarloParametersV1({ ...validParameters, ...override }),
+            `central validator rejects ${name}`
+        );
+    }
+
+    expectRejected(
+        () => normalizeMonteCarloParametersV1({ ...validParameters, methode: 'block', blockSize: 4 }, {
+            historicalRecordCount: 3
+        }),
+        'fixed block length cannot exceed the eligible historical record count'
+    );
+}
+
+{
+    assertEqual(
+        resolveMonteCarloDurationMaximumV1({ startAlter: 65, partner: { aktiv: false } }),
+        46,
+        'single-person horizon includes mortality age 110 exactly once'
+    );
+    assertEqual(
+        resolveMonteCarloDurationMaximumV1({
+            startAlter: 65,
+            partner: { aktiv: true, startAlter: 60 }
+        }),
+        51,
+        'youngest household member determines the reviewed mortality horizon'
+    );
+    expectRejected(
+        () => normalizeMonteCarloParametersV1({ ...validParameters, maxDauer: 47 }, {
+            inputs: { startAlter: 65, partner: { aktiv: false } }
+        }),
+        'duration beyond the mortality-table contract is rejected instead of clamped'
+    );
+}
+
+{
+    const recommended = estimateMonteCarloResourcesV1({ ...validParameters, anzahl: 100000 });
+    const warning = estimateMonteCarloResourcesV1({ ...validParameters, anzahl: 100001 });
+    const stress = estimateMonteCarloResourcesV1({ ...validParameters, anzahl: 1000000 });
+    assertEqual(recommended.requiresLargeRunConfirmation, false, '100,000 runs need no large-load confirmation');
+    assertEqual(warning.requiresLargeRunConfirmation, true, '100,001 runs require explicit confirmation');
+    assertEqual(stress.memoryClass, 'hoch', 'one-million-run estimate exposes a high memory class');
+    assertEqual(stress.runYears, 35000000, 'stress estimate exposes exact run-years');
+    assert(stress.estimatedWorkerResultMiB > 390, 'stress estimate uses measured full worker-result bytes per run');
+
+    assertEqual(normalizeMonteCarloResourceConfigV1({ workerCount: '0', timeBudgetMs: '50' }).workerCount, 0, 'worker auto sentinel is valid');
+    assertEqual(normalizeMonteCarloResourceConfigV1({ workerCount: '32', timeBudgetMs: '5000' }).timeBudgetMs, 5000, 'resource maxima are valid');
+    assertEqual(
+        resolveMonteCarloWorkerCountV1({ workerCount: 0, timeBudgetMs: 500 }, { hardwareConcurrency: 128 }),
+        32,
+        'automatic worker count respects the configured maximum'
+    );
+    for (const [name, config] of [
+        ['decimal worker count', { workerCount: '2.5', timeBudgetMs: '500' }],
+        ['worker suffix', { workerCount: '8x', timeBudgetMs: '500' }],
+        ['worker maximum', { workerCount: '33', timeBudgetMs: '500' }],
+        ['budget minimum', { workerCount: '8', timeBudgetMs: '49' }],
+        ['budget maximum', { workerCount: '8', timeBudgetMs: '5001' }]
+    ]) {
+        expectRejected(() => normalizeMonteCarloResourceConfigV1(config), `resource validator rejects ${name}`);
+    }
+}
+
+class MockElement {
+    constructor(id, { value = '', checked = false } = {}) {
+        this.id = id;
+        this.value = value;
+        this.checked = checked;
+        this.disabled = false;
+        this.hidden = false;
+        this.textContent = '';
+        this.dataset = {};
+        this.style = { display: '', width: '' };
+        this.attributes = new Map();
+        this.listeners = new Map();
+        this.focusCalls = 0;
+        const classes = new Set();
+        this.classList = { contains: name => classes.has(name), toggle: (name, on) => on ? classes.add(name) : classes.delete(name) };
+    }
+
+    addEventListener(type, handler) {
+        if (!this.listeners.has(type)) this.listeners.set(type, []);
+        this.listeners.get(type).push(handler);
+    }
+
+    removeEventListener(type, handler) {
+        this.listeners.set(type, (this.listeners.get(type) || []).filter(item => item !== handler));
+    }
+
+    dispatch(type) {
+        for (const handler of this.listeners.get(type) || []) handler({ type, preventDefault() {} });
+    }
+
+    setAttribute(name, value) { this.attributes.set(name, String(value)); }
+    removeAttribute(name) { this.attributes.delete(name); }
+    getAttribute(name) { return this.attributes.get(name) ?? null; }
+    focus() {
+        this.focusCalls++;
+        if (this.disabled || this.closest('[hidden]')) return;
+        this.documentRef.activeElement = this;
+    }
+    closest(selector) {
+        if (selector === '.tab-panel') {
+            for (let element = this; element; element = element.parentElement) if (element.id?.startsWith('tab-')) return element;
+        }
+        if (selector === '[hidden]') {
+            for (let element = this; element; element = element.parentElement) {
+                if (element.hidden) return element;
+            }
+        }
+        return null;
+    }
+    matches(selector) { return selector === 'details' && this.isDetails; }
+}
+
+class MockDocument {
+    constructor() { this.elements = new Map(); }
+    register(id, options) {
+        const element = new MockElement(id, options);
+        element.documentRef = this;
+        this.elements.set(id, element);
+        return element;
+    }
+    getElementById(id) { return this.elements.get(id) || null; }
+    querySelectorAll(selector) { return selector === '.tab-panel' ? [...this.elements.values()].filter(el => el.id.startsWith('tab-')) : []; }
+    querySelector() { return null; }
+}
+
+{
+    const previousDocument = global.document;
+    const documentRef = new MockDocument();
+    const values = {
+        mcAnzahl: '100001',
+        sweepRuns: '500',
+        mcDauer: '35',
+        mcBlockSize: '5',
+        mcSeed: '12345',
+        mcMethode: 'regime_markov',
+        rngMode: 'per-run-seed',
+        mcStartYearMode: 'UNIFORM',
+        mcStartYearFilter: '1970',
+        mcStartYearHalfLife: '20',
+        mcWorkerCount: '8',
+        mcWorkerBudget: '500'
+    };
+    for (const [id, value] of Object.entries(values)) documentRef.register(id, { value });
+    documentRef.register('mcExcludeEstimatedHistory', { checked: false });
+    const startButton = documentRef.register('mcButton');
+    const cancelButton = documentRef.register('mcCancelButton');
+    const progress = documentRef.register('mc-progress-bar-container');
+    const progressBar = documentRef.register('mc-progress-bar');
+    const status = documentRef.register('mcRunStatus');
+    const errorContainer = documentRef.register('mc-error-container');
+    documentRef.register('mc-error-message');
+    const resultRegion = documentRef.register('monteCarloResults');
+    const estimate = documentRef.register('mcResourceEstimate');
+    const confirmationRow = documentRef.register('mcLargeRunConfirmationRow');
+    const confirmation = documentRef.register('mcLargeRunConfirm');
+    documentRef.register('mc-compare-results');
+
+    try {
+        global.document = documentRef;
+        const uiParameters = readMonteCarloParameters({ startAlter: 65, partner: { aktiv: false } });
+        assertEqual(uiParameters.anzahl, 100001, 'UI consumer returns centrally normalized parameters');
+        documentRef.getElementById('mcAnzahl').value = 'ungueltig';
+        const sweepParameters = readMonteCarloParameters(
+            { startAlter: 65, partner: { aktiv: false } },
+            { runsElementId: 'sweepRuns' }
+        );
+        assertEqual(sweepParameters.anzahl, 500, 'Sweep liest seine eigene Laufzahl trotz ungueltigem MC-Feld');
+        expectRejected(() => readMonteCarloParameters({ startAlter: 65, partner: { aktiv: false } }),
+            'MC liest weiterhin sein eigenes Feld');
+        documentRef.getElementById('mcAnzahl').value = '100001';
+        documentRef.getElementById('sweepRuns').value = '';
+        expectRejected(() => readMonteCarloParameters(null, { runsElementId: 'sweepRuns' }),
+            'Leere Sweep-Laufzahl wird nicht auf den MC-Default gesetzt');
+        documentRef.getElementById('sweepRuns').value = '500.5';
+        expectRejected(() => readMonteCarloParameters(null, { runsElementId: 'sweepRuns' }),
+            'Sweep-Laufzahl muss ganzzahlig sein');
+        documentRef.getElementById('sweepRuns').value = '500';
+        initMonteCarloResourceControls();
+        assert(estimate.textContent.includes('Run-Jahre'), 'UI shows run-years before execution');
+        assert(estimate.textContent.includes('Speicherklasse'), 'UI shows a memory class before execution');
+        assertEqual(confirmationRow.hidden, false, 'large-run confirmation becomes visible above 100,000 runs');
+
+        const ui = createMonteCarloUI();
+        expectRejected(() => ui.requireLargeRunConfirmation(uiParameters), 'UI blocks a large run without explicit confirmation');
+        assert(confirmation.focusCalls > 0, 'missing large-run confirmation receives focus');
+        confirmation.checked = true;
+        documentRef.getElementById('mcDauer').value = '36';
+        documentRef.getElementById('mcDauer').dispatch('input');
+        assertEqual(confirmation.checked, false, 'changing duration invalidates a prior large-run confirmation');
+        confirmation.checked = true;
+        const refreshedParameters = readMonteCarloParameters({ startAlter: 65, partner: { aktiv: false } });
+        ui.requireLargeRunConfirmation(refreshedParameters);
+        assertEqual(confirmation.checked, false, 'large-run confirmation is consumed once per explicit start');
+
+        ui.beginRun();
+        ui.showProgress();
+        ui.updateProgress(42.4);
+        assertEqual(startButton.disabled, true, 'start is disabled while running');
+        assertEqual(cancelButton.disabled, false, 'cancel is enabled while running');
+        assertEqual(progress.getAttribute('aria-valuenow'), '42', 'progress exposes aria-valuenow');
+        assertEqual(progressBar.style.width, '42.4%', 'visual progress matches semantic progress');
+        assert(status.textContent.includes('42 Prozent'), 'progress has a live textual status');
+        ui.beginCancelling();
+        assertEqual(startButton.disabled, true, 'start stays disabled while cancelling');
+        assertEqual(cancelButton.disabled, true, 'duplicate cancel is disabled');
+        ui.showError(new Error('Sichtbarer Testfehler'));
+        assert(errorContainer.focusCalls > 0, 'error region receives focus and is not color-only');
+        ui.showCompleted();
+        ui.finishRun();
+        assert(resultRegion.focusCalls > 0, 'completed results receive focus');
+
+        documentRef.getElementById('mcAnzahl').value = '100.5';
+        expectRejected(
+            () => readMonteCarloParameters({ startAlter: 65, partner: { aktiv: false } }),
+            'UI consumer rejects decimal runs through the shared contract'
+        );
+        const setup = documentRef.register('mcSetupDisclosure'); setup.isDetails = true;
+        const advanced = documentRef.register('mcAdvancedDisclosure'); advanced.isDetails = true; advanced.parentElement = setup;
+        const minimumFlex = documentRef.register('minimumFlexAnnual'); minimumFlex.parentElement = setup;
+        for (const id of ['mcWorkerCount', 'mcWorkerBudget', 'rngMode']) documentRef.getElementById(id).parentElement = advanced;
+        const cases = [
+            ['minimumFlexAnnual', () => { throw new SimulatorValidationError('Mindest-Flex zu groß', [{ fieldId: 'minimumFlexAnnual' }]); }, false],
+            ['mcAnzahl', () => readMonteCarloParameters(), false],
+            ['mcWorkerCount', () => normalizeMonteCarloResourceConfigV1({ workerCount: '33' }), true],
+            ['mcWorkerBudget', () => normalizeMonteCarloResourceConfigV1({ timeBudgetMs: '49' }), true],
+            ['rngMode', () => normalizeMonteCarloParametersV1({ rngMode: 'falsch' }), true]
+        ];
+        documentRef.getElementById('mcAnzahl').parentElement = setup;
+        for (const [id, action, technical] of cases) {
+            setup.open = false; advanced.open = false; ui.beginRun();
+            let error;
+            try { action(); } catch (caught) { error = caught; }
+            assert(error instanceof Error, 'Fehlerfixture weist ungültigen Wert ab: ' + id);
+            ui.showError(error.message, error);
+            ui.finishRun();
+            assert(setup.open && (!technical || advanced.open), 'Ungültiges Feld öffnet notwendige Klappen: ' + id);
+            assert(documentRef.activeElement === documentRef.getElementById(id), 'Fehlerfokus bleibt nach Busy-Ende am konkreten Feld: ' + id);
+        }
+        const mcPanel = documentRef.register('tab-montecarlo');
+        const resultPanel = documentRef.register('tab-ergebnis');
+        const settingsPanel = documentRef.register('tab-einstellungen');
+        errorContainer.parentElement = mcPanel;
+        const personCache = documentRef.register('personEditorCache');
+        const personEditors = documentRef.register('personEditors');
+        personEditors.parentElement = personCache;
+        personCache.parentElement = settingsPanel;
+        for (const [id, label] of [['p1Geburtsdatum', 'P1-Startalter'], ['r2Geburtsdatum', 'P2-Startalter']]) {
+            const field = documentRef.register(id);
+            field.parentElement = personEditors;
+            for (const [disabled, hidden] of [[true, true], [true, false], [false, true], [false, false]]) {
+                mcPanel.classList.toggle('active', false);
+                resultPanel.classList.toggle('active', true);
+                settingsPanel.classList.toggle('active', false);
+                field.disabled = disabled;
+                personCache.hidden = hidden;
+                ui.beginRun();
+                progress.focus();
+                let error;
+                try {
+                    resolveMonteCarloDurationMaximumV1(label === 'P1-Startalter'
+                        ? { startAlter: 'ungueltig' }
+                        : { startAlter: 65, partner: { aktiv: true, startAlter: 'ungueltig' } });
+                } catch (caught) { error = caught; }
+                assert(error?.message.startsWith(`MonteCarloParametersV1: ${label} `), 'Personenfehlerfixture stammt aus dem Parametervertrag: ' + id);
+                ui.showError(error.message, error);
+                const target = disabled || hidden ? errorContainer : field;
+                assert((disabled || hidden ? mcPanel : settingsPanel).classList.contains('active'), 'Personenfehler aktiviert den Reiter des erreichbaren Fokusziels');
+                assert(!resultPanel.classList.contains('active'), 'Personenfehler verlässt Ergebnis');
+                assertEqual(errorContainer.style.display, 'block', 'Fehlercontainer sichtbar');
+                if (disabled || hidden) assert(documentRef.getElementById('mc-error-message').textContent.includes('in Personen & Vermögen ändern'), 'Übernommener Personenfehler nennt den Bearbeitungsort');
+                assert(documentRef.activeElement === target, 'Personenfehler fokussiert sofort ein erreichbares Ziel: ' + id);
+                documentRef.activeElement = null;
+                ui.finishRun();
+                assert(documentRef.activeElement === target, 'Personenfehler behält erreichbaren Rückfokus nach Busy-Ende: ' + id);
+                assert(!target.disabled && !target.closest('[hidden]'), 'Personenfehlerziel ist sichtbar und fokussierbar: ' + id);
+                assertEqual(personCache.hidden, hidden, 'Fehlerfokus erhält den Zustand des Personencaches');
+                assertEqual(field.disabled, disabled, 'Fehlerfokus erhält die Sperre des Personenfelds');
+            }
+        }
+        documentRef.getElementById('mcLargeRunConfirm').parentElement = setup;
+        setup.open = false; confirmation.checked = false; ui.beginRun();
+        let confirmationError; try { ui.requireLargeRunConfirmation(uiParameters); } catch (error) { confirmationError = error; }
+        ui.showError(confirmationError.message, confirmationError); ui.finishRun();
+        assert(setup.open && documentRef.activeElement === confirmation, 'Großlaufbestätigung bleibt gesondert erreichbar und behält Fokus');
+        documentRef.getElementById('mcAnzahl').value = '10000';
+        documentRef.getElementById('mcWorkerCount').value = '8x';
+        expectRejected(() => ui.readWorkerConfig(), 'UI worker configuration rejects suffixes');
+    } finally {
+        if (previousDocument === undefined) delete global.document;
+        else global.document = previousDocument;
+    }
+}
+
+{
+    await expectRejected(
+        () => runMonteCarloSimulation({
+            inputs: { startAlter: 65, partner: { aktiv: false } },
+            monteCarloParams: { ...validParameters, anzahl: '10runs' },
+            widowOptions: {},
+            useCapeSampling: false
+        }),
+        'direct runner consumer rejects the same suffix fixture before simulation'
+    );
+}
+
+{
+    const html = fs.readFileSync(new URL('../Simulator.html', import.meta.url), 'utf8');
+    assert(/id="mcAnzahl" value="10000" min="1" max="1000000" step="1"/.test(html), 'HTML uses the reviewed 10,000 default and hard run bounds');
+    assert(/id="sweepRuns" value="500" min="1" max="1000000" step="1"/.test(html), 'Sweep hat einen eigenen Default mit denselben harten Grenzen');
+    assert(/id="mc-progress-bar-container" role="progressbar"/.test(html), 'progress element has a semantic progressbar role');
+    assert(/aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"/.test(html), 'progress element declares min, max and current values');
+    assert(/id="mc-error-container"[\s\S]*?role="alert"/.test(html), 'error region has an alert role');
+    assert(/id="mcRunExportStatus" role="status" aria-live="polite"/.test(html), 'export readiness remains keyboard and screen-reader visible');
+}
+
+assertEqual(MONTE_CARLO_PARAMETER_LIMITS.runs.default, 10000, 'exported resource contract documents the 10,000 default');
+console.log('--- MonteCarloParametersV1 Contract Tests Completed ---');

@@ -1,0 +1,285 @@
+import { documentDouble } from './helpers/page-dialog-dom.mjs';
+import {
+    TRANCHE_STATUS_STATES,
+    calculateAggregatedValues,
+    getReconciliationCashStatus,
+    getTranchenStatus,
+    renderTranchenStatusBadge,
+    syncTranchenToInputs
+} from '../app/tranches/depot-tranchen-status.js';
+import { PersistenceFacade, persistenceStorage } from '../app/shared/persistence-facade.js';
+
+console.log('--- Depot Tranchen Status Tests ---');
+
+function createStorage() {
+    const values = new Map();
+    return {
+        getItem: key => values.has(String(key)) ? values.get(String(key)) : null,
+        setItem: (key, value) => values.set(String(key), String(value)),
+        removeItem: key => values.delete(String(key)),
+        clear: () => values.clear(),
+        key: index => Array.from(values.keys())[index] || null,
+        get length() { return values.size; }
+    };
+}
+
+function persistedLot(overrides = {}) {
+    return {
+        trancheId: 'lot-1',
+        name: 'Test Lot',
+        shares: 10,
+        purchasePrice: 100,
+        currentPrice: 80,
+        purchaseDate: '2020-01-01',
+        type: 'aktien_neu',
+        category: 'equity',
+        tqf: 0.30,
+        ...overrides
+    };
+}
+
+function engineLot(overrides = {}) {
+    return {
+        trancheId: 'engine-lot',
+        schemaVersion: 2,
+        name: 'Engine Lot',
+        marketValue: 100,
+        costBasis: 80,
+        purchaseDate: '2020-01-01',
+        type: 'aktien_neu',
+        category: 'equity',
+        tqf: 0.30,
+        taxExempt: false,
+        ...overrides
+    };
+}
+
+const previousGlobals = {
+    localStorage: global.localStorage,
+    window: global.window,
+    document: global.document,
+    alert: global.alert
+};
+const storage = createStorage();
+global.localStorage = storage;
+global.window = { __profilverbundTranchenOverride: null };
+global.alert = () => {};
+PersistenceFacade.resetPersistenceRuntimeForTests();
+
+console.log('Test 1: explicit status states');
+{
+    let status = getTranchenStatus();
+    assertEqual(status.state, TRANCHE_STATUS_STATES.NOT_LOADED, 'Missing key should be not_loaded');
+
+    storage.setItem('depot_tranchen', '[]');
+    status = getTranchenStatus();
+    assertEqual(status.state, TRANCHE_STATUS_STATES.EMPTY, 'Explicit [] should be empty');
+    assertEqual(status.loaded, false, 'Empty state should not claim active FIFO data');
+
+    storage.setItem('depot_tranchen', JSON.stringify([persistedLot()]));
+    status = getTranchenStatus();
+    assertEqual(status.state, TRANCHE_STATUS_STATES.VALID, 'Canonical persisted lot should be valid');
+    assertClose(status.gainPct, -20, 1e-9, 'Negative return should retain its sign');
+
+    storage.setItem('depot_tranchen', 'nicht-json{{');
+    status = getTranchenStatus();
+    assertEqual(status.state, TRANCHE_STATUS_STATES.ERROR, 'Malformed storage should be error');
+    assertEqual(status.errorCode, 'TRANCHE_STORAGE_CORRUPT', 'Malformed storage should expose the stable code');
+}
+
+console.log('Test 2: badge distinguishes empty, valid and malformed without sign duplication');
+{
+    const container = { innerHTML: '' };
+    global.document = { getElementById: id => id === 'status' ? container : null };
+
+    storage.setItem('depot_tranchen', '[]');
+    renderTranchenStatusBadge('status');
+    assert(container.innerHTML.includes('Tranchenbestand ist leer'), 'Empty badge should name the empty state');
+    assert(!container.innerHTML.includes('FIFO aktiv'), 'Empty badge must not claim FIFO is active');
+
+    storage.setItem('depot_tranchen', JSON.stringify([persistedLot()]));
+    renderTranchenStatusBadge('status');
+    assert(container.innerHTML.includes('FIFO aktiv'), 'Valid badge should report active FIFO');
+    assert(container.innerHTML.includes('-20,0\u00a0%'), 'Negative return should render with one minus sign');
+    assert(!container.innerHTML.includes('+-'), 'Badge must never render a double sign');
+
+    storage.setItem('depot_tranchen', JSON.stringify([persistedLot({ purchasePrice: 100, currentPrice: 175 })]));
+    renderTranchenStatusBadge('status');
+    assert(container.innerHTML.includes('+75,0\u00a0%'), 'Tranchenstatus zeigt 75 Prozent mit unverändert einer Nachkommastelle und Pluszeichen');
+
+    storage.setItem('depot_tranchen', 'nicht-json{{');
+    renderTranchenStatusBadge('status');
+    assert(container.innerHTML.includes('Tranchenbestand ist fehlerhaft'), 'Malformed badge should name the error state');
+    assert(!container.innerHTML.includes('Alt/Neu-Modell.</strong>'), 'Malformed badge must not masquerade as unloaded data');
+}
+
+console.log('Test 3: canonical classification prevents gold and money-market double counting');
+{
+    const values = calculateAggregatedValues([
+        engineLot({ trancheId: 'equity', marketValue: 100, costBasis: 80 }),
+        engineLot({ trancheId: 'money', type: 'geldmarkt', category: 'money_market', tqf: 0, marketValue: 200, costBasis: 200 }),
+        engineLot({ trancheId: 'gold', type: 'gold', category: 'gold', tqf: 0, marketValue: 300, costBasis: 250 }),
+        engineLot({ trancheId: 'bond', type: 'anleihe', category: 'bonds', tqf: 0, marketValue: 400, costBasis: 390 })
+    ]);
+    assertEqual(values.depotwertNeu, 500, 'Legacy neu total should contain equity plus bonds, but not money market or gold');
+    assertEqual(values.geldmarktEtf, 200, 'Money market should be counted exactly once in its own bucket');
+    assertEqual(values.goldWert, 300, 'Gold should be counted exactly once in its own bucket');
+    assertEqual(values.bondsWert, 400, 'Bond diagnostic total should retain the canonical bond amount');
+
+    let mismatchError = null;
+    try {
+        calculateAggregatedValues([
+            engineLot({ trancheId: 'mismatch', type: 'aktien_neu', category: 'money_market' })
+        ]);
+    } catch (error) {
+        mismatchError = error;
+    }
+    assertEqual(mismatchError?.code, 'TRANCHE_VALIDATION_FAILED', 'Contradictory classification must fail closed');
+}
+
+console.log('Test 4: empty household override wins over current-profile storage');
+{
+    storage.setItem('depot_tranchen', JSON.stringify([persistedLot()]));
+    global.window.__profilverbundTranchenOverride = [];
+    const status = getTranchenStatus();
+    assertEqual(status.state, TRANCHE_STATUS_STATES.EMPTY, 'Empty override should remain empty');
+    assertEqual(status.source, 'override', 'Empty override should remain the authoritative source');
+    assertEqual(calculateAggregatedValues(), null, 'Empty override should not aggregate the current profile lot');
+}
+
+console.log('Test 5: input synchronization keeps hidden fields canonical and replaces money market');
+{
+    const elements = new Map();
+    const field = (id, value = '0', type = 'number') => {
+        const element = {
+            id,
+            type,
+            value,
+            dispatchEvent() {}
+        };
+        elements.set(id, element);
+        return element;
+    };
+    field('simStartVermoegen', '999', 'text');
+    field('depotwertAlt', '0', 'hidden');
+    field('costBasisAlt');
+    field('einstandAlt', '0', 'hidden');
+    field('depotwertNeu');
+    field('costBasisNeu');
+    field('einstandNeu', '0', 'hidden');
+    field('geldmarktEtf', '900', 'text');
+    field('goldWert');
+    field('goldCost');
+    field('tagesgeld', '50');
+    global.document = { getElementById: id => elements.get(id) || null };
+    global.window.__profilverbundTranchenOverride = [
+        engineLot({ trancheId: 'equity', type: 'aktien_alt', category: 'equity', marketValue: 1234, costBasis: 1000 }),
+        engineLot({ trancheId: 'money', type: 'geldmarkt', category: 'money_market', tqf: 0, marketValue: 1200, costBasis: 1200 })
+    ];
+
+    assertEqual(syncTranchenToInputs({ silent: true }), true, 'Valid override should synchronize');
+    assertEqual(elements.get('geldmarktEtf').value, '1.200', 'Visible money-market field should stay localized');
+    assertEqual(elements.get('simStartVermoegen').value, '2.484', 'Visible start assets should contain positions and cash exactly once');
+    assertEqual(elements.get('depotwertAlt').value, '1234', 'Hidden depot value should remain a canonical numeric string');
+    assertEqual(elements.get('einstandAlt').value, '1000', 'Hidden cost basis should remain a canonical numeric string');
+}
+
+console.log('Test 6: suite-wide cash status counts pending sales and fails closed on corrupt audit');
+{
+    const storage = createStorage();
+    const sale = {
+        schemaVersion: 1,
+        eventType: 'sale_reconciled',
+        actionId: 'status-sale-1',
+        profileId: 'profile-status',
+        trancheId: 'lot-status',
+        executedAt: '2026-07-14',
+        actual: { sharesSold: 1, grossProceeds: 100, fees: 5, netProceeds: 95 },
+        cashStatus: 'pending_manual_posting',
+        result: { beforeShares: 2, remainingShares: 1, trancheRemoved: false },
+        reconciledAt: '2026-07-14T12:00:00.000Z'
+    };
+    storage.setItem('rs_profiles_v1', JSON.stringify({
+        version: 1,
+        profiles: { 'profile-status': { data: {} } },
+        trancheReconciliation: { schemaVersion: 1, actions: [sale] }
+    }));
+    const status = getReconciliationCashStatus({ storage, profileId: 'profile-status' });
+    assertEqual(status.state, 'valid', 'Valid mixed-event registry should produce a cash status');
+    assertEqual(status.pendingCount, 1, 'Only pending_manual_posting should count as an open cash backlog');
+    assertEqual(status.confirmedCount, 0, 'Pending sale must not masquerade as confirmed cash');
+
+    const corrupt = JSON.parse(storage.getItem('rs_profiles_v1'));
+    corrupt.trancheReconciliation.actions[0].eventType = 'unknown_future_event';
+    storage.setItem('rs_profiles_v1', JSON.stringify(corrupt));
+    const failed = getReconciliationCashStatus({ storage, profileId: 'profile-status' });
+    assertEqual(failed.state, 'error', 'Unknown audit events should fail closed in suite status');
+    assertEqual(failed.pendingCount, 0, 'Corrupt audit must not invent a pending count');
+    assertEqual(failed.legacyCount, 0, 'Corrupt audit should keep the status object shape complete');
+    assertEqual(failed.confirmedCount, 0, 'Corrupt audit should define a zero confirmed count');
+
+    const notLoaded = getReconciliationCashStatus({ storage: createStorage(), profileId: null });
+    assertEqual(notLoaded.legacyCount, 0, 'Not-loaded status should define a zero legacy count');
+    assertEqual(notLoaded.confirmedCount, 0, 'Not-loaded status should define a zero confirmed count');
+
+    const legacySale = { ...sale };
+    delete legacySale.eventType;
+    delete legacySale.cashStatus;
+    storage.setItem('rs_profiles_v1', JSON.stringify({
+        version: 1,
+        profiles: {
+            'profile-status': {
+                meta: {
+                    id: 'profile-status',
+                    name: 'Status',
+                    createdAt: '2026-07-14T00:00:00.000Z',
+                    updatedAt: '2026-07-14T00:00:00.000Z',
+                    belongsToHousehold: true
+                },
+                data: {}
+            }
+        },
+        trancheReconciliation: { schemaVersion: 1, actions: [legacySale] }
+    }));
+    storage.setItem('rs_current_profile', 'profile-status');
+    storage.setItem('rs_active_profile', 'profile-status');
+    storage.setItem('depot_tranchen', '[]');
+    PersistenceFacade.resetPersistenceForTests();
+    await PersistenceFacade.init();
+    persistenceStorage.setItem('rs_profiles_v1', storage.getItem('rs_profiles_v1'));
+    persistenceStorage.setItem('rs_current_profile', 'profile-status');
+    persistenceStorage.setItem('rs_active_profile', 'profile-status');
+    const details = { open: false };
+    const container = { innerHTML: '', closest: selector => selector === 'details' ? details : null };
+    global.document = { getElementById: id => id === 'cash-status' ? container : null };
+    renderTranchenStatusBadge('cash-status');
+    assert(container.innerHTML.includes('1 Altverkauf/Altverkäufe besitzen keinen dokumentierten Cashstatus'),
+        'Suite badge should disclose legacy sales without documented cash evidence');
+    assert(!container.innerHTML.includes('✅ Kein offener manueller Cashrückstand'),
+        'Legacy-only badge must not use the all-clear cash marker');
+    assert(container.innerHTML.includes('<div style="margin-top: 8px;">ℹ️ Kein offener manueller Cashrückstand.'),
+        'Legacy-only badge should remain visible in a neutral informational style when details are open');
+    assertEqual(details.open, false, 'Completed legacy sales must not force collapsed Balance details open');
+}
+console.log('✓ suite-wide cash-status contract OK');
+
+// Synchronisation bleibt auch mit sichtbarem Hinweis synchron und schreibfrei.
+for (const bad of [true, false]) {
+    const env = documentDouble(); global.document = env.doc;
+    window.__profilverbundTranchenOverride = bad ? [{ invalid: true }] : [];
+    const before = JSON.stringify(PersistenceFacade.exportAllSync().records);
+    assertEqual(syncTranchenToInputs({ silent: true }), false, 'Silentmodus liefert synchron false');
+    assertEqual(env.nodes.filter(node => node.tagName === 'dialog').length, 0, 'Silentmodus erzeugt keinen Dialog');
+    assertEqual(syncTranchenToInputs(), false, 'Sichtbarer Hinweis ändert den Booleanvertrag nicht');
+    assert(env.dialog().open, 'Fehlerhinweis wird als Seitendialog angezeigt');
+    env.nodes.find(node => node.dataset.pageDialogAccept !== undefined).fire('click');
+    await Promise.resolve();
+    assertEqual(JSON.stringify(PersistenceFacade.exportAllSync().records), before, 'Hinweis und Abbruch ändern keine Records');
+}
+PersistenceFacade.resetPersistenceRuntimeForTests();
+Object.entries(previousGlobals).forEach(([key, value]) => {
+    if (value === undefined) delete global[key];
+    else global[key] = value;
+});
+
+console.log('--- Depot Tranchen Status Tests Completed ---');

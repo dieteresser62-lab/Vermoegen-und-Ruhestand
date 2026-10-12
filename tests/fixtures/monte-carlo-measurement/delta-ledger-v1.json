@@ -1,0 +1,316 @@
+{
+  "schemaVersion": "monte-carlo-delta-ledger-v1",
+  "baselineReference": "pre-hardening-v1",
+  "baselineOverwriteAllowed": false,
+  "entries": [
+    {
+      "sliceId": "03",
+      "sourceReference": "pre-hardening-v1",
+      "targetReference": "post-slice-03-v1",
+      "fieldPath": "buffers.volatilities/pathSummaries.volatilityPct/aggregates.volatilities",
+      "formulaBefore": "maxDDpct was copied into both volatility and maximum drawdown",
+      "formulaAfter": "sample standard deviation (N-1) of annual portfolio returns, expressed in percent; no additional annualization factor",
+      "expectedDirection": "not monotonic; volatility and drawdown become independent risk measures",
+      "goldenCaseIds": ["GC-RISK-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "03",
+      "sourceReference": "pre-hardening-v1",
+      "targetReference": "post-slice-03-v1",
+      "fieldPath": "pathSummaries.cutYearShareRatio/aggregates.cutYearSharePct",
+      "formulaBefore": "absolute count of successful years with cutPct >= 10, including accumulation years",
+      "formulaAfter": "completed decumulation years with finite cutPct >= 10 divided by completed decumulation years with a finite cut decision; denominator zero is nullable",
+      "expectedDirection": "unit and denominator change; old and new values are not directly comparable",
+      "goldenCaseIds": ["GC-CUT-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "04",
+      "sourceReference": "post-slice-03-v1",
+      "targetReference": "post-slice-04-v1",
+      "fieldPath": "totals.p1TriggeredCount/totals.p2TriggeredCount/aggregates.extraKPI.pflege.p1/aggregates.extraKPI.pflege.p2",
+      "formulaBefore": "household care triggers were assigned to P1 and absent person entries were stored as age zero",
+      "formulaAfter": "P1 and P2 use separate observed-entry counters over requested runs; conditional person distributions exclude non-entry sentinels and expose sampleSize plus missingness",
+      "expectedDirection": "person rates and conditional medians may move independently; empty distributions change from zero to null",
+      "goldenCaseIds": ["GC-CARE-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "04",
+      "sourceReference": "post-slice-03-v1",
+      "targetReference": "post-slice-04-v1",
+      "fieldPath": "pathSummaries.*CareAdditionalNeedRealEur/pathSummaries.*CareAdditionalNeedNominalEur/aggregates.extraKPI.pflege",
+      "formulaBefore": "DepotStart minus DepotEnd was labelled as depot-financed care cost and annual household spend used max(P1 target, P2 target)",
+      "formulaAfter": "modelled annual care additions passed to the simulation are summed as P1 plus P2, accumulated per person and household, and reported in real EUR at simulation-start prices; nominal path fields use the NominalEur suffix",
+      "expectedDirection": "values are not comparable because attribution, household addition and price basis change",
+      "goldenCaseIds": ["GC-CARE-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "04",
+      "sourceReference": "post-slice-03-v1",
+      "targetReference": "post-slice-04-v1",
+      "fieldPath": "aggregates.extraKPI.pflege.comparison.endWealthNoCareMinusCareRealEur",
+      "formulaBefore": "median with care minus median without care despite the opposite UI description",
+      "formulaAfter": "real-EUR median without care minus real-EUR median with care, explicitly marked as an unpaired non-causal group comparison",
+      "expectedDirection": "sign reverses relative to the old implementation",
+      "goldenCaseIds": ["GC-CARE-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "05",
+      "sourceReference": "post-slice-04-v1",
+      "targetReference": "post-slice-05-v1",
+      "fieldPath": "pathSummaries.outcomeCode/totals.outcome*Count/aggregates.outcomeInventory",
+      "formulaBefore": "technical errors were separated, but financial terminal reasons were not exposed as an exhaustive inventory and the UI derived a generic success rate from failCount",
+      "formulaAfter": "each requested run is exactly ruin, all_dead, horizon_exhausted or technical_error; floor coverage is (all_dead + horizon_exhausted) / requestedRuns only for technical-error-free batches and otherwise null",
+      "expectedDirection": "headline becomes nullable on technical error and censored horizon paths become explicitly visible",
+      "goldenCaseIds": ["GC-OUTCOME-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "05",
+      "sourceReference": "post-slice-04-v1",
+      "targetReference": "post-slice-05-v1",
+      "fieldPath": "buffers.kpiLebensdauer/buffers.alterBeiErschoepfung/buffers.alterBeiErschoepfungMissingness/mortality fallback",
+      "formulaBefore": "duration and depletion age used Uint8 with sentinel 255; Monte Carlo used 0.0005 outside the mortality table while Sweep used 1",
+      "formulaAfter": "duration and age use Uint32 plus explicit missingness; all simulator paths use probability 1 outside the mortality table and reject age-plus-horizon overflow",
+      "expectedDirection": "buffer storage increases by 7 bytes per run; valid in-range paths are unchanged while out-of-range mortality fails closed consistently",
+      "goldenCaseIds": ["GC-OUTCOME-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "06",
+      "sourceReference": "post-slice-05-v1",
+      "targetReference": "post-slice-06-v1",
+      "fieldPath": "sampling path / buffers / aggregates / runMeta.logDataRows[*].histJahr",
+      "formulaBefore": "the selected CAPE/filter/recency start record initialized historical lookback only; fixed block, stationary and regime methods immediately performed a separate first-year draw and fixed-block eligibility excluded the final complete start index",
+      "formulaAfter": "the selected start record is the first method-specific simulated record; fixed block continues a complete sequential first block, stationary applies restart probability only afterwards, Markov transitions after the start regime and IID becomes independent after the start record",
+      "expectedDirection": "identical seeds intentionally produce different sampled paths and therefore potentially different financial outcomes; the direction is not monotonic and is accepted only against GC-SAMPLING-01 and the Post-Slice-06 snapshot",
+      "goldenCaseIds": ["GC-SAMPLING-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "06",
+      "sourceReference": "post-slice-05-v1",
+      "targetReference": "post-slice-06-v1",
+      "fieldPath": "samplingDiagnostics",
+      "formulaBefore": "sampling method, effective start source, drawn-year inventory, regime counts, tail-risk counters and data version were not available as one chunk-mergeable contract",
+      "formulaAfter": "MonteCarloSamplingDiagnosticsV1 carries the effective MonteCarloSamplingContractV1, O(historical-year-domain) start/year/source/regime counters, stationary restart counts, reconciled tail-risk counters and annual/regime data hashes",
+      "expectedDirection": "new diagnostic fields only; worker payload grows with the bounded historical-year domain, not with runs times years",
+      "goldenCaseIds": ["GC-SAMPLING-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "07",
+      "sourceReference": "post-slice-06-v1",
+      "targetReference": "post-slice-07-v1",
+      "fieldPath": "aggregates.outcomeInventory.floorCoverageEstimate",
+      "formulaBefore": "floor coverage exposed a point estimate over requested runs without estimator uncertainty",
+      "formulaAfter": "technical-error-free floor coverage exposes numerator, requested-runs denominator, point estimate and Wilson 95 percent interval; technical_error suppresses estimate and interval fail-closed",
+      "expectedDirection": "the point estimate is unchanged for clean batches; new interval and small-sample warning fields are added",
+      "goldenCaseIds": ["GC-OUTCOME-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "07",
+      "sourceReference": "post-slice-06-v1",
+      "targetReference": "post-slice-07-v1",
+      "fieldPath": "pathSummaries.realWithdrawalP10RealEur/aggregates.realWithdrawalP10/stressKPI.realWithdrawalP10",
+      "formulaBefore": "main CaR pooled annual withdrawals from runIdx modulo 100 paths and stress CaR omitted post-ruin zero years",
+      "formulaAfter": "each evaluable run contributes one P10 scalar over its decumulation window, with zero fill after ruin while someone lives; across-run P10/P50 use equal run weights and explicit missingness; stress uses the same zero fill inside its fixed window",
+      "expectedDirection": "values are not directly comparable; early-ruin paths can lower the estimator and length bias is removed",
+      "goldenCaseIds": ["GC-CAR-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "SUITE-DATA-05",
+      "sourceReference": "post-slice-07-v1",
+      "targetReference": "post-suite-data-05-v1",
+      "fieldPath": "buffers.realWithdrawalP10RealEur/pathSummaries.realWithdrawalP10RealEur/integrated.pathSummaries.{volatilityPct,maxDrawdownPct,cutYearShareRatio}/integrated.riskKpis",
+      "formulaBefore": "the first engine year persisted withdrawal rate zero and the wealth fallback subtracted pension income a second time from an already netted need",
+      "formulaAfter": "first and later engine years derive withdrawal rate from the current net need; the wealth fallback consumes the already pension-netted need exactly once; hard floor quantization and exhausted flex-budget zero remain invariant",
+      "expectedDirection": "path-level real withdrawal P10, volatility, drawdown and cut-year share may move in either direction; aggregate real-withdrawal P10, observation counts, missingness, outcome inventory and floor coverage remain unchanged for GC-CAR-01",
+      "goldenCaseIds": ["GC-CAR-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "SUITE-DATA-02",
+      "sourceReference": "post-suite-data-05-v1",
+      "targetReference": "post-suite-data-02-v1",
+      "fieldPath": "integrated.pathSummaries.{volatilityPct,maxDrawdownPct}/integrated.riskKpis.volatilityPct",
+      "formulaBefore": "an explicit maxSkimPctOfEq zero fell through || 5 to a five-percent opportunistic equity-sale cap; the dry-run omitted the aggregate equity budget and the sale engine treated a non-positive aggregate budget as unlimited",
+      "formulaAfter": "an explicit maxSkimPctOfEq zero remains a hard zero cap in opportunistic and surplus paths; the dry-run forwards the aggregate equity budget and the sale engine distinguishes absent budget from an explicit zero budget",
+      "expectedDirection": "financial path effects are not monotonic; for the fixed GC-CAR-01 reference only run index 5 volatility and maximum drawdown plus derived median volatility decrease slightly, while every other captured field remains exact",
+      "goldenCaseIds": ["GC-RISK-01", "GC-CAR-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "SUITE-DATA-11",
+      "sourceReference": "post-suite-data-02-v1",
+      "targetReference": "post-suite-data-11-v1",
+      "fieldPath": "buffers.{meanWithdrawalRateRatio,withdrawalRateObservationCount,meanWithdrawalRateMissingness}/pathSummaries.meanWithdrawalRateRatio/pathMissingness.meanWithdrawalRateRatio/aggregates.{finalOutcomes,maxDrawdowns,medianWithdrawalRate}/resourceContract.measuredWorkerResultBytesPerRun",
+      "formulaBefore": "the canonical path result retained no per-run realized withdrawal-rate statistic; optimizer end-wealth P25 reused P10, drawdown seed batches were averaged from batch quantiles and Median_WR was the constant zero",
+      "formulaAfter": "each evaluable run retains the arithmetic mean of finite realized withdrawal rates from calculated decumulation years, including the actual terminal ruin year with jahresEntnahmeEffektiv (the actual payout only) as its numerator, plus observation count and explicit missingness; canonical raw final-wealth and drawdown distributions exclude and classify technical paths; pooled linear-interpolation quantiles and the D-14 across-run median feed a strictly versioned, numeric-only optimizer contract whose safety penalty rejects a missing withdrawal rate",
+      "expectedDirection": "transfer buffers grow exactly from 93 to 106 bytes per run; the 100000-run standard measurement records 977.62585 total worker-result bytes per run and the resource contract rounds this to 978; existing non-ruin financial paths and previously captured KPIs remain exact; actual ruin paths retain their terminal observation while a pre-payout ruin contributes an observed zero payout rather than residual wealth, technical paths can no longer improve end-wealth or drawdown ranking through zero initialization, and the now-active withdrawal-rate safety term may change candidate rankings",
+      "goldenCaseIds": ["GC-RISK-01", "GC-CAR-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "12",
+      "sourceReference": "post-slice-07-v1",
+      "targetReference": "monte-carlo-v1-final",
+      "fieldPath": "contracts/resourceContract/compatibility/execution/result",
+      "formulaBefore": "semantic Post-Slice references 03 through 07 existed separately; later export, lifecycle, resource, browser and alias-removal contracts had no integrated final candidate",
+      "formulaAfter": "the final candidate retains every immutable semantic reference and records V1 contract versions, resource bounds, fixed worker/chunk provenance, absence of expired read aliases, terminal outcomes, risk, care, run-based real withdrawal, sampling diagnostics and technical inventory without changing financial formulas",
+      "expectedDirection": "no financial KPI direction; exact same-runtime integration equality is required and every unexplained delta blocks",
+      "goldenCaseIds": ["GC-RISK-01", "GC-CUT-01", "GC-CARE-01", "GC-OUTCOME-01", "GC-SAMPLING-01", "GC-CAR-01"],
+      "reviewStatus": "candidate_pending_external_review"
+    },
+    {
+      "sliceId": "BACKTEST-DATA-02",
+      "sourceReference": "post-suite-data-02-v1",
+      "targetReference": "post-backtest-data-02-v3",
+      "fieldPath": "metadata.dataVersion/result.{pathSummaries,riskKpis,realWithdrawalP10,samplingDiagnostics}/carResult/autoOptimizeResult",
+      "formulaBefore": "Monte Carlo sampled the prior embedded global-equity annual return chain and its derived regime inventory",
+      "formulaAfter": "Monte Carlo samples the reproducible global_equity_research_index annual returns built from JST R6, OECD share-price and ECB exchange-rate inputs; the USD proxy includes 1950 and German investor-currency conversion starts with 1951, so the reconstructed German 1949-to-1950 factor cannot become a global return; derived regimes and data fingerprints follow the remediated chain",
+      "expectedDirection": "financial path and aggregate deltas are not monotonic; fixed seed, inputs, runtime, worker layout, outcome semantics and calculation formulas stay unchanged, and every value is frozen in a separate pending snapshot",
+      "goldenCaseIds": ["GC-RISK-01", "GC-CUT-01", "GC-CARE-01", "GC-OUTCOME-01", "GC-SAMPLING-01", "GC-CAR-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "BACKTEST-DATA-03",
+      "sourceReference": "post-backtest-data-02-v3",
+      "targetReference": "post-backtest-data-03-v1",
+      "fieldPath": "metadata.dataVersion/result.{pathSummaries,riskKpis,realWithdrawalP10,samplingDiagnostics}/carResult/autoOptimizeResult",
+      "formulaBefore": "Monte Carlo sampled the prior unidentified embedded inflation_de annual-rate literals while retaining the Backtest-Data Slice 02 global-equity chain",
+      "formulaAfter": "Monte Carlo samples the reproducible segmented German consumer-price chain built from JST R6 historical CPI levels and Destatis national annual-average consumer-price indexes; the historical 1932 rate remains uncapped and the engine accepts documented deflation through minus 15 percent",
+      "expectedDirection": "real financial paths and inflation-derived regimes may change in either direction; nominal return inputs, fixed seed, runtime, worker layout, outcome semantics and calculation formulas stay unchanged, and every captured value is frozen in a separate pending snapshot",
+      "goldenCaseIds": ["GC-RISK-01", "GC-CUT-01", "GC-CARE-01", "GC-OUTCOME-01", "GC-SAMPLING-01", "GC-CAR-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "BACKTEST-DATA-04",
+      "sourceReference": "post-backtest-data-03-v1",
+      "targetReference": "post-backtest-data-04-v1",
+      "fieldPath": "metadata.dataVersion/result.{pathSummaries,riskKpis,realWithdrawalP10,samplingDiagnostics}/carResult/autoOptimizeResult",
+      "formulaBefore": "Monte Carlo sampled the prior unidentified embedded zinssatz_de annual-rate literals while retaining the Backtest-Data Slice 03 equity and inflation chains",
+      "formulaAfter": "Monte Carlo samples the reproducible German cash and overnight money-market gross return proxy: JST DEU.stir through 1944, an explicit 1944 carry-forward bridge for 1945-1948, Bundesbank Frankfurt overnight/FIBOR through 1998 and EONIA/EURSTR from 1999; negative official rates remain valid, and no cost, tax or extra compounding is embedded",
+      "expectedDirection": "cash-like financial paths, derived regimes and aggregate deltas may change in either direction; fixed seed, equity and inflation inputs, runtime, worker layout, outcome semantics and calculation formulas stay unchanged, and every captured value is frozen in a separate pending snapshot",
+      "goldenCaseIds": ["GC-RISK-01", "GC-CUT-01", "GC-CARE-01", "GC-OUTCOME-01", "GC-SAMPLING-01", "GC-CAR-01"],
+      "reviewStatus": "pending"
+    },
+    {
+      "sliceId": "BACKTEST-DATA-05",
+      "sourceReference": "post-backtest-data-04-v1",
+      "targetReference": "post-backtest-data-05-v1",
+      "fieldPath": "metadata.dataVersion/result.{pathSummaries,riskKpis,realWithdrawalP10,samplingDiagnostics}/carResult/autoOptimizeResult",
+      "formulaBefore": "Monte Carlo sampled the prior embedded gold_eur_perf literals, including 42 unexplained zero values and an unresolved price/currency chain",
+      "formulaAfter": "Monte Carlo samples the reproducible segmented-timing German-investor gold return chain: US year-end policy/official price times JST year-end German FX through 1944 and 1951-1967, including the 1933 RFC year-end purchase price; an explicit estimated zero-return bridge for 1945-1950; Bundesbank Frankfurt DEM annual averages through 1998; and World Bank gold converted with Bundesbank annual-average USD/EUR from 1999",
+      "expectedDirection": "gold-holding financial paths and aggregate deltas may change in either direction; fixed seed, equity, inflation and cash inputs, runtime, worker layout, outcome semantics and calculation formulas stay unchanged, and every captured value is frozen in a separate pending snapshot",
+      "goldenCaseIds": ["GC-RISK-01", "GC-CUT-01", "GC-CARE-01", "GC-OUTCOME-01", "GC-SAMPLING-01", "GC-CAR-01"],
+      "reviewStatus": "pending",
+      "knownEvidenceDefect": {
+        "capturedAtUtcStatus": "invalid_predates_measured_code_state",
+        "goldHoldingCaseIncluded": false,
+        "goldRuntimeEffectMeasured": false,
+        "correctionReference": "post-backtest-data-06-v2",
+        "handling": "The immutable candidate is preserved. Its timestamp and gold-effect scope must not be used as evidence; the V2 successor records a runtime-clock capture time and complete explicit scope."
+      }
+    },
+    {
+      "sliceId": "BACKTEST-DATA-06",
+      "sourceReference": "post-backtest-data-05-v1",
+      "targetReference": "post-backtest-data-06-v1",
+      "fieldPath": "metadata.dataVersion/result.{pathSummaries,riskKpis,realWithdrawalP10,samplingDiagnostics}/carResult/autoOptimizeResult",
+      "formulaBefore": "Monte Carlo sampled the Slice-05 annual-data pool with the effective double-lagged CAPE decision mapping and the prior unresolved lohn_de literals",
+      "formulaAfter": "The V1 candidate fingerprints the generated US Shiller conventional CAPE decision chain and the first generated wage chain, but its fixed golden cases request neither CAPE start-year sampling nor wage-indexed pension escalation",
+      "expectedDirection": "No numeric result change was measured. Only snapshot identity, timestamp, annualDataHash and measurement-scope provenance differ; the V1 wording did not state this boundary precisely enough",
+      "goldenCaseIds": ["GC-RISK-01", "GC-CUT-01", "GC-CARE-01", "GC-OUTCOME-01", "GC-SAMPLING-01", "GC-CAR-01"],
+      "reviewStatus": "pending",
+      "measurementScope": {
+        "goldHoldingCaseIncluded": false,
+        "goldRuntimeEffectMeasured": false,
+        "capeSamplingCaseIncluded": false,
+        "capeRuntimeEffectMeasured": false,
+        "wageIndexedPensionCaseIncluded": false,
+        "wageRuntimeEffectMeasured": false,
+        "derivedRegimeEffectExpected": false,
+        "numericDeltaCount": 0,
+        "interpretation": "The existing Monte Carlo golden cases contain no gold holding, CAPE sampling request or wage-indexed pension path. Regimes do not consume CAPE or wage."
+      },
+      "knownEvidenceDefect": {
+        "numericDeltaCount": 0,
+        "capeRuntimeEffectMeasured": false,
+        "wageRuntimeEffectMeasured": false,
+        "capturedAtUtcStatus": "source_literal_with_weak_lower_bound",
+        "correctionReference": "post-backtest-data-06-v2",
+        "handling": "The immutable V1 candidate is preserved. It must not be cited as CAPE or wage runtime-effect evidence; V2 records runtime-clock capture evidence and the exact zero-delta field boundary."
+      }
+    },
+    {
+      "sliceId": "BACKTEST-DATA-06",
+      "sourceReference": "post-backtest-data-06-v1",
+      "targetReference": "post-backtest-data-06-v2",
+      "fieldPath": "snapshot identity/capture evidence/metadata.dataVersion.annualDataHash/result.result.samplingDiagnostics.dataVersion.annualDataHash",
+      "formulaBefore": "V1 preserved the data fingerprint but used a timestamp literal and language that could be read as CAPE, wage or regime runtime-effect evidence",
+      "formulaAfter": "V2 is captured from the runtime clock under refuse-overwrite semantics and explicitly measures zero numeric deltas because the fixed cases request neither CAPE start-year sampling nor wage-indexed pension escalation; regime classification uses equity return and inflation only",
+      "expectedDirection": "Exactly zero numeric result deltas. Changed leaves are restricted to snapshot identity, runtime capture evidence, explicit measurement-scope fields and the two annualDataHash provenance fields",
+      "goldenCaseIds": ["GC-RISK-01", "GC-CUT-01", "GC-CARE-01", "GC-OUTCOME-01", "GC-SAMPLING-01", "GC-CAR-01"],
+      "reviewStatus": "pending",
+      "measurementScope": {
+        "goldHoldingCaseIncluded": false,
+        "goldRuntimeEffectMeasured": false,
+        "capeSamplingCaseIncluded": false,
+        "capeRuntimeEffectMeasured": false,
+        "wageIndexedPensionCaseIncluded": false,
+        "wageRuntimeEffectMeasured": false,
+        "derivedRegimeEffectExpected": false,
+        "numericDeltaCount": 0,
+        "sharedAnnualDataFingerprintOnly": true,
+        "interpretation": "Runtime CAPE and wage effects are evidenced by the separate backtest and CAPE-sampling delta oracles, not by this Monte Carlo candidate."
+      }
+    },
+    {
+      "sliceId": "BACKTEST-DATA-07",
+      "sourceReference": "post-backtest-data-06-v2",
+      "targetReference": "post-backtest-data-07-v1",
+      "fieldPath": "sourceMeasurement/targetMeasurement.{monteCarlo,sweep}/effectSummary",
+      "formulaBefore": "Monte Carlo and Sweep used the prior embedded mortality table; no versioned Backtest-Data Slice 07 runtime measurement activated mortality, care, partner death and survivor benefits together",
+      "formulaAfter": "A fixed 2,048-run, 40-year profile measures the Destatis period-life-table replacement against the immutable Slice-06 basis with active chronic care, an active partner, 55-percent survivor benefits and two common-random-number Sweep allocations",
+      "expectedDirection": "Higher mortality shortens measured lifespan and generally reduces care exposure; financial and survivor-duration deltas remain path-dependent and are frozen exactly rather than assigned a universal beneficial or adverse sign",
+      "goldenCaseIds": ["DCS-MC-SWEEP-01"],
+      "reviewStatus": "pending",
+      "measurementScope": {
+        "runs": 2048,
+        "durationYears": 40,
+        "mortalityRuntimeEffectMeasured": true,
+        "careRuntimeActive": true,
+        "partnerRuntimeActive": true,
+        "survivorBenefitRuntimeActive": true,
+        "sweepRuntimeEffectMeasured": true,
+        "sweepCombinationCount": 2,
+        "numericDeltaCount": 40,
+        "careModelParameterChange": false,
+        "survivorFormulaChange": false
+      }
+    }
+  ],
+  "requiredEntryFields": [
+    "sliceId",
+    "sourceReference",
+    "targetReference",
+    "fieldPath",
+    "formulaBefore",
+    "formulaAfter",
+    "expectedDirection",
+    "goldenCaseIds",
+    "reviewStatus"
+  ],
+  "policy": {
+    "unexplainedDelta": "block",
+    "bulkSnapshotAcceptance": false,
+    "toleranceChangeRequiresPreExecutionReview": true
+  }
+}

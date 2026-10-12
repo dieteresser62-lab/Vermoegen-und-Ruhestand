@@ -1,0 +1,327 @@
+/**
+ * Module: Balance Binder Diagnosis
+ * Purpose: Handles UI logic related to the Diagnosis Panel.
+ *          It generates formatted diagnosis text for the user to copy/paste and formats guardrail/status information.
+ * Usage: Used by balance-binder.js for diagnosis-related actions.
+ * Dependencies: balance-config.js, balance-utils.js, balance-renderer.js
+ */
+import { CONFIG } from './balance-config.js';
+import { UIUtils } from './balance-utils.js';
+import { UIRenderer } from './balance-renderer.js';
+import { describeBalanceActionSummary } from './balance-action-summary.js';
+import { displayDiagnosisText, formatThresholdLabel, transactionDetailRows } from './balance-diagnosis-transaction.js';
+
+export function createDiagnosisHandlers({ dom, appState }) {
+    const generateDiagnosisText = (diagnosis) => {
+        if (!diagnosis) return "Keine Diagnose-Daten verfügbar.";
+
+        let text = `===== Entscheidungsdiagnose für Ruhestand-Balancing =====\n`;
+        text += `Version: ${CONFIG.APP.VERSION}\n`;
+        text += `Zeitstempel: ${new Date(appState.lastUpdateTimestamp).toLocaleString('de-DE')}\n\n`;
+        text += `--- Status-Übersicht ---\n`;
+        text += `Marktregime: ${diagnosis.general.marketSzenario}\n`;
+        text += `Alarm-Modus: ${diagnosis.general.alarmActive ? 'AKTIV' : 'Inaktiv'}\n`;
+        text += `Entnahmequote: ${UIUtils.formatPercentRatio(diagnosis.keyParams.entnahmequoteDepot, { fractionDigits: 2, invalid: 'n/a' })}\n`;
+        text += `Realer Drawdown aktives Gesamtvermögen: ${UIUtils.formatPercentRatio(diagnosis.keyParams.realerDepotDrawdown, { fractionDigits: 1, invalid: 'n/a' })}\n`;
+        if (diagnosis.general.safetyCapActive === true) {
+            const effectiveSafetyCap = Number.isFinite(diagnosis.general.safetyCapEffectiveFlexRatePct)
+                ? diagnosis.general.safetyCapEffectiveFlexRatePct
+                : diagnosis.general.safetyCapFlexRatePct;
+            text += `Safety-Flex-Obergrenze: ${UIUtils.formatPercentValue(effectiveSafetyCap, { fractionDigits: 1, invalid: 'n/a' })}\n`;
+            if (diagnosis.general.safetyCapDeferredByRateLimit === true) {
+                text += `Safety-Policy-Ziel: ${UIUtils.formatPercentValue(diagnosis.general.safetyCapFlexRatePct, { fractionDigits: 1, invalid: 'n/a' })} (wird wegen der bestehenden Änderungsgrenze schrittweise erreicht)\n`;
+            }
+            text += `Safety-Quelle: ${diagnosis.general.safetyCapSource || 'n/a'} (${diagnosis.general.safetyCapAnchorStage || 'n/a'})\n`;
+            text += `Final begrenzende Policy: ${diagnosis.general.finalLimitingPolicy || 'n/a'}\n`;
+        }
+        if (diagnosis.general.severeFlexEmergencyActive === true) {
+            text += `Schwere Flex-Notlage: AKTIV – aktueller tiefer Bärenmarkt UND realer Drawdown des aktiven Gesamtvermögens ${UIUtils.formatPercentRatio(diagnosis.general.realTotalWealthDrawdownRatio, { fractionDigits: 1, invalid: 'n/a' })} > ${UIUtils.formatPercentRatio(diagnosis.general.realTotalWealthDrawdownThresholdRatio, { fractionDigits: 1, invalid: 'n/a' })} UND geschützte Portfolioentnahmequote ${UIUtils.formatPercentRatio(diagnosis.general.protectedPortfolioWithdrawalRate, { fractionDigits: 1, invalid: 'n/a' })} ≥ ${UIUtils.formatPercentRatio(diagnosis.general.protectedPortfolioWithdrawalRateThreshold, { fractionDigits: 1, invalid: 'n/a' })}\n`;
+            text += `Folge: Flex einschließlich Mindest-Flex 0%; geplanter Floor bleibt geschützt.\n`;
+            text += `Alarm-Diagnose separat: ${diagnosis.general.alarmActiveDiagnostic ? 'aktiv' : 'inaktiv/unterdrückt'}; historische Entnahmebelastung ist Diagnose, die geschützte aktuelle Quote ist Gate.\n`;
+        }
+        const formatCoverage = (value) => UIUtils.formatPercentValue(value, { fractionDigits: 0, invalid: 'n/a' });
+        const coverageLine = `Liquiditätsdeckung: ${formatCoverage(diagnosis.general.deckungVorher)} → ${formatCoverage(diagnosis.general.deckungNachher)} (Ziel: 100%)`;
+        text += `${coverageLine}\n`;
+        const runwayMonate = diagnosis.general.runwayMonate;
+        const runwayTarget = diagnosis.general.runwayTargetMonate;
+        const runwaySourceInfo = UIUtils.describeRunwayTargetSource(diagnosis.general.runwayTargetQuelle);
+        const runwaySmoothingInfo = UIUtils.describeRunwayTargetSmoothing(diagnosis.general.runwayTargetSmoothing);
+        const formatRunwayValue = (value, fractionDigits = 1, invalid = '∞') => UIUtils.formatMonths(value, { fractionDigits, invalid, suffix: 'Monate' });
+        const runwayLine = `Runway: ${formatRunwayValue(runwayMonate)} (Ziel: ${formatRunwayValue(runwayTarget, 0, 'n/a')}) -> Status: ${(diagnosis.general.runwayStatus || 'unbekannt').toUpperCase()} | Quelle: ${runwaySourceInfo.label}`;
+        text += `${runwayLine}\nQuelle-Details: ${runwaySourceInfo.description}\n\n`;
+        if (diagnosis.general.runwayTargetSmoothing) {
+            text += `Runway-Ziel-Glättung: ${runwaySmoothingInfo.label}\n`;
+            text += `${runwaySmoothingInfo.explanation}\n\n`;
+        }
+        text += `--- Entscheidungsbaum (Warum?) ---\n`;
+        diagnosis.decisionTree.forEach(item => {
+            if (dom.diagnosis.filterToggle.checked && item.status === 'inactive') return;
+            text += `[${item.status === 'active' ? 'aktiv' : 'inaktiv'}] ${item.step}\n   ↳ ${item.impact}\n`;
+        });
+        text += `\n--- Guardrails ---\n`;
+        diagnosis.guardrails.forEach(g => {
+            if (dom.diagnosis.filterToggle.checked && g.status === 'ok') return;
+            text += `${g.name}: ${g.value} (Schwelle: ${g.threshold}) -> Status: ${g.status.toUpperCase()}\n`;
+        });
+
+        const txnDiag = diagnosis.transactionDiagnostics;
+        const actionSummary = UIRenderer.getActionSummary();
+        if (txnDiag || actionSummary) text += `\nGeplante Aktion: ${describeBalanceActionSummary(actionSummary, UIUtils.formatCurrency)}\n`;
+        const describeReason = (reason) => {
+            const map = {
+                none: 'Keine Blockade',
+                min_trade: 'Unter Mindestgröße',
+                liquidity_sufficient: 'Liquidität ausreichend',
+                guardrail_block: 'Leitplanke verhindert Verkauf',
+                cap_active: 'Obergrenze begrenzt Handel',
+                gold_floor: 'Gold-Mindestreserve aktiv'
+            };
+            if (!reason) return map.none;
+            return map[reason.toLowerCase()] || reason.replace(/[_-]/g, ' ');
+        };
+        const determineReasonStatus = (reason, wasTriggered) => {
+            const statusMap = {
+                none: 'OK',
+                min_trade: 'WARN',
+                liquidity_sufficient: 'INFO',
+                guardrail_block: 'DANGER',
+                cap_active: 'WARN',
+                gold_floor: 'DANGER'
+            };
+            return statusMap[reason?.toLowerCase()] || (wasTriggered ? 'OK' : 'INFO');
+        };
+        const formatThresholdValue = (key, value) => {
+            if (typeof value === 'number' && isFinite(value)) {
+                if (/pct|percent|quote|rate/i.test(key)) {
+                    return UIUtils.formatPercentValue(value, { fractionDigits: 1, invalid: 'n/a' });
+                }
+                if (/amount|wert|value|eur|euro|betrag|volume|blocked/i.test(key)) {
+                    return UIUtils.formatCurrency(value);
+                }
+                if (/month|monate|runway/i.test(key)) {
+                    return UIUtils.formatMonths(value, { fractionDigits: 0, invalid: 'n/a', suffix: 'Monate' });
+                }
+                return value.toFixed(2);
+            }
+            return (value ?? 'n/a').toString();
+        };
+        const appendThresholdBlock = (label, thresholds) => {
+            if (!thresholds || typeof thresholds !== 'object' || Object.keys(thresholds).length === 0) {
+                text += `${label}: keine Daten\n`;
+                return;
+            }
+            text += `${label}:\n`;
+            Object.entries(thresholds).forEach(([key, value]) => {
+                text += `  - ${formatThresholdLabel(key)}: ${formatThresholdValue(key, value)}\n`;
+            });
+        };
+
+        if (txnDiag) {
+            text += `\n--- Transaktionsdiagnostik ---\n`;
+            text += `Status: ${determineReasonStatus(txnDiag.blockReason, txnDiag.wasTriggered)} (${describeReason(txnDiag.blockReason)})\n`;
+            text += `Ausgelöst: ${txnDiag.wasTriggered ? 'Ja' : 'Nein'}\n`;
+            text += `Blockierter Betrag: ${UIUtils.formatCurrency(txnDiag.blockedAmount || 0)}\n`;
+            if (txnDiag.blockReason && txnDiag.blockReason !== 'none') {
+                text += `Grundcode: ${txnDiag.blockReason}\n`;
+            }
+            if (txnDiag.potentialTrade && typeof txnDiag.potentialTrade === 'object' && Object.keys(txnDiag.potentialTrade).length > 0) {
+                const trade = txnDiag.potentialTrade;
+                const tradeParts = [];
+                if (trade.direction || trade.kind) {
+                    tradeParts.push(trade.direction || trade.kind);
+                }
+                const tradeValue = [trade.netAmount, trade.netto, trade.amount].find(v => typeof v === 'number' && isFinite(v));
+                if (typeof tradeValue === 'number') {
+                    tradeParts.push(UIUtils.formatCurrency(tradeValue));
+                }
+                if (tradeParts.length > 0) {
+                    text += `Hypothetischer Handel: ${tradeParts.join(' / ')}\n`;
+                }
+            }
+            appendThresholdBlock('Aktien-Grenzen', txnDiag.equityThresholds);
+            appendThresholdBlock('Gold-Grenzen', txnDiag.goldThresholds);
+            text += `Vollständige Transaktionsdaten:\n`;
+            transactionDetailRows(txnDiag).forEach(row => { text += `  - ${row.label}: ${row.value}\n`; });
+        }
+
+        text += `\n--- Schlüsselparameter ---\n`;
+        text += `Peak (real): ${UIUtils.formatCurrency(diagnosis.keyParams.peakRealVermoegen)}\n`;
+        text += `Aktuell (real): ${UIUtils.formatCurrency(diagnosis.keyParams.currentRealVermoegen)}\n`;
+        text += `Kumulierte Inflation: ${UIUtils.formatPercentRatio(diagnosis.keyParams.cumulativeInflationFactor - 1, { fractionDigits: 1, prefixPlus: true, invalid: 'n/a' })}\n`;
+        if (typeof diagnosis.keyParams.aktuelleFlexRate === 'number') {
+            text += `Effektive Flex-Rate: ${UIUtils.formatPercentValue(diagnosis.keyParams.aktuelleFlexRate, { fractionDigits: 1, invalid: 'n/a' })}\n`;
+        }
+        if (typeof diagnosis.keyParams.minFlexRatePct === 'number') {
+            text += `Flex-Min-Rate: ${UIUtils.formatPercentValue(diagnosis.keyParams.minFlexRatePct, { fractionDigits: 1, invalid: 'n/a' })}\n`;
+        }
+        if (typeof diagnosis.keyParams.minimumFlexAnnual === 'number') {
+            const statusLabels = {
+                inactive_zero: 'Nicht gesetzt',
+                not_needed: 'Nicht benötigt',
+                applied: 'Angewandt',
+                applied_limited_by_final_smoothing: 'Geglättet angewandt',
+                limited_by_final_quantization: 'Durch Endrundung begrenzt',
+                limited_by_available_flex: 'Durch verfügbaren Flex begrenzt',
+                blocked_emergency: 'Blockiert',
+                limited_by_flex_budget: 'Durch Flex-Budget begrenzt',
+                overridden_by_severe_flex_emergency: 'In schwerer Flex-Notlage bewusst überstimmt'
+            };
+            const blockReasonLabels = {
+                alarm_active: 'Alarmmodus aktiv',
+                no_open_flex_need: 'kein offener Flex-Bedarf',
+                floor_minimum_flex_not_covered: 'Floor-/Mindest-Flex-Deckung unzureichend',
+                minimum_runway_not_restorable: 'Mindest-Runway nicht wiederherstellbar'
+            };
+            const minFlexStatus = diagnosis.keyParams.minimumFlexStatus || 'inactive_zero';
+            const minFlexBlockReason = diagnosis.keyParams.minimumFlexBlockReason || null;
+            text += `Mindest-Flex p.a.: ${UIUtils.formatCurrency(diagnosis.keyParams.minimumFlexAnnual)} (${statusLabels[minFlexStatus] || minFlexStatus}`;
+            if (minFlexBlockReason) {
+                text += `: ${blockReasonLabels[minFlexBlockReason] || minFlexBlockReason}`;
+            }
+            text += `)\n`;
+        }
+        if (typeof diagnosis.keyParams.kuerzungProzent === 'number') {
+            text += `Kürzung ggü. Flex-Bedarf: ${UIUtils.formatPercentValue(diagnosis.keyParams.kuerzungProzent, { fractionDigits: 1, invalid: 'n/a' })}\n`;
+        }
+        if (typeof diagnosis.keyParams.jahresentnahme === 'number') {
+            text += `Jahresentnahme (brutto): ${UIUtils.formatCurrency(diagnosis.keyParams.jahresentnahme)}\n`;
+        }
+        const healthBucket = diagnosis.keyParams?.healthBucket;
+        if (healthBucket?.enabled) {
+            text += `Pflegebucket: ${UIUtils.formatCurrency(healthBucket.lockedAmount || 0)} gesperrt`;
+            text += `, operative Liquidität ${UIUtils.formatCurrency(healthBucket.operativeLiquidity || 0)}`;
+            text += `, automatische Freigabe: Nein`;
+            if (typeof healthBucket.targetCoveragePct === 'number' && isFinite(healthBucket.targetCoveragePct)) {
+                text += `, Zieldeckung ${UIUtils.formatPercentValue(healthBucket.targetCoveragePct, { fractionDigits: 0, invalid: 'n/a' })}`;
+            }
+            if (healthBucket.targetGap > 0) {
+                text += `, Ziellücke ${UIUtils.formatCurrency(healthBucket.targetGap)}`;
+            }
+            text += `\n`;
+            if (healthBucket.releaseReason) {
+                text += `Pflegebucket-Policy: ${healthBucket.releaseReason}\n`;
+            }
+        }
+        const vpw = diagnosis.keyParams?.vpw;
+        if (vpw && typeof vpw === 'object') {
+            const longevityModeLabels = {
+                none: 'Aus',
+                quantile_shift: 'Quantil-Shift',
+                relative_horizon_buffer: 'Relativer Horizon-Puffer',
+                buffer_years: 'Fixer Jahrespuffer'
+            };
+            const longevityClampLabels = {
+                none: 'Kein Clamp',
+                quantile_cap: 'Quantil-Cap erreicht',
+                horizon_max: 'Max-Horizon erreicht',
+                horizon_min: 'Min-Horizon erreicht'
+            };
+            text += `\n--- Dynamic Flex (VPW) ---\n`;
+            const methodLabel = vpw.horizonMethod === 'mean'
+                ? 'Mean'
+                : (vpw.horizonMethod === 'survival_quantile' ? 'Survival-Quantil' : (vpw.horizonMethod || 'n/a'));
+            const statusLabelMap = {
+                active: 'Aktiv',
+                disabled: 'Inaktiv',
+                contract_ready: 'Bereit (noch nicht aktiv)',
+                safety_static_flex: 'Statisch (Safety)'
+            };
+            text += `Status: ${statusLabelMap[vpw.status] || (vpw.enabled ? 'Aktiv' : 'Inaktiv')}\n`;
+            text += `Methode: ${methodLabel}\n`;
+            if (typeof vpw.horizonYears === 'number' && isFinite(vpw.horizonYears)) {
+                text += `Horizont: ${Math.round(vpw.horizonYears)} Jahre\n`;
+            }
+            if (typeof vpw.horizonYearsRaw === 'number' && isFinite(vpw.horizonYearsRaw)) {
+                text += `Raw-Horizont: ${Math.round(vpw.horizonYearsRaw)} Jahre\n`;
+            }
+            if (typeof vpw.survivalQuantile === 'number' && isFinite(vpw.survivalQuantile)) {
+                text += `Survival-Quantil: ${vpw.survivalQuantile.toFixed(2)}\n`;
+            }
+            const longevityMode = vpw.longevityMode || 'none';
+            if (longevityMode !== 'none') {
+                text += `Langlebigkeits-Puffer: ${longevityModeLabels[longevityMode] || longevityMode}\n`;
+                if (typeof vpw.longevityAppliedShift === 'number' && isFinite(vpw.longevityAppliedShift)) {
+                    text += `Angewandter Quantil-Shift: ${vpw.longevityAppliedShift.toFixed(2)}\n`;
+                }
+                if (typeof vpw.longevityRelativePct === 'number' && isFinite(vpw.longevityRelativePct) && vpw.longevityRelativePct > 0) {
+                    text += `Relativer Horizon-Puffer: ${UIUtils.formatPercentRatio(vpw.longevityRelativePct, { fractionDigits: 1, prefixPlus: true, invalid: 'n/a' })}\n`;
+                }
+                if (typeof vpw.longevityAppliedBufferYears === 'number' && isFinite(vpw.longevityAppliedBufferYears)) {
+                    text += `Angewandter Jahrespuffer: ${vpw.longevityAppliedBufferYears.toFixed(1)} Jahre\n`;
+                }
+                if (vpw.longevityClampReason) {
+                    text += `Longevity-Clamp: ${longevityClampLabels[vpw.longevityClampReason] || vpw.longevityClampReason}\n`;
+                }
+                if (typeof vpw.survivalQuantileRaw === 'number' && isFinite(vpw.survivalQuantileRaw)
+                    && typeof vpw.survivalQuantileAdjusted === 'number' && isFinite(vpw.survivalQuantileAdjusted)) {
+                    text += `Quantil raw/effektiv: ${vpw.survivalQuantileRaw.toFixed(2)} -> ${vpw.survivalQuantileAdjusted.toFixed(2)}\n`;
+                }
+                if (vpw.longevityTransitionSmoothingApplied) {
+                    const floor = Number.isFinite(vpw.longevityTransitionSmoothingFloor)
+                        ? `${Math.round(vpw.longevityTransitionSmoothingFloor)} Jahre`
+                        : 'aktiv';
+                    text += `Joint-to-Single-Glättung: ${floor}\n`;
+                }
+            }
+            if (typeof vpw.vpwRate === 'number' && isFinite(vpw.vpwRate)) {
+                text += `VPW-Rate: ${UIUtils.formatPercentValue(vpw.vpwRate * 100, { fractionDigits: 1, invalid: 'n/a' })}\n`;
+            }
+            if (typeof vpw.expectedRealReturn === 'number' && isFinite(vpw.expectedRealReturn)) {
+                text += `ER(real): ${UIUtils.formatPercentValue(vpw.expectedRealReturn * 100, { fractionDigits: 1, invalid: 'n/a' })}\n`;
+            }
+            if (typeof vpw.expectedReturnCape === 'number' && isFinite(vpw.expectedReturnCape)) {
+                text += `ER(CAPE): ${UIUtils.formatPercentValue(vpw.expectedReturnCape * 100, { fractionDigits: 1, invalid: 'n/a' })}\n`;
+            }
+            if (typeof vpw.capeRatioUsed === 'number' && isFinite(vpw.capeRatioUsed)) {
+                text += `CAPE: ${vpw.capeRatioUsed.toFixed(1)}\n`;
+            }
+            text += `Go-Go: ${vpw.goGoActive ? `Aktiv (x${Number.isFinite(vpw.goGoMultiplier) ? vpw.goGoMultiplier.toFixed(2) : '1.00'})` : 'Inaktiv'}\n`;
+            if (typeof vpw.safetyStage === 'number' && isFinite(vpw.safetyStage)) {
+                const stage = Math.max(0, Math.round(vpw.safetyStage));
+                const stageText = stage === 0 ? 'Normal' : (stage === 1 ? 'Stufe 1 (Go-Go aus)' : 'Stufe 2 (Statischer Flex)');
+                text += `VPW-Sicherheitsmodus: ${stageText}\n`;
+            }
+            if (typeof vpw.gesamtwert === 'number' && isFinite(vpw.gesamtwert)) {
+                text += `VPW-Basisvermögen: ${UIUtils.formatCurrency(vpw.gesamtwert)}\n`;
+            }
+            if (typeof vpw.vpwTotal === 'number' && isFinite(vpw.vpwTotal)) {
+                text += `VPW-Rahmen: ${UIUtils.formatCurrency(vpw.vpwTotal)}\n`;
+            }
+            if (typeof vpw.staticFlexBaseline === 'number' && isFinite(vpw.staticFlexBaseline)) {
+                text += `Statischer Flex-Bedarf: ${UIUtils.formatCurrency(vpw.staticFlexBaseline)}\n`;
+            }
+            if (typeof vpw.dynamicFlex === 'number' && isFinite(vpw.dynamicFlex)) {
+                text += `Flex freigegeben: ${UIUtils.formatCurrency(vpw.dynamicFlex)}\n`;
+            }
+            if (typeof diagnosis.keyParams.jahresentnahme === 'number' && isFinite(diagnosis.keyParams.jahresentnahme)) {
+                text += `Empfohlene Entnahme: ${UIUtils.formatCurrency(diagnosis.keyParams.jahresentnahme)}\n`;
+            }
+            const warnings = [];
+            if (typeof vpw.expectedRealReturn === 'number' && isFinite(vpw.expectedRealReturn) && vpw.expectedRealReturn < 0) {
+                warnings.push('ER(real) negativ');
+            }
+            if (typeof vpw.horizonYears === 'number' && isFinite(vpw.horizonYears) && vpw.horizonYears <= 12) {
+                warnings.push('sehr kurzer VPW-Horizont (<=12J)');
+            }
+            if (typeof vpw.vpwRate === 'number' && isFinite(vpw.vpwRate) && (vpw.vpwRate * 100) >= 8) {
+                warnings.push('hohe VPW-Rate (>=8%)');
+            }
+            if (vpw.longevityMode === 'quantile_shift' && typeof vpw.longevityAppliedShift === 'number' && isFinite(vpw.longevityAppliedShift) && vpw.longevityAppliedShift <= 0) {
+                warnings.push('Longevity-Quantil-Shift ohne Effekt');
+            }
+            if (warnings.length > 0) {
+                text += `Warnsignale: ${warnings.join('; ')}\n`;
+            }
+        }
+        text += `\n===== Ende der Diagnose =====`;
+        return displayDiagnosisText(text);
+    };
+
+    return {
+        handleCopyDiagnosis() {
+            const textToCopy = generateDiagnosisText(appState.diagnosisData);
+            navigator.clipboard.writeText(textToCopy).then(() => UIRenderer.toast('Diagnose kopiert!'));
+        },
+        generateDiagnosisText
+    };
+}

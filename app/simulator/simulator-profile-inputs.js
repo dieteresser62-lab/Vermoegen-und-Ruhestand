@@ -1,0 +1,782 @@
+import { assertPlanValues, projectPlanToSimulator, SIMULATOR_LEGACY_PLAN_FIELDS, readSimulatorHouseholdPlan } from '../profile/household-plan.js';
+import { projectPerson, personReferenceYear } from '../profile/profile-person-data.js';
+// @ts-check
+
+/**
+ * Module: Simulator Profile Inputs
+ * Purpose: Build Simulator inputs from stored profile data (inkl. Balance-Inputs & Tranchen).
+ *          Applies profile overrides and normalizes Pflege- und Gold-Konfiguration.
+ * Usage: Used by Simulator when profiles are active or aggregated.
+ */
+
+import { SUPPORTED_PFLEGE_GRADES } from './simulator-data.js';
+import { STRATEGY_OPTIONS } from '../../types/strategy-options.js';
+import {
+    PROFILE_TRANCHES_KEY,
+    PROFILE_VALUE_KEYS,
+    parseProfileHealthBucketFromData,
+    parseProfileOverridesFromData,
+    parseStoredBalanceInputsFromData
+} from '../profile/profile-state.js';
+import { LONGEVITY_DEFAULTS, normalizeLongevityMode } from './dynamic-flex-longevity-contract.js';
+import { classifyTranche } from '../../types/tranche-contract.js';
+import { normalizeCareCostDriftPercent } from './simulator-input-care.js';
+import { calculateProfileGoldStrategy } from '../profile/profile-asset-values.js';
+import { resolveLiquidityRunwayYears } from '../../types/liquidity-runway-contract.js';
+
+const DYNAMIC_FLEX_DEFAULTS = {
+    HORIZON_METHOD: 'survival_quantile',
+    HORIZON_YEARS: 30,
+    SURVIVAL_QUANTILE: 0.85,
+    GO_GO_MULTIPLIER: 1.0
+};
+const DYNAMIC_FLEX_ALLOWED_HORIZON_METHODS = new Set(['mean', 'survival_quantile']);
+const LEGACY_STANDARD_MODES = new Set(['dynamic_flex', 'vpw', 'guardrails', 'fixed_real', 'none']);
+
+function readValue(data, key) {
+    if (!data || typeof data !== 'object') return null;
+    return Object.prototype.hasOwnProperty.call(data, key) ? data[key] : null;
+}
+
+function readString(data, key, fallback = '') {
+    const raw = readValue(data, key);
+    if (raw === null || raw === undefined || raw === '') return fallback;
+    return String(raw);
+}
+
+function readNumber(data, key, fallback = 0) {
+    const raw = readValue(data, key);
+    if (raw === null || raw === undefined || raw === '') return fallback;
+    const n = Number(String(raw).replace(',', '.'));
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function readInt(data, key, fallback = 0) {
+    const raw = readValue(data, key);
+    if (raw === null || raw === undefined || raw === '') return fallback;
+    const n = parseInt(String(raw), 10);
+    return Number.isFinite(n) ? n : fallback;
+}
+
+function readBool(data, key, fallback = false) {
+    const raw = readValue(data, key);
+    if (raw === null || raw === undefined || raw === '') return fallback;
+    if (raw === true || raw === false) return raw;
+    const str = String(raw).toLowerCase();
+    return str === 'true' || str === '1' || str === 'yes' || str === 'on';
+}
+
+function readPositiveBalanceNeed(balanceInputs, key) {
+    if (!balanceInputs || typeof balanceInputs !== 'object'
+        || !Object.prototype.hasOwnProperty.call(balanceInputs, key)) return null;
+    const raw = balanceInputs[key];
+    if (raw === null || raw === undefined || raw === '') return null;
+    const value = Number(String(raw).replace(',', '.'));
+    return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function simKey(id) {
+    return `sim_${id}`;
+}
+
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function normalizeDynamicFlexHorizonMethod(method) {
+    return DYNAMIC_FLEX_ALLOWED_HORIZON_METHODS.has(method)
+        ? method
+        : DYNAMIC_FLEX_DEFAULTS.HORIZON_METHOD;
+}
+
+function normalizeDecumulationMode(modeRaw) {
+    const mode = String(modeRaw || '').trim().toLowerCase();
+    if (mode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE) return STRATEGY_OPTIONS.THREE_BUCKET_JILGE;
+    if (mode === STRATEGY_OPTIONS.STANDARD || LEGACY_STANDARD_MODES.has(mode) || mode === '') {
+        return STRATEGY_OPTIONS.STANDARD;
+    }
+    return STRATEGY_OPTIONS.STANDARD;
+}
+
+function parseWidowOptions(data) {
+    const mode = readString(data, simKey('widowPensionMode'), 'stop');
+    const pctRaw = readNumber(data, simKey('widowPensionPct'), 0);
+    const marriageOffsetYears = Math.max(0, readInt(data, simKey('widowMarriageOffsetYears'), 0));
+    const minMarriageYears = Math.max(0, readInt(data, simKey('widowMinMarriageYears'), 0));
+    return {
+        mode,
+        percent: Math.max(0, Math.min(100, pctRaw)) / 100,
+        marriageOffsetYears,
+        minMarriageYears
+    };
+}
+
+function parsePflegeGradeConfigs(data) {
+    const configs = {};
+    SUPPORTED_PFLEGE_GRADES.forEach(grade => {
+        // Pflege-Stufen: Zusatzkosten + Flex-Cut + Mortalitätsfaktor.
+        const zusatz = readNumber(data, simKey(`pflegeStufe${grade}Zusatz`), 0);
+        const flexPct = readNumber(data, simKey(`pflegeStufe${grade}FlexCut`), 100);
+        const flexCut = Math.min(1, Math.max(0, flexPct / 100));
+        const mortalityFactor = Math.max(0, readNumber(data, simKey(`pflegeStufe${grade}Mortality`), 0));
+        configs[grade] = { zusatz, flexCut, mortalityFactor };
+    });
+    return configs;
+}
+
+function parseDetailledTranches(data) {
+    if (!data || typeof data !== 'object'
+        || !Object.prototype.hasOwnProperty.call(data, PROFILE_TRANCHES_KEY)) {
+        return { state: 'absent', tranches: null };
+    }
+
+    const raw = data[PROFILE_TRANCHES_KEY];
+    if (raw === null || raw === undefined || raw === '') {
+        return { state: 'absent', tranches: null };
+    }
+
+    try {
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (!Array.isArray(parsed)) return { state: 'corrupt', tranches: null };
+        return {
+            state: parsed.length > 0 ? 'valid' : 'empty',
+            tranches: parsed
+        };
+    } catch {
+        return { state: 'corrupt', tranches: null };
+    }
+}
+
+function sumTrancheTotals(tranches) {
+    const totals = { equity: 0, equityCost: 0, gold: 0, moneyMarket: 0 };
+    if (!Array.isArray(tranches)) return totals;
+    tranches.forEach((tranche, index) => {
+        const marketValue = Number(tranche.marketValue) || 0;
+        const costBasis = Number(tranche.costBasis) || 0;
+        const category = classifyTranche(tranche, { index });
+        if (category === 'gold') {
+            totals.gold += marketValue;
+            return;
+        }
+        if (category === 'money_market') {
+            totals.moneyMarket += marketValue;
+            return;
+        }
+        totals.equity += marketValue;
+        totals.equityCost += costBasis;
+    });
+    return totals;
+}
+
+export function buildSimulatorInputsFromProfileData(profileData, { referenceYear, planValues } = {}) {
+    if (planValues === undefined) {
+        const plan = readSimulatorHouseholdPlan();
+        planValues = plan.status === 'valid' ? plan.entry.values : null;
+    }
+    if (planValues) {
+        assertPlanValues(planValues);
+        const excluded = new Set([...SIMULATOR_LEGACY_PLAN_FIELDS.map(key => `sim_${key}`), 'decumulation']);
+        profileData = Object.fromEntries(Object.keys(profileData).filter(key => !excluded.has(key)).map(key => [key, profileData[key]]));
+    }
+    // Balance-App Inputs (falls vorhanden) liefern Defaults für fehlende Simulator-Werte.
+    const balanceInputs = parseStoredBalanceInputsFromData(profileData);
+    const pflegeGradeConfigs = parsePflegeGradeConfigs(profileData);
+    const trancheInput = parseDetailledTranches(profileData);
+    const detailedTranches = trancheInput.tranches;
+    const trancheTotals = sumTrancheTotals(detailedTranches);
+    const grade1Config = pflegeGradeConfigs[1] || { zusatz: 0, flexCut: 1 };
+    const overrides = parseProfileOverridesFromData(profileData);
+    const healthBucket = parseProfileHealthBucketFromData(profileData);
+    const goldOverrides = {
+        goldAktiv: overrides.profileGoldAktiv,
+        goldZielProzent: overrides.profileGoldZiel,
+        goldFloorProzent: overrides.profileGoldFloor,
+        goldSteuerfrei: overrides.profileGoldSteuerfrei,
+        rebalancingBand: overrides.profileGoldRebalBand
+    };
+    const hasProfileTagesgeld = Object.prototype.hasOwnProperty.call(profileData, PROFILE_VALUE_KEYS.tagesgeld);
+    const profileTagesgeld = hasProfileTagesgeld ? readNumber(profileData, PROFILE_VALUE_KEYS.tagesgeld, 0) : 0;
+    const hasProfileRenteAktiv = Object.prototype.hasOwnProperty.call(profileData, PROFILE_VALUE_KEYS.renteAktiv);
+    const profileRenteAktiv = hasProfileRenteAktiv ? readBool(profileData, PROFILE_VALUE_KEYS.renteAktiv, false) : false;
+    const profileRenteMonatlich = readNumber(profileData, PROFILE_VALUE_KEYS.renteMonatlich, 0);
+
+    const person = projectPerson(profileData, referenceYear ?? personReferenceYear(null));
+    const p1StartAlter = person.startAlter;
+    const p1Geschlecht = person.geschlecht;
+    const p1KirchensteuerPct = person.kirchensteuerSatz * 100;
+    const rentAdjMode = person.rentAdjMode;
+    const rentAdjPct = person.rentAdjPct;
+    const dynamicFlex = readBool(profileData, simKey('dynamicFlex'), false);
+    const horizonMethod = normalizeDynamicFlexHorizonMethod(
+        readString(profileData, simKey('horizonMethod'), DYNAMIC_FLEX_DEFAULTS.HORIZON_METHOD)
+    );
+    const horizonYears = clamp(
+        readNumber(profileData, simKey('horizonYears'), DYNAMIC_FLEX_DEFAULTS.HORIZON_YEARS),
+        1,
+        60
+    );
+    const survivalQuantile = clamp(
+        readNumber(profileData, simKey('survivalQuantile'), DYNAMIC_FLEX_DEFAULTS.SURVIVAL_QUANTILE),
+        0.5,
+        0.99
+    );
+    const goGoActive = readBool(profileData, simKey('goGoActive'), false);
+    const goGoMultiplier = clamp(
+        readNumber(profileData, simKey('goGoMultiplier'), DYNAMIC_FLEX_DEFAULTS.GO_GO_MULTIPLIER),
+        1.0,
+        1.5
+    );
+    const longevityMode = normalizeLongevityMode(readString(profileData, simKey('longevityMode'), LONGEVITY_DEFAULTS.mode));
+    const longevityQuantileShift = readNumber(profileData, simKey('longevityQuantileShift'), LONGEVITY_DEFAULTS.quantileShift);
+    const longevityRelativePct = readNumber(profileData, simKey('longevityRelativePct'), LONGEVITY_DEFAULTS.relativePct);
+    const longevityBufferYears = readNumber(profileData, simKey('longevityBufferYears'), LONGEVITY_DEFAULTS.bufferYears);
+    const decumulationRaw = readValue(profileData, 'decumulation');
+    const decumulationFromProfile = (decumulationRaw && typeof decumulationRaw === 'object') ? decumulationRaw : null;
+    const decumulationMode = normalizeDecumulationMode(
+        readString(profileData, simKey('entnahmeStrategie'),
+            decumulationFromProfile?.mode || STRATEGY_OPTIONS.STANDARD)
+    );
+    const bondTargetFactor = readNumber(
+        profileData,
+        simKey('bondTargetFactor'),
+        Number(decumulationFromProfile?.bondTargetFactor)
+    );
+    const drawdownTrigger = readNumber(
+        profileData,
+        simKey('drawdownTrigger'),
+        Number(decumulationFromProfile?.drawdownTrigger)
+    );
+    const bondRefillThreshold = (() => {
+        const simValue = readValue(profileData, simKey('bondRefillThreshold'));
+        if (simValue === null || simValue === undefined || simValue === '') {
+            const profileValue = decumulationFromProfile?.bondRefillThreshold;
+            if (profileValue === null || profileValue === undefined || profileValue === '') return null;
+            const n = Number(String(profileValue).replace(',', '.'));
+            return Number.isFinite(n) ? Math.max(0, n) : null;
+        }
+        const n = Number(String(simValue).replace(',', '.'));
+        return Number.isFinite(n) ? Math.max(0, n) : null;
+    })();
+
+    const goldAktivFromProfile = goldOverrides.goldAktiv;
+    const goldAktiv = (typeof goldAktivFromProfile === 'boolean')
+        ? goldAktivFromProfile
+        : readBool(profileData, simKey('goldAllokationAktiv'), true);
+    const goldZielProzent = Number.isFinite(goldOverrides.goldZielProzent)
+        ? goldOverrides.goldZielProzent
+        : readNumber(profileData, simKey('goldAllokationProzent'), 0);
+    const goldFloorProzent = Number.isFinite(goldOverrides.goldFloorProzent)
+        ? goldOverrides.goldFloorProzent
+        : readNumber(profileData, simKey('goldFloorProzent'), 0);
+    const goldSteuerfrei = (typeof goldOverrides.goldSteuerfrei === 'boolean')
+        ? goldOverrides.goldSteuerfrei
+        : readBool(profileData, simKey('goldSteuerfrei'), false);
+    const rebalancingBand = Number.isFinite(goldOverrides.rebalancingBand)
+        ? goldOverrides.rebalancingBand
+        : readNumber(profileData, simKey('rebalancingBand'), 25);
+
+    const simTagesgeld = readNumber(profileData, simKey('tagesgeld'), 0);
+    // Profil-Tagesgeld (Balance) überschreibt Simulator-Tagesgeld, falls gesetzt.
+    const tagesgeld = hasProfileTagesgeld ? profileTagesgeld : simTagesgeld;
+    const baseInputs = {
+        startVermoegen: readNumber(profileData, simKey('simStartVermoegen'), 0),
+        depotwertAlt: readNumber(profileData, simKey('depotwertAlt'), 0),
+        tagesgeld,
+        geldmarktEtf: readNumber(profileData, simKey('geldmarktEtf'), 0),
+        einstandAlt: readNumber(profileData, simKey('einstandAlt'), 0),
+        zielLiquiditaet: tagesgeld + readNumber(profileData, simKey('geldmarktEtf'), 0),
+        startFloorBedarf: readNumber(profileData, simKey('startFloorBedarf'), 0),
+        startFlexBedarf: readNumber(profileData, simKey('startFlexBedarf'), 0),
+        minimumFlexAnnual: readNumber(profileData, simKey('minimumFlexAnnual'), 0),
+        flexBudgetAnnual: readNumber(profileData, simKey('flexBudgetAnnual'), 0),
+        flexBudgetYears: readNumber(profileData, simKey('flexBudgetYears'), 0),
+        flexBudgetRecharge: readNumber(profileData, simKey('flexBudgetRecharge'), 0),
+        marketCapeRatio: readNumber(profileData, simKey('marketCapeRatio'), 0),
+        capeRatio: readNumber(profileData, simKey('marketCapeRatio'), 0),
+        dynamicFlex,
+        horizonMethod,
+        horizonYears,
+        survivalQuantile,
+        goGoActive,
+        goGoMultiplier,
+        longevityMode,
+        longevityQuantileShift,
+        longevityRelativePct,
+        longevityBufferYears,
+        risikoprofil: 'sicherheits-dynamisch',
+        goldAktiv,
+        goldZielProzent: goldAktiv ? goldZielProzent : 0,
+        goldFloorProzent: goldAktiv ? goldFloorProzent : 0,
+        rebalancingBand: goldAktiv ? rebalancingBand : 25,
+        goldSteuerfrei: goldAktiv && goldSteuerfrei,
+        startAlter: p1StartAlter,
+        geschlecht: p1Geschlecht,
+        startSPB: person.startSPB,
+        kirchensteuerSatz: p1KirchensteuerPct / 100,
+        renteMonatlich: person.renteMonatlich,
+        renteStartOffsetJahre: person.renteStartOffsetJahre,
+        renteStartMonate: person.renteStartMonate, renteKalenderbeginn: person.renteKalenderbeginn,
+        rentAdjMode,
+        rentAdjPct,
+        renteIndexierungsart: person.renteIndexierungsart,
+        renteFesterSatz: person.renteFesterSatz,
+        pflegefallLogikAktivieren: readBool(profileData, simKey('pflegefallLogikAktivieren'), false),
+        pflegeModellTyp: readString(profileData, simKey('pflegeModellTyp'), 'kosten'),
+        pflegeGradeConfigs,
+        pflegeStufe1Zusatz: grade1Config.zusatz,
+        pflegeStufe1FlexCut: grade1Config.flexCut,
+        pflegeMaxFloor: readNumber(profileData, simKey('pflegeMaxFloor'), 0),
+        pflegeRampUp: readInt(profileData, simKey('pflegeRampUp'), 5),
+        pflegeMinDauer: readInt(profileData, simKey('pflegeMinDauer'), 5),
+        pflegeMaxDauer: readInt(profileData, simKey('pflegeMaxDauer'), 10),
+        pflegeKostenDrift: normalizeCareCostDriftPercent(
+            readNumber(profileData, simKey('pflegeKostenDrift'), 0),
+            0
+        ),
+        pflegeRegionalZuschlag: readNumber(profileData, simKey('pflegeRegionalZuschlag'), 0) / 100,
+        healthBucket,
+        healthBucketEnabled: healthBucket.enabled,
+        healthBucketInitialAmount: healthBucket.initialAmount,
+        healthBucketAssetSource: healthBucket.assetSource,
+        healthBucketTriggerMinGrade: healthBucket.triggerMinGrade,
+        healthBucketTriggerMode: healthBucket.triggerMode,
+        healthBucketCoverageMode: healthBucket.coverageMode,
+        healthBucketReturnMode: healthBucket.returnMode,
+        healthBucketTargetMode: healthBucket.targetMode,
+        decumulation: {
+            mode: decumulationMode,
+            bondTargetFactor: Number.isFinite(bondTargetFactor) ? Math.max(0, bondTargetFactor) : null,
+            drawdownTrigger: Number.isFinite(drawdownTrigger) ? drawdownTrigger : null,
+            bondRefillThreshold
+        },
+        stressPreset: readString(profileData, simKey('stressPreset'), 'NONE'),
+        referenceYear: person.referenceYear,
+        steuerquotePct: person.steuerquotePct,
+        partner: { aktiv: false },
+        widowOptions: parseWidowOptions(profileData)
+    };
+
+
+    const hasDetailedInput = Array.isArray(detailedTranches);
+    if (hasDetailedInput) {
+        const trancheSum = trancheTotals.equity + trancheTotals.gold + trancheTotals.moneyMarket;
+        baseInputs.depotwertAlt = trancheTotals.equity;
+        baseInputs.einstandAlt = trancheTotals.equityCost;
+        baseInputs.geldmarktEtf = trancheTotals.moneyMarket;
+        baseInputs.startVermoegen = trancheSum + (baseInputs.tagesgeld || 0);
+        baseInputs.zielLiquiditaet = (baseInputs.tagesgeld || 0) + trancheTotals.moneyMarket;
+    }
+
+    // Floor/Flex/Mindest-Flex werden pro Profil in Balance gepflegt. Historische
+    // sim_-Werte bleiben nur fuer Profile ohne Balance-Wert als Lesefallback erhalten.
+    const balanceFloor = readPositiveBalanceNeed(balanceInputs, 'floorBedarf');
+    const balanceFlex = readPositiveBalanceNeed(balanceInputs, 'flexBedarf');
+    const balanceMinimumFlex = readPositiveBalanceNeed(balanceInputs, 'minimumFlexAnnual');
+    if (balanceFloor !== null) baseInputs.startFloorBedarf = balanceFloor;
+    if (balanceFlex !== null) baseInputs.startFlexBedarf = balanceFlex;
+    if (balanceMinimumFlex !== null) baseInputs.minimumFlexAnnual = balanceMinimumFlex;
+    if ((!baseInputs.flexBudgetAnnual || baseInputs.flexBudgetAnnual <= 0) && balanceInputs) {
+        baseInputs.flexBudgetAnnual = Number(balanceInputs.flexBudgetAnnual) || baseInputs.flexBudgetAnnual;
+    }
+    if ((!baseInputs.flexBudgetYears || baseInputs.flexBudgetYears <= 0) && balanceInputs) {
+        baseInputs.flexBudgetYears = Number(balanceInputs.flexBudgetYears) || baseInputs.flexBudgetYears;
+    }
+    if ((!baseInputs.flexBudgetRecharge || baseInputs.flexBudgetRecharge <= 0) && balanceInputs) {
+        baseInputs.flexBudgetRecharge = Number(balanceInputs.flexBudgetRecharge) || baseInputs.flexBudgetRecharge;
+    }
+    if ((!baseInputs.marketCapeRatio || baseInputs.marketCapeRatio <= 0) && balanceInputs) {
+        baseInputs.marketCapeRatio = Number(balanceInputs.marketCapeRatio) || baseInputs.marketCapeRatio;
+        baseInputs.capeRatio = baseInputs.marketCapeRatio;
+    }
+
+    const storedRunway = {};
+    const canonicalRunway = readValue(profileData, simKey('liquidityRunwayYears'));
+    const legacyRunwayTarget = readValue(profileData, simKey('runwayTargetMonths'));
+    const legacyRunwayMinimum = readValue(profileData, simKey('runwayMinMonths'));
+    if (canonicalRunway !== null && canonicalRunway !== undefined && canonicalRunway !== '') {
+        storedRunway.liquidityRunwayYears = canonicalRunway;
+    }
+    if (legacyRunwayTarget !== null && legacyRunwayTarget !== undefined && legacyRunwayTarget !== '') {
+        storedRunway.runwayTargetMonths = legacyRunwayTarget;
+    }
+    if (legacyRunwayMinimum !== null && legacyRunwayMinimum !== undefined && legacyRunwayMinimum !== '') {
+        storedRunway.runwayMinMonths = legacyRunwayMinimum;
+    }
+    const strategyInputs = {
+        liquidityRunwayYears: resolveLiquidityRunwayYears(storedRunway).years,
+        maxSkimPctOfEq: readInt(profileData, simKey('maxSkimPctOfEq'), 10),
+        maxBearRefillPctOfEq: readInt(profileData, simKey('maxBearRefillPctOfEq'), 5)
+    };
+
+    // Alte vier Ansparschlüssel werden unverändert aufbewahrt und hier ignoriert.
+    const accumulationPhase = { enabled: false, durationYears: 0, sparrate: 0, sparrateIndexing: 'none' };
+    const transitionYear = 0;
+    const transitionAge = p1StartAlter;
+
+    return {
+        ...baseInputs,
+        ...strategyInputs,
+        accumulationPhase,
+        transitionYear,
+        transitionAge,
+        detailledTranches: detailedTranches,
+        trancheInputState: trancheInput.state,
+        ...(planValues ? projectPlanToSimulator(planValues) : {})
+    };
+}
+
+function sumNumbers(list, selector) {
+    return list.reduce((acc, item) => acc + selector(item), 0);
+}
+
+function moneyToCents(value) {
+    return Math.round(value * 100);
+}
+
+function weightedAverage(list, selector, weightSelector, fallback = 0) {
+    const totalWeight = sumNumbers(list, weightSelector);
+    if (totalWeight <= 0) return fallback;
+    const weighted = list.reduce((acc, item) => acc + selector(item) * weightSelector(item), 0);
+    return weighted / totalWeight;
+}
+
+function maxNumber(list, selector, fallback = 0) {
+    if (!list.length) return fallback;
+    return Math.max(...list.map(selector));
+}
+
+function ensureValueMatch(list, selector) {
+    if (!list.length) return true;
+    const first = selector(list[0]);
+    return list.every(item => selector(item) === first);
+}
+
+function stableStringify(value) {
+    if (!value || typeof value !== 'object') return JSON.stringify(value);
+    const sorted = {};
+    Object.keys(value).sort().forEach(key => {
+        sorted[key] = value[key];
+    });
+    return JSON.stringify(sorted);
+}
+
+function profileAssetTotal(inputs) {
+    if (!inputs) return 0;
+    const start = inputs.startVermoegen || 0;
+    const components = (inputs.depotwertAlt || 0) + (inputs.tagesgeld || 0) + (inputs.geldmarktEtf || 0);
+    return Math.max(start, components);
+}
+
+function resolveTrancheInputState(inputs) {
+    const state = String(inputs?.trancheInputState || '').trim().toLowerCase();
+    if (state === 'corrupt') return 'corrupt';
+    if (state === 'valid' || state === 'empty' || state === 'absent') return state;
+    if (Array.isArray(inputs?.detailledTranches)) {
+        return inputs.detailledTranches.length > 0 ? 'valid' : 'empty';
+    }
+    return 'absent';
+}
+
+function buildProfileAssetRecord(entry) {
+    const inputs = entry?.inputs || {};
+    const trancheState = resolveTrancheInputState(inputs);
+    const hasDetailedRepresentation = trancheState === 'valid' || trancheState === 'empty';
+    const trancheTotals = hasDetailedRepresentation
+        ? sumTrancheTotals(inputs.detailledTranches)
+        : null;
+    const tagesgeld = Math.max(0, Number(inputs.tagesgeld) || 0);
+    const depotwertAlt = hasDetailedRepresentation
+        ? trancheTotals.equity
+        : Math.max(0, Number(inputs.depotwertAlt) || 0);
+    const geldmarktEtf = hasDetailedRepresentation
+        ? trancheTotals.moneyMarket
+        : Math.max(0, Number(inputs.geldmarktEtf) || 0);
+    const einstandAlt = hasDetailedRepresentation
+        ? trancheTotals.equityCost
+        : Math.max(0, Number(inputs.einstandAlt) || 0);
+    const assetTotal = hasDetailedRepresentation
+        ? trancheTotals.equity + trancheTotals.gold + trancheTotals.moneyMarket + tagesgeld
+        : profileAssetTotal(inputs);
+    const aggregateInvestment = trancheState === 'absent'
+        ? Math.max(
+            depotwertAlt + geldmarktEtf,
+            Math.max(0, assetTotal - tagesgeld)
+        )
+        : 0;
+
+    return {
+        entry,
+        inputs,
+        trancheState,
+        hasDetailedRepresentation,
+        assetTotal,
+        depotwertAlt,
+        geldmarktEtf,
+        tagesgeld,
+        einstandAlt,
+        aggregateInvestment,
+        operativeLiquidity: tagesgeld + geldmarktEtf
+    };
+}
+
+export function combineSimulatorProfiles(profileInputs, primaryProfileId, { planValues } = {}) {
+    if (!Array.isArray(profileInputs) || profileInputs.length === 0) {
+        return { combined: null, warnings: ['Keine Profile fuer Simulator gefunden.'] };
+    }
+    if (planValues === undefined) {
+        const plan = readSimulatorHouseholdPlan();
+        planValues = plan.status === 'valid' ? plan.entry.values : null;
+    }
+    if (planValues) {
+        const projected = projectPlanToSimulator(planValues);
+        profileInputs = profileInputs.map(entry => ({ ...entry, inputs: { ...entry.inputs, ...projected } }));
+    }
+
+
+    const inputsList = profileInputs.map(entry => entry.inputs);
+    const warnings = [];
+    const assetRecords = profileInputs.map(buildProfileAssetRecord);
+    const corruptRecord = assetRecords.find(record => record.trancheState === 'corrupt');
+    if (corruptRecord) {
+        return {
+            combined: null,
+            errorCode: 'SIMULATOR_PROFILE_TRANCHES_CORRUPT',
+            warnings: [`Tranchendaten fuer Profil ${corruptRecord.entry?.name || corruptRecord.entry?.profileId || 'unbekannt'} sind fehlerhaft.`]
+        };
+    }
+
+    const hasDetailedRepresentation = assetRecords.some(record => record.hasDetailedRepresentation);
+    const unprovenancedAggregate = hasDetailedRepresentation
+        ? assetRecords.find(record => record.trancheState === 'absent' && record.aggregateInvestment > 0.01)
+        : null;
+    if (unprovenancedAggregate) {
+        const profileName = unprovenancedAggregate.entry?.name
+            || unprovenancedAggregate.entry?.profileId
+            || 'unbekannt';
+        return {
+            combined: null,
+            errorCode: 'SIMULATOR_PROFILE_ASSET_PROVENANCE_MISSING',
+            warnings: [
+                `Profil ${profileName} besitzt positive Depot- oder Geldmarkt-Aggregate ohne Detailtranchen. `
+                + 'Der Hybridhaushalt wurde blockiert, weil Cost Basis und TQF nicht verlustfrei ableitbar sind.'
+            ]
+        };
+    }
+
+    const primaryEntry = profileInputs.find(entry => entry.profileId === primaryProfileId) || profileInputs[0];
+    const primaryInputs = primaryEntry?.inputs;
+    if (!primaryInputs) {
+        return { combined: null, warnings: ['Keine gueltigen Profile gefunden.'] };
+    }
+
+    const mergedTranches = [];
+    const usedTrancheIds = new Set();
+    const normalizeTranche = (tranche, profileId, seq) => {
+        const normalized = typeof structuredClone === 'function'
+            ? structuredClone(tranche)
+            : JSON.parse(JSON.stringify(tranche));
+        const rawId = String(normalized.trancheId || normalized.id || '').trim();
+        const baseId = rawId || `tranche_${seq}`;
+        const prefixedId = `${profileId}:${baseId}`;
+        if (usedTrancheIds.has(prefixedId)) {
+            throw new Error(`Doppelte Tranche ${baseId} in Profil ${profileId}.`);
+        }
+        usedTrancheIds.add(prefixedId);
+        normalized.trancheId = prefixedId;
+        normalized.sourceProfileId = profileId;
+        if (normalized.isin) normalized.isin = String(normalized.isin).trim();
+        if (normalized.name) normalized.name = String(normalized.name).trim();
+        if (normalized.type) normalized.type = String(normalized.type).trim();
+        if (normalized.category) normalized.category = String(normalized.category).trim();
+        return normalized;
+    };
+    const orderedEntries = [primaryEntry, ...profileInputs.filter(entry => entry !== primaryEntry)];
+    orderedEntries.forEach(entry => {
+        const input = entry?.inputs;
+        if (Array.isArray(input?.detailledTranches)) {
+            input.detailledTranches.forEach((tranche, idx) => {
+                mergedTranches.push(normalizeTranche(tranche, entry.profileId || 'profil', idx));
+            });
+        }
+    });
+    Object.defineProperty(mergedTranches, 'simulationSourceProfileId', {
+        value: primaryEntry.profileId || 'simulation',
+        enumerable: false
+    });
+
+    const sumStartVermoegen = sumNumbers(assetRecords, record => record.assetTotal);
+    const sumDepotwertAlt = sumNumbers(assetRecords, record => record.depotwertAlt);
+    const sumTagesgeld = sumNumbers(assetRecords, record => record.tagesgeld);
+    const sumGeldmarkt = sumNumbers(assetRecords, record => record.geldmarktEtf);
+    const sumEinstandAlt = sumNumbers(assetRecords, record => record.einstandAlt);
+    const sumFloor = sumNumbers(inputsList, i => i.startFloorBedarf || 0);
+    const sumFlex = sumNumbers(inputsList, i => i.startFlexBedarf || 0);
+    const invalidMinimumFlexEntry = profileInputs.find(entry => {
+        const minimumFlexAnnual = Number(entry?.inputs?.minimumFlexAnnual ?? 0);
+        const flexAnnual = Number(entry?.inputs?.startFlexBedarf ?? 0);
+        return !Number.isFinite(minimumFlexAnnual)
+            || minimumFlexAnnual < 0
+            || !Number.isFinite(flexAnnual)
+            || flexAnnual < 0
+            || minimumFlexAnnual > flexAnnual + 0.01;
+    });
+    if (invalidMinimumFlexEntry) {
+        const profileName = invalidMinimumFlexEntry.name
+            || invalidMinimumFlexEntry.profileId
+            || 'unbekannt';
+        return {
+            combined: null,
+            errorCode: 'SIMULATOR_PROFILE_MINIMUM_FLEX_INVALID',
+            warnings: [
+                `minimumFlexAnnual fuer Profil ${profileName} muss eine nicht-negative Zahl sein und darf startFlexBedarf nicht ueberschreiten.`
+            ]
+        };
+    }
+    const sumMinimumFlex = sumNumbers(inputsList, i => i.minimumFlexAnnual || 0);
+    if (sumMinimumFlex > sumFlex + 0.01) {
+        return {
+            combined: null,
+            errorCode: 'SIMULATOR_HOUSEHOLD_MINIMUM_FLEX_INVALID',
+            warnings: [
+                `Die Summe minimumFlexAnnual (${sumMinimumFlex.toFixed(2)} EUR) darf den aggregierten startFlexBedarf (${sumFlex.toFixed(2)} EUR) nicht ueberschreiten.`
+            ]
+        };
+    }
+    const sumFlexBudgetAnnual = sumNumbers(inputsList, i => i.flexBudgetAnnual || 0);
+    const sumFlexBudgetRecharge = sumNumbers(inputsList, i => i.flexBudgetRecharge || 0);
+    const minFlexBudgetYears = inputsList.reduce((minVal, i) => {
+        const years = Number(i.flexBudgetYears);
+        if (!Number.isFinite(years) || years <= 0) return minVal;
+        if (minVal === null) return years;
+        return Math.min(minVal, years);
+    }, null);
+
+    const totalAssets = sumStartVermoegen || (sumDepotwertAlt + sumTagesgeld + sumGeldmarkt);
+    const goldStrategy = calculateProfileGoldStrategy(assetRecords.map(record => ({
+        profileId: record.entry?.profileId,
+        name: record.entry?.name,
+        assetBase: record.assetTotal,
+        operativeLiquidity: record.operativeLiquidity,
+        healthBucket: record.inputs.healthBucket,
+        goldAktiv: record.inputs.goldAktiv,
+        goldZielProzent: record.inputs.goldZielProzent,
+        goldFloorProzent: record.inputs.goldFloorProzent,
+        goldSteuerfrei: record.inputs.goldSteuerfrei,
+        rebalancingBand: record.inputs.rebalancingBand
+    })));
+
+    const componentAssets = sumDepotwertAlt + sumTagesgeld + sumGeldmarkt;
+    if (moneyToCents(totalAssets) < moneyToCents(componentAssets)) {
+        warnings.push('Startvermoegen ist kleiner als die Summe aus Depot + Liquiditaet. Bitte Profile pruefen.');
+    }
+
+    const combined = {
+        ...primaryInputs,
+        startVermoegen: totalAssets,
+        depotwertAlt: sumDepotwertAlt,
+        tagesgeld: sumTagesgeld,
+        geldmarktEtf: sumGeldmarkt,
+        einstandAlt: sumEinstandAlt,
+        zielLiquiditaet: sumTagesgeld + sumGeldmarkt,
+        startFloorBedarf: sumFloor,
+        startFlexBedarf: sumFlex,
+        minimumFlexAnnual: sumMinimumFlex,
+        minimumFlexProfiles: profileInputs.map(entry => ({
+            profileId: entry.profileId,
+            name: entry.name || entry.profileId,
+            minimumFlexAnnual: Number(entry.inputs?.minimumFlexAnnual) || 0
+        })),
+        flexBudgetAnnual: sumFlexBudgetAnnual,
+        flexBudgetRecharge: sumFlexBudgetRecharge,
+        flexBudgetYears: minFlexBudgetYears || 0,
+        detailledTranches: inputsList.some(i => Array.isArray(i.detailledTranches)) ? mergedTranches : null,
+        simulationSourceProfileId: primaryEntry.profileId || 'simulation',
+        startSPB: sumNumbers(inputsList, i => i.startSPB || 0),
+        kirchensteuerSatz: weightedAverage(inputsList, i => i.kirchensteuerSatz || 0, i => i.startVermoegen || 0, primaryInputs.kirchensteuerSatz || 0),
+        maxSkimPctOfEq: Math.round(weightedAverage(inputsList, i => i.maxSkimPctOfEq || 0, i => i.startVermoegen || 0, primaryInputs.maxSkimPctOfEq || 0)),
+        maxBearRefillPctOfEq: Math.round(weightedAverage(inputsList, i => i.maxBearRefillPctOfEq || 0, i => i.startVermoegen || 0, primaryInputs.maxBearRefillPctOfEq || 0)),
+        goldAktiv: goldStrategy.goldAktiv,
+        goldBasisVermoegen: goldStrategy.goldBasisVermoegen,
+        goldZielBetrag: goldStrategy.goldZielBetrag,
+        goldFloorBetrag: goldStrategy.goldFloorBetrag,
+        goldZielProzent: goldStrategy.goldZielProzent,
+        goldFloorProzent: goldStrategy.goldFloorProzent,
+        goldSteuerfrei: goldStrategy.goldSteuerfrei,
+        rebalancingBand: goldStrategy.rebalancingBand,
+        goldStrategyDiagnostics: goldStrategy.diagnostics,
+        liquidityRunwayYears: maxNumber(
+            inputsList,
+            i => resolveLiquidityRunwayYears(i).years,
+            resolveLiquidityRunwayYears(primaryInputs).years
+        ),
+        accumulationPhase: {
+            enabled: false,
+            durationYears: 0,
+            sparrate: 0,
+            sparrateIndexing: 'none'
+        },
+        transitionYear: 0,
+        transitionAge: primaryInputs.startAlter
+    };
+
+    if (!ensureValueMatch(inputsList, i => i.rentAdjMode)) {
+        warnings.push('Rentenanpassung (Mode) unterscheidet sich zwischen Profilen. Es wird das Hauptprofil verwendet.');
+    }
+    if (!ensureValueMatch(inputsList, i => i.stressPreset)) {
+        warnings.push('Stress-Preset unterscheidet sich zwischen Profilen. Es wird das Hauptprofil verwendet.');
+    }
+    if (!ensureValueMatch(inputsList, i => i.pflegeModellTyp)) {
+        warnings.push('Pflege-Modell unterscheidet sich zwischen Profilen. Es wird das Hauptprofil verwendet.');
+    }
+    if (!ensureValueMatch(inputsList, i => stableStringify(i.healthBucket || null))) {
+        warnings.push('Pflegebucket-Konfiguration unterscheidet sich zwischen Profilen. Es wird das Hauptprofil verwendet.');
+    }
+    // Dynamic-Flex-Parameter werden im Simulator explizit aus den aktuellen Rahmendaten
+    // gelesen und nicht aus Profil-Differenzen im Profilverbund abgeleitet.
+
+    const secondaryEntry = profileInputs.find(entry => entry.profileId !== primaryEntry.profileId) || null;
+    const secondaryInputs = secondaryEntry?.inputs || null;
+    const totalRente = sumNumbers(profileInputs, entry => entry.inputs?.renteMonatlich || 0);
+    const partnerRente = secondaryInputs ? (secondaryInputs.renteMonatlich || 0) : 0;
+    const p1Rente = Math.max(0, totalRente - partnerRente);
+
+    const partner = secondaryInputs ? {
+        aktiv: true,
+        geschlecht: secondaryInputs.geschlecht || 'w',
+        startAlter: secondaryInputs.startAlter || 0,
+        startInJahren: secondaryInputs.renteStartOffsetJahre || 0,
+        renteStartMonate: secondaryInputs.renteStartMonate ?? 12, renteKalenderbeginn: secondaryInputs.renteKalenderbeginn ?? false,
+        monatsrente: partnerRente,
+        sparerPauschbetrag: secondaryInputs.startSPB || 0,
+        kirchensteuerPct: (secondaryInputs.kirchensteuerSatz || 0) * 100,
+        steuerquotePct: secondaryInputs.steuerquotePct ?? 0,
+        brutto: partnerRente * 12
+    } : {
+        ...combined.partner,
+        aktiv: false,
+        monatsrente: 0,
+        brutto: 0
+    };
+
+    const merged = {
+        ...combined,
+        startAlter: primaryInputs.startAlter || combined.startAlter,
+        geschlecht: primaryInputs.geschlecht || combined.geschlecht,
+        renteMonatlich: p1Rente,
+        renteStartOffsetJahre: primaryInputs.renteStartOffsetJahre || 0,
+        renteStartMonate: primaryInputs.renteStartMonate ?? 12, renteKalenderbeginn: primaryInputs.renteKalenderbeginn ?? false,
+        rentAdjMode: primaryInputs.rentAdjMode || combined.rentAdjMode,
+        rentAdjPct: Number.isFinite(primaryInputs.rentAdjPct) ? primaryInputs.rentAdjPct : combined.rentAdjPct,
+        partner
+    };
+
+    if (profileInputs.length > 2) {
+        warnings.push('Mehr als 2 Profile gewaehlt: Demografie auf 2 Personen begrenzt.');
+    }
+
+    if (planValues) {
+        Object.assign(merged, projectPlanToSimulator(planValues));
+        delete merged.minimumFlexProfiles;
+    }
+    return { combined: merged, warnings };
+}

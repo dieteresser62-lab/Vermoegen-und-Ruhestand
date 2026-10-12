@@ -1,0 +1,319 @@
+import {
+    calcCareCost,
+    computeCareMortalityMultiplier,
+    computeHouseholdFlexFactor,
+    makeDefaultCareMeta,
+    updateCareMeta
+} from './simulator-engine-wrapper.js';
+import { MORTALITY_TABLE } from './simulator-data.js';
+import {
+    computeMarriageYearsCompleted,
+    normalizeWidowOptions
+} from './simulator-sweep-utils.js';
+
+export const MAX_SIMULATOR_COUNTER_VALUE = 0xFFFFFFFF;
+
+export function resolveSimulatorMortalityProbability(gender, age) {
+    const normalizedAge = Number(age);
+    const table = MORTALITY_TABLE[gender];
+    if (!table || !Number.isSafeInteger(normalizedAge) || normalizedAge < 0) return 1;
+    const probability = Number(table[normalizedAge]);
+    if (!Number.isFinite(probability)) return 1;
+    return Math.min(1, Math.max(0, probability));
+}
+
+export function assertSimulatorHorizonAgeContract(inputs, maxDauer) {
+    const duration = Number(maxDauer);
+    if (!Number.isSafeInteger(duration) || duration < 1 || duration > MAX_SIMULATOR_COUNTER_VALUE) {
+        throw new RangeError(`Simulationsdauer muss eine ganze Zahl zwischen 1 und ${MAX_SIMULATOR_COUNTER_VALUE} sein.`);
+    }
+
+    const persons = [
+        ['P1', inputs?.startAlter],
+        ...(inputs?.partner?.aktiv === true ? [['P2', inputs.partner.startAlter]] : [])
+    ];
+    for (const [label, rawAge] of persons) {
+        const startAge = Number(rawAge);
+        if (!Number.isSafeInteger(startAge) || startAge < 0 || startAge > MAX_SIMULATOR_COUNTER_VALUE) {
+            throw new RangeError(`${label}-Startalter muss eine nichtnegative ganze Zahl sein.`);
+        }
+        if (startAge + duration - 1 > MAX_SIMULATOR_COUNTER_VALUE) {
+            throw new RangeError(`${label}-Alter am Horizont ueberschreitet den Simulator-Zaehlerbereich.`);
+        }
+    }
+    return { duration, maxAge: MAX_SIMULATOR_COUNTER_VALUE };
+}
+
+export function createMonteCarloLifeState(inputs, rand, widowOptions = null) {
+    const careMetaP1 = makeDefaultCareMeta(inputs.pflegefallLogikAktivieren, inputs.geschlecht);
+    const partnerGenderFallback = inputs.geschlecht === 'm' ? 'w' : 'm';
+    const hasPartner = inputs.partner?.aktiv === true;
+    const careMetaP2 = hasPartner
+        ? makeDefaultCareMeta(inputs.pflegefallLogikAktivieren, inputs.partner?.geschlecht || partnerGenderFallback)
+        : null;
+    const normalizedWidowOptions = normalizeWidowOptions(widowOptions ?? inputs?.widowOptions);
+    const widowPercent = normalizedWidowOptions.mode === 'percent'
+        ? normalizedWidowOptions.percent
+        : 0;
+
+    return {
+        careMetaP1,
+        careMetaP2,
+        hasPartner,
+        rngCareP1: rand.fork('CARE_P1'),
+        rngCareP2: careMetaP2 ? rand.fork('CARE_P2') : null,
+        singleNoCareFastPath: inputs.pflegefallLogikAktivieren !== true && !hasPartner,
+        p1Alive: true,
+        p2Alive: hasPartner,
+        p1CareYears: 0,
+        p2CareYears: 0,
+        bothCareYears: 0,
+        triggeredAgeP2: null,
+        runEndedBecauseAllDied: false,
+        deathLogContext: null,
+        p1ActiveThisYear: false,
+        p2ActiveThisYear: false,
+        widowBenefitActiveForP1: false,
+        widowBenefitActiveForP2: false,
+        householdContext: {
+            p1Alive: true,
+            p2Alive: hasPartner,
+            widowBenefits: {
+                p1FromP2: false,
+                p2FromP1: false,
+                p1FromP2Percent: widowPercent,
+                p2FromP1Percent: widowPercent
+            }
+        },
+        year: {
+            ageP1: 0,
+            ageP2: 0,
+            effectiveTransitionYear: 0,
+            triggeredAge: null,
+            careEverActive: false,
+            isAccumulation: false,
+            totalCareFloor: 0,
+            effectiveFlexFactor: 1,
+            householdContext: null
+        }
+    };
+}
+
+function cloneCareMeta(value) {
+    return value == null ? null : JSON.parse(JSON.stringify(value));
+}
+
+/**
+ * Rehydrates the exogenous household state after source ruin. Random streams
+ * are derived from the separately seeded shadow generator, not forked from the
+ * already consumed source-run generator.
+ */
+export function createMonteCarloPostRuinLifeState(inputs, shadowRand, {
+    widowOptions = null,
+    p1Alive = true,
+    p2Alive = inputs?.partner?.aktiv === true,
+    careMetaP1 = null,
+    careMetaP2 = null,
+    p1CareYears = 0,
+    p2CareYears = 0,
+    bothCareYears = 0,
+    triggeredAgeP2 = null,
+    widowBenefitActiveForP1 = false,
+    widowBenefitActiveForP2 = false
+} = {}) {
+    const state = createMonteCarloLifeState(inputs, shadowRand, widowOptions);
+    state.careMetaP1 = cloneCareMeta(careMetaP1) ?? state.careMetaP1;
+    state.careMetaP2 = cloneCareMeta(careMetaP2) ?? state.careMetaP2;
+    state.p1Alive = p1Alive === true;
+    state.p2Alive = state.hasPartner && p2Alive === true;
+    state.p1CareYears = Number(p1CareYears) || 0;
+    state.p2CareYears = Number(p2CareYears) || 0;
+    state.bothCareYears = Number(bothCareYears) || 0;
+    state.triggeredAgeP2 = Number.isFinite(triggeredAgeP2) ? triggeredAgeP2 : null;
+    state.widowBenefitActiveForP1 = widowBenefitActiveForP1 === true;
+    state.widowBenefitActiveForP2 = widowBenefitActiveForP2 === true;
+    state.householdContext.p1Alive = state.p1Alive;
+    state.householdContext.p2Alive = state.p2Alive;
+    return state;
+}
+
+export function updateMonteCarloLifeEventsForYear(
+    lifeState,
+    inputs,
+    widowOptions,
+    simulationsJahr,
+    yearData,
+    effectiveTransitionYear,
+    triggeredAge,
+    careEverActive,
+    rand
+) {
+    const normalizedWidowOptions = normalizeWidowOptions(widowOptions ?? inputs?.widowOptions);
+    const ageP1 = inputs.startAlter + simulationsJahr;
+    let isAccumulation = inputs.accumulationPhase?.enabled && simulationsJahr < effectiveTransitionYear;
+
+    if (lifeState.singleNoCareFastPath) {
+        if (!isAccumulation && lifeState.p1Alive) {
+            const qx1 = resolveSimulatorMortalityProbability(inputs.geschlecht, ageP1);
+            if (rand() < qx1) {
+                lifeState.p1Alive = false;
+            }
+        }
+
+        if (!lifeState.p1Alive) {
+            lifeState.runEndedBecauseAllDied = true;
+            lifeState.deathLogContext = {
+                jahr: simulationsJahr + 1,
+                histJahr: yearData.jahr,
+                inflation: yearData.inflation
+            };
+        }
+
+        const householdContext = lifeState.householdContext;
+        householdContext.p1Alive = lifeState.p1Alive;
+        householdContext.p2Alive = false;
+        householdContext.widowBenefits.p1FromP2 = false;
+        householdContext.widowBenefits.p2FromP1 = false;
+        householdContext.widowBenefits.p1FromP2Percent = 0;
+        householdContext.widowBenefits.p2FromP1Percent = 0;
+        householdContext.care = {
+            p1: lifeState.careMetaP1,
+            p2: null
+        };
+
+        const year = lifeState.year;
+        year.ageP1 = ageP1;
+        year.ageP2 = ageP1;
+        year.effectiveTransitionYear = effectiveTransitionYear;
+        year.triggeredAge = triggeredAge;
+        year.careEverActive = careEverActive;
+        year.isAccumulation = isAccumulation;
+        year.totalCareFloor = 0;
+        year.effectiveFlexFactor = lifeState.p1Alive ? 1 : 0;
+        year.householdContext = householdContext;
+        return year;
+    }
+
+    const marriageYearsCompleted = computeMarriageYearsCompleted(simulationsJahr, normalizedWidowOptions);
+    const widowModeEnabled = normalizedWidowOptions.mode === 'percent'
+        && normalizedWidowOptions.percent > 0
+        && lifeState.hasPartner;
+    const widowEligibleThisYear = widowModeEnabled &&
+        marriageYearsCompleted > 0 &&
+        marriageYearsCompleted >= normalizedWidowOptions.minMarriageYears;
+    const p1AliveAtStart = lifeState.p1Alive;
+    const p2AliveAtStart = lifeState.p2Alive;
+    const careMetaP1 = lifeState.careMetaP1;
+    const careMetaP2 = lifeState.careMetaP2;
+    let ageP2 = ageP1;
+
+    if (inputs.partner?.aktiv) {
+        ageP2 = inputs.partner.startAlter + simulationsJahr;
+    }
+
+    if (lifeState.p1Alive) {
+        updateCareMeta(careMetaP1, inputs, ageP1, yearData, lifeState.rngCareP1);
+        if (careMetaP1 && careMetaP1.active) careEverActive = true;
+        if (careMetaP1 && careMetaP1.triggered && triggeredAge === null) triggeredAge = ageP1;
+    }
+
+    if (lifeState.p2Alive && careMetaP2) {
+        updateCareMeta(careMetaP2, inputs, ageP2, yearData, lifeState.rngCareP2);
+        if (careMetaP2 && careMetaP2.triggered && lifeState.triggeredAgeP2 === null) {
+            lifeState.triggeredAgeP2 = ageP2;
+        }
+        if (careMetaP2 && careMetaP2.active) careEverActive = true;
+    }
+
+    if (inputs.accumulationPhase?.enabled && simulationsJahr < effectiveTransitionYear) {
+        if ((lifeState.p1Alive && careMetaP1?.active) || (lifeState.p2Alive && careMetaP2?.active)) {
+            effectiveTransitionYear = simulationsJahr;
+            isAccumulation = false;
+        }
+    }
+
+    lifeState.p1ActiveThisYear = lifeState.p1Alive && careMetaP1?.active;
+    lifeState.p2ActiveThisYear = lifeState.p2Alive && careMetaP2?.active;
+    if (lifeState.p2ActiveThisYear) careEverActive = true;
+    if (lifeState.p1ActiveThisYear) lifeState.p1CareYears++;
+    if (lifeState.p2ActiveThisYear) lifeState.p2CareYears++;
+    if (lifeState.p1ActiveThisYear && lifeState.p2ActiveThisYear) lifeState.bothCareYears++;
+
+    if (!isAccumulation && lifeState.p1Alive) {
+        let qx1 = resolveSimulatorMortalityProbability(inputs.geschlecht, ageP1);
+        const careFactorP1 = computeCareMortalityMultiplier(careMetaP1, inputs);
+        if (careFactorP1 > 1) {
+            qx1 = Math.min(1.0, qx1 * careFactorP1);
+        }
+        if (rand() < qx1) {
+            lifeState.p1Alive = false;
+        }
+    }
+
+    if (!isAccumulation && lifeState.p2Alive) {
+        const p2Gender = inputs.partner?.geschlecht || (inputs.geschlecht === 'm' ? 'w' : 'm');
+        let qx2 = resolveSimulatorMortalityProbability(p2Gender, ageP2);
+        const careFactorP2 = computeCareMortalityMultiplier(careMetaP2, inputs);
+        if (careFactorP2 > 1) {
+            qx2 = Math.min(1.0, qx2 * careFactorP2);
+        }
+        if (rand() < qx2) {
+            lifeState.p2Alive = false;
+        }
+    }
+
+    if (widowEligibleThisYear && (!p1AliveAtStart || !p2AliveAtStart)) {
+        if (!p1AliveAtStart && p2AliveAtStart) {
+            lifeState.widowBenefitActiveForP2 = true;
+        } else if (!p2AliveAtStart && p1AliveAtStart) {
+            lifeState.widowBenefitActiveForP1 = true;
+        }
+    }
+
+    if (!lifeState.p1Alive && !lifeState.p2Alive) {
+        lifeState.runEndedBecauseAllDied = true;
+        lifeState.deathLogContext = {
+            jahr: simulationsJahr + 1,
+            histJahr: yearData.jahr,
+            inflation: yearData.inflation
+        };
+    }
+
+    const careCostP1 = calcCareCost(careMetaP1, null);
+    const careCostP2 = careMetaP2 ? calcCareCost(careMetaP2, null) : null;
+    const totalCareFloor = careCostP1.zusatzFloor + (careCostP2 ? careCostP2.zusatzFloor : 0);
+    const effectiveFlexFactor = computeHouseholdFlexFactor({
+        hasPartner: lifeState.hasPartner,
+        p1Alive: lifeState.p1Alive,
+        careMetaP1,
+        p2Alive: lifeState.p2Alive,
+        careMetaP2
+    });
+    const householdContext = lifeState.householdContext;
+    householdContext.p1Alive = lifeState.p1Alive;
+    householdContext.p2Alive = lifeState.hasPartner ? lifeState.p2Alive : false;
+    householdContext.widowBenefits.p1FromP2 = lifeState.widowBenefitActiveForP1;
+    householdContext.widowBenefits.p2FromP1 = lifeState.widowBenefitActiveForP2;
+    householdContext.widowBenefits.p1FromP2Percent = widowModeEnabled
+        ? normalizedWidowOptions.percent
+        : 0;
+    householdContext.widowBenefits.p2FromP1Percent = widowModeEnabled
+        ? normalizedWidowOptions.percent
+        : 0;
+    householdContext.care = {
+        p1: careMetaP1,
+        p2: careMetaP2
+    };
+
+    const year = lifeState.year;
+    year.ageP1 = ageP1;
+    year.ageP2 = ageP2;
+    year.effectiveTransitionYear = effectiveTransitionYear;
+    year.triggeredAge = triggeredAge;
+    year.careEverActive = careEverActive;
+    year.isAccumulation = isAccumulation;
+    year.totalCareFloor = totalCareFloor;
+    year.effectiveFlexFactor = effectiveFlexFactor;
+    year.householdContext = householdContext;
+    return year;
+}

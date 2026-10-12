@@ -1,0 +1,1903 @@
+<!DOCTYPE html>
+<html lang="de" data-suite-page="simulator">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulator · Vermögen &amp; Ruhestand</title>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/fonts.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="simulator.css">
+    <style>
+        .debug-actions {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem
+        }
+
+        .btn-debug {
+            font-size: .8rem;
+            padding: .25rem .5rem;
+            border-radius: .5rem;
+            border: 1px solid var(--accent);
+            background: transparent;
+            color: var(--accent);
+            cursor: pointer
+        }
+
+        .btn-debug:hover {
+            background: var(--accent-soft)
+        }
+
+        .dev-only {
+            display: none
+        }
+
+        .dev-on .dev-only {
+            display: block
+        }
+
+        .debug-link {
+            font-size: .8rem;
+            padding: .1rem .3rem;
+            border: 1px solid var(--border);
+            border-radius: .4rem;
+            color: var(--accent);
+            text-decoration: none
+        }
+
+        .debug-link:hover {
+            background: var(--accent-soft)
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between
+        }
+
+        /* Log Export Buttons - wie toggle-btn */
+        .log-export-buttons {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 10px;
+            min-width: 0;
+            max-width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .log-export-buttons button {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            border: 1px solid var(--border-strong);
+            background-color: var(--surface-sunken);
+            color: var(--text-main);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: auto !important;
+            min-width: 0 !important;
+            flex: 0 0 auto !important;
+            max-width: 100%;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        .log-export-buttons button:hover {
+            border-color: var(--accent);
+            background-color: var(--border);
+        }
+
+        /* Auto-Optimize Preset Buttons */
+        .ao-preset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-card);
+            border-color: var(--secondary-color) !important;
+        }
+
+        .ao-preset-btn:active {
+            transform: translateY(0);
+        }
+
+        .profilverbund-profile-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 8px 12px;
+        }
+
+        .profilverbund-profile-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+
+        .profilverbund-status {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .profilverbund-status[data-kind="ok"] {
+            color: var(--good);
+        }
+
+        .profilverbund-status[data-kind="error"] {
+            color: var(--bad);
+        }
+
+        .toast-container {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        .toast {
+            max-width: 300px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: var(--text-main);
+            color: var(--surface);
+            font-size: 0.85rem;
+            box-shadow: var(--shadow-card);
+            visibility: hidden;
+            transform: translateY(6px);
+            transition: transform 0.2s ease;
+        }
+
+        .toast-show {
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        /* Slice 02: Exaktwerte und Messhinweise duerfen auch mobil nicht
+           abgeschnitten oder als technische Kurzlabels missverstanden werden. */
+        .main-layout,
+        .panel,
+        .tab-content,
+        .tab-panel,
+        fieldset,
+        fieldset.collapsible .fieldset-content {
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        fieldset {
+            min-inline-size: 0;
+        }
+
+        fieldset.collapsible legend {
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        fieldset.collapsible legend .legend-text {
+            min-width: 0;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        .care-panel,
+        .care-sections,
+        .care-section,
+        .care-section-grid,
+        .care-duration-group,
+        .care-grade-matrix,
+        .care-grade-row {
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .tab-buttons {
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .tab-btn {
+            flex: 0 0 auto;
+            width: auto;
+        }
+
+        #monteCarloResults,
+        #scenarioLogContainer,
+        #scenarioSelector,
+        #scenarioLogOutput,
+        .scenario-selector {
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        #scenarioLogOutput {
+            width: 100%;
+        }
+
+
+
+        #withdrawalRateChartContainer,
+        #heatmap-container {
+            min-width: 0;
+            max-width: 100%;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .kpi-card .sim-metric-heading>strong,
+        .summary-item .sim-metric-heading>strong {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            overflow-wrap: anywhere;
+        }
+
+        .summary-item>span,
+        .kpi-card .value-line {
+            min-width: 0;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .kpi-card.kpi-exact-value,
+        .summary-item.summary-exact-value {
+            min-width: 0;
+        }
+
+        .kpi-card.kpi-exact-value .sim-metric-heading>strong,
+        .summary-item.summary-exact-value .sim-metric-heading>strong {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+            overflow-wrap: anywhere;
+        }
+
+        .kpi-card.kpi-exact-value .value-line,
+        .kpi-card.kpi-exact-value .kpi-secondary-value,
+        .kpi-card.kpi-exact-value .kpi-status-line,
+        .summary-item.summary-exact-value>span,
+        .summary-item.summary-exact-value .summary-status-line {
+            min-width: 0;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .kpi-secondary-value {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin: 2px 0 8px;
+            font-size: 0.76rem;
+            color: var(--text-muted);
+        }
+
+        .kpi-secondary-value>strong {
+            color: var(--text-main);
+            font-size: 1rem;
+        }
+
+        .kpi-secondary-value>small,
+        .kpi-status-line,
+        .summary-status-line {
+            color: var(--bad);
+            font-size: 0.72rem;
+            line-height: 1.3;
+        }
+
+        .summary-status-line {
+            display: block;
+            margin-top: 4px;
+        }
+
+        .reporting-reference-note {
+            max-width: 78ch;
+            margin: 10px auto 14px;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            line-height: 1.4;
+            text-align: left;
+            overflow-wrap: anywhere;
+        }
+
+        .heatmap-v4-svg {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            overflow: hidden;
+        }
+
+        .kpi-grid.kpi-grid-pair {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .drawdown-pair-heading {
+            margin: 18px 0 0;
+            color: var(--primary-color);
+            text-align: center;
+        }
+
+        @media (max-width: 360px) {
+            body {
+                padding: 8px;
+            }
+
+            .panel {
+                padding: 14px;
+            }
+
+            .section-title {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .section-title>div {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .summary-grid,
+            .kpi-grid,
+            .kpi-grid.kpi-grid-pair {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .form-grid,
+            .form-grid-three-col,
+            .form-grid-four-col,
+            .form-grid-compact {
+                grid-template-columns: minmax(0, 1fr) !important;
+            }
+
+            .care-sections,
+            .care-section-grid,
+            .care-duration-group,
+            .care-grade-row {
+                grid-template-columns: minmax(0, 1fr) !important;
+            }
+        }
+
+    </style>
+    <link rel="stylesheet" href="css/suite-frame.css">
+    <script type="module" src="app/shared/suite-frame.js"></script>
+</head>
+
+<body>
+    <a class="suite-skip" href="#suiteMain">Zur Hauptaufgabe</a>
+    <div class="suite-shell">
+        <header class="suite-header">
+            <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
+            <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span id="suiteHouseholdContext" class="suite-context">Haushalt wird geladen</span><div id="simulatorContextPills" class="suite-context-details" aria-live="polite"></div></div>
+            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Probelauf …</button>
+        </header>
+        <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
+        <div id="suiteNavigationStatus" class="suite-navigation-status" role="alert" hidden></div>
+        <div class="suite-layout">
+            <nav class="suite-navigation" aria-label="Hauptnavigation" id="suiteNavigation">
+                <button id="suiteSidebarToggle" class="suite-sidebar-toggle ds-button ds-button-secondary ds-icon-button" type="button" aria-label="Leiste einklappen" title="Leiste einklappen" aria-controls="suiteNavigation" aria-expanded="true">
+                    <span data-suite-icon="panel-left-close" aria-hidden="true"></span><span data-suite-icon="panel-left" aria-hidden="true"></span>
+                </button>
+                <a href="index.html" data-profile-handoff aria-label="Übersicht" title="Übersicht"><span data-suite-icon="house" aria-hidden="true"></span><span>Übersicht</span></a>
+                <a href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false" aria-label="Personen &amp; Vermögen – Rente, Depot, Gold" title="Personen &amp; Vermögen"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Personen &amp; Vermögen<small class="ds-navigation-subtitle">Rente, Depot, Gold</small></span></a>
+                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
+                <a href="Balance.html" data-profile-handoff aria-label="Balance – Jahresplanung" title="Balance"><span data-suite-icon="scale" aria-hidden="true"></span><span>Balance<small class="ds-navigation-subtitle">Jahresplanung</small></span></a>
+                <a href="Simulator.html" data-profile-handoff aria-current="page" aria-label="Simulator" title="Simulator"><span data-suite-icon="chart-no-axes-combined" aria-hidden="true"></span><span>Simulator</span></a>
+                <a href="Handbuch.html" data-profile-handoff aria-label="Handbuch" title="Handbuch"><span data-suite-icon="book-open" aria-hidden="true"></span><span>Handbuch</span></a>
+                <a href="Daten-Sicherung.html" data-profile-handoff data-suite-backup aria-label="Daten &amp; Sicherung" title="Daten &amp; Sicherung"><span data-suite-icon="landmark" aria-hidden="true"></span><span>Daten &amp; Sicherung</span></a>
+            </nav>
+            <main class="suite-content" id="suiteMain" tabindex="-1">
+                <aside id="probelaufBand" class="probelauf-band" aria-label="Probelauf" hidden>
+                    <strong id="probelaufBandText"></strong>
+                    <div class="ds-actions">
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="day">+1 Tag</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="month">+1 Monat</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="date">Datum wählen …</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Probelauf beenden</button>
+                    </div>
+                </aside>
+
+    <div class="main-layout">
+        <div class="simulator-surface">
+
+            <div class="tab-content">
+                <div id="tab-ergebnis" class="tab-panel active">
+                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Zukunft durchspielen</p><h1 id="simulatorResultQuestion">Hätte dein Plan die Jahre seit 2000 überstanden?</h1><p class="sim-lead">Beim Öffnen wird dein heutiger Plan durch die echten Marktjahre seit 2000 gerechnet. Monte-Carlo zeigt mögliche Zukünfte.</p></header><div class="tab-buttons" aria-label="Simulator-Ansichten"><button class="tab-btn active" data-tab="ergebnis">Ergebnis</button><button class="tab-btn" data-tab="annahmen">Annahmen</button><button class="tab-btn" data-tab="backtesting">Backtest</button><button class="tab-btn" data-tab="montecarlo">Monte-Carlo</button><button class="tab-btn" data-tab="werkstatt">Werkstatt</button></div>
+                    <div class="sim-result-grid">
+                        <section id="overviewBacktest" class="ds-plan-card sim-overview-backtest" aria-live="polite"><p>Profil wird geladen</p></section>
+                        <section class="ds-plan-card sim-overview-mc" aria-label="Monte-Carlo-Antworten" aria-live="polite"><div id="overviewMonteCarloAnswers" class="sim-mc-answers"></div><div id="overviewMonteCarlo"><h2>Reicht das Vermögen?</h2><p>Noch nicht gerechnet</p></div></section>
+                        <section class="ds-plan-card sim-overview-crises"><h2>Durch die Krisen</h2><p>Was dein Plan in den schweren Jahren getan hätte</p><div id="overviewCrises" class="sim-crisis-grid"></div></section>
+                        <section class="ds-plan-card sim-overview-assumptions"><div class="sim-card-heading"><h2>Gerechnet mit</h2><button type="button" class="ds-button ds-button-secondary" data-simulator-tab="annahmen">Bearbeiten</button></div><div id="overviewRunHeads"></div></section>
+                    </div>
+                </div>
+                <div id="tab-annahmen" class="tab-panel">
+
+                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Annahmen</p><h1>Womit gerechnet wird</h1><p class="sim-lead">Fünf Schritte. Nach einer Änderung rechnet der Backtest neu, sobald du zum Ergebnis zurückkehrst; Monte-Carlo wird als veraltet markiert.</p></header>
+
+
+                    <div class="sim-assumptions-grid"><section class="ds-plan-card sim-assumption-step" data-assumption-step="1" data-fieldset="portfolio" aria-label="Wer und womit">
+ <h2><button type="button" class="ds-step-toggle" data-step-toggle aria-expanded="true" aria-controls="simStep1Content"><span class="sim-step-number">1</span><span>Wer und womit<small>Profile und Startvermögen</small></span><span class="sim-step-status sim-status-chip" aria-label="Füllstatus">Keine Eingaben</span><span class="sim-step-chevron" aria-hidden="true">⌄</span></button></h2>
+ <div class="sim-step-content" id="simStep1Content"><div class="sim-field-grid"><div class="ds-field"><label for="simStartVermoegen">Gesamtvermögen</label><div class="ds-unit-frame"><input
+                                        type="text" id="simStartVermoegen" placeholder="0" disabled inputmode="numeric" data-no-persist="true"
+                                        title="Wird automatisch aus Depot + Gold + Tagesgeld + Geldmarkt berechnet" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div>
+                                </div><div class="ds-field"><label for="depotwertGesamt">Depotwert gesamt</label><div class="ds-unit-frame"><input
+                                        type="text" id="depotwertGesamt" placeholder="0" disabled inputmode="numeric" data-no-persist="true"
+                                        title="Depotwert gesamt (aus Profilen/Tranchen aggregiert)" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div>
+                                </div><div class="ds-field"><label for="tagesgeld">Tagesgeld</label><div class="ds-unit-frame"><input
+                                        type="text" id="tagesgeld" placeholder="0" disabled inputmode="numeric" data-no-persist="true"
+                                        title="Tagesgeld (aus Profilen/Tranchen aggregiert)" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div></div><div class="ds-field"><label for="goldWert">Gold-Bestand</label><div class="ds-unit-frame"><input
+                                        type="text" id="goldWert" placeholder="0" disabled inputmode="numeric" data-no-persist="true"
+                                        title="Gold-Bestand (aus Profilen/Tranchen aggregiert)" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div></div></div><h3 class="sim-profile-heading">Profile · höchstens zwei</h3><div id="simProfileList" class="profilverbund-profile-list"></div><div id="simProfileStatus" class="profilverbund-status">
+                                Auswahl bestimmt die Simulator-Grunddaten.
+                            </div><div id="displayPortfolioBreakdown"
+                                style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                            </div><div id="tranchenStatusBadge"></div><div class="tranchen-hint">
+                                Werte kommen aus Vermögen und Tranchen; geändert wird dort. Höchstens zwei Profile gleichzeitig.
+                            </div><details class="ds-disclosure sim-parameters" data-parameters="portfolio"><summary>Alle Parameter zeigen</summary><div class="sim-parameter-body"><div class="sim-field-grid"><div class="ds-field"><label for="geldmarktEtf">Geldmarkt-ETF</label><div class="ds-unit-frame"><input
+                                        type="text" id="geldmarktEtf" placeholder="0" disabled inputmode="numeric" data-no-persist="true"
+                                        title="Geldmarkt-ETF (aus Profilen/Tranchen aggregiert)" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div></div><div class="ds-field"><label for="initialBondBucket">Bonds / Puffer beim Start</label><div class="ds-unit-frame"><input
+                                        type="text" id="initialBondBucket" placeholder="0" disabled inputmode="numeric" data-no-persist="true"
+                                        title="Wert aller Anleihen/Bonds-Tranchen beim Start (aus Profilen/Tranchen aggregiert)" class="ds-input"></div>
+                                </div></div></div></details></div></section><section class="ds-plan-card sim-assumption-step" data-assumption-step="2" data-fieldset="bedarf" aria-label="Bedarf">
+ <h2><button type="button" class="ds-step-toggle" data-step-toggle aria-expanded="true" aria-controls="simStep2Content"><span class="sim-step-number">2</span><span><span data-plan-card-label="need">Bedarf</span><small>pro Jahr, heutige Euro</small></span><span class="sim-step-status sim-status-chip" aria-label="Füllstatus">Keine Eingaben</span><span class="sim-step-chevron" aria-hidden="true">⌄</span></button></h2>
+ <div class="sim-plan-head-actions"><button id="simPlanTrialStart" data-plan-trial-toggle type="button" class="ds-button ds-button-secondary">Nur hier ausprobieren</button><a href="depot-tranchen-manager.html#haushalt-plan" data-profile-handoff data-profile-handoff-export="false" class="ds-text-link">Im Plan ändern</a></div>
+ <div class="sim-step-content" id="simStep2Content"><div class="sim-field-grid"><div class="ds-field"><label for="startFloorBedarf">Grundbedarf (Floor)</label><div class="ds-unit-frame"><input type="number" id="startFloorBedarf" placeholder="0"
+                                        title="Essenzielle jährliche Ausgaben, die Sie auf jeden Fall benötigen (Miete, Essen, Versicherungen etc.)" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div>
+                                </div><div class="ds-field"><label for="startFlexBedarf">Wunschbedarf (Flex)</label><div class="ds-unit-frame"><input
+                                        type="number" id="startFlexBedarf" placeholder="0"
+                                        title="Wünschenswerte jährliche Ausgaben, auf die Sie im Notfall verzichten können (Urlaub, Hobbys, Luxus)" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div>
+                                </div><div class="ds-field"><label for="minimumFlexAnnual">Mindest-Flex</label><div class="ds-unit-frame"><input
+                                        type="number" id="minimumFlexAnnual" placeholder="0" value="0"
+                                        title="Bedingte Untergrenze fuer Flex-Ausgaben in kuerzenden Safety-/Guardrail-Phasen; ersetzt nicht den Floor." class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div>
+                                </div><div class="ds-field"><label for="marketCapeRatio">CAPE</label><div class="ds-unit-frame"><input
+                                        type="number" id="marketCapeRatio" value="32" step="0.1" min="0"
+                                        title="Aktuelles Shiller-CAPE (Cyclically Adjusted Price-to-Earnings Ratio) - Bewertungskennzahl für den Aktienmarkt" class="ds-input"></div>
+                                </div></div><details class="ds-disclosure sim-parameters" data-parameters="bedarf"><summary>Alle Parameter zeigen</summary><div class="sim-parameter-body"><div class="sim-field-grid"><div class="ds-field"><label for="flexBudgetAnnual">Budget pro Jahr</label><div class="ds-unit-frame"><input
+                                        type="number" id="flexBudgetAnnual" placeholder="7000" value="7000"
+                                        title="Maximaler Flex-Betrag pro Krisenjahr (0 = deaktiviert)" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div>
+                                </div><div class="ds-field"><label for="flexBudgetYears">Reicht für</label><div class="ds-unit-frame"><input
+                                        type="number" id="flexBudgetYears" placeholder="5" value="5" min="0" max="10" step="0.5"
+                                        title="Maximale Topfgröße in Jahren (Cap * Jahre)" class="ds-input"><span class="ds-field-unit" aria-hidden="true">Jahre</span></div>
+                                </div><div class="ds-field"><label for="flexBudgetRecharge">Wiederauffüllen pro Jahr</label><div class="ds-unit-frame"><input
+                                        type="number" id="flexBudgetRecharge" placeholder="5000" value="5000"
+                                        title="Auffüllung des Flex-Topfs pro Nicht-Krisenjahr" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div>
+                                </div></div></div></details></div></section><aside id="simPlanTrialBand" class="sim-plan-trial-band" hidden><p id="simPlanTrialMessage" role="status"></p><ul id="simPlanTrialDifferences" aria-label="Abweichungen vom Plan"></ul><div class="sim-plan-actions"><button id="simPlanTrialBack" type="button" class="ds-text-link">Zurück zum Plan</button><button id="simPlanTrialAdopt" type="button" class="ds-text-link">Auswahl in den Plan übernehmen</button></div><p class="ds-hint">Größere Was-wäre-wenn-Läufe mit mehreren Änderungen: im Spielbereich.</p></aside><p id="simPlanTrialStatus" class="sim-plan-trial-status" role="status"></p><section class="ds-plan-card sim-assumption-step" data-assumption-step="3" data-fieldset="rebalancing" aria-label="Reserven &amp; Entnahme">
+ <h2><button type="button" class="ds-step-toggle" data-step-toggle aria-expanded="true" aria-controls="simStep3Content"><span class="sim-step-number">3</span><span><span data-plan-card-label="strategy">Reserven &amp; Entnahme</span><small>Wie entnommen und umgeschichtet wird</small></span><span class="sim-step-status sim-status-chip" aria-label="Füllstatus">Keine Eingaben</span><span class="sim-step-chevron" aria-hidden="true">⌄</span></button></h2>
+ <div class="sim-plan-head-actions"><button id="simPlanTrialStrategy" data-plan-trial-toggle type="button" class="ds-button ds-button-secondary">Nur hier ausprobieren</button><a href="depot-tranchen-manager.html#haushalt-plan" data-profile-handoff data-profile-handoff-export="false" class="ds-text-link">Im Plan ändern</a></div>
+ <div class="sim-step-content" id="simStep3Content"><div class="sim-field-grid"><div class="ds-field sim-dynamic-flex-field"><label for="dynamicFlexPreset">Dynamische Entnahme</label><select
+                                        id="dynamicFlexPreset"
+                                        title="Einfaches Profil für Dynamic-Flex: Details werden automatisch gesetzt" class="ds-select">
+                                        <option value="off">Aus</option>
+                                        <option value="konservativ">Konservativ</option>
+                                        <option value="ausgewogen" selected>Ausgewogen</option>
+                                        <option value="offensiv">Offensiv</option>
+                                        <option value="custom">Benutzerdefiniert</option>
+                                    </select><div class="ds-segment sim-select-segment" data-select-segment="dynamicFlexPreset" role="group" aria-label="Dynamic Flex"><button type="button" class="ds-segment-button" data-value="off" aria-pressed="false">Aus</button><button type="button" class="ds-segment-button" data-value="konservativ" aria-pressed="false">Konservativ</button><button type="button" class="ds-segment-button" data-value="ausgewogen" aria-pressed="false">Ausgewogen</button><button type="button" class="ds-segment-button" data-value="offensiv" aria-pressed="false">Offensiv</button><button type="button" class="ds-segment-button" data-value="custom" aria-pressed="false">Benutzerdefiniert</button></div>
+                                </div><div class="ds-field"><label for="entnahmeStrategie">Strategie</label><select
+                                        id="entnahmeStrategie" class="ds-select">
+                                        <option value="standard" selected>Standard</option>
+                                        <option value="3_bucket_jilge">3-Töpfe</option>
+                                    </select><div class="ds-segment sim-select-segment" data-select-segment="entnahmeStrategie" role="group" aria-label="Entnahme-Strategie"><button type="button" class="ds-segment-button" data-value="standard" aria-pressed="false">Standard</button><button type="button" class="ds-segment-button" data-value="3_bucket_jilge" aria-pressed="false">3-Töpfe</button></div></div></div><h4 style="margin-top: 0; margin-bottom: 12px; font-size: var(--balance-body);">Reserven</h4><div class="sim-field-grid" style="margin-bottom: 20px;">
+                                <div class="ds-field"><label for="liquidityRunwayYears">Liquiditäts-Reichweite</label><div class="ds-unit-frame"><input type="number" id="liquidityRunwayYears" value="5" min="1"
+                                        max="10" step="0.5"
+                                        title="Zielreichweite der operativen Liquidität; die harte Sicherheitsuntergrenze leitet die Engine intern ab" class="ds-input"><span class="ds-field-unit" aria-hidden="true">Jahre</span></div>
+                                </div>
+                            <div class="ds-field"><label for="rebalancingBand">Gold-Umschichtungsband</label><div class="ds-unit-frame"><input
+                                        type="number" id="rebalancingBand" value="25" min="0" max="100"
+                                        title="Prozentuale Toleranz um das Goldziel, bevor Gold-Rebalancing ausgelöst wird" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div>
+                                </div></div><details class="ds-disclosure sim-parameters" data-parameters="strategie"><summary>Alle Parameter zeigen</summary><div class="sim-parameter-body"><div class="sim-field-grid"><div class="ds-field"><label for="dynamicFlexShowAdvanced">Erweiterte Parameter</label><input
+                                        type="checkbox" id="dynamicFlexShowAdvanced"
+                                        title="Zeigt Detailparameter für Dynamic-Flex an" class="ds-checkbox">
+                                </div></div><div id="dynamicFlexAdvancedToggleRow" class="sim-field-grid"
+                                style="border-top: 1px solid var(--border-color); margin-top: 15px; padding-top: 15px;">
+                                <div class="ds-field"><label for="dynamicFlex">Dynamische Entnahme</label><input
+                                        type="checkbox" id="dynamicFlex"
+                                        title="Steuert den Flex-Bedarf dynamisch per VPW-Logik (nur Flex-Anteil, Floor bleibt fix)" class="ds-checkbox">
+                                </div>
+                            </div><div id="dynamicFlexConfigGroup" class="sim-field-grid">
+                                <div class="ds-field"><label for="horizonMethod">Planungshorizont</label><select
+                                        id="horizonMethod"
+                                        title="Methode für die Restlaufzeitberechnung des VPW-Faktors" class="ds-select">
+                                        <option value="survival_quantile" selected>Überlebensquantil</option>
+                                        <option value="mean">Mittlere Lebenserwartung</option>
+                                    </select>
+                                </div>
+                                <div class="ds-field"><label for="horizonYears">Planungshorizont</label><div class="ds-unit-frame"><input
+                                        type="number" id="horizonYears" value="30" min="1" max="60" step="1" readonly
+                                        aria-readonly="true"
+                                        aria-describedby="horizonYearsApplicability"
+                                        title="Bei den hier angebotenen aktuarischen Methoden nicht anwendbar; der Wert ist nur fuer explizit validierte Requests mit horizonMethod=direct wirksam." class="ds-input"></div>
+                                    <small id="horizonYearsApplicability">Nicht anwendbar bei Survival-Quantile oder
+                                        Erwartungswert; diese Methoden berechnen den Horizont aktuarisch.</small>
+                                </div>
+                                <div class="ds-field"><label for="survivalQuantile">Überlebensquantil</label><div class="ds-unit-frame"><input
+                                        type="number" id="survivalQuantile" value="0.85" min="0.5" max="0.99" step="0.01"
+                                        title="Quantil für aktuarische Restlaufzeit (0.5 bis 0.99)" class="ds-input"></div>
+                                </div>
+                                <div class="ds-field"><label for="goGoActive">Go-Go-Jahre</label><input
+                                        type="checkbox" id="goGoActive"
+                                        title="Aktiviert temporären VPW-Flex-Aufschlag in der Go-Go-Phase" class="ds-checkbox">
+                                </div>
+                                <div class="ds-field"><label for="goGoMultiplier">Go-Go-Faktor</label><div class="ds-unit-frame"><input
+                                        type="number" id="goGoMultiplier" value="1.1" min="1" max="1.5" step="0.05"
+                                        title="Multiplikator auf VPW-Flex in Go-Go-Jahren (1.0 bis 1.5)" class="ds-input"></div>
+                                </div>
+                                <div class="ds-field"><label for="longevityMode">Langlebigkeit</label><select
+                                        id="longevityMode"
+                                        title="Konservative Anpassung des VPW-Horizonts; Standard ist aus" class="ds-select">
+                                        <option value="none" selected>Ohne Zusatz</option>
+                                        <option value="quantile_shift">Quantil-Aufschlag</option>
+                                        <option value="relative_horizon_buffer">Relativer Horizont-Puffer</option>
+                                        <option value="buffer_years">Zusätzliche Jahre</option>
+                                    </select>
+                                </div>
+                                <div class="ds-field"><label for="longevityQuantileShift">Quantil-Aufschlag</label><div class="ds-unit-frame"><input
+                                        type="number" id="longevityQuantileShift" value="0.05" min="0" max="0.10"
+                                        step="0.01"
+                                        title="Erhöht das Survival-Quantil um bis zu 0,10; effektiv maximal 0,95" class="ds-input"></div>
+                                </div>
+                                <div class="ds-field"><label for="longevityRelativePct">Relativer Horizont-Puffer</label><div class="ds-unit-frame"><input
+                                        type="number" id="longevityRelativePct" value="0.05" min="0" max="0.20"
+                                        step="0.01"
+                                        title="Erhöht den Raw-Horizon prozentual um bis zu 20%" class="ds-input"></div>
+                                </div>
+                                <div class="ds-field"><label for="longevityBufferYears">Zusätzlicher Horizont-Puffer</label><div class="ds-unit-frame"><input
+                                        type="number" id="longevityBufferYears" value="2" min="0" max="10" step="1"
+                                        title="Fixer Vergleichspuffer in ganzen Jahren (0 bis 10)" class="ds-input"><span class="ds-field-unit" aria-hidden="true">Jahre</span></div>
+                                </div>
+                            </div><div id="threeBucketConfigGroup" class="sim-field-grid"
+                                style="display: none; margin-bottom: 20px;">
+                                <div class="ds-field"><label for="bondTargetFactor">Anleihen-Zielfaktor</label><div class="ds-unit-frame"><input type="number" id="bondTargetFactor"
+                                        placeholder="5" step="0.1" min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">Jahre</span></div></div>
+                                <div class="ds-field"><label for="drawdownTrigger">Rückgang für Auffüllen</label><div class="ds-unit-frame"><input
+                                        type="number" id="drawdownTrigger" placeholder="15" step="0.1" min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div></div>
+                                <div class="ds-field"><label for="bondRefillThreshold">Anleihen-Auffüllschwelle</label><div class="ds-unit-frame"><input type="number" id="bondRefillThreshold"
+                                        placeholder="optional" step="0.1" min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div></div>
+                            </div><h4
+                                style="margin-bottom: 12px; font-size: var(--balance-body); padding-top: 15px; border-top: 1px solid var(--border-color);">
+                                Gold- und Transaktionsstrategie</h4><div class="sim-field-grid">
+
+                                <div class="ds-field"><label for="maxSkimPctOfEq">Max. Abschöpfen</label><div class="ds-unit-frame"><input type="number" id="maxSkimPctOfEq" value="10" min="0" max="50"
+                                        title="Maximal pro Jahr abzuschöpfender Betrag vom Aktiendepot (als % des Depot-Werts), um Liquidität aufzufüllen" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div>
+                                </div>
+                                <div class="ds-field"><label for="maxBearRefillPctOfEq">Max. Auffüllen im Bärenmarkt</label><div class="ds-unit-frame"><input type="number" id="maxBearRefillPctOfEq" value="5" min="0"
+                                        max="70"
+                                        title="Maximal pro Jahr verkaufbarer Betrag vom Aktiendepot im Bärenmarkt (als % des Depot-Werts), um Runway-Minimum zu sichern" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div>
+                                </div>
+                            </div></div></details></div></section><section class="ds-plan-card sim-assumption-step" data-assumption-step="4" data-fieldset="personen" aria-label="Personen und Rente">
+ <h2><button type="button" class="ds-step-toggle" data-step-toggle aria-expanded="true" aria-controls="simStep4Content"><span class="sim-step-number">4</span><span>Rente &amp; Personen<small>Übernommen aus Personen &amp; Vermögen</small></span><span class="sim-step-status sim-status-chip" aria-label="Füllstatus">Keine Eingaben</span><span class="sim-step-chevron" aria-hidden="true">⌄</span></button></h2>
+ <div class="sim-step-content" id="simStep4Content">
+<p class="ds-source">Personenwerte werden zentral gepflegt. Alternativen gelten nur für diese Rechnung.</p>
+<a id="simPersonEditLink" href="depot-tranchen-manager.html#personendaten" data-profile-handoff data-profile-handoff-export="false" class="ds-text-link">In Personen &amp; Vermögen ändern</a>
+<label class="ds-toggle sim-toggle-row"><input id="personDeviationToggle" type="checkbox" class="ds-checkbox" data-no-persist="true"><span class="ds-slider" aria-hidden="true"></span><span>Für diese Rechnung abweichend ansetzen</span></label>
+<p id="personDeviationStatus" class="ds-note" role="status">Übernommen</p>
+<div class="sim-person-grid">
+<section class="ds-card sim-person-card" aria-labelledby="p1PersonSource">
+<h3 id="p1PersonSource" class="ds-source">
+</h3>
+<dl id="p1PersonValues" class="sim-person-values"></dl>
+</section>
+<section class="ds-card sim-person-card" id="sectionRente2" style="display: none;" aria-labelledby="r2PersonSource">
+<h3 id="r2PersonSource" class="ds-source">
+</h3>
+<dl id="r2PersonValues" class="sim-person-values"></dl>
+</section>
+</div>
+<dl id="sharedPensionValues" class="sim-person-values"></dl>
+<div id="personEditorCache" hidden>
+<div id="p1PersonEditors"><div class="sim-field-grid">
+<div class="ds-field">
+<label for="p1Geburtsdatum">Geburtsdatum</label>
+<input type="date" id="p1Geburtsdatum" class="ds-input" disabled data-no-persist="true">
+</div>
+<div class="ds-field">
+<label for="p1StartAlter">Alter am 01.01.</label>
+<div class="ds-unit-frame">
+<input type="number" id="p1StartAlter" class="ds-input" disabled data-no-persist="true" min="0" step="any">
+<span class="ds-field-unit" aria-hidden="true">Jahre</span>
+</div>
+</div>
+<div class="ds-field">
+<label for="p1Geschlecht">Geschlecht</label>
+<select id="p1Geschlecht" class="ds-select" disabled data-no-persist="true">
+<option value="m">Männlich</option>
+<option value="w">Weiblich</option>
+<option value="d">Divers</option>
+</select>
+<div class="ds-segment sim-select-segment" data-select-segment="p1Geschlecht" role="group" aria-label="Geschlecht">
+<button type="button" class="ds-segment-button" data-value="m" aria-pressed="false" disabled>Männlich</button>
+<button type="button" class="ds-segment-button" data-value="w" aria-pressed="false" disabled>Weiblich</button>
+<button type="button" class="ds-segment-button" data-value="d" aria-pressed="false" disabled>Divers</button>
+</div>
+</div>
+<div class="ds-field">
+<label for="p1Rentenbeginn">Rentenbeginn</label>
+<input type="date" id="p1Rentenbeginn" class="ds-input" disabled data-no-persist="true">
+</div>
+<div class="ds-field">
+<label for="p1Monatsrente">Monatliche Rente</label>
+<div class="ds-unit-frame">
+<input type="number" id="p1Monatsrente" class="ds-input" disabled data-no-persist="true" min="0" step="any">
+<span class="ds-field-unit" aria-hidden="true">€</span>
+</div>
+</div>
+<div class="ds-field">
+<label for="p1StartInJahren">Rentenbeginn in</label>
+<div class="ds-unit-frame">
+<input type="number" id="p1StartInJahren" class="ds-input" disabled data-no-persist="true" min="0" step="any">
+<span class="ds-field-unit" aria-hidden="true">Jahren</span>
+</div>
+</div>
+<div class="ds-field">
+<label for="p1SparerPauschbetrag">Sparer-Pauschbetrag</label>
+<div class="ds-unit-frame">
+<input type="number" id="p1SparerPauschbetrag" class="ds-input" disabled data-no-persist="true" min="0" step="any">
+<span class="ds-field-unit" aria-hidden="true">€</span>
+</div>
+</div>
+<div class="ds-field">
+<label for="p1KirchensteuerPct">Kirchensteuer</label>
+<select id="p1KirchensteuerPct" class="ds-select" disabled data-no-persist="true">
+<option value="0">0 %</option>
+<option value="8">8 %</option>
+<option value="9">9 %</option>
+</select>
+</div>
+</div></div>
+<div id="r2PersonEditors"><div class="sim-field-grid">
+<div class="ds-field">
+<label for="r2Geburtsdatum">Geburtsdatum</label>
+<input type="date" id="r2Geburtsdatum" class="ds-input" disabled data-no-persist="true">
+</div>
+<div class="ds-field">
+<label for="r2StartAlter">Alter am 01.01.</label>
+<div class="ds-unit-frame">
+<input type="number" id="r2StartAlter" class="ds-input" disabled data-no-persist="true" min="0" step="any">
+<span class="ds-field-unit" aria-hidden="true">Jahre</span>
+</div>
+</div>
+<div class="ds-field">
+<label for="r2Geschlecht">Geschlecht</label>
+<select id="r2Geschlecht" class="ds-select" disabled data-no-persist="true">
+<option value="m">Männlich</option>
+<option value="w">Weiblich</option>
+<option value="d">Divers</option>
+</select>
+<div class="ds-segment sim-select-segment" data-select-segment="r2Geschlecht" role="group" aria-label="Geschlecht">
+<button type="button" class="ds-segment-button" data-value="m" aria-pressed="false" disabled>Männlich</button>
+<button type="button" class="ds-segment-button" data-value="w" aria-pressed="false" disabled>Weiblich</button>
+<button type="button" class="ds-segment-button" data-value="d" aria-pressed="false" disabled>Divers</button>
+</div>
+</div>
+<div class="ds-field">
+<label for="r2Rentenbeginn">Rentenbeginn</label>
+<input type="date" id="r2Rentenbeginn" class="ds-input" disabled data-no-persist="true">
+</div>
+<div class="ds-field">
+<label for="r2Monatsrente">Monatliche Rente</label>
+<div class="ds-unit-frame">
+<input type="number" id="r2Monatsrente" class="ds-input" disabled data-no-persist="true" min="0" step="any">
+<span class="ds-field-unit" aria-hidden="true">€</span>
+</div>
+</div>
+<div class="ds-field">
+<label for="r2StartInJahren">Rentenbeginn in</label>
+<div class="ds-unit-frame">
+<input type="number" id="r2StartInJahren" class="ds-input" disabled data-no-persist="true" min="0" step="any">
+<span class="ds-field-unit" aria-hidden="true">Jahren</span>
+</div>
+</div>
+<div class="ds-field">
+<label for="r2SparerPauschbetrag">Sparer-Pauschbetrag</label>
+<div class="ds-unit-frame">
+<input type="number" id="r2SparerPauschbetrag" class="ds-input" disabled data-no-persist="true" min="0" step="any">
+<span class="ds-field-unit" aria-hidden="true">€</span>
+</div>
+</div>
+<div class="ds-field">
+<label for="r2KirchensteuerPct">Kirchensteuer</label>
+<select id="r2KirchensteuerPct" class="ds-select" disabled data-no-persist="true">
+<option value="0">0 %</option>
+<option value="8">8 %</option>
+<option value="9">9 %</option>
+</select>
+</div>
+<div class="ds-field">
+<label for="r2Steuerquote">Steuerquote · bisherige Rentenbasis</label>
+<div class="ds-unit-frame">
+<input type="number" id="r2Steuerquote" class="ds-input" disabled data-no-persist="true" min="0" step="any">
+<span class="ds-field-unit" aria-hidden="true">%</span>
+</div>
+</div>
+</div></div>
+<div id="sharedPensionEditors"><div class="sim-field-grid">
+<div class="ds-field">
+<label for="rentAdjMode">Gemeinsame Rentenanpassung nach Hauptprofil</label>
+<select id="rentAdjMode" class="ds-select" disabled data-no-persist="true">
+<option value="fix">Fixer Prozentsatz</option>
+<option value="wage">Lohnentwicklung</option>
+<option value="cpi">Inflation</option>
+</select>
+<div class="ds-segment sim-select-segment" data-select-segment="rentAdjMode" role="group" aria-label="Rentenanpassung">
+<button type="button" class="ds-segment-button" data-value="fix" aria-pressed="false" disabled>Fixer Prozentsatz</button>
+<button type="button" class="ds-segment-button" data-value="wage" aria-pressed="false" disabled>Lohnentwicklung</button>
+<button type="button" class="ds-segment-button" data-value="cpi" aria-pressed="false" disabled>Inflation</button>
+</div>
+</div>
+<div class="ds-field">
+<label for="rentAdjPct">Rentenanpassung (% p.a.)</label>
+<div class="ds-unit-frame">
+<input type="number" id="rentAdjPct" class="ds-input" step="0.1" disabled data-no-persist="true">
+<span class="ds-field-unit" aria-hidden="true">%</span>
+</div>
+</div>
+</div></div>
+</div>
+<input type="checkbox" id="chkPartnerAktiv" hidden disabled data-no-persist="true" class="ds-checkbox">
+<input type="hidden" id="startAlter" disabled data-no-persist="true">
+<input type="hidden" id="geschlecht" disabled data-no-persist="true">
+<input type="hidden" id="startSPB" disabled data-no-persist="true">
+<input type="hidden" id="kirchensteuerSatz" disabled data-no-persist="true">
+<input type="hidden" id="renteMonatlich" disabled data-no-persist="true">
+<input type="hidden" id="renteStartOffsetJahre" disabled data-no-persist="true">
+<div id="renteIndexierungsartContainer" style="display: none;">
+<input type="hidden" id="renteIndexierungsart" disabled data-no-persist="true">
+</div>
+<div id="festerSatzContainer" style="display: none;">
+<input type="hidden" id="renteFesterSatz" disabled data-no-persist="true">
+</div>
+<input type="hidden" id="r2Brutto" disabled data-no-persist="true">
+<div id="r2AnpassungContainer" style="display: none;">
+<input type="hidden" id="r2Anpassung" disabled data-no-persist="true">
+</div>
+<p class="ds-source">Das Alter zählt am 1. Januar. Ein späterer Geburtstag wirkt ab dem folgenden Januar. Die gemeinsame Rentenanpassung kommt vom Hauptprofil.</p>
+<details class="ds-disclosure sim-parameters" data-parameters="personen">
+<summary>Modellannahmen zeigen</summary>
+<div class="sim-parameter-body"><div id="widowPensionSection"
+                                style="border-top: 1px solid var(--border-color); margin-top: 15px; padding-top: 15px;">
+                                <h4 style="margin-bottom: 10px;">Hinterbliebenenrente</h4>
+                                <div class="sim-field-grid">
+                                    <h3>Nur im Simulator</h3><p id="personHouseholdSPB" class="ds-source"></p><div class="ds-field"> <label for="widowPensionMode">Verhalten bei
+                                            Todesfall</label> <select id="widowPensionMode" class="ds-select">
+                                            <option value="stop">Rente endet vollständig</option>
+                                            <option value="percent" selected>Witwen-/Witwerrente (Prozent)</option>
+                                        </select> </div>
+                                    <div class="ds-field"> <label for="widowPensionPct">Witwenrente</label>
+                                        <div class="ds-unit-frame"><input type="number" id="widowPensionPct" min="0" max="100" step="5" value="55" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div>
+                                    </div>
+                                    <div class="ds-field"> <label for="widowMarriageOffsetYears">Eheschließung in
+                                            … Jahren</label> <div class="ds-unit-frame"><input type="number" id="widowMarriageOffsetYears" min="0"
+                                            max="120" value="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">Jahre</span></div> </div>
+                                    <div class="ds-field"> <label for="widowMinMarriageYears">Mindest-Ehedauer</label> <div class="ds-unit-frame"><input type="number" id="widowMinMarriageYears" min="0"
+                                            max="120" value="1" class="ds-input"><span class="ds-field-unit" aria-hidden="true">Jahre</span></div> </div>
+                                </div>
+                                <p class="form-hint" style="grid-column: span 4; margin-top: 10px;"> Hinweis: Die
+                                    Witwen-/Witwerrente wird nur gezahlt, wenn die Eheschließung erfolgt ist und die
+                                    Mindestdauer erreicht wurde. Die Prozentregel ist eine vereinfachte
+                                    Szenarioannahme und keine gesetzliche Anspruchs-, Einkommensanrechnungs- oder
+                                    Rentenberechnung. </p>
+                            </div></div></details></div></section><section class="ds-plan-card sim-assumption-step" data-assumption-step="5" data-fieldset="pflege" aria-label="Pflege">
+ <h2><button type="button" class="ds-step-toggle" data-step-toggle aria-expanded="true" aria-controls="simStep5Content"><span class="sim-step-number">5</span><span>Pflege<small>Pflegefall-Absicherung</small></span><span class="sim-step-status sim-status-chip" aria-label="Füllstatus">Keine Eingaben</span><span class="sim-step-chevron" aria-hidden="true">⌄</span></button></h2>
+ <div class="sim-step-content" id="simStep5Content"><div id="pflegePanelContainer" class="care-panel"
+                                style="border-top: none; margin-top: 0; padding-top: 0;">
+                                <!-- Die Sektionen strukturieren die Pflegekonfiguration in überschaubare Teilbereiche
+                                    -->
+                                <div class="sim-field-grid"><div class="ds-field"><label
+                                                    for="pflegeModellTyp">Pflegemodell-Typ</label><select
+                                                    id="pflegeModellTyp" class="ds-select">
+                                                    <option value="chronisch" selected>Chronisch (bis Lebensende)
+                                                    </option>
+                                                    <option value="akut">Akut (begrenzte Dauer)</option>
+                                                </select><div class="ds-segment sim-select-segment" data-select-segment="pflegeModellTyp" role="group" aria-label="Pflegemodell"><button type="button" class="ds-segment-button" data-value="chronisch" aria-pressed="false">Chronisch (bis Lebensende)</button><button type="button" class="ds-segment-button" data-value="akut" aria-pressed="false">Akut (begrenzte Dauer)</button></div></div><div class="ds-field sim-care-duration-field"><label>Pflegedauer</label><p id="simCareDurationDisplay" class="ds-note">Bis Lebensende</p><div id="pflegeDauerContainer" class="care-duration-group sim-care-duration">
+                                                <div class="ds-field"><label for="pflegeMinDauer">Min. Pflegedauer</label><div class="ds-unit-frame"><input type="number" id="pflegeMinDauer"
+                                                        value="5" min="1" step="1" class="ds-input"><span class="ds-field-unit" aria-hidden="true">Jahre</span></div></div>
+                                                <div class="ds-field"><label for="pflegeMaxDauer">Max. Pflegedauer</label><div class="ds-unit-frame"><input type="number" id="pflegeMaxDauer"
+                                                        value="10" min="1" step="1" class="ds-input"><span class="ds-field-unit" aria-hidden="true">Jahre</span></div></div>
+                                            </div></div><div class="ds-field"><label for="pflegeRampUp">Anstiegsdauer</label><div class="ds-unit-frame"><input type="number" id="pflegeRampUp" value="5" class="ds-input"><span class="ds-field-unit" aria-hidden="true">Jahre</span></div>
+                                            </div><div class="ds-field"><label for="pflegeMaxFloor">Maximaler
+                                                    Pflege-Floor</label><div class="ds-unit-frame"><input type="number"
+                                                    id="pflegeMaxFloor" value="120000" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div></div><div class="ds-field"><label for="pflegeRegionalZuschlag">Regionaler
+                                                    Zuschlag</label><div class="ds-unit-frame"><input type="number" id="pflegeRegionalZuschlag"
+                                                    value="0" step="0.5" min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><small>Multipliziert alle Pflegegrade
+                                                    z.&nbsp;
+                                                    B. für Metropol-Zuschläge.</small></div><div class="ds-field"><label for="pflegeKostenDrift">Zusätzl.
+                                                    Kostenanstieg p.a.</label><div class="ds-unit-frame"><input type="number"
+                                                    id="pflegeKostenDrift" value="3.5" step="0.1"
+                                                    min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><small>Konservativer Aufschlag (Default: 3, 5&nbsp; %)
+                                                    zusätzlich zur Inflation.</small></div></div><div class="care-panel-toggle"> <label class="ds-toggle sim-toggle-row"><input
+                                            type="checkbox" id="pflegefallLogikAktivieren" checked class="ds-checkbox"><span class="ds-slider" aria-hidden="true"></span><span>Pflegefall-Logik aktiv<small class="sim-care-reserve">Pflegereserve: <strong id="simCareReserve">Wird beim Rechnen ausgewiesen</strong><br>Die Reserve bleibt auch bei ausgeschalteter Pflegelogik erhalten.</small></span></label>
+
+                                </div>
+                                <div class="sim-care-table-scroll"><table class="sim-care-table" aria-label="Einstellungen pro Pflegegrad"><thead><tr><th scope="col">Pflegegrad</th><th scope="col">Zusatzbedarf (€ p.a.)</th><th scope="col">Flex-Level (%)</th><th scope="col">Max. Mortalitäts-Faktor*</th></tr></thead><tbody><tr><td><strong>Pflegegrad
+                                                        1</strong><small>Leichte Beeinträchtigung,
+                                                        Einstieg</small></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe1Zusatz" aria-label="Pflegegrad 1 · Zusatzbedarf pro Jahr" value="6000" min="0"
+                                                        step="500" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe1FlexCut" aria-label="Pflegegrad 1 · Flex-Level in Prozent" value="75" min="0"
+                                                        max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe1Mortality" aria-label="Pflegegrad 1 · Maximaler Mortalitätsfaktor" value="0" min="0"
+                                                        step="0.1" class="ds-input"></div></td></tr><tr><td><strong>Pflegegrad
+                                                        2</strong><small>Erhebliche Beeinträchtigung</small></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe2Zusatz" aria-label="Pflegegrad 2 · Zusatzbedarf pro Jahr" value="12000" min="0"
+                                                        step="500" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe2FlexCut" aria-label="Pflegegrad 2 · Flex-Level in Prozent" value="25" min="0"
+                                                        max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe2Mortality" aria-label="Pflegegrad 2 · Maximaler Mortalitätsfaktor" value="0" min="0"
+                                                        step="0.1" class="ds-input"></div></td></tr><tr><td><strong>Pflegegrad
+                                                        3</strong><small>Schwere Beeinträchtigung</small></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe3Zusatz" aria-label="Pflegegrad 3 · Zusatzbedarf pro Jahr" value="18000" min="0"
+                                                        step="500" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe3FlexCut" aria-label="Pflegegrad 3 · Flex-Level in Prozent" value="10" min="0"
+                                                        max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe3Mortality" aria-label="Pflegegrad 3 · Maximaler Mortalitätsfaktor" value="3" min="0"
+                                                        step="0.1" class="ds-input"></div></td></tr><tr><td><strong>Pflegegrad
+                                                        4</strong><small>Schwerste Beeinträchtigung</small></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe4Zusatz" aria-label="Pflegegrad 4 · Zusatzbedarf pro Jahr" value="32000" min="0"
+                                                        step="500" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe4FlexCut" aria-label="Pflegegrad 4 · Flex-Level in Prozent" value="0" min="0"
+                                                        max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe4Mortality" aria-label="Pflegegrad 4 · Maximaler Mortalitätsfaktor" value="5" min="0"
+                                                        step="0.1" class="ds-input"></div></td></tr><tr><td><strong>Pflegegrad
+                                                        5</strong><small>Schwerste+besondere Anforderungen</small>
+                                                </td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe5Zusatz" aria-label="Pflegegrad 5 · Zusatzbedarf pro Jahr" value="60000" min="0"
+                                                        step="500" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe5FlexCut" aria-label="Pflegegrad 5 · Flex-Level in Prozent" value="0" min="0"
+                                                        max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe5Mortality" aria-label="Pflegegrad 5 · Maximaler Mortalitätsfaktor" value="5" min="0"
+                                                        step="0.1" class="ds-input"></div></td></tr></tbody></table></div><details class="ds-disclosure sim-parameters" data-parameters="pflege"><summary>Alle Parameter zeigen</summary><div class="ds-field" style="grid-column: span 2;"><label
+                                                    for="pflegeKostenStaffelPreset">Kostenstaffel je
+                                                    Pflegegrad</label><select id="pflegeKostenStaffelPreset" class="ds-select">
+                                                    <option value="custom" selected>Individuelle Werte</option>
+                                                    <option value="ambulant">Ambulant (ab 36 Tsd. €)</option>
+                                                    <option value="stationaer">Stationär (Premium)</option>
+                                                </select><small id="pflegeStaffelPresetHint">Wähle ein Preset,
+                                                    um typische Staffelungen zu übernehmen.</small></div><div id="pflegePanel" class="care-sections"><p class="care-panel-subtitle">Definiere Kostenverlauf, Pflegedauer und
+                                        Mortalitätsanpassungen klar getrennt. Eintritt, Verlauf und Dauer sind
+                                        Modellannahmen; beobachtete Pflegequoten werden nicht als jährliche
+                                        Übergangswahrscheinlichkeiten verwendet.</p>
+
+                                    <section class="care-section">
+                                        <div class="care-section-header">
+                                            <h4>Kostenprofil &amp;
+                                                Flex</h4>
+                                            <p>Bestimme Zusatzbedarf,
+                                                Flex-Verlust und den Floor-Cap.</p>
+                                        </div>
+                                        <div class="care-section-grid care-config-grid">
+
+
+
+
+                                        </div>
+                                        <small class="care-grade-note">*0=keine Erhöhung,
+                                            Werte &gt;
+                                            1 multiplizieren das Basismortalitätsrisiko nach Ablauf der
+                                            Ramp-Up-Dauer. Mortalitätsfaktoren pflegestufen-spezifisch hier im Panel
+                                            einstellen.</small>
+                                    </section>
+                                </div>
+                            </details></div></div></section><input type="hidden" id="depotwertAlt" data-no-persist="true"><input type="hidden" id="einstandAlt" data-no-persist="true"><input type="hidden" id="einstandNeu" data-no-persist="true"><input type="hidden" id="goldAllokationAktiv" data-no-persist="true"><input type="hidden" id="goldAllokationProzent" data-no-persist="true"><input type="hidden" id="goldFloorProzent" data-no-persist="true"><input type="hidden" id="goldSteuerfrei" data-no-persist="true"></div>
+                    <section class="ds-plan-card sim-assumptions-reset"><div><h2>Simulator-Werte zurücksetzen</h2><p>Setzt eigene Simulator-Eingaben zurück. Profile, Vermögen und Balance bleiben unberührt.</p></div><button type="button" id="resetBtn" class="ds-button ds-button-secondary">Zurücksetzen …</button></section>
+                </div>
+                <div id="tab-backtesting" class="tab-panel">
+                    <p id="simBacktestPlanDeviation" class="ds-source" hidden>mit Abweichung vom Plan</p>
+                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Backtest</p><h1>Dein Plan in den echten Jahren</h1><p class="sim-lead">Ein historischer Einzelpfad mit Jahresprotokoll und allen Details.</p></header>
+
+                    <div class="sim-backtest-grid">
+                    <section class="ds-card sim-backtest-period" aria-labelledby="backtestPeriodHeading">
+                        <div class="sim-card-heading"><h2 id="backtestPeriodHeading">Zeitraum</h2><span id="backtestPeriodStatus" class="sim-status-chip" data-status="idle">Bereit</span></div>
+                        <div class="sim-field-grid">
+                            <div class="ds-field"><label for="simStartJahr">Startjahr</label><input type="number"
+                                    id="simStartJahr" value="2000" step="1" required
+                                    aria-describedby="backtestDatasetHint simStartJahrError" class="ds-input">
+                                <p class="field-error" id="simStartJahrError" hidden></p>
+                            </div>
+                            <div class="ds-field"><label for="simEndJahr">Endjahr</label><input type="number"
+                                    id="simEndJahr" value="2025" step="1" required
+                                    aria-describedby="backtestDatasetHint simEndJahrError" class="ds-input">
+                                <p class="field-error" id="simEndJahrError" hidden></p>
+                            </div>
+                        </div>
+                        <p class="backtest-period-hint" id="backtestDatasetHint">Historischer Datensatz wird geladen.</p>
+                        <div class="backtest-cohort-controls">
+                            <label class="ds-toggle sim-toggle-row" for="runBacktestCohorts"><input type="checkbox"
+                                    id="runBacktestCohorts" class="ds-checkbox"><span class="ds-slider" aria-hidden="true"></span><span>Rolling Cohorts zusätzlich rechnen<small>Überlappende Zeitfenster gleicher Länge, nur zur Einordnung</small></span></label>
+                            <div class="ds-field">
+                                <label for="backtestCohortHorizon">Cohort-Länge</label>
+                                <div class="ds-unit-frame"><input type="number" id="backtestCohortHorizon" value="10" min="1" step="1" disabled
+                                    aria-describedby="backtestCohortHint backtestCohortHorizonError" class="ds-input"><span aria-hidden="true">Jahre</span></div>
+                                <p id="backtestCohortHint" class="backtest-period-hint">Überlappende historische Fenster; keine Erfolgswahrscheinlichkeit.</p>
+                                <p class="field-error" id="backtestCohortHorizonError" hidden></p>
+                            </div>
+                        </div>
+                    <div class="sim-card-actions"><button id="btButton" type="button" class="ds-button ds-button-primary"><svg class="sim-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/></svg>Neu rechnen</button></div></section>
+                    <section class="ds-card sim-backtest-classification" aria-labelledby="backtestClassificationHeading"><div class="sim-card-heading"><h2 id="backtestClassificationHeading">Einordnung und Warnhinweise</h2><span id="backtestDiagnosisCode" class="backtest-status-code">Code: BACKTEST_READY</span></div>
+                    <div id="backtestStatus" class="backtest-status backtest-status-idle" role="status" aria-live="polite"
+                        aria-atomic="true" tabindex="-1" data-status="idle"><strong>Backtest bereit</strong><span>Wählen Sie einen Zeitraum und starten Sie die historische Simulation.</span></div>
+                    <section id="backtestNotices" class="backtest-notices" aria-labelledby="backtestNoticesHeading" hidden>
+                        <h4 id="backtestNoticesHeading" class="visually-hidden">Datenqualität und Hinweise des Rechenlaufs</h4>
+                        <ul id="backtestNoticeList"></ul>
+                    </section>
+                    </section>
+                    <div id="simulationResults" style="display:none">
+                        <section class="ds-card sim-backtest-metrics"><div class="sim-card-heading"><h2 id="backtestResultHeading" tabindex="-1">Kennzahlen</h2><span id="backtestResultPeriod" class="ds-hint"></span></div>
+                        <div id="simulationSummary"></div></section>
+                        <section class="ds-card sim-backtest-chart" aria-labelledby="backtestChartHeading"><h2 id="backtestChartHeading">Portfolioverlauf</h2><div id="portfolioCompositionChart" role="region" tabindex="0" aria-label="Portfolioverlauf des Backtests, nominale Euro, ohne Pflegebucket; horizontal scrollbar" style="display:none"></div></section>
+                        <section class="ds-card sim-backtest-log protocol-panel"><div class="protocol-head"><div><h2 id="backtestLogHeading">Backtest-Protokoll</h2><div id="backtestProtocolSummary"></div></div><div class="protocol-controls">
+                        <label class="ds-toggle sim-toggle-row backtest-detail-toggle" title="Zeigt sämtliche anwendbaren Diagnosespalten; Downloads bleiben vollständig."><input type="checkbox" id="toggle-backtest-detail" class="ds-checkbox"><span class="ds-slider" aria-hidden="true"></span><span>Details</span></label>
+                        <div class="log-export-buttons"><button type="button"
+                                id="exportBacktestJson" class="ds-button ds-button-secondary">JSON herunterladen</button><button type="button"
+                                id="exportBacktestCsv" class="ds-button ds-button-secondary">CSV herunterladen</button></div></div></div>
+                        <p class="ds-scroll-hint">Backtestlog bei Bedarf horizontal scrollen.</p>
+                            <div id="simulationLog" class="backtest-table-region ds-table-scroll" role="region"
+                            aria-labelledby="backtestLogHeading" tabindex="0">Keine Daten</div></section>
+                        <section id="backtestCohortSummary" class="backtest-cohort-summary ds-card" aria-live="polite" hidden></section>
+
+                    </div>
+                    </div>
+                    <div id="engine-mismatch-footer"></div>
+                    <section class="dev-only" id="parity-smoketest-card">
+                        <fieldset class="ds-control-group">
+                            <div class="section-title">
+                                <h3>Parity Smoke Test</h3><a id="runParitySmokeTestBtn"
+                                    class="debug-link" href="javascript:void(0)"
+                                    onclick="window.runParitySmokeTest({years:3})"
+                                    aria-label="Run Parity Smoke Test">Run</a>
+                            </div>
+                            <div>Vergleicht Engine und
+                                Simulator über 3 Jahre. Ergebnisse in der Browser-Konsole.</div>
+                        </fieldset>
+                    </section>
+                </div>
+                <div id="tab-montecarlo" class="tab-panel">
+                    <p id="simMonteCarloPlanDeviation" class="ds-source" hidden>mit Abweichung vom Plan</p>
+                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Monte-Carlo</p><h1>Reicht das Vermögen?</h1><p class="sim-lead">Viele mögliche Markt- und Lebenspfade für deinen Plan.</p></header>
+
+                    <section class="ds-card mc-settings-card" aria-labelledby="mcSettingsHeading">
+                        <div class="mc-settings-heading">
+                            <div><h2 id="mcSettingsHeading">Einstellungen</h2>
+                            <span class="mc-setup-summary" aria-label="Aktuelle Monte-Carlo-Parameter">
+                                <span><output id="mcSetupSummaryRuns">10000</output> Läufe</span>
+                                <span><output id="mcSetupSummaryDuration">35</output> Jahre</span>
+                                <span>Methode: <output id="mcSetupSummaryMethod">Regime-Sampling (Markov-Chain)</output></span>
+                                <span>Seed: <output id="mcSetupSummarySeed">12345</output></span><span><output id="mcSetupSummaryStress">Kein Stressmodus</output></span><span><output id="mcSetupSummaryTailRisk">Tail-Risk aus</output></span>
+                            </span>
+                            </div>
+                            <div class="mc-settings-actions">
+                                <button type="button" class="ds-button ds-button-primary" id="mcButton" aria-controls="monteCarloResults mcRunStatus">Monte-Carlo rechnen</button>
+                                <button type="button" id="mcSettingsToggle" aria-expanded="false" aria-controls="mcSetupDisclosure" class="ds-button ds-button-secondary">Einstellungen anzeigen</button>
+                                <div id="mcRunExportActions" hidden style="display:none"><button type="button" id="exportMonteCarloRunJson" disabled class="ds-button ds-button-secondary">Ergebnis exportieren (JSON)</button></div>
+                            </div>
+                        </div>
+                        <section id="mcRunHint" class="ds-note mc-run-hint" hidden aria-label="Hinweis bei vielen Läufen">
+                            <div id="mcRunHintContent" role="status" aria-live="polite"></div>
+                            <div class="ds-actions"><button id="mcRunHintStart" type="button" class="ds-button ds-button-primary">Mit vielen Läufen rechnen</button><button id="mcRunHintReset" type="button" class="ds-button ds-button-secondary">Auf 10.000 Läufe zurück</button></div>
+                        </section>
+                    <details id="mcSetupDisclosure" class="mc-setup-disclosure">
+                        <summary>Simulationsparameter</summary>
+                        <div class="mc-setup-content">
+                    <fieldset class="ds-control-group">
+                        <legend>Simulationsparameter</legend>
+                        <div class="sim-field-grid sim-field-grid-four">
+                            <div class="ds-field"><label for="mcAnzahl">Anzahl Simulationen</label><input
+                                    type="number" id="mcAnzahl" value="10000" min="1" max="1000000" step="1"
+                                    aria-describedby="mcResourceEstimate"
+                                    title="Wie viele verschiedene Zukunftsszenarien simuliert werden - mehr Simulationen = genauere Ergebnisse" class="ds-input">
+                            </div>
+                            <div class="ds-field"><label for="mcDauer">Maximale Dauer (Jahre)</label><input
+                                    type="number" id="mcDauer" value="35" min="1" max="110" step="1"
+                                    aria-describedby="mcResourceEstimate"
+                                    title="Über wie viele Jahre in die Zukunft simuliert wird - sollte mindestens Ihre Lebenserwartung abdecken" class="ds-input">
+                            </div>
+                            <div class="ds-field"><label id="mcBlockSizeLabel" for="mcBlockSize">Blockgröße
+                                    (Jahre)</label><input type="number" id="mcBlockSize" value="5" min="1" max="30" step="1"
+                                    title="Länge der historischen Blöcke für Block-Bootstrap oder erwartete Blocklänge für Stationary Bootstrap" class="ds-input">
+                            </div>
+                            <div class="ds-field"><label for="mcSeed">Seed</label><input type="number"
+                                    id="mcSeed" value="12345" min="0" max="4294967295" step="1"
+                                    title="Zufallszahlengenerator-Seed für reproduzierbare Simulationen" class="ds-input"></div>
+                        </div>
+                        <div class="ds-field"><label
+                                for="mcMethode">Simulationsmethode</label><select id="mcMethode" class="ds-select">
+                                <option value="regime_markov" selected>Regime-Sampling (Markov-Chain)</option>
+                                <option value="regime_iid">Regime-Sampling (iid)</option>
+                                <option value="block">Block-Bootstrap (Stresstest)</option>
+                                <option value="stationary">Stationary Bootstrap</option>
+                            </select></div>
+                        <div class="mc-resource-panel ds-note" aria-labelledby="mcResourceHeading">
+                            <strong id="mcResourceHeading">Geschätzte Rechenlast</strong>
+                            <p id="mcResourceEstimate" role="status" aria-live="polite">
+                                Kostenschätzung wird aus Runzahl und Dauer berechnet.
+                            </p>
+                            <div id="mcLargeRunConfirmationRow" class="mc-large-run-confirmation" hidden
+                                style="display:none">
+                                <label for="mcLargeRunConfirm">
+                                    <input type="checkbox" id="mcLargeRunConfirm" class="ds-checkbox">
+                                    Großlast mit mehr als 100.000 Simulationen ausdrücklich bestätigen
+                                </label>
+                                <small>Bis 1.000.000 Runs ist der Lauf zulässig; Speicher- und Laufzeitbedarf steigen deutlich.</small>
+                            </div>
+                        </div>
+                        <div class="ds-field"><label
+
+                                title="Wenn aktiv, werden Startjahre bevorzugt, deren historisches CAPE dem aktuellen Eingabewert ähnelt (+/- 20%)."><input
+                                    type="checkbox" id="useCapeSampling"
+                                    class="ds-checkbox">CAPE-basiertes Sampling verwenden </label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="ds-control-group">
+                        <legend>Daten-Gewichtung (Advanced)</legend>
+                        <div class="sim-field-grid sim-field-grid-four">
+                            <div class="ds-field"><label for="mcStartYearMode">Modus</label><select
+                                    id="mcStartYearMode" class="ds-select">
+                                    <option value="UNIFORM" selected>Uniform (alle Jahre gleich)</option>
+                                    <option value="FILTER">Startjahr filtern (harte Grenze)</option>
+                                    <option value="RECENCY">Recency (Half-Life-Gewichtung)</option>
+                                </select></div>
+                            <div class="ds-field" id="mcStartYearFilterRow" style="display:none">
+                                <label for="mcStartYearFilter">Startjahr-Filter</label>
+                                <div style="display:flex">
+                                    <input type="range" id="mcStartYearFilter" min="1925" max="2025" value="1970" class="ds-input">
+                                    <output id="mcStartYearFilterValue">1970</output>
+                                </div>
+                            </div>
+                            <div class="ds-field" id="mcStartYearHalfLifeRow" style="display:none">
+                                <label for="mcStartYearHalfLife">Half-Life (Jahre)</label>
+                                <div style="display:flex">
+                                    <input type="range" id="mcStartYearHalfLife" min="5" max="50" value="20" class="ds-input">
+                                    <output id="mcStartYearHalfLifeValue">20</output>
+                                </div>
+                            </div>
+                            <div class="ds-field">
+                                <label for="mcExcludeEstimatedHistory">
+                                    <input type="checkbox" id="mcExcludeEstimatedHistory" class="ds-checkbox">
+                                    Geschätzte Jahre (vor 1950) ausschließen
+                                </label>
+                            </div>
+                        </div>
+                        <div id="mcStartYearCapeWarning"
+                            style="display:none">
+                            Hinweis: CAPE-Sampling hat Vorrang; die Gewichtung wird dann ignoriert.
+                        </div>
+                        <small style="display:block">
+                            Advanced-Feature: optional, beeinflusst Startjahre und die laufenden historischen Jahresdaten.
+                        </small>
+                    </fieldset>
+                    <fieldset class="ds-control-group">
+                        <legend>Stressmodus</legend>
+                        <div class="ds-field"><label for="stressPreset">Szenario für die ersten
+                                Simulationsjahre</label><select id="stressPreset" class="ds-select">
+                                <!-- Wird per JavaScript befüllt -->
+                            </select></div>
+                    </fieldset>
+                    <fieldset class="ds-control-group">
+                        <legend>Tail-Risk-Overlay</legend>
+                        <div class="ds-field">
+                            <label
+                                title="Optionales Extremereignis-Overlay. Standard bleibt deaktiviert.">
+                                <input type="checkbox" id="tailRiskEnabled" class="ds-checkbox">
+                                Fat-Tail-/Crash-Overlay aktivieren
+                            </label>
+                        </div>
+                        <div class="sim-field-grid sim-field-grid-four">
+                            <div class="ds-field"><label for="tailRiskAnnualProbabilityPct">Wahrscheinlichkeit p.a. (%)</label><input
+                                    type="number" id="tailRiskAnnualProbabilityPct" value="1" min="0" max="5" step="0.1"
+                                    title="Ereigniswahrscheinlichkeit pro Jahr. Erlaubt: 0 bis 5%." class="ds-input"></div>
+                            <div class="ds-field"><label for="tailRiskReturnShockPct">Aktien-Schock (%)</label><input
+                                    type="number" id="tailRiskReturnShockPct" value="-35" min="-60" max="0" step="1"
+                                    title="Zusätzlicher Aktienrendite-Schock. Erlaubt: -60% bis 0%." class="ds-input"></div>
+                            <div class="ds-field"><label for="tailRiskInflationShockPct">Inflationsschock (%)</label><input
+                                    type="number" id="tailRiskInflationShockPct" value="6" min="0" max="15" step="0.5"
+                                    title="Zusätzliche Inflation im Schockjahr. Erlaubt: 0 bis 15%." class="ds-input"></div>
+                            <div class="ds-field"><label for="tailRiskDurationYears">Dauer (Jahre)</label><input
+                                    type="number" id="tailRiskDurationYears" value="1" min="1" max="5" step="1"
+                                    title="Dauer eines Ereignispakets. Erlaubt: 1 bis 5 Jahre." class="ds-input"></div>
+                        </div>
+                        <div class="sim-field-grid sim-field-grid-four">
+                            <div class="ds-field"><label for="tailRiskCooldownYears">Cooldown (Jahre)</label><input
+                                    type="number" id="tailRiskCooldownYears" value="10" min="0" max="20" step="1"
+                                    title="Mindestabstand zwischen Tail-Risk-Ereignissen. Erlaubt: 0 bis 20 Jahre." class="ds-input"></div>
+                        </div>
+                        <small style="display:block">
+                            Modellannahme für Stressanalyse: keine Prognose. Historische Krisenjahre erhalten keinen zusätzlichen Renditeschock.
+                        </small>
+                    </fieldset>
+                    <details id="mcAdvancedDisclosure" class="ds-disclosure mc-advanced-disclosure">
+                        <summary>Erweitert · <output id="mcAdvancedSummary">Standard</output></summary>
+                        <p class="ds-hint">Technische Einstellungen für reproduzierbare Läufe und Rechenleistung. 0 Prozesse wählt automatisch; der Vergleich rechnet beide Pfade.</p>
+                        <div class="ds-field"><label
+                                for="rngMode">Zufallsgenerator</label><select id="rngMode" class="ds-select">
+                                <option value="per-run-seed" selected>Per-Run Seed (deterministisch)</option>
+                                <option value="legacy-stream">Legacy Stream (alte Ergebnisse)</option>
+                            </select></div>
+                        <div class="sim-field-grid sim-field-grid-four">
+                            <div class="ds-field"><label for="mcWorkerCount">Parallele Rechenprozesse</label><input
+                                    type="number" id="mcWorkerCount" value="8" min="0" max="32" step="1"
+                                    title="Default: 8. 0 = auto (hardwareConcurrency), sonst fixe Worker-Anzahl" class="ds-input"></div>
+                            <div class="ds-field"><label for="mcWorkerBudget">Rechenzeit je Paket (ms)</label><input
+                                    type="number" id="mcWorkerBudget" value="500" min="50" max="5000" step="1"
+                                    title="Default: 500 ms. Ziel-CPU-Zeit pro Worker-Job (auto Chunking)" class="ds-input"></div>
+                        </div>
+                    <div class="ds-field">
+                        <label
+                            title="Fuehrt zuerst seriell, dann mit Web-Workern aus und zeigt beide Laufzeiten.">
+                            <input type="checkbox" id="mcCompareMode" class="ds-checkbox">
+                            Vergleich: Seriell vs. Worker
+                        </label>
+                    </div>
+                    <div id="mc-compare-results"
+                        style="display:none"></div>
+    <div id="devTools" class="ds-card" >
+        <div style="margin-bottom:8px;">
+            <label>
+                <input type="checkbox" id="telemetryToggle" class="ds-checkbox" />
+                Worker Telemetry
+            </label>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <button class="ds-button ds-button-secondary" id="printTelemetry" style="padding:4px 8px; cursor:pointer;">Print</button>
+            <button class="ds-button ds-button-secondary" id="exportTelemetry" style="padding:4px 8px; cursor:pointer;">Export JSON</button>
+        </div>
+    </div>
+                    </details>
+                        </div>
+                    </details>
+                    <div id="mcRunHead" class="mc-run-state" aria-label="Monte-Carlo-Laufstatus">
+                    <button type="button" id="mcCancelButton" hidden disabled aria-controls="mcRunStatus" style="display:none" class="ds-button ds-button-secondary">Monte-Carlo-Lauf abbrechen</button>
+                    <span id="mcProgressLabel" class="visually-hidden">Fortschritt des Monte-Carlo-Laufs</span>
+                    <div id="mc-progress-bar-container" role="progressbar" aria-labelledby="mcProgressLabel"
+                        aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="-1">
+                        <div id="mc-progress-bar" aria-hidden="true"></div>
+                    </div>
+                    <div id="mcRunStatus" class="mc-run-status" role="status" aria-live="polite"></div>
+                    <div id="mc-error-container"
+                        role="alert" aria-live="assertive" tabindex="-1"
+                        style="display:none">
+                        <h4>Fehler in der Simulation</h4>
+                        <pre id="mc-error-message"
+                           ></pre>
+                        <button type="button" onclick="document.getElementById('mc-error-container').style.display='none'"
+                            class="ds-button ds-button-secondary">Schließen</button>
+                    </div>
+                    <span id="mcRunExportStatus" role="status" aria-live="polite"></span>
+                    </div>
+                    </section>
+                    <nav class="mc-view-nav" aria-label="Monte-Carlo-Ergebnisansichten">
+                        <div class="ds-segment" role="tablist" aria-label="Monte-Carlo-Ergebnisansichten">
+                            <button type="button" id="mcViewTabOverview" class="mc-view-tab ds-segment-button" role="tab"
+                                aria-selected="true" aria-controls="mcViewPanelOverview" tabindex="0"
+                                data-mc-view="overview">Überblick</button>
+                            <button type="button" id="mcViewTabRisk" class="mc-view-tab ds-segment-button" role="tab"
+                                aria-selected="false" aria-controls="mcViewPanelRisk" tabindex="-1"
+                                data-mc-view="risk">Risiko und Verteilung</button>
+                            <button type="button" id="mcViewTabCare" class="mc-view-tab ds-segment-button" role="tab"
+                                aria-selected="false" aria-controls="mcViewPanelCare" tabindex="-1"
+                                data-mc-view="care">Pflege</button>
+                            <button type="button" id="mcViewTabLogs" class="mc-view-tab ds-segment-button" role="tab"
+                                aria-selected="false" aria-controls="mcViewPanelLogs" tabindex="-1"
+                                data-mc-view="logs">Szenario-Logs</button>
+                        </div>
+                        <div id="mcWealthMode" class="ds-segment wealth-mode" hidden role="group" aria-label="Maßstab der Vermögensansichten"><button type="button" class="ds-segment-button" data-wealth-mode="real" aria-pressed="true">Real · heutige Euro</button><button type="button" class="ds-segment-button" data-wealth-mode="nominal" aria-pressed="false">Nominal</button></div>
+                    </nav>
+                    <section id="mcViewPanelOverview" class="mc-view-panel" role="tabpanel"
+                        aria-labelledby="mcViewTabOverview" data-mc-view-panel="overview">
+                        <div id="monteCarloResults" tabindex="-1" aria-label="Ergebnisse der Monte-Carlo-Analyse"
+                            style="display:none">
+                            <div id="monteCarloPersonNotice"></div>
+                            <div id="monteCarloAnswers" class="sim-mc-answers" aria-label="Antworten zum Monte-Carlo-Lauf"></div>
+                            <div id="monteCarloSummary"></div>
+                            <div id="unifiedKpiDashboard" style="display:none"></div>
+                        </div>
+                    </section>
+                    <section id="mcViewPanelRisk" class="mc-view-panel" role="tabpanel"
+                        aria-labelledby="mcViewTabRisk" data-mc-view-panel="risk" hidden>
+                        <section class="ds-card wealth-distribution-panel" aria-labelledby="wealthDistributionHeading"><h2 id="wealthDistributionHeading">Wie sich das Endvermögen verteilt</h2><div id="wealthDistribution"></div></section>
+                        <section class="ds-card wealth-fan-panel"><h2>Wie sich das Vermögen über die Jahre entwickelt</h2><div id="wealthFanChart"><p class="ds-note">Für diesen Lauf liegen keine Jahresbänder vor. Die Endvermögensverteilung nutzt die vorhandenen Endbeobachtungen.</p></div></section>
+                        <div id="riskKpiDashboard" class="sim-mc-risk"></div><section class="ds-card sim-mc-heatmap"><h2>Entnahmequoten im Zeitverlauf</h2><div id="advancedKpiDashboard" style="display:none" class="ds-chart-scroll" role="region" tabindex="0" aria-label="Entnahmequoten-Heatmap, horizontal scrollbar"></div></section>
+                        <div id="withdrawalRateChartContainer"></div>
+                    </section>
+                    <section id="mcViewPanelCare" class="mc-view-panel" role="tabpanel"
+                        aria-labelledby="mcViewTabCare" data-mc-view-panel="care" hidden>
+                        <div id="pflegeKpiResults" style="display:none">
+                            <h2>Analyse des Pflegerisikos</h2>
+                            <div id="pflegeKpiSummary" class="sim-care-groups"></div>
+                        </div>
+                    </section>
+                    <section id="mcViewPanelLogs" class="mc-view-panel" role="tabpanel"
+                        aria-labelledby="mcViewTabLogs" data-mc-view-panel="logs" hidden>
+                        <div class="scenario-replay-link">
+                            <p>Den hier gewählten Lauf kannst du anschließend im Stresspfad-Replay fixieren.</p>
+                            <button type="button" id="mcShowReplayButton" class="ds-button ds-button-secondary">In Replay anzeigen</button>
+                        </div>
+                        <!-- Szenario-Log Auswahl -->
+                        <div id="scenarioLogContainer" class="protocol-panel" style="display:none">
+                            <section class="ds-card scenario-paths-panel" aria-labelledby="scenarioPathsHeading">
+                                <div class="scenario-paths-heading"><div><h2 id="scenarioPathsHeading">Verläufe der Szenario-Logs</h2><p class="ds-note">Linie oder Eintrag wählen; darunter steht das Jahresprotokoll. Die Auswahl bleibt nach nominalem Endvermögen.</p></div></div>
+                                <div class="scenario-paths-split"><div><div id="scenarioWealthChart" class="ds-chart-scroll" role="region" tabindex="0" aria-label="Vermögensverläufe, horizontal scrollbar"></div><p class="ds-note">Roter Endpunkt: Ruin. Tod beendet die Linie an der letzten Finanzmessung. Gestrichelt: Pflege- und Risikofälle. Grau: Stichproben. Lücken: Messung fehlt.</p></div><div id="scenarioSelector" class="scenario-selection-pane"><details id="scenarioSelectionDisclosure" open><summary id="scenarioSelectionSummary">Szenario: Keine Auswahl</summary><div class="scenario-selection-content"><div id="scenarioGroups" class="scenario-groups" role="group" aria-label="Szenariogruppen"></div><div id="scenarioList" class="scenario-list" role="listbox" tabindex="0" aria-label="Szenarien" aria-describedby="scenarioListHint"></div><p id="scenarioListHint" class="scenario-list-hint">Weitere Szenarien: in der Liste scrollen ↕</p></div></details></div></div>
+                                <div class="scenario-selected-bar"><div id="scenarioSelectedHeading"></div><div class="scenario-navigation"><button id="scenarioPrevious" type="button" class="ds-button ds-button-secondary" aria-label="Vorheriges Szenario">← Vorheriges</button><button id="scenarioNext" type="button" class="ds-button ds-button-secondary" aria-label="Nächstes Szenario">Nächstes →</button></div></div>
+                            </section>
+                            <div class="protocol-head"><div><h4 id="scenarioProtocolHeading">Szenario-Protokoll</h4><div id="scenarioProtocolSummary"></div></div>
+                            <div id="scenario-controls" class="protocol-controls">
+                                <label class="ds-toggle sim-toggle-row" title="Zeigt sämtliche anwendbaren Diagnosespalten; Downloads bleiben vollständig."><input type="checkbox" id="toggle-log-detail" class="ds-checkbox"><span class="ds-slider" aria-hidden="true"></span><span>Detailliert</span></label>
+                                <label class="ds-toggle sim-toggle-row" title="Zeigt Pflegekosten und Pflegebucket nur zusammen mit Detailliert. Personenstatus bleibt immer sichtbar; Lauf und Download bleiben unverändert."><input type="checkbox" id="toggle-care-details" class="ds-checkbox"><span class="ds-slider" aria-hidden="true"></span><span>Pflege-Spalten</span></label>
+                                <div class="log-export-buttons" id="scenarioExportButtons" style="display:none"><button type="button" id="exportScenarioLogJson" class="ds-button ds-button-secondary" aria-label="JSON herunterladen"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></svg>JSON</button><button type="button" id="exportScenarioLogCsv" class="ds-button ds-button-secondary" aria-label="CSV herunterladen"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></svg>CSV</button></div>
+                            </div></div>
+                            <p class="ds-scroll-hint">Szenariolog bei Bedarf horizontal scrollen.</p>
+                            <div id="scenarioLogOutput" class="ds-table-scroll" tabindex="0" role="region" aria-labelledby="scenarioProtocolHeading" aria-label="Szenariolog horizontal scrollbar"></div>
+                        </div>
+                    </section>
+                    <div id="print-footer" class="print-footer"></div>
+                </div>
+                <div id="tab-werkstatt" class="tab-panel">
+                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Werkstatt</p><h1>Varianten und Optimierung</h1><p class="sim-lead">Selten gebrauchte Werkzeuge für Vergleiche und Parametersuche.</p></header>
+<div class="ds-note sim-workshop-note"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"></path></svg><p>Selten gebraucht: Werkzeuge, um Varianten zu vergleichen und Parameter zu suchen. Übernommene Werte landen in den Annahmen und machen Ergebnisse veraltet.</p></div>
+<div id="workshopToolCards" class="sim-workshop-cards">
+<section class="ds-plan-card sim-tool-card"><div class="sim-card-heading"><div><h2>Stresspfad-Replay</h2><p>Einen schlechten Monte-Carlo-Lauf festhalten und mit geänderten Annahmen nachrechnen.</p></div></div><div class="sim-tool-tags"><span class="sim-status-chip">3 Schritte</span><span class="sim-status-chip">Varianten</span><span class="sim-status-chip">Vergleich</span></div><button type="button" class="ds-button ds-button-secondary" data-workshop-tool="replay" aria-controls="workshopReplayPanel" aria-pressed="false" aria-expanded="false" aria-label="Stresspfad-Replay öffnen">Öffnen</button></section>
+<section class="ds-plan-card sim-tool-card"><div class="sim-card-heading"><div><h2>Parameter-Sweep</h2><p>Bis zu sieben Parameter systematisch variieren und als Heatmap vergleichen.</p></div></div><div class="sim-tool-tags"><span class="sim-status-chip">Heatmap</span><span class="sim-status-chip">Sensitivität</span><span class="sim-status-chip">Pareto</span></div><button type="button" class="ds-button ds-button-secondary" data-workshop-tool="sweep" aria-controls="tab-sweep" aria-pressed="false" aria-expanded="false" aria-label="Parameter-Sweep öffnen">Öffnen</button></section>
+<section class="ds-plan-card sim-tool-card"><div class="sim-card-heading"><div><h2>Auto-Optimize</h2><p>Automatisch eine Konfiguration suchen und auf Test-Seeds prüfen.</p></div></div><div class="sim-tool-tags"><span class="sim-status-chip">7 Presets</span><span class="sim-status-chip">Nebenbedingungen</span><span class="sim-status-chip">Übernehmen</span></div><button type="button" class="ds-button ds-button-secondary" data-workshop-tool="optimize" aria-controls="tab-auto-optimize" aria-pressed="false" aria-expanded="false" aria-label="Auto-Optimize öffnen">Öffnen</button></section>
+</div>
+<div id="workshopReplayPanel" class="sim-workshop-panel ds-plan-card" data-workshop-panel="replay" tabindex="-1" hidden>
+                    <section id="stressReplayWorkspace" aria-labelledby="stressReplayHeading"
+                        style="text-align: left;">
+                        <div class="sim-card-heading"><h2 id="stressReplayHeading">Stresspfad-Replay</h2><span id="mcReplayVariantBadge" class="mc-view-badge" hidden aria-label="0 Varianten">0</span><span class="ds-info"><button type="button" class="ds-info-button ds-button" aria-label="Erläuterung zum Stresspfad-Replay" aria-controls="stressReplayHeadingInfo" aria-expanded="false">i</button><span id="stressReplayHeadingInfo" class="ds-info-pop" role="tooltip" hidden>Varianten verwenden denselben fixierten Markt- und Lebenspfad. Der Vergleich gilt nur für diesen Pfad; er begründet keine allgemeine Strategieempfehlung.</span></span></div>
+                        <p>Fixiert genau einen ausgewählten Monte-Carlo-Lauf. Varianten werden nur auf diesem
+                            Pfad verglichen und sind keine allgemeine Strategieempfehlung.</p>
+                        <div id="stressReplayPersonNotice"></div><div id="stressReplayStatus" class="ds-note" role="status" aria-live="polite" tabindex="-1"></div>
+                        <section id="stressReplayStepSelect" class="stress-replay-step" data-step-state="active"
+                            aria-labelledby="stressReplayStepSelectHeading">
+                            <h5 id="stressReplayStepSelectHeading"><span aria-hidden="true">1</span> Lauf wählen</h5>
+                            <div class="stress-replay-selection-row">
+                                <div id="stressReplaySelectedScenario" class="stress-replay-selected-scenario"
+                                    role="status" aria-live="polite" tabindex="-1">
+                                    <p id="stressReplaySelectedScenarioEmpty">Kein Lauf ausgewählt.</p>
+                                    <dl id="stressReplaySelectedScenarioDetails" hidden>
+                                        <div><dt>Lauf</dt><dd id="stressReplaySelectedScenarioLabel">—</dd></div>
+                                        <div><dt>Endvermögen</dt><dd id="stressReplaySelectedScenarioWealth">—</dd></div>
+                                        <div><dt>Pflege</dt><dd id="stressReplaySelectedScenarioCare">—</dd></div>
+                                    </dl>
+                                </div>
+                                <button type="button" id="stressReplayFixButton" class="ds-button ds-button-primary" disabled>Diesen Lauf als Stresspfad fixieren</button>
+                                <button type="button" id="mcShowScenarioLogsButton" class="ds-button ds-button-secondary">Auswahl in Szenario-Logs ändern</button>
+                            </div>
+                        </section>
+                        <section id="stressReplayStepPath" class="stress-replay-step" data-step-state="upcoming"
+                            aria-labelledby="stressReplayBannerTitle">
+                            <h5 id="stressReplayBannerTitle"><span aria-hidden="true">2</span> Fixierter Pfad</h5>
+                            <aside id="stressReplayBanner" hidden tabindex="-1" aria-labelledby="stressReplayBannerTitle">
+                            <dl class="stress-replay-key-facts">
+                                <div><dt>Quelle</dt><dd id="stressReplayBannerSource"></dd></div>
+                                <div><dt>Horizont</dt><dd id="stressReplayBannerHorizon"></dd></div>
+                                <div><dt>Terminalstatus</dt><dd id="stressReplayBannerTerminal"></dd></div>
+                            </dl>
+                            <details class="stress-replay-diagnostics">
+                                <summary>Technische Details</summary>
+                                <dl>
+                                    <div><dt>Modus</dt><dd id="stressReplayBannerMode"></dd></div>
+                                    <div><dt>Fortsetzung</dt><dd id="stressReplayBannerContinuation"></dd></div>
+                                    <div><dt>Pfad-Fingerprint</dt><dd id="stressReplayBannerPathFingerprint"></dd></div>
+                                    <div><dt>Baseline-Fingerprint</dt><dd id="stressReplayBannerBaselineFingerprint"></dd></div>
+                                </dl>
+                            </details>
+                            <p id="stressReplayCompatibilityReasons" hidden></p>
+                            </aside>
+                            <div class="log-export-buttons" aria-label="Stresspfad-Arbeitsstand">
+                                <button type="button" id="stressReplayExportButton" class="ds-button ds-button-secondary" disabled>Stresspfad exportieren (JSON)</button><button type="button" id="stressReplayExportCsvButton" class="ds-button ds-button-secondary" disabled>Stresspfad exportieren (CSV)</button>
+                                <button type="button" id="stressReplayImportButton" class="ds-button ds-button-secondary">Stresspfad importieren</button>
+                                <button type="button" id="stressReplayDiscardButton" class="ds-button ds-button-secondary" disabled>Stresspfad verwerfen</button>
+                                <input type="file" id="stressReplayImportFile" accept="application/json,.json"
+                                    class="visually-hidden ds-input" tabindex="-1" aria-hidden="true">
+                            </div>
+                        </section>
+                        <section id="stressReplayVariantWorkspace" class="stress-replay-step" data-step-state="upcoming"
+                            aria-labelledby="stressReplayVariantHeading">
+                            <h5 id="stressReplayVariantHeading"><span aria-hidden="true">3</span> Varianten</h5>
+                            <p>Die angezeigte Baseline ist der eingefrorene Wert aus dem Ursprungslauf. Leere
+                                Felder übernehmen ihn; Änderungen schreiben weder Profil- noch Tranchenwerte.</p>
+                            <div class="stress-replay-variant-layout">
+                            <form id="stressReplayVariantEditor">
+                                <fieldset id="stressReplayVariantFields" class="ds-control-group" disabled>
+                                    <legend>Strategie-Patch erstellen</legend>
+                                    <div class="stress-replay-editor-grid">
+                                        <label class="ds-field">Variantenname
+                                            <input id="stressReplayVariantLabel" type="text" maxlength="60" required
+                                                autocomplete="off" placeholder="z. B. längere Liquiditätsreichweite" class="ds-input">
+                                        </label>
+                                        <label class="ds-field">Floor-Bedarf p. a. (€) <small>Baseline: <output data-stress-replay-baseline="startFloorBedarf" data-stress-replay-format="currency-eur">—</output></small>
+                                            <input type="number" min="0" step="1" data-value-type="number" data-stress-replay-path="strategy.startFloorBedarf" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field">Flex-Bedarf p. a. (€) <small>Baseline: <output data-stress-replay-baseline="startFlexBedarf" data-stress-replay-format="currency-eur">—</output></small>
+                                            <input type="number" min="0" step="1" data-value-type="number" data-stress-replay-path="strategy.startFlexBedarf" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field">Mindest-Flex p. a. (€) <small>Baseline: <output data-stress-replay-baseline="minimumFlexAnnual" data-stress-replay-format="currency-eur">—</output></small>
+                                            <input type="number" min="0" step="1" data-value-type="number" data-stress-replay-path="strategy.minimumFlexAnnual" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                    </div>
+                                    <button type="button" id="stressReplayExpertToggle" class="stress-replay-expert-toggle ds-button ds-button-secondary"
+                                        aria-expanded="false" aria-controls="stressReplayExpertFields">Expertenfelder anzeigen</button>
+                                    <div id="stressReplayExpertFields" class="stress-replay-expert-fields" hidden>
+                                        <p>Optionale Strategieparameter für gezielte Expertenvergleiche.</p>
+                                        <div class="stress-replay-editor-grid">
+                                        <label class="ds-field">Liquiditätsreichweite in Jahren <small>Baseline: <output data-stress-replay-baseline="liquidityRunwayYears">—</output></small>
+                                            <input type="number" min="1" max="10" step="0.5" data-value-type="number" data-stress-replay-path="strategy.liquidityRunwayYears" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field">Maximale Gewinnmitnahme in % <small>Baseline: <output data-stress-replay-baseline="maxSkimPctOfEq">—</output></small>
+                                            <input type="number" min="0" max="50" step="0.1" data-value-type="number" data-stress-replay-path="strategy.maxSkimPctOfEq" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field">Nachfüllgrenze Bärenmarkt in % <small>Baseline: <output data-stress-replay-baseline="maxBearRefillPctOfEq">—</output></small>
+                                            <input type="number" min="0" max="70" step="0.1" data-value-type="number" data-stress-replay-path="strategy.maxBearRefillPctOfEq" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field">Entnahmemodus <small>Baseline: <output data-stress-replay-baseline="decumulation.mode">—</output></small>
+                                            <select data-stress-replay-path="strategy.decumulation.mode" class="ds-select"><option value="">Baseline übernehmen</option><option value="standard">Standard</option><option value="3_bucket_jilge">Drei-Bucket-Strategie</option></select>
+                                        </label>
+                                        <label class="ds-field" data-active-when="decumulation:3_bucket_jilge" hidden>Bucket-Zielfaktor (Jahresausgaben) <small>Baseline: <output data-stress-replay-baseline="decumulation.bondTargetFactor">—</output></small>
+                                            <input type="number" min="0" step="0.1" data-value-type="number" data-stress-replay-path="strategy.decumulation.bondTargetFactor" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field" data-active-when="decumulation:3_bucket_jilge" hidden>Drawdown-Auslöser (% Verlust) <small>Baseline: <output data-stress-replay-baseline="decumulation.drawdownTrigger">—</output></small>
+                                            <input type="number" min="0" step="0.1" data-value-type="number" data-stress-replay-path="strategy.decumulation.drawdownTrigger" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field" data-active-when="decumulation:3_bucket_jilge" hidden>Bucket-Nachfüllschwelle (%) <small>Baseline: <output data-stress-replay-baseline="decumulation.bondRefillThreshold">—</output></small>
+                                            <input type="number" min="0" step="0.1" data-value-type="number" data-stress-replay-path="strategy.decumulation.bondRefillThreshold" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field">Dynamische Flexausgaben <small>Baseline: <output data-stress-replay-baseline="dynamicFlex">—</output></small>
+                                            <select data-value-type="boolean" data-stress-replay-path="strategy.dynamicFlex" class="ds-select"><option value="">Baseline übernehmen</option><option value="true">Aktiv</option><option value="false">Inaktiv</option></select>
+                                        </label>
+                                        <label class="ds-field">Horizontmethode <small>Baseline: <output data-stress-replay-baseline="horizonMethod">—</output></small>
+                                            <select data-stress-replay-path="strategy.horizonMethod" class="ds-select"><option value="">Baseline übernehmen</option><option value="mean">Mittelwert</option><option value="survival_quantile">Überlebensquantil</option></select>
+                                        </label>
+                                        <label class="ds-field">Planungshorizont in Jahren <small>Baseline: <output data-stress-replay-baseline="horizonYears">—</output></small>
+                                            <input type="number" min="1" max="60" step="1" data-value-type="number" data-stress-replay-path="strategy.horizonYears" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field">Überlebensquantil (Anteil) <small>Baseline: <output data-stress-replay-baseline="survivalQuantile">—</output></small>
+                                            <input type="number" min="0.5" max="0.99" step="0.01" data-value-type="number" data-stress-replay-path="strategy.survivalQuantile" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field">Go-Go-Phase <small>Baseline: <output data-stress-replay-baseline="goGoActive">—</output></small>
+                                            <select data-value-type="boolean" data-stress-replay-path="strategy.goGoActive" class="ds-select"><option value="">Baseline übernehmen</option><option value="true">Aktiv</option><option value="false">Inaktiv</option></select>
+                                        </label>
+                                        <label class="ds-field">Go-Go-Multiplikator (Faktor) <small>Baseline: <output data-stress-replay-baseline="goGoMultiplier">—</output></small>
+                                            <input type="number" min="1" max="1.5" step="0.05" data-value-type="number" data-stress-replay-path="strategy.goGoMultiplier" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field">Langlebigkeitsmodus <small>Baseline: <output data-stress-replay-baseline="longevityMode">—</output></small>
+                                            <select data-stress-replay-path="strategy.longevityMode" class="ds-select"><option value="">Baseline übernehmen</option><option value="none">Keine Anpassung</option><option value="quantile_shift">Quantil verschieben</option><option value="relative_horizon_buffer">Relativer Horizontpuffer</option><option value="buffer_years">Feste Pufferjahre</option></select>
+                                        </label>
+                                        <label class="ds-field" data-active-when="longevity:quantile_shift" hidden>Quantilverschiebung (Anteil) <small>Baseline: <output data-stress-replay-baseline="longevityQuantileShift">—</output></small>
+                                            <input type="number" min="0" max="0.1" step="0.01" data-value-type="number" data-stress-replay-path="strategy.longevityQuantileShift" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field" data-active-when="longevity:relative_horizon_buffer" hidden>Relativer Puffer als Anteil <small>Baseline: <output data-stress-replay-baseline="longevityRelativePct">—</output></small>
+                                            <input type="number" min="0" max="0.2" step="0.01" data-value-type="number" data-stress-replay-path="strategy.longevityRelativePct" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        <label class="ds-field" data-active-when="longevity:buffer_years" hidden>Pufferjahre <small>Baseline: <output data-stress-replay-baseline="longevityBufferYears">—</output></small>
+                                            <input type="number" min="0" max="10" step="1" data-value-type="number" data-stress-replay-path="strategy.longevityBufferYears" placeholder="Baseline übernehmen" class="ds-input">
+                                        </label>
+                                        </div>
+                                    </div>
+                                    <div id="stressReplayPatchPreview" class="stress-replay-patch-preview ds-note" aria-live="polite"></div>
+                                    <button type="button" id="stressReplayAddVariantButton" class="ds-button ds-button-primary">Als Variante berechnen</button>
+                                </fieldset>
+                            </form>
+                            <section aria-labelledby="stressReplayVariantListHeading">
+                                <h5 id="stressReplayVariantListHeading">Variantenliste</h5>
+                                <div id="stressReplayVariantList"></div>
+                            </section>
+                            </div>
+                            <section id="stressReplayComparison" tabindex="-1" aria-label="Stresspfad-Variantenvergleich"></section>
+                        </section>
+                    </section>
+
+</div>
+                <div id="tab-sweep" class="sim-workshop-panel ds-plan-card" data-workshop-panel="sweep" tabindex="-1" hidden>
+                    <!--==========PARAMETER SWEEP (EXPLORATION)==========-->
+                    <h2>Parameter-Sweep</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 20px; font-size: var(--balance-help);">Systematische Exploration des
+                        Parameter-Raums über vordefinierte Ranges. Gut für erste Analysen und Heatmaps. </p>
+
+                    <fieldset id="sweepRanges" class="ds-control-group">
+                        <legend><span aria-hidden="true"></span>Sweep-Ranges</legend>
+                        <div class="sim-card-heading"><span class="ds-info"><button type="button" class="ds-info-button ds-button" aria-label="Erläuterung zu Sweep-Bereichen" aria-controls="sweepRangesHeadingInfo" aria-expanded="false">i</button><span id="sweepRangesHeadingInfo" class="ds-info-pop" role="tooltip" hidden>Bereiche verwenden von:Schritt:bis, eine durch Kommas getrennte Liste oder einen Einzelwert. Der Zähler berücksichtigt nur wirksame Parameter. Laufjahre sind Rechenaufwand, keine Laufzeitprognose.</span></span></div>
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: var(--balance-help); color: var(--text-muted);">
+                            <div><strong>Format: </strong> start:step:end (z.B. 24:6:48) oder Liste 50, 60, 70 oder
+                                Einzelwert 24 </div>
+                            <div id="sweepGridSize" style="font-weight: 600; color: var(--secondary-color);"> Grid:
+                                0 Kombis </div>
+                        </div>
+                        <p id="sweepWorkload" class="ds-note" aria-live="polite">Nomineller Aufwand: ?</p>
+                        <p class="ds-note">Laufjahre sind ein Maß für den geplanten Rechenaufwand, keine Laufzeitprognose. Einzelne Läufe können früher enden.</p>
+                        <div class="ds-table-scroll" role="region" tabindex="0" aria-label="Sweep-Parameterbereiche horizontal scrollbar"><table class="ds-table sim-sweep-ranges"><thead><tr><th scope="col">Parameter</th><th scope="col">Bereich (von : Schritt : bis)</th></tr></thead><tbody><tr><th scope="row"><label for="sweepLiquidityRunwayYears">Liquiditäts-Runway (Jahre)</label></th><td><div class="ds-field"><input
+                                    type="text" id="sweepLiquidityRunwayYears" value="3:1:7" placeholder="3,5,7"
+                                    title="Format: start:step:end (z.B. 3:1:7) oder Liste 3,5,7 oder Einzelwert 5" class="ds-input"></div></td></tr>
+<tr><th scope="row"><label for="sweepGoldRebalancingBand">Gold-Rebal Band (%)</label></th><td><div class="ds-field"><input type="text"
+                                    id="sweepGoldRebalancingBand" value="10:5:30" placeholder="10,20,30"
+                                    title="Format: start:step:end (z.B. 10:5:30) oder Liste 10,20,30 oder Einzelwert 25" class="ds-input"></div></td></tr>
+<tr><th scope="row"><label for="sweepMaxSkimPct">Max. Abschöpfen (% Aktien)</label></th><td><div class="ds-field"><input
+                                    type="text" id="sweepMaxSkimPct" value="2" placeholder="0,2,4"
+                                    title="Format: start:step:end (z.B. 0:2:6) oder Liste 0,2,4 oder Einzelwert 2" class="ds-input"></div></td></tr>
+<tr><th scope="row"><label for="sweepMaxBearRefillPct">Max. Auffüllen im Bärenmarkt (% Aktien)</label></th><td><div class="ds-field"><input type="text" id="sweepMaxBearRefillPct" value="2"
+                                    placeholder="0,2,4"
+                                    title="Format: start:step:end (z.B. 0:2:8) oder Liste 0,2,4 oder Einzelwert 2" class="ds-input"></div></td></tr>
+<tr><th scope="row"><label for="sweepGoldTargetPct">Gold-Ziel (%)</label></th><td><div class="ds-field"><input
+                                    type="text" id="sweepGoldTargetPct" value="5,7.5" placeholder="0,2.5,5,7.5"
+                                    title="Format: start:step:end (z.B. 0:2.5:10) oder Liste 0,2.5,5,7.5 oder Einzelwert 7.5" class="ds-input"></div></td></tr>
+<tr><th scope="row"><label for="sweepSurvivalQuantile">VPW-Quantil (Anteil) <span id="sweepQuantileState">– nicht aktiv</span></label></th><td><div class="ds-field"><input
+                                    type="text" id="sweepSurvivalQuantile" value="0.85" placeholder="0.80,0.85,0.90"
+                                    title="Nur bei Dynamic Flex mit Horizon-Methode survival_quantile wirksam. Gueltig: 0.50 bis 0.99." class="ds-input"></div></td></tr>
+<tr><th scope="row"><label for="sweepGoGoMultiplier">VPW Go-Go Multiplikator (Faktor) <span id="sweepGoGoState">– nicht aktiv</span></label></th><td><div class="ds-field"><input
+                                    type="text" id="sweepGoGoMultiplier" value="1.10" placeholder="1.0,1.1,1.2"
+                                    title="Nur bei Dynamic Flex und Go-Go wirksam. Gueltig fuer Sweep: 1.0 bis 1.5." class="ds-input"></div></td></tr></tbody></table></div>
+                        <p class="ds-note">
+                            Der Grid-Zähler erfasst nur wirksame Dimensionen. Inaktive VPW-Ranges bleiben gespeichert, gehen aber nicht in den Lauf ein.
+                            Der direkte VPW-Horizon bleibt fuer explizite, validierte Requests
+                            verfuegbar, ist aber keine interaktive Sweep-Dimension: Die UI
+                            verwendet aktuarische Horizonte.
+                        </p>
+                    </fieldset>
+<div class="ds-field"><label for="sweepRuns">Simulationen je Kombination</label><input
+                            type="number" id="sweepRuns" value="500" min="1" max="1000000" step="1"
+                            title="Anzahl der Simulationen pro Sweep-Kombination; unabhängig vom Monte-Carlo-Feld" class="ds-input">
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;"> <button
+                            id="sweepButton" onclick="runParameterSweep()" class="ds-button ds-button-primary">Sweep starten</button>
+                        <button id="sweepCancelButton" onclick="cancelParameterSweep()" disabled class="ds-button">Abbrechen</button>
+                        <span id="sweepStatus" role="status" aria-live="polite"></span> <button
+                            id="findBestButton" onclick="findAndDisplayBest()" style="display: none;" class="ds-button">Parametervergleich anzeigen</button>
+                        <button id="sensitivityButton" onclick="showSensitivityAnalysis()" style="display: none;" class="ds-button">Sensitivität</button>
+                        <button id="paretoButton" onclick="showParetoDialog()" style="display: none;" class="ds-button">Pareto-Front</button>
+                    </div>
+                    <div id="sweep-progress-bar-container"
+                        style="display:none; width: 100%; background-color: var(--surface-sunken); height: 24px; border-radius: 4px; margin-top: 15px; overflow: hidden;">
+                        <div id="sweep-progress-bar"
+                            style="width: 0%; height: 100%; background-color: var(--accent-line); transition: width 0.3s; line-height: 24px; text-align: center; color: var(--text-main); font-size: var(--balance-help);">
+                        </div>
+                    </div>
+                    <!-- Optimization Results Container -->
+                    <div id="optimizationResults" class="ds-tool-output" style="display: none; margin-top: 20px;"></div>
+                    <!-- Sensitivity Analysis Results Container -->
+                    <div id="sensitivityResults" class="ds-tool-output" style="display: none; margin-top: 20px;"></div>
+                    <!-- Pareto Frontier Results Container -->
+                    <div id="paretoResults" class="ds-tool-output" style="display: none; margin-top: 20px;"></div>
+                    <!-- Selbsttest-Panel (nur bei ?debug=1 sichtbar) -->
+                    <div id="sweepSelfTestPanel" class="dev-only ds-card"
+                        style="margin-top: 20px; padding: 15px; border: 1px solid var(--border); border-radius: 8px; background-color: var(--surface-sunken);">
+                        <h4 style="margin-top: 0;">Sweep-Selbsttest (Debug)</h4>
+                        <p style="font-size: var(--balance-help); color: var(--text-muted);"> Führt einen Mini-Sweep mit 3
+                            Fällen aus (nur Gold-Band-Variation) und prüft, ob R2 konstant bleibt.
+                        </p> <button id="sweepSelfTestButton" onclick="runSweepSelfTest()" class="ds-button">Selbsttest ausführen</button>
+                        <div id="sweepSelfTestResults" style="margin-top: 10px; display: none;">
+                        </div>
+                    </div>
+                    <div id="sweepResults" style="display:none; margin-top: 25px;">
+                        <h3>Sweep Ergebnisse</h3>
+                        <div id="sweepControls" style="margin-bottom: 15px;">
+                            <div class="ds-field-grid">
+                                <div class="ds-field"> <label for="sweepMetric">Metrik</label>
+                                    <select id="sweepMetric" class="ds-select">
+                                        <option value="successProbFloor" selected>Success Prob Floor
+                                        </option>
+                                        <option value="p10EndWealth">P10 End Wealth</option>
+                                        <option value="p25EndWealth">P25 End Wealth</option>
+                                        <option value="medianEndWealth">Median End Wealth (P50)
+                                        </option>
+                                        <option value="p75EndWealth">P75 End Wealth</option>
+                                        <option value="meanEndWealth">Mean End Wealth</option>
+                                        <option value="maxEndWealth">Max End Wealth</option>
+                                        <option value="worst5Drawdown">Worst 5% Drawdown</option>
+                                        <option value="minRunwayObserved">Min Runway Observed
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="ds-field"> <label for="sweepAxisX">X-Achse
+                                        Parameter</label> <select id="sweepAxisX" class="ds-select">
+                                        <option value="liquidityRunwayYears" selected>Liquiditäts-Runway</option>
+                                        <option value="goldRebalancingBand">Gold-Rebal Band</option>
+                                        <option value="maxSkimPct">Max Skim Pct</option>
+                                        <option value="maxBearRefillPct">Max Bear Refill Pct
+                                        </option>
+                                        <option value="goldTargetPct">Gold Target Pct</option>
+                                        <option value="survivalQuantile">VPW-Quantil</option>
+                                        <option value="goGoMultiplier">VPW Go-Go Mult</option>
+                                    </select> </div>
+                                <div class="ds-field"> <label for="sweepAxisY">Y-Achse
+                                        Parameter</label> <select id="sweepAxisY" class="ds-select">
+                                        <option value="liquidityRunwayYears">Liquiditäts-Runway</option>
+                                        <option value="goldRebalancingBand" selected>Gold-Rebal Band</option>
+                                        <option value="maxSkimPct">Max Skim Pct</option>
+                                        <option value="maxBearRefillPct">Max Bear Refill Pct
+                                        </option>
+                                        <option value="goldTargetPct">Gold Target Pct</option>
+                                        <option value="survivalQuantile">VPW-Quantil</option>
+                                        <option value="goGoMultiplier">VPW Go-Go Mult</option>
+                                    </select> </div>
+                            </div>
+                        </div>
+                        <div id="sweepHeatmap" class="ds-tool-output"></div>
+                    </div>
+                </div>
+                <div id="tab-auto-optimize" class="sim-workshop-panel ds-plan-card" data-workshop-panel="optimize" tabindex="-1" hidden>
+                    <!--==========AUTO-OPTIMIZE (INTELLIGENT SEARCH)==========-->
+                    <h2>Auto-Optimize</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 20px; font-size: var(--balance-help);">
+                        Experimentelles Vergleichsverfahren mit Latin Hypercube Sampling,
+                        Quick-Filter und Train/Test-Seeds. Der ausgegebene Champion ist ein
+                        modellinterner Szenariokandidat, keine fachlich optimale Strategie
+                        und keine Finanzempfehlung. </p>
+                    <fieldset class="ds-control-group">
+                        <legend>Optimierung konfigurieren</legend>
+                        <!-- Objective -->
+                        <section class="sim-optimize-section">
+                            <h4 style="margin-top: 0; margin-bottom: 15px;">Ziel</h4>
+                            <div class="ds-field-grid">
+                                <div class="ds-field"> <label for="ao_metric">Metrik</label> <select id="ao_metric" class="ds-select">
+                                        <option value="EndWealth_P50">End Wealth P50
+                                        </option>
+                                        <option value="EndWealth_P25">End Wealth P25
+                                        </option>
+                                        <option value="SuccessRate" selected>Success Rate
+                                        </option>
+                                        <option value="Drawdown_P90">Drawdown P90</option>
+                                        <option value="TimeShare_WR_gt_4_5">Zeitanteil realisierte Entnahmequote &gt;
+                                            4,5 % (Berichtsreferenz)</option>
+                                        <option value="Median_WR">Median Withdrawal Rate
+                                        </option>
+                                    </select> </div>
+                                <div class="ds-field"> <label for="ao_direction">Optimierungsziel</label> <select
+                                        id="ao_direction" class="ds-select">
+                                        <option value="max" selected>Maximieren</option>
+                                        <option value="min">Minimieren</option>
+                                    </select> </div>
+                             </div>
+                            <p class="reporting-reference-note">Die 4,5-%-Metrik misst die realisierte Entnahmequote strikt größer 4,5 %. Sie ist nur eine Berichtsreferenz und keine Alarm- oder Guardrail-Schwelle.</p>
+                            <div id="ao_quantile_container" class="ds-field" style="display: none;"> <label
+                                    for="ao_quantile">Quantile
+                                    (%)</label> <input type="number" id="ao_quantile" value="50" min="1" max="99"
+                                    step="1" class="ds-input"> </div>
+                        </section>
+                        <!-- Presets -->
+                        <section class="sim-optimize-section">
+                            <h4 style="margin-top: 0; margin-bottom: 10px;">
+                                Vorkonfigurierte Presets</h4>
+                            <p style="font-size: var(--balance-help); color: var(--text-muted); margin-bottom: 15px;">
+                                Wähle ein Preset, um passende Parameter für dein
+                                Optimierungsziel vorzufüllen. Du kannst anschließend
+                                manuell anpassen. </p>
+                            <div id="ao_presets_container" class="ds-segment">
+                                <button type="button" class="ao-preset-btn ds-button ds-button-secondary" data-preset="standard" title="Ausgewogene Optimierung" aria-pressed="true"> Standard</button> <button type="button" class="ao-preset-btn ds-button ds-button-secondary" data-preset="runway" title="Optimale Runway-Konfiguration" aria-pressed="false"> Runway Optimierung</button> <button type="button" class="ao-preset-btn ds-button ds-button-secondary" data-preset="allocation" title="Vermögensaufteilung" aria-pressed="false"> Asset Allocation</button> <button type="button" class="ao-preset-btn ds-button ds-button-secondary" data-preset="conservative" title="Hohe Sicherheit" aria-pressed="false"> Konservativ</button> <button type="button" class="ao-preset-btn ds-button ds-button-secondary" data-preset="aggressive" title="Maximales Endvermögen" aria-pressed="false"> Aggressiv</button> <button type="button" class="ao-preset-btn ds-button ds-button-secondary" data-preset="drawdown" title="Minimierung von Verlusten" aria-pressed="false"> Drawdown-Minimierung</button> <button type="button" class="ao-preset-btn ds-button ds-button-secondary" data-preset="dynamicFlexBalanced" title="VPW Parameter + Safety" aria-pressed="false"> Dynamic Flex</button>
+                            </div>
+                        </section>
+                        <!-- Parameter Picker (Dynamic) -->
+                        <section class="sim-optimize-section">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                                <h4 style="margin: 0;">Parameter (1 bis 7)</h4>
+                                <div style="display: flex; gap: 8px;"> <button type="button" id="ao_add_param_btn" class="ds-button">
+                                        + Parameter hinzufügen </button> <button type="button" id="ao_remove_param_btn" class="ds-button">
+                                        - Parameter entfernen </button> </div>
+                            </div>
+                            <!-- Dynamic Parameter Container -->
+                            <div id="ao_parameters_container">
+                                <!-- Parameters will be added dynamically via
+                                            JavaScript -->
+                            </div>
+                        </section>
+                        <!-- Simulation Scope -->
+                        <section class="sim-optimize-section">
+                            <h4 style="margin-top: 0; margin-bottom: 15px;">
+                                Simulationsumfang</h4>
+                            <div class="ds-field-grid">
+                                <div class="ds-field"> <label for="ao_runs_per_candidate">Läufe je Kandidat</label> <input type="number" id="ao_runs_per_candidate" value="2000"
+                                        min="100" max="10000" step="100" class="ds-input"> </div>
+                                <div class="ds-field"> <label for="ao_seeds_train">Train-Seeds</label>
+                                    <input type="number" id="ao_seeds_train" value="5" min="1" max="20" step="1" class="ds-input">
+                                </div>
+                                <div class="ds-field"> <label for="ao_seeds_test">Test-Seeds</label>
+                                    <input type="number" id="ao_seeds_test" value="2" min="1" max="20" step="1" class="ds-input">
+                                </div>
+                            </div>
+                            <div class="ds-field-grid">
+                                <div class="ds-field">
+                                    <label for="ao_dynamic_flex_mode">Dynamic-Flex Modus (Stufe A)</label>
+                                    <select id="ao_dynamic_flex_mode" class="ds-select">
+                                        <option value="inherit" selected>Rahmendaten verwenden</option>
+                                        <option value="force_on">Dynamic Flex erzwingen EIN</option>
+                                        <option value="force_off">Dynamic Flex erzwingen AUS</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <p style="font-size: var(--balance-help); color: var(--text-muted); margin: 10px 0 0 0;">
+                                Auto-Optimize übernimmt Samplingmethode, RNG, CAPE-Sampling, Blockgröße,
+                                Startjahrfilter und Ausschluss geschätzter Historie aus der
+                                Monte-Carlo-Konfiguration im Haupt-Tab. Train- und Bestätigungsseeds werden
+                                getrennt und im Ergebnis ausgewiesen. </p>
+                        </section>
+                        <!-- Constraints -->
+                        <section class="sim-optimize-section">
+                            <h4 style="margin-top: 0; margin-bottom: 15px;">
+                                Nebenbedingungen (optional)</h4>
+                            <div class="ds-field-grid">
+                                <div class="ds-field" style="justify-content: center;"> <label
+                                        style="flex-direction: row; align-items: center;">
+                                        <input type="checkbox" id="ao_c_sr99" style="width: auto; margin-right: 8px;"
+                                            checked class="ds-checkbox"> Success
+                                        Rate ≥ 99%
+                                    </label> </div>
+                                <div class="ds-field" style="justify-content: center;"> <label
+                                        style="flex-direction: row; align-items: center;">
+                                        <input type="checkbox" id="ao_c_noex" style="width: auto; margin-right: 8px;"
+                                            checked class="ds-checkbox">
+                                        Depot-Erschöpfung=0
+                                    </label> </div>
+                                <div class="ds-field" style="justify-content: center;"> <label
+                                        style="flex-direction: row; align-items: center;">
+                                        <input type="checkbox" id="ao_c_ts45" style="width: auto; margin-right: 8px;" class="ds-checkbox">
+                                        Zeitanteil realisierte Entnahmequote &gt; 4,5 % ≤ 1 % (Berichtsreferenz)
+                                    </label> </div>
+                                <div class="ds-field" style="justify-content: center;"> <label
+                                        style="flex-direction: row; align-items: center;">
+                                        <input type="checkbox" id="ao_c_dd55" style="width: auto; margin-right: 8px;" class="ds-checkbox">
+                                        P90 Drawdown ≤ 55% </label> </div>
+                            </div>
+                        </section>
+                        <!-- Actions & Output -->
+                        <div style="text-align: center; margin-bottom: 20px;">
+                            <button id="ao_run_btn" class="ds-button ds-button-primary">
+                                Optimierung starten </button><button type="button" id="ao_cancel_btn" class="ds-button ds-button-secondary" disabled>Abbrechen</button>
+                        </div>
+                        <div id="ao_progress" class="ds-note" role="status" aria-live="polite"
+                            style="display: none; padding: 10px; background: var(--surface-sunken); border-radius: 6px; margin-bottom: 20px; text-align: center; font-weight: 500;">
+                            <!-- Progress text -->
+                        </div>
+                        <div id="ao_result" class="ds-tool-output" style="display: none;">
+                            <!-- Result will be rendered here -->
+                        </div>
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button id="ao_apply_btn"
+                                class="ds-button ds-button-primary" style="display: none;">
+                                Konfiguration übernehmen </button>
+                        </div>
+                    </fieldset>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="app/profile/profile-bridge.js"></script>
+    <script type="module" src="engine.js"></script>
+
+
+    <!-- Engine Switcher: Feature Flags and UI -->
+    <script type="module" src="app/shared/feature-flags.js"></script>
+    <script type="module" src="app/simulator/simulator-engine-direct.js"></script>
+    <script type="module" src="app/simulator/simulator-engine-wrapper.js"></script>
+
+
+    <script type="module" src="app/simulator/auto_optimize.js"></script>
+    <script type="module" src="app/simulator/auto_optimize_ui.js"></script>
+    <script type="module" src="app/simulator/simulator-main.js"></script>
+    <script type="module">
+        import { observeSelectionText } from './app/shared/designsystem-selection-text.js';
+        observeSelectionText(document.body);
+    </script>
+    <!-- Tooltip normalization & single-line label safety net -->
+    <script>(function () {
+
+            /**
+         * Setzt einen Titel auf dem übergebenen Element, sofern noch keiner vorhanden ist.
+         *
+         * @param {HTMLElement|null} element - Zielknoten, der den Tooltip erhalten soll.
+         * @param {string} tooltipText - Text, der als Title-Attribut gesetzt wird.
+         * @returns {void}
+         */
+            function setTitleIfMissing(element, tooltipText) {
+                if (!element || !tooltipText) return;
+                const existingTitle = (element.getAttribute('title') || '').trim();
+
+                if (!existingTitle) {
+                    element.setAttribute('title', tooltipText);
+                }
+            }
+
+            /**
+         * Leitet einen passenden Tooltip-Text aus vorhandenen Informationen ab.
+         *
+         * @param {HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement} control - Formularelement.
+         * @param {HTMLLabelElement|null} label - Zugehöriges Label zum Formularfeld.
+         * @returns {string|null} Tooltip-Text oder null, falls nichts Geeignetes gefunden wurde.
+         */
+            function resolveTooltipText(control, label) {
+                const explicitTitle = (control.getAttribute('title') || '').trim();
+                if (explicitTitle) return explicitTitle;
+
+                const labelText = (label?.textContent || '').replace(/\s+/g, ' ').trim();
+                if (labelText) return labelText;
+
+                const placeholder = (control.getAttribute('placeholder') || '').trim();
+                return placeholder || null;
+            }
+
+            /**
+         * Sorgt dafür, dass alle Formularfelder (Einfach- und Fortgeschritten-Modus) einen Tooltip besitzen.
+         * Der Tooltip wird am Feld selbst sowie am Label hinterlegt, damit MouseOver immer Details liefert.
+         *
+         * @returns {void}
+         */
+            function enforceFormTooltips(root = document) {
+                const selector = '.form-group input, .form-group select, .form-group textarea, .ds-field input, .ds-field select';
+                const controls = [];
+
+                // Erfasse das Root-Element selbst, falls es ein passendes Formularelement ist.
+                if (root instanceof Element && root.matches(selector)) {
+                    controls.push(root);
+                }
+
+                // Ergänze alle Nachfahren, die Formularelemente sind.
+                root.querySelectorAll?.(selector).forEach(node => controls.push(node));
+
+                controls.forEach(control => {
+                    if (control.type === 'hidden') return;
+                    const label = control.closest('.ds-field, .form-group')?.querySelector('label');
+                    const tooltipText = resolveTooltipText(control, label);
+                    if (!tooltipText) return;
+
+                    setTitleIfMissing(control, tooltipText);
+                    setTitleIfMissing(label, tooltipText);
+                });
+            }
+
+            /**
+         * Ergänzt KPI- und Summary-Kacheln um aussagekräftige Tooltips, falls diese fehlen.
+         * Dadurch bleiben Beschriftungen trotz Einzeiligkeit verständlich.
+         *
+         * @returns {void}
+         */
+            function enforceKpiTooltips(root = document) {
+                const selector = '.kpi-card, .summary-item';
+                const kpiNodes = [];
+
+                // Falls das Root selbst ein KPI/Summary ist, zuerst berücksichtigen.
+                if (root instanceof Element && root.matches(selector)) {
+                    kpiNodes.push(root);
+                }
+
+                // Ergänze alle Nachfahren, die KPI/Summary-Karten darstellen.
+                root.querySelectorAll?.(selector).forEach(node => kpiNodes.push(node));
+
+                kpiNodes.forEach(node => {
+                    const titleFromNode = (node.getAttribute('title') || '').trim();
+                    const headingText = (node.querySelector('strong')?.textContent || node.textContent || '').replace(/\s+/g, ' ').trim();
+                    const tooltipText = titleFromNode || headingText;
+
+                    if (tooltipText) {
+                        setTitleIfMissing(node, tooltipText);
+                        const heading = node.querySelector('strong');
+                        setTitleIfMissing(heading, tooltipText);
+                    }
+                });
+            }
+
+            /**
+         * Bearbeitet einen neu hinzugefügten DOM-Knoten und dessen Kinder, um Tooltips
+         * gezielt nur für veränderte Bereiche zu ergänzen. Dadurch vermeiden wir
+         * kostspielige Ganzseiten-Scans bei jeder Mutation.
+         *
+         * @param {Node} addedNode - Neu in den DOM eingefügter Knoten.
+         * @returns {void}
+         */
+            function processAddedNode(addedNode) {
+                if (!(addedNode instanceof Element)) return;
+
+                // Verarbeite Formularfelder und KPI-Karten innerhalb des neuen Teilbaums.
+                enforceFormTooltips(addedNode);
+                enforceKpiTooltips(addedNode);
+            }
+
+            /**
+         * Initialisiert die Tooltip-Logik und überwacht spätere DOM-Änderungen (z.B. neu gerenderte KPIs).
+         *
+         * @returns {void}
+         */
+            function initializeUnifiedTooltips() {
+                // Initiale Durchläufe auf dem bestehenden DOM.
+                enforceFormTooltips();
+                enforceKpiTooltips();
+
+                const observer = new MutationObserver(mutations => {
+
+                    // Nur die tatsächlich neu eingefügten Knoten verarbeiten, um Performance zu schonen.
+                    mutations.forEach(mutation => {
+                        mutation.addedNodes.forEach(processAddedNode);
+                    });
+                });
+
+                observer.observe(document.body, {
+                    childList: true, subtree: true
+                });
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeUnifiedTooltips);
+            }
+
+            else {
+                initializeUnifiedTooltips();
+            }
+        })();
+    </script>
+    <script>
+        {
+            const devTools = document.getElementById('devTools');
+            const toggle = document.getElementById('telemetryToggle');
+            const printBtn = document.getElementById('printTelemetry');
+            const exportBtn = document.getElementById('exportTelemetry');
+
+            if (devTools && toggle) {
+                devTools.style.display = 'block';
+                toggle.checked = localStorage.getItem('enableWorkerTelemetry') === 'true';
+                toggle.addEventListener('change', e => {
+                    localStorage.setItem('enableWorkerTelemetry', e.target.checked);
+                    alert('Telemetry ' + (e.target.checked ? 'aktiviert' : 'deaktiviert') + '. Seite neu laden.');
+                });
+            }
+
+            const getRegistry = () => {
+                if (!(window.__workerTelemetryRegistry instanceof Map)) {
+                    window.__workerTelemetryRegistry = new Map();
+                }
+                return window.__workerTelemetryRegistry;
+            };
+
+            if (printBtn) {
+                printBtn.addEventListener('click', () => {
+                    const registry = getRegistry();
+                    if (!registry || registry.size === 0) {
+                        console.warn('[Telemetry] Keine Telemetry-Instanzen gefunden.');
+                        return;
+                    }
+                    for (const telemetry of registry.values()) {
+                        if (telemetry && typeof telemetry.printReport === 'function') {
+                            telemetry.printReport();
+                        }
+                    }
+                });
+            }
+
+            if (exportBtn) {
+                exportBtn.addEventListener('click', async () => {
+                    const registry = getRegistry();
+                    if (!registry || registry.size === 0) {
+                        console.warn('[Telemetry] Keine Telemetry-Instanzen gefunden.');
+                        return;
+                    }
+                    const report = {};
+                    for (const [name, telemetry] of registry.entries()) {
+                        if (telemetry && typeof telemetry.getReport === 'function') {
+                            report[name] = telemetry.getReport();
+                        }
+                    }
+                    const json = JSON.stringify(report, null, 2);
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        try {
+                            await navigator.clipboard.writeText(json);
+                            alert('Telemetry JSON kopiert.');
+                        } catch (err) {
+                            console.warn('[Telemetry] Clipboard fehlgeschlagen:', err);
+                            console.log(json);
+                        }
+                    } else {
+                        console.log(json);
+                    }
+                });
+            }
+        }
+    </script>
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+            <a class="sim-help-link" href="Handbuch.html" target="_blank">Hilfe im Handbuch</a></main>
+        </div>
+    </div>
+    <dialog id="navigationGuardDialog" class="navigation-guard-dialog ds-card" aria-labelledby="navigationGuardTitle" aria-describedby="navigationGuardDescription">
+        <h2 id="navigationGuardTitle">Seite verlassen?</h2>
+        <p id="navigationGuardDescription"></p>
+        <div class="navigation-guard-actions">
+            <button id="navigationGuardStay" type="button" class="ds-button ds-button-secondary">Bleiben</button>
+            <button id="navigationGuardLeave" type="button" class="ds-button ds-button-primary">Trotzdem wechseln</button>
+        </div>
+    </dialog>
+</body>
+
+</html>
