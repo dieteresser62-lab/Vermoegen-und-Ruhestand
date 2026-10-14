@@ -101,7 +101,7 @@ global.document = {
             let renderError = null;
             try { renderer.renderAction(action); } catch (error) { renderError = error; }
             assertEqual(renderError, null, `renderAction wirft nicht bei Profilaktion ${String(invalidAction)}`);
-            assertEqual(outputs.balanceActionTitle.textContent, 'Aktien verkaufen', 'Ungültiges Profil ersetzt nicht das Verb der Gesamtaktion');
+            assertEqual(outputs.balanceActionTitle.textContent, 'Vorgeschlagener Verkauf · Aktien', 'Ungültiges Profil ersetzt nicht das Verb der Gesamtaktion');
             assertEqual(collectText(outputs.balanceActionAmount), '1.201\u00a0€ netto', 'Kurzkarte behält den Betrag der Gesamtaktion');
             const detail = renderer.getActionCopyText();
             assert(detail.includes(action.title), 'Vollständiger Titel der Gesamtaktion wird im Detail gerendert');
@@ -324,7 +324,7 @@ console.log('✅ Balance renderer action tests passed');
         renderer.renderAction(action, { tagesgeld: 100000, geldmarktEtf: 0 }, { monatlicheEntnahme: 1000 }, 14000);
         const content = collectText(host);
         assert(content.includes('Geldmarkt-ETF') && content.includes('Liquidität'), 'Interne Cashumschichtung bleibt in Quellen und Verwendungen');
-        assertEqual(outputs.balanceActionTitle.textContent, 'Umschichten', 'Interne Umschichtung erhält ein eigenes Verb');
+        assertEqual(outputs.balanceActionTitle.textContent, 'Vorgeschlagene Umschichtung', 'Interne Umschichtung erhält ein eigenes Verb');
         assertEqual(collectText(outputs.balanceActionAmount), '75.000\u00a0€', 'Transferbetrag wird ohne externen Nettozufluss angezeigt');
         assert(!collectText(outputs.balanceActionAmount).includes('netto'), 'Transfer ist kein externer Nettozufluss');
         assert(outputs.balanceActionNote.textContent.includes('Tagesgeld und Geldmarkt'), 'Kurzfassung erklärt die interne Empfehlung');
@@ -362,7 +362,11 @@ console.log('✅ Balance renderer action tests passed');
     for (const [action, verb, amount, note] of cases) {
         const before = JSON.stringify(action);
         renderer.renderAction(action);
-        assertEqual(outputs.balanceActionTitle.textContent, verb, 'Kurzverb aus tatsächlichen Strömen');
+        const proposed = { 'Aktien verkaufen': 'Vorgeschlagener Verkauf · Aktien', 'Gold verkaufen': 'Vorgeschlagener Verkauf · Gold',
+            'Gold kaufen': 'Vorgeschlagener Kauf · Gold', 'Aktien kaufen': 'Vorgeschlagener Kauf · Aktien',
+            'Umschichten': 'Vorgeschlagene Umschichtung', 'Handlung prüfen': 'Vorgeschlagene Handlung prüfen',
+            'Nichts tun': 'Keine Transaktion vorgeschlagen' };
+        assertEqual(outputs.balanceActionTitle.textContent, proposed[verb], 'Vorschlag aus tatsächlichen Strömen');
         assertEqual(collectText(outputs.balanceActionAmount), amount, 'Nur Kartenbetrag wird auf ganze Euro formatiert');
         assert(outputs.balanceActionNote.textContent.includes(note), 'Alltagssatz aus Verwendung oder Nichtstun');
         assert(!outputs.balanceActionNote.textContent.includes('Bärenmarkt'), 'Ohne Beleg wird kein Bärenmarktgrund erfunden');
@@ -418,7 +422,7 @@ console.log('✅ Balance renderer action tests passed');
     const beforeProfiles = JSON.stringify(globalThis.window);
     for (const aggregate of [transaction([], {}), transaction([source('aktien_alt', 9999)], { liquiditaet: 9999 })]) {
         renderer.renderAction(aggregate, { tagesgeld: 100000, geldmarktEtf: 0 }, { monatlicheEntnahme: 1000 });
-        assertEqual(outputs.balanceActionTitle.textContent, 'Aktien verkaufen', 'Materielle Profile statt leerer oder voller Gesamtaktion');
+        assertEqual(outputs.balanceActionTitle.textContent, 'Vorgeschlagener Verkauf · Aktien', 'Materielle Profile statt leerer oder voller Gesamtaktion');
         assertEqual(collectText(outputs.balanceActionAmount), '1.301\u00a0€ netto', 'Profilnettosumme ohne doppelte Gesamtaktion oder Cashquelle');
         assertEqual(outputs.balanceActionTransfer.textContent, 'plus interne Umschichtung von 201\u00a0€', 'Nur tatsächlich im Profilplan angezeigter Transfer');
         const detail = renderer.getActionCopyText();

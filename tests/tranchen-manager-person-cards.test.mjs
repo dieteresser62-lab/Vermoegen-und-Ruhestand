@@ -1,11 +1,11 @@
-import { bindManagerPersonCards, PERSON_CARD_SESSION_KEY } from '../app/tranches/tranchen-manager-person-cards.js';
+import { bindManagerPersonCards } from '../app/tranches/tranchen-manager-person-cards.js';
 import { describePersonDates } from '../app/profile/profile-person-data.js';
 
 function createDocument(session = new Map()) {
     const elements = new Map();
     const doc = { getElementById: id => elements.get(id), activeElement: null,
         defaultView: { location: { hash: '' }, sessionStorage: { getItem: key => session.get(key), setItem: (key, value) => session.set(key, value) }, listeners: {}, addEventListener(type, fn) { this.listeners[type] = fn; } } };
-    for (const id of ['managerCardsToggleAll', 'managerBirthSupplement', 'managerBirthDate', 'profileGeburtsdatum', ...['Person', 'Assets', 'Care'].flatMap(card => [`manager${card}Toggle`, `manager${card}Body`])]) {
+    for (const id of ['managerCardsToggleAll', 'managerBirthSupplement', 'managerBirthDate', 'profileGeburtsdatum', ...['Person', 'Assets', 'Care'].flatMap(card => [`manager${card}Toggle`, `manager${card}Action`, `manager${card}Body`])]) {
         elements.set(id, { hidden: true, textContent: '', attrs: {}, listeners: {}, setAttribute(key, value) { this.attrs[key] = value; },
             addEventListener(type, fn) { this.listeners[type] = fn; }, click() { this.listeners.click?.(); }, focus() { doc.activeElement = this; } });
     }
@@ -15,15 +15,16 @@ const session = new Map(), doc = createDocument(session);
 let person = 'a';
 const api = bindManagerPersonCards(doc, () => person);
 const open = card => !doc.getElementById(`manager${card}Body`).hidden;
-assert(open('Person') && !open('Assets') && !open('Care'), 'Neue Sitzung öffnet Person & Einkommen und hält weitere Karten geschlossen');
+assert(['Person', 'Assets', 'Care'].every(card => !open(card)), 'Neuer Seitenaufruf hält alle Detailkarten geschlossen');
 assertEqual(session.size, 0, 'Lesendes Initialisieren schreibt keinen Sitzungswert');
 assertEqual(bindManagerPersonCards(doc, () => person), api, 'Wiederholtes Binden verwendet denselben Binder');
 doc.getElementById('managerPersonToggle').click();
-assert(!open('Person'), 'Ein Klick schließt die anfangs offene Personkarte');
+assert(open('Person'), 'Ein Klick öffnet die anfangs geschlossene Personkarte');
 doc.getElementById('managerPersonToggle').click();
-assert(open('Person') && !open('Assets'), 'Ein nativer Klick klappt genau eine Karte einmal auf');
+assert(!open('Person') && !open('Assets'), 'Ein nativer Klick schließt genau eine Karte einmal');
+doc.getElementById('managerPersonToggle').click();
 assertEqual(doc.getElementById('managerPersonToggle').attrs['aria-expanded'], 'true', 'ARIA-Zustand folgt der sichtbaren Region');
-assertEqual(doc.getElementById('managerCardsToggleAll').textContent, 'Alle aufklappen', 'Gemischter Zustand bietet Öffnen an');
+assertEqual(doc.getElementById('managerCardsToggleAll').textContent, '▸ Alle Details zeigen', 'Gemischter Zustand bietet Öffnen an');
 doc.getElementById('managerCardsToggleAll').click();
 assert(['Person', 'Assets', 'Care'].every(open), 'Gesamtknopf öffnet aus gemischtem Zustand alle');
 doc.getElementById('managerCardsToggleAll').click();
@@ -34,10 +35,10 @@ person = 'b'; api.sync(); assert(!open('Assets'), 'Person B beginnt unabhängig 
 doc.getElementById('managerCareToggle').click(); person = 'a'; api.sync();
 assert(open('Assets') && !open('Care'), 'A/B/A behält je Person gemerkte Karten');
 const reload = createDocument(session); bindManagerPersonCards(reload, () => 'a');
-assert(!reload.getElementById('managerAssetsBody').hidden, 'Sitzungsreload übernimmt denselben Zustand');
+assert(['Person', 'Assets', 'Care'].every(card => reload.getElementById(`manager${card}Body`).hidden), 'Reload startet alle Karten geschlossen');
 const fresh = createDocument(); bindManagerPersonCards(fresh, () => 'a');
 assert(fresh.getElementById('managerAssetsBody').hidden, 'Neue Sitzung übernimmt keine alten Karten');
-assertEqual([...session.keys()].join(','), PERSON_CARD_SESSION_KEY, 'Binder schreibt ausschließlich einen Sitzungsschlüssel');
+assertEqual(session.size, 0, 'Klappen schreibt weder Sitzungs- noch Profilwerte');
 doc.defaultView.location.hash = '#personendaten'; api.openTarget();
 assert(open('Person') && doc.activeElement === doc.getElementById('profileGeburtsdatum'), 'Sprungziel öffnet und fokussiert Persondaten');
 doc.getElementById('managerBirthSupplement').hidden = false; api.openTarget();
@@ -47,7 +48,7 @@ assertEqual(JSON.stringify([...session]), closed, 'Personenverwaltungshash verä
 const inaccessible = createDocument(); inaccessible.defaultView.sessionStorage.getItem = () => { throw new Error('blocked'); };
 inaccessible.defaultView.sessionStorage.setItem = () => { throw new Error('blocked'); };
 bindManagerPersonCards(inaccessible, () => 'a'); inaccessible.getElementById('managerPersonToggle').click(); inaccessible.getElementById('managerPersonToggle').click();
-assert(!inaccessible.getElementById('managerPersonBody').hidden, 'Gesperrtes sessionStorage hat einen bedienbaren Dokumentfallback');
+assert(inaccessible.getElementById('managerPersonBody').hidden, 'Auch bei gesperrtem sessionStorage funktionieren zwei Klicks ohne Speicherzugriff');
 for (const [raw, year, expected] of [
     ['1958-03-14', 2026, 'Für die Planung 2026 zählt das Alter am 01.01.: 67 Jahre (ab Planung 2027: 68).'],
     ['1958-01-01', 2026, 'Für die Planung 2026 zählt das Alter am 01.01.: 68 Jahre (ab Planung 2027: 69). Geburtstag am Stichtag, bereits in diesem Planungsjahr berücksichtigt.'],
@@ -75,8 +76,12 @@ function assertCardState(doc, label) {
     const present = ['Person', 'Assets', 'Care'].filter(card => doc.getElementById(`manager${card}Body`));
     const all = present.every(card => !doc.getElementById(`manager${card}Body`).hidden);
     assertEqual(doc.getElementById('managerCardsToggleAll').attrs['aria-expanded'], String(all), label + ': Gesamt-ARIA entspricht Regionen');
-    assertEqual(doc.getElementById('managerCardsToggleAll').textContent, all ? 'Alle zuklappen' : 'Alle aufklappen', label + ': Gesamttext entspricht Regionen');
-    for (const card of present) assertEqual(doc.getElementById(`manager${card}Toggle`).attrs['aria-expanded'], String(!doc.getElementById(`manager${card}Body`).hidden), label + ': Einzel-ARIA ' + card);
+    assertEqual(doc.getElementById('managerCardsToggleAll').textContent, all ? '▾ Alle Details ausblenden' : '▸ Alle Details zeigen', label + ': Gesamttext entspricht Regionen');
+    for (const card of present) {
+        const open = !doc.getElementById(`manager${card}Body`).hidden;
+        assertEqual(doc.getElementById(`manager${card}Toggle`).attrs['aria-expanded'], String(open), label + ': Einzel-ARIA ' + card);
+        assertEqual(doc.getElementById(`manager${card}Action`).textContent, open ? '▾ ausblenden' : '▸ zeigen', label + ': sichtbare Einzelaktion ' + card);
+    }
 }
 {
     const session = new Map(), doc = createDocument(session); let profile = 'a';

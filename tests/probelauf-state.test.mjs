@@ -214,7 +214,7 @@ for (const failure of ['snapshot-readback', 'flush-false']) {
     let c = controller(storage()); await c.initialize(); await c.start(selection);
     const id = c.state.snapshotId;
     await boot(adapter);
-    const everyday = { location: { href: win.location.href }, __TAURI__: { app: { getIdentifier: async () => 'com.dieter.ruhestandsapp' } } };
+    const everyday = { location: { href: win.location.href }, __TAURI__: { app: { getIdentifier: async () => 'de.vermoegen-ruhestand.suite' } } };
     c = controller(storage(), { win: everyday });
     await c.initialize();
     assertEqual(getAppTestDate(), '2027-01-31', 'Alltags-Tauri setzt bestätigten aktiven Lauf fort');

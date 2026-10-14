@@ -1,5 +1,6 @@
 import { requestPageChoice } from './page-choice-dialog.js';
 import { advanceCalendarDate, parseCalendarDate } from './app-clock.js';
+import { bindProbelaufQuoteContext } from './probelauf-price-ui.js';
 
 const bindings = new WeakMap();
 const queuedStarts = new WeakSet();
@@ -69,6 +70,7 @@ export function requestProbelaufDate({ doc, testDate, starting = false, demoAvai
 
 export function renderProbelaufUI(doc, controller, error = null) {
     const state = controller.state;
+    bindProbelaufQuoteContext(doc, state);
     const progress = controller.waiting ? 'Speichert noch …' : controller.busy && progressMessages[controller.action];
     const band = doc.getElementById('probelaufBand');
     const text = doc.getElementById('probelaufBandText');

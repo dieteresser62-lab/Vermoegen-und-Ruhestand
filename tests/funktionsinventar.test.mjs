@@ -413,6 +413,17 @@ const validInventory = validateInventory(inventory);
 assertEqual(validInventory.ok, true, 'Bestand: Schema 2, Pflichtfelder und sämtliche Bezüge: ' + validInventory.errors.join('; '));
 const validSources = validateSources(inventory, sources);
 assertEqual(validSources.ok, true, 'Bestand: alle geschützten Erzeuger und Ortsbelege: ' + validSources.errors.join('; '));
+const withoutInternalAudit = new Map(sources);
+const internalAuditPaths = [...new Set(entries.flatMap(entry => entry.auditEvidence)
+    .map(ref => ref.path).filter(file => file.startsWith('docs/internal/archive/')))];
+for (const file of internalAuditPaths) withoutInternalAudit.delete(file);
+assertEqual(internalAuditPaths.length, 4, 'Vier historische Entwürfe sind die lokalen Auditbelege');
+const missingLocalAudit = validateSources(inventory, withoutInternalAudit, { requireInternalAudit: true });
+assert(internalAuditPaths.every(file => missingLocalAudit.errors.some(error => error.includes('Datei fehlt: ' + file))), 'Jeder fehlende lokale Entwurf bleibt ein Quellenfehler');
+assertEqual(validateSources(inventory, withoutInternalAudit, { requireInternalAudit: false }).ok, true, 'Öffentlicher Bestand bewahrt den Quellvertrag ohne lokale Entwürfe');
+const missingPublicCode = new Map(withoutInternalAudit);
+missingPublicCode.delete('app/balance/balance-renderer-summary.js');
+assert(!validateSources(inventory, missingPublicCode, { requireInternalAudit: false }).ok, 'Auch im öffentlichen Bestand bleibt eine fehlende aktive Quelle ein Fehler');
 const categories = entries.find(entry => entry.id === 'E01');
 assert(categories.page === 'Ausgaben.html' && categories.selectors.dynamic.some(record => record.selector === '.expense-category' && record.status === 'geschützt'),
     'AU1: Kategorien besitzen den tatsächlichen neuen Host und einen geschützten Erzeuger');
@@ -499,7 +510,7 @@ for (const id of ['B06', 'B10', 'B11', 'B24']) {
     assert(!entries.some(entry => entry.id === id), `${id}: Altbedienung fehlt im aktuellen Inventar`);
     assert(markdown.includes(`**${id}:**`), `${id}: Generator zeigt die historische Entfallbegründung`);
 }
-assert(markdown.includes('## Entfallen auf Nutzerentscheid (05.10.2026)'), 'Generator erzeugt eigenen Entfallenabschnitt aus der Baseline');
+assert(markdown.includes('### Entfallen auf Nutzerentscheid') && markdown.includes('Nutzerentscheid vom 05.10.2026.'), 'Generator erhält Entfallenabschnitt und Entscheidungsdatum aus der Baseline');
 assertEqual(inventory.baselineAudit.length, 162, 'Alle 162 historischen Kennungen bleiben nachvollziehbar');
 // Derselbe Assertionpfad wird unten mit einem lokalen Runnerkontext abgefangen.
 const assertGate = (result, expected, name, assertion = assertEqual) =>
@@ -559,16 +570,16 @@ for (const entry of entries) for (const dynamic of entry.selectors.dynamic) {
 }
 const assertOverview = (source, rendered, name) => {
     const ids = resolveInventory(source).pages.flatMap(page => page.entries).map(entry => entry.id);
-    const rows = rendered.split('\n').filter(line => line.startsWith('| ')).slice(1).map(line => line.split(' | ')[0].slice(2));
+    const rows = rendered.split('\n').filter(line => line.startsWith('| ') && !line.startsWith('| Kennung |')).map(line => line.split(' | ')[0].slice(2));
     assertEqual(rows.join(','), ids.join(','), name + ': genau eine Übersichtszeile pro tatsächlicher Kennung');
     assert(rendered.includes(`${ids.length} Funktionseinträge;`), name + ': Übersichtszahl aus Inventar');
     const stats = protectionCounts(source);
     for (const status of DYNAMIC_STATUSES) assert(rendered.includes(`${status}: **${stats[status]}**`), name + ': Schutzstatistik ' + status);
 };
 assertOverview(inventory, markdown, 'Bestand');
-for (const text of ['Seite | Bereich | Bezeichnung | Zustand | Speicherwirkung | Testabdeckung | Paket', '## Änderungsrisiko', '## Testschuld', '## Prüfergrenzen', '## Befunde außerhalb des Inventars']) assert(markdown.includes(text), 'Lesefassung enthält ' + text);
+for (const text of ['Seite | Bereich | Bezeichnung | Zustand | Speicherwirkung | Testabdeckung | Paket', '### Änderungsrisiko', '### Testschuld', '### Prüfergrenzen', '### Befunde außerhalb des Inventars']) assert(markdown.includes(text), 'Lesefassung enthält ' + text);
 for (const page of resolved.pages) for (const label of ['Tastatur', 'Druck', 'Meldungen', 'Dialoge', 'Handbuchanker']) {
-    const section = markdown.split(`### ${page.path}\n`)[1].split('\n### ')[0];
+    const section = markdown.split(`Quelle: \`${page.path}\`\n`)[1].split('\n### ')[0];
     assert(section.includes(`**${label}:**`), `${page.path}: vollständiger Zusatz ${label}`);
 }
 assert(!markdown.includes('Geordnete Schritte') && !markdown.includes('```'), 'Lesefassung druckt weder Detailprüffälle noch Codekörper ab');
@@ -851,8 +862,8 @@ for (const origin of ['inline-module', 'inline-classic']) {
 // Reale Handler: nur die Definition ändern, alten Namen in drei Scheinbelegen erhalten.
 for (const [id, file, name, before, after] of [
     ['B13', 'app/balance/balance-binder.js', 'handleFormInput', '    handleFormInput(e) {', '    renamedFormInput(e) {'],
-    ['H02', 'Handbuch.html', 'switchTab', 'function switchTab(tabId)', 'function renamedSwitchTab(tabId)'],
-    ['H03', 'Handbuch.html', 'setupTocNavigation', 'function setupTocNavigation()', 'function renamedTocNavigation()'],
+    ['H02', 'app/handbook/handbook.js', 'searchChapters', 'function searchChapters(records, query)', 'function renamedSearch(records, query)'],
+    ['H03', 'app/handbook/handbook.js', 'initHandbook', 'function initHandbook(doc =', 'function renamedInitHandbook(doc ='],
     ['S02', 'app/simulator/simulator-assumptions-ui.js', 'refreshAssumptionFillStatus', 'function refreshAssumptionFillStatus(', 'function renamedAssumptionFillStatus('],
     ['S70', 'Simulator.html', 'initializeUnifiedTooltips', 'function initializeUnifiedTooltips()', 'function renamedUnifiedTooltips()']
 ]) {

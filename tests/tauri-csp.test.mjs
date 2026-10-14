@@ -26,7 +26,7 @@ const styleSrc = String(csp?.['style-src'] || '');
 const fontSrc = String(csp?.['font-src'] || '');
 
 assert(tauriConfig?.build?.frontendDist === '../dist', 'Tauri should load the synced dist folder');
-assert(tauriConfig?.productName === 'RuhestandSuite', 'Tauri product name should match release docs');
+assert(tauriConfig?.productName === 'Vermögen & Ruhestand Entwicklung', 'Tauri base product name should match development docs');
 
 const mainWindow = tauriConfig?.app?.windows?.[0] || {};
 assert(mainWindow.width === 1920, 'Tauri default window width should stay documented');

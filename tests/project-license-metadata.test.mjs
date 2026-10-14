@@ -26,7 +26,7 @@ const packageJson = readJson('package.json');
 const packageLock = readJson('package-lock.json');
 const cargoToml = read('src-tauri/Cargo.toml');
 const readme = read('README.md');
-const architecture = read('docs/reference/ARCHITEKTUR_UND_FACHKONZEPT.md');
+const architecture = read('docs/reference/TECHNICAL.md');
 const marketComparison = read('docs/reference/MARKTVERGLEICH.md');
 const marketEvidence = read('docs/reference/MARKTVERGLEICH_EVIDENZREGISTER.md');
 const rootLockPackage = packageLock.packages?.[''];
@@ -53,8 +53,9 @@ assert(
 );
 assert(architecture.includes('**Lizenz:** MIT'), 'architecture document should identify MIT as the project license');
 assert(
-    marketComparison.includes('| GAP-MKT-06 | geschlossen am 2026-07-17:'),
-    'GAP-MKT-06 should remain traceable and be marked closed only after synchronization'
+    marketEvidence.includes('| GAP-MKT-06 | geschlossen am 2026-07-17:') &&
+        marketComparison.includes('Der Programmcode steht unter MIT'),
+    'the evidence appendix should retain closed GAP-MKT-06 and the readable comparison should state MIT'
 );
 assert(
     !architecture.includes('ISC-npm-Metadatum') && !marketComparison.includes('ISC-npm-Metadatum'),

@@ -7,7 +7,8 @@ import { planScope, readHouseholdPlan } from '../profile/household-plan.js';
 import { projectHouseholdPlanComparison } from '../profile/household-plan-comparison.js';
 import { projectBalanceActionOrigin } from '../balance/balance-action-origin.js';
 import { derivePlanningStart, resolvePlanningPeriodSource } from '../shared/planning-start.js';
-import { appNow } from '../shared/app-clock.js';
+import { appNow, getAppTestDate } from '../shared/app-clock.js';
+import { PROBELAUF_PRICE_LABEL } from '../shared/probelauf-price-ui.js';
 import { loadProfileRegistry } from '../profile/profile-registry.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { deriveBalanceNextSteps } from '../balance/balance-next-steps.js';
@@ -172,9 +173,6 @@ export function projectOverview({ registry, activeId, liveData = {}, now = appNo
     const bandSummary = projection.complete && bandSummaries.length && bandSummaries.every(item => item && JSON.stringify(item) === JSON.stringify(bandSummaries[0])) ? bandSummaries[0] : null;
     const comparison = projectOverviewWealth({ states: states.map(state => state.value), members, scope,
         comparisonScope: bandSummary?.scope, year: bandYear, retrospective, currentAssets: projection.household?.assets });
-    const annual = projectOverviewYear({ store: expenseResult.store, scope, now, retrospective, budgetSummary: bandSummary });
-    annual.comparison = comparison;
-    annual.sales = projectOverviewSales(projectedRegistry, scope, bandYear, now);
     const history = projectOverviewHistory({ registry: projectedRegistry, profiles: projection.profiles, liveData, today: localHistoryDate(now), period: historyPeriod });
     const fingerprintContext = { registry: projectedRegistry, activeId, liveData, scope };
     const source = sourceFingerprint({ ...fingerprintContext, kind: 'balance' });
@@ -183,6 +181,18 @@ export function projectOverview({ registry, activeId, liveData = {}, now = appNo
     const planEntry = readHouseholdPlan({ scope: planArea, storage: comparisonStorage }).entry;
     const planComparison = projectHouseholdPlanComparison({ year, scope: planArea, storage: comparisonStorage,
         preview: summary, sourceFingerprint: source, planUpdatedAt: planEntry?.updatedAt, now });
+    // Karte und Budgetlinie zeigen dieselbe Quelle: Jahresbeleg vor Vorschau.
+    // Für den Januar-Rückblick bleibt das Budget an das Vorjahr gebunden.
+    const bandReceipt = readAnnualPlanRecord({ year: bandYear, scope: planArea, storage: comparisonStorage });
+    const bandComparison = bandYear === year ? planComparison : projectHouseholdPlanComparison({ year: bandYear,
+        scope: planArea, storage: comparisonStorage, preview: bandSummary, sourceFingerprint: source, planUpdatedAt: planEntry?.updatedAt, now });
+    const fixedBand = bandReceipt && bandReceipt.status !== 'invalid';
+    const bandBudgetSummary = fixedBand ? { year: bandYear, scope, monthlyBudget: bandReceipt.adopted.monthlyBudget,
+        createdAt: bandReceipt.committedAt } : bandReceipt?.status === 'invalid' ? null : bandSummary;
+    const annual = projectOverviewYear({ store: expenseResult.store, scope, now, retrospective, budgetSummary: bandBudgetSummary,
+        budgetStatus: fixedBand ? 'adopted' : 'provisional', budgetPreviewStatus: bandComparison.previewStatus });
+    annual.comparison = comparison;
+    annual.sales = projectOverviewSales(projectedRegistry, scope, bandYear, now);
     const actionOrigin = projectBalanceActionOrigin({ comparison: planComparison, year: now.getFullYear(), scope, occasion });
     let cashStatus;
     try {
@@ -210,7 +220,8 @@ export function projectCashFreshness(people, today) {
 
 /** Jahresdialog: tatsächlicher Vormonat und getrennte Auswertung des Abschlussjahres. */
 export function projectAnnualClosePreparation(model, { store, annualBudgetSummary } = {}) {
-    if (model.occasion?.kind !== 'annual' || !model.scope) return model;
+    // Die anschließende Monatsphase braucht denselben Jahresrückblick im Beleg.
+    if (!model.scope || !(model.occasion?.kind === 'annual' || model.occasion?.annualState === 'done')) return model;
     const { previousYear, previousMonth, closingYear } = model.occasion;
     const expenses = previousYear < model.planning?.firstPlanningYear
         ? { year: previousYear, month: previousMonth, rows: [], complete: false, spent: null, beforePlanning: true }
@@ -240,7 +251,8 @@ function hasOverviewRecords(data) {
 }
 
 /** Zwölf Kalendermonate; nur abgeschlossene Monate gehören in die Kennzahlen. */
-export function projectOverviewYear({ store, scope, now, retrospective = false, budgetSummary = null }) {
+export function projectOverviewYear({ store, scope, now, retrospective = false, budgetSummary = null,
+    budgetStatus = 'provisional', budgetPreviewStatus = 'stale' }) {
     const year = now.getFullYear() - (retrospective ? 1 : 0);
     const lastMonth = retrospective ? 12 : now.getMonth();
     const budget = budgetSummary?.year === year && budgetSummary.scope?.key === scope?.key
@@ -251,6 +263,7 @@ export function projectOverviewYear({ store, scope, now, retrospective = false, 
         const spent = presentRows.length ? presentRows.reduce((sum, row) => sum + row.spent, 0) : null;
         const closed = month <= lastMonth;
         return { month, spent: closed ? spent : null, complete: source.complete && closed,
+            missingPersonIds: closed ? source.rows.filter(row => !row.present).map(row => row.id) : [],
             state: !closed ? 'open' : source.complete ? 'complete' : presentRows.length ? 'partial' : 'missing',
             overBudget: closed && spent !== null && budget !== null ? spent > budget : null };
     });
@@ -263,6 +276,7 @@ export function projectOverviewYear({ store, scope, now, retrospective = false, 
     const reliable = months.some(month => month.complete);
     const total = recorded.length ? recorded.reduce((sum, month) => sum + month.spent, 0) : null;
     return { year, retrospective, lastMonth, months, complete, total, budget, budgetCreatedAt: budget === null ? null : budgetSummary.createdAt,
+        budgetStatus: budget === null ? 'missing' : budgetStatus, budgetPreviewStatus,
         forecast: reliable && (stats.annualForecast > 0 || complete) ? stats.annualForecast : null, forecastIncomplete: !complete,
         highest: recorded.reduce((best, month) => !best || month.spent > best.spent ? month : best, null),
         overBudgetCount: budget === null || !recorded.length ? null : recorded.filter(month => month.overBudget).length,
@@ -378,6 +392,7 @@ function overviewExpenseBudget(context, year, beforePlanning = false) {
 
 /** Marktzeit stammt ausschließlich aus dem ältesten belegten Kursdatum. */
 export function overviewQuoteLabel(model) {
+    if (getAppTestDate() !== null) return PROBELAUF_PRICE_LABEL;
     const date = new Date(model.quoteDate);
     if (!model.quoteDate || !Number.isFinite(date.getTime())) return 'Kurszeit unbekannt';
     return date.toDateString() === model.now.toDateString() ? 'Kurse von heute'
@@ -385,15 +400,17 @@ export function overviewQuoteLabel(model) {
 }
 
 export function overviewPriceLabel(model) {
+    if (getAppTestDate() !== null) return PROBELAUF_PRICE_LABEL;
     const report = model.priceReport;
     const results = report?.results?.filter(result => !model.scope?.ids || !result.profileId || model.scope.ids.includes(result.profileId));
     if (['waiting', 'started', 'loading', 'running'].includes(report?.status)) return 'Kurse werden aktualisiert …';
     if (['recovery', 'unavailable'].includes(report?.status)) return 'Kurse nicht verfügbar';
     if (report?.status === 'storage-failed') return 'Kursspeicherung nicht bestätigt';
-    if (report?.status === 'offline' && !report.updated) return `Kursdienst nicht erreichbar · ${overviewQuoteLabel(model)}`;
-    if (report?.status === 'timeout' && !report.updated) return `Kursabruf dauert zu lange · ${overviewQuoteLabel(model)}`;
-    if (['changed', 'cancelled'].includes(report?.status) && !report.updated) return 'Gespeicherte Kurse · Abruf unvollständig';
-    if (results?.some(result => result.status !== 'updated')) return report.updated > 0 ? 'Kurse teilweise verfügbar' : 'Gespeicherte Kurse · Abruf unvollständig';
+    const stand = overviewQuoteLabel(model);
+    const retry = stand === 'Kurse von heute' ? 'erneuter Abruf' : 'Abruf';
+    if (['offline', 'timeout'].includes(report?.status) && !report.updated) return `${stand} · ${retry} fehlgeschlagen`;
+    if (['changed', 'cancelled'].includes(report?.status) && !report.updated) return `${stand} · Abruf unvollständig`;
+    if (results?.some(result => result.status !== 'updated')) return `${stand} · ${report.updated > 0 ? 'teilweise aktualisiert' : retry + ' fehlgeschlagen'}`;
     const retrieved = report?.retrievedAt === null || report?.retrievedAt === undefined ? null : new Date(report.retrievedAt);
     if (report?.status === 'complete' && report.updated > 0
         && retrieved && Number.isFinite(retrieved.getTime())) {

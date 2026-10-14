@@ -44,21 +44,41 @@ assert(failed, 'Ungültiger Text bleibt am bisherigen Validierungsworkflow');
 const formatEvents = [];
 const formatDoc = { addEventListener: (name, handler) => formatEvents.push([name, handler]) };
 bindDecimalInputDisplay(formatDoc); bindDecimalInputDisplay(formatDoc);
-assertEqual(formatEvents.length, 1, 'Wiederholtes Binden installiert genau einen Formatierungspfad');
-assertEqual(formatEvents[0][0], 'focusout', 'Delegierter Fokusverlust erreicht dynamische Felder');
+assertEqual(formatEvents.length, 2, 'Wiederholtes Binden installiert jeden Fokuspfad genau einmal');
+const focusIn = formatEvents.find(([name]) => name === 'focusin')[1];
+const focusOut = formatEvents.find(([name]) => name === 'focusout')[1];
 const decimalField = (value, overrides = {}) => ({ tagName: 'INPUT', type: 'text', value,
     getAttribute: name => name === 'inputmode' ? 'decimal' : null,
     dispatchEvent() { throw new Error('Formatierung darf keine Events erzeugen'); }, ...overrides });
 for (const [raw, expected] of [['7.5', '7,5'], ['7,5', '7,5'], ['0.1234567890123456789', '0,1234567890123456789'], ['', ''], ['7,5.0', '7,5.0'], ['abc', 'abc']]) {
     const field = decimalField(raw);
-    formatEvents[0][1]({ target: field });
+    focusOut({ target: field });
     assertEqual(field.value, expected, 'Nach Verlassen bleibt Eingabe präzise oder ungültig: ' + raw);
     if (raw === '7.5') assertEqual(readDecimalInput(field.value), 7.5, 'Formatierte Dialogeingabe bleibt kanonisch');
 }
 for (const override of [{ disabled: true }, { readOnly: true }, { type: 'number' }, { type: 'date' }, { tagName: 'TEXTAREA' }, { getAttribute: () => null }]) {
-    const field = decimalField('7.5', override); formatEvents[0][1]({ target: field });
+    const field = decimalField('7.5', override); focusOut({ target: field });
     assertEqual(field.value, '7.5', 'Gesperrtes oder fachfremdes Feld bleibt unverändert');
 }
+
+for (const id of ['profileTagesgeld', 'profileSparerPauschbetrag', 'profileHealthBucketInitialAmount', 'purchasePrice', 'reconcileGrossProceeds', 'cashPostingBalance']) {
+    const field = decimalField('98000,123456789', { id });
+    focusOut({ target: field });
+    assertEqual(field.value, '98.000,123456789', id + ': Geldanzeige gruppiert ohne Rundung');
+    assertEqual(readDecimalInput(field.value, field), 98000.123456789, id + ': Reader liefert weiterhin eine Zahl');
+    for (let i = 0; i < 2; i++) {
+        focusIn({ target: field });
+        assertEqual(field.value, '98000,123456789', id + ': bequem ohne Tausenderpunkte bearbeiten');
+        focusOut({ target: field });
+        assertEqual(field.value, '98.000,123456789', id + ': Fokusfolge verändert den Betrag nicht');
+    }
+    focusIn({ target: field }); field.value = '1.234'; focusOut({ target: field });
+    assertEqual(field.value, '1,234', id + ': eingegebener Dezimalpunkt behält seine Bedeutung');
+    assertEqual(readDecimalInput(field.value, field), 1.234, id + ': Dezimalpunkt wird nicht als Gruppierung gerechnet');
+}
+const planField = decimalField('30.000 €', { id: 'managerPlan_floorBedarf', hasAttribute: name => name === 'data-manager-plan-field' });
+focusOut({ target: planField });
+assertEqual(planField.value, '30.000 €', 'Planfelder behalten ihren bestehenden Zahlenadapter');
 
 const events = {}, button = { setAttribute() {}, focus() { popDoc.activeElement = this; } };
 const host = { dataset: {}, querySelector: () => button, contains: item => item === button,
@@ -86,3 +106,14 @@ assertEqual(JSON.stringify(readSale()), JSON.stringify(commaSale), 'Verkaufsdial
 assertEqual(commaSale.sharesSold, 7.5, 'Tatsächliche Verkaufsstücke bleiben präzise');
 assertEqual(commaSale.grossProceeds, 107.5, 'Tatsächlicher Bruttoerlös bleibt präzise');
 assertEqual(commaSale.recommendation, null, 'Leere optionale Empfehlung bleibt fehlend');
+const groupedSaleFields = new Map([...saleFields].map(([id, value]) => [id, decimalField(value, { id })]));
+for (const [id, value] of [['reconcileGrossProceeds', 98000.25], ['reconcileFees', 1000.5], ['reconcileInitialCashBalance', 207000.5]]) {
+    const field = groupedSaleFields.get(id);
+    field.value = displayDecimalInput(value, field);
+}
+const readGroupedSale = new Function('byId', 'readDecimalInput', 'state', 'Date', `${saleSource}\nreturn readReconciliationActionFromDom;`)(
+    id => groupedSaleFields.get(id), readDecimalInput, { profileId: 'synthetic-person' }, Date);
+const groupedSale = readGroupedSale();
+assertEqual(groupedSale.grossProceeds, 98000.25, 'Verkaufsreader liest gruppierten Bruttoerlös als Zahl');
+assertEqual(groupedSale.fees, 1000.5, 'Verkaufsreader liest gruppierte Kosten als Zahl');
+assertEqual(groupedSale.cashBalanceAfterPostingEur, 207000.5, 'Verkaufsreader liest gruppierten Cashstand als Zahl');

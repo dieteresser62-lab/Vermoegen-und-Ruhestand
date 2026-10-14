@@ -1,5 +1,5 @@
 import { loadProfileAssetValues, saveProfileAssetValues } from './profile-asset-values.js';
-import { assertCashHistory, PROFILE_CASH_HISTORY_KEY } from './profile-wealth-history.js';
+import { appendCashHistory, assertCashHistory, PROFILE_CASH_HISTORY_KEY } from './profile-wealth-history.js';
 import { requireHistoryRecord, localHistoryDate } from '../tranches/tranchen-history-store.js';
 import { canonicalDecimalInput } from '../tranches/tranchen-manager-decimal-input.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
@@ -49,7 +49,11 @@ export function prepareCashRecords(data, raw, date = localHistoryDate()) {
     const person = readCashPerson('', '', data);
     if (person.error) throw new Error(person.error);
     const value = parseCashInput(raw);
-    if (person.value === value) return {};
+    if (person.value === value) {
+        const history = appendCashHistory(person.historyRaw, value, value, date);
+        const historyRaw = history ? JSON.stringify(history) : null;
+        return historyRaw === person.historyRaw ? {} : { [PROFILE_CASH_HISTORY_KEY]: historyRaw };
+    }
     const copy = { ...data };
     const adapter = { getItem: key => copy[key] ?? null, setItem: (key, text) => { copy[key] = String(text); } };
     const values = loadProfileAssetValues(adapter);

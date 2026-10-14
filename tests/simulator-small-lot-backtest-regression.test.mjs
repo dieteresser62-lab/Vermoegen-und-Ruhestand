@@ -24,8 +24,51 @@ function execute(inputs, period, observer = () => {}, engine = EngineAPI) {
 
 // Dieses Orakel wird ausschließlich gelesen, niemals aus dem aktuellen Code erzeugt.
 const fixture = JSON.parse(fs.readFileSync(new URL('./fixtures/simulator-small-lot-controls-v1.json', import.meta.url), 'utf8'));
+// Nur die additive Mindest-Flex-Auswertung gehört nicht zum eingefrorenen Vertrag.
+// Alle bisherigen Felder, unbekannte neue Felder und sämtliche Folgezustände
+// bleiben im vollständigen Bytevergleich; keine Projektion über Fixture-Schlüssel.
+const additiveMinimumFlexMetricIds = new Set([
+    'minimum_flex_restriction_years',
+    'minimum_flex_restriction_share_pct',
+    'minimum_flex_paid_median_nominal_eur',
+    'minimum_flex_desired_median_nominal_eur',
+    'minimum_flex_paid_minimum_nominal_eur'
+]);
+function projectFrozenFinancialControls(execution) {
+    const projection = structuredClone(execution);
+    delete projection.result.minimumFlexRestriction;
+    const metrics = projection.result.metrics;
+    delete metrics.minimumFlexRestriction;
+    metrics.descriptors = metrics.descriptors.filter(entry => !additiveMinimumFlexMetricIds.has(entry.id));
+    for (const id of additiveMinimumFlexMetricIds) {
+        delete metrics.values[id];
+        delete metrics.availability[id];
+    }
+    for (const { row } of projection.result.rows) {
+        delete row.flex_wunsch_haushalt_nominal;
+        delete row.flex_unter_mindestflex;
+    }
+    return projection;
+}
 for (const c of fixture.cases) {
-    assertEqual(JSON.stringify(execute(c.inputs, c.period)), JSON.stringify(c.projection), c.name + ': vollständige Finanzbytes und Folgezustände bleiben identisch');
+    const execution = execute(c.inputs, c.period);
+    assert(execution.result.minimumFlexRestriction, c.name + ': additive Mindest-Flex-Auswertung bleibt im produktiven Resultat');
+    assertEqual(JSON.stringify(projectFrozenFinancialControls(execution)), JSON.stringify(c.projection), c.name + ': vollständige Finanzbytes und Folgezustände bleiben identisch');
+}
+// Die gezielte Ausnahme darf weder Finanzänderungen noch unbekannte Felder verdecken.
+const control = fixture.cases[0].projection;
+for (const mutate of [
+    value => { value.result.rows[0].row.steuern_gesamt += 1; },
+    value => { value.result.rows[0].row.minimumFlexAnnual += 1; },
+    value => { value.result.metrics.values.wealth_end_nominal_eur += 1; },
+    value => { value.states[0].portfolio.liquiditaet += 1; },
+    value => { value.result.unexpectedField = true; },
+    value => { value.states[0].minimumFlexRestriction = true; }
+]) {
+    const changed = structuredClone(control);
+    mutate(changed);
+    assert(JSON.stringify(projectFrozenFinancialControls(changed)) !== JSON.stringify(control),
+        'Bisherige Finanzdaten, Zustände und unbekannte Felder bleiben vergleichsrelevant');
 }
 const smallInputs = { ...base, startVermoegen:600001, depotwertAlt:0, einstandAlt:0, tagesgeld:600000,
     startFloorBedarf:240000, startFlexBedarf:0,

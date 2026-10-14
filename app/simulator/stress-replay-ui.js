@@ -566,7 +566,7 @@ export function createStressReplayController({
             const form = element('stressReplayVariantEditor');
             if (form?.checkValidity?.() === false) {
                 form.reportValidity?.();
-                status('Bitte korrigieren Sie die markierten Variantenfelder.', { error: true });
+                status('Bitte korrigiere die markierten Variantenfelder.', { error: true });
                 return null;
             }
             const label = String(element('stressReplayVariantLabel')?.value || '').trim();
@@ -642,8 +642,8 @@ export function createStressReplayController({
         const button = element('stressReplayFixButton');
         if (button) button.disabled = true;
         status(runContext
-            ? 'Wählen Sie ein Szenario aus, um diesen Lauf als Stresspfad zu fixieren.'
-            : 'Starten Sie zuerst einen Monte-Carlo-Lauf.');
+            ? 'Wähle ein Szenario aus, um diesen Lauf als Stresspfad zu fixieren.'
+            : 'Starte zuerst einen Monte-Carlo-Lauf.');
     };
 
     const selectScenario = scenario => {
@@ -652,8 +652,8 @@ export function createStressReplayController({
         selectedScenario = scenario?.sourceIdentity ? scenario : null;
         const button = element('stressReplayFixButton');
         if (button) button.disabled = !selectedScenario;
-        if (!runContext) status('Der Ursprungslauf ist nicht mehr verfügbar. Starten Sie Monte Carlo erneut.', { error: true });
-        else if (!selectedScenario) status('Wählen Sie ein Szenario aus, um diesen Lauf als Stresspfad zu fixieren.');
+        if (!runContext) status('Der Ursprungslauf ist nicht mehr verfügbar. Starte Monte Carlo erneut.', { error: true });
+        else if (!selectedScenario) status('Wähle ein Szenario aus, um diesen Lauf als Stresspfad zu fixieren.');
         else if (runContext.monteCarloParams.rngMode !== 'per-run-seed') {
             if (button) button.disabled = true;
             status('Dieser Legacy-Zufallsstrom wird für Stresspfad-Replay nicht unterstützt.', { error: true });
@@ -666,7 +666,7 @@ export function createStressReplayController({
         if (!beginBusyAction()) return null;
         try {
             if (!runContext || !selectedScenario) {
-                status('Wählen Sie zuerst ein Szenario aus einem abgeschlossenen Monte-Carlo-Lauf.', { error: true, focus: true });
+                status('Wähle zuerst ein Szenario aus einem abgeschlossenen Monte-Carlo-Lauf.', { error: true, focus: true });
                 return null;
             }
             if (runContext.monteCarloParams.rngMode !== 'per-run-seed') {
@@ -916,7 +916,7 @@ export function createStressReplayController({
                     : 'Gespeicherter Stresspfad wurde geladen.');
             }
         } else {
-            status('Starten Sie zuerst einen Monte-Carlo-Lauf.');
+            status('Starte zuerst einen Monte-Carlo-Lauf.');
         }
         element('stressReplayFixButton')?.addEventListener?.('click', () => void fixSelectedScenario());
         element('stressReplayExportButton')?.addEventListener?.('click', () => exportActiveWorkspace());

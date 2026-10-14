@@ -11,8 +11,22 @@ assertEqual(missingStyle['font-weight'], '400', 'Fehlgrund nutzt normale Schrift
 assertEqual(missingStyle['overflow-wrap'], 'normal', 'Fehlgrund wird nicht mitten im Wort umgebrochen');
 assertEqual(missingStyle['word-break'], 'normal', 'Fehlgrund erhält keine erzwungenen Worttrennungen');
 const noteStyle = Object.assign({}, ...rules('simulator.css', readSources()['simulator.css'])
-    .filter(rule => rule.selector === '.sim-result-grid .sim-cut-note').map(rule => rule.declarations));
+    .filter(rule => rule.selector.split(',').map(selector => selector.trim()).includes('.sim-result-grid .sim-cut-note')).map(rule => rule.declarations));
 assertEqual(noteStyle['font-size'], 'var(--balance-help)', 'Fehlgrund erbt die normale Hinweisgröße');
+
+const wrapStyle = Object.assign({}, ...rules('simulator.css', readSources()['simulator.css'])
+    .filter(rule => rule.selector.split(',').map(selector => selector.trim()).includes('.sim-cut-metric > strong')).map(rule => rule.declarations));
+assertEqual(wrapStyle['white-space'], 'normal', 'Mindest-Flex-Zentralwert darf vollständig umbrechen');
+assertEqual(wrapStyle['overflow-wrap'], 'anywhere', 'Lange zentrale Werte erzeugen keinen erzwungenen horizontalen Überlauf');
+const amountNoteStyle = Object.assign({}, ...rules('simulator.css', readSources()['simulator.css'])
+    .filter(rule => rule.selector.split(',').map(selector => selector.trim()).includes('.sim-result-grid .sim-cut-note')).map(rule => rule.declarations));
+assertEqual(amountNoteStyle['white-space'], 'normal', 'Mindest-Flex-Erklärung und nominale Betragsnotiz bleiben umbrechbar');
+assertEqual(amountNoteStyle.overflow, 'visible', 'Betragsnotiz wird nicht abgeschnitten');
+const compactNoteStyle = Object.assign({}, ...rules('simulator.css', readSources()['simulator.css'])
+    .filter(rule => rule.selector === '.sim-mc-answer .sim-flex-note').map(rule => rule.declarations));
+assertEqual(compactNoteStyle['white-space'], 'normal', 'MC-Flex-Notiz bleibt umbrechbar');
+assertEqual(compactNoteStyle.overflow, 'visible', 'MC-Flex-Notiz wird nicht abgeschnitten');
+assertEqual(compactNoteStyle['text-overflow'], 'clip', 'MC-Flex-Notiz hat keine Ellipse');
 
 const previous = globalThis.document;
 try {
@@ -67,11 +81,31 @@ try {
     assert(heads.innerHTML.includes('2200'), 'Produktiver Abbruch-/Spätantwortpfad erhält bisherigen Beleg');
     const normal = beginOverviewRun('backtest', { inputs: {}, settings: result.request }); completeOverviewRun('backtest', normal, result);
     assert(!heads.innerHTML.includes('Abweichung · nur diese Rechnung'), 'Regulärer Folgeabschluss entfernt falschen Alternativhinweis');
+    const compactMinimumResult = { ...result, request: { ...result.request, inputs: { minimumFlexAnnual: 30000 } },
+        rows: [{ ...result.rows[0], row: { ...result.rows[0].row, minimumFlexAnnual: 30000,
+            flex_haushalt_erfuellt: 35000, flex_wunsch_haushalt_nominal: 45000 } }] };
+    compactMinimumResult.metrics = deriveHistoricalBacktestMetrics(compactMinimumResult);
+    const compactMinimumToken = beginOverviewRun('backtest', { inputs: {}, settings: result.request });
+    completeOverviewRun('backtest', compactMinimumToken, compactMinimumResult);
+    const minimumTree = tokenizeHTML(doc.getElementById('overviewBacktest').innerHTML);
+    const minimumField = minimumTree.elements.find(node => matchesSelector({ elements: [node] }, '.sim-outcome-metrics > .sim-cut-metric'));
+    assertEqual(minimumField?.children.length, 2, 'Backtest-Mindest-Flex zeigt nur Titel und Wert wie die Nachbarkennzahlen');
+    assert(minimumField?.children[0]?.tag === 'span' && minimumField?.children[1]?.tag === 'strong',
+        'Backtest-Mindest-Flex hat keinen sichtbaren Untertext und keine zusätzliche Zeilenhöhe');
+    for (const text of ['30.000', '35.000', '45.000', 'jährlich fortgeschrieben', 'schwächstes Jahr'])
+        assert(minimumField?.attrs.title?.includes(text), 'Backtest-Mindest-Flex bewahrt Beträge und Methodik im Titeltooltip: ' + text);
+    const backtestInfo = minimumTree.elements.find(node => node.attrs.id === 'overviewBacktestInfo');
+    assertEqual(backtestInfo?.children.length, 2, 'Backtest-Info enthält einen zusätzlichen Absatz zur Mindest-Flex-Kennzahl');
+    assert(backtestInfo.children.every(node => node.tag === 'p')
+        && doc.getElementById('overviewBacktest').innerHTML.includes(`<p>Jahre unter Mindest-Flex: ${minimumField.attrs.title}</p>`),
+        'Backtest-Info übernimmt die bestehende Kennzahlerklärung vollständig');
     const mixed = { ...result, completedYears: 2, rows: ['static_input', 'effective_vpw_plus_pension_surplus'].map((basis, index) => ({
         ...result.rows[0], jahr: 2020 + index, row: { ...result.rows[0].row,
             flex_haushalt_basis: basis, flex_brutto_haushalt: 100, flex_haushalt_erfuellt: 80, flex_haushalt_kuerzung_pct: 20 }
     })) };
-    mixed.metrics = deriveHistoricalBacktestMetrics(mixed);
+    mixed.metrics = structuredClone(deriveHistoricalBacktestMetrics(mixed));
+    // Unverändertes Altobjekt prüft weiterhin ausschließlich den Legacy-Fehlgrund.
+    delete mixed.metrics.minimumFlexRestriction;
     const mixedProjection = projectBacktestOverview(mixed);
     assertEqual(mixedProjection.cuts, null, 'Je ein Jahr mit festem und dynamischem Ziel bleibt unauswertbar');
     assertEqual(backtestCutMissingReason(mixed), 'nicht auswertbar', 'Gemischte Ziele erhalten den kurzen sichtbaren Grund');
@@ -127,20 +161,40 @@ try {
         && !normalOutput.elements.some(node => node.attrs.class?.includes('sim-cut-missing')), 'Null Kürzungsjahre bleibt eine Zahl und erhält keinen Fehlhinweis');
     assertEqual(projectBacktestOverview(result).cutMissingExplanation, '', 'Auswertbare Kürzungsjahre erhalten keine Fehlerklärung');
 
+    const minimumPath = { affectedYearCount: 1, observationCount: 3, yearSharePct: 100 / 3,
+        paidMedianNominalEur: 35000, desiredMedianNominalEur: 45000, paidMinimumNominalEur: 28000, missingReason: null };
+    const minimumBlock = { definitionVersion: 'MinimumFlexRestrictionV1', startMinimumFlexAnnual: 30000,
+        priceBasis: 'nominal', population: 'completed_decumulation_years',
+        comparison: 'paid_household_flex_lt_applied_positive_minimum', missingReason: null, path: minimumPath };
+    const minimumResult = { ...mixed, metrics: { ...mixed.metrics, minimumFlexRestriction: minimumBlock } };
+    const minimumToken = beginOverviewRun('backtest', { inputs: { minimumFlexAnnual: 30000 }, settings: result.request });
+    completeOverviewRun('backtest', minimumToken, minimumResult);
+    const minimumMarkup = doc.getElementById('overviewBacktest').innerHTML;
+    for (const expected of ['Jahre unter Mindest-Flex', '1 / 3', '33,3', '35.000', '45.000', '28.000', 'Nominale Jahresbeträge'])
+        assert(minimumMarkup.includes(expected), 'Backtest-DOM enthält ' + expected);
+    assert(!minimumMarkup.includes(mixedExplanation), 'Neuer Mindestvergleich ist trotz wechselnder Zielbasis auswertbar');
+
     const answerHost = doc.getElementById('monteCarloAnswers');
     const mcValues = { inputs: { startFlexBedarf: 10000 }, settings: { anzahl: 100, maxDauer: 30 }, personDataContext: { ...context, deviationApplied: false, persons: [] } };
     const mcProjection = projectMonteCarloOverview({ cutYearSharePct: { p50: 12, thresholdPct: 10, sampleSize: 100 }, kpiMaxKuerzung: { p50: 18 } }, 100, 4);
     const mcToken = runHeads.begin('montecarlo', mcValues, { startedAt: '2026-01-01T12:00:00Z' });
     runHeads.observe('montecarlo', mcValues); runHeads.complete('montecarlo', mcToken, mcProjection); renderSimulatorOverview();
-    assertEqual(doc.getElementById('overviewMonteCarloAnswers').innerHTML, answerHost.innerHTML, 'Beide Einstiegsantworten nutzen oben dieselben unveränderten Werte wie im Detailreiter');
+    assertEqual(doc.getElementById('overviewMonteCarloAnswers').innerHTML.replaceAll('overviewMonteCarloAnswersInfo', 'monteCarloAnswersInfo'), answerHost.innerHTML, 'Beide Einstiegsantworten nutzen oben dieselben unveränderten Werte wie im Detailreiter');
+    for (const id of ['monteCarloAnswers', 'overviewMonteCarloAnswers']) {
+        const answerTree = tokenizeHTML(doc.getElementById(id).innerHTML);
+        const popup = answerTree.elements.find(node => node.attrs.id === `${id}Info2`);
+        assert(popup?.attrs.role === 'tooltip' && popup.parent.parent.attrs.class === 'sim-card-heading', 'Beide Antwortansichten zeigen die Mindest-Flex-Info im Kartenkopf');
+        assert(!answerTree.elements.some(node => node.tag === 'h2' && Object.hasOwn(node.attrs, 'title')), 'Beide Antwortansichten entfernen den kartenweiten Titeltooltip');
+        assert(!answerTree.elements[0].children.some(node => node.attrs.class === 'sim-card-heading'), 'Grundbedarfsantwort bleibt ohne Info-Baustein');
+    }
     const original = answerHost.innerHTML, runBytes = JSON.stringify(runHeads.read('montecarlo').last);
-    assert(original.includes('96,0 %') && original.includes('12,0 % der Jahre') && !original.includes('Annahmen seitdem geändert'), 'Laufabschluss zeigt frische Kernantworten');
+    assert(original.includes('96,0 %') && original.includes('12,0 %') && !original.includes('Annahmen seitdem geändert'), 'Laufabschluss zeigt frische Kernantworten');
     for (let change = 0; change < 3; change++) renderSimulatorOverview();
     assertEqual(answerHost.innerHTML, original, 'Darstellungswechsel erhalten sämtliche Antwortwerte und Status');
     runHeads.observe('montecarlo', { ...mcValues, inputs: { startFlexBedarf: 20000 } }); renderSimulatorOverview();
     assertEqual((answerHost.innerHTML.match(/Annahmen seitdem geändert/g) || []).length, 2, 'Relevante Annahmenänderung kennzeichnet beide Antworten');
     assert(doc.getElementById('overviewMonteCarlo').innerHTML.includes('Annahmen seitdem geändert'), 'Bestehendes MC-Ergebnis und Antworten teilen den Veraltetstatus');
-    assertEqual(doc.getElementById('overviewMonteCarloAnswers').innerHTML, answerHost.innerHTML, 'Obere Antworten behalten auch nach Annahmenänderung dieselben Werte und Warnungen');
+    assertEqual(doc.getElementById('overviewMonteCarloAnswers').innerHTML.replaceAll('overviewMonteCarloAnswersInfo', 'monteCarloAnswersInfo'), answerHost.innerHTML, 'Obere Antworten behalten auch nach Annahmenänderung dieselben Werte und Warnungen');
     assert(heads.innerHTML.includes('Monte-Carlo · Annahmen seitdem geändert</h4>') && !heads.innerHTML.includes('Veralteter Lauf'),
         'Gewöhnliche MC-Annahmenänderung behält den bisherigen Laufkopfhinweis');
     assert(doc.getElementById('simulatorContextPills').innerHTML.includes('>Annahmen geändert</span>')
@@ -153,7 +207,7 @@ try {
     const next = runHeads.begin('montecarlo', followValues);
     runHeads.complete('montecarlo', next, projectMonteCarloOverview({ cutYearSharePct: { p50: 0 }, kpiMaxKuerzung: { p50: 0 } }, 100, 0));
     renderSimulatorOverview();
-    assert(answerHost.innerHTML.includes('100,0 %') && answerHost.innerHTML.includes('0,0 % der Jahre') && !answerHost.innerHTML.includes('Annahmen seitdem geändert'), 'Neuer vollständiger Run ersetzt Zahlen und Status gemeinsam');
+    assert(answerHost.innerHTML.includes('100,0 %') && answerHost.innerHTML.includes('0,0 %') && !answerHost.innerHTML.includes('Annahmen seitdem geändert'), 'Neuer vollständiger Run ersetzt Zahlen und Status gemeinsam');
     const button = doc.createElement('button'); button.id = 'mcButton';
     const calls = [];
     initializeResultOverview({ activateTab: tab => calls.push(tab), runMonteCarlo: () => calls.push('run'), rerunBacktest() {} }, doc);
@@ -259,6 +313,10 @@ try {
     const doc = { querySelectorAll: () => [host], addEventListener: (type, fn) => { (handlers['doc:' + type] ||= []).push(fn); } };
     bindSimulatorInfoPopups(doc); bindSimulatorInfoPopups(doc);
     assertEqual(handlers['button:click'].length, 1, 'Wiederholter Ergebnisrender verdoppelt den Info-Klickhandler nicht');
+    handlers['mouseenter'][0]();
+    assertEqual(dataset.visible, 'true', 'Übersichts-Info öffnet beim Drüberfahren mit der Maus');
+    handlers['mouseleave'][0]();
+    assertEqual(dataset.visible, 'false', 'Übersichts-Info schließt beim Verlassen mit der Maus');
     handlers['button:click'][0]();
     assertEqual(dataset.visible, 'true', 'Klick öffnet die vollständige Backtest-Erklärung');
     assertEqual(attrs['aria-expanded'], 'true', 'Infozustand folgt dem Klick');

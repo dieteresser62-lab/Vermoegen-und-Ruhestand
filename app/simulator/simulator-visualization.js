@@ -2,6 +2,8 @@ import { showPageAlert } from '../shared/page-dialog.js';
 "use strict";
 
 import { formatDisplayFixed } from '../shared/designsystem-number-format.js';
+import { formatChartEuro } from './results-formatting.js';
+import { formatCurrency } from './simulator-formatting.js';
 
 /**
  * Erweiterte Visualisierungen für Parameter Sweep
@@ -18,7 +20,7 @@ import { readSweepMetricValue } from './sweep-metrics-contract.js';
 // Kleine Format-Helfer, damit die UI-Strings konsistent sind.
 const formatFixed = (value, digits = 1) => formatDisplayFixed(value, digits);
 const formatPercent = (value, digits = 0) => formatPercentValue(value, { fractionDigits: digits, invalid: '0\u00a0%' }).replace('.', ',');
-const formatRangeLine = (min, max, range) => `Range: ${formatFixed(min, 1)} → ${formatFixed(max, 1)} (Δ ${formatFixed(range, 1)})`;
+const formatRangeLine = (min, max, range, format = value => formatFixed(value, 1)) => `Range: ${format(min)} → ${format(max)} (Δ ${format(range)})`;
 const isValidSweepResult = (result, metricKeys = []) => (
     Boolean(result)
     && result.metrics?.invalidCombination !== true
@@ -162,8 +164,8 @@ export function renderSensitivityChart(sensitivity, metricKey) {
         html += `<div style="background: var(--surface-sunken); height: 24px; border-radius: 4px; position: relative;">`;
         html += `<div style="background: linear-gradient(90deg, var(--chart-2), var(--chart-4)); height: 100%; width: ${barWidth}px; border-radius: 4px; transition: width 0.3s;"></div>`;
         html += `</div>`;
-        html += `<div style="font-size: var(--balance-help); color: var(--text-muted); margin-top: 2px;">`;
-        html += formatRangeLine(data.min, data.max, data.range);
+        html += `<div title="${formatRangeLine(data.min, data.max, data.range, metricKey.endsWith('EndWealth') ? formatCurrency : undefined)}" style="font-size: var(--balance-help); color: var(--text-muted); margin-top: 2px;">`;
+        html += formatRangeLine(data.min, data.max, data.range, metricKey.endsWith('EndWealth') ? formatChartEuro : undefined);
         html += `</div>`;
         html += '</div>';
     }

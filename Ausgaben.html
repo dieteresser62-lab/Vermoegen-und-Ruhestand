@@ -57,11 +57,14 @@
     <section class="expenses-kpis" aria-label="Jahreskennzahlen">
         <div><span>Jahresbudget</span><b id="expensesAnnualBudget">—</b><small id="expensesBudgetNote"></small></div>
         <div><span>Ausgegeben</span><b id="expensesSpent">—</b><small id="expensesSpentNote"></small></div>
-        <div><span>Noch frei</span><b id="expensesRemaining">—</b><small id="expensesRemainingNote"></small></div>
+        <div><span>Restbudget</span><b id="expensesRemaining">—</b><small id="expensesRemainingNote"></small></div>
         <div><span>Hochrechnung</span><b id="expensesForecast">—</b><small id="expensesForecastNote"></small></div>
     </section>
     <div class="expenses-grid">
-        <section class="ds-card expenses-card" aria-labelledby="expensesMonthsTitle"><h2 id="expensesMonthsTitle">Monate</h2><div class="expenses-table-region" tabindex="0" role="region" aria-label="Monatsausgaben" aria-describedby="expensesMatrixScrollHint"><div id="expensesTable"></div></div><p id="expensesMatrixScrollHint" class="expenses-note" hidden>Die Tabelle kann seitlich gescrollt werden.</p><p class="expenses-note">Details öffnen die Kategorien des Monats und die bestätigte Löschung. CSV importieren zeigt zuerst eine Vorschau. Ein Nullimport zählt als erfasst.</p></section>
+        <section class="ds-card expenses-card" aria-labelledby="expensesMonthsTitle">
+            <div class="expenses-card-head"><h2 id="expensesMonthsTitle">Monate</h2><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Hinweise zu Monatsausgaben" aria-expanded="false" aria-controls="expensesMonthsInfo">ⓘ</button><span id="expensesMonthsInfo" class="ds-info-pop">Die Lupe zeigt Kategorien und die bestätigte Löschung. CSV importieren zeigt zuerst eine Vorschau. Ein Nullimport zählt als erfasst.</span></span></div>
+            <div class="expenses-table-region" tabindex="0" role="region" aria-label="Monatsausgaben" aria-describedby="expensesMatrixScrollHint"><div id="expensesTable"></div></div><p id="expensesMatrixScrollHint" class="expenses-note" hidden>Die Tabelle kann seitlich gescrollt werden.</p>
+        </section>
         <section class="ds-card expenses-card" aria-labelledby="expensesCategoriesTitle"><h2 id="expensesCategoriesTitle">Wofür? Nach Kategorien</h2><div id="expensesCategories"></div><p class="expenses-note">Summe der importierten Kategorien im gewählten Jahr und Bereich. Erstattungen sind enthalten.</p></section>
     </div>
     <section class="ds-card expenses-card" aria-labelledby="expensesHistoryTitle"><h2 id="expensesHistoryTitle">Ausgaben je Jahr</h2><p class="expenses-note">Vergleich aller gespeicherten Personen, unabhängig vom Anzeigefilter.</p><p id="expensesHistoryHint" role="status" aria-live="polite"></p><div id="expensesHistoryChart" class="expenses-table-region" tabindex="0" role="region" aria-label="Jahresdiagramm"></div><details><summary>Wertetabelle anzeigen</summary><div id="expensesHistoryTable" class="expenses-table-region" tabindex="0" role="region" aria-label="Jahreswerte" aria-describedby="expensesHistoryScrollHint"></div><p id="expensesHistoryScrollHint" hidden>Die Tabelle kann seitlich gescrollt werden.</p></details></section>

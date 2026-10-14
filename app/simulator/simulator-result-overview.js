@@ -6,8 +6,8 @@ import { renderThreeBucketPortfolioChart, disposeThreeBucketPortfolioChart } fro
 import { effectiveRunAssumptions, simulatorRunAssumptions as heads } from './simulator-run-assumptions.js';
 import { getCommonInputs } from './simulator-portfolio.js';
 import { readMonteCarloParameters, renderMonteCarloRunControls, syncMonteCarloRunControls } from './monte-carlo-ui.js';
-import { buildSummaryData, buildMonteCarloAnswers } from './results-metrics.js';
-import { renderMonteCarloAnswers } from './results-renderers.js';
+import { buildSummaryData, buildMonteCarloAnswers, projectMinimumFlexDisplay } from './results-metrics.js';
+import { info, renderMonteCarloAnswers } from './results-renderers.js';
 import { revealAssumptionControl } from './simulator-assumptions-ui.js';
 import { invalidateBacktestForHousehold, renderInvalidatedBacktestStatus } from './simulator-backtest.js';
 
@@ -15,7 +15,7 @@ const money = value => typeof value === 'number' && Number.isFinite(value)
     ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value) : '—';
 const percent = value => typeof value === 'number' && Number.isFinite(value)
     ? `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(value)} %` : '—';
-const field = (label, value, help = '') => `<div class="ds-row${help ? ' sim-cut-metric' : ''}"><span>${escape(label)}</span><strong>${escape(value)}</strong>${help ? `<p class="ds-hint sim-cut-note">${escape(help)}</p>` : ''}</div>`;
+const field = (label, value, help = '') => `<div class="ds-row${help ? ' sim-cut-metric' : ''}"${help ? ` title="${escape(help)}"` : ''}><span>${escape(label)}</span><strong>${escape(value)}</strong></div>`;
 export function crisisPercent(value) {
     if (!Number.isFinite(value)) return '—';
     const rounded = Math.round(value);
@@ -24,7 +24,6 @@ export function crisisPercent(value) {
 const phaseLabels = { loading: 'Profil wird geladen', preparing: 'Backtest wird vorbereitet', running: 'läuft',
     skipped: 'übersprungen · Personendaten ergänzen', blocked: 'nicht rechenbar', invalid: 'nicht rechenbar', missing: 'Daten fehlen', technical_error: 'technischer Fehler',
     idle: 'noch nicht gerechnet', error: 'Fehler', cancelled: 'abgebrochen', completed: 'abgeschlossen' };
-const info = (id, title, text) => `<span class="ds-info"><button class="ds-info-button" type="button" aria-label="${escape(title)}" aria-expanded="false" aria-controls="${id}">i</button><span class="ds-info-pop" id="${id}" role="tooltip">${escape(text)}</span></span>`;
 const infoHosts = new WeakMap();
 const infoDocuments = new WeakSet();
 
@@ -56,11 +55,11 @@ export function bindSimulatorInfoPopups(doc = globalThis.document) {
 }
 
 function backtestCutMissingDetails(result) {
-    if (Number.isFinite(result?.metrics?.values?.flex_reduction_years_gte_10_pct)) return { reason: '', explanation: '' };
     const contract = result?.metrics?.flexBasisContract;
     if (!['completed', 'ruin'].includes(result?.outcome?.kind)) return {
         reason: 'Lauf unvollständig', explanation: 'Der Backtest wurde nicht vollständig gerechnet. Die Jahre mit Kürzung können deshalb nicht ausgewertet werden.'
     };
+    if (Number.isFinite(result?.metrics?.values?.flex_reduction_years_gte_10_pct)) return { reason: '', explanation: '' };
     if (!contract || !contract.decumulationRowCount) return {
         reason: 'Angaben fehlen', explanation: 'Es liegen keine auswertbaren Jahre mit Entnahmen vor.'
     };
@@ -83,11 +82,19 @@ export function backtestCutMissingReason(result) {
     return backtestCutMissingDetails(result).reason;
 }
 
+function backtestCutMetricHelp(projection) {
+    if (!projection.restriction.legacy && projection.restriction.valid) return projection.restriction.tooltip;
+    if (Number.isFinite(projection.cuts)) return `${projection.restriction.basisNote} Die alte Berechnung zählt einschließlich genau 10 %.${Number.isFinite(projection.longestCuts) ? ` Längstens ${projection.longestCuts} Jahre am Stück.` : ''}`;
+    return projection.cutMissingExplanation;
+}
+
 function renderBacktestCutMetric(projection) {
-    const label = 'Jahre mit Kürzung ≥ 10 %';
+    const label = projection.restriction.title;
+    if (!projection.restriction.legacy && projection.restriction.valid) return field(label,
+        `${projection.restriction.count} / ${projection.restriction.observationCount} · ${projection.restriction.value}`, backtestCutMetricHelp(projection));
     if (Number.isFinite(projection.cuts)) return field(label,
         `${projection.cuts}${Number.isFinite(projection.completedYears) ? ` / ${projection.completedYears}` : ''}`,
-        Number.isFinite(projection.longestCuts) ? `längstens ${projection.longestCuts} Jahre am Stück` : '');
+        backtestCutMetricHelp(projection));
     return `<div class="ds-row sim-cut-metric"><span>${label}</span><p class="ds-hint sim-cut-note sim-cut-missing"><span>${escape(projection.cutMissingReason)}</span>`
         + info('overviewBacktestCutInfo', 'Erläuterung zu den Jahren mit Kürzung', projection.cutMissingExplanation) + '</p></div>';
 }
@@ -97,9 +104,11 @@ export function projectBacktestOverview(result) {
     const startReserve = result?.rows?.[0]?.row?.health_bucket_start;
     const startWithoutReserve = Number.isFinite(result?.portfolioStart) && Number.isFinite(startReserve)
         ? result.portfolioStart - startReserve : null;
-    const cutMissing = backtestCutMissingDetails(result);
-    return { result, outcome: result?.outcome?.kind, endWealth: values.wealth_end_nominal_eur,
-        withdrawals: values.withdrawal_total_nominal_eur, cuts: values.flex_reduction_years_gte_10_pct,
+    const restriction = projectMinimumFlexDisplay(result, { backtest: true });
+    const cutMissing = restriction.legacy ? backtestCutMissingDetails(result)
+        : { reason: restriction.valid ? '' : 'nicht auswertbar', explanation: restriction.reason };
+    return { result, restriction, outcome: result?.outcome?.kind, endWealth: values.wealth_end_nominal_eur,
+        withdrawals: values.withdrawal_total_nominal_eur, cuts: restriction.legacy && !restriction.technical ? values.flex_reduction_years_gte_10_pct : restriction.count,
         cutMissingReason: cutMissing.reason, cutMissingExplanation: cutMissing.explanation,
         taxes: values.tax_total_nominal_eur, startWealth: result?.portfolioStart,
         completedYears: result?.completedYears, longestCuts: values.flex_reduction_longest_streak_gte_10_pct,
@@ -112,7 +121,9 @@ export function projectMonteCarloOverview(results, totalRuns, failCount) {
     const valid = inventory?.schemaVersion === 'MonteCarloOutcomeInventoryV1'
         && Number.isFinite(inventory.floorCoveragePct) && !inventory.technical_error;
     return { valid, answers: buildMonteCarloAnswers({ results, totalRuns, failCount }), floorPct: valid ? inventory.floorCoveragePct : null,
-        dots: valid ? Math.round(inventory.floorCoveragePct) : null,
+        floorDisplay: valid ? summary[0].displayValue : '—',
+        countText: valid ? summary[0].countText : '',
+        dots: valid ? Math.min(inventory.ruin > 0 ? 99 : 100, Math.round(inventory.floorCoveragePct)) : null,
         covered: valid ? inventory.all_dead + inventory.horizon_exhausted : null,
         denominator: inventory?.requestedRuns ?? totalRuns,
         interval: valid ? inventory.floorCoverageEstimate?.confidenceInterval95 ?? null : null,
@@ -264,8 +275,9 @@ function renderSimulatorOverviewContent() {
         : projection?.outcome === 'ruin' ? `Der Floor wäre ${projection.result.ruinYear ?? 'im Lauf'} nicht mehr gedeckt.`
         : projection?.outcome === 'incomplete' ? 'Daten fehlen' : projection ? 'technischer Fehler' : status;
     btHost.innerHTML = `<div class="sim-card-heading"><p class="sim-eyebrow">Historischer Backtest${period ? ` · ${period.startYear}–${period.endYear}` : ''}</p><div class="sim-card-status"><span class="sim-status-chip">${escape(outcomeStatus)}</span>`
-        + info('overviewBacktestInfo', 'Erläuterung zum Backtest', 'Dein heutiger Plan wird mit echten Jahresrenditen und Inflationsraten gerechnet. Der Lauf endet bei Ruin. Ein historischer Einzelpfad ist keine Erfolgswahrscheinlichkeit.' + coverage) + '</div></div><div class="sim-backtest-outcome"><div class="sim-outcome-primary"><h2 class="sim-verdict">' + escape(outcomeText) + '</h2>'
-        + (projection ? `<p class="sim-outcome-caption">Endvermögen · nominal · inklusive Pflegereserve</p><p class="sim-hero-amount">${money(projection.endWealth)}</p>` : '')
+        + info('overviewBacktestInfo', 'Erläuterung zum Backtest', ['Dein heutiger Plan wird mit echten Jahresrenditen und Inflationsraten gerechnet. Der Lauf endet bei Ruin. Ein historischer Einzelpfad ist keine Erfolgswahrscheinlichkeit.' + coverage,
+            projection ? `${projection.restriction.title}: ${backtestCutMetricHelp(projection)}` : '']) + '</div></div><div class="sim-backtest-outcome"><div class="sim-outcome-primary"><h2 class="sim-verdict">' + escape(outcomeText) + '</h2>'
+        + (projection ? `<p class="sim-outcome-caption">Geldbeträge nominal · Endvermögen inklusive Pflegereserve</p><p class="sim-hero-amount">${money(projection.endWealth)}</p>` : '')
         + (Number.isFinite(projection?.startWealth) ? `<p class="sim-outcome-start">gestartet mit ${money(projection.startWealth)}</p>` : '')
         + (backtestPresentation.phase !== 'completed' ? `<p role="status">${escape(status)}</p>` : '')
         + (error?.name === 'SimulatorValidationError' ? `<p>${escape(error.errors?.[0]?.message ?? error.message)}</p><button class="ds-button ds-button-secondary" type="button" data-overview-field="${escape(error.errors?.[0]?.fieldId ?? '')}">Eingabe in Annahmen korrigieren</button>` : '')
@@ -292,7 +304,7 @@ function renderSimulatorOverviewContent() {
         chartHost.insertBefore(notice, chartHost.firstChild);
     }
     const crisisHost = doc.getElementById('overviewCrises');
-    if (crisisHost) crisisHost.innerHTML = projection ? (householdChanged ? '<p>Veraltete Krisenbelege · bisheriger Lauf</p>' : '') + projection.crises.map(crisis => `<article class="sim-crisis"><div class="sim-card-heading"><h3>${escape(crisis.label)}</h3><p>${crisis.from === crisis.to ? crisis.from : `${crisis.from}–${crisis.to}`}${crisis.status === 'partial' ? ' · Teilfenster' : ''}</p></div>`
+    if (crisisHost) crisisHost.innerHTML = projection ? (householdChanged ? '<p>Veraltete Krisenbelege · bisheriger Lauf</p>' : '') + projection.crises.map(crisis => `<article class="sim-crisis"><div class="sim-card-heading"><h3>${escape(crisis.label)}</h3><p>${crisis.from === crisis.to ? crisis.from : `${crisis.from}–${crisis.to}`}${crisis.status === 'partial' ? ' · Teilfenster' : ''}</p></div><p class="ds-note">Geldbeträge nominal</p>`
         + (crisis.status === 'not_reached' ? '<p>nicht erreicht</p>' : crisis.status === 'missing' ? '<p>Daten fehlen</p>'
             : field(`Tiefster Jahresendstand · ${crisis.minimum.year}`, money(crisis.minimum.total)) + field('Veränderung gegen Start / Vorjahr', crisisPercent(crisis.changePct))
                 + field('Flex-Kürzung', crisis.cuts === null ? 'Angaben fehlen' : crisis.cuts === 0 ? 'keine Kürzung ab 10 %' : `${crisis.cuts} Jahre ab 10 % · niedrigste Rate ${percent(crisis.lowestFlexRate)}`)
@@ -309,10 +321,10 @@ function renderSimulatorOverviewContent() {
             ? 'Monte-Carlo wird vorbereitet' : phaseLabels[mc.phase] ?? mc.phase;
         mcHost.innerHTML = `<div class="sim-card-heading"><h2>Reicht das Vermögen?</h2>${info('overviewFloorInfo', 'Erläuterung zur Floor-Deckung', p?.explanation ?? 'Monte-Carlo verwendet viele simulierte Lebens- und Marktpfade. Noch kein Lauf vorhanden.')}</div>`
             + `<p role="status">${escape(state)}${mc.stale ? ' · Annahmen seitdem geändert' : ''}</p>`
-            + (p ? `<p class="sim-hero-amount">${percent(p.floorPct)}</p><p>Floor-Deckung bis Lebensende oder Horizont</p>`
-                + (p.valid ? `<div class="sim-floor-dots" aria-hidden="true">${Array.from({ length: 100 }, (_, i) => `<i${i < p.dots ? ' class="covered"' : ''}></i>`).join('')}</div><p>Ein Punkt ≈ 1 % der Läufe · ${p.covered} von ${p.denominator} Läufen</p>` : `<p>Finanziell nicht auswertbar · technische Läufe: ${p.technicalRuns ?? '—'}</p>`)
+            + (p ? `<p class="sim-hero-amount">${escape(p.floorDisplay)}</p>${p.countText ? `<p class="sim-answer-count">${escape(p.countText)}</p>` : ''}<p>Floor-Deckung bis Lebensende oder Horizont</p>`
+                + (p.valid ? `<div class="sim-floor-dots" aria-hidden="true">${Array.from({ length: 100 }, (_, i) => `<i${i < p.dots ? ' class="covered"' : ''}></i>`).join('')}</div><p>Ein Punkt ≈ 1 % der Läufe${p.covered < p.denominator && p.floorPct > 99 ? ' · mindestens ein Punkt bleibt ungedeckt' : ''}</p>` : `<p>Finanziell nicht auswertbar · technische Läufe: ${p.technicalRuns ?? '—'}</p>`)
                 + `<p>Wilson-95-%-Intervall: ${p.interval ? `${percent(p.interval.lowerPct)}–${percent(p.interval.upperPct)}` : 'nicht verfügbar'}</p>`
-                + field('Endvermögen P10 / P90', p.p10P90Display) + field('Endvermögen Median', p.medianDisplay)
+                + '<p class="ds-hint sim-price-basis">Endvermögen nominal · unabhängig vom Euro-Schalter</p>' + field('Endvermögen P10 / P90', p.p10P90Display) + field('Endvermögen Median', p.medianDisplay)
                 + '<p>Am Laufende, ohne Pflegereserve</p>' : ['preparing', 'running'].includes(mc.phase) ? '' : '<p>Monte-Carlo wird erst auf deinen Wunsch gestartet.</p>')
             + renderMonteCarloRunControls();
         syncMonteCarloRunControls(doc, !!mc.last);

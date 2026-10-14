@@ -107,7 +107,7 @@ export function renderProtocolTable(rows, options = {}) {
         if (previous?.group === group) previous.count++;
         else groups.push({ group, count: 1 });
     }
-    const caption = options.caption || (source === 'backtest' ? `Jahresprotokoll des kanonischen Backtest-Resultats (${data.length} Zeilen)` : `Szenario-Jahresprotokoll (${data.length} Zeilen)`);
+    const caption = options.caption || (source === 'backtest' ? `Jahresprotokoll des Backtest-Ergebnisses (${data.length} Zeilen)` : `Szenario-Jahresprotokoll (${data.length} Zeilen)`);
     let html = '<thead><tr class="protocol-group-head">';
     html += groups.map(({ group, count }) => `<th scope="colgroup" colspan="${count}">${escape(PROTOCOL_GROUPS[group] || group)}</th>`).join('');
     html += '</tr><tr class="protocol-column-head">';

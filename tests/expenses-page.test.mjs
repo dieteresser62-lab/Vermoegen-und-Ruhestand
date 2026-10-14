@@ -242,10 +242,17 @@ try {
     storage.setItem('rs_profiles_v1', JSON.stringify(changedRegistry)); controller.refresh();
     // B12: echtes Modell und echter Renderer, keine nachgebildete Prozentformel.
     const categoryView = projectExpenses({ store: { years: { 2025: { months: { 1: { profiles: { a: {
-        categories: { Ausgabe: -10000, Winzig: -0.01, Null: 0, Erstattung: 20 }
+        categories: { Ausgabe: -10000, Zweit: -5000, Winzig: -0.01, Null: 0, Erstattung: 20 }
     } } } } } } }, year: 2025, people: [{ id: 'a', name: 'A' }], now: new Date(2026, 9, 10) });
     renderExpensesPage(doc, categoryView);
     const categoryRows = [...doc.getElementById('expensesCategories').children];
+    const categoryRow = name => categoryRows.find(row => row.children[0].textContent === name);
+    assertEqual(categoryRow('Ausgabe').children[1].children[0].style.width, '100%', 'Größte Kategorie füllt die gesamte Spur');
+    assertEqual(categoryRow('Zweit').children[1].children[0].style.width, '50%', 'Halber Kategoriebetrag füllt die halbe Spur');
+    assert(categoryRow('Ausgabe').textContent.endsWith(' · 67 %') && categoryRow('Zweit').textContent.endsWith(' · 33 %'),
+        'Relative Balken erhalten rechts die echten Anteile an den Ausgaben');
+    assertEqual(categoryRow('Null').children[1].children[0].style.width, '0%', 'Nullbetrag erzeugt keinen Kategorienbalken');
+    assertEqual(categoryRow('Erstattung · Erstattung').children[1].children[0].style.width, '0%', 'Negative Erstattung erzeugt keinen positiven Balken');
     assert(categoryRows.find(row => row.children[0].textContent === 'Winzig').textContent.endsWith(' · < 1 %'), 'Positiver Kleinstanteil wird sichtbar statt auf echte Null gerundet');
     assert(categoryRows.find(row => row.children[0].textContent === 'Null').textContent.endsWith(' · 0 %'), 'Echte Null bleibt 0 %');
     const refundText = categoryRows.find(row => row.children[0].textContent === 'Erstattung · Erstattung').textContent;

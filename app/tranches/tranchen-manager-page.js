@@ -150,6 +150,7 @@ const state = {
     navigationLifecycle: null,
     navigationRegistration: null,
     navigationControlSubscription: null,
+    cashBeforeLeaveSubscription: null,
     reconciliationBaseline: null,
     profileBaseline: null,
     loader: loadTranchesFromStorage
@@ -313,7 +314,8 @@ export async function saveManagerHistoryStart(startDate = byId('managerHistorySt
                 valid: () => document === doc && state.profileId === origin });
             state.historyStartDraft = null;
             render();
-            if (status) status.textContent = 'Verlaufsbeginn bestätigt. Fehlende Kurse werden beim nächsten Start nachgeladen.';
+            const currentStatus = byId('managerHistoryStartStatus');
+            if (currentStatus) currentStatus.textContent = 'Verlaufsbeginn bestätigt. Fehlende Kurse werden beim nächsten Start nachgeladen.';
             byId('managerHistoryStartConfirm')?.focus();
             return true;
         });
@@ -763,7 +765,7 @@ function renderReconciliationState() {
 
 function readOptionalNumber(id) {
     const raw = byId(id)?.value;
-    return raw === '' || raw === null || raw === undefined ? null : readDecimalInput(raw);
+    return raw === '' || raw === null || raw === undefined ? null : readDecimalInput(raw, byId(id));
 }
 
 function readReconciliationActionFromDom(now = () => new Date()) {
@@ -1118,7 +1120,7 @@ async function saveProfileValues(values = readProfileAssetValuesFromDom(), navig
             state.pendingProfileValues = null;
             const previousValues = new Map(PROFILE_ASSET_STORAGE_KEYS.map(key => [key, readStoredValue(key)]));
             const previousRegistryRaw = readStoredValue(PROFILE_STORAGE_KEYS.registry);
-            const committingSignature = managerInputSignature(PROFILE_INPUT_IDS);
+            const committingSignature = managerInputSignature(PROFILE_INPUT_IDS, { profileTagesgeld: validatedValues.tagesgeld });
             renderPersistenceState();
             try {
                 navigationOperation.commit();
@@ -1162,7 +1164,7 @@ async function saveProfileValues(values = readProfileAssetValuesFromDom(), navig
     }
 }
 
-function scheduleProfileValuesSave({ resumePaused = false } = {}) {
+function scheduleProfileValuesSave({ resumePaused = false, cashChange = false, immediate = false } = {}) {
     if (byId('managerProfileRecovery')?.hidden === false) return false;
     state.persistenceMessage = '';
     if (state.profileSaveTimer !== null) {
@@ -1173,6 +1175,9 @@ function scheduleProfileValuesSave({ resumePaused = false } = {}) {
     let values;
     try {
         values = readProfileAssetValuesFromDom();
+        // Andere Profilfelder dürfen einen offenen Tagesgeldentwurf nicht
+        // nebenbei übernehmen; dessen change/Enter besitzt die Bestätigung.
+        if (!cashChange) values.tagesgeld = loadProfileAssetValues().tagesgeld;
         clearProfileValidationStatus();
     } catch (error) {
         if (error instanceof ProfileAssetValuesValidationError) {
@@ -1190,6 +1195,7 @@ function scheduleProfileValuesSave({ resumePaused = false } = {}) {
     // Ein durch Navigation abgebrochener Dialog gibt seinen Besitzer zuerst frei.
     // Der fortgesetzte Timer darf schon geplant werden; saveProfileValues prüft vor jedem Write erneut den Lifecycle.
     if ((!resumePaused && state.navigationLifecycle?.isBlocked()) || state.cashPostingInFlight || state.commitInFlight) return false;
+    if (immediate) return saveProfileValues(values);
     state.profileSaveTimer = setTimeout(() => {
         state.profileSaveTimer = null;
         state.pendingProfileValues = values;
@@ -1268,16 +1274,33 @@ function bindProfileValueInputs() {
     PROFILE_INPUT_IDS.forEach(id => {
         const el = byId(id);
         if (!el) return;
-        const eventName = el.tagName.toLowerCase() === 'select' ? 'change' : 'input';
+        const isCash = id === 'profileTagesgeld';
+        const eventName = isCash || el.tagName.toLowerCase() === 'select' ? 'change' : 'input';
         el.addEventListener(eventName, () => {
+            if (isCash && readDecimalInput(el.value, el) === loadProfileAssetValues().tagesgeld) return;
             if (id === 'profileGeschlecht') el.dataset.genderConfirmed = 'true';
-            const scheduled = scheduleProfileValuesSave();
+            const scheduled = scheduleProfileValuesSave({ cashChange: isCash, immediate: isCash });
             syncManagerProfileControls(document);
             state.navigationRegistration?.notify();
             renderTranchenStats(byId('stats'), state.tranchen);
             return scheduled;
         });
+        if (isCash) {
+            el.addEventListener('input', () => state.navigationRegistration?.notify());
+            el.addEventListener('keydown', event => {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        }
     });
+}
+
+function flushManagerCashInput() {
+    const field = byId('profileTagesgeld');
+    if (readDecimalInput(field?.value, field) === loadProfileAssetValues().tagesgeld) return true;
+    if (state.profileCommitInFlight || state.pendingProfileValues) return false;
+    return scheduleProfileValuesSave({ cashChange: true, immediate: true });
 }
 
 function addTranche(event) {
@@ -1684,7 +1707,7 @@ async function retryPendingCommit() {
 
 function managerDecimalSignatureValue(id, value) {
     const raw = String(value ?? '');
-    const canonical = byId(id)?.getAttribute?.('inputmode') === 'decimal' ? canonicalDecimalInput(raw) : 'NaN';
+    const canonical = byId(id)?.getAttribute?.('inputmode') === 'decimal' ? canonicalDecimalInput(raw, byId(id)) : 'NaN';
     return canonical === 'NaN' ? raw : canonical;
 }
 
@@ -1702,12 +1725,12 @@ function finishManagerDecimalSubmission(kind, submission, navigationOperation) {
     return finishManagerModalSubmission(kind, submission, navigationOperation);
 }
 
-function managerInputSignature(ids) {
+function managerInputSignature(ids, values = {}) {
     return JSON.stringify(ids.map(id => {
         const element = byId(id);
-        // Nur die äquivalenten Dezimaltrenner ausgleichen; ungültige Texte
+        // Äquivalente Anzeigeformate ausgleichen; ungültige Texte
         // bleiben unterscheidbar und echte Änderungen während Flush sichtbar.
-        return [id, managerDecimalSignatureValue(id, element?.value), element?.checked === true];
+        return [id, managerDecimalSignatureValue(id, Object.hasOwn(values, id) ? values[id] : element?.value), element?.checked === true];
     }));
 }
 
@@ -2160,7 +2183,7 @@ const managerTargets = {
     personen: { kind: 'person', focus: 'managePeopleBtn', people: true },
     personendaten: { kind: 'person', card: 'Person', focus: 'profileGeburtsdatum' },
     managerProfileValues: { kind: 'person', card: 'Person', focus: 'managerPersonToggle' },
-    profileTagesgeld: { kind: 'person', card: 'Assets', focus: 'profileTagesgeld' },
+    profileTagesgeld: { kind: 'person', focus: 'profileTagesgeld' },
     profileGoldZiel: { kind: 'person', card: 'Assets', focus: 'profileGoldZiel' },
     managerAssetsBody: { kind: 'person', card: 'Assets', focus: 'managerAssetsToggle' },
     managerCareBody: { kind: 'person', card: 'Care', focus: 'managerCareToggle' },
@@ -2239,9 +2262,11 @@ export function initTranchenManagerPage(options = {}) {
         state.householdPlan?.dispose(); state.householdPlan = null;
         state.navigationRegistration?.unregister();
         state.navigationControlSubscription?.();
+        state.cashBeforeLeaveSubscription?.();
         const guard = getPageNavigationGuard(document);
         state.navigationLifecycle = createNavigationOperationLifecycle({ guard, message: 'Manager schreibt – bitte warten.' });
         state.navigationControlSubscription = guard.subscribe(() => setManagerControlsBlocked(processingIsBlocked()));
+        state.cashBeforeLeaveSubscription = guard.registerBeforeLeave(flushManagerCashInput);
         let lastInputs = null, revision = 0;
         state.navigationRegistration = guard.register('manager-retry-inputs', { read: () => {
             const inputs = JSON.stringify([managerInputSignature(RECONCILIATION_INPUT_IDS), managerInputSignature(PROFILE_INPUT_IDS),

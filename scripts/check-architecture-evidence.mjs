@@ -9,7 +9,9 @@ export const REPO_ROOT = path.resolve(__dirname, '..');
 export const EVIDENCE_PATHS = Object.freeze({
     market: 'docs/reference/MARKTVERGLEICH_EVIDENZREGISTER.md',
     research: 'docs/reference/FORSCHUNGSABGLEICH_EVIDENZREGISTER.md',
-    main: 'docs/reference/ARCHITEKTUR_UND_FACHKONZEPT.md',
+    main: 'docs/reference/FACHKONZEPT.md',
+    technical: 'docs/reference/TECHNICAL.md',
+    dataContracts: 'docs/reference/DATENVERTRAEGE.md',
     dataSources: 'docs/reference/DATA_SOURCES.md',
     demographyContract: 'app/simulator/german-demography-care-survivor-contract.js'
 });
@@ -73,8 +75,8 @@ function collectAnchors(content) {
 
     for (let index = 0; index < lines.length; index++) {
         const line = lines[index];
-        for (const match of line.matchAll(/<a\s+id="([^"]+)"\s*><\/a>/g)) {
-            anchors.push({ id: match[1], line: index + 1, explicit: true });
+        for (const match of line.matchAll(/<[a-z][^>]*\bid\s*=\s*(?:"([^"]+)"|'([^']+)')[^>]*>/gi)) {
+            anchors.push({ id: match[1] || match[2], line: index + 1, explicit: true });
         }
 
         const headingMatch = line.match(/^#{1,6}\s+(.+?)\s*#*\s*$/);
@@ -363,7 +365,24 @@ function validateSchedules({ content, file, records, today, errors }) {
 
 function validateModelMatrixReviewDates({ content, file, today, errors }) {
     const rows = parseModelMatrixRows(content);
+    const expectedIds = Array.from({ length: 10 }, (_, index) => `MS-${String(index + 1).padStart(2, '0')}`);
+    const observedIds = rows.map(row => row.id);
+    if (JSON.stringify(observedIds) !== JSON.stringify(expectedIds)) {
+        errors.push(createError(
+            'MODEL_MATRIX_INVENTORY_INVALID',
+            'Model matrix must contain MS-01 through MS-10 exactly once and in order.',
+            file
+        ));
+    }
     for (const row of rows) {
+        if (row.cells.length !== 8 || row.cells.some(cell => !cell)) {
+            errors.push(createError(
+                'MODEL_MATRIX_FIELDS_INVALID',
+                `${row.id} must retain all eight non-empty evidence fields.`,
+                file,
+                row.line
+            ));
+        }
         const reviewCell = row.cells[7] || '';
         const reviewDate = reviewCell.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0] || '';
         if (!parseIsoDate(reviewDate)) {

@@ -29,6 +29,20 @@ assertEqual(row.requested[0][0], '2026-01-01', 'Angeforderter Beginn bleibt sepa
 assertEqual(row.gaps.length, 0, 'Bestätigte Feiertage und Wochenende erzeugen keine Lücken');
 assertEqual(model.attemptedAt, now.getTime(), 'Versuchszeit stammt aus tatsächlichem Report');
 assertEqual(model.quoteAt, asOf * 1000, 'Kurszeit stammt aus bestätigten Quotes');
+assertEqual(model.usableQuoteCount, 2, 'Gespeicherte brauchbare Kurse sind unabhängig vom Abrufstatus erfasst');
+assert(model.missingHistory, 'Noch unbestätigtes Wertpapier ohne Tageskurse meldet fehlende Daten');
+const completeHistory = records();
+const daily = JSON.parse(completeHistory[DAILY_PRICES_KEY]);
+daily.symbols['SOLD.DE'] = { ...daily.symbols['TEST.DE'] };
+completeHistory[DAILY_PRICES_KEY] = JSON.stringify(daily);
+const storedOffline = projectDataPrices(completeHistory, { now, startupReport: { ...report, status: 'offline', results: [] } });
+assertEqual(storedOffline.usableQuoteCount, 2, 'Fehlgeschlagener Abruf entwertet gespeicherte Kurse nicht');
+assertEqual(storedOffline.openIntervals, 0, 'Vollständige Tageskurse bleiben trotz fehlgeschlagenem Abruf vollständig');
+assert(!storedOffline.missingHistory, 'Bestätigte Tageskurse erzeugen keinen Datenfehler');
+assertEqual(projectDataPrices(completeHistory, { now: new Date('2026-02-10') }).usableQuoteCount, 2, 'Alte gültige Kurse bleiben brauchbar, ohne aktuell zu heißen');
+const noQuote = completeHistory;
+noQuote.depot_tranchen = JSON.stringify([{ ...lot('a'), currentPrice: 0 }]);
+assert(projectDataPrices(noQuote, { now }).unreadable, 'Ungültiger gespeicherter Kurs wird als Datenfehler erkannt');
 assertEqual(projectDataPrices(records(), { now, startupReport: { ...report, results: report.results.slice(0, 1) } }).state, 'partial', 'Teilantwort zeigt teilweise aktuelle Kurslage');
 assertEqual(projectDataPrices(records(), { now, startupReport: { ...report, status: 'offline', results: [] } }).state, 'offline', 'Offlineantwort macht alte Quotes nicht grün');
 assertEqual(projectDataPrices(records(), { now }).state, 'unknown', 'Ohne Sitzungsbefund bleibt Kurslage unbekannt');
@@ -43,6 +57,7 @@ const noStart = records(); delete noStart[WEALTH_HISTORY_START_KEY];
 assertEqual(projectDataPrices(noStart, { now }).openIntervals, null, 'Fehlender Verlaufsbeginn ist unbekannt statt vollständig');
 const corrupt = records(); corrupt[DAILY_PRICES_KEY] = '{kaputt';
 assertEqual(projectDataPrices(corrupt, { now }).total, null, 'Defekter Kursbereich wird nicht als leer angezeigt');
+assert(projectDataPrices(corrupt, { now }).unreadable, 'Unlesbare Kursdaten bleiben als Datenfehler erkennbar');
 
 function harness({ fetchImpl, flush = async () => true, coordinator, readModel, probe } = {}) {
     const values = records(); values.profile_wealth_history_lots_v1 = JSON.stringify({ version: 1, lots: {} });

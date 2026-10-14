@@ -874,6 +874,8 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
 .ds-transaction-data .value-row .label { color: var(--text-muted); }
 .ds-transaction-data .value-row .value { text-align: right; overflow-wrap: anywhere; }
 #diag-key-params .key-param-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 28px; }
+.key-param-groups { display: grid; gap: var(--space-4); }
+.key-param-group h4 { margin: 0; font: 600 var(--text-base)/1.5 var(--font-sans); }
 .key-param-card { border-bottom: 1px solid var(--border); padding: 14px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 6px 16px; min-width: 0; overflow-wrap: anywhere; }
 .key-param-card .label { color: var(--text-muted); }
 .key-param-card .value { font-weight: 600; color: var(--text-main); text-align: right; font-variant-numeric: tabular-nums; }
@@ -1186,15 +1188,17 @@ html[data-density=compact] input, html[data-density=compact] select { padding: 8
 .balance-wrap { max-width: 1580px; margin: 0 auto; padding: var(--space-2) var(--space-4) 72px; }
 .balance-page .form-column { container: balance-form / inline-size; padding: 0; background: transparent; border: 0; box-shadow: none; }
 .balance-head { align-items: center; flex-wrap: wrap; gap: var(--space-3); }
-.balance-head h1 { font: 500 var(--balance-h1)/1.08 var(--font-serif); margin: 6px 0 0; letter-spacing: -.01em; }
-.balance-eyebrow { color: var(--accent); font-size: var(--balance-help); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-.balance-lead { color: var(--text-muted); font-size: var(--balance-lead); max-width: 62ch; }
+.balance-head h1 { font: 500 var(--balance-h2)/1.2 var(--font-serif); margin: 0; letter-spacing: -.01em; }
+html[data-suite-page="balance"] .balance-page .balance-head h1,
+html[data-suite-page="balance"] .balance-page .balance-head > .ds-page-actions { grid-row: 1; }
 .balance-context { color: var(--text-muted); font-size: var(--balance-help); }
 .balance-page .app-controls { display: flex; flex-wrap: wrap; gap: 10px; }
 .balance-page .app-controls > *, .balance-page .ds-button, .balance-action-dialog .ds-button { width: auto; }
 .balance-page .tab-buttons { border-bottom: 1px solid var(--border); background: transparent; padding: 0; gap: 4px; margin: var(--space-3) 0 0; }
 .balance-page .tab-btn { width: auto; flex: 0 1 auto; min-height: 48px; padding: 12px 16px 14px; border: 0; border-bottom: 3px solid transparent; border-radius: 0; color: var(--text-muted); background: transparent; font: 500 var(--balance-body) var(--font-sans); }
 .balance-page .tab-btn.active { color: var(--text-main); border-bottom-color: var(--accent); font-weight: 600; }
+.balance-page .tab-btn:focus:not(:focus-visible) { outline: none; }
+.balance-page .tab-btn:focus-visible { outline: var(--ring-width) solid var(--ring-color); outline-offset: var(--ring-offset); }
 .balance-page .tab-panel { margin-top: var(--space-3); }
 .balance-page .tab-panel[hidden] { display: none; }
 #balanceMessages { display: grid; gap: var(--space-3); margin-top: var(--space-2); }
@@ -1203,6 +1207,8 @@ html[data-density=compact] input, html[data-density=compact] select { padding: 8
 .balance-overview > .ds-plan-card { grid-column: span 6; }
 .balance-overview > .ov-hero, .balance-overview > .ov-need { grid-column: span 7; }
 .balance-overview > .ov-act, .balance-overview > .ov-next { grid-column: span 5; }
+.balance-overview > [hidden] { display: none; }
+.balance-overview > .ov-next-status { grid-column: 1 / -1; align-self: start; margin: 0; }
 .balance-overview > .ov-after { grid-column: 1 / -1; }
 .balance-overview h3 { font: 500 var(--balance-h3)/1.25 var(--font-serif); margin: 0; }
 .balance-overview .ov-hero h3, .balance-overview .ov-act h3 { font: 400 var(--balance-help)/1.5 var(--font-sans); color: var(--text-muted); }
@@ -1217,6 +1223,8 @@ html[data-density=compact] input, html[data-density=compact] select { padding: 8
 .balance-budget-parts strong { font: 500 var(--balance-kpi)/1.2 var(--font-serif); }
 .balance-budget-parts .entnahme-subtext { font: 400 var(--balance-help)/1.5 var(--font-sans); }
 .balance-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.balance-budget-notes { display: grid; gap: 4px; }
+.balance-budget-notes > p { margin: 0; }
 .balance-gap { color: var(--bad); font-weight: 500; }
 .ov-act { background: linear-gradient(155deg, var(--accent-soft), var(--surface) 62%); border-color: var(--accent-line); }
 .balance-action-main { display: flex; gap: var(--space-4); align-items: flex-start; }
@@ -1224,9 +1232,11 @@ html[data-density=compact] input, html[data-density=compact] select { padding: 8
 .balance-action-icon { width: var(--balance-icon); height: var(--balance-icon); border-radius: 22px; flex: 0 0 auto; background: var(--accent); color: var(--surface); display: flex; align-items: center; justify-content: center; }
 .balance-action-icon svg { width: 28px; height: 28px; }
 .balance-action-verb { font: 500 var(--balance-verb)/1.02 var(--font-serif); letter-spacing: -.015em; overflow-wrap: anywhere; }
-.balance-action-amount { font: 500 var(--balance-amount)/1 var(--font-serif); color: var(--accent); letter-spacing: -.02em; margin-top: 10px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.balance-action-amount { font: 500 var(--value-md)/1.3 var(--font-serif); color: var(--text-main); margin-top: 10px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 #balanceActionNote { margin: 14px 0 0; line-height: 1.5; color: var(--text-main); font-size: var(--balance-body); }
 .balance-action-foot { margin-top: auto; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-top: 1px solid var(--border); padding-top: 16px; font-size: var(--balance-help); color: var(--text-muted); }
+.balance-action-disclaimer { display: flex; align-items: center; gap: var(--space-2); }
+.balance-page .ds-decision-number { font-family: var(--font-sans); }
 .balance-row strong { text-align: right; }
 .ov-mkt.market-good { background: color-mix(in srgb, var(--good-soft) 50%, var(--surface)); border-color: color-mix(in srgb, var(--good) 25%, var(--border)); }
 .ov-mkt.market-warn { background: var(--warn-soft); border-color: var(--warn); }
@@ -1241,26 +1251,29 @@ html[data-density=compact] input, html[data-density=compact] select { padding: 8
 .balance-action-dialog::backdrop { background: var(--backdrop); }
 .balance-action-dialog h2 { font: 500 var(--balance-h2)/1.2 var(--font-serif); margin: 18px 0; }
 .balance-dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin: 0 0 18px; }
+@container balance-page (min-width: 1181px) and (max-width: 2299px) {
+    .balance-overview:has(> .ov-next-status:not([hidden])) > .ov-need,
+    .balance-overview:has(> .ov-next-status:not([hidden])) > .ov-after { grid-column: span 6; }
+}
 @container balance-page (min-width: 2300px) {
     .balance-wrap { max-width: 2700px; padding: 22px 44px 72px; }
     .balance-overview > .ov-hero { grid-column: span 5; order: 1; }
     .balance-overview > .ov-act { grid-column: span 4; order: 2; }
     .balance-overview > .ov-next { grid-column: span 3; order: 3; }
+    .balance-overview > .ov-next-status { grid-column: span 3; order: 3; }
     .balance-overview > .ov-mkt { grid-column: span 4; order: 4; }
     .balance-overview > .ov-need { grid-column: span 4; order: 5; }
     .balance-overview > .ov-res { grid-column: span 4; order: 6; }
     .balance-overview > .ov-after { order: 7; }
     .balance-hero-num { font-size: var(--balance-budget-wide); }
     .balance-action-verb { font-size: var(--balance-verb-wide); }
-    .balance-action-amount { font-size: var(--balance-amount-wide); }
 }
 @container balance-page (max-width: 1180px) {
     .balance-overview > .ds-plan-card { grid-column: 1 / -1; }
     .balance-wrap { padding: var(--space-2) var(--space-4) 60px; }
-    .balance-head h1 { font-size: var(--balance-h1); }
+    .balance-head h1 { font-size: var(--balance-h2); }
     .balance-hero-num { font-size: var(--balance-budget); }
     .balance-action-verb { font-size: var(--balance-verb); }
-    .balance-action-amount { font-size: var(--balance-amount); }
 }
 
 
@@ -1284,7 +1297,7 @@ html[data-density=compact] input, html[data-density=compact] select { padding: 8
 
 /* Bedarf & Strategie: Referenz 03/04; Fachwerte bleiben in ihren Einheiten. */
 .balance-strategy-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
-.balance-strategy-need { grid-column: auto; }
+.balance-strategy-need { grid-column: 1 / -1; }
 .balance-strategy-wide { grid-column: 1 / -1; }
 .balance-strategy-grid h2, .balance-strategy-grid h3 { margin: 0; text-align: left; justify-content: flex-start; border: 0; padding: 0; }
 .balance-strategy-grid h2 { font: 500 var(--balance-h2)/1.25 var(--font-serif); }
@@ -1292,10 +1305,7 @@ html[data-density=compact] input, html[data-density=compact] select { padding: 8
 .balance-strategy-grid p { margin: 0; }
 .balance-strategy-grid hr { border: 0; border-top: 1px solid var(--border); margin: 0; width: 100%; }
 .balance-strategy-grid .ds-field > label, .balance-field-label { font: 500 var(--balance-help)/1.5 var(--font-sans); color: var(--text-main); margin: 0; }
-.balance-strategy-grid .ds-unit-frame > input { text-align: left; padding: 10px 16px; border-radius: 0; }
-.balance-strategy-grid .ds-unit-frame { position: relative; overflow: visible; flex-wrap: wrap; }
-.balance-strategy-grid .ds-unit-frame > input { width: 0; }
-.balance-strategy-grid .ds-unit-frame > .ds-field-reason { flex-basis: 100%; padding: 0 12px 8px; }
+.balance-strategy-grid .ds-unit-frame > input { padding: 10px 16px; border-radius: 0; }
 .balance-strategy-grid .ds-unit-frame:has([data-field-state="inactive"]) { background: var(--surface-sunken); border-style: dashed; }
 .balance-field-wide { grid-column: span 2; min-width: 0; }
 .balance-strategy-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -1308,14 +1318,19 @@ html[data-density=compact] input, html[data-density=compact] select { padding: 8
 .balance-strategy-adopt .ds-source { font-size: var(--balance-help); }
 .balance-strategy-grid .ds-segment { width: 100%; box-sizing: border-box; }
 .balance-inflation-note:empty { display: none; }
-.balance-inflation-note { display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap; padding: 14px 18px; background: var(--accent-soft); border-radius: 14px; font-size: var(--balance-help); }
+.balance-inflation-note { color: var(--good); font-size: var(--balance-help); }
 .balance-inflation-note .btn { margin: 0; }
-.balance-parameter-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start; gap: 24px; margin-top: 24px; }
-.balance-parameter-half { grid-column: span 3; }
-.balance-parameter-third { grid-column: span 2; }
-.balance-parameter-half .ds-field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.balance-dynamic-card .ds-field-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.balance-parameter-third .ds-field-grid { grid-template-columns: minmax(0, 1fr); }
+.balance-parameter-head, .balance-need-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+.balance-parameter-head { margin-top: var(--space-4); }
+.balance-parameter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: var(--plan-grid-gap); margin-top: var(--space-4); }
+.balance-parameter-column { display: flex; flex-direction: column; gap: var(--plan-grid-gap); min-width: 0; }
+.balance-parameter-card .ds-field-grid { grid-template-columns: minmax(0, 1fr); }
+.balance-parameter-card :is(.ds-input, .ds-select, .ds-segment > button) { font: 500 var(--value-md)/1.3 var(--font-serif); }
+.balance-parameter-card .balance-market-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.balance-tile-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-3); }
+.balance-value-tile { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-sunken); }
+.balance-value-tile .ds-help { font-size: var(--text-sm); }
+#balanceGoldBandFrame[data-gold-active="false"]:has([data-plan-trial-readonly="true"]) { display: none; }
 .balance-backup-card #snapshotList { list-style: none; padding: 0; margin: 0; font-size: var(--balance-help); }
 .balance-backup-card #snapshotList:empty { display: none; }
 .balance-backup-card #snapshotList li { flex-wrap: wrap; gap: 12px; }
@@ -1326,8 +1341,8 @@ html[data-density=compact] input, html[data-density=compact] select { padding: 8
 #updateResultModal [hidden] { display: none; }
 @container balance-form (max-width: 70rem) {
     .balance-strategy-grid, .balance-parameter-grid { grid-template-columns: minmax(0, 1fr); }
-    .balance-strategy-need, .balance-strategy-wide, .balance-parameter-half, .balance-parameter-third { grid-column: auto; }
-    .balance-market-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .balance-strategy-need, .balance-strategy-wide, .balance-parameter-card { grid-column: auto; }
+    .balance-market-fields, .balance-tile-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @container balance-form (max-width: 36rem) {
     .balance-strategy-grid .ds-field-grid { grid-template-columns: minmax(0, 1fr); }
@@ -1362,7 +1377,7 @@ html[data-density=compact] input, html[data-density=compact] select { padding: 8
 
 /* Gemeinsame Skala für alle fünf Reiter und die außerhalb liegenden Dialoge. */
 html[data-suite-page="balance"] .suite-content { font-size: var(--balance-body); }
-.balance-page h1 { font-size: var(--balance-h1); }
+.balance-page h1 { font-size: var(--balance-h2); }
 .balance-page h2, .balance-action-dialog h2, #expensesDetailDialog h2,
 #updateResultModal h2 { font-size: var(--balance-h2); }
 .balance-page h3, .balance-action-dialog h3, #expensesDetailDialog h3,
@@ -1413,7 +1428,7 @@ html[data-suite-page="balance"] #navigationGuardDialog h2 { font-size: var(--bal
 .ov-after .ds-kpi { border-radius: 0; }
 .ov-after .ds-kpi .ds-help { font-size: var(--balance-help); }
 .ov-next > .ds-button { align-self: flex-start; }
-.balance-market-segment.phase-0 { --phase-color: var(--good); background: var(--good-soft); }
+.balance-market-segment.phase-0 { --phase-color: var(--warn); background: var(--warn-soft); }
 .balance-market-segment.phase-1, .balance-market-segment.phase-2 { --phase-color: var(--good); background: var(--good-soft); }
 .balance-market-segment.phase-3, .balance-market-segment.phase-4 { --phase-color: var(--warn); background: var(--warn-soft); }
 .balance-market-segment.phase-5 { --phase-color: var(--bad); background: var(--bad-soft); }
@@ -1587,7 +1602,9 @@ html[data-suite-page="balance"] #navigationGuardDialog h2 { font-size: var(--bal
 
 /* Oberste Inhaltsfläche: vollständiger Jahresbeschluss und heutige Vorschau. */
 .balance-overview > .ds-plan-card { padding: var(--space-4); gap: var(--space-3); }
-.balance-head-tools .balance-help-link { margin: 0; flex: none; text-decoration: none; }
+.balance-head-tools .balance-help-link { box-sizing: border-box; margin: 0; flex: none; text-decoration: none; width: 40px; height: 40px; min-width: 40px; min-height: 40px; padding: var(--space-2); }
 .balance-annual-action p { margin-block: var(--space-2); }
 .balance-annual-action h4 { margin-top: var(--space-2); }
 .ov-act > h4 { margin: 0; }
+
+.balance-flex-explanation { white-space: normal; overflow-wrap: break-word; }

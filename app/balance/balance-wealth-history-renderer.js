@@ -39,13 +39,13 @@ function chartMarkup(rows, hostWidth) {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 360" width="${width}" height="360" style="width:${width}px;min-width:${width}px;height:360px" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="wealthChartTitle" aria-describedby="wealthChartDesc"><title id="wealthChartTitle">Vermögensverlauf in nominalen Euro</title><desc id="wealthChartDesc">Linie und Fläche zeigen gespeicherte Gesamtsummen aus Tagesgeld, Geldmarkt-ETF und Aktien-ETF mit tatsächlichen Datumsabständen. Jahresabschluss: gefüllte Raute mit Abschlussjahr. Unterjährig: Raute. Keine Zwischenprognose, Rendite oder Realwertberechnung. Alle Werte und beide Teildepots stehen in der folgenden Tabelle.</desc><text x="110" y="20">Euro (€)</text>${axis}${yearMarks}<path class="wealth-area" d="${area}"/><path class="wealth-line" d="${line}"/>${markers}${dates}${endLabel}</svg>`;
 }
 
-export function summaryMarkup(rows) {
+export function summaryMarkup(rows, { missingComparisonHint = 'Kein zweiter Stand im Jahr erfasst' } = {}) {
     const summary = prepareWealthHistorySummary(rows);
     if (!summary) return '';
     const metric = (label, value, detail) => `<div class="wealth-metric ds-kpi"><div class="expenses-card-label">${escape(label)}</div><div class="expenses-card-value">${value}</div><div class="expenses-card-sub">${escape(detail)}</div></div>`;
     return metric('Zuletzt erfasst', escape(UIUtils.formatBalanceCurrency(summary.latest.total)), dateLabel(summary.latest.asOf))
         + metric(`Bestandsänderung ${summary.year}`, summary.change === null ? '—' : escape(UIUtils.formatBalanceCurrency(summary.change)),
-            summary.change === null ? 'Kein zweiter Stand im Jahr erfasst' : `${dateLabel(summary.firstInYear.asOf)} bis ${dateLabel(summary.latest.asOf)} · einschließlich Entnahmen, keine Rendite`)
+            summary.change === null ? missingComparisonHint : `${dateLabel(summary.firstInYear.asOf)} bis ${dateLabel(summary.latest.asOf)} · einschließlich Entnahmen, keine Rendite`)
         + metric('Höchster Stand', escape(UIUtils.formatBalanceCurrency(summary.highest.total)), dateLabel(summary.highest.asOf));
 }
 

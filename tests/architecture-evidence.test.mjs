@@ -18,7 +18,7 @@ const validatorPath = path.join(repoRoot, 'scripts', 'check-architecture-evidenc
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
 const validatorSource = fs.readFileSync(validatorPath, 'utf8');
 const documents = readEvidenceDocuments(repoRoot);
-const fixedToday = '2026-07-17';
+const fixedToday = '2026-10-13';
 
 function mutateDocument(sourceDocuments, relativePath, transform) {
     return {
@@ -39,6 +39,30 @@ assertEqual(baseline.counts.mapAnchors, 17, 'validator should find MAP-01 throug
 assertEqual(baseline.counts.marketReviewScopes, 11, 'every market record family should have one review scope');
 assertEqual(baseline.counts.researchReviewScopes, 7, 'every research record family should have one review scope');
 assertEqual(baseline.counts.modelMatrixRows, 10, 'validator should find MS-01 through MS-10 review dates');
+assertEqual(EVIDENCE_PATHS.main, 'docs/reference/FACHKONZEPT.md', 'model evidence belongs to the subject reference');
+assertEqual(EVIDENCE_PATHS.technical, 'docs/reference/TECHNICAL.md', 'technical reference remains inside the evidence gate');
+assertEqual(EVIDENCE_PATHS.dataContracts, 'docs/reference/DATENVERTRAEGE.md', 'data contracts remain inside the evidence gate');
+
+const missingModelRow = mutateDocument(documents, EVIDENCE_PATHS.main, content => (
+    content.split(/\r?\n/).filter(line => !line.startsWith('| MS-07 ')).join('\n')
+));
+assert(errorCodes(validateEvidenceDocuments(missingModelRow, { today: fixedToday, repoRoot }))
+    .has('MODEL_MATRIX_INVENTORY_INVALID'), 'removing a model evidence row must fail the static gate');
+const emptyModelOwner = mutateDocument(documents, EVIDENCE_PATHS.main, content => content.replace(
+    '| MS-10 Alarmstaerke | Policy-Owner: Nutzer |', '| MS-10 Alarmstaerke | |'
+));
+assert(errorCodes(validateEvidenceDocuments(emptyModelOwner, { today: fixedToday, repoRoot }))
+    .has('MODEL_MATRIX_FIELDS_INVALID'), 'removing an owner must not weaken the migrated model evidence');
+for (const file of [EVIDENCE_PATHS.technical, EVIDENCE_PATHS.dataContracts]) {
+    const brokenReference = mutateDocument(documents, file, content => `${content}\n[Test](DOES_NOT_EXIST.md)\n`);
+    assert(errorCodes(validateEvidenceDocuments(brokenReference, { today: fixedToday, repoRoot }))
+        .has('BROKEN_LOCAL_FILE_LINK'), `${file}: relocated evidence links stay checked`);
+}
+const brokenHandbookAnchor = mutateDocument(documents, EVIDENCE_PATHS.main, content => content.replace(
+    '(../../Handbuch.html#glossar)', '(../../Handbuch.html#missing-evidence-glossary)'
+));
+assert(errorCodes(validateEvidenceDocuments(brokenHandbookAnchor, { today: fixedToday, repoRoot }))
+    .has('BROKEN_LOCAL_ANCHOR_LINK'), 'HTML ids outside anchor tags remain checked against real handbook targets');
 
 const repeated = validateEvidenceDocuments(documents, { today: fixedToday, repoRoot });
 assertEqual(
@@ -79,8 +103,8 @@ assert(
 );
 
 const invalidReviewDate = mutateDocument(documents, EVIDENCE_PATHS.market, content => content.replace(
-    '| MKT-RS | Repository/bei Änderung, spätestens quartalsweise | 2026-07-17 | 2026-10-17 |',
-    '| MKT-RS | Repository/bei Änderung, spätestens quartalsweise | 2026-07-17 | 2026-13-40 |'
+    '| MKT-RS | Repository/bei Änderung, spätestens quartalsweise | 2026-10-13 | 2027-01-13 |',
+    '| MKT-RS | Repository/bei Änderung, spätestens quartalsweise | 2026-10-13 | 2026-13-40 |'
 ));
 const invalidDateReport = validateEvidenceDocuments(invalidReviewDate, { today: fixedToday, repoRoot });
 assert(
@@ -89,7 +113,7 @@ assert(
 );
 
 const overdueReview = mutateDocument(documents, EVIDENCE_PATHS.market, content => content.replace(
-    '| MKT-RS | Repository/bei Änderung, spätestens quartalsweise | 2026-07-17 | 2026-10-17 |',
+    '| MKT-RS | Repository/bei Änderung, spätestens quartalsweise | 2026-10-13 | 2027-01-13 |',
     '| MKT-RS | Repository/bei Änderung, spätestens quartalsweise | 2026-07-15 | 2026-07-16 |'
 ));
 const overdueReport = validateEvidenceDocuments(overdueReview, { today: fixedToday, repoRoot });
@@ -119,7 +143,7 @@ assertEqual(
 );
 
 const brokenLocalLink = mutateDocument(documents, EVIDENCE_PATHS.market, content => content.replace(
-    '(ARCHITEKTUR_UND_FACHKONZEPT.md#marktvergleich)',
+    '(MARKTVERGLEICH.md)',
     '(DOES_NOT_EXIST.md#marktvergleich)'
 ));
 const brokenLinkReport = validateEvidenceDocuments(brokenLocalLink, { today: fixedToday, repoRoot });
@@ -129,8 +153,8 @@ assert(
 );
 
 const brokenLocalAnchor = mutateDocument(documents, EVIDENCE_PATHS.market, content => content.replace(
-    '(ARCHITEKTUR_UND_FACHKONZEPT.md#marktvergleich)',
-    '(ARCHITEKTUR_UND_FACHKONZEPT.md#nicht-vorhandener-evidenzanker)'
+    '(MARKTVERGLEICH.md)',
+    '(MARKTVERGLEICH.md#nicht-vorhandener-evidenzanker)'
 ));
 const brokenAnchorReport = validateEvidenceDocuments(brokenLocalAnchor, { today: fixedToday, repoRoot });
 assert(

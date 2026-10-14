@@ -43,6 +43,10 @@
     --text-base: 1rem;
     --text-lg: 1.25rem;
     --text-title: 2rem;
+    --value-lg: 30px;
+    --value-md: 17px;
+    --value-xl: 44px;
+    --need-field-height: 60px;
     /* Balance: freigegebene Anzeigegrößen, keine globale Umstellung der Suite. */
     --balance-h1: 30px;
     --balance-h2: 22px;

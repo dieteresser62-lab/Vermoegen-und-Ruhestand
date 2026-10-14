@@ -193,6 +193,12 @@ const exportedAt = '2026-07-22T12:34:56.789Z';
 const document = buildMonteCarloExportV1({ request, result, engine, exportedAt });
 const resultV2 = projectMonteCarloRunResultV2(result);
 const documentV2 = buildMonteCarloExportV2({ request, result: resultV2, engine, exportedAt });
+assertEqual(JSON.stringify(document.result.kpis.minimumFlexRestriction),
+    JSON.stringify(firstRun.aggregatedResults.minimumFlexRestriction),
+    'V1-Export erhält die gemeinsame Mindest-Flex-Auswertung additiv');
+assertEqual(JSON.stringify(documentV2.result.kpis.minimumFlexRestriction),
+    JSON.stringify(firstRun.aggregatedResults.minimumFlexRestriction),
+    'V2-Export erhält die Mindest-Flex-Auswertung ohne zweite Rechnung');
 assert(!JSON.stringify(document).includes('"flexTrace"'), 'Monte-Carlo-V1-Export enthält keinen Flex-Trace');
 assert(!JSON.stringify(documentV2).includes('"flexTrace"'), 'Monte-Carlo-V2-Export enthält keinen Flex-Trace');
 const legacyV1Request = JSON.parse(JSON.stringify(request));
@@ -1014,5 +1020,22 @@ console.log('✅ Monte Carlo export contract tests passed');
     ]) {
         let rejected = false; try { validatePersonDataContext(malformed); } catch { rejected = true; }
         assert(rejected, 'Unbekannte Version, falsches Abweichungsflag oder nichtendlicher Personenbeleg wird abgewiesen');
+    }
+}
+
+{
+    const { deriveMinimumFlexPath, buildMinimumFlexRestriction } = await import('../app/simulator/minimum-flex-metrics.js');
+    const block = buildMinimumFlexRestriction([deriveMinimumFlexPath([40000, 28000, 35000].map(paid => ({
+        minimumFlexAnnual: 30000, flex_haushalt_erfuellt: paid, flex_wunsch_haushalt_nominal: 45000
+    })))], 30000);
+    for (const [build, serialize, read, original] of [[buildMonteCarloExportV1, serializeMonteCarloExportV1, readMonteCarloExportV1, result],
+        [buildMonteCarloExportV2, serializeMonteCarloExportV2, readMonteCarloExport, resultV2]]) {
+        const runResult = clone(original); runResult.kpis.minimumFlexRestriction = block;
+        const document = build({ request, result: runResult, engine, exportedAt });
+        const loaded = read(serialize(document)).document;
+        assertEqual(canonicalizeHistoricalContractValue(loaded.result.kpis.minimumFlexRestriction), canonicalizeHistoricalContractValue(block),
+            'MC-Gesamtexport erhält Mindest-Flex-Block mit Population, nominalen Beträgen und Fehlgründen');
+        const tampered = clone(document); tampered.result.kpis.minimumFlexRestriction.yearSharePctP50++;
+        expectThrow(() => read(JSON.stringify(tampered)), 'MC_EXPORT_FINGERPRINT_MISMATCH', 'Manipulierte Mindest-Flex-Messung wird erkannt');
     }
 }

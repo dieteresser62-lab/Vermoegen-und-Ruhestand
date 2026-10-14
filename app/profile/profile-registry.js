@@ -293,7 +293,7 @@ export function ensureDefaultProfile(options = {}) {
             storageKey: PROFILE_STORAGE_KEY,
             error: {
                 code: 'PROFILE_REGISTRY_WRITE_FAILED',
-                message: 'Das Default-Profil konnte nicht sicher gespeichert werden.'
+                message: 'Das Standard-Profil konnte nicht sicher gespeichert werden.'
             }
         });
     }

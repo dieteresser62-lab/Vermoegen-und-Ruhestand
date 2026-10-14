@@ -584,9 +584,16 @@ function createScenarioLogUnitContractV2() {
             }
         },
         annualMoneyFields: {
+            flex_wunsch_haushalt_nominal: 'nominal_eur_per_year_desired_household_flex',
+            flex_haushalt_erfuellt: 'nominal_eur_per_year_paid_household_flex_including_pension',
             minimumFlexConfiguredAnnualEur: 'nominal_eur_per_year',
             minimumFlexPolicyEffectiveAnnualEur: 'nominal_eur_per_year_after_policy',
             minimumFlexFulfilledAnnualEur: 'nominal_eur_per_year_actual_fulfilment'
+        },
+        minimumFlexRestriction: {
+            flag: 'flex_unter_mindestflex', comparison: 'paid_household_flex_lt_applied_positive_minimum',
+            population: 'completed_decumulation_years', priceBasis: 'nominal',
+            appliedMinimumField: 'minimumFlexConfiguredAnnualEur'
         },
         terminalRecordPolicy: 'financial_measurements_null_with_reason_and_observation_count'
     };

@@ -61,7 +61,16 @@ export class ActionRenderer {
 
         container.appendChild(content);
         const outputs = this.dom.outputs;
-        if (outputs.balanceActionTitle) outputs.balanceActionTitle.textContent = summary.verb;
+        const proposedTitle = {
+            'Aktien verkaufen': 'Vorgeschlagener Verkauf · Aktien',
+            'Gold verkaufen': 'Vorgeschlagener Verkauf · Gold',
+            'Gold kaufen': 'Vorgeschlagener Kauf · Gold',
+            'Aktien kaufen': 'Vorgeschlagener Kauf · Aktien',
+            'Umschichten': 'Vorgeschlagene Umschichtung',
+            'Handlung prüfen': 'Vorgeschlagene Handlung prüfen',
+            'Nichts tun': 'Keine Transaktion vorgeschlagen'
+        }[summary.verb];
+        if (outputs.balanceActionTitle) outputs.balanceActionTitle.textContent = proposedTitle;
         if (outputs.balanceActionAmount) {
             outputs.balanceActionAmount.textContent = '';
             if (summary.amount !== null) {

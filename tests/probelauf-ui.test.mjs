@@ -6,6 +6,8 @@ import { createProbelaufController, PROBELAUF_SESSION_KEYS } from '../app/shared
 import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { setAppTestDate, getAppTestDate, localCalendarDate } from '../app/shared/app-clock.js';
 import { loadMusterHaushalt } from '../app/demo/muster-haushalt.js';
+import { PROBELAUF_PRICE_LABEL, PROBELAUF_PRICE_EXPLANATION, renderProbelaufPriceInfo } from '../app/shared/probelauf-price-ui.js';
+import { renderManagerQuoteContext } from '../app/tranches/tranchen-manager-renderer.js';
 
 function documentDouble() {
     const nodes = [];
@@ -31,6 +33,67 @@ function documentDouble() {
     for (const id of ['probelaufBand', 'probelaufBandText', 'probelaufStart', 'probelaufStatus', 'overviewWelcomeDemo']) { const node = doc.createElement('div'); node.id = id; doc.body.appendChild(node); }
     for (const action of ['day', 'month', 'date', 'end']) { const node = doc.createElement('button'); node.dataset.probelaufAction = action; doc.getElementById('probelaufBand').appendChild(node); }
     return { doc, nodes, dialog: () => nodes.findLast(node => node.tagName === 'dialog') };
+}
+{
+    const env = documentDouble();
+    for (const id of ['suiteContext', 'managerQuoteContext', 'managerQuoteDetails']) {
+        const host = env.doc.createElement('span'); host.id = id; env.doc.body.appendChild(host);
+    }
+    const reportHost = env.doc.createElement('div'), report = env.doc.createElement('p');
+    reportHost.id = 'startupPriceStatus'; reportHost.querySelector = () => report;
+    report.textContent = 'Kurse aktualisiert · 1 von 1 · heute 21:05'; reportHost.appendChild(report);
+    let redraw, observations = 0, disconnected = 0;
+    env.doc.defaultView.MutationObserver = class {
+        constructor(callback) { redraw = callback; }
+        observe(host) { assertEqual(host.id, 'suiteContext', 'Nur der vorhandene Kopfkontext wird beobachtet'); observations++; }
+        disconnect() { disconnected++; }
+    };
+    const controller = { runtime: { canStart: true, canContinue: true }, state: null };
+    const lots = [{ asOf: Math.floor(Date.now() / 1000), currentPrice: 100 }], before = JSON.stringify(lots);
+    renderManagerQuoteContext(env.doc, lots);
+    const real = env.doc.getElementById('managerQuoteContext').textContent;
+    renderProbelaufUI(env.doc, controller);
+    assertEqual(env.doc.getElementById('managerQuoteContext').textContent, real, 'Außerhalb des Probelaufs bleibt der Kursstand unverändert');
+    for (const source of ['copy', 'demo']) {
+        controller.state = { phase: 'active', source, testDate: '2026-10-13' };
+        renderProbelaufUI(env.doc, controller);
+        assertEqual(env.doc.getElementById('managerQuoteContext').textContent, PROBELAUF_PRICE_LABEL, source + ': derselbe kurze Testkurshinweis im Manager');
+        assertEqual(env.doc.getElementById('managerQuoteDetails').textContent, PROBELAUF_PRICE_EXPLANATION, source + ': vorhandenes ⓘ erklärt Testkurse und Datenherkunft');
+        assert(report.textContent.startsWith(PROBELAUF_PRICE_LABEL + ' · ') && report.textContent.includes('1 von 1'), 'Vorhandener Kursbericht kennzeichnet Testkurse und erhält sein Ergebnis');
+        renderManagerQuoteContext(env.doc, lots); redraw();
+        assertEqual(env.doc.getElementById('managerQuoteContext').textContent, PROBELAUF_PRICE_LABEL, source + ': Kennzeichnung bleibt nach Seitenrenderer erhalten');
+    }
+    assertEqual(observations, 1, 'Wiederholtes Rendern erzeugt keinen zweiten Beobachter');
+    controller.state = null; renderProbelaufUI(env.doc, controller);
+    assertEqual(disconnected, 1, 'Beenden entfernt die Probelaufbindung');
+    assertEqual(env.doc.getElementById('managerQuoteContext').textContent, real, 'Beenden stellt den echten Kursstand wieder her');
+    assertEqual(report.textContent, 'Kurse aktualisiert · 1 von 1 · heute 21:05', 'Nach Probelauf bleibt der ursprüngliche Kursbericht erhalten');
+    assertEqual(JSON.stringify(lots), before, 'Gemeinsamer Anzeigeadapter verändert keine Tranchen');
+}
+{
+    const env = documentDouble(), infos = [], previousDate = getAppTestDate();
+    const all = env.doc.querySelectorAll;
+    env.doc.querySelectorAll = selector => selector === '[data-probelauf-price-info]' || selector === '.ds-info' ? infos : all(selector);
+    env.doc.addEventListener = () => {};
+    for (const label of ['Kopfzeile', 'Vermögenskarte']) {
+        const host = env.doc.createElement('span'), explanation = env.doc.createElement('span'), button = env.doc.createElement('button');
+        host.querySelector = selector => selector === '.ds-info-button' ? button : explanation;
+        host.append(button, explanation); infos.push(host);
+        renderProbelaufPriceInfo(env.doc);
+        assert(host.hidden, label + ': außerhalb des Probelaufs kein zusätzlicher Hinweis');
+    }
+    try {
+        setAppTestDate('2026-10-13'); renderProbelaufPriceInfo(env.doc);
+        for (const host of infos) {
+            assert(!host.hidden, 'Probelauf zeigt vorhandenes ⓘ-Muster');
+            assertEqual(host.children[1].textContent, PROBELAUF_PRICE_EXPLANATION, 'Kopf und Karte erklären dieselben Testkurse und Daten');
+            host.children[0].fire('click'); assertEqual(host.dataset.visible, 'true', 'Maus öffnet Erklärung');
+            host.fire('keydown', { key: 'Escape' }); assertEqual(host.dataset.visible, 'false', 'Escape schließt Erklärung');
+            host.fire('focusin'); assertEqual(host.dataset.visible, 'true', 'Tastaturfokus öffnet Erklärung');
+        }
+    } finally { setAppTestDate(previousDate); }
+    renderProbelaufPriceInfo(env.doc);
+    assert(infos.every(host => host.hidden), 'Nach Probelauf verschwinden beide zusätzlichen ⓘ-Hinweise');
 }
 for (const page of ['Ausgaben.html', 'index.html', 'Balance.html', 'Simulator.html', 'Handbuch.html', 'depot-tranchen-manager.html', 'Daten-Sicherung.html']) {
     const html = fs.readFileSync(new URL(`../${page}`, import.meta.url), 'utf8');

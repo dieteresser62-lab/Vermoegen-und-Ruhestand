@@ -491,7 +491,7 @@ async function createMonthlyCashScenario() {
     setAppTestDate('2026-04-10');
     const input = doc.getElementById('profileTagesgeld');
     input.value = '8000';
-    input.listeners.input[0]({ target: input });
+    input.listeners.change[0]({ target: input });
     await waitFor(() => backend.get('profile_tagesgeld') === '8000'
         && !input.disabled && !doc.getElementById('profileGoldZiel').disabled,
     'Echte April-Profilspeicherung muss dauerhaft abgeschlossen sein');
@@ -1088,10 +1088,10 @@ async function runTranchenManagerPageTests() {
 
         failSave = true;
         doc.getElementById('profileTagesgeld').value = '777';
-        doc.getElementById('profileTagesgeld').listeners.input[0]();
+        doc.getElementById('profileTagesgeld').listeners.change[0]();
         await waitFor(
             () => doc.getElementById('retryTrancheSaveBtn').hidden === false,
-            'Debounced profile flush rejection should expose retry'
+            'Tagesgeldchange-Fehlflush zeigt Retry'
         );
         assertEqual(doc.getElementById('profileTagesgeld').value, 0, 'Profile flush rejection should restore confirmed visible value');
         assert(!doc.persistencePanel.hidden, 'Fehlflush bleibt als sichtbares Speicherband außerhalb Technik erhalten');
@@ -1112,7 +1112,7 @@ async function runTranchenManagerPageTests() {
     }
     console.log('✓ flush failure recovery OK');
 
-    console.log('Test 8: profile input gate ignores invalid intermediates and commits only latest valid value');
+    console.log('Test 8: Tagesgeldchange verweigert ungültige Werte und bestätigt den letzten gültigen Stand');
     {
         const storageRef = createLocalStorageMock();
         const doc = createTranchenPageDom();
@@ -1122,7 +1122,7 @@ async function runTranchenManagerPageTests() {
         await initTranchenManagerPage({ profileId: 'default' });
         const input = doc.getElementById('profileTagesgeld');
         input.value = '';
-        input.listeners.input[0]();
+        input.listeners.change[0]();
         await new Promise(resolve => setTimeout(resolve, 350));
         assertEqual(persistenceStorage.getItem('profile_tagesgeld'), null, 'Blank intermediate value must not be persisted');
         assertEqual(doc.getElementById('profileValidationStatus').hidden, false, 'Invalid intermediate should be announced');
@@ -1130,16 +1130,16 @@ async function runTranchenManagerPageTests() {
         input.value = '100';
         input.listeners.input[0]();
         input.value = '200';
-        input.listeners.input[0]();
+        input.listeners.change[0]();
         await waitFor(
             () => persistenceStorage.getItem('profile_tagesgeld') === '200',
-            'Latest debounced profile value should be persisted'
+            'Tagesgeldchange bestätigt den letzten vollständigen Wert'
         );
-        assertEqual(persistenceStorage.getItem('profile_tagesgeld'), '200', 'Rapid input should commit only the latest complete value');
+        assertEqual(persistenceStorage.getItem('profile_tagesgeld'), '200', 'change bestätigt nur den letzten vollständigen Tagesgeldwert');
         assertEqual(doc.getElementById('profileValidationStatus').hidden, true, 'Valid values should clear validation status');
 
         input.value = '-5';
-        input.listeners.input[0]();
+        input.listeners.change[0]();
         await new Promise(resolve => setTimeout(resolve, 350));
         assertEqual(persistenceStorage.getItem('profile_tagesgeld'), '200', 'Negative input must leave confirmed state unchanged');
     }
@@ -1173,10 +1173,10 @@ async function runTranchenManagerPageTests() {
 
         const input = doc.getElementById('profileTagesgeld');
         input.value = '100';
-        input.listeners.input[0]();
-        await waitFor(() => firstCashStarted, 'First debounced profile flush should start');
+        input.listeners.change[0]();
+        await waitFor(() => firstCashStarted, 'Erster Tagesgeldchange-Flush startet');
         input.value = '200';
-        input.listeners.input[0]();
+        input.listeners.change[0]();
         await new Promise(resolve => setTimeout(resolve, 350));
         releaseFirstSave();
         await waitFor(
@@ -1186,7 +1186,7 @@ async function runTranchenManagerPageTests() {
         assertEqual(adapterStore.get('profile_tagesgeld'), '200', 'Queued profile value should become the confirmed value');
         const cash = JSON.parse(adapterStore.get('profile_cash_history_v1'));
         assertEqual(cash.baselineValue, 0, 'Langsamer Flush bewahrt frühere Basis');
-        assertEqual(JSON.stringify(cash.entries.map(entry => entry.value)), '[100,200]', 'Zwei bestätigte Änderungen am gleichen Tag bleiben geordnet');
+        assertEqual(JSON.stringify(cash.entries.map(entry => entry.value)), '[200]', 'Zwei bestätigte Änderungen am gleichen Tag ergeben den letzten Stand');
         assertEqual(doc.getElementById('retryTrancheSaveBtn').hidden, true, 'Successful queued save should not require manual retry');
     }
     console.log('✓ slow-flush profile queue OK');
@@ -1563,7 +1563,7 @@ async function runTranchenManagerPageTests() {
         initTranchenManagerPage({ profileId: 'a' });
         const assumed = () => JSON.parse(backend.profile_person_migration_v1).sources.geschlecht.includes('angenommen');
         assert(assumed(), 'Rendern bestätigt angenommenes Geschlecht nicht');
-        const cash = doc.getElementById('profileTagesgeld'); cash.value = '100'; cash.dispatchEvent({ type: 'input', target: cash });
+        const cash = doc.getElementById('profileTagesgeld'); cash.value = '100'; cash.dispatchEvent({ type: 'change', target: cash });
         await waitFor(() => writes > 0 && doc.getElementById('tranchePersistenceStatus').textContent.includes('dauerhaft gespeichert'), 'Anderes Feld wurde gespeichert');
         assert(assumed(), 'Speichern eines anderen Feldes erhält Herkunft');
         failNext = true;
@@ -1591,7 +1591,7 @@ async function runTranchenManagerPageTests() {
         assert(summary.includes('Aktueller Tagesgeld-Stand: 8.000,00')
             && summary.includes('Historischer Auditbetrag (letzter Nachweis): 10.000,00'),
         'Mai zeigt aktuellen Aprilstand und historischen Märzbetrag getrennt');
-        assertEqual(Number(canonicalDecimalInput(doc.getElementById('cashPostingBalance').value)), 8000,
+        assertEqual(Number(canonicalDecimalInput(doc.getElementById('cashPostingBalance').value, doc.getElementById('cashPostingBalance'))), 8000,
             'Mai belegt ausschließlich den aktuellen Aprilbetrag numerisch vor');
         assertEqual(JSON.stringify(snapshot()), JSON.stringify(before), 'Öffnen verändert weder Cache noch Backend');
         assertEqual(closeCashPostingModal(doc), true, 'Unveränderter Korrekturdialog lässt sich abbrechen');
@@ -1646,12 +1646,12 @@ async function runTranchenManagerPageTests() {
         await PersistenceFacade.init({ installLifecycleHooks: false, installTauriCloseHook: false });
         await initTranchenManagerPage({ profileId: id });
         assertEqual(persistenceStorage.getItem('profile_tagesgeld'), String(amount), 'Backendreadback und Neustart bestätigen den absoluten Maibetrag');
-        assertEqual(Number(canonicalDecimalInput(doc.getElementById('profileTagesgeld').value)), amount, 'Neustart zeigt den bestätigten Tagesgeldstand');
+        assertEqual(Number(canonicalDecimalInput(doc.getElementById('profileTagesgeld').value, doc.getElementById('profileTagesgeld'))), amount, 'Neustart zeigt den bestätigten Tagesgeldstand');
         assertEqual(persistenceStorage.getItem('profile_cash_history_v1'), after.backend.profile_cash_history_v1, 'Neustart lädt die bestätigte Cashhistorie bytegleich');
         // Ein weiterer echter Profilwrite darf alte, identische Aufträge nicht reaktivieren.
         setAppTestDate('2026-06-10');
         const input = doc.getElementById('profileTagesgeld');
-        input.value = '7000'; input.listeners.input[0]({ target: input });
+        input.value = '7000'; input.listeners.change[0]({ target: input });
         await waitFor(() => backend.get('profile_tagesgeld') === '7000'
             && !doc.getElementById('profileGoldZiel').disabled, 'Juniprofilwrite wird bestätigt');
         const june = snapshot();

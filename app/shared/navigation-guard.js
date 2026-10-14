@@ -6,7 +6,7 @@ const hasReason = state => state.phase === 'commit' || activePhases.has(state.ph
 const equal = (a, b) => ['phase', 'revision', 'operationId', 'dirty', 'result'].every(key => a[key] === b[key]);
 
 export function createNavigationGuard({ decide = async () => false, status = () => {}, schedule = setTimeout, unschedule = clearTimeout } = {}) {
-    const providers = new Map(), listeners = new Set();
+    const providers = new Map(), listeners = new Set(), beforeLeave = new Set();
     let active = null, sequence = 0, permit = null, timer = null;
     const snapshot = () => new Map(Array.from(providers, ([owner, provider]) => [owner, stateOf(provider.read())]));
     const reasons = () => Array.from(snapshot(), ([owner, state]) => ({ owner, ...state })).filter(hasReason);
@@ -89,6 +89,13 @@ export function createNavigationGuard({ decide = async () => false, status = () 
             if (commit) status(intent === 'close' && commit.annualPhase ? 'Jahresabschluss schreibt – bitte warten' : commit.message || 'Daten werden geschrieben – bitte warten.');
             return null;
         }
+        // Seitenentwürfe vor der Verlustentscheidung über ihren eigenen Writer
+        // bestätigen. Während eines fremden Commits darf kein Autosave beginnen.
+        if (!owners && intent !== 'discard' && !reasons().some(reason => reason.phase === 'commit')) {
+            for (const save of beforeLeave) {
+                if (await save() === false || signal?.aborted || active) return null;
+            }
+        }
         revokeNative();
         const attempt = { id: ++sequence, states: snapshot(), cancelling: new Set(), invalid: false };
         active = attempt;
@@ -141,6 +148,13 @@ export function createNavigationGuard({ decide = async () => false, status = () 
     }
     function beforeUnload(event) {
         if (permit !== null && permit === active?.id && validate(active)) { permit = null; return; }
+        if (!active && !reasons().some(reason => reason.phase === 'commit')) {
+            // Der Writer beginnt synchron. Der anschließende Commitgrund hält
+            // den Browser bis zur Speicherantwort auf der Seite.
+            for (const save of beforeLeave) {
+                try { Promise.resolve(save()).catch(() => {}); } catch { /* Der Dirty-Grund schützt die Eingabe weiter. */ }
+            }
+        }
         revokeNative();
         if (!reasons().length) return;
         event.preventDefault();
@@ -210,6 +224,7 @@ export function createNavigationGuard({ decide = async () => false, status = () 
     }
 
     return { register, reasons, prepare, validate, end, commitNavigation, beforeUnload, reload,
+        registerBeforeLeave(save) { beforeLeave.add(save); return () => beforeLeave.delete(save); },
         revokeNative, restoreDocument, isBusy: () => active !== null,
         subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); } };
 }

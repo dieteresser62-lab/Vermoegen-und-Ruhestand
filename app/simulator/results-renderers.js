@@ -6,13 +6,21 @@ import { escapeBacktestHtml as escape } from './historical-backtest-ui.js';
 
 let nextInfoId = 1;
 
+export const info = (id, title, text) => `<span class="ds-info"><button class="ds-info-button" type="button" aria-label="${escape(title)}" aria-expanded="false" aria-controls="${escape(id)}">i</button><span class="ds-info-pop" id="${escape(id)}" role="tooltip">${Array.isArray(text) ? text.filter(Boolean).map(paragraph => `<p>${escape(paragraph)}</p>`).join('') : escape(text)}</span></span>`;
+
+const renderMetricPair = metrics => `<div class="sim-answer-pair">${metrics.map(metric => `<div><p class="sim-answer-metric-label">${escape(metric.label)}</p><p class="sim-answer-metric-value">${escape(metric.value)}</p>${metric.detail ? `<p class="ds-hint">${escape(metric.detail)}</p>` : ''}</div>`).join('')}</div>`;
+
 /** Zwei verständliche Einstiegsantworten vor den unveränderten Kennzahlen. */
 export function renderMonteCarloAnswers(container, answers, stale = false) {
     if (!container || !Array.isArray(answers)) return;
-    container.innerHTML = answers.map(answer => `<section class="sim-mc-answer ds-card" data-stale="${stale}">
-        <h2>${escape(answer.question)}</h2><p class="sim-hero-amount">${escape(answer.value)}</p>
-        <p>${escape(answer.text)}</p><p class="ds-hint">${escape(answer.note)}</p>
+    container.innerHTML = answers.map((answer, index) => `<section class="sim-mc-answer ds-card" data-stale="${stale}">
+        ${answer.tooltip ? `<div class="sim-card-heading"><h2>${escape(answer.question)}</h2>${info(`${container.id || 'monteCarloAnswers'}Info${index + 1}`, `Erläuterung zu „${answer.question}“`, answer.value === '—' ? `${answer.text} ${answer.tooltip}` : answer.tooltip)}</div>` : `<h2>${escape(answer.question)}</h2>`}
+        ${answer.subtitle ? `<p class="ds-hint sim-answer-subtitle">${escape(answer.subtitle)}</p>` : ''}
+        ${answer.metrics ? renderMetricPair(answer.metrics) : `<p class="sim-hero-amount">${escape(answer.value)}</p>`}
+        ${answer.countText ? `<p class="sim-answer-count">${escape(answer.countText)}</p>` : ''}
+        <p>${escape(answer.text)}</p>${answer.note ? `<p class="ds-hint${answer.compactNote ? ' sim-flex-note' : ''}"${answer.compactNote ? ` title="${escape(answer.note)}"` : ''}>${escape(answer.note)}</p>` : ''}
         ${stale ? '<p class="ds-hint sim-answer-status" role="status">Annahmen seitdem geändert</p>' : ''}</section>`).join('');
+    bindResultInfoPopups(container.ownerDocument || globalThis.document);
 }
 const popupHosts = new WeakSet();
 const popupDocuments = new WeakSet();
@@ -72,10 +80,22 @@ export function renderKpiCard(kpi) {
     return `
     <div class="kpi-card ds-card ds-metric ${toneClass}${layoutClass}">
       <div class="sim-metric-heading"><strong>${kpi.title}</strong>${metricInfo(kpi.title, tooltip)}</div>
-      <div class="value-line">${kpi.value}</div>
+      ${kpi.pairedMetrics ? renderMetricPair(kpi.pairedMetrics) : `<div class="value-line">${kpi.value}</div>`}
+      ${kpi.priceBasis ? `<p class="ds-hint sim-price-basis">${escape(kpi.priceBasis)}</p>` : ''}
       ${statusLine}
       ${secondaryLine}
       <div class="kpi-description">${description}</div>
+    </div>`;
+}
+
+/** Ergänzende Werte mit denselben Angaben und Erklärungen als ruhige Zeilen. */
+function renderMetricRow(kpi) {
+    return `<div class="sim-metric-row summary-item kpi-card ds-card ds-metric ${mapToneToClass(kpi.tone)}">
+        <div class="sim-metric-heading"><strong>${escape(kpi.title)}</strong>${metricInfo(kpi.title, kpi.tooltip || kpi.description || kpi.title)}</div>
+        ${kpi.pairedMetrics ? renderMetricPair(kpi.pairedMetrics) : `<div class="value-line">${kpi.value}</div>`}
+        ${kpi.priceBasis ? `<small class="sim-price-basis">${escape(kpi.priceBasis)}</small>` : ''}
+        ${kpi.statusLine ? `<small class="kpi-status-line">${escape(formatMetricStatus(kpi.statusLine))}</small>` : ''}
+        <div class="kpi-description summary-description">${kpi.description || ''}</div>
     </div>`;
 }
 
@@ -105,16 +125,17 @@ export function renderSummary(container, summaryCards) {
             const width = outcomes.requestedRuns > 0 ? Math.min(100, Math.max(0, outcome.count / outcomes.requestedRuns * 100)) : 0;
             return `<span class="mc-outcome-${outcome.kind}" style="width:${width}%"></span>`;
         }).join('');
+        const wealthCards = summaryCards.filter(card => card !== floor && card !== outcomes);
         container.innerHTML = `<div class="mc-overview-grid">
-            <section class="mc-floor-card ds-card ds-metric${mapToneToSummaryClass(floor.tone)}">
+            <section class="mc-final-card ds-card"><div class="mc-final-heading"><h3>Endvermögen und Steuern</h3><span>nominal · unabhängig vom Euro-Schalter</span></div>
+                <div class="mc-wealth-summary">${wealthCards.slice(0, 1).map(renderSummaryCard).join('')}<div class="sim-metric-list">${wealthCards.slice(1).map(renderMetricRow).join('')}</div></div>
+            </section>
+            <section class="mc-floor-card ds-card ds-metric sim-run-summary${mapToneToSummaryClass(floor.tone)}">
                 <div class="sim-metric-heading"><strong>${floor.title}</strong>${metricInfo(floor.title, floor.description)}</div>
-                <div class="mc-floor-value">${floor.displayValue}</div><div class="mc-floor-interval">${floor.intervalText}</div>
+                <div class="mc-floor-value">${floor.displayValue}</div>${floor.countText ? `<p class="sim-answer-count">${escape(floor.countText)}</p>` : ''}<div class="mc-floor-interval">${floor.intervalText}</div>
                 <div class="mc-outcome-bar" aria-hidden="true">${bars}</div>
                 <div class="mc-outcome-legend" aria-label="Endzustände">${legend}${metricInfo(outcomes.title, outcomes.description)}</div>
                 <p class="summary-description">${floor.description}</p><p class="summary-description">${outcomes.description}</p>
-            </section>
-            <section class="mc-final-card ds-card"><div class="mc-final-heading"><h3>Endvermögen</h3><span>nominal, über alle auswertbaren Läufe</span></div>
-                <div class="summary-grid">${summaryCards.filter(card => card !== floor && card !== outcomes).map(renderSummaryCard).join('')}</div>
             </section></div>`;
     } else {
         container.innerHTML = `<div class="summary-grid">${summaryCards.map(renderSummaryCard).join('')}</div>`;
@@ -131,12 +152,14 @@ export function renderSummary(container, summaryCards) {
 export function renderKpiDashboard(container, dashboard, riskContainer = null) {
     if (!container || !dashboard) return;
 
-    let html = '<section class="ds-card mc-primary-card"><h3 class="unified-kpi-header">Wichtigste Kennzahlen</h3><div class="kpi-grid kpi-grid-primary">';
-    html += dashboard.primary.map(renderKpiCard).join('');
-    html += '</div></section><section class="ds-card mc-drawdown-card">';
+    const main = dashboard.primary.filter(card => card.title === 'Reale Depotentnahme P10');
+    const supplementary = dashboard.primary.filter(card => !main.includes(card));
+    let html = '<section class="ds-card mc-primary-card"><h3 class="unified-kpi-header">Entnahmen</h3><div class="kpi-grid kpi-grid-primary">';
+    html += main.map(renderKpiCard).join('');
+    html += `</div><div class="sim-metric-list">${supplementary.map(renderMetricRow).join('')}</div></section><section class="ds-card mc-drawdown-card">`;
 
     if (Array.isArray(dashboard.drawdownKpis) && dashboard.drawdownKpis.length > 0) {
-        html += '<h4 class="drawdown-pair-heading">Maximum-Drawdown: nominal und real</h4>';
+        html += '<h4 class="drawdown-pair-heading">Maximum-Drawdown: nominal und real</h4><p class="ds-hint sim-price-basis">Real = heutige Euro · beide Maßstäbe bleiben sichtbar, unabhängig vom Euro-Schalter.</p>';
         html += '<div class="kpi-grid kpi-grid-pair">';
         html += dashboard.drawdownKpis.map(renderKpiCard).join('');
         html += '</div>';
@@ -219,7 +242,7 @@ export function renderHeatmap(container, heatmapData) {
  * @param {HTMLElement} container - Gesamter Pflegebereich, der ein-/ausgeblendet wird.
  * @param {Object|null} careMetrics - Struktur aus buildCareMetrics.
  */
-export function renderCareSection(summaryBox, container, careMetrics) {
+export function renderCareSection(summaryBox, container, careMetrics, personDisplayContext = {}) {
     if (!summaryBox || !container) return;
 
     if (!careMetrics) {
@@ -228,14 +251,33 @@ export function renderCareSection(summaryBox, container, careMetrics) {
     }
 
     const groups = new Map();
+    const personRows = new Map();
+    const persons = new Set();
+    const name = person => personDisplayContext.persons?.[person - 1]?.name || `Person ${person}`;
+    const named = text => text.replace(/\bP1 \+ P2\b/g, () => persons.has(2) ? `${name(1)} + ${name(2)}` : name(1))
+        .replace(/\bP([12])\b/g, (_, person) => name(Number(person)));
     for (const card of careMetrics.cards) {
-        const title = /\bP1\b/.test(card.title) ? 'Person 1' : /\bP2\b/.test(card.title) ? 'Person 2'
-            : /bucket|Bucket|Pflegereserve|Reservenutzung|Restreserve|Zieldeckung|Ziellücke/.test(card.title) ? 'Pflegereserve' : 'Haushalt';
+        const person = card.title.match(/\bP([12])\b/);
+        if (person) {
+            const index = Number(person[1]);
+            const label = card.title.replace(/\s+P[12]\b/, '');
+            persons.add(index);
+            if (!personRows.has(label)) personRows.set(label, new Map());
+            personRows.get(label).set(index, card);
+            continue;
+        }
+        const title = /bucket|Bucket|Pflegereserve|Reservenutzung|Restreserve|Zieldeckung|Ziellücke/.test(card.title) ? 'Pflegereserve' : 'Haushalt';
         if (!groups.has(title)) groups.set(title, []);
         groups.get(title).push(card);
     }
-    const html = Array.from(groups, ([title, cards]) =>
-        `<section class="ds-card"><h3>${title}</h3><div class="kpi-grid">${cards.map(renderKpiCard).join('')}</div></section>`).join('');
+    const columns = Array.from(persons).sort();
+    const comparison = columns.length ? `<section class="ds-card"><h3>Pflege im Vergleich</h3><div class="sim-care-comparison-scroll"><table class="ds-table sim-care-comparison"><thead><tr><th scope="col">Kennzahl</th>${columns.map(person => `<th scope="col">${escape(name(person))}</th>`).join('')}</tr></thead><tbody>${Array.from(personRows, ([label, values]) => `<tr><th scope="row">${escape(label)}${values.values().next().value?.priceBasis ? `<small class="sim-price-basis">${escape(values.values().next().value.priceBasis)}</small>` : ''}</th>${columns.map(person => {
+        const card = values.get(person);
+        return `<td>${card ? `<div class="sim-care-value"><strong>${card.value}</strong>${metricInfo(`${label} · ${name(person)}`, named(card.tooltip || card.description || label))}</div><p class="kpi-description">${escape(named(card.description || ''))}</p>` : '—'}</td>`;
+    }).join('')}</tr>`).join('')}</tbody></table></div></section>` : '';
+    const html = comparison + Array.from(groups, ([title, cards]) =>
+        `<section class="ds-card"><h3>${title}</h3><div class="sim-metric-list">${cards.map(card => renderMetricRow({ ...card,
+            tooltip: named(card.tooltip || card.description || card.title), description: escape(named(card.description || '')) })).join('')}</div></section>`).join('');
     summaryBox.innerHTML = html;
     bindResultInfoPopups();
     container.style.display = 'block';

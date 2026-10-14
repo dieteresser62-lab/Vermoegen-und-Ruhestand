@@ -438,19 +438,17 @@ export function createProtocolPersonContext(inputs = {}, persons = []) {
 }
 function personColumns(options) {
     const context = options.personDisplayContext || createProtocolPersonContext(options.inputs);
-    const initials = context.persons.map(person => person.name.split(/\s+/).filter(Boolean).slice(0, 2)
-        .map(part => Array.from(part)[0]).join(''));
     return context.persons.map((person, index) => {
         const label = person.name || `Person ${index + 1}`;
-        const short = initials[index];
-        const ambiguous = initials.filter(value => value === short).length > 1;
-        return { id: `person${index + 1}-status`, label, header: short && !ambiguous ? short : `P${index + 1}`,
+        return { id: `person${index + 1}-status`, label, header: label,
             group: 'persons', format: 'person', unit: 'Lebensstatus', visibility: 'display', person: index + 1,
             explanation: `${label}: Lebensstatus, bei aktiver Pflege der Pflegegrad, nach Tod das beobachtete Todesjahr.` };
     });
 }
 export function getProtocolColumns(options = {}) {
     const source = options.source || 'mc', detailed = options.logDetailLevel === 'detailed';
+    const personContext = options.personDisplayContext || createProtocolPersonContext(options.inputs);
+    const named = text => text?.replace(/Person ([12])/g, (_, person) => personContext.persons[Number(person) - 1]?.name || `Person ${person}`);
     let columns = PROTOCOL_COLUMNS.filter(column => {
         const h = column.legacyHeader;
         if (column.visibility === 'export') return false;
@@ -469,6 +467,9 @@ export function getProtocolColumns(options = {}) {
         || (STANDARD_IDS.includes(a.id) ? STANDARD_IDS.indexOf(a.id) : 1000)
             - (STANDARD_IDS.includes(b.id) ? STANDARD_IDS.indexOf(b.id) : 1000));
     return columns.map(column => {
+        if (column.group !== 'persons' && /Person [12]/.test(column.label)) {
+            column = { ...column, label: named(column.label), header: named(column.label), explanation: named(column.explanation) };
+        }
         const formatter = (value, entry) => formatProtocolValue(column, value, entry, options);
         return { ...column, title: `${column.label}. ${column.explanation}`,
             key: source === 'backtest' ? column.backtestPath : column.mcPath,

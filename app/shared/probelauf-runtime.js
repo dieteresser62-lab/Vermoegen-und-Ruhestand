@@ -1,4 +1,4 @@
-export const CANDIDATE_IDENTIFIER = 'com.dieter.ruhestandsapp.kandidat';
+export const CANDIDATE_IDENTIFIER = 'de.vermoegen-ruhestand.entwicklung.kandidat';
 
 /** Erkannte Laufzeiten sind unabhängig von Kennung und URL-Parametern verfügbar. */
 export async function resolveProbelaufRuntime({ win = globalThis.window, state = null } = {}) {

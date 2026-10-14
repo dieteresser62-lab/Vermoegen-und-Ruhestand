@@ -110,16 +110,16 @@ try {
         'applyLoadResult', 'applyProfileAssetValuesToDom', 'loadProfileAssetValues', 'updateActiveProfileLabel',
         'bindProfileValueInputs', 'bindControls', 'render', 'renderPersistenceState', 'observeSelectionText',
         'managerInputSignature', 'RECONCILIATION_INPUT_IDS', 'PROFILE_INPUT_IDS', 'getPageNavigationGuard', 'createNavigationOperationLifecycle',
-        'bindManagerHistoryStartUI', 'saveManagerHistoryStart', 'bindTrancheHistoryUI', 'renderDepotHistory', 'processingIsBlocked', 'bindManagerPersonCards',
+        'bindManagerHistoryStartUI', 'saveManagerHistoryStart', 'bindTrancheHistoryUI', 'renderDepotHistory', 'processingIsBlocked', 'bindManagerPersonCards', 'flushManagerCashInput',
         `${functionSource('app/tranches/tranchen-manager-page.js', 'initTranchenManagerPage')}\nreturn initTranchenManagerPage;`)(
         state, () => 'fixture', () => {}, () => null, () => ({ status: 'empty' }), () => {}, () => {}, () => ({}),
         () => {}, () => {}, () => {}, () => {
             if (!managerDoc.getElementById('reconcileCashStatus')) addField(managerDoc, 'reconcileCashStatus', 'short', [['short', 'Kurz'], ['long', long]], managerForm);
         }, () => {}, observeSelectionText, () => '', [], [],
-        () => ({ subscribe: () => () => {}, register: () => ({ notify() {}, unregister() {} }) }),
+        () => ({ subscribe: () => () => {}, register: () => ({ notify() {}, unregister() {} }), registerBeforeLeave: () => () => {} }),
         () => ({ isBlocked: () => false }),
         // Echte Verlaufsbinder; die Auswahltext-Fixture enthält keine Verlaufshosts.
-        bindManagerHistoryStartUI, () => {}, bindTrancheHistoryUI, () => {}, () => false, bindManagerPersonCards);
+        bindManagerHistoryStartUI, () => {}, bindTrancheHistoryUI, () => {}, () => false, bindManagerPersonCards, () => true);
     init(); init();
     for (const id of managerIds) {
         const select = managerDoc.getElementById(id), node = managerDoc.getElementById(`${id}-fulltext`);

@@ -61,6 +61,7 @@ export function formatDiagnosisPayload(raw) {
             name: g.name,
             value: formattedValue,
             threshold: formattedThreshold,
+            rule,
             status,
             note: thresholdNote
         };

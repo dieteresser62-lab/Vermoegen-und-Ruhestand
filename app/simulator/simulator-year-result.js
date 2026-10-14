@@ -276,6 +276,9 @@ export function buildSimulatorYearResult({
             FlexRatePct: flexRate,
             MinFlexRatePct: spendingResult.details?.minFlexRatePct ?? null,
             minimumFlexAnnual,
+            flex_wunsch_haushalt_nominal: Number.isFinite(fullResult.input?.flexBedarf)
+                ? fullResult.input.flexBedarf : null,
+            flex_unter_mindestflex: minimumFlexAnnual > 0 && fulfilledHouseholdFlex < minimumFlexAnnual,
             minimumFlexStatus,
             minimumFlexBlockReason: keyParams.minimumFlexBlockReason || '',
             minimumFlexStatusBeforeSafetyOverride: keyParams.minimumFlexStatusBeforeSafetyOverride || '',

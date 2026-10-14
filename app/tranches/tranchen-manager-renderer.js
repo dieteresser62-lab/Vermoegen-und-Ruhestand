@@ -5,12 +5,28 @@ export function renderManagerPlanComparison(doc, view) {
     const host = doc.getElementById('managerPlanComparison');
     if (host) host.innerHTML = householdPlanComparisonHtml(view);
 }
-import { buildHistoryRecoveryHtml, buildPersonHistoryHtml, projectTrancheHistory, buildTrancheHistorySummary, buildTrancheHistoryDetail, bindTrancheHistoryChart } from './tranchen-history-ui.js';
+import { buildHistoryRecoveryHtml, buildPersonHistoryHtml, buildPersonHistoryDetailsHtml, projectTrancheHistory, buildTrancheHistorySummary, buildTrancheHistoryDetail, bindTrancheHistoryChart } from './tranchen-history-ui.js';
 // @ts-check
 
 import { formatDisplayNumber, formatDisplayDate } from '../shared/designsystem-number-format.js';
 import { escapeHtml } from '../shared/security-utils.js';
 import { STARTUP_PRICE_SESSION_KEY } from './tranchen-startup-prices.js';
+import { detectDynamicFlexPreset, DYNAMIC_FLEX_OPTIONS } from '../shared/dynamic-flex-presets.js';
+
+export function renderManagerPlanSummary(doc, values) {
+    const host = doc.getElementById('managerPlanMoreSummary');
+    if (!host) return;
+    if (!values) { host.textContent = 'Planbereich noch nicht bestätigt'; return; }
+    const preset = DYNAMIC_FLEX_OPTIONS.find(([key]) => key === detectDynamicFlexPreset(values))?.[1];
+    host.textContent = `Flex-Budget ${formatMoney(values.flexBudgetAnnual)} €/Jahr · Reserven ${formatDisplayNumber(values.liquidityRunwayYears)} Jahre · Strategie ${values.decumulation.mode === 'standard' ? 'Standard' : '3-Töpfe'} · Dynamik ${preset} · CAPE ${formatDisplayNumber(values.cape.value)}`;
+}
+
+export function buildManagerHistoryStartHtml(projection, single) {
+    return `<form id="managerHistoryStartForm" data-history-start-form class="pv-history-start"><label for="managerHistoryStart">Verlauf ab …</label>
+        <input id="managerHistoryStart" data-history-start-input class="ds-input" type="date" required max="${projection.historyContext?.today || ''}" value="${projection.historyContext?.startDate || ''}">
+        <button type="submit" id="managerHistoryStartConfirm" class="ds-button ds-button-secondary">Beginn bestätigen</button>
+        <small>${single ? 'Für dieses Profil' : 'Für den gesamten Haushalt'}. Fehlende Kurse werden beim nächsten Start nachgeladen.</small></form><p id="managerHistoryStartStatus" class="history-note" role="status" aria-live="polite"></p>`;
+}
 
 function renderManagerAvatar(profile, small = false) {
     const initials = String(profile.name).trim().split(/\s+/u).map(part => Array.from(part)[0]).slice(0, 2).join('').toLocaleUpperCase('de-DE');
@@ -41,6 +57,8 @@ export function getManagerView(doc) { return managerViews.get(doc); }
 export function renderManagerView(doc, view = getManagerView(doc)) {
     if (!view) return;
     managerViews.set(doc, view);
+    const addPerson = doc.getElementById('managePeopleBtn');
+    if (addPerson) addPerson.hidden = view.kind === 'history';
     const tabs = Array.from(doc.getElementById('managerSectionNav')?.querySelectorAll?.('[role="tab"]') || []);
     for (const tab of tabs) {
         const selected = view.kind !== 'person' ? tab.dataset.managerView === view.kind
@@ -80,7 +98,7 @@ export function renderManagerProfiles(doc, projection) {
         const html = choice('Haushalt') + ordered.map(profile => choice(profile.name, profile.id)).join('');
         if (historySwitch.innerHTML !== html) historySwitch.innerHTML = html;
     }
-    const historyLink = (profileId = null) => `<a class="ds-text-link" href="#verlauf" data-manager-view="history" ${profileId ? `data-manager-history-profile="${escapeHtml(profileId)}"` : ''} data-manager-history-scope="${profileId ? 'person' : 'household'}">Verlauf ansehen ›</a>`;
+    const historyLink = (profileId = null) => `<a class="ds-text-link" href="#verlauf" data-manager-view="history" ${profileId ? `data-manager-history-profile="${escapeHtml(profileId)}"` : ''} data-manager-history-scope="${profileId ? 'person' : 'household'}">Zum Verlauf →</a>`;
     const money = value => `${formatMoney(value)} €`;
     const allocationNames = { aktien_alt: 'Aktien · Altbestand', aktien_neu: 'Aktien · Neubestand',
         anleihe: 'Anleihen', geldmarkt: 'Geldmarkt-ETF', gold: 'Gold-ETC', cash: 'Tagesgeld' };
@@ -94,50 +112,60 @@ export function renderManagerProfiles(doc, projection) {
     };
     const single = projection.profiles.length === 1;
     const title = doc.getElementById('managerPageTitle');
-    if (title) title.textContent = single ? 'Alles über dich, an einem Ort.' : 'Alles über euch beide, an einem Ort.';
+    if (title) title.textContent = 'Personen & Vermögen';
     const person = projection.profiles[0];
     const sum = single && person.valid ? { ...person, incomeWarnings: person.currentIncome.missing ? ['Rentenbeginn fehlt'] : [], careTarget: person.careTarget || 0 } : projection.household;
     const stages = sum?.incomeSteps || [];
     const upcoming = renderManagerIncomeSteps(stages);
     const help = renderManagerIncomeHelp(stages);
     const warnings = (sum?.incomeWarnings || []).map(warning => `<p>${escapeHtml(warning)}</p>`).join('');
-    const total = sum ? `<div class="pv-hero-number">${formatMoney(sum.assets)}<span>€</span></div>
-        ${buildPersonHistoryHtml(projection.householdHistory, single ? `Vermögensverlauf ${person.name}` : 'Vermögensverlauf Haushalt', projection.historyContext, 'managerHouseholdHistoryInfo')}
-        ${historyLink()}
-        <p class="pv-household-details"><span class="${sum.gain === 0 ? '' : sum.gain > 0 ? 'positive' : 'negative'}">${formatSignedMoney(sum.gain)} €</span> Buchgewinn auf ${money(sum.cost)} Einstand · darin Pflegereserve-Ziel ${money(sum.careTarget)}</p>
-        ${allocationBar(sum)}
+    const history = (value, title, infoId) => buildPersonHistoryHtml(value, title, projection.historyContext, infoId, { compact: true });
+    const details = (key, body) => `<details class="pv-wealth-details" data-wealth-details="${escapeHtml(key)}"><summary><span class="pv-disclosure-action"><span>▸ Details zeigen</span><span>▾ Details ausblenden</span></span></summary><div class="pv-wealth-details-body">${body}</div></details>`;
+    const gain = profile => `<p class="pv-book-gain"><span class="${profile.gain === 0 ? '' : profile.gain > 0 ? 'positive' : 'negative'}">${formatSignedMoney(profile.gain)} €</span> Buchgewinn auf ${money(profile.cost)} Einstand</p>`;
+    const householdTitle = single ? `Vermögensverlauf ${person.name}` : 'Vermögensverlauf Haushalt';
+    const startForm = buildManagerHistoryStartHtml(projection, single);
+    const householdDetails = `${sum ? `${gain(sum)}<p>Pflegereserve-Ziel ${money(sum.careTarget)}</p>
         <div class="pv-income"><div><span>Einkommen im Monat, netto</span><strong>${money(sum.income)}</strong></div>
-        <p>Renten und sonstige Einkünfte ${single ? 'der Person' : 'der Haushaltspersonen'} heute; künftige Renten ab ihrem Beginn.</p>${upcoming}${help}${warnings}</div>`
-        : '<p>Haushaltssumme nicht verfügbar: keine Auswahl oder unvollständige Profildaten.</p>';
-    const profileButton = profile => `<button type="button" class="ds-button ds-button-secondary" data-manager-profile="${escapeHtml(profile.id)}" >Öffnen</button>`;
-    const cards = projection.profiles.map((profile, index) => `
-        <section class="ds-card pv-person-card ${profile.active ? 'pv-active' : ''}" aria-label="${escapeHtml(profile.name)}">
+        <p>Renten und sonstige Einkünfte ${single ? 'der Person' : 'der Haushaltspersonen'} heute; künftige Renten ab ihrem Beginn.</p>${upcoming}${help}${warnings}</div>` : ''}
+        ${buildPersonHistoryDetailsHtml(projection.householdHistory, householdTitle, 'managerHouseholdHistoryInfo')}
+        ${startForm}${historyLink()}`;
+    const total = sum ? `<div class="pv-hero-number">${formatMoney(sum.assets)}<span>€</span></div>
+        ${history(projection.householdHistory, householdTitle, 'managerHouseholdHistoryInfo')}
+        ${allocationBar(sum)}` : '<p>Haushaltssumme nicht verfügbar: keine Auswahl oder unvollständige Profildaten.</p>';
+    const profileButton = profile => `<a class="ds-text-link" href="#personendaten" data-manager-profile="${escapeHtml(profile.id)}">Zur Person →</a>`;
+    const cards = projection.profiles.map((profile, index) => {
+        const historyTitle = `Vermögensverlauf ${profile.name}`, infoId = `managerPersonHistoryInfo-${index + 1}`;
+        const recovery = profile.active ? buildHistoryRecoveryHtml(profile.historyRecovery) + '<p id="managerHistoryRecoveryStatus" role="status" tabindex="-1"></p>' : '';
+        const personDetails = profile.valid ? `${allocationBar(profile)}
+            <dl class="pv-allocation-values">${Object.entries(profile.allocation).map(([kind, value]) => `<div><dt>${allocationNames[kind]}</dt><dd>${money(value)}</dd></div>`).join('')}</dl>
+            ${gain(profile)}<p>Pflegereserve-Ziel ${money(profile.careTarget || 0)}</p>
+            <dl><div><dt>Sonstige Einkünfte im Monat</dt><dd>${money(profile.values.sonstigeEinkuenfte)}</dd></div><div><dt>Einkommen im Monat, netto</dt><dd>${money(profile.income)}</dd></div></dl>
+            <p>${escapeHtml(profile.currentIncome.pensionStatus || profile.currentIncome.status)}</p>
+            ${buildPersonHistoryDetailsHtml(profile.history, historyTitle, infoId)}${historyLink(profile.id)}
+            <footer><p>${profile.count} Tranchen</p>${renderManagerPersonMenu(profile)}</footer>` : `<footer><p>Profildaten unvollständig; keine Vermögenssumme.</p>${renderManagerPersonMenu(profile)}</footer>`;
+        return `<section class="ds-card pv-person-card" aria-label="${escapeHtml(profile.name)}">
             <header><div class="pv-person-identity">${renderManagerAvatar(profile)}<div><h3>${escapeHtml(profile.name)}</h3>
             <p>${profile.valid ? `${escapeHtml(profile.personDates?.identity || 'Geburtsdatum fehlt oder ist ungültig')} · ` : ''}${escapeHtml(profile.householdRole || 'Haushaltsprofil')}</p></div></div>${profileButton(profile)}</header>
             ${profile.valid ? `<dl class="pv-person-wealth"><div><dt>Vermögen</dt><dd>${money(profile.assets)}</dd></div></dl>
-            ${buildPersonHistoryHtml(profile.history, `Vermögensverlauf ${profile.name}`, projection.historyContext, `managerPersonHistoryInfo-${index + 1}`)}
-            ${historyLink(profile.id)}
-            <dl class="pv-person-income">
-            <div><dt>Rente netto</dt><dd>${money(profile.values.renteMonatlich)}</dd><small>${escapeHtml(profile.currentIncome.status)}</small></div>
-            <div><dt>Sonstige Einkünfte</dt><dd>${money(profile.values.sonstigeEinkuenfte)}</dd><small>im Monat</small></div></dl>
-            ${allocationBar(profile, false)}
-            ${profile.active ? buildHistoryRecoveryHtml(profile.historyRecovery) + '<p id="managerHistoryRecoveryStatus" role="status" tabindex="-1"></p>' : ''}
-            <footer><p>${profile.count} Tranchen · Buchgewinn <span class="${profile.gain === 0 ? '' : profile.gain > 0 ? 'positive' : 'negative'}">${formatSignedMoney(profile.gain)} €</span> · Tagesgeld ${money(profile.values.tagesgeld)}</p>
-            ${renderManagerPersonMenu(profile)}</footer>`
-            : `<footer><p>Profildaten unvollständig; keine Vermögenssumme.</p>${renderManagerPersonMenu(profile)}</footer>`}
-        </section>`).join('');
+            ${history(profile.history, historyTitle, infoId)}
+            <dl class="pv-person-income"><div><dt>Rente netto</dt><dd>${money(profile.values.renteMonatlich)} <small>/Monat</small></dd><small>${escapeHtml(profile.currentIncome.status)}</small></div>
+            <div><dt>Tagesgeld</dt><dd>${money(profile.values.tagesgeld)}</dd></div></dl>` : ''}
+            ${details(profile.id, personDetails)}${recovery}
+        </section>`;
+    }).join('');
     const household = doc.getElementById('managerHousehold');
     if (household) {
         const householdHtml = `<section class="ds-card pv-household-card"><div class="pv-household-heading"><h2>${single ? 'Dein Vermögen' : 'Euer Vermögen · Haushalt'}</h2>
-        <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Erläuterung zum Vermögen" aria-describedby="managerHouseholdHelp">i</button><span id="managerHouseholdHelp" class="ds-info-pop" role="tooltip">Marktwert aller Tranchen plus Tagesgeld. Die Pflegereserve ist ein Liquiditätsziel und wird nicht zusätzlich gezählt.</span></span></div>${total}
-        <form id="managerHistoryStartForm" data-history-start-form class="pv-history-start"><label for="managerHistoryStart">Verlauf ab …</label>
-        <input id="managerHistoryStart" data-history-start-input class="ds-input" type="date" required max="${projection.historyContext?.today || ''}" value="${projection.historyContext?.startDate || ''}">
-        <button type="submit" id="managerHistoryStartConfirm" class="ds-button ds-button-secondary">Beginn bestätigen</button>
-        <small>${single ? 'Für dieses Profil' : 'Für den gesamten Haushalt'}. Fehlende Kurse werden beim nächsten Start nachgeladen.</small></form></section>${cards}`;
+        <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Erläuterung zum Vermögen" aria-describedby="managerHouseholdHelp">i</button><span id="managerHouseholdHelp" class="ds-info-pop" role="tooltip">Marktwert aller Tranchen plus Tagesgeld. Die Pflegereserve ist ein Liquiditätsziel und wird nicht zusätzlich gezählt.</span></span></div>${total}${details('household', householdDetails)}</section>${cards}`;
         household.classList?.[single ? 'add' : 'remove']('pv-single-profile');
         let displayedHtml = householdHtml;
         if (single) { displayedHtml = householdHtml.replace('pv-household-card', 'pv-individual-card'); }
-        if (household.innerHTML !== displayedHtml) household.innerHTML = displayedHtml;
+        // Laufende Projektionen lassen gerade geöffnete Details offen; Reload startet zu.
+        if (household.innerHTML !== displayedHtml) {
+            const opened = new Set(Array.from(household.querySelectorAll?.('[data-wealth-details][open]') || []).map(el => el.dataset.wealthDetails));
+            household.innerHTML = displayedHtml;
+            for (const el of household.querySelectorAll?.('[data-wealth-details]') || []) el.open = opened.has(el.dataset.wealthDetails);
+        }
     }
     renderManagerPersonData(doc, projection.profiles.find(profile => profile.active));
     renderManagerView(doc, view);
@@ -226,11 +254,13 @@ export function renderManagerQuoteContext(doc, tranchen) {
     const date = uniform ? new Intl.DateTimeFormat('de-DE', {
         day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
     }).format(new Date(tranchen[0].asOf * 1000)) : quoteSummary(tranchen);
-    host.textContent = `${uniform ? 'Kurse vom' : 'Gespeicherter Kursstand:'} ${date}`
+    host.textContent = `Kurse: ${uniform ? 'Stand ' : ''}${date}` + (stale ? ' · ältere Kurse' : '');
+    const details = doc.getElementById('managerQuoteDetails');
+    if (details) details.textContent = `${uniform ? 'Kurse vom' : 'Gespeicherter Kursstand:'} ${date}`
         + (automatic ? ' · automatisch beim Öffnen' : '')
         + (!automatic && uniform && !stale ? ' · gespeicherter Kursstand' : '')
         + (stale ? ' · ältere Kurse; manuell aktualisieren' : '')
-        + (!uniform ? '. Abrufzeit ist kein Kursdatum.' : '');
+        + '. Kursdatum aus gespeichertem asOf; Abrufzeit ist kein Kursdatum.';
     if (host.dataset) host.dataset.automatic = automatic ? 'true' : 'false';
     host.title = 'Kursdatum aus gespeichertem asOf; Abrufzeit ist kein Kursdatum.';
 }
@@ -318,7 +348,7 @@ export function buildTranchenTableHtml(tranchen, { context = null, profileId = n
                 <td class="${gain === 0 ? '' : gain > 0 ? 'positive' : 'negative'}">${formatSignedMoney(gain)}\u00a0€<small class="pv-gain-percent">${formatSignedPercent(gainPct)}</small></td>
                 ${buildTrancheHistorySummary(history)}
                 <td class="table-actions">
-                    <button type="button" class="ds-button ds-icon-button" data-history-toggle="${escapeHtml(t.trancheId)}" aria-expanded="${expanded}" aria-controls="${escapeHtml(detailId)}" aria-label="Kursverlauf ${accessibleName} ${expanded ? 'zuklappen' : 'aufklappen'}">${expanded ? '⌃' : '⌄'}</button>
+                    <button type="button" class="ds-button ds-button-quiet pv-history-toggle" data-history-toggle="${escapeHtml(t.trancheId)}" aria-expanded="${expanded}" aria-controls="${escapeHtml(detailId)}" aria-label="Kursverlauf ${accessibleName} ${expanded ? 'ausblenden' : 'zeigen'}">${expanded ? '▾ ausblenden' : '▸ zeigen'}</button>
                     <button class="icon-action ds-button ds-icon-button" type="button" data-action="edit-tranche" data-tranche-id="${escapeHtml(t.trancheId)}" aria-label="Tranche ${accessibleName} bearbeiten" title="Tranche bearbeiten"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>
                     <button class="delete-btn icon-action ds-button ds-icon-button" type="button" data-action="delete-tranche" data-tranche-id="${escapeHtml(t.trancheId)}" aria-label="Tranche ${accessibleName} löschen" title="Tranche löschen"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
                 </td></tr><tr class="pv-history-row" id="${escapeHtml(detailId)}" ${expanded ? '' : 'hidden'}><td colspan="12">${expanded ? buildTrancheHistoryDetail(t, history) : ''}</td></tr>`;
@@ -372,7 +402,7 @@ export function ensureReconciliationCashControls(doc = document) {
             </div>
             <div id="reconcileInitialCashBalanceGroup" class="form-group" hidden>
                 <label for="reconcileInitialCashBalance">Bestätigter Cashstand nach Berücksichtigung (€) *</label>
-                <input class="ds-input" id="reconcileInitialCashBalance" type="number" step="0.01">
+                <input class="ds-input" id="reconcileInitialCashBalance" data-money-input type="text" inputmode="decimal" lang="de">
                 <small>Dieser Stand wird zusammen mit Nettoerlös und Zeitpunkt append-only dokumentiert.</small>
             </div>`;
         const firstActions = form.querySelector?.('.reconciliation-actions');
@@ -425,7 +455,7 @@ export function buildReconciliationCashStatusesHtml(statuses = [], { errorMessag
                 <div><strong>Verkauf vom ${escapeHtml(status.executedAt || 'unbekannt')}:</strong> ${escapeHtml(status.trancheId || 'Tranche unbekannt')}</div>
                 <div><strong>Zielverkauf:</strong> ${targetActionId}</div>
                 <div><strong>Nettoerlös:</strong> ${net}\u00a0€ · <strong>bestätigter Cashstand:</strong> ${cashBalance}</div>
-                <details class="pv-cash-evidence"><summary>Exakte Beträge</summary><p>Nettoerlös: ${formatDisplayNumber(status.confirmedNetProceedsEur, { fractionDigits: 2 })} € · bestätigter Cashstand: ${status.cashBalanceAfterPostingEur === null ? '-' : `${formatDisplayNumber(status.cashBalanceAfterPostingEur, { fractionDigits: 2 })} €`}</p></details>
+                <details class="pv-cash-evidence"><summary><span class="pv-disclosure-action"><span>▸ Exakte Beträge zeigen</span><span>▾ Exakte Beträge ausblenden</span></span></summary><p>Nettoerlös: ${formatDisplayNumber(status.confirmedNetProceedsEur, { fractionDigits: 2 })} € · bestätigter Cashstand: ${status.cashBalanceAfterPostingEur === null ? '-' : `${formatDisplayNumber(status.cashBalanceAfterPostingEur, { fractionDigits: 2 })} €`}</p></details>
                 ${status.confirmedAt ? `<div><strong>Nachweiszeitpunkt:</strong> ${escapeHtml(status.confirmedAt)}</div>` : ''}
                 ${evidence}${correction}
                 <div class="reconciliation-actions">${action}</div>
@@ -460,6 +490,7 @@ export function renderManagerPersonData(doc, profile) {
         for (const card of ['Person', 'Assets', 'Care']) text(`manager${card}Summary`, 'Profildaten unvollständig');
         text('profilePersonDateStatus', 'Profildaten unvollständig; bitte prüfen.');
         text('managerPensionStatus', 'Rentenbeginn nicht verfügbar.');
+        text('managerPensionStartStatus', 'Rentenbeginn nicht verfügbar.');
         const banner = doc.getElementById('managerBirthSupplement');
         if (banner) banner.hidden = true;
         const age = doc.getElementById('profileAlter');
@@ -470,8 +501,9 @@ export function renderManagerPersonData(doc, profile) {
     const health = v.healthBucket || { enabled: false };
     const money = value => `${formatMoney(value)} €`;
     const pct = value => formatDisplayNumber(value, { fractionDigits: 1 });
-    text('managerPersonSummary', `${dates?.identity || 'Geburtsdatum fehlt oder ist ungültig'} · Rente ${money(v.renteMonatlich)} · ${profile.currentIncome?.status || ''} · Kirchensteuer ${pct(v.kirchensteuerPct)} %`);
-    text('managerAssetsSummary', `Tagesgeld ${money(v.tagesgeld)} · Gold-Strategie ${v.goldAktiv ? `an, Ziel ${pct(v.goldZiel)} %` : 'aus'}`);
+    const adjustment = v.rentenanpassungArt === 'fix' ? `${pct(v.rentenanpassungPct)} % Rentenanpassung` : v.rentenanpassungArt === 'cpi' ? 'Rente folgt Inflation' : 'Rente folgt Lohnentwicklung';
+    text('managerPersonSummary', `${dates?.identity || 'Geburtsdatum fehlt oder ist ungültig'} · ${(profile.currentIncome?.pensionStatus?.startsWith('Rente') ? profile.currentIncome.pensionStatus : profile.currentIncome?.status) || ''} · ${adjustment} · Kirchensteuer ${pct(v.kirchensteuerPct)} %`);
+    text('managerAssetsSummary', v.goldAktiv ? `Ziel ${pct(v.goldZiel)} % · Floor ${pct(v.goldFloor)} % · Band ± ${pct(v.goldBand)} % · ${v.goldSteuerfrei ? 'steuerfrei' : 'steuerpflichtig'}` : 'aus');
     text('managerCareSummary', health.enabled ? `aktiv · Ziel ${money(health.initialAmount)} · ab Pflegegrad ${health.triggerMinGrade}` : 'inaktiv · Ziel innerhalb der Liquidität');
     text('profileGenderStatus', v.genderAssumed ? 'bitte prüfen · Geschlecht bisher angenommen' : '');
     text('profilePersonDateStatus', dates?.hint || 'Geburtsdatum einmal ergänzen');
@@ -481,6 +513,7 @@ export function renderManagerPersonData(doc, profile) {
     const confirmGender = doc.getElementById('profileGenderConfirm');
     if (confirmGender) confirmGender.hidden = !v.genderAssumed;
     text('managerPensionStatus', profile.currentIncome?.pensionStatus || '');
+    text('managerPensionStartStatus', (profile.currentIncome?.pensionStatus || '').split(' · ')[0].replace(/^Rente /, ''));
     const ageField = doc.getElementById('profileAlter');
     if (ageField) ageField.value = dates?.age ?? v.alter ?? '';
     const banner = doc.getElementById('managerBirthSupplement');

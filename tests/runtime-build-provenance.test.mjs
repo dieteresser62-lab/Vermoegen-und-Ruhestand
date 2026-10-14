@@ -138,7 +138,9 @@ const runtimeFiles = [
     'types/strategy-options.js',
     'css/balance.css',
     'engine/index.mjs',
-    'assets/images/sentinel.svg'
+    'assets/images/sentinel.svg',
+    'docs/ui/sentinel.png',
+    'CHANGELOG.md'
 ];
 const nonRuntimeFiles = [
     'README.md',
@@ -156,13 +158,15 @@ const nonRuntimeFiles = [
 let server = null;
 try {
     for (const relativePath of [...runtimeFiles, ...nonRuntimeFiles]) writeFixtureFile(relativePath);
+    writeFixtureFile('Handbuch.html', '<img src="docs/ui/sentinel.png"><a href="CHANGELOG.md">Änderungen</a>');
+    writeFixtureFile('docs/ui/unneeded.png', 'unused fixture image');
     writeFixtureFile('.gitignore', 'dist/\napp/shared/ignored-runtime.js\n');
     fs.mkdirSync(path.join(fixtureRoot, 'scripts'), { recursive: true });
     fs.copyFileSync(path.join(repoRoot, 'scripts', 'sync-dist.mjs'), path.join(fixtureRoot, 'scripts', 'sync-dist.mjs'));
     git('init', '-q');
     git('add', '.');
     git('commit', '-q', '-m', 'fixture');
-    const fixtureHead = git('rev-parse', 'HEAD');
+    let fixtureHead = git('rev-parse', 'HEAD');
 
     // Erfolgreicher Lauf: nur Laufzeitdateien plus Herkunft aus dem Commit.
     writeFixtureFile('scratch.txt', 'untracked scratch outside the runtime roots\n');
@@ -174,12 +178,26 @@ try {
     for (const relativePath of [...nonRuntimeFiles, 'scratch.txt', 'scripts/sync-dist.mjs', '.gitignore']) {
         assert(!fs.existsSync(path.join(fixtureRoot, 'dist', relativePath)), `dist excludes non-runtime file ${relativePath}`);
     }
+    assert(!fs.existsSync(path.join(fixtureRoot, 'dist/docs/ui/unneeded.png')), 'Dist liefert nur tatsächlich eingebundene Handbuchbilder');
+    assertEqual(fs.readFileSync(path.join(fixtureRoot, 'dist/docs/ui/sentinel.png'), 'utf8'), 'fixture:docs/ui/sentinel.png\n', 'Bildbytes stammen unverändert aus dem gewählten Commit');
+    writeFixtureFile('docs/ui/untracked.png', 'untracked image');
+    const imageSync = runSync();
+    assert(imageSync.status !== 0 && imageSync.output.includes('docs/ui/untracked.png'), 'Nicht versionierte Handbuchbilder blockieren den Standardsync');
+    fs.unlinkSync(path.join(fixtureRoot, 'docs/ui/untracked.png'));
     const packaged = readPackagedProvenance();
     assert(packaged !== null, 'packaged provenance satisfies the runtime provenance contract');
     assertEqual(packaged.sourceCommit, fixtureHead, 'packaged provenance names the synced commit');
     assertEqual(packaged.sourceTreeStatus, 'clean', 'packaged provenance is clean by construction');
     assertEqual(packaged.provider, 'sync_dist', 'packaged provenance names the dist sync as provider');
 
+    writeFixtureFile('Handbuch.html', '<img src="docs/ui/missing.png">');
+    git('add', 'Handbuch.html'); git('commit', '-q', '-m', 'missing image fixture');
+    const missingImageSync = runSync('--rev', 'HEAD');
+    assert(missingImageSync.status !== 0 && missingImageSync.output.includes('missing.png'), 'Fehlendes Bild im gewählten Commit stoppt vor der Auslieferung');
+    assertEqual(fs.readFileSync(path.join(fixtureRoot, 'dist/docs/ui/sentinel.png'), 'utf8'), 'fixture:docs/ui/sentinel.png\n', 'Fehlender Bildbeleg lässt vorhandenes Dist unverändert');
+    git('checkout', fixtureHead, '--', 'Handbuch.html');
+    git('commit', '-q', '-m', 'restore handbook fixture');
+    fixtureHead = git('rev-parse', 'HEAD');
     // Nicht versionierte Laufzeitdateien wuerden in dist fehlen und blockieren den Standardlauf.
     writeFixtureFile('app/shared/untracked-runtime.js', 'export const untracked = true;\n');
     const untrackedSync = runSync();

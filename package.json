@@ -4,6 +4,8 @@
   "description": "Die Ruhestand-App ist ein vollst\u00c3\u00a4ndig lokal ausf\u00c3\u00bchrbares Planungstool mit zwei Oberfl\u00c3\u00a4chen:",
   "main": "balance-binder.js",
   "scripts": {
+    "docs:bilder": "node scripts/docs-bilder.mjs",
+    "docs:pruefen": "node scripts/docs-pruefen.mjs",
     "docs:evidence": "node scripts/check-architecture-evidence.mjs",
     "build:global-equity-data": "node scripts/build-global-equity-research-chain.mjs",
     "verify:global-equity-data": "node scripts/build-global-equity-research-chain.mjs --verify-only",
@@ -30,7 +32,8 @@
     "tauri:build": "tauri build",
     "serve": "node scripts/serve.mjs",
     "sync-dist": "node scripts/sync-dist.mjs",
-    "build:desktop": "npm run sync-dist && npm run tauri:build"
+    "build:desktop": "npm run sync-dist && npm run tauri:build",
+    "build:release": "npm run sync-dist && npm run tauri -- build --no-bundle --config src-tauri/tauri.release.conf.json"
   },
   "keywords": [],
   "author": "",

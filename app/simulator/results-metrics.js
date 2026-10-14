@@ -1,7 +1,7 @@
 "use strict";
 
 import { formatCurrencySafe, formatNumberWithUnit, formatPercentage, sanitizeDescription } from './results-formatting.js';
-import { formatWholeEuro } from './results-formatting.js';
+import { formatWholeEuro, formatCoveragePercentage, formatCoveredRuns } from './results-formatting.js';
 import { STRESS_PRESETS } from './simulator-data.js';
 
 /**
@@ -21,15 +21,73 @@ import { STRESS_PRESETS } from './simulator-data.js';
 
 export const WITHDRAWAL_RATE_REPORTING_REFERENCE_NOTICE = 'Die Auswertung bei 4,5 % bezieht sich auf die realisierte Entnahmequote. Sie ist nur eine Berichtsreferenz und keine Alarm- oder Guardrail-Schwelle.';
 
+export const LEGACY_FLEX_RESTRICTION_LABEL = 'mehr als 10 % unter Wunsch-Flex';
+const amount = value => Number.isFinite(value) && value >= 0;
+const share = value => Number.isFinite(value) && value >= 0 && value <= 100;
+export function hasTechnicalFinancialError(result) {
+    return result?.outcomeInventory?.technical_error > 0 || result?.batchStatus === 'technical_error'
+        || result?.financialMetricsValid === false || (result?.outcome && !['completed', 'ruin'].includes(result.outcome.kind));
+}
+
+/** Gemeinsame lesende FR-6-Projektion; nur eingefrorene Laufdaten. */
+export function projectMinimumFlexDisplay(result, { backtest = false } = {}) {
+    const block = backtest ? result?.metrics?.minimumFlexRestriction ?? result?.minimumFlexRestriction : result?.minimumFlexRestriction;
+    const present = Object.hasOwn(result || {}, 'minimumFlexRestriction')
+        || (backtest && Object.hasOwn(result?.metrics || {}, 'minimumFlexRestriction'));
+    const technical = hasTechnicalFinancialError(result);
+    const legacy = !present || block?.startMinimumFlexAnnual === 0;
+    if (legacy) return { legacy: true, technical, title: LEGACY_FLEX_RESTRICTION_LABEL,
+        basisNote: present ? 'Mindest-Flex war im Lauf nicht gesetzt.' : 'Älteres Ergebnis: ältere Grundlage ohne Mindest-Flex-Messung.' };
+    const path = backtest ? block?.path : block;
+    const pct = backtest ? path?.yearSharePct : block?.yearSharePctP50;
+    const valid = !technical && block?.definitionVersion === 'MinimumFlexRestrictionV1'
+        && block.priceBasis === 'nominal' && block.population === 'completed_decumulation_years'
+        && block.comparison === 'paid_household_flex_lt_applied_positive_minimum'
+        && amount(block.startMinimumFlexAnnual) && block.startMinimumFlexAnnual > 0
+        && block.missingReason === null && path?.missingReason === null && share(pct)
+        && (backtest ? Number.isInteger(path.observationCount) && path.observationCount > 0
+            && Number.isInteger(path.affectedYearCount) && path.affectedYearCount >= 0
+            && path.affectedYearCount <= path.observationCount
+            && Math.abs(pct - path.affectedYearCount / path.observationCount * 100) < 1e-8
+            : Number.isInteger(block.sampleSize) && block.sampleSize > 0 && share(block.affectedRunSharePct));
+    const reason = technical ? 'Wegen technischer Fehler ist diese Antwort nicht auswertbar.'
+        : 'Nicht auswertbar: vollständige Mindest-Flex-Messdaten fehlen.';
+    const minimumNote = amount(block?.startMinimumFlexAnnual)
+        ? `Mindest-Flex zum Laufstart: ${formatWholeEuro(block.startMinimumFlexAnnual)}; im Lauf jährlich fortgeschrieben. Vergleich mit dem jeweils angewandten Jahresbetrag.`
+        : 'Der Mindest-Flex zum Laufstart fehlt; aktuelle Eingaben ersetzen keinen Laufwert.';
+    const paid = backtest ? path?.paidMedianNominalEur : block?.paidMedianNominalEurP50;
+    const desired = backtest ? path?.desiredMedianNominalEur : block?.desiredMedianNominalEurP50;
+    const lowest = backtest ? path?.paidMinimumNominalEur : block?.paidMinimumNominalEurP50;
+    const euros = value => valid && amount(value) ? formatWholeEuro(value) : '—';
+    const amountNote = `Nominale Jahresbeträge: typisch bezahlt ${euros(paid)}, Wunsch ${euros(desired)}, schwächstes Jahr ${euros(lowest)}.${valid && ![paid, desired, lowest].every(amount) ? ' Betragsangaben fehlen.' : ''}`;
+    const populationNote = backtest ? 'Beobachtete abgeschlossene Entnahmejahre bis Laufende.'
+        : `Anteil betroffener Läufe: ${valid ? formatPercentage(block.affectedRunSharePct) : '—'} (mindestens ein Jahr unter Mindest-Flex). Mediane der Laufstatistiken, keine gepoolten Jahre; ${Number.isInteger(block?.sampleSize) ? block.sampleSize : 0} auswertbare Läufe.`;
+    const paidAbovePlan = valid && amount(paid) && amount(desired) && paid > desired;
+    const compactAmounts = paidAbovePlan
+        ? `Typisch ${euros(paid)} · Wunsch-Flex laut Plan ${euros(desired)}`
+        : `Typisch ${euros(paid)} von ${euros(desired)} Wunsch-Flex laut Plan`;
+    const note = valid ? `Nominale Jahresbeträge · ${compactAmounts} · schwächstes Jahr ${euros(lowest)}` : '';
+    return { legacy: false, valid, title: backtest ? 'Jahre unter Mindest-Flex' : 'Anteil Jahre unter Mindest-Flex',
+        value: valid ? formatPercentage(pct) : '—', count: valid && backtest ? path.affectedYearCount : null,
+        affectedRunValue: valid && !backtest ? formatPercentage(block.affectedRunSharePct) : '—',
+        observationCount: valid && backtest ? path.observationCount : null,
+        text: !valid ? reason : pct === 0
+            ? `Im typischen Lauf liegt dein Flex in keinem ausgewerteten Entnahmejahr unter deinem Mindest-Flex von ${euros(block.startMinimumFlexAnnual)}.`
+            : `In typisch ${formatPercentage(pct)} der Entnahmejahre liegt dein Flex unter deinem Mindest-Flex von ${euros(block.startMinimumFlexAnnual)}.`,
+        note, tooltip: `${minimumNote} ${populationNote} ${amountNote} Wunsch-Flex laut Plan und bezahlter Haushalts-Flex enthalten den Rentenbeitrag zum Flex. Dynamic Flex (VPW) kann mehr als den Wunsch-Flex laut Plan auszahlen. Das ist keine Garantie für alle Läufe oder die gesamte Lebenszeit.`,
+        reason: valid ? '' : reason };
+}
+
 /** Reine Anzeigeprojektion vorhandener Kennzahlen; keine neue Statistik. */
 export function buildMonteCarloAnswers({ results, totalRuns, failCount }) {
     const inventory = results?.outcomeInventory;
     const current = inventory?.schemaVersion === 'MonteCarloOutcomeInventoryV1';
-    const technical = current && inventory.technical_error > 0;
+    const technical = hasTechnicalFinancialError(results);
+    const restriction = projectMinimumFlexDisplay(results);
     const coverageAvailable = !technical && (current ? Number.isFinite(inventory.floorCoveragePct)
         : Number.isFinite(totalRuns) && totalRuns > 0 && Number.isFinite(failCount));
-    const coverage = coverageAvailable
-        ? buildSummaryData({ results, totalRuns, failCount })[0].displayValue : '—';
+    const floor = buildSummaryData({ results, totalRuns, failCount })[0];
+    const coverage = coverageAvailable ? floor.displayValue : '—';
     const completeLife = coverageAvailable && current && inventory.requestedRuns > 0 && inventory.all_dead === inventory.requestedRuns;
     const cutShare = !technical && Number.isFinite(results?.cutYearSharePct?.p50)
         ? formatPercentage(results.cutYearSharePct.p50) : '—';
@@ -38,17 +96,30 @@ export function buildMonteCarloAnswers({ results, totalRuns, failCount }) {
     const reason = technical ? 'Wegen technischer Fehler ist diese Antwort nicht auswertbar.' : 'Die Deckungsquote fehlt.';
     return [
         { question: 'Ist mein Grundbedarf gedeckt?', value: coverage,
-            text: coverageAvailable ? `In ${coverage} der simulierten Läufe ist dein Grundbedarf ${completeLife ? 'bis zum simulierten Lebensende' : 'bis zum jeweiligen Laufende'} gedeckt.` : reason,
+            countText: coverageAvailable ? floor.countText : '',
+            text: coverageAvailable ? `Dein Grundbedarf ist in diesen Läufen ${completeLife ? 'bis zum simulierten Lebensende' : 'bis zum jeweiligen Laufende'} gedeckt.` : reason,
             note: completeLife ? 'Alle Läufe bilden einen vollständigen simulierten Lebenspfad ab.'
                 : current ? 'Ein Lauf kann am gewählten Zeitraumende enden. Das ist kein nachgewiesenes Lebensende.'
                     : 'Altes Ergebnis ohne vollständigen Endzustandsbeleg. Eine Deckung bis zum Lebensende ist daraus nicht nachgewiesen.' },
-        { question: 'Muss ich mich einschränken?', value: cutShare === '—' ? '—' : `${cutShare} der Jahre`,
-            text: technical ? reason : cutShare === '—' ? 'Die Angabe zum Anteil der Kürzungsjahre fehlt.'
-                : results.cutYearSharePct.p50 === 0 ? 'Typisch gibt es keine Jahre mit Flex-Kürzung ab 10 % unter den abgeschlossenen Entnahmejahren.'
-                    : `Typisch wird in ${cutShare} der abgeschlossenen Entnahmejahre dein Flex-Bedarf (frei planbare Ausgaben) um mindestens 10 % gekürzt.`,
-            note: technical ? 'Kürzungskennzahlen werden nicht als verlässliche Antwort ausgegeben.'
-                : maxCut === '—' ? 'Die mittlere stärkste Flex-Kürzung fehlt.'
-                    : `Die stärkste Flex-Kürzung beträgt typischerweise ${maxCut}. Beide Werte sind Mediane und können aus unterschiedlichen Läufen stammen.` }
+        { question: 'Muss ich mich einschränken?', value: !restriction.legacy
+                ? restriction.value === '—' ? '—' : `${restriction.value} der Jahre`
+                : cutShare === '—' ? '—' : `${cutShare} der Jahre`,
+            subtitle: restriction.legacy ? LEGACY_FLEX_RESTRICTION_LABEL : 'Jahre mit bezahltem Haushalts-Flex unter Mindest-Flex',
+            metrics: [
+                { label: 'Typischer Jahresanteil', value: restriction.legacy ? cutShare : restriction.value, detail: 'Median je Lauf bis Laufende' },
+                { label: 'Betroffene Läufe', value: restriction.legacy ? '—' : restriction.affectedRunValue, detail: restriction.legacy ? 'Keine Mindest-Flex-Messung vorhanden' : 'Mindestens ein Jahr unter Mindest-Flex' }
+            ],
+            text: !restriction.legacy ? restriction.text : technical ? reason : cutShare === '—'
+                ? `Die Angabe zu „${LEGACY_FLEX_RESTRICTION_LABEL}“ fehlt.`
+                : results.cutYearSharePct.p50 === 0
+                    ? `Gut: Typisch gibt es keine Jahre „${LEGACY_FLEX_RESTRICTION_LABEL}“.`
+                    : `In typisch ${cutShare} der Entnahmejahre liegt dein Flex ${LEGACY_FLEX_RESTRICTION_LABEL}.`,
+            note: !restriction.legacy ? restriction.note : technical ? ''
+                : maxCut === '—' ? 'Die stärkste Flex-Kürzung fehlt.' : `Stärkste Flex-Kürzung: typisch ${maxCut}.`,
+            tooltip: !restriction.legacy ? restriction.tooltip
+                : `${restriction.basisNote} Die alte Berechnung zählt einschließlich genau 10 % (mindestens 10 %) der abgeschlossenen Entnahmejahre. Flex-Bedarf bedeutet frei planbare Ausgaben. Beide Werte sind Mediane und können aus unterschiedlichen Läufen stammen.`,
+            compactNote: true }
+
     ];
 }
 
@@ -76,13 +147,15 @@ export function buildSummaryData({ results, totalRuns, failCount }) {
     const allDeadRuns = hasOutcomeInventory ? outcomeInventory.all_dead : 0;
     const horizonRuns = hasOutcomeInventory ? outcomeInventory.horizon_exhausted : Math.max(0, safeTotalRuns - safeFailCount);
     const technicalRuns = hasOutcomeInventory ? outcomeInventory.technical_error : 0;
+    const coveredRuns = allDeadRuns + horizonRuns;
+    const floorDisplay = technicalRuns > 0 ? '—' : formatCoveragePercentage(floorCoveragePct, coveredRuns, requestedRuns);
     const floorEstimate = hasOutcomeInventory ? outcomeInventory.floorCoverageEstimate : null;
     const floorInterval = floorEstimate?.confidenceInterval95;
-    const floorValue = floorCoveragePct === null
-        ? formatPercentage(null)
+    const floorValue = floorDisplay === '—'
+        ? floorDisplay
         : floorInterval
-            ? `${formatPercentage(floorCoveragePct)} (95%-KI ${formatPercentage(floorInterval.lowerPct)}–${formatPercentage(floorInterval.upperPct)})`
-            : formatPercentage(floorCoveragePct);
+            ? `${floorDisplay} (95%-KI ${formatPercentage(floorInterval.lowerPct)}–${formatPercentage(floorInterval.upperPct)})`
+            : floorDisplay;
     const floorWarning = floorEstimate?.uncertaintyWarning?.code === 'small_sample'
         ? ` Unsicherheitswarnung: nur ${requestedRuns} Läufe; Schwelle ${floorEstimate.uncertaintyWarning.thresholdRuns}.`
         : '';
@@ -103,7 +176,8 @@ export function buildSummaryData({ results, totalRuns, failCount }) {
             title: 'Floor-Deckung im gewählten Horizont',
             value: floorValue,
             displayRole: 'floor',
-            displayValue: formatPercentage(floorCoveragePct),
+            displayValue: floorDisplay,
+            countText: floorDisplay === '—' ? '' : formatCoveredRuns(coveredRuns, requestedRuns),
             intervalText: floorInterval ? `95-%-Konfidenzintervall ${formatPercentage(floorInterval.lowerPct)}–${formatPercentage(floorInterval.upperPct)}` : '95-%-Konfidenzintervall nicht verfügbar',
             description: technicalRuns > 0
                 ? `Wegen ${technicalRuns} technischem/technischen Fehler(n) vorsorglich nicht ausgewiesen; die Endzustände bleiben sichtbar.`
@@ -194,12 +268,20 @@ export function buildKpiDashboard(results, inputs = {}) {
             description: 'Anteil der Läufe mit Ruin oder einem Aktien-plus-Gold-Endbestand von höchstens 100 €. Freie Liquidität und Pflegereserve zählen nicht zur 100-€-Schwelle.',
             tone: depotTone
         },
-        {
-            title: 'Anteil Kürzungsjahre (≥ 10 %)',
-            value: formatPercentage(results?.cutYearSharePct?.p50),
-            description: `Medianer Anteil erfolgreich abgeschlossener Dekumulationsjahre mit Flex-Kürzung von mindestens 10 %; Nenner sind abgeschlossene Dekumulationsjahre mit endlicher Kürzungsentscheidung. Stichprobe: ${Number(results?.cutYearSharePct?.sampleSize) || 0} Läufe.`,
-            tone: 'default'
-        },
+        (() => {
+            const restriction = projectMinimumFlexDisplay(results);
+            return { title: restriction.title, value: restriction.legacy
+                ? restriction.technical ? '—' : formatPercentage(results?.cutYearSharePct?.p50) : restriction.value,
+                description: restriction.legacy ? 'Anteil der Entnahmejahre mit Flex-Kürzung ab 10 %.'
+                    : `${restriction.text} ${restriction.note}`,
+                tooltip: restriction.legacy ? `${restriction.basisNote} Medianer Anteil abgeschlossener Dekumulationsjahre mit mindestens 10 % Wunsch-Kürzung (einschließlich genau 10 %). Stichprobe: ${Number(results?.cutYearSharePct?.sampleSize) || 0} Läufe.`
+                    : restriction.tooltip,
+                pairedMetrics: restriction.legacy ? undefined : [
+                    { label: 'Typischer Jahresanteil', value: restriction.value },
+                    { label: 'Betroffene Läufe', value: restriction.affectedRunValue }
+                ],
+                tone: restriction.legacy || restriction.valid ? 'default' : 'warning', layout: 'exact-risk', decisionCritical: true };
+        })(),
         ...buildDecisionCriticalKpis(results)
     ];
 
@@ -296,6 +378,7 @@ export function buildStressMetrics(stressKPI) {
             },
             {
                 title: 'Reale Depotentnahme P10 (Stress)',
+                priceBasis: 'heutige Euro · unabhängig vom Euro-Schalter',
                 value: Number.isFinite(realWithdrawalP10?.realEur)
                     ? formatConservativeCurrency(realWithdrawalP10.realEur, 'benefit')
                     : '—',
@@ -379,11 +462,11 @@ export function buildCareMetrics(results, inputs) {
         cards.push(
             buildCareEntryCard('Pflegereserve genutzt', healthBucket.usedRatePct, 'Anteil der Monte-Carlo-Läufe mit mindestens einer Entnahme aus der Pflegereserve.', '%'),
             buildCareEntryCard('Pflegereserve erschöpft', healthBucket.depletedRatePct, 'Anteil der Läufe mit aktiver Pflegereserve, in denen die Reserve am Ende aufgebraucht ist.', '%'),
-            buildCareEntryCard('Median Reservenutzung', healthBucket.usedMedian, 'Typische Reservenentnahme in Läufen mit Nutzung.', null, true),
-            buildCareEntryCard('P90 Reservenutzung', healthBucket.usedP90, 'Hohe, aber nicht extreme Reservenentnahme über die Läufe mit Nutzung.', null, true),
-            buildCareEntryCard('Median Restreserve', healthBucket.endMedian, 'Typische verbleibende Pflegereserve am Laufende.', null, true),
+            buildCareEntryCard('Median Reservenutzung', healthBucket.usedMedian, 'Typische Reservenentnahme in Läufen mit Nutzung.', null, true, 'nominal'),
+            buildCareEntryCard('P90 Reservenutzung', healthBucket.usedP90, 'Hohe, aber nicht extreme Reservenentnahme über die Läufe mit Nutzung.', null, true, 'nominal'),
+            buildCareEntryCard('Median Restreserve', healthBucket.endMedian, 'Typische verbleibende Pflegereserve am Laufende.', null, true, 'nominal'),
             buildCareEntryCard('Median Zieldeckung', healthBucket.coverageMedianPct, 'Typische reale Deckung relativ zum inflationsangepassten Reserveziel.', '%'),
-            buildCareEntryCard('Median Ziellücke', healthBucket.targetGapMedian, 'Typische Lücke zum inflationsangepassten Reserveziel.', null, true)
+            buildCareEntryCard('Median Ziellücke', healthBucket.targetGapMedian, 'Typische Lücke zum inflationsangepassten Reserveziel.', null, true, 'nominal')
         );
     }
 
@@ -433,6 +516,7 @@ function buildDecisionCriticalKpis(results) {
     return [
         {
             title: 'Reale Depotentnahme P10',
+            priceBasis: 'heutige Euro · unabhängig vom Euro-Schalter',
             value: withdrawalP10Available ? formatConservativeCurrency(withdrawal.realEur, 'benefit') : '—',
             secondaryLabel: 'Median der Lauf-P10',
             secondaryValue: withdrawalMedianAvailable ? formatConservativeCurrency(withdrawal.p50RealEur, 'benefit') : '—',
@@ -445,10 +529,11 @@ function buildDecisionCriticalKpis(results) {
         },
         {
             title: 'Ø Steuerersparnis Verlustvortrag',
+            priceBasis: 'nominal · unabhängig vom Euro-Schalter',
             value: lossCarryAvailable ? formatConservativeCurrency(lossCarry.perRunMean, 'benefit') : '—',
             statusLine: lossCarryAvailable ? '' : unavailableStatus(lossCarry, 'no_observations'),
             description: 'Centgenaue durchschnittliche nominale Steuerersparnis pro Lauf durch Verlustvortrag; zusätzliche Nachkommastellen werden als Nutzenwert konservativ abgerundet. Ein beobachteter positiver Kleinstwert bleibt sichtbar.',
-            tone: lossCarryAvailable && lossCarry.perRunMean > 0 ? 'success' : 'default',
+            tone: 'default',
             layout: 'exact-risk',
             decisionCritical: true
         }
@@ -711,7 +796,7 @@ function safeAge(value) {
  * @param {boolean} isCurrency - Kennzeichnet Währungsformatierung.
  * @returns {KpiDescriptor} Formatierte Pflege-KPI.
  */
-function buildCareEntryCard(title, value, description, unit = null, isCurrency = false) {
+function buildCareEntryCard(title, value, description, unit = null, isCurrency = false, priceBasis = 'heutige Euro') {
     let formattedValue = '—';
     if (isCurrency) {
         formattedValue = formatWholeEuro(value);
@@ -727,6 +812,7 @@ function buildCareEntryCard(title, value, description, unit = null, isCurrency =
         title,
         value: formattedValue,
         description: sanitizeDescription(description),
+        priceBasis: isCurrency ? `${priceBasis} · unabhängig vom Euro-Schalter` : '',
         tone: 'default'
     };
 }

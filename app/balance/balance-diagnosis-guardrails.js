@@ -31,6 +31,7 @@ export function withGuardrailCardValues(formatted, raw) {
         const mirrored = drawdown && source.threshold >= 0;
         const operator = minimum !== mirrored ? '≥' : '≤';
         return { ...guardrail, cardValue: cardFormat(source.value, drawdown),
+            rule: source.rule || 'max',
             cardThreshold: `${operator} ${cardFormat(source.threshold, drawdown)}`,
             cardTriggered: source.name === 'Inflations-Cap' && source.details?.capBinding === true };
     }) };
@@ -90,7 +91,10 @@ export function buildGuardrails(guardrailData = []) {
         }
         const status = document.createElement('span');
         status.className = `ds-plan-chip ${g.cardTriggered === true ? 'ds-chip-warning' : g.status === 'danger' ? 'ds-chip-error' : g.status === 'warn' ? 'ds-chip-warning' : g.status === 'ok' ? 'ds-chip-success' : ''}`;
-        status.textContent = g.cardTriggered === true ? 'Löst aus' : { ok: 'Eingehalten', warn: 'Nahe der Grenze', danger: 'Grenze überschritten', info: 'Hinweis' }[g.status] || 'Hinweis';
+        const breach = g.rule === 'min'
+            ? g.name === 'Budget-Floor Deckung' ? 'Deckungsziel nicht erreicht' : 'Mindestgrenze unterschritten'
+            : 'Grenze überschritten';
+        status.textContent = g.cardTriggered === true ? 'Löst aus' : { ok: 'Eingehalten', warn: 'Nahe der Grenze', danger: breach, info: 'Hinweis' }[g.status] || 'Hinweis';
         card.appendChild(status);
         fragment.appendChild(card);
     });

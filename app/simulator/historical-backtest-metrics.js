@@ -1,5 +1,7 @@
 "use strict";
 
+import { deriveMinimumFlexPath, buildMinimumFlexRestriction } from './minimum-flex-metrics.js';
+
 export const HISTORICAL_BACKTEST_METRICS_SCHEMA_VERSION = 'HistoricalBacktestMetricsV3';
 export const FLEX_REDUCTION_THRESHOLD_PCT = 10;
 export const FLEX_REDUCTION_OPERATOR = 'gte';
@@ -366,6 +368,21 @@ export const HISTORICAL_BACKTEST_METRIC_DESCRIPTORS = freezeDeep([
         outcomeRule: 'available_for_completed_or_ruin',
         source: 'result.summary.healthBucket.end'
     }),
+    ...[
+        ['minimum_flex_restriction_years', 'Jahre unter Mindest-Flex', 'years', 'count_strictly_below_positive_minimum', 'lower_is_better', 'minimumFlexAnnual / flex_haushalt_erfuellt'],
+        ['minimum_flex_restriction_share_pct', 'Anteil Jahre unter Mindest-Flex', 'percent', 'affected_years_div_observed_years_times_100', 'lower_is_better', 'minimumFlexAnnual / flex_haushalt_erfuellt'],
+        ['minimum_flex_paid_median_nominal_eur', 'Typisch gezahlter Haushalts-Flex', 'EUR', 'median', 'higher_is_better', 'flex_haushalt_erfuellt'],
+        ['minimum_flex_desired_median_nominal_eur', 'Typischer Wunsch-Flex', 'EUR', 'median', 'neutral', 'flex_wunsch_haushalt_nominal'],
+        ['minimum_flex_paid_minimum_nominal_eur', 'Schwächstes Haushalts-Flex-Jahr', 'EUR', 'minimum', 'higher_is_better', 'flex_haushalt_erfuellt']
+    ].map(([id, label, unit, aggregationRule, sign, source]) => descriptor({
+        id, label, unit, aggregationRule, sign,
+        priceBasis: unit === 'EUR' ? 'nominal' : 'not_applicable',
+        denominator: 'all_completed_decumulation_years_including_zero_minimum_years',
+        fractionDigits: unit === 'years' ? 0 : 2,
+        missingnessRule: 'null_if_no_completed_decumulation_year_or_any_required_year_amount_missing_independent_of_flex_haushalt_basis',
+        outcomeRule: 'available_for_completed_or_ruin',
+        source: `rows[*].row.${source}`
+    })),
     ...['completed', 'ruin', 'incomplete', 'technical_error'].map(kind => descriptor({
         id: `outcome_is_${kind}`,
         label: `Outcome ${kind}`,
@@ -469,6 +486,14 @@ export function deriveHistoricalBacktestMetrics(result) {
     const rows = Array.isArray(result?.rows) ? result.rows : [];
     const outcomeKind = String(result?.outcome?.kind || '');
     const isFinancialOutcome = FINANCIAL_OUTCOMES.has(outcomeKind);
+    const minimumFlexPath = deriveMinimumFlexPath(rows, {
+        technicalError: outcomeKind === 'technical_error',
+        unavailable: !isFinancialOutcome
+    });
+    const minimumFlexRestriction = {
+        ...buildMinimumFlexRestriction([minimumFlexPath], result?.request?.inputs?.minimumFlexAnnual),
+        path: minimumFlexPath
+    };
     const startWealth = isFinancialOutcome ? finiteOrNull(result?.portfolioStart) : null;
     const endWealth = isFinancialOutcome ? finiteOrNull(result?.portfolioEnd) : null;
     const inflation = isFinancialOutcome ? computeInflationFactors(rows) : null;
@@ -529,6 +554,11 @@ export function deriveHistoricalBacktestMetrics(result) {
         : null;
 
     const values = {
+        minimum_flex_restriction_years: minimumFlexPath.affectedYearCount,
+        minimum_flex_restriction_share_pct: minimumFlexPath.yearSharePct,
+        minimum_flex_paid_median_nominal_eur: minimumFlexPath.paidMedianNominalEur,
+        minimum_flex_desired_median_nominal_eur: minimumFlexPath.desiredMedianNominalEur,
+        minimum_flex_paid_minimum_nominal_eur: minimumFlexPath.paidMinimumNominalEur,
         wealth_start_nominal_eur: startWealth,
         wealth_end_nominal_eur: endWealth,
         wealth_end_real_eur: endWealth !== null && inflation ? endWealth / inflation.atRunEnd : null,
@@ -582,6 +612,7 @@ export function deriveHistoricalBacktestMetrics(result) {
 
     return freezeDeep({
         schemaVersion: HISTORICAL_BACKTEST_METRICS_SCHEMA_VERSION,
+        minimumFlexRestriction,
         reductionContract: {
             operator: FLEX_REDUCTION_OPERATOR,
             thresholdPct: FLEX_REDUCTION_THRESHOLD_PCT,

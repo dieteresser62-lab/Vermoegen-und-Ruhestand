@@ -9,6 +9,7 @@ import { formatDisplayPercentValue, formatDisplayPercentRatio, formatDisplayMont
 "use strict";
 
 import { UIUtils } from './balance-utils.js';
+import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { describeBalanceActionSummary } from './balance-action-summary.js';
 
 const THRESHOLD_LABEL_MAP = Object.freeze({
@@ -25,7 +26,7 @@ const THRESHOLD_LABEL_MAP = Object.freeze({
     netamount: 'Nettobetrag', netto: 'Netto', amount: 'Betrag',
     liquidityuse: 'Verwendung für Liquidität', golduse: 'Verwendung für Gold', equityuse: 'Verwendung für Aktien',
     name: 'Name', taxpereuro: 'Steuer je Euro', brutto: 'Brutto', steuer: 'Steuer',
-    wastriggered: 'Ausgelöst', blockreason: 'Blockierungsgrund', blockedamount: 'Blockierter Betrag',
+    wastriggered: 'Empfehlung ausgelöst', blockreason: 'Blockierungsgrund', blockedamount: 'Blockierter Betrag',
     potentialtrade: 'Hypothetischer Handel', equitythresholds: 'Aktien-Grenzen', goldthresholds: 'Gold-Grenzen',
     selectedtranches: 'Tranchenauswahl',
     quellen: 'Quellen', sources: 'Quellen', verwendungen: 'Verwendungen', uses: 'Verwendungen',
@@ -59,7 +60,7 @@ export function buildTransactionDiagnostics(transactionDiag, actionSummary = nul
 
     const statusMeta = determineTransactionStatus(transactionDiag);
     const summaryRows = [
-        { label: 'Ausgelöst', value: transactionDiag.wasTriggered ? 'Ja' : 'Nein' },
+        { label: 'Empfehlung ausgelöst', value: transactionDiag.wasTriggered ? 'Ja' : 'Nein' },
         { label: 'Blockiert', value: statusMeta.label },
         {
             label: 'Blockierter Betrag',
@@ -283,7 +284,7 @@ const DIAGNOSIS_TERMS = Object.freeze({
 });
 
 /** Nur am Anzeigehost: Quelltexte, Kennungen und Fachwerte bleiben unverändert. */
-export function displayDiagnosisText(value) {
+export function displayDiagnosisText(value, { formatNumbers = true } = {}) {
     let text = String(value ?? 'Nicht verfügbar');
     for (const [term, label] of Object.entries(DIAGNOSIS_TERMS)) {
         text = text.replace(new RegExp(`\\b${term}\\b`, 'g'), label);
@@ -292,5 +293,17 @@ export function displayDiagnosisText(value) {
         Liquiditaet: 'Liquidität', geschaetzt: 'geschätzt', verfuegbar: 'verfügbar', fuer: 'für',
         erhoeht: 'erhöht', zurueck: 'zurück', uebernommen: 'übernommen', beschaedigte: 'beschädigte', ausdrueckliche: 'ausdrückliche', Guardrail: 'Leitplanke', Refill: 'Auffüllen' };
     for (const [word, label] of Object.entries(words)) text = text.replace(new RegExp(`\\b${word}\\b`, 'g'), label);
+    if (formatNumbers) {
+        text = text.replace(/->/g, '→');
+        // Engine-Sätze enthalten Rohzahlen mit Punkt und direkt angehängter Einheit.
+        // Bereits deutsch formatierte Werte (Komma/NBSP) bleiben unverändert.
+        text = text.replace(/(?<![\w.,])(-?\d+(?:[.,]\d+)*)([ \u00a0]*)([%€])/g, (match, number, space, unit) => {
+            if (number.includes(',') || space.includes('\u00a0')) return match;
+            const value = Number(number);
+            if (!Number.isFinite(value)) return match;
+            const fractionDigits = unit === '€' ? 0 : (number.split('.')[1]?.length || 0);
+            return formatDisplayNumber(value, { unit: unit === '€' ? 'currency' : 'percent', fractionDigits });
+        });
+    }
     return text.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '').trim();
 }

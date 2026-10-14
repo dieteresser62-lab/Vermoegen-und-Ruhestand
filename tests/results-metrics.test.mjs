@@ -23,11 +23,26 @@ assertEqual(answers[0].question, 'Ist mein Grundbedarf gedeckt?', 'Erste Kernfra
 assertEqual(answers[1].question, 'Muss ich mich einschränken?', 'Zweite Kernfrage wortgetreu');
 assertEqual(answers[0].value, '96,0 %', 'Antwort verwendet unveränderte 96-%-Deckung');
 assertEqual(answers[1].value, '12,0 % der Jahre', 'Antwort verwendet unveränderten kanonischen p50-Anteil der Kürzungsjahre');
-assert(answers[1].note.includes('18,0 %') && answers[1].text.includes('mindestens 10 %'), 'Antwort erklärt 18-%-Maximalkürzung und 10-%-Jahresschwelle');
-assert(answers[1].text.includes('abgeschlossenen Entnahmejahre') && answers[1].text.includes('frei planbare Ausgaben')
-    && answers[1].note.includes('Mediane') && answers[1].note.includes('unterschiedlichen Läufen'), 'Anteil, Flex-Bedarf und getrennte Mediane bleiben verständlich');
+assert(answers[1].note.includes('18,0 %') && answers[1].text.includes('mehr als 10 % unter Wunsch-Flex') && answers[1].tooltip.includes('einschließlich genau 10 %'), 'Antwort erklärt 18-%-Maximalkürzung und 10-%-Jahresschwelle');
+assert(answers[1].tooltip.includes('abgeschlossenen Entnahmejahre') && answers[1].tooltip.includes('frei planbare Ausgaben')
+    && answers[1].tooltip.includes('Mediane') && answers[1].tooltip.includes('unterschiedlichen Läufen'), 'Anteil, Flex-Bedarf und getrennte Mediane bleiben verständlich');
 assert(answers[0].note.includes('kein nachgewiesenes Lebensende'), 'Zeitraumende belegt kein Lebensende');
 assertEqual(JSON.stringify(answerInput), answerBytes, 'Antwortprojektion verändert keine Ergebniswerte');
+for (const [runs, ruin, expected, count] of [
+    [10000, 1, '> 99,9\u00a0%', '9.999 von 10.000 Läufen'],
+    [10000, 0, '100,0\u00a0%', '10.000 von 10.000 Läufen'],
+    [100, 4, '96,0\u00a0%', '96 von 100 Läufen'],
+    [10000, 10, '99,9\u00a0%', '9.990 von 10.000 Läufen'],
+    [1, 1, '0,0\u00a0%', '0 von 1 Läufen']
+]) {
+    const input = answerFixture({ requestedRuns: runs, ruin, all_dead: 0, horizon_exhausted: runs - ruin, technical_error: 0 });
+    const answer = buildMonteCarloAnswers(input)[0];
+    const summary = buildSummaryData(input)[0];
+    assertEqual(answer.value, expected, 'Deckung verschweigt keinen Ruinfall durch Rundung');
+    assertEqual(answer.countText, count, 'Deckung zeigt erfolgreichen Zähler und gesamten Nenner');
+    assertEqual(summary.displayValue, answer.value, 'Zusammenfassung und Kernantwort haben dieselbe Deckung');
+    assertEqual(summary.countText, count, 'Zusammenfassung verwendet dieselben Laufzahlen');
+}
 const deathAnswers = buildMonteCarloAnswers(answerFixture({ requestedRuns: 100, ruin: 0, all_dead: 100, horizon_exhausted: 0, technical_error: 0 }));
 assert(deathAnswers[0].text.includes('bis zum simulierten Lebensende'), 'Vollständiger Todpfad wird als simuliertes Lebensende bezeichnet');
 const horizonAnswers = buildMonteCarloAnswers(answerFixture({ requestedRuns: 100, ruin: 0, all_dead: 0, horizon_exhausted: 100, technical_error: 0 }));
@@ -199,16 +214,16 @@ const cutDashboard = buildKpiDashboard({
     depotErschoepfungsQuote: 0,
     cutYearSharePct: { p50: 50, sampleSize: 4, excludedRuns: 1 }
 });
-const cutKpi = cutDashboard.primary.find(kpi => kpi.title.includes('Kürzungsjahre'));
-assert(cutKpi?.title === 'Anteil Kürzungsjahre (≥ 10 %)', 'Cut-share title should use the inclusive ten-percent threshold');
+const cutKpi = cutDashboard.primary.find(kpi => kpi.title.includes('mehr als 10 % unter Wunsch-Flex'));
+assert(cutKpi?.title === 'mehr als 10 % unter Wunsch-Flex', 'Cut-share title should use the inclusive ten-percent threshold');
 assert(cutKpi?.value === '50,0\u00a0%', 'Observed cut share should render as percent');
-assert(cutKpi?.description.includes('abgeschlossener Dekumulationsjahre'), 'Cut-share tooltip should name the denominator population');
-assert(cutKpi?.description.includes('Stichprobe: 4 Läufe'), 'Cut-share tooltip should expose sample size');
+assert(cutKpi?.tooltip.includes('abgeschlossener Dekumulationsjahre'), 'Cut-share tooltip should name the denominator population');
+assert(cutKpi?.tooltip.includes('Stichprobe: 4 Läufe'), 'Cut-share tooltip should expose sample size');
 
 const emptyCutKpi = buildKpiDashboard({
     depotErschoepfungsQuote: 0,
     cutYearSharePct: { p50: null, sampleSize: 0, excludedRuns: 2 }
-}).primary.find(kpi => kpi.title.includes('Kürzungsjahre'));
+}).primary.find(kpi => kpi.title.includes('mehr als 10 % unter Wunsch-Flex'));
 assert(emptyCutKpi?.value === '—', 'Missing cut-share distribution should render as an em dash, not zero or NaN');
 
 const volatilityKpi = buildKpiDashboard({
@@ -485,9 +500,9 @@ for (const value of [0, 12.345, null, NaN, Infinity, -1]) {
     assertEqual(stress.kpis.find(card => card.title.includes('Entnahmequote')).tone, 'warning', 'Bestehende Stresswarnung außerhalb R8 bleibt erhalten');
     assertEqual(JSON.stringify(results), before, 'R8-Töne ändern keine Rohwerte');
 }
-for (const [perRunMean, reason, expected] of [[0, null, 'default'], [.00001, null, 'success'], [-1, null, 'default'], [null, null, 'default'], [NaN, null, 'default'], [1, 'technical_error', 'default']]) {
+for (const [perRunMean, reason, expected] of [[0, null, 'default'], [.00001, null, 'default'], [-1, null, 'default'], [null, null, 'default'], [NaN, null, 'default'], [1, 'technical_error', 'default']]) {
     const card = buildKpiDashboard({ extraKPI: { lossCarryTaxSavings: { perRunMean, sampleSize: 8, applicability: { applicable: reason === null, reason } } } }).primary.find(card => card.title === 'Ø Steuerersparnis Verlustvortrag');
-    assertEqual(card.tone, expected, 'Steuerersparnis ist ausschließlich verfügbar und positiv gerichtet');
+    assertEqual(card.tone, expected, 'Steuerersparnis bleibt unabhängig vom Vorzeichen eine ruhige Kennzahl');
 }
 
 // Neue Gruppierung projiziert ausschließlich vorhandene Floor-/Endzustandswerte.

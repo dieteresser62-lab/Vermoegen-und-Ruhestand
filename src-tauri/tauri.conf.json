@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "RuhestandSuite",
+  "productName": "Vermögen & Ruhestand Entwicklung",
   "version": "0.1.0",
-  "identifier": "com.dieter.ruhestandsapp",
+  "identifier": "de.vermoegen-ruhestand.entwicklung",
   "build": {
     "frontendDist": "../dist"
   },

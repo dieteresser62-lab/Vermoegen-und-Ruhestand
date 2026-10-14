@@ -163,3 +163,30 @@ for (const mode of ['false', 'reject']) {
     assertEqual((await pending).before.profile_tagesgeld, '98000', 'Freigegebener Vorschauflush liest bestätigten Wert');
 }
 resetPersistenceForTests();
+
+// Sicherung und Restore erhalten alte und neue Ergebnisbelege gemeinsam.
+{
+const flexScope = { kind: 'single', ids: ['a'], key: JSON.stringify(['single', ['a']]) };
+const flexCommon = { scope: flexScope, completedAt: '2026-10-12T12:00:00Z', priceBasis: 'nominal',
+    fingerprintVersion: 2, sourceFingerprint: 'a'.repeat(64), runFingerprint: 'b'.repeat(64), deviationApplied: false };
+const flexOld = { ...flexCommon, kind: 'backtest', statement: 'completed',
+    metrics: { startYear: 2000, endYear: 2002, failureYear: null, endWealthReal: 100 } };
+const flexNew = { ...flexCommon, kind: 'montecarlo', statement: 'Floor gedeckt bis Laufende',
+    metrics: { runs: 2, covered: 2, successPct: 100, median: 10, p5: 1,
+        minimumFlexStartNominalEur: 30000, minimumFlexYearSharePct: 100 / 6,
+        minimumFlexAffectedRunSharePct: 50, flexPaidMedianNominalEur: 32500,
+        flexDesiredMedianNominalEur: 45000, flexPaidMinimumNominalEur: 29000 } };
+const flexRecord = JSON.stringify({ version: 1, entries: {
+    [JSON.stringify([flexScope.key, 'backtest'])]: flexOld, [JSON.stringify([flexScope.key, 'montecarlo'])]: flexNew } });
+const flexLegacyRecord = JSON.stringify({ version: 1, entries: { [JSON.stringify([flexScope.key, 'backtest'])]: flexOld } });
+    const saved = target();
+    const incoming = { ...saved.records, overview_simulation_summary_v1: flexRecord };
+    const withResults = buildSnapshot({ id: 'target', activeProfileId: 'a', createdAt: '2026-01-01T12:00:00Z', records: incoming });
+    const f = await fixture(withResults);
+    p.setItemSync('overview_simulation_summary_v1', flexLegacyRecord); await p.flush();
+    const plan = await previewSnapshotRestore('target');
+    assertEqual((await executeSnapshotRestore(plan, { guard: f.guard, reload: () => true })).status, 'restored', 'Restore mit Alt-/Neu-Ergebnisbestand bestätigt');
+    assertEqual(f.records.overview_simulation_summary_v1, flexRecord, 'Restore erhält neue optionale und alte Pflichtwerte bytegleich');
+    const recovered = [...f.snapshots.values()].find(item => item.id !== 'target');
+    assertEqual(recovered.records.overview_simulation_summary_v1, flexLegacyRecord, 'Rückkehrpunkt erhält unveränderten Legacy-Beleg ohne Nullfelder');
+}

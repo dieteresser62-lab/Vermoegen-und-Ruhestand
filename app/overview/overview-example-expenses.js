@@ -52,7 +52,7 @@ export function bindOverviewExampleExpenses({ doc, win, getModel, refresh,
             return { ...model, exampleExpensesAllowed: Boolean(examples(model)) };
         },
         syncButtons() {
-            doc.querySelectorAll('[data-overview-example], [data-overview-expenses-file]').forEach(button => {
+            doc.querySelectorAll('[data-overview-example], [data-overview-expenses-file], [data-overview-expenses-choose]').forEach(button => {
                 button.disabled = pending || button.closest?.('[data-close-dialog-host]')?.getAttribute?.('aria-busy') === 'true';
             });
             for (const { dialog } of roots.values()) {
@@ -73,6 +73,13 @@ export function bindOverviewExampleExpenses({ doc, win, getModel, refresh,
         bindRoot(root, signal, dialog) {
             if (!root || roots.has(root)) return;
             const click = event => {
+                const choose = event.target.closest?.('[data-overview-expenses-choose]');
+                if (choose) {
+                    if (choose.disabled || pending) return;
+                    const file = root.querySelector(`[data-overview-expenses-file="${choose.dataset.overviewExpensesChoose}"]`);
+                    if (file && !file.disabled) file.click();
+                    return;
+                }
                 const button = event.target.closest?.('[data-overview-example]');
                 if (button) return start(button);
             };
@@ -80,6 +87,8 @@ export function bindOverviewExampleExpenses({ doc, win, getModel, refresh,
                 const field = event.target.closest?.('[data-overview-expenses-file]');
                 const file = field?.files?.[0];
                 if (!file) return;
+                const filename = root.querySelector(`[data-overview-expenses-filename="${field.dataset.overviewExpensesFile}"]`);
+                if (filename) { filename.textContent = file.name || 'CSV ausgewählt'; filename.title = file.name || ''; }
                 field.value = ''; // Auch dieselbe Dateiauswahl löst erneut change aus.
                 return start(field, file);
             };
@@ -93,7 +102,8 @@ export function bindOverviewExampleExpenses({ doc, win, getModel, refresh,
         const model = getModel();
         if (!allowed(model) || !file && !examples(model)) return Promise.resolve();
         pending = true; request = key(model); abort = new AbortController();
-        const localAbort = abort, opener = button;
+        const localAbort = abort, opener = file ? button.parentElement?.querySelector('[data-overview-expenses-choose]')
+            || button.parent?.querySelector('[data-overview-expenses-choose]') || button : button;
         message = ''; controls.syncButtons();
         job = (async () => {
             let choiceLease;
@@ -134,14 +144,18 @@ export function bindOverviewExampleExpenses({ doc, win, getModel, refresh,
             finally {
                 choiceLease?.unregister(); abort = null; pending = false; refresh(); controls.syncButtons();
                 if (!localAbort.signal.aborted) {
-                    const target = file ? doc.querySelector(`[data-overview-expenses-file="${button.dataset.overviewExpensesFile}"]`)
+                    const target = file ? doc.querySelector(`[data-overview-expenses-choose="${button.dataset.overviewExpensesFile}"]`)
                         : doc.querySelector(button.dataset.overviewExampleTarget
                             ? `[data-overview-example-target="${button.dataset.overviewExampleTarget}"]` : `[data-overview-example="${button.dataset.overviewExample}"]`);
                     // Nach einem erledigten Schritt kann der neue Importauslöser eingeklappt sein.
                     // Dann gehört der Rückfokus zum weiterhin sichtbaren Titel desselben Schritts.
                     let hidden = false;
-                    for (let node = target; node; node = node.parentElement || node.parent) hidden ||= Boolean(node.hidden);
-                    const focusTarget = hidden ? target.closest?.('[data-close-dialog-step]')?.querySelector?.('[data-close-dialog-activate]') : target;
+                    let replacementSummary;
+                    for (let node = target; node; node = node.parentElement || node.parent) {
+                        hidden ||= Boolean(node.hidden);
+                        if (Object.hasOwn(node.dataset || {}, 'closeExpensesReplace') && !node.open) replacementSummary = node.querySelector('summary');
+                    }
+                    const focusTarget = hidden ? target.closest?.('[data-close-dialog-step]')?.querySelector?.('[data-close-dialog-activate]') : replacementSummary || target;
                     (focusTarget || opener)?.focus?.();
                 }
             }

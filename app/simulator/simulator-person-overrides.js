@@ -152,6 +152,7 @@ function showPersonValues(doc, id, editorId, rows, active) {
         const term = doc.createElement('dt'), definition = doc.createElement('dd');
         term.textContent = label;
         definition.textContent = value;
+        if (value === 'noch nicht eingetragen') definition.className = 'sim-person-note';
         list.appendChild(term); list.appendChild(definition);
     }
 }
@@ -166,18 +167,22 @@ function render(state, doc) {
         const person = entry ? projectPerson(data, year) : {};
         const age = index === 0 ? combined.startAlter : combined.partner.startAlter;
         const offset = index === 0 ? combined.renteStartOffsetJahre : combined.partner.startInJahren;
+        const essentialRows = [
+            ['Rentenbeginn', germanDate(data.profile_rentenbeginn)],
+            ['Monatliche Rente', `${germanNumber(person.renteMonatlich ?? 0)} €`]
+        ];
         const rows = [
             ['Geburtsdatum', germanDate(data.profile_geburtsdatum)],
             [`Alter am 01.01.${year}`, `${germanNumber(age)} Jahre`],
             ['Geschlecht', { m: 'Männlich', w: 'Weiblich', d: 'Divers' }[person.geschlecht] || 'nicht eingetragen'],
-            ['Rentenbeginn', germanDate(data.profile_rentenbeginn)],
-            ['Monatliche Rente', `${germanNumber(person.renteMonatlich ?? 0)} €`],
             ['Sparer-Pauschbetrag', `${germanNumber(person.startSPB ?? 0)} €`],
             ['Kirchensteuer', `${germanNumber((person.kirchensteuerSatz ?? 0) * 100)} %`]
         ];
-        if (offset > 0) rows.splice(4, 0, ['Rentenbeginn in', `${germanNumber(offset)} Jahren`]);
+        if (offset > 0) rows.splice(3, 0, ['Rentenbeginn in', `${germanNumber(offset)} Jahren`]);
         if (index > 0) rows.push(['Steuerquote · bisherige Rentenbasis', `${germanNumber(person.steuerquotePct ?? 0)} %`]);
-        showPersonValues(doc, `${role}PersonValues`, `${role}PersonEditors`, rows, state.controller.active && Boolean(entry));
+        const active = state.controller.active && Boolean(entry);
+        showPersonValues(doc, `${role}PersonValues`, `${role}EssentialEditors`, essentialRows, active);
+        showPersonValues(doc, `${role}PersonDetailValues`, `${role}PersonEditors`, rows, active);
     }
     showPersonValues(doc, 'sharedPensionValues', 'sharedPensionEditors', [
         ['Gemeinsame Rentenanpassung nach Hauptprofil', combined.rentAdjMode === 'fix'
@@ -217,14 +222,19 @@ function render(state, doc) {
     const toggle = doc.getElementById('personDeviationToggle');
     if (toggle) toggle.checked = state.controller.active;
     const notice = doc.getElementById('personDeviationStatus');
-    if (notice) notice.textContent = context.deviationApplied ? 'Abweichung · nur diese Rechnung. Ergebnis und Protokoll behalten ihre eigenen Werte.'
-        : state.controller.active ? 'Alternativen aktiv · bisher keine wirksame Abweichung.' : 'Übernommen · gerechnet wird mit Personen & Vermögen.';
+    if (notice) notice.textContent = context.deviationApplied ? 'aus Personen & Vermögen · mit Abweichung für diese Rechnung'
+        : state.controller.active ? 'aus Personen & Vermögen · Alternativen aktiv' : 'aus Personen & Vermögen';
     for (const [index, role] of ['p1', 'r2'].entries()) {
         const host = doc.getElementById(`${role}PersonSource`);
         if (host) {
             const entry = entries[index];
             host.hidden = !entry;
-            host.textContent = entry ? `${entry.name || entry.profileId} · ${index === 0 ? 'Hauptprofil' : 'Partner'} · aus Personen & Vermögen${context.persons[index].ageStatus === 'fallback' ? ' · festes Altalter; Geburtsdatum zentral ergänzen' : ''}` : '';
+            host.textContent = entry ? entry.name || entry.profileId : '';
+            const detailHost = doc.getElementById(`${role}PersonDetailsSource`);
+            if (detailHost) detailHost.textContent = entry
+                ? `${entry.name || entry.profileId} · ${index === 0 ? 'Hauptprofil' : 'Partner'}${context.persons[index].ageStatus === 'fallback' ? ' · festes Altalter; Geburtsdatum zentral ergänzen' : ''}` : '';
+            const detailCard = doc.getElementById('r2PersonDetails');
+            if (index === 1 && detailCard) detailCard.hidden = !entry;
         }
     }
     const spb = doc.getElementById('personHouseholdSPB');
@@ -240,7 +250,13 @@ export function initializePersonOverrides(entries, primaryId, referenceYear, doc
         const id = event.target?.id;
         if (id !== 'personDeviationToggle' && !SIMULATOR_PERSON_FIELD_IDS.includes(id)) return;
         try {
-            if (id === 'personDeviationToggle') state.controller.activate(event.target.checked);
+            if (id === 'personDeviationToggle') {
+                state.controller.activate(event.target.checked);
+                if (event.target.checked) {
+                    const details = doc.getElementById('simPersonDetails');
+                    if (details) details.open = true;
+                }
+            }
             else if (editable[id] && !event.target.disabled) {
                 const entry = state.controller.entries[id.startsWith('r2') ? 1 : 0];
                 if (entry) state.controller.set(entry.profileId, editable[id], event.target.value);

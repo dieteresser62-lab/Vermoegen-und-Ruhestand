@@ -5,6 +5,7 @@ import { overviewScope, storeSimulationSummary } from '../overview/overview-stor
 import { FINGERPRINT_VERSION, fingerprint, sourceFingerprint } from '../overview/overview-simulation-summary.js';
 import { effectiveRunAssumptions } from './simulator-run-assumptions.js';
 import { personDataContextFor } from './simulator-person-overrides.js';
+import { projectMinimumFlexDisplay } from './results-metrics.js';
 import { quantile } from './simulator-utils.js';
 
 const generations = new Map();
@@ -91,6 +92,27 @@ export function buildSimulationSummary(context, result, { completedAt = new Date
         metrics = { endWealthReal: numeric(variant.summary?.finalValueRealEur) };
         priceBasis = 'hypothetischer Vergleich auf einem fixierten Pfad · real, Preise zum Pfadstart';
     } else return null;
+    if (context.kind !== 'workshop') {
+        const backtest = context.kind === 'backtest';
+        const display = projectMinimumFlexDisplay(result, { backtest });
+        const block = backtest ? result?.metrics?.minimumFlexRestriction ?? result?.minimumFlexRestriction : result?.minimumFlexRestriction;
+        if (display.legacy) {
+            const value = backtest ? result?.metrics?.values?.flex_reduction_years_gte_10_pct : result?.cutYearSharePct?.p50;
+            if (Number.isFinite(value)) metrics[backtest ? 'legacyFlexCutYearCount' : 'legacyFlexCutYearSharePct'] = value;
+        }
+        if (block) {
+            metrics.minimumFlexStartNominalEur = numeric(block.startMinimumFlexAnnual);
+            const path = backtest ? block.path : block;
+            metrics.minimumFlexYearSharePct = display.valid ? numeric(backtest ? path.yearSharePct : block.yearSharePctP50) : null;
+            if (backtest) {
+                metrics.minimumFlexAffectedYearCount = display.valid ? numeric(path.affectedYearCount) : null;
+                metrics.minimumFlexObservationCount = display.valid ? numeric(path.observationCount) : null;
+            } else metrics.minimumFlexAffectedRunSharePct = display.valid ? numeric(block.affectedRunSharePct) : null;
+            metrics.flexPaidMedianNominalEur = display.valid ? numeric(backtest ? path.paidMedianNominalEur : block.paidMedianNominalEurP50) : null;
+            metrics.flexDesiredMedianNominalEur = display.valid ? numeric(backtest ? path.desiredMedianNominalEur : block.desiredMedianNominalEurP50) : null;
+            metrics.flexPaidMinimumNominalEur = display.valid ? numeric(backtest ? path.paidMinimumNominalEur : block.paidMinimumNominalEurP50) : null;
+        }
+    }
     const { kind, scope, sourceFingerprint: source, runFingerprint, fingerprintVersion, deviationApplied } = context;
     return { kind, scope, sourceFingerprint: source, runFingerprint, fingerprintVersion, deviationApplied,
         completedAt: completedAt.toISOString(), statement, priceBasis, metrics };

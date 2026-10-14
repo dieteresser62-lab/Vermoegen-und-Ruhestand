@@ -7,7 +7,7 @@ const sources = readSources();
 assertEqual(validateDataLayout(sources).join('\n'), '', 'Container, Scrollregionen und sichtbarer Auswahlvolltext erfüllen den Anzeigevertrag');
 for (const [path, before, after] of [
     ['css/balance.css', '.form-column {\n    min-width: 0;', '.form-column {'],
-    ['css/overview.css', 'grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);', 'grid-template-columns: 320px 1fr;'],
+    ['css/overview.css', 'grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);', 'grid-template-columns: 320px 1fr;'],
     ['css/balance.css', 'max-width: 100%; overflow-x: auto;', 'max-width: 100%; overflow-x: visible;'],
     ['depot-tranchen-manager.html', '<span id="reconcileTrancheId-fulltext" class="ds-selection-text"></span>', '<span title="Nur Tooltip"></span>'],
     ['css/components.css', 'white-space: normal;', 'white-space: nowrap;'],

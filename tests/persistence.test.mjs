@@ -2607,3 +2607,28 @@ for (const scenario of ['local', 'foreign', 'unknown', 'changed-owner', 'timeout
     }
     resetPersistenceRuntimeForTests();
 }
+
+{
+const flexScope = { kind: 'single', ids: ['a'], key: JSON.stringify(['single', ['a']]) };
+const flexCommon = { scope: flexScope, completedAt: '2026-10-12T12:00:00Z', priceBasis: 'nominal',
+    fingerprintVersion: 2, sourceFingerprint: 'a'.repeat(64), runFingerprint: 'b'.repeat(64), deviationApplied: false };
+const flexOld = { ...flexCommon, kind: 'backtest', statement: 'completed',
+    metrics: { startYear: 2000, endYear: 2002, failureYear: null, endWealthReal: 100 } };
+const flexNew = { ...flexCommon, kind: 'montecarlo', statement: 'Floor gedeckt bis Laufende',
+    metrics: { runs: 2, covered: 2, successPct: 100, median: 10, p5: 1,
+        minimumFlexStartNominalEur: 30000, minimumFlexYearSharePct: 100 / 6,
+        minimumFlexAffectedRunSharePct: 50, flexPaidMedianNominalEur: 32500,
+        flexDesiredMedianNominalEur: 45000, flexPaidMinimumNominalEur: 29000 } };
+const flexRecord = JSON.stringify({ version: 1, entries: {
+    [JSON.stringify([flexScope.key, 'backtest'])]: flexOld, [JSON.stringify([flexScope.key, 'montecarlo'])]: flexNew } });
+const flexLegacyRecord = JSON.stringify({ version: 1, entries: { [JSON.stringify([flexScope.key, 'backtest'])]: flexOld } });
+    const sourceRecords = { rs_current_profile: 'a', rs_active_profile: 'a', overview_simulation_summary_v1: flexRecord,
+        rs_profiles_v1: JSON.stringify({ version: 1, profiles: { a: { meta: { name: 'Synthetisch' }, data: { overview_simulation_summary_v1: flexRecord } } } }) };
+    resetPersistenceForTests(createMemoryAdapter(sourceRecords)); await init();
+    const backup = buildFullPersistenceBackup();
+    resetPersistenceForTests(createMemoryAdapter({ ...sourceRecords, overview_simulation_summary_v1: flexLegacyRecord })); await init();
+    assertEqual((await importFullPersistenceBackup(backup)).ok, true, 'Vollimport akzeptiert gemeinsame alte und neue Ergebnisbelege');
+    assertEqual(getItemSync('overview_simulation_summary_v1'), flexRecord, 'Vollimport erhält numerische Mindest-Flex-Werte und Legacy-Werte bytegleich');
+    const current = JSON.parse(getItemSync('rs_profiles_v1'));
+    assertEqual(current.profiles.a.data.overview_simulation_summary_v1, flexRecord, 'Vollimport erhält Ergebnisbelege im Profilbestand');
+}

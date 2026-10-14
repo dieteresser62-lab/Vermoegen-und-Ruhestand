@@ -231,7 +231,7 @@ console.log('Personenkarten: Einzelprofil, unvollständiger Haushalt und sichere
     const withoutButtonRole = nav.replace('class="ds-button pv-tab"', 'class="pv-tab"');
     assert(withoutButtonRole !== nav, 'Gegenprobe entfernt die Buttonrolle aus dem tatsächlich erzeugten Reiter');
     assert(validateManagerMarkup(withoutButtonRole).includes('Managerrolle fehlt: button ds-button'), 'Gegenprobe erkennt fehlende Buttonrolle in der Ansichtsreiterliste');
-    assertEqual(hosts.managerPageTitle.textContent, 'Alles über dich, an einem Ort.', 'Einzelprofil besitzt den passenden Titel');
+    assertEqual(hosts.managerPageTitle.textContent, 'Personen & Vermögen', 'Einzelprofil besitzt den kompakten Seitentitel');
     const card = hosts.managerHousehold.innerHTML;
     assert(card.includes('pv-avatar') && card.includes('Lina &lt;Nord&gt;'), 'Avatar und Name werden sicher ausgegeben');
     assert(card.includes('aria-label="Person Lina &lt;Nord&gt; verwalten"') && !card.includes('data-manager-people="p"<'), 'Kartenmenü schützt Name und Kennung');
@@ -240,36 +240,40 @@ console.log('Personenkarten: Einzelprofil, unvollständiger Haushalt und sichere
     assert(!card.includes('pv-household-card'), 'Einzelprofil zeigt keine redundante Haushaltskarte');
     assertEqual(JSON.stringify(projection), before, 'Kartenrendern verändert weder Zahlen noch Rollenprojektion');
     renderManagerProfiles(doc, { ...projection, profiles: [profile, { ...profile, id: 'b', active: false }], household: null });
-    assertEqual(hosts.managerPageTitle.textContent, 'Alles über euch beide, an einem Ort.', 'Mehrprofilansicht besitzt den gemeinsamen Titel');
+    assertEqual(hosts.managerPageTitle.textContent, 'Personen & Vermögen', 'Mehrprofilansicht besitzt denselben kompakten Seitentitel');
     assert(hosts.managerHousehold.innerHTML.includes('Haushaltssumme nicht verfügbar'), 'Ungültiger Haushalt wird nicht zu einer Vollsumme');
     assert(hosts.managerSectionNav.innerHTML.includes('data-manager-profile="b" aria-selected="false"'), 'Inaktive Person bleibt über dieselbe Ansichtsreiterliste erreichbar');
 }
 
 console.log('Kurskontext: automatisch verlangt eindeutigen gespeicherten Sitzungsbeleg');
 {
-    const host = { textContent: '', title: '' }, label = { dataset: { profileId: 'a' } };
+    const host = { textContent: '', title: '' }, details = { textContent: '' }, label = { dataset: { profileId: 'a' } };
     let reads = 0, writes = 0;
     const asOf = Math.floor(Date.now() / 1000) - 60;
     const lots = [{ trancheId: 'a-lot', asOf, currentPrice: 120 }];
     let report = { status: 'complete', updated: 1, results: [{ profileId: 'a', trancheId: 'a-lot', status: 'updated', asOf }] };
     const session = { getItem: () => { reads++; return JSON.stringify(report); }, setItem: () => { writes++; } };
-    const doc = { defaultView: { sessionStorage: session }, querySelector: () => ({}), getElementById: id => id === 'suiteProfileContext' ? label : host };
+    const doc = { defaultView: { sessionStorage: session }, querySelector: () => ({}), getElementById: id => id === 'suiteProfileContext' ? label : id === 'managerQuoteDetails' ? details : host };
     const before = JSON.stringify(lots);
     renderManagerQuoteContext(doc, lots);
-    assert(host.textContent.includes('automatisch'), 'Passender Sitzungsbeleg kennzeichnet automatisch geladene Kurse');
+    assert(host.textContent.startsWith('Kurse: Stand ') && !host.textContent.includes('automatisch'), 'Sichtbare Kurszeile bleibt kurz');
+    assert(details.textContent.includes('automatisch') && details.textContent.includes('Abrufzeit ist kein Kursdatum'), 'Passender Sitzungsbeleg und vollständige Erklärung bleiben in den Kursdetails');
     for (const change of [{ profileId: 'b' }, { trancheId: 'fremd' }, { status: 'failed' }, { asOf: asOf - 1 }]) {
         report.results = [{ profileId: 'a', trancheId: 'a-lot', status: 'updated', asOf, ...change }];
         renderManagerQuoteContext(doc, lots);
-        assert(!host.textContent.includes('automatisch'), 'Fremder oder abweichender Kursbeleg behauptet keine Automatik');
+        assert(!details.textContent.includes('automatisch'), 'Fremder oder abweichender Kursbeleg behauptet keine Automatik');
     }
     report = { status: 'complete', updated: 1, results: [{ profileId: 'a', trancheId: 'a-lot', status: 'updated', asOf }] };
     renderManagerQuoteContext(doc, [...lots, { trancheId: 'unbekannt', currentPrice: 10 }]);
-    assert(host.textContent.includes('Teilweise unbekannt') && !host.textContent.includes('automatisch'), 'Teilweise unbekannter Kursstand wird ehrlich dargestellt');
+    assert(host.textContent.includes('Teilweise unbekannt') && !details.textContent.includes('automatisch'), 'Teilweise unbekannter Kursstand wird ehrlich dargestellt');
     renderManagerQuoteContext(doc, [{ ...lots[0], asOf: asOf - 8 * 86400 }]);
-    assert(host.textContent.includes('ältere Kurse') && !host.textContent.includes('automatisch'), 'Alter Kursstand behauptet keine automatische Frische');
+    assert(host.textContent.includes('ältere Kurse') && details.textContent.includes('manuell aktualisieren') && !details.textContent.includes('automatisch'), 'Alter Kursstand bleibt sichtbar und nennt in den Details die Aktualisierung');
     session.getItem = () => { throw new Error('synthetic-unavailable'); };
     renderManagerQuoteContext(doc, lots);
-    assert(!host.textContent.includes('automatisch'), 'Nicht lesbare Sitzung bleibt ohne Automatikbehauptung');
+    assert(!details.textContent.includes('automatisch'), 'Nicht lesbare Sitzung bleibt ohne Automatikbehauptung');
+    renderManagerQuoteContext(doc, []);
+    assertEqual(host.textContent, 'Kurse: Keine Kurse vorhanden', 'Leerer Bestand hat einen kurzen ehrlichen Status');
+    assert(details.textContent.includes('Abrufzeit ist kein Kursdatum'), 'Auch der leere Bestand behält die Erklärung');
     assert(reads > 0 && writes === 0, 'Kurskontext liest den Bericht ohne Sessionwrite');
     assertEqual(JSON.stringify(lots), before, 'Kurskontext verändert keine gespeicherten Kurswerte');
 }
@@ -314,15 +318,15 @@ console.log('Personendaten: echte Kernwerte, Datumshinweise und sichere Textknot
     const before = JSON.stringify(profile);
     renderManagerPersonData(doc, profile);
     assertEqual(hosts.managerPersonProfileName.textContent, profile.name, 'Sonderzeichen und lange Namen erscheinen ausschließlich als Text');
-    assert(hosts.managerPersonSummary.textContent.includes('geb. 14.03.1958 · 68 Jahre') && hosts.managerPersonSummary.textContent.includes('1.500 €'), 'Geschlossene Personzeile enthält echte Kernwerte');
-    assert(hosts.managerAssetsSummary.textContent.includes('61.000 €') && hosts.managerAssetsSummary.textContent.includes('7,5 %'), 'Geschlossene Vermögenszeile enthält echte Beträge und Goldstrategie');
+    assert(hosts.managerPersonSummary.textContent.includes('geb. 14.03.1958 · 68 Jahre') && hosts.managerPersonSummary.textContent.includes('Kirchensteuer 8,0 %'), 'Geschlossene Personzeile enthält echte Kernwerte');
+    assert(hosts.managerAssetsSummary.textContent.includes('7,5 %'), 'Geschlossene Vermögenszeile enthält echte Beträge und Goldstrategie');
     assert(hosts.managerCareSummary.textContent.includes('40.000 €') && hosts.managerCareSummary.textContent.includes('Pflegegrad 3'), 'Geschlossene Pflegezeile enthält echtes Ziel und Trigger');
     assert(hosts.managerBirthSupplement.hidden && hosts.profileAlter.value === 67, 'Vollständiges Datum ersetzt Ergänzung durch Januaralter');
     assertEqual(JSON.stringify(profile), before, 'Darstellung lässt sämtliche Fachbytes unverändert');
     renderManagerPersonData(doc, { ...profile, personDates: describePersonDates(data, 2027) });
     assertEqual(hosts.profileAlter.value, 68, 'Neue Jahresbasis projiziert Alter erneut');
     renderManagerPersonData(doc, { ...profile, id: 'b', personDates: describePersonDates({ profile_aktuelles_alter: '64' }, 2026), values: { ...values, goldAktiv: false, healthBucket: { enabled: false } } });
-    assert(!hosts.managerBirthSupplement.hidden && hosts.managerAssetsSummary.textContent.includes('aus') && hosts.managerCareSummary.textContent.includes('inaktiv'), 'Personenwechsel projiziert Datumslücke und Strategiezustände neu');
+    assert(!hosts.managerBirthSupplement.hidden && hosts.managerAssetsSummary.textContent === 'aus' && hosts.managerCareSummary.textContent.includes('inaktiv'), 'Personenwechsel projiziert Datumslücke und Strategiezustände neu');
     assert(hosts.profilePersonDateStatus.textContent.includes('festes Altalter') && hosts.managerBirthSuggestion.textContent.includes('1961'), 'Fallback bleibt mit reinem Jahresvorschlag sichtbar');
     renderManagerPersonData(doc, { id: 'corrupt', name: 'Unvollständige Person', valid: false });
     assert(hosts.profileAlter.value === '' && hosts.managerBirthSupplement.hidden && hosts.profilePersonDateStatus.textContent.includes('unvollständig'), 'Ungültiger Personenwechsel hinterlässt keine fremden Kalenderhinweise');

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { formatDiagnosisPayload } from '../app/balance/balance-diagnosis-format.js';
 import { createDiagnosisHandlers } from '../app/balance/balance-binder-diagnosis.js';
 import { buildBacktestColumnDefinitions, prepareRowsForExport, convertRowsToCsv } from '../app/simulator/simulator-main-helpers.js';
@@ -87,11 +88,19 @@ const expected = {
 };
 const before = structuredClone({raw, rows});
 const payload = formatDiagnosisPayload(raw);
+const scenarioForBaseline = structuredClone(projectScenarioLogV2(rows.map(r => ({ ...r.row, jahr: r.jahr }))));
+// Nur drei neue, getrennt geprüfte Metadatenfelder aus dem Altvergleich ausnehmen.
+assertEqual(scenarioForBaseline.unitContract.annualMoneyFields.flex_wunsch_haushalt_nominal, 'nominal_eur_per_year_desired_household_flex', 'Neuer Wunschbetrag hat nominale Jahreseinheit');
+assertEqual(scenarioForBaseline.unitContract.annualMoneyFields.flex_haushalt_erfuellt, 'nominal_eur_per_year_paid_household_flex_including_pension', 'Neuer Haushaltsbetrag berücksichtigt Rente');
+assertEqual(scenarioForBaseline.unitContract.minimumFlexRestriction.comparison, 'paid_household_flex_lt_applied_positive_minimum', 'Neuer Szenariovertrag erklärt den strikten Jahresvergleich');
+delete scenarioForBaseline.unitContract.annualMoneyFields.flex_wunsch_haushalt_nominal;
+delete scenarioForBaseline.unitContract.annualMoneyFields.flex_haushalt_erfuellt;
+delete scenarioForBaseline.unitContract.minimumFlexRestriction;
 const actual = {
  diagnosis: createDiagnosisHandlers({dom:{diagnosis:{filterToggle:{checked:false}}},appState:{lastUpdateTimestamp:'2026-05-12T08:30:00.000Z'}}).generateDiagnosisText(payload),
  backtestCsv: convertRowsToCsv(rows, buildBacktestColumnDefinitions('detailed')),
  backtestJson: JSON.stringify(prepareRowsForExport(rows, buildBacktestColumnDefinitions('detailed')),null,2),
- scenarioJson: serializeScenarioLogExportV2(projectScenarioLogV2(rows.map(r=>({...r.row,jahr:r.jahr})))),
+ scenarioJson: serializeScenarioLogExportV2(scenarioForBaseline),
  scenarioCsv: serializeScenarioLogCsvV2(projectScenarioLogV2(rows.map(r=>({...r.row,jahr:r.jahr}))))
 };
 for (const key of Object.keys(expected)) {
@@ -218,6 +227,23 @@ const expectedDownloads = {
 
 // Die echte UI-Aktion bis zum Blob und Download aufrufen, keine Ersatzserialisierung.
 const downloadGlobals = Object.fromEntries(['window', 'document', 'URL', 'Date'].map(key => [key, globalThis[key]]));
+function legacyHistoricalCsvBytes(csv) {
+    const lines = []; let quoted = false, start = 0, cuts = [];
+    for (let i = 0; i <= csv.length; i++) {
+        if (csv[i] === '"') {
+            if (quoted && csv[i + 1] === '"') i++; else quoted = !quoted;
+        } else if (!quoted && csv[i] === ';') cuts.push(i);
+        else if (!quoted && (csv[i] === '\n' || i === csv.length)) {
+            if (i > start) {
+                assertEqual(cuts.length, 35, 'CSV-Zeuge hat ausschließlich zwei additive Spalten');
+                lines.push(csv.slice(start, cuts[33]) + (csv[i] === '\n' ? '\n' : ''));
+            }
+            start = i + 1; cuts = [];
+        }
+    }
+    assert(csv.split('\n')[0].endsWith(';flex_household_desired_nominal_eur;flex_below_minimum'), 'Neue CSV-Spalten stehen additiv am Ende');
+    return lines.join('');
+}
 const downloadBefore = JSON.stringify(canonicalBacktestResult);
 const downloads = [];
 let pendingBlob;
@@ -238,8 +264,15 @@ try {
         exportBacktestLogData(format);
         assertEqual(downloads.length, countBefore + 1, `${format}: echte Exportaktion löst genau einen Download aus`);
         const downloaded = downloads.at(-1), witness = expectedDownloads[format];
-        assert(Buffer.from(await downloaded.blob.text(), 'utf8').equals(Buffer.from(witness.content, 'utf8')), `${format}: tatsächlicher Download bleibt vollständig bytegleich zum Basisstand`);
-        assertEqual(downloaded.filename, witness.filename, `${format}: feste synthetische Downloadmetadaten bleiben unverändert`);
+        assert(Buffer.from(format === 'csv' ? legacyHistoricalCsvBytes(await downloaded.blob.text()) : await downloaded.blob.text(), 'utf8').equals(Buffer.from(witness.content, 'utf8')), `${format}: tatsächlicher Download bleibt vollständig bytegleich zum Basisstand`);
+        let baselineFilename = downloaded.filename;
+        if (format === 'csv') {
+            const content = await downloaded.blob.text();
+            const digest = text => createHash('sha256').update(text).digest('hex').slice(0, 12);
+            assert(downloaded.filename.includes(`-csv-${digest(content)}-`), 'CSV-Dateiname schützt tatsächlich erweiterte Exportbytes');
+            baselineFilename = downloaded.filename.replace(`-csv-${digest(content)}-`, `-csv-${digest(legacyHistoricalCsvBytes(content))}-`);
+        }
+        assertEqual(baselineFilename, witness.filename, `${format}: feste synthetische Downloadmetadaten bleiben unverändert`);
         assertEqual(downloaded.blob.type, witness.mimeType, `${format}: Download-MIME bleibt unverändert`);
     }
     assertEqual(JSON.stringify(canonicalBacktestResult), downloadBefore, 'Echte Downloadaktionen verändern keine Ergebnisdaten');

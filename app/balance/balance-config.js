@@ -21,10 +21,13 @@ export const BALANCE_UPDATE_DEBOUNCE_MS = 250;
 // Reine Ausgabehosts; keine zusätzlichen Formular- oder Engineparameter.
 export const BALANCE_PRESENTATION_OUTPUT_IDS = Object.freeze({
     balanceAnnualAction: 'balanceAnnualAction',
+    balanceActionDisclaimer: 'balanceActionDisclaimer',
+    balanceNextStatus: 'balanceNextStatus',
     balanceBudgetWhy: 'balanceBudgetWhy',
     balanceBudgetTrace: 'balanceBudgetTrace',
     balanceFreeLiquidity: 'balanceFreeLiquidity',
     balanceReserveTargetMonths: 'balanceReserveTargetMonths',
+    balanceReserveCoverage: 'balanceReserveCoverage',
     balanceReserveRunway: 'balanceReserveRunway',
     balanceWealthFooter: 'balanceWealthFooter'
 });

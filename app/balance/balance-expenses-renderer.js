@@ -131,7 +131,7 @@ export function renderExpensesTableStructure({ host, profiles, examples = false,
     const table = doc.createElement('table');
     const caption = doc.createElement('caption');
     caption.className = 'balance-table-caption';
-    caption.textContent = 'Ausgewähltes Kalenderjahr · Profilspalten und Summe der gewählten Profile · nominale Euro (€)';
+    caption.textContent = 'Beträge in €';
     table.appendChild(caption);
     table.className = 'expenses-table ds-table';
 
@@ -197,7 +197,7 @@ export function renderExpensesTableStructure({ host, profiles, examples = false,
             importBtn.dataset.month = String(m);
             importBtn.dataset.profile = profile.profileId;
             appendActionIcon(importBtn, 'import', doc);
-            importBtn.title = 'CSV importieren';
+            importBtn.title = 'CSV importieren · erst Vorschau';
             importBtn.ariaLabel = 'CSV importieren';
             importBtn.ariaLabel += ` · ${EXPENSE_MONTHS[m - 1]} · ${profile.name || profile.profileId}`;
 
@@ -208,7 +208,7 @@ export function renderExpensesTableStructure({ host, profiles, examples = false,
             detailBtn.dataset.month = String(m);
             detailBtn.dataset.profile = profile.profileId;
             appendActionIcon(detailBtn, 'details', doc);
-            detailBtn.title = 'Details anzeigen';
+            detailBtn.title = 'Kategorien ansehen · Monatsdaten löschen';
             detailBtn.ariaLabel = 'Details anzeigen';
             detailBtn.ariaLabel += ` · ${EXPENSE_MONTHS[m - 1]} · ${profile.name || profile.profileId}`;
 

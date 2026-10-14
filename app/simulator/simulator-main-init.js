@@ -15,7 +15,6 @@ import { initRentAdjModeUI } from './simulator-main-rent-adjust.js';
 import { initDynamicFlexControls, refreshDynamicFlexControls, syncDynamicFlexPresetSelection } from './simulator-main-dynamic-flex.js';
 import { initSweepUIControls } from './simulator-main-sweep-ui.js';
 import { initTabSwitching } from './simulator-main-tabs.js';
-import { initResetButton } from './simulator-main-reset.js';
 import { initPartnerToggle } from './simulator-main-partner.js';
 import { initStressPresetOptions } from './simulator-main-stress.js';
 import { initSimulatorProfileSelection } from './simulator-main-profiles.js';
@@ -95,7 +94,6 @@ export async function initializeSimulatorApp() {
     // Portfolioleser bereitstehen (auch bei ausschließlich Registrywerten).
     refreshProfileSelection = initSimulatorProfileSelection({ initializePlanPage });
     initSimulatorPlanTrial({ refresh: () => { syncDynamicFlexPresetSelection(); refreshDynamicFlexControls(); } });
-    initResetButton();
 
     // Tranchen automatisch in die Eingabefelder übernehmen (ohne Alert)
     syncTranchenToInputs({ silent: true });

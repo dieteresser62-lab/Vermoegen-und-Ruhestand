@@ -13,7 +13,7 @@ assert(images.length > 0, 'SVGs werden automatisch entdeckt');
 for (const file of images) assert(validateSvgXml(fs.readFileSync(file, 'utf8')), path.basename(file) + ': XML-wohlgeformt');
 const handbook = fs.readFileSync(new URL('Handbuch.html', root), 'utf8');
 const embedded = [...handbook.matchAll(/<img\b[^>]*src="([^"]+\.svg)"/g)].map(match => match[1]);
-assertEqual(embedded.length, 6, 'Sechs vorhandene Handbuchbilder erhalten');
+assertEqual(embedded.length, 0, 'Das neue Handbuch verwendet echte App-PNGs; alle SVG-Assets werden weiter separat geprüft');
 for (const src of embedded) assert(images.includes(path.resolve(new URL(src, root).pathname)), src + ': Einbindung im entdeckten Bestand');
 for (const valid of ['<svg>&amp;&#37;&#x25;</svg>', '<?xml version="1.0"?><svg a="&quot;"><!-- Kommentar --><![CDATA[<&]]><g/></svg>']) {
     assert(validateSvgXml(valid), 'Gültige Entitäten, Attribute, Kommentar und CDATA');

@@ -10,14 +10,19 @@ import { init, resetPersistenceForTests, persistenceStorage, exportAllSync, flus
 import { completeProfilePageReadiness } from '../app/profile/profile-navigation.js';
 import { createBatchQuoteFetcher, resolveTrancheQuote, fetchProxyPrice } from '../app/tranches/tranchen-price-service.js';
 import { switchProfile } from '../app/profile/profile-storage.js';
+import { appNow } from '../app/shared/app-clock.js';
 
-const original = { fetch: globalThis.fetch, setTimeout, clearTimeout, now: Date.now };
+const original = { fetch: globalThis.fetch, setTimeout, clearTimeout, Date: globalThis.Date };
 const epoch = Date.parse('2026-10-06T10:00:00Z');
 const personNames = { a: 'Alva <Test> & Partner', b: 'Berta Beispiel', c: 'Carlo Muster' };
 let time, timers, timerId;
 function installClock() {
     time = epoch; timers = new Map(); timerId = 0;
-    Date.now = () => time;
+    // appNow() liest new Date(); Fachzeit und technische Fristen teilen die Testuhr.
+    globalThis.Date = class extends original.Date {
+        constructor(...args) { super(...(args.length ? args : [time])); }
+        static now() { return time; }
+    };
     globalThis.setTimeout = (fn, ms) => { const id = ++timerId; timers.set(id, { fn, at: time + ms }); return id; };
     globalThis.clearTimeout = id => timers.delete(id);
 }
@@ -115,6 +120,12 @@ function assertSessionReport(report) {
 }
 try {
     installClock();
+    assert.equal(new Date().getTime(), epoch, 'Date-Konstruktor verwendet die feste Referenzuhr');
+    assert.equal(appNow().getTime(), Date.now(), 'App-Uhr und technische Uhr starten gleichzeitig');
+    await advance(1000);
+    assert.equal(new Date().getTime(), epoch + 1000, 'Date-Konstruktor folgt dem Timerfortschritt');
+    assert.equal(appNow().getTime(), Date.now(), 'App-Uhr folgt derselben fortschreitenden Testzeit');
+    assert.equal(new Date(0).getTime(), 0, 'Explizite Datumsargumente bleiben erhalten');
     console.log('Acht direkte Erfolge bleiben bei neun Gruppen und hängenden Such-/ISINpfaden bestätigt');
     for (const latePart of ['unanswered', 'headers', 'body']) {
         installClock();
@@ -833,7 +844,7 @@ try {
     console.log('✓ Startkurse: Sitzungs-, Deadline-, Navigations- und Backendverträge');
 } finally {
     resetPersistenceForTests(); globalThis.fetch = original.fetch; globalThis.setTimeout = original.setTimeout;
-    globalThis.clearTimeout = original.clearTimeout; Date.now = original.now;
+    globalThis.clearTimeout = original.clearTimeout; globalThis.Date = original.Date;
 }
 
 {
@@ -851,7 +862,7 @@ try {
         assertEqual(network, 0, 'Startup erreicht werfende Netzwerkfunktion nie');
     } finally {
         setAppTestDate(null); resetPersistenceForTests(); globalThis.fetch = original.fetch;
-        globalThis.setTimeout = original.setTimeout; globalThis.clearTimeout = original.clearTimeout; Date.now = original.now;
+        globalThis.setTimeout = original.setTimeout; globalThis.clearTimeout = original.clearTimeout; globalThis.Date = original.Date;
     }
 }
 {

@@ -24,6 +24,7 @@ import {
 import { getPageNavigationGuard } from '../app/shared/navigation-guard-dialog.js';
 import { TrancheValidationError } from '../types/tranche-contract.js';
 import { createTranchenPageDom, MockElement } from './tranchen-manager-page.test.mjs';
+import { bindDecimalInputDisplay } from '../app/tranches/tranchen-manager-decimal-input.js';
 
 console.log('--- Tranchen Manager Modal Tests ---');
 
@@ -605,6 +606,36 @@ for (const kind of ['tranche', 'cash']) {
         cashBalanceAfterPostingEur: null, nextActionId: 'cash-confirmation:v1:sale-focus' }, doc, oldOpener);
     closeCashPostingModal(doc, { confirmed: true });
     assertEqual(doc.activeElement, replacement, 'Cashschluss findet nach Rerender den neuen Aktionsknoten desselben Verkaufs');
+}
+
+// Gruppierte Preise bleiben fachlich gleich; reiner Fokus macht Dialoge nicht dirty.
+{
+    const doc = createDocumentMock();
+    for (const id of ['purchasePrice', 'currentPrice', 'cashPostingBalance']) {
+        const field = doc.getElementById(id);
+        field.tagName = 'INPUT'; field.type = 'text'; field.setAttribute('inputmode', 'decimal');
+    }
+    bindDecimalInputDisplay(doc);
+    const lot = { schemaVersion: 2, trancheId: 'grouped-price', name: 'Synthetischer Kurs', isin: '', ticker: '',
+        shares: 2, purchasePrice: 1234.56789, currentPrice: 2345.67891, purchaseDate: '2026-01-02',
+        category: 'equity', type: 'aktien_neu', tqf: 0.3, taxExempt: false, notes: '' };
+    openEditTrancheModal(lot, doc);
+    const submission = captureManagerModalSubmission('tranche', doc);
+    assertEqual(doc.getElementById('purchasePrice').value, '1.234,56789', 'Bearbeitung zeigt gruppierte Preise ohne Rundung');
+    for (const id of ['purchasePrice', 'currentPrice']) {
+        const field = doc.getElementById(id);
+        doc.listeners.focusin({ target: field }); doc.listeners.focusout({ target: field });
+    }
+    assertEqual(captureManagerModalSubmission('tranche', doc).signature, submission.signature, 'Reine Preisformatierung erhält den Dialogauftrag');
+    const read = readTrancheFromForm(lot.trancheId, doc);
+    assertEqual(read.purchasePrice, lot.purchasePrice, 'Kaufreader erhält sämtliche Preisstellen');
+    assertEqual(read.currentPrice, lot.currentPrice, 'Kursreader erhält sämtliche Preisstellen');
+    assertEqual(closeTrancheModal(doc), true, 'Unveränderter gruppierter Dialog schließt ohne Verlustentscheidung');
+    openCashPostingModal({ mode: 'confirm', targetActionId: 'grouped-cash', cashBalanceAfterPostingEur: 98000.25 }, doc);
+    const cash = doc.getElementById('cashPostingBalance');
+    doc.listeners.focusin({ target: cash }); doc.listeners.focusout({ target: cash });
+    assertEqual(readCashPostingForm(doc).cashBalanceAfterPostingEur, 98000.25, 'Cashdialog liest gruppierten Betrag als Zahl');
+    assertEqual(closeCashPostingModal(doc), true, 'Reine Cashformatierung schließt ohne Verlustentscheidung');
 }
 
 // Reale Kauf-/Cashleser erhalten denselben Zahlenvertrag bei beiden Trennzeichen.

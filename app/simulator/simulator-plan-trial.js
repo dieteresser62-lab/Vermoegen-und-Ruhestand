@@ -1,4 +1,4 @@
-import { bindHouseholdPlanField, HOUSEHOLD_PLAN_DISPLAY_FIELDS, projectHouseholdPlanFieldLabels, HOUSEHOLD_PLAN_CARDS, householdPlanFieldSpec, formatHouseholdPlanValue, readBoundHouseholdPlanField } from '../shared/household-plan-fields.js';
+import { bindHouseholdPlanField, HOUSEHOLD_PLAN_DISPLAY_FIELDS, projectHouseholdPlanFieldLabels, HOUSEHOLD_PLAN_CARDS, HOUSEHOLD_PLAN_GROUPS, householdPlanFieldSpec, formatHouseholdPlanValue, readBoundHouseholdPlanField } from '../shared/household-plan-fields.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { assertPlanValues, SIMULATOR_PLAN_FIELD_MAP,
     readSimulatorHouseholdPlan, projectPlanToSimulator, simulatorPlanFormPatch, patchHouseholdPlan } from '../profile/household-plan.js';
@@ -72,7 +72,7 @@ function syncNumericBindings(doc, state) {
             if (!fields.has(id)) {
                 const originalType = field.type, originalInputMode = field.inputMode;
                 field.type = 'text'; field.inputMode = 'decimal';
-                const binding = bindHouseholdPlanField({ doc, field, path });
+                const binding = bindHouseholdPlanField({ doc, field, path, includeUnit: false });
                 fields.set(id, { binding, field, originalType, originalInputMode });
             }
         } else if (fields.has(id)) {
@@ -90,6 +90,12 @@ export function renderSimulatorPlanTrial(doc = globalThis.document, { project = 
     projectHouseholdPlanFieldLabels(doc, SIMULATOR_PLAN_FIELD_MAP);
     for (const heading of doc.querySelectorAll?.('[data-plan-card-label]') || [])
         heading.textContent = HOUSEHOLD_PLAN_CARDS[heading.dataset.planCardLabel];
+    for (const hint of doc.querySelectorAll?.('[data-plan-field-hint]') || [])
+        hint.textContent = householdPlanFieldSpec(hint.dataset.planFieldHint)?.hint || '';
+    for (const heading of doc.querySelectorAll?.('[data-plan-group-label]') || [])
+        heading.textContent = HOUSEHOLD_PLAN_GROUPS[heading.dataset.planGroupLabel].label;
+    const needSource = doc.getElementById('simNeedSource');
+    if (needSource) needSource.textContent = state.scope ? 'aus Haushalt & Plan' : 'lokale Annahmen';
     const numeric = syncNumericBindings(doc, state);
     if (project && state.scope) {
         const raw = trial.formValues();

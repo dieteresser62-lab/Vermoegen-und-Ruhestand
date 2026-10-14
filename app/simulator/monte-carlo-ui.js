@@ -380,7 +380,7 @@ export function createMonteCarloUI() {
             if (largeRunConfirmation?.checked !== true) {
                 revealAssumptionControl(largeRunConfirmation);
                 focusElement(largeRunConfirmation);
-                const error = new Error(`Mehr als ${formatInteger(MONTE_CARLO_PARAMETER_LIMITS.runs.interactiveRecommendedMaximum)} Simulationen sind eine Großlast. Bitte bestätigen Sie die angezeigte Belastung vor dem Start.`);
+                const error = new Error(`Mehr als ${formatInteger(MONTE_CARLO_PARAMETER_LIMITS.runs.interactiveRecommendedMaximum)} Simulationen sind eine Großlast. Bitte bestätige die angezeigte Belastung vor dem Start.`);
                 error.errors = [{ fieldId: 'mcLargeRunConfirm' }];
                 throw error;
             }

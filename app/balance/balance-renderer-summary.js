@@ -1,5 +1,5 @@
 import { projectBalanceFlexTrace } from './balance-flex-trace.js';
-import { bindBalanceBudgetWhy } from './balance-presentation-controls.js';
+import { bindBalanceBudgetWhy, renderBalanceStrategyValues } from './balance-presentation-controls.js';
 import { householdPlanFieldSpec } from '../shared/household-plan-fields.js';
 import { readBalanceInflationSource } from './balance-inflation-source.js';
 import { readBalanceHouseholdPlan } from '../profile/household-plan.js';
@@ -103,7 +103,7 @@ export class SummaryRenderer {
         // Detail-Abschnitte in eigene Render-Schritte ausgelagert.
         this.renderEntnahme(ui.spending || {});
         this.renderMarktstatus(ui.market || {});
-        this.renderLiquidityBar(ui.liquiditaet?.deckungNachher);
+        this.renderLiquidityBar(ui.liquiditaet?.deckungVorher);
     }
 
     renderBudgetTrace(projection) {
@@ -117,6 +117,9 @@ export class SummaryRenderer {
         const doc = host.ownerDocument || globalThis.document;
         const heading = doc.createElement('h4'); heading.textContent = 'Warum gekürzt?';
         host.appendChild(heading);
+        const explanation = doc.createElement('p'); explanation.className = 'ds-hint balance-flex-explanation';
+        explanation.textContent = 'Die Treppe erklärt die Kürzung gegenüber dem Wunsch. Eine Einschränkung liegt erst vor, wenn der tatsächlich bezahlte Haushalts-Flex unter dem angewandten positiven Mindest-Flex liegt. Der Jahresvergleich im Simulator berücksichtigt auch den Rentenbeitrag.';
+        host.appendChild(explanation);
         for (const row of projection.rows) {
             const node = doc.createElement('div'); node.className = `balance-flex-row balance-flex-${row.kind}`;
             const label = doc.createElement('strong'); label.textContent = row.label;
@@ -189,16 +192,6 @@ export class SummaryRenderer {
         const chips = outputs.balanceBudgetChips;
         if (chips) {
             chips.replaceChildren();
-            [finite(spending.details?.flexRate) ? `Flex-Rate ${formatDisplayNumber(spending.details?.flexRate, { unit: 'percent' })}` : null,
-                finite(ui.liquiditaet?.deckungVorher) ? `Liquidität ${formatDisplayNumber(ui.liquiditaet.deckungVorher, { unit: 'percent' })} des Ziels` : null,
-                cut > 0 && projection.reason ? `Grund: ${projection.reason}` : null].filter(Boolean).forEach(text => {
-                const chip = document.createElement('span'); chip.className = 'ds-plan-chip'; chip.textContent = text;
-                const flexRate = spending.details?.flexRate, coverage = ui.liquiditaet?.deckungVorher;
-                if (text.startsWith('Flex-Rate') && finite(flexRate) && flexRate < 100) chip.className += ' ds-chip-error';
-                if (text.startsWith('Grund:')) chip.className += ' ds-chip-warning';
-                if (text.startsWith('Liquidität') && finite(coverage)) chip.className += coverage >= 100 ? ' ds-chip-success' : ' ds-chip-warning';
-                chips.appendChild(chip);
-            });
             const status = readBalancePersonStatus();
             if (status.ready && status.status !== 'demo') {
                 for (const entry of status.entries) {
@@ -239,8 +232,9 @@ export class SummaryRenderer {
         const freeLiquidity = finite(operative) ? operative : finite(input.tagesgeld) && finite(input.geldmarktEtf) ? input.tagesgeld + input.geldmarktEtf : null;
         const setPresentation = (key, text) => { const host = this.getPresentationOutput(key); if (host) host.textContent = text; };
         setPresentation('balanceFreeLiquidity', currency(freeLiquidity));
+        setPresentation('balanceReserveCoverage', `Betragsziel aktuell zu ${formatDisplayNumber(ui.liquiditaet?.deckungVorher, { unit: 'percent' })} gedeckt`);
         setPresentation('balanceReserveTargetMonths', formatDisplayNumber(finite(input.liquidityRunwayYears) ? input.liquidityRunwayYears * 12 : null, { unit: 'months', fractionDigits: 0 }));
-        setPresentation('balanceReserveRunway', `reicht für ${formatDisplayNumber(ui.runway?.months, { unit: 'months', allowInfinity: true })} Entnahme`);
+        setPresentation('balanceReserveRunway', `Nach Vorschlag: reicht für ${formatDisplayNumber(ui.runway?.months, { unit: 'months', allowInfinity: true })} Entnahme`);
         rows('balanceReserveRows', [
             ['Gold-Bestand', finite(input.goldWert) ? currency(input.goldWert) : null]
         ]);
@@ -260,11 +254,11 @@ export class SummaryRenderer {
                 segment.title = { peak_hot: 'Markt heiß gelaufen', peak_stable: 'Stabiler Höchststand', recovery: 'Bestätigte Erholung', corr_young: 'Junge Korrektur', side_long: 'Seitwärts Lang', recovery_in_bear: 'Erholung im Bärenmarkt', bear_deep: 'Tiefer Bär' }[phase]; scale.appendChild(segment);
             });
         }
-        const tint = ['peak_hot', 'peak_stable', 'recovery'].includes(market.sKey) ? 'good' : market.sKey === 'bear_deep' ? 'bad' : market.sKey ? 'warn' : null;
+        const tint = ['peak_stable', 'recovery'].includes(market.sKey) ? 'good' : market.sKey === 'bear_deep' ? 'bad' : market.sKey ? 'warn' : null;
         const marketCard = scale?.closest?.('.ov-mkt');
         for (const tone of ['good', 'warn', 'bad']) {
             marketCard?.classList.toggle('market-' + tone, tone === tint);
-            outputs.balanceOverview?.classList.toggle('climate-' + tone, tone === tint);
+            outputs.balanceOverview?.classList.toggle('climate-' + tone, tone === tint && market.sKey !== 'peak_hot');
         }
         const alarm = ui.balanceAlarmActive === true;
         if (outputs.balanceMarketAlarm) outputs.balanceMarketAlarm.hidden = !alarm;
@@ -296,6 +290,7 @@ export class SummaryRenderer {
         const outputs = this.dom?.outputs || {};
         const set = (key, text) => { if (outputs[key]) outputs[key].textContent = text; };
         const targetYear = deriveCompletedCalendarYear(appNow());
+        renderBalanceStrategyValues(globalThis.document, input, targetYear);
         const state = this.storageManager?.loadState?.();
         const metadata = state?.annualPeriodMetadata;
         const liveData = Object.fromEntries(Array.from({ length: persistenceStorage.length }, (_, i) => persistenceStorage.key(i)).map(key => [key, persistenceStorage.getItem(key)]));
@@ -334,24 +329,29 @@ export class SummaryRenderer {
         }
 
         const firstYearText = `Erstes Planungsjahr ${model.firstPlanningYear} · erster Jahresabschluss Anfang ${model.firstPlanningYear + 1}`;
-        set('balanceNextAnnualLabel', notApplicable ? 'Erster Jahresabschluss' : annualState === 'recovery' ? 'Wiederherstellung öffnen' : annualState === 'unclear' ? 'Jahresstatus klären' : annualState === 'unavailable' ? 'Daten prüfen' : `Jahresabschluss ${targetYear} starten`);
+        set('balanceNextAnnualLabel', notApplicable ? 'Erster Jahresabschluss' : annualState === 'done' ? `Jahr ${targetYear} abgeschlossen` : annualState === 'recovery' ? 'Wiederherstellung öffnen' : annualState === 'unclear' ? 'Jahresstatus klären' : annualState === 'unavailable' ? 'Daten prüfen' : `Jahresabschluss ${targetYear} starten`);
         const origin = model.actionOrigin || projectBalanceActionOrigin({ comparison: model.planComparison, year: targetYear + 1, scope: model.scope, occasion: model.occasion });
         this.actionOrigin = origin;
         this.renderAnnualAction(origin);
-        set('balanceActionFootnote', origin.previewNotice);
+        set('balanceActionFootnote', `Festgeschrieben erst im Jahresabschluss ${origin.previewYear}`);
+        const disclaimer = this.getPresentationOutput('balanceActionDisclaimer');
+        if (disclaimer) disclaimer.textContent = origin.previewNotice;
         for (const [id, offset] of [['endeVJ', 0], ['endeVJ_1', 1], ['endeVJ_2', 2], ['endeVJ_3', 3]]) {
             const label = globalThis.document?.querySelector?.(`label[for="${id}"]`);
             if (label) label.textContent = `Ende ${targetYear - offset}`;
         }
         const marketView = getMarketDataProvenanceViewModel(state?.annualMarketDataMeta);
-        set('balanceMarketSource', marketView.available ? `${marketView.instrument} · ${marketView.asOf} · ${marketView.source}` : 'Marktdatenherkunft nicht verfügbar.');
+        set('balanceMarketSource', marketView.available ? `${marketView.instrument} · ${marketView.asOf} · ${marketView.source}` : 'Quelle und Stand noch nicht bestätigt.');
         set('balanceMarketDate', marketView.available && /^\d{4}-\d{2}-\d{2}$/.test(marketView.asOf) ? marketView.asOf.split('-').reverse().join('.') : 'nicht verfügbar');
         const recovery = annualState === 'recovery' || Boolean(metadata?.pendingCommit);
-        if (outputs.balanceNextAnnual) outputs.balanceNextAnnual.disabled = ['done', 'not_applicable'].includes(annualState) || Boolean(this.dom?.controls?.jahresabschlussBtn?.disabled);
+        if (outputs.balanceNextAnnual) {
+            outputs.balanceNextAnnual.hidden = ['done', 'not_applicable'].includes(annualState);
+            outputs.balanceNextAnnual.disabled = outputs.balanceNextAnnual.hidden || Boolean(this.dom?.controls?.jahresabschlussBtn?.disabled);
+        }
         set('balanceActionPeriod', origin.previewLabel);
         if (outputs.balanceBudgetChips) {
-            const chip = outputs.balanceBudgetChips.querySelector?.('[data-period-chip]') || document.createElement('span'); chip.className = 'ds-plan-chip ds-chip-warning';
-            chip.className = 'ds-plan-chip' + (notApplicable ? '' : annualState === 'done' ? ' ds-chip-success' : ' ds-chip-warning');
+            const chip = outputs.balanceBudgetChips.querySelector?.('[data-period-chip]') || document.createElement('p');
+            chip.className = 'ds-help balance-period-status';
             chip.textContent = notApplicable ? firstYearText : annualState === 'done' ? `Jahr ${targetYear} abgeschlossen`
                 : recovery ? 'Recovery erforderlich' : annualState === 'open' ? `vorläufig · bis zum Jahresabschluss ${targetYear}` : 'Jahresstatus ungeklärt';
             chip.setAttribute('data-period-chip', '');
@@ -364,6 +364,13 @@ export class SummaryRenderer {
             steps.replaceChildren();
             const open = deriveBalanceNextSteps({ occasion: model.occasion, recovery: model.recovery,
                 cashStatus: model.cashStatus, expenses: model.expenses, monthlyWithdrawal: ui.spending?.monatlicheEntnahme ?? model.summary?.monthlyWithdrawal });
+            const nextCard = steps.closest?.('.ov-next');
+            if (nextCard) nextCard.hidden = open.length === 0;
+            const status = this.getPresentationOutput('balanceNextStatus');
+            if (status) {
+                status.hidden = open.length > 0;
+                status.textContent = `Alles erledigt · nächster Jahresabschluss: Anfang ${notApplicable ? model.firstPlanningYear + 1 : targetYear + 2}`;
+            }
             set('balanceStepCount', open.length ? `${open.length} Schritte offen` : 'Alles erledigt');
             open.forEach((item, index) => {
                 const step = document.createElement('div'); step.className = 'balance-step ds-step'; step.setAttribute('data-next-step', item.id);
@@ -564,14 +571,16 @@ export class SummaryRenderer {
         let statusClass = 'status-amber'; // default
         let statusLabel = 'Normal';
 
-        if (['peak_hot', 'peak_stable', 'recovery'].includes(market.sKey) ||
+        if (['peak_stable', 'recovery'].includes(market.sKey) ||
             (!market.sKey && (scenario.includes('Erholung') && !scenario.includes('Bärenmarkt') ||
-                scenario.includes('Stabiler Höchststand') || scenario.includes('heiß gelaufen')))) {
+                scenario.includes('Stabiler Höchststand')))) {
             statusClass = 'status-green';
             statusLabel = 'Gut';
         } else if (market.sKey === 'bear_deep' || !market.sKey && scenario.includes('Tiefer Bär')) {
             statusClass = 'status-red';
             statusLabel = 'Vorsicht';
+        } else if (market.sKey === 'peak_hot' || !market.sKey && scenario.includes('heiß gelaufen')) {
+            statusLabel = 'Heiß gelaufen';
         }
 
         // Create status indicator with simplified framing
@@ -589,14 +598,6 @@ export class SummaryRenderer {
 
         // Vorhandene Gründe bleiben am Chip zugänglich; die Kartenhilfe bleibt separat.
         statusIndicator.title = Array.isArray(market.reasons) ? market.reasons.join(', ') : '';
-        const outputs = this.dom.outputs;
-        const alarm = outputs.balanceMarketAlarm?.hidden === false;
-        const cut = outputs.balanceBudgetCutAmount?.textContent;
-        const note = document.createElement('span'); note.className = 'balance-market-note';
-        note.textContent = [alarm ? 'Alarm aktiv' : null, cut ? 'Flex gekürzt' : null].filter(Boolean).join(' · ');
-        if (!note.textContent && outputs.balanceBudgetCutLegend?.hidden === true
-            && outputs.balanceBudgetCutLegend.getAttribute('data-cut-known') === 'true') note.textContent = 'keine Kürzung';
-        if (note.textContent) outputs.marktstatusText.appendChild(note);
 
     }
 
@@ -607,13 +608,19 @@ export class SummaryRenderer {
      */
     renderLiquidityBar(percent) {
         if (!this.dom?.outputs?.liquiditaetBalken || !this.dom?.outputs?.balkenContainer) return;
-        if (typeof percent !== 'number' || !isFinite(percent)) return;
-
-        const pct = Math.min(100, Math.max(0, percent));
         const bar = this.dom.outputs.liquiditaetBalken;
         bar.className = 'progress-bar';
+        this.dom.outputs.balkenContainer.setAttribute('aria-label', 'Aktuelle Deckung des Liquiditäts-Betragsziels');
+        if (!Number.isFinite(percent)) {
+            bar.style.width = '0%';
+            this.dom.outputs.balkenContainer.removeAttribute('aria-valuenow');
+            this.dom.outputs.balkenContainer.setAttribute('aria-valuetext', 'Deckung nicht verfügbar');
+            return;
+        }
+        const pct = Math.min(100, Math.max(0, percent));
         bar.style.width = pct + '%';
         bar.classList.add(pct >= 100 ? 'bar-ok' : pct >= 70 ? 'bar-warn' : 'bar-bad');
         this.dom.outputs.balkenContainer.setAttribute('aria-valuenow', pct.toFixed(0));
+        this.dom.outputs.balkenContainer.setAttribute('aria-valuetext', `${formatDisplayNumber(percent, { unit: 'percent' })} des Betragsziels`);
     }
 }

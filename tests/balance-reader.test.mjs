@@ -1103,7 +1103,7 @@ console.log('Test 15: Strikte Boolean-Anwendung und Marktdaten-Provenienz');
     assertEqual(view.highScope, 'windowHigh', 'Provenienzmodell gibt die eingeschränkte Hoch-Semantik aus');
     assert(view.text.includes('markt.csv'), 'Provenienzmodell benennt die gespeicherte Quelle');
     ProductionUIReader.renderMarketDataProvenance(null);
-    assertEqual(provenanceOutput.textContent, 'Herkunft der Marktdaten unbekannt – mit dem Jahres-Update aktualisieren', 'Fehlende Herkunft hat einen alltagssprachlichen Kartenhinweis');
+    assertEqual(provenanceOutput.textContent, 'Quelle und Stand noch nicht bestätigt · im Jahresabschluss prüfen', 'Fehlende Herkunft hat einen alltagssprachlichen Kartenhinweis');
     ProductionUIReader.renderMarketDataProvenance(provenance);
     assertEqual(provenanceOutput.textContent, `${view.instrument} · ${view.asOf} · ${view.source}`, 'Herkunftszeile zeigt Instrument, Stichtag und Quelle kurz');
     assertEqual(provenanceOutput.title, view.text, 'Ausführliche Herkunft bleibt als Erläuterung erhalten');

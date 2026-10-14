@@ -14,6 +14,7 @@ import { UIUtils } from './balance-utils.js';
 
 export function buildKeyParams(params = {}) {
     const metrics = [];
+    let group = 'Vermögensstand';
     const vpw = (params && typeof params.vpw === 'object') ? params.vpw : null;
     const healthBucket = (params && typeof params.healthBucket === 'object') ? params.healthBucket : null;
     const runwayTargetSmoothing = (params && typeof params.runwayTargetSmoothing === 'object') ? params.runwayTargetSmoothing : null;
@@ -34,7 +35,7 @@ export function buildKeyParams(params = {}) {
         if (typeof value !== 'string' || !value.trim()) {
             return;
         }
-        metrics.push({ label, value, meta, trend });
+        metrics.push({ label, value, meta, trend, group });
     };
 
     const peakValue = formatCurrencySafe(params.peakRealVermoegen);
@@ -112,6 +113,7 @@ export function buildKeyParams(params = {}) {
         });
     }
 
+    group = 'Flex und Entnahme';
     if (typeof params.aktuelleFlexRate === 'number' && isFinite(params.aktuelleFlexRate)) {
         pushMetric({
             label: 'Effektive Flex-Rate',
@@ -247,7 +249,7 @@ export function buildKeyParams(params = {}) {
         ) {
             pushMetric({
                 label: 'Mindest-Flex Effekt',
-                value: `${UIUtils.formatBalanceCurrency(params.minimumFlexEffectiveBefore)} -> ${UIUtils.formatBalanceCurrency(params.minimumFlexEffectiveAfter)}`,
+                value: `${UIUtils.formatBalanceCurrency(params.minimumFlexEffectiveBefore)} → ${UIUtils.formatBalanceCurrency(params.minimumFlexEffectiveAfter)}`,
                 meta: 'Effektiver Flex vor/nach Mindest-Flex-Schritt',
                 trend
             });
@@ -285,6 +287,7 @@ export function buildKeyParams(params = {}) {
     }
 
     if (vpw) {
+        group = 'Dynamische Berechnung';
         const methodLabel = vpw.horizonMethod === 'mean'
             ? 'Mean'
             : (vpw.horizonMethod === 'survival_quantile' ? 'Survival-Quantil' : (vpw.horizonMethod || 'n/a'));
@@ -409,6 +412,7 @@ export function buildKeyParams(params = {}) {
     }
 
     if (healthBucket?.enabled) {
+        group = 'Vermögensstand';
         pushMetric({
             label: 'Pflegebucket',
             value: UIUtils.formatBalanceCurrency(healthBucket.lockedAmount || 0),
@@ -427,7 +431,7 @@ export function buildKeyParams(params = {}) {
     }
 
     const grid = document.createElement('div');
-    grid.className = 'key-param-grid';
+    grid.className = 'key-param-groups';
 
     if (!metrics.length) {
         const empty = document.createElement('p');
@@ -436,6 +440,20 @@ export function buildKeyParams(params = {}) {
         empty.style.color = 'var(--secondary-text)';
         grid.append(empty);
         return grid;
+    }
+
+    const groups = new Map();
+    for (const title of ['Vermögensstand', 'Flex und Entnahme', 'Dynamische Berechnung']) {
+        if (!metrics.some(metric => metric.group === title)) continue;
+        const section = document.createElement('section');
+        section.className = 'key-param-group';
+        const heading = document.createElement('h4');
+        heading.textContent = title;
+        const items = document.createElement('div');
+        items.className = 'key-param-grid';
+        section.append(heading, items);
+        grid.append(section);
+        groups.set(title, items);
     }
 
     metrics.forEach(metric => {
@@ -460,7 +478,7 @@ export function buildKeyParams(params = {}) {
             card.append(meta);
         }
 
-        grid.append(card);
+        groups.get(metric.group).append(card);
     });
 
     return grid;

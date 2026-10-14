@@ -361,7 +361,7 @@ try {
     // Tatsächliche Sweep- und Strategiewechselgrenzen: keine Skalenfehler/Defaults.
     const { applyParametersToForm } = await import('../app/simulator/simulator-optimizer.js');
     applyParametersToForm({ survivalQuantile: .9, goGoMultiplier: 1.25 });
-    assertEqual(doc.getElementById('survivalQuantile').value, '90 %', 'Sweep projiziert kanonischen Anteil als Prozentanzeige');
+    assertEqual(doc.getElementById('survivalQuantile').value, '90', 'Sweep projiziert kanonischen Anteil als Prozentanzeige');
     assertEqual(getCommonInputs().survivalQuantile, .9, 'Sweepanteil erreicht die Engine genau einmal skaliert');
     assertEqual(getCommonInputs().goGoMultiplier, 1.25, 'Sweepfaktor bleibt ein Faktor');
     const strategy = doc.getElementById('entnahmeStrategie');

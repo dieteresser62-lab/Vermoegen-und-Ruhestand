@@ -30,6 +30,7 @@ for (const [complete, spent, budget, done] of [[false, null, 700, false], [true,
 }
 assertEqual(projectOverviewMonthSteps({ ...monthDialogModel, quoteDate: '2026-09-01' })[0].done, false, 'Alte Kurse bleiben offen');
 assertEqual(projectOverviewMonthSteps({ ...monthDialogModel, priceReport: { results: [{ status: 'failed' }] } })[0].done, false, 'Teilkurse bleiben offen');
+assertEqual(projectOverviewMonthSteps(monthDialogModel)[2].continueLabel, 'Weiter zum Budgetvergleich', 'Budgetnavigation verwendet einen lesbaren Zieltext');
 for (const outcome of ['accept', 'cancel', 'escape', 'close', 'context']) {
     const f = createDialogFixture(), controller = new AbortController(), opener = f.doc.createElement('button'); let handle;
     const result = requestOverviewMonthConfirmation({ doc: f.doc, model: monthDialogModel, people: monthDialogModel.cashPeople,
@@ -37,6 +38,7 @@ for (const outcome of ['accept', 'cancel', 'escape', 'close', 'context']) {
     assert(handle.root.open, outcome + ': echter Monatsdialog offen');
     assertEqual(await requestOverviewMonthConfirmation({ doc: f.doc, model: monthDialogModel }), false, 'Doppelte Öffnung bleibt schreibfrei');
     assertEqual(f.doc.getElementById('overviewMonthConfirmationTitle').textContent, 'September abschließen', 'Titel nennt Abschlussmonat');
+    assertEqual(f.doc.querySelector('[data-close-dialog-next="expenses"]').textContent, 'Weiter zum Budgetvergleich', 'Weiterknopf übernimmt den Zieltext des Budgetvergleichs');
     handle.activate('cash'); const input = f.doc.querySelector('[data-tagesgeld-person]'); input.value = '18.000,125';
     handle.update({ ...monthDialogModel, expenses: { ...monthDialogModel.expenses, complete: true, spent: 0 } });
     assertEqual(input.value, '18.000,125', 'Importrefresh erhält Tagesgeldentwurf');
@@ -76,6 +78,9 @@ for (const outcome of ['accept', 'cancel', 'escape', 'close', 'context']) {
     assert(f.doc.querySelector('[data-close-dialog-result-month]'), 'Normaler Monat verwendet den gemeinsamen Faktenteil C');
     assert(!texts.includes('JAHR') && !texts.includes('aufs Girokonto überwiesen'), 'Normaler Monat enthält ausschließlich den bestätigten Monatsteil');
     assertEqual(f.doc.querySelector('[data-overview-month-accept]').textContent, 'Fertig', 'Ergebnis hat ausdrücklichen Fertigknopf');
+    assertEqual(f.doc.querySelector('.close-dialog-footnote').textContent, 'Nächster Monatsabschluss: 1. November.', 'Erfolg enthält nur den nächsten Abschlusstermin im Fuß');
+    assert(!texts.includes('Vorbereitungsschritte') && !texts.includes('verworfen') && !texts.includes('Stand stimmt'), 'Erfolg enthält keine Vorbereitung oder Verwerfhinweise');
+    assert(texts.includes('Geplante Entnahme aus dem Vermögen im Oktober'), 'Gespeicherter Betrag nennt die Vermögensentnahme');
     await f.doc.querySelector('[data-overview-month-accept]').fire('click'); await result;
     assertEqual(writes, 1, 'Fertig schreibt keinen zweiten Monat und öffnet keine Verlustnachfrage');
 }
@@ -212,7 +217,7 @@ for (const options of [{}, { people: [] }]) {
     for (const active of ['budget', 'cash', 'prices']) {
         handle.activate(active);
         assertEqual(visibleText().split(budget).length - 1, 1, active + ': Budgetlücke genau einmal sichtbar');
-        assertEqual(visibleText().split('Monatsbetrag Oktober:').length - 1, active === 'cash' ? 1 : 0, active + ': Monatsinformation nur im sichtbaren Tagesgeldinhalt');
+        assertEqual(visibleText().split('Geplante Entnahme aus dem Vermögen im Oktober:').length - 1, active === 'cash' ? 1 : 0, active + ': Monatsinformation nur im sichtbaren Tagesgeldinhalt');
     }
     handle.activate('cash'); const input = f.doc.querySelector('[data-tagesgeld-person]'); input.value = '19.000,123456'; input.focus();
     handle.update({ ...monthDialogModel, summary: { ...monthDialogModel.summary, monthlyWithdrawal: 750, action: { verb: 'Nichts tun' } } });
@@ -220,7 +225,7 @@ for (const options of [{}, { people: [] }]) {
     assertEqual(visibleText().split('750,00').length - 1, 1, 'Refresh aktualisiert den sichtbaren Überweisungsbetrag');
     assertEqual(f.doc.getElementById('overviewMonthConfirmationSubtitle').textContent, 'A · 3 von 4 Schritten angesehen', 'Fortschritt folgt Aktivierung ohne Dauer');
     const foot = dialogElements(handle.root).find(node => node.className === 'close-dialog-footnote');
-    assertEqual(foot.textContent, 'Nächster Abschluss: 1. November. Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. Alle Vorbereitungsschritte ansehen und Tagesgeld je Person bestätigen; ungespeicherte Eingaben werden beim Schließen verworfen.', 'Kalenderkorrekte Fußnotiz');
+    assertEqual(foot.textContent, 'Nächster Monatsabschluss: 1. November. Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. Alle Vorbereitungsschritte ansehen und Tagesgeld je Person ändern oder bestätigen; ungespeicherte Eingaben werden beim Schließen verworfen.', 'Kalenderkorrekte Fußnotiz');
     assert(foot.parent.children.at(-1) === foot, 'Fußnotiz folgt den Knöpfen');
     handle.close(false); await result;
 }
@@ -261,16 +266,24 @@ assert(!projectOverviewMonthSteps({ ...monthDialogModel, summary: { monthlyWithd
     const fields = f.doc.querySelectorAll('[data-tagesgeld-person]');
     assert(!f.doc.querySelector('[data-close-dialog-next="cash"]'), 'Letzter Monatsschritt ohne Weiter');
     assert(accept.disabled, 'Vorbelegung braucht ausdrückliche Tagesgeldbestätigung');
+    const statuses = f.doc.querySelectorAll('[data-tagesgeld-status]'), confirm = f.doc.querySelector('[data-tagesgeld-confirm]');
+    const recorded = 'Stand erfasst – wird mit dem Monatsabschluss gespeichert.';
+    assert(statuses.every(node => node.textContent === 'Letzten Stand übernommen – bitte prüfen.') && !confirm.hidden, 'Unbestätigte Vorbelegung verlangt Prüfung und bietet Stand stimmt');
+    assert(f.doc.querySelectorAll('[data-tagesgeld-date]').every(node => node.textContent === 'Kontostand heute (08.10.2026)'), 'Kontostand ist direkt am Feld auf den heutigen Abschlusstag datiert');
     await fields[0].fire('input'); assert(accept.disabled && !h.dirty(), 'Gleiche erste Zahl bestätigt ohne Dirty-Änderung nur eine Person');
+    assert(statuses[0].textContent === recorded && statuses[1].textContent.includes('bitte prüfen') && !confirm.hidden, 'Einzelne Eingabe ändert nur den Status dieser Person');
     await fields[1].fire('input'); assert(!accept.disabled, 'Gleiche zweite Zahl und alle Besuche geben den Monatsknopf frei');
+    assert(statuses.every(node => node.textContent === recorded) && confirm.hidden, 'Erfasste Stände bieten keine weitere Bestätigung an');
     fields[0].value = '-1'; await fields[0].fire('input');
     assert(!f.doc.querySelector('[data-close-dialog-next="cash"]'), 'Letzter Monatsschritt ohne Weiter');
     assert(accept.disabled, 'Ungültiger Tagesgeldwert sperrt den Hauptknopf');
+    assert(!confirm.hidden && statuses[0].textContent.includes('gültigen Kontostand'), 'Ungültige Folgeeingabe entfernt Erfasst und macht Bestätigung wieder erreichbar');
     await accept.fire('click'); assertEqual(writes, 0, 'Gesperrter Hauptklick schreibt keine Finanzdaten');
     fields[0].value = '18.000';
     await f.doc.querySelector('[data-tagesgeld-confirm]').fire('click');
     assert(!f.doc.querySelector('[data-close-dialog-next="cash"]'), 'Letzter Monatsschritt ohne Weiter');
     assert(!accept.disabled && writes === 0, 'Bestätigte Werte geben den Hauptknopf frei ohne Speicherklick');
+    assert(statuses.every(node => node.textContent === recorded) && confirm.hidden, 'Stand stimmt führt zum selben erfassten Zustand wie Eingabe');
     h.close(false); await promise;
     const again = requestOverviewMonthConfirmation({ doc: f.doc, model: monthDialogModel, people, onReady: handle => { h = handle; } });
     assert(!h.hasVisited('expenses') && f.doc.querySelector('[data-overview-month-accept]').disabled, 'Wiederöffnung beginnt mit neuer Besuchsmenge und unbestätigtem Cash');
@@ -279,7 +292,7 @@ assert(!projectOverviewMonthSteps({ ...monthDialogModel, summary: { monthlyWithd
 
 // Die Ergebniszeile enthält genau einen Budgetbegriff und keine zweite Scheinsumme.
 for (const [status, spent, budget, expected] of [
-    ['adopted', 800, 700, 'über dem Budget von'], ['adopted', 600, 700, 'unter dem Budget von'],
+    ['adopted', 800, 700, 'über Budget'], ['adopted', 600, 700, 'unter Budget'],
     ['adopted', 700, 700, 'genau im Budget'], ['missing', 700, null, 'Entfällt'], ['invalid', 700, null, 'Budgetquelle']
 ]) {
     const { projectConfirmedMonthResult } = await import('../app/overview/overview-month-confirmation.js');
@@ -288,4 +301,25 @@ for (const [status, spent, budget, expected] of [
     assert(result.budgetComparison.includes(expected), status + ': korrekte Vergleichsprojektion');
     assertEqual(result.budgetComparison.split('Budget').length - 1, 1, status + ': Budget steht genau einmal in der Vergleichszeile');
     assert(!result.budgetComparison.includes('Budget: —'), status + ': kein angehängter Scheinbetrag');
+}
+
+// Fortschritt benennt nur den Besuch; eine Überschreitung bleibt ein eigenes Ergebnis.
+{
+    const f = createDialogFixture(); let handle;
+    const model = { ...monthDialogModel, expenseBudget: 5000,
+        expenses: { ...monthDialogModel.expenses, complete: true, spent: 5135 },
+        priceReport: { completed: 2, total: 2 } };
+    const promise = requestOverviewMonthConfirmation({ doc: f.doc, model, onReady: h => { handle = h; } });
+    const budget = f.doc.querySelector('[data-close-dialog-step="budget"]');
+    assertEqual(budget.querySelector('.close-dialog-step-symbol').textContent, '3', 'Unbesuchter Vergleich hat auch mit vollständigen Daten keinen Haken');
+    assertEqual(budget.querySelector('.close-dialog-step-pill').textContent, 'offen', 'Vorhandener Vergleich behauptet keinen Besuch');
+    handle.activate('budget');
+    assertEqual(budget.querySelector('.close-dialog-step-symbol').textContent, '✓', 'Besuchter Vergleich erhält Fortschrittshaken');
+    assertEqual(budget.querySelector('.close-dialog-step-pill').textContent, 'angesehen', 'Haken benennt den Besuch statt ein positives Budgetergebnis');
+    const result = budget.querySelector('.close-dialog-result-warning');
+    assert(result.textContent.includes('135,00') && result.textContent.includes('über Budget · 2,7 %'), 'Budgetüberschreitung steht getrennt als Warnung mit Euro und Prozent');
+    const step = projectOverviewMonthSteps(model)[0];
+    assert(step.result.includes('im Abruf bearbeitet') && !step.result.includes('geprüft'), 'Automatischer Kursabruf behauptet keine Prüfung durch den Nutzer');
+    assert(!projectOverviewMonthSteps({ ...model, expenseBudget: 0 })[2].result.includes('%'), 'Nullbudget erzeugt keinen erfundenen Prozentvergleich');
+    handle.close(false); await promise;
 }

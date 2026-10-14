@@ -300,7 +300,8 @@ async function delayedActiveStart() {
     });
 }
 async function tauriStart() {
-    for (const identifier of ['com.dieter.ruhestandsapp.kandidat', 'com.dieter.ruhestandsapp', 'unbekannt', null, 'IPC-Fehler']) {
+    // Seitenstart bleibt auch mit Kennungen der alten App und ihrer Kandidaten möglich.
+    for (const identifier of ['de.vermoegen-ruhestand.entwicklung.kandidat', 'de.vermoegen-ruhestand.entwicklung', 'de.vermoegen-ruhestand.suite', 'com.dieter.ruhestandsapp.kandidat', 'com.dieter.ruhestandsapp', 'unbekannt', null, 'IPC-Fehler']) {
         const f = page('tranches', 'tauri://localhost/depot-tranchen-manager.html'), adapter = backend();
         const expectedCash = JSON.parse(adapter.durable.rs_profiles_v1).profiles.muster_a.data.profile_tagesgeld;
         Object.keys(adapter.durable).filter(isProfileScopedKey).forEach(key => delete adapter.durable[key]);

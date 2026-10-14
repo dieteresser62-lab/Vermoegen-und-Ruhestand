@@ -307,11 +307,11 @@ console.log('Test 1: no scenario keeps fixation blocked and reports the prerequi
 {
     const { controller, documentRef } = controllerFixture();
     controller.initialize();
-    assert(/Starten Sie zuerst einen Monte-Carlo-Lauf\./.test(documentRef.getElementById('stressReplayStatus').textContent),
+    assert(/Starte zuerst einen Monte-Carlo-Lauf\./.test(documentRef.getElementById('stressReplayStatus').textContent),
         'Empty replay state explains the Monte-Carlo prerequisite before a run context exists');
     controller.setMonteCarloContext({ inputs: { widowOptions: {} }, scenarioLogs: { characteristic: [] } });
     assertEqual(documentRef.getElementById('stressReplayFixButton').disabled, true, 'Fixation starts disabled');
-    assert(/Wählen Sie ein Szenario/.test(documentRef.getElementById('stressReplayStatus').textContent), 'Live region explains the missing selection');
+    assert(/Wähle ein Szenario/.test(documentRef.getElementById('stressReplayStatus').textContent), 'Live region explains the missing selection');
     assertEqual(await controller.fixSelectedScenario(), null, 'Fixation without a selection is rejected');
     assertEqual(documentRef.getElementById('stressReplayStatus').dataset.status, 'error', 'Missing selection is marked as an error');
 }
@@ -741,7 +741,7 @@ for (const readOnly of [false, true]) {
         assertEqual(replayNavigationSnapshot(documentRef), initialNavigation,
             'Leerarbeitsstand und Nur-Lesen verändern weder Navigation noch Fokus');
         assertEqual(documentRef.getElementById('stressReplayStatus').textContent,
-            readOnly ? 'Gespeicherter Stresspfad wurde nur zur Inspektion geladen.' : 'Starten Sie zuerst einen Monte-Carlo-Lauf.',
+            readOnly ? 'Gespeicherter Stresspfad wurde nur zur Inspektion geladen.' : 'Starte zuerst einen Monte-Carlo-Lauf.',
             'Bisherige Statusmeldung bleibt erhalten');
     });
 }

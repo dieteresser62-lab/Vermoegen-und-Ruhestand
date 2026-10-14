@@ -29,7 +29,7 @@ const swappedPanels = sources['depot-tranchen-manager.html'].replace('id="manage
 const swappedErrors = validatePersonenVermoegenLayout({ ...sources, 'depot-tranchen-manager.html': swappedPanels });
 assert(swappedErrors.includes('Personenseite: Planhost außerhalb des Planpanels: managerHouseholdPlan')
     && swappedErrors.includes('Personenseite: Personenhost außerhalb des Personenpanels: managerProfileValues'), 'Vertauschte Panels scheitern an der wirklichen Hostzuordnung');
-assert(validatePersonenVermoegenLayout({ ...sources, 'css/personen-vermoegen.css': sources['css/personen-vermoegen.css'].replace('font-size: var(--balance-h1)', 'font-size: 30px') }).includes('Personenseite: Typografietoken fehlt'), 'Neue Pixelschrift wird in der Personenseite abgewiesen');
+assert(validatePersonenVermoegenLayout({ ...sources, 'css/personen-vermoegen.css': sources['css/personen-vermoegen.css'].replace('font-size: var(--balance-h2)', 'font-size: 30px') }).includes('Personenseite: Typografietoken fehlt'), 'Neue Pixelschrift wird in der Personenseite abgewiesen');
 assert(validatePersonenVermoegenLayout({ ...sources, 'depot-tranchen-manager.html': sources['depot-tranchen-manager.html'].replace('id="trancheFormPreview"', 'id="entfernt"') }).includes('Personenseite: Depot-/Dialoghost fehlt: trancheFormPreview'), 'Fehlender tatsächlicher Vorschauhost scheitert');
 assert(validatePersonenVermoegenLayout({ ...sources, 'depot-tranchen-manager.html': sources['depot-tranchen-manager.html'].replace('id="type" required class="ds-select" hidden', 'id="type" required class="ds-select"') }).includes('Personenseite: nativer Segmentwertträger fehlt'), 'Verlorene Wertträgertrennung scheitert');
 const codeBlock = sources['depot-tranchen-manager.html'].match(/\.code-block\s*\{[^}]*\}/)?.[0];
@@ -168,7 +168,7 @@ for (const [name, module, producer] of [
     assert(result.ok, 'P8b: echte Darstellungsrolle am Erzeuger belegt: ' + name);
 }
 const personStyles = fs.readFileSync('css/personen-vermoegen.css', 'utf8'), historyStyles = fs.readFileSync('css/wealth-history.css', 'utf8');
-assert(/\.pv-person-history \.history-sparkline\s*\{[^}]*width:\s*100%;[^}]*height:\s*60px/.test(personStyles), 'Personenverlauf erhält volle Innenbreite und 60 px statt Seitenverhältnishöhe');
+assert(/\.pv-person-history \.history-sparkline\s*\{[^}]*width:\s*100%;[^}]*height:\s*40px/.test(personStyles), 'Personenverlauf erhält volle Innenbreite und eine flache 40-px-Linie');
 assert(/\.history-course\s*\{[^}]*stroke:\s*var\(--accent\)/.test(historyStyles) && /\.pv-course-change strong\s*\{[^}]*font-weight:\s*600/.test(personStyles), 'Kurslinie nutzt Messingtoken und Entwicklung halbfettes Gewicht');
 
 assert(['positive', 'negative', 'neutral'].every(state => historyStyles.includes('.pv-history-change.history-' + state)), 'Kartenfarbe überstimmt den allgemein gedämpften Absatzstil');
@@ -188,13 +188,14 @@ console.log('Personendatenkarten besitzen native Steuerung und vollständige ARI
     }
     for (const id of ['profileGeburtsdatum', 'profileGeschlecht', 'profileRentenbeginn', 'profileRenteMonatlich', 'profileSparerPauschbetrag', 'profileKirchensteuerPct', 'profileSonstigeEinkuenfte']) {
         let parent = node(id).parent;
-        while (parent && parent.attrs.id !== 'managerPersonBody') parent = parent.parent;
+        const host = ['profileRenteMonatlich', 'profileSonstigeEinkuenfte'].includes(id) ? 'managerPersonGlance' : 'managerPersonBody';
+        while (parent && parent.attrs.id !== host) parent = parent.parent;
         assert(Boolean(parent), 'Bestehender Personenfeldanker liegt in der Personregion: ' + id);
         assertEqual(elements.filter(el => el.attrs.id === id).length, 1, 'Keine duplizierten Wertträger: ' + id);
     }
-    assert(!Object.hasOwn(node('personendaten').attrs, 'hidden') && node('personendaten').parent.attrs.id === 'managerProfileValues', 'Sprungziel und Gesamtknopf liegen außerhalb der Klappen');
+    assert(!Object.hasOwn(node('personendaten').attrs, 'hidden') && node('personendaten').parent.attrs.id === 'managerPersonGlance', 'Sprungziel und Gesamtknopf bleiben im offenen Kartenkopf außerhalb der Klappen');
     assert(Object.hasOwn(node('managerBirthSupplement').attrs, 'hidden') && node('managerBirthDate').attrs['aria-describedby'].includes('managerBirthError'), 'Ergänzung hat einen eigenen verknüpften Fehlerhost');
     assert(sources['css/personen-vermoegen.css'].includes('.pv-person-disclosure { grid-column: 1 / -1; }'), 'Personkarte spannt volle Breite');
     const binder = fs.readFileSync(new URL('../app/tranches/tranchen-manager-person-cards.js', import.meta.url), 'utf8');
-    assert(!binder.includes("addEventListener('keydown'") && binder.includes('sessionStorage'), 'Native Tastatursteuerung erzeugt keinen zusätzlichen Togglehandler und nutzt Sitzungsspeicher');
+    assert(!binder.includes("addEventListener('keydown'") && !binder.includes('sessionStorage'), 'Native Tastatursteuerung erzeugt keinen zusätzlichen Togglehandler und speichert keine Klappzustände');
 }

@@ -9,6 +9,7 @@ import { bindDataRestoration, reportDataRestoration } from './data-restoration.j
 import { bindDataPrices } from './data-prices.js';
 import { bindPersistenceLocation } from '../shared/persistence-location.js';
 import { renderDataPage } from './data-renderer.js';
+import { bindDataNewBeginning } from './data-new-beginning-ui.js';
 
 const initialized = new WeakMap();
 // Der bestehende Sicherungsbinder behält seine Entscheidungen; nur seine Ausgabe
@@ -42,7 +43,7 @@ async function initializeDataPage(doc, win) {
     const options = { document: doc, window: win, probelaufController: getProbelaufController(doc), status: dataBackupStatus(doc) };
     bindFullBackupButton(options);
     bindFullBackupImport(options);
-    let revision = 0, prices;
+    let revision = 0, prices, newBeginning;
     const refresh = async () => {
         // Tauri-Adapter dürfen während eines offenen Kursflushs vorbereitete
         // Records führen. Erst das Jobende projiziert sie als bestätigt.
@@ -63,6 +64,7 @@ async function initializeDataPage(doc, win) {
             doc.getElementById('dataPageStatus').textContent = 'Die Daten konnten nicht gelesen werden. Weitere Hinweise findest du unter „Technische Details“.';
             doc.getElementById('dataPageTechnical').textContent = error.message;
         } }
+        await newBeginning?.update();
     };
     prices = bindDataPrices(doc, { win, refresh, readModel: () => readDataModel(PersistenceFacade, prices?.reportOptions()) });
     await bindPersistenceLocation(doc, { win });
@@ -91,12 +93,14 @@ async function initializeDataPage(doc, win) {
             message: 'Die Startdaten konnten nicht vollständig gespeichert werden. Du kannst eine Vollsicherung einspielen. Weitere Hinweise findest du unter „Technische Details“.',
             technical: error?.message || String(error)
         });
+        newBeginning = bindDataNewBeginning(doc, { win, refresh, ready: false });
         return false;
     }
     // Der Recovery-Einstieg gehört nur zum Seitenstart; Hashwechsel navigieren.
     const id = new URLSearchParams(win.location?.search || '').get('punkt');
     if (id) Array.from(doc.querySelectorAll?.('[data-restore-preview]') || []).find(button => button.dataset.restorePreview === id)?.click();
     doc.documentElement.dataset.dataReady = 'true';
+    newBeginning = bindDataNewBeginning(doc, { win, refresh, ready });
     return ready;
 }
 if (globalThis.document?.documentElement?.dataset?.suitePage === 'data') {

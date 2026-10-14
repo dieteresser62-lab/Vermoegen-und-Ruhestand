@@ -18,6 +18,7 @@ import { OVERVIEW_SIMULATION_KEY, projectSimulationSummaries } from '../app/over
 import { SummaryRenderer } from '../app/balance/balance-renderer-summary.js';
 import { createPresentationTestDocument } from './designsystem-source-contract.mjs';
 import { completedComparisonFixture } from './household-plan-comparison.test.mjs?fixture';
+import { getAppTestDate, setAppTestDate } from '../app/shared/app-clock.js';
 
 for (const options of [{}, { adjusted: true }, { receipt: false }, { preview: 'missing' }, { preview: 'invalid' }, { preview: 'stale' }]) {
     const f = completedComparisonFixture(options), before = JSON.stringify(f);
@@ -41,6 +42,8 @@ for (const options of [{}, { adjusted: true }, { receipt: false }, { preview: 'm
     }
     assertEqual(view.planComparison.adjusted, Boolean(options.adjusted), 'Bewusste Anpassung bleibt sichtbar');
     assertEqual(view.planComparison.recordStatus, options.receipt === false ? 'missing' : 'valid', 'Fehlender Beleg bleibt unbelegt');
+    assertEqual(view.annual.budget, options.receipt === false ? 2100 : 2000, 'Budgetlinie verwendet wie die Karte den Beschluss vor der Vorschau');
+    assertEqual(view.annual.budgetStatus, options.receipt === false ? 'provisional' : 'adopted', 'Budgetlinienstatus stammt aus der gewählten Anzeigequelle');
     assertEqual(JSON.stringify(f), before, 'Modellprojektion verändert weder Plan noch Beleg noch Registry');
 }
 
@@ -91,7 +94,7 @@ assertEqual(quotes.quoteDate, new Date((quoteSeconds - 86400) * 1000).toISOStrin
 assert(overviewPriceLabel(quotes).includes(new Date((quoteSeconds - 86400) * 1000).toLocaleDateString('de-DE')), 'Kurszeit wird lokal angezeigt');
 
 assertEqual(overviewPriceLabel({ ...quotes, priceReport: { status: 'running' } }), 'Kurse werden aktualisiert …', 'Echter Fortschrittsstatus bleibt erkennbar');
-assertEqual(overviewPriceLabel({ ...quotes, priceReport: { status: 'complete', updated: 1, results: [{ status: 'updated' }, { status: 'skipped' }] } }), 'Kurse teilweise verfügbar', 'Echter Teilbericht bleibt trotz gespeichertem Kurszeitpunkt sichtbar');
+assertEqual(overviewPriceLabel({ ...quotes, priceReport: { status: 'complete', updated: 1, results: [{ status: 'updated' }, { status: 'skipped' }] } }), overviewQuoteLabel(quotes) + ' · teilweise aktualisiert', 'Echter Teilbericht nennt den ältesten gespeicherten Kursstand');
 assertEqual(overviewPriceLabel({ ...quotes, priceReport: { status: 'storage-failed' } }), 'Kursspeicherung nicht bestätigt', 'Unbestätigte Kurswrites täuschen keinen Erfolg vor');
 
 const singleScope = overviewScope('single', ['a']);
@@ -141,7 +144,7 @@ for (const search of ['?year=abc', '?year=1800', '?year=2026&month=13', '?year=2
     assertEqual(parseOverviewTarget('balance', { hash: '#ausgaben', search }), null, 'Ungültige Parameter lösen nichts aus: ' + search);
 }
 assertEqual(parseOverviewTarget('balance', { hash: '#unbekannt' }), null, 'Unbekannter Hash löst keine Aktion aus');
-assertEqual(overviewPriceLabel({ ...quotes, quoteDate: now.toISOString(), priceReport: { status: 'offline', updated: 0 } }), 'Kursdienst nicht erreichbar · Kurse von heute', 'Offline täuscht trotz frischem gespeicherten Kurs keinen Abruf vor');
+assertEqual(overviewPriceLabel({ ...quotes, quoteDate: now.toISOString(), priceReport: { status: 'offline', updated: 0 } }), 'Kurse von heute · erneuter Abruf fehlgeschlagen', 'Offline zeigt die vorhandenen Kurse ohne einen heutigen Erfolg zu behaupten');
 const januaryScope = overviewScope('single', ['a']);
 const yearSummary = (year, monthlyBudget) => ({ ...summary, year, scope: januaryScope, monthlyBudget });
 const januaryData = { ...data, [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ annualPeriodMetadata: completed(2026) }),
@@ -331,6 +334,20 @@ const successfulQuotes = { ...quotes, priceTranches: quotes.priceTranches.map(t 
     retrievedAt: new Date(2026, 9, 6, 9, 12).getTime(), results: quotes.priceTranches.map(t => ({ profileId: t.profileId, trancheId: t.trancheId || t.id, status: 'updated' })) } };
 assertEqual(overviewPriceLabel(successfulQuotes), 'Kurse aktualisiert · heute 09:12', 'Uhrzeit stammt aus dem echten Abrufbericht');
 assertEqual(overviewPricesDone(successfulQuotes), true, 'Umbenennung erhält Erledigthaken');
+{
+    const previousDate = getAppTestDate(), before = JSON.stringify(successfulQuotes);
+    try {
+        setAppTestDate('2026-10-06');
+        for (const model of [successfulQuotes, { ...successfulQuotes, quoteDate: null },
+            { ...successfulQuotes, priceReport: { status: 'offline', updated: 0 } }]) {
+            assertEqual(overviewQuoteLabel(model), 'Testkurse, nicht echt', 'Probelauf kennzeichnet den Kursstand');
+            assertEqual(overviewPriceLabel(model), 'Testkurse, nicht echt', 'Probelauf kennzeichnet auch den Kopfbericht');
+        }
+        assertEqual(overviewPricesDone(successfulQuotes), true, 'Testkurskennzeichnung verändert den Abschlusshaken nicht');
+        assertEqual(JSON.stringify(successfulQuotes), before, 'Kennzeichnung verändert keine Kurs- oder Vermögensdaten');
+    } finally { setAppTestDate(previousDate); }
+    assertEqual(overviewPriceLabel(successfulQuotes), 'Kurse aktualisiert · heute 09:12', 'Nach Probelauf gilt wieder der echte Kursbericht');
+}
 for (const retrievedAt of [undefined, null, 'ungültig']) {
     const withoutTime = { ...successfulQuotes, priceReport: { ...successfulQuotes.priceReport, retrievedAt } };
     assertEqual(overviewPriceLabel(withoutTime), 'Gespeicherte Kurse · Kurse von heute', 'Ohne Abrufzeit keine Musteruhrzeit');
@@ -346,7 +363,14 @@ for (const status of ['running', 'offline', 'timeout', 'storage-failed']) {
     failureLabels.add(overviewPriceLabel(failed));
     assertEqual(overviewPricesDone(failed), false, 'Fehlbericht bleibt unerledigt: ' + status);
 }
-assertEqual(failureLabels.size, 4, 'Laufender, Offline-, Timeout- und Speicherfehlerbericht bleiben unterscheidbar');
+assertEqual(failureLabels.size, 3, 'Fortschritt, Abruffehler und Speicherfehler zeigen ihre Auswirkung; technische Abrufgründe stehen in Details');
+for (const status of ['offline', 'timeout']) {
+    const report = { status, updated: 0, retrievedAt: now.getTime(), results: [{ status: 'failed' }] };
+    assertEqual(overviewPriceLabel({ ...successfulQuotes, quoteDate: quotes.quoteDate, priceReport: report }),
+        overviewQuoteLabel(quotes) + ' · Abruf fehlgeschlagen', 'Fehlerzeit von heute ersetzt kein älteres gespeichertes Kursdatum: ' + status);
+    assertEqual(overviewPriceLabel({ ...successfulQuotes, quoteDate: null, priceReport: report }),
+        'Kurszeit unbekannt · Abruf fehlgeschlagen', 'Fehlendes erfolgreiches Kursdatum bleibt unbekannt: ' + status);
+}
 assertEqual(overviewPricesDone({ ...successfulQuotes, priceReport: { status: 'complete', updated: 1, results: [{ status: 'updated' }, { status: 'failed' }] } }), false, 'Teilbericht bleibt unerledigt');
 for (const status of [undefined, 'waiting', 'started', 'loading', 'running', 'recovery', 'unavailable', 'offline', 'timeout', 'changed', 'cancelled', 'storage-failed', 'complete']) {
     for (const updated of [0, 1]) for (const results of [undefined, [{ status: 'updated' }], [{ status: 'skipped' }]]) {

@@ -172,25 +172,6 @@ try {
         assertEqual(renders, outcome === 'accept' ? 1 : 0, 'Nur Zustimmung rendert einmal');
         if (outcome !== 'accept') assert(window.paretoMetrics === before && html === 'altes Diagramm', 'Abbruch erhält Metriken und Diagramm');
     }
-    const { initResetButton } = await import('../app/simulator/simulator-main-reset.js');
-    const records = { sim_mcSeed: '123', rs_current_profile: 'a' };
-    PersistenceFacade.resetPersistenceForTests({ loadAll: async () => ({ ...records }), saveBatch: async () => { throw new Error('Abbruch darf nicht schreiben'); } });
-    await PersistenceFacade.init({ installLifecycleHooks: false });
-    for (const outcome of ['cancel', 'escape', 'stale', 'show']) {
-        const doc = createSelectionDocument(); installPageDialogDom(doc); globalThis.document = doc;
-        const button = addField(doc, 'resetBtn'); addField(doc, 'simProfileStatus');
-        if (outcome === 'show') { const create = doc.createElement; doc.createElement = tag => { const n = create(tag); if (tag === 'dialog') n.showModal = () => { throw new Error('SHOW_FAILURE'); }; return n; }; }
-        initResetButton(); const pending = button.listeners.click[0]();
-        assert(button.disabled, 'Reset sperrt schon während der Rückfrage');
-        assertEqual((await button.listeners.click[0]()).status, 'cancelled', 'Doppelreset startet keine zweite Rückfrage');
-        assertEqual(PersistenceFacade.getItemSync('sim_mcSeed'), '123', 'Vor Entscheidung keine Mutation');
-        if (outcome !== 'show') { if (outcome === 'stale') PersistenceFacade.setItemSync('sim_mcSeed', '456'); await respondPageDialog(doc, outcome === 'stale' ? 'accept' : outcome); }
-        const answer = await pending;
-        assertEqual(answer.status, outcome === 'show' ? 'failed' : 'cancelled', 'Abbruch oder technischer Fehler wird sicher behandelt');
-        assert(!button.disabled, 'Abbruch gibt Reset wieder frei');
-        assertEqual(PersistenceFacade.getItemSync('sim_mcSeed'), outcome === 'stale' ? '456' : '123', 'Abbruch und Kontextwechsel erhalten Einstellungen');
-        if (outcome === 'stale') PersistenceFacade.setItemSync('sim_mcSeed', '123');
-    }
     const { displayMultiObjectiveOptimization, displayConstraintBasedOptimization } = await import('../app/simulator/simulator-optimizer.js');
     const { displaySensitivityAnalysis, displayParetoFrontier } = await import('../app/simulator/simulator-visualization.js');
     const { createMonteCarloUI } = await import('../app/simulator/monte-carlo-ui.js');

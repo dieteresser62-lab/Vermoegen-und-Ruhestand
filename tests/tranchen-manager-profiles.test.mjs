@@ -185,7 +185,7 @@ try {
         await choose(doc, 'b');
         assertEqual(getManagerView(doc).kind, 'person', 'Reiter derselben Person verlässt ebenfalls den Planmodus');
         assertEqual(await openManagerOverviewTarget({ hash: '#profileTagesgeld', search: '?person=a' }, { ready: true }), true, 'Profilbezogener Tagesgeldlink wählt erst die richtige Person');
-        assert(!doc.getElementById('managerAssetsBody').hidden && !doc.getElementById('managerPersonPanel').hidden, 'Tagesgeldlink öffnet die sichtbare Vermögensregion');
+        assert(doc.getElementById('managerAssetsBody').hidden && !doc.getElementById('managerPersonPanel').hidden, 'Tagesgeldlink zeigt die Person und lässt Golddetails geschlossen');
         assertEqual(doc.activeElement.id, 'profileTagesgeld', 'Tagesgeldlink fokussiert das sichtbare native Feld');
         for (const location of [{ hash: '#profileTagesgeld', search: '?person=fremd' }, { hash: '#haushalt-plan', search: '?person=a&person=b' }, { hash: '#unbekannt', search: '?person=b' }]) {
             assertEqual(await openManagerOverviewTarget(location, { ready: true }), false, 'Ungültiges Ziel wechselt kein fremdes Profil');
@@ -289,7 +289,7 @@ try {
         assertEqual(doc.getElementById('managerPersonToggle').getAttribute('aria-expanded'), 'true', 'Erfolgsfokus steht in einer geöffneten Region');
         assert(!doc.getElementById('managerPersonBody').hidden && doc.getElementById('managerAssetsBody').hidden && doc.getElementById('managerCareBody').hidden, 'Geburtstagsergänzung öffnet genau die Personregion');
         assertEqual(doc.getElementById('managerCardsToggleAll').getAttribute('aria-expanded'), 'false', 'Geburtstagsergänzung hält Gesamt-ARIA im gemischten Zustand');
-        assertEqual(doc.getElementById('managerCardsToggleAll').textContent, 'Alle aufklappen', 'Geburtstagsergänzung aktualisiert Gesamttext anhand Regionen');
+        assertEqual(doc.getElementById('managerCardsToggleAll').textContent, '▸ Alle Details zeigen', 'Geburtstagsergänzung aktualisiert Gesamttext anhand Regionen');
         const frozen = JSON.stringify(Object.fromEntries(backend));
         await doc.getElementById('managerAssetsToggle').click(); await doc.getElementById('managerCardsToggleAll').click();
         await originalFlush.call(PersistenceFacade);
@@ -816,7 +816,7 @@ try {
         const { doc, backend, batches } = await setup();
         await originalFlush.call(PersistenceFacade);
         const before = persistenceStorage.getItem('rs_profiles_v1'), count = batches.length;
-        assertEqual(input(doc, 'profileTagesgeld', '321'), true, 'Profileingabe plant einen echten Autosave');
+        assertEqual(input(doc, 'profileRenteMonatlich', '321'), true, 'Profileingabe plant einen echten Autosave');
         const pending = manageManagerPerson({ kind: 'delete', profileId: 'b' });
         // Länger als die reguläre Entprellzeit warten: während der Frage bleiben auch verzögerte Writes aus.
         await new Promise(resolve => setTimeout(resolve, 350));
@@ -835,9 +835,9 @@ try {
             if (attempt) guard.end(attempt);
         } else await respondPageDialog(doc, outcome === 'stale' ? 'accept' : outcome);
         assertEqual(await pending, false, 'Abbruch oder Quellwechsel lehnt die Löschung ab');
-        await waitFor(() => backend.get('profile_tagesgeld') === '321', 'Nach Abbruch wird der ausstehende Autosave dauerhaft gespeichert');
+        await waitFor(() => backend.get('profile_rente_monatlich') === '321', 'Nach Abbruch wird der ausstehende Autosave dauerhaft gespeichert');
         const registry = JSON.parse(backend.get('rs_profiles_v1'));
-        assertEqual(registry.profiles.a.data.profile_tagesgeld, '321', 'Autosave bestätigt den eingegebenen Wert auch im Ursprungsprofil');
+        assertEqual(registry.profiles.a.data.profile_rente_monatlich, '321', 'Autosave bestätigt den eingegebenen Wert auch im Ursprungsprofil');
         assertEqual(registry.profiles.b.meta.name, outcome === 'stale' ? 'Inzwischen geändert' : 'Person B', 'Autosave erhält die fremde Person samt neuer Quellwerte');
     }
 

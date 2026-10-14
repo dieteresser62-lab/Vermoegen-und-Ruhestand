@@ -113,7 +113,10 @@ try {
         assert(guard.reasons().some(reason => reason.phase === 'commit'), 'Beginnhandler besitzt echte Manager-Commitphase');
         assert(doc.getElementById('managerHistoryStart').disabled && doc.getElementById('depotAddTrancheBtn').disabled, 'Beginnflush sperrt konkurrierende Eingaben und Mutationen');
         assertEqual(await guard.prepare(), null, 'Navigation überholt echten Beginnhandler nicht');
+        // Der Kartenrenderer ersetzt den Statusknoten bei geändertem Verlaufsbeginn.
+        doc.register(new MockElement('managerHistoryStartStatus'));
         calls[0].resolve(true); assertEqual(await saving, true, 'Bestätigter Beginnhandler meldet Erfolg');
+        assert(doc.getElementById('managerHistoryStartStatus').textContent.includes('Verlaufsbeginn bestätigt'), 'Beginnbestätigung erscheint im aktuellen Statusknoten');
         assertEqual(JSON.parse(backend.get(key)).startDate, '2026-01-03', 'Beginnhandler speichert dauerhaft');
         assertEqual(backend.get('rs_profiles_v1'), registryBefore, 'Globaler Beginn verändert keine Profilregistry');
         assertEqual(guard.reasons().length, 0, 'Beginnbestätigung bereinigt Entwurf und Besitz');
@@ -226,7 +229,7 @@ try {
         else if (kind === 'reconcile') pending = doc.getElementById('reconciliationConfirmBtn').click();
         else if (kind === 'delete') pending = doc.getElementById('clearTranchesBtn').click();
         else {
-            const input = doc.getElementById('profileTagesgeld'); input.value = '100'; input.listeners.input[0]();
+            const input = doc.getElementById('profileTagesgeld'); input.value = '100'; input.listeners.change[0]();
         }
         if (['reconcile', 'delete'].includes(kind)) await respondPageDialog(doc);
         await waitFor(() => calls.length === 1, `${kind}: Write erreicht Flush`);
@@ -368,7 +371,7 @@ try {
         const calls = holdFlushes();
         const removeItem = persistenceStorage.removeItem;
         const input = doc.getElementById('profileTagesgeld');
-        input.value = '100'; input.listeners.input[0]();
+        input.value = '100'; input.listeners.change[0]();
         await waitFor(() => calls.length === 1, 'Profilmutation erreicht Flush');
         persistenceStorage.removeItem = key => {
             if (key === 'profile_tagesgeld') throw new Error('Synthetischer Keyfehler');
@@ -421,7 +424,7 @@ try {
         assertEqual(input.disabled, true, `${kind}: Profilfeld verhindert eine Nutzereingabe während der Sperre`);
         // Nur das Testdoppel kann ein deaktiviertes Feld ändern und seinen Listener direkt aufrufen.
         input.value = '321';
-        assertEqual(input.listeners.input[0](), false, `${kind}: Echter Listener wehrt die synthetische Eingabe ab`);
+        assertEqual(input.listeners.change[0](), false, `${kind}: Echter Listener wehrt die synthetische Eingabe ab`);
         assertEqual(input.disabled, true, `${kind}: Synthetischer Input hebt die Feldsperre nicht auf`);
         if (kind === 'quotes') {
             requests[0].resolve({ ok: true, json: async () => ({ symbol: lot.ticker, price: 150,
@@ -432,7 +435,7 @@ try {
         calls[0].resolve(true);
         await pending;
         assertEqual(input.disabled, false, `${kind}: Profilfeld ist nach Operationsende wieder bedienbar`);
-        input.value = '654'; input.listeners.input[0]();
+        input.value = '654'; input.listeners.change[0]();
         await waitFor(() => calls.length === 2, `${kind}: Neue bedienbare Eingabe erreicht Profilflush`);
         calls[1].resolve(true);
         await waitFor(() => !guard.reasons().some(reason => reason.phase === 'commit'), 'Profilautosave endet vollständig');
@@ -444,11 +447,11 @@ try {
     console.log('Profilfortsetzungen bleiben ohne Freigabelücke');
     {
         const { doc, guard } = await setup(); const calls = holdFlushes();
-        const input = doc.getElementById('profileTagesgeld'); input.value = '100'; input.listeners.input[0]();
+        const input = doc.getElementById('profileTagesgeld'); input.value = '100'; input.listeners.change[0]();
         await waitFor(() => calls.length === 1, 'Erster Profilwrite');
         let gap = false;
         const unsubscribe = guard.subscribe(reasons => { if (!reasons.some(reason => reason.phase === 'commit')) gap = true; });
-        input.value = '200'; input.listeners.input[0]();
+        input.value = '200'; input.listeners.change[0]();
         calls[0].resolve(true);
         await waitFor(() => calls.length === 2, 'Fortsetzung startet im selben Besitzer');
         assertEqual(gap, false, 'Kein Notify ohne Commit zwischen Profilwrites');

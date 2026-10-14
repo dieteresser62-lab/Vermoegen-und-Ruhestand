@@ -308,10 +308,11 @@ export function applyProfileAssetValuesToDom(values, doc = document, { preserveA
         const el = doc.getElementById(id);
         if (!el) return;
         if (preserveActiveDecimalInput && doc.activeElement === el && isEditableDecimalInput(el)) {
-            const canonical = canonicalDecimalInput(el.value);
+            const canonical = canonicalDecimalInput(el.value, el);
             if (canonical !== '' && canonical !== 'NaN' && Number(canonical) === value) return;
         }
-        el.value = el.getAttribute?.('inputmode') === 'decimal' ? displayDecimalInput(transform(value)) : transform(value);
+        el.value = el.getAttribute?.('inputmode') === 'decimal'
+            ? displayDecimalInput(transform(value), el, { editing: doc.activeElement === el }) : transform(value);
     };
 
     assign('profileTagesgeld', normalized.tagesgeld);
@@ -342,7 +343,7 @@ export function readProfileAssetValuesFromDom(doc = document) {
     const read = id => {
         const raw = doc.getElementById(id)?.value ?? '';
         if (['profileGeburtsdatum', 'profileRentenbeginn'].includes(id)) return personDateInputToIso(raw) ?? raw;
-        return decimalFields.has(id) ? canonicalDecimalInput(raw) : raw;
+        return decimalFields.has(id) ? canonicalDecimalInput(raw, doc.getElementById(id)) : raw;
     };
     return validateProfileAssetValues({
         genderConfirmed: doc.getElementById('profileGeschlecht')?.dataset?.genderConfirmed === 'true',

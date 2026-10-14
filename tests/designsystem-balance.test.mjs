@@ -332,7 +332,7 @@ assertEqual(clipped.padding, '0', 'Bündelklasse gewinnt mit höherer Spezifitä
 assertEqual(clipped.border, '0', 'Technische Kopie hat keinen Rand');
 assertEqual(clipped.width, '1px', 'Technische Kopie hat nur eine abgeschnittene 1-px-Fläche');
 assertEqual(clipped['clip-path'], 'inset(50%)', 'Technische Kopie wird vollständig abgeschnitten');
-assertEqual(finalDeclarations('.balance-market-segment.phase-0')['--phase-color'], 'var(--good)', 'Heiß gelaufene Phase bleibt grün');
+assertEqual(finalDeclarations('.balance-market-segment.phase-0')['--phase-color'], 'var(--warn)', 'Heiß gelaufene Phase zeigt Warnfarbe');
 assert(!sources['Balance.html'].includes('dynamicFlexShowAdvanced-segments'), 'Kein zusätzlicher sichtbarer Detailparameterschalter');
 
 const captionStyle = finalDeclarations('.balance-page .ds-table > caption');

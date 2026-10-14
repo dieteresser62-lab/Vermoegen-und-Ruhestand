@@ -213,6 +213,11 @@ export function isAllowedSnapshotRestoreLiveKey(key, options = {}) {
 
 // Eigener Rohumfang: Standard-Snapshots behalten ihre engere Policy.
 export const PROBELAUF_STATE_KEY = 'rs_probelauf_state_v1';
+// Vollständiger Hauptspeicher ausschließlich für den ausdrücklich bestätigten Neustart.
+// Im localStorage-Fallback liegt das Archiv als eigener Record daneben.
+export function isNewBeginningRecordKey(key) {
+    return key !== PROBELAUF_STATE_KEY && key !== 'rs_snapshot_archive_v1';
+}
 export function isProbelaufRecordKey(key) {
     return key !== PROBELAUF_STATE_KEY && key !== 'rs_snapshot_archive_v1'
         && (isAllowedPersistenceImportKey(key) || isSnapshotTechnicalKey(key));

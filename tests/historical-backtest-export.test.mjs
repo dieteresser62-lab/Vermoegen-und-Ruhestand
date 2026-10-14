@@ -400,10 +400,10 @@ function baseResult(outcomeKind = 'completed') {
     const lines = csv.split('\n');
     assertEqual(HISTORICAL_BACKTEST_CSV_SCHEMA_VERSION, 'HistoricalBacktestCsvV2',
         'leading run identity is explicitly versioned as CSV V2');
-    assertEqual(HISTORICAL_BACKTEST_CSV_COLUMNS.length, 34,
+    assertEqual(HISTORICAL_BACKTEST_CSV_COLUMNS.filter(column => !['flex_household_desired_nominal_eur', 'flex_below_minimum'].includes(column.id)).length, 34,
         'CSV V2 fixes the 34-column contract');
     const expectedCsvV2GoldenHeader = 'run_id;simulation_year_calendar_year;outcome_code;action_code;cut_reason_code;minimum_flex_status_code;equity_return_ratio;gold_return_pct;cash_bond_return_pct;inflation_pct;wage_pension_adjustment_pct;cape_ratio;withdrawal_nominal_eur;floor_required_nominal_eur;pension_total_nominal_eur;flex_fulfilled_nominal_eur;flex_household_required_nominal_eur;flex_pension_contribution_nominal_eur;flex_required_from_portfolio_nominal_eur;flex_fulfilled_from_portfolio_nominal_eur;flex_household_fulfilled_nominal_eur;flex_household_reduction_pct;minimum_flex_annual_nominal_eur;minimum_flex_effective_final_nominal_eur;minimum_flex_shortfall_nominal_eur;flex_reduction_pct;portfolio_equity_end_nominal_eur;portfolio_gold_end_nominal_eur;portfolio_cash_end_nominal_eur;health_bucket_end_nominal_eur;portfolio_total_end_nominal_eur;tax_total_nominal_eur;loss_carry_end_nominal_eur;floor_shortfall_nominal_eur';
-    assertEqual(lines[0], expectedCsvV2GoldenHeader,
+    assertEqual(lines[0].split(';').filter(id => !['flex_household_desired_nominal_eur', 'flex_below_minimum'].includes(id)).join(';'), expectedCsvV2GoldenHeader,
         'CSV V2 uses the independently pinned literal 34-column golden header');
     assert(lines[0].includes('portfolio_total_end_nominal_eur'), 'CSV headers expose units');
     assert(csv.includes('-0.125'), 'CSV retains raw signed ratios with a dot decimal separator');
@@ -666,4 +666,25 @@ console.log('✅ Historical backtest export tests passed');
     assertEqual(serializeHistoricalBacktestJson(actual, exportOptions), json, 'Späterer Personenentwurf verändert abgeschlossenen JSON-Beleg nicht');
     assertEqual(serializeHistoricalBacktestCsv(actual, exportOptions), csv, 'Späterer Personenentwurf verändert abgeschlossenen CSV-Beleg nicht');
     assert(canonicalizeHistoricalContractValue(actual.request.inputs) === canonicalizeHistoricalContractValue(JSON.parse(inputBefore)), 'Backtest hält vollständige ursprüngliche Eingaben fest');
+}
+
+{
+    const { deriveMinimumFlexPath, buildMinimumFlexRestriction } = await import('../app/simulator/minimum-flex-metrics.js');
+    const value = baseResult();
+    value.rows = [40000, 28000, 35000].map((paid, index) => ({ ...value.rows[0], jahr: 2000 + index,
+        row: { ...value.rows[0].row, aktionUndGrund: 'NONE', minimumFlexAnnual: 30000, flex_wunsch_haushalt_nominal: 45000,
+            flex_haushalt_erfuellt: paid, flex_unter_mindestflex: paid < 30000 } }));
+    const path = deriveMinimumFlexPath(value.rows);
+    const block = { ...buildMinimumFlexRestriction([path], 30000), path };
+    value.minimumFlexRestriction = block; value.metrics = { ...value.metrics, minimumFlexRestriction: block };
+    const raw = JSON.parse(serializeHistoricalBacktestJson(value));
+    assertEqual(canonicalizeHistoricalContractValue(raw.result.metrics.minimumFlexRestriction), canonicalizeHistoricalContractValue(block), 'Historisches JSON erhält vollständigen Mess-/Pfadblock');
+    assertEqual(raw.result.minimumFlexRestriction.path.paidMinimumNominalEur, 28000, 'Resultatkopf erhält nominalen Pfadbetrag');
+    const csv = serializeHistoricalBacktestCsv(value).trim().split(/\r?\n/).map(line => line.split(';'));
+    for (const [field, expected] of [['flex_household_desired_nominal_eur', '45000'], ['flex_household_fulfilled_nominal_eur', '28000'],
+        ['flex_below_minimum', 'true'], ['minimum_flex_annual_nominal_eur', '30000']])
+        assertEqual(csv[2][csv[0].indexOf(field)], expected, 'Historisches CSV erhält ' + field);
+    const changed = clone(value); changed.metrics.minimumFlexRestriction.path.paidMinimumNominalEur++;
+    assert(buildHistoricalBacktestRawExport(changed).fingerprint.value !== buildHistoricalBacktestRawExport(value).fingerprint.value,
+        'Historischer Fingerprint schützt neue Messdaten');
 }

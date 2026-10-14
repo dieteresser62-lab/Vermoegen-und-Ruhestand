@@ -1,59 +1,32 @@
-# Dokumentationsstruktur
+# Doku-Wegweiser
 
-Diese Datei dient als Uebersicht und Bestandsaufnahme fuer die Dokumentation.
+## Lesen nach Aufgabe
+
+| Aufgabe | Einstieg |
+|---|---|
+| Die App kennenlernen und starten | [README](../README.md), [QUICKSTART](../QUICKSTART.md) |
+| Personen und Vermögen pflegen, abschließen oder Ergebnisse lesen | [Handbuch](../Handbuch.html) |
+| Browser oder EXE einrichten, aktualisieren und Startfehler beheben | [Einrichtung und Betrieb](guides/EINRICHTUNG_UND_BETRIEB.md) |
+| Modell und Aussagegrenzen verstehen | [Fachkonzept](reference/FACHKONZEPT.md), [wissenschaftlicher Rahmen](reference/WISSENSCHAFTLICHER_RAHMEN.md) |
+| Code und Datenverträge pflegen | [Technik](reference/TECHNICAL.md), [Datenverträge](reference/DATENVERTRAEGE.md) |
+
+Die Modulreferenzen führen zu [Balance, Übersicht und Ausgaben](reference/BALANCE_MODULES_README.md), [Simulator](reference/SIMULATOR_MODULES_README.md) und [Personen & Vermögen](reference/TRANCHEN_MODULES_README.md). Das [Engine-README](../engine/README.md) erklärt die API; [Entscheidungslogik](reference/ENGINE_DECISION_LOGIC.md) und [Auto-Optimize](reference/AUTO_OPTIMIZE_DETAILS.md) beschreiben die Rechenabläufe. Prüfwege stehen im [Test-README](../tests/README.md).
+
+Fachbelege findest du im [Forschungsregister](reference/FORSCHUNGSABGLEICH_EVIDENZREGISTER.md), im [Marktvergleich](reference/MARKTVERGLEICH.md#ergebnis-in-klartext) mit seinem [Evidenzregister](reference/MARKTVERGLEICH_EVIDENZREGISTER.md) und bei den [Datenquellen](reference/DATA_SOURCES.md). Preis- und Funktionsstand des Marktvergleichs sind datiert; das Register nennt die Prüftermine. [CHANGELOG](../CHANGELOG.md) und [Lizenz](../LICENSE.md) stehen im Hauptordner.
 
 ## Ordner
 
-- `docs/guides/`
-  - Nutzergefuehrte Schritt-fuer-Schritt-Anleitungen.
-  - Aktuell: `docs/guides/GUIDED_TOURS.md` und `docs/guides/MULTI-TRANCHEN-ANLEITUNG.md`
-- `docs/reference/`
-  - Stabile Fach- und Technikreferenzen.
-  - Dateien:
-    - `docs/reference/AUTO_OPTIMIZE_DETAILS.md`
-    - `docs/reference/PROFILVERBUND_FEATURES.md`
-    - `docs/reference/TRANCHEN_MODULES_README.md`
-    - `docs/reference/WORKFLOW_PSEUDOCODE.md`
-- `docs/design/`
-  - [Umsetzungskonzept](design/umsetzungskonzept.md) für die neue Oberfläche.
-  - [Funktionsinventar](design/funktionsinventar.md): kompakte Lesefassung mit 171 Einträgen, Schutzstatus, Änderungsrisiken und Testschuld.
-  - [Inventarquelle](design/funktionsinventar.json): vollständige Prüffälle und historisches Register aller 162 Ausgangskennungen; einzige gepflegte Quelle.
-  - Pflege und Grenzen des automatisch ausgeführten Schutztests stehen im [Test-README](../tests/README.md#funktionsinventar-schutzgate-und-pflege).
-- `docs/internal/`
-  - Arbeitsdokumente und Entwurfsartefakte.
-  - Archiv-Ordner:
-    - `docs/internal/archive/2026-dynamic-flex/` (Dynamic-Flex Umsetzung: Plan/Tickets/Rollout/Baseline/CAPE-Contract)
-    - `docs/internal/archive/2025-profilverbund-balance/` (Profilverbund-Balance Umsetzung: Spec/Prompt/Progress)
-    - `docs/internal/archive/2025-webworkers-rollout/` (WebWorker-Rollout-Plan)
-    - `docs/internal/archive/2025-adapter-elimination/` (Adapter-Ablösung Report)
-    - `docs/internal/archive/2025-gemini-notes/` (historische Notizen)
-- `tests/`
-  - Testdokumentation (`tests/README.md`)
-- `engine/`
-  - Engine-spezifische Doku (`engine/README.md`)
+- `guides/` führt durch Einrichtung und Betrieb. Bedienaufgaben gehören ins Handbuch.
+- `reference/` erklärt Architektur, Module, Daten und Fachgrundlagen.
+- `design/` enthält das [Designsystem](design/designsystem.md) und das [Funktionsinventar](design/funktionsinventar.md).
+- [ui/](ui/README.md) enthält Handbuchbilder, Bildmanifest und die Abläufe für Monats- und Jahresabschluss.
 
-## Root-Dokumente (bewusst beibehalten)
+Die [lokalen Schriften und Symbole](../assets/README-schriften-symbole.md) sind bei den Assets beschrieben. [Dev-Skripte](../scripts/dev/README.md) dienen einzelnen Analysen und gehören nicht zur App-Laufzeit.
 
-- `README.md` (Einstieg/Navigation)
-- `Handbuch.html` (interaktive Nutzerdokumentation)
-- `CHANGELOG.md` (Release-Historie)
-- `QUICKSTART.md` (Schnellstart)
-- `LICENSE.md` (Lizenz)
+## Doku pflegen
 
-## Referenzdokumente (unter `docs/reference/`)
+Ändere Inhalte an ihrem Hauptort in dieser Gliederung, statt Abschnitte anzuhängen. Schreibe kurze, konkrete Sätze und sprich Nutzer mit „du“ an. Prüfe Aussagen gegen den Code und lies jede fertige Datei in einer eigenen Runde auf Stil gegen. Führe `npm run docs:pruefen` aus; behebe Warnungen oder begründe sie einzeln im Ergebnisbericht. Die Arbeitsregeln stehen in [AGENTS.md](../AGENTS.md#doku).
 
-- `docs/reference/TECHNICAL.md` (technische Referenz)
-- `docs/reference/ARCHITEKTUR_UND_FACHKONZEPT.md` (fachlich-technische Vertiefung)
-- `docs/reference/MARKTVERGLEICH.md` (Marktvergleich D.1 bis D.18; seit 2026-08-05 aus dem Fachkonzept ausgegliedert)
-- `docs/reference/MARKTVERGLEICH_EVIDENZREGISTER.md` (69 Quellenrecords und Kriterienmatrix des Marktvergleichs)
-- `docs/reference/WISSENSCHAFTLICHER_RAHMEN.md` (Forschungsrahmen E.1 bis E.8; seit 2026-08-05 aus dem Fachkonzept ausgegliedert)
-- `docs/reference/FORSCHUNGSABGLEICH_EVIDENZREGISTER.md` (55 Quellenrecords und MAP-Dossiers)
-- `docs/reference/BALANCE_MODULES_README.md`, `docs/reference/SIMULATOR_MODULES_README.md` und `docs/reference/TRANCHEN_MODULES_README.md` (Modulreferenzen)
+Das Inventar wird aus [funktionsinventar.json](design/funktionsinventar.json) erzeugt. Pflege seine Lesefassung über den [Generator](../scripts/generate-funktionsinventar.mjs); die [Schutzprüfungen](../tests/README.md#schutzprüfungen) müssen grün bleiben.
 
-Diese Root-Dateien bleiben vorerst erhalten, damit bestehende Links und externe Referenzen stabil bleiben.
-
-## Hinweis zur Stabilitaet
-
-- Die zentrale Einstiegsdokumentation bleibt im Projekt-Root (`README.md`, `QUICKSTART.md`, `LICENSE.md`).
-- Guided Tours liegen unter `docs/guides/GUIDED_TOURS.md`.
-- Link-Check Kernpfade: `README.md` verlinkt auf `docs/README.md` und `Handbuch.html`; `Handbuch.html` verweist auf `README.md` und `CHANGELOG.md`.
+Erneuere die App-Bilder mit `npm run docs:bilder`. Das [Bildverzeichnis](ui/README.md#bilder-erneuern) beschreibt Voraussetzungen, feste Testdaten und die Sichtprüfung.

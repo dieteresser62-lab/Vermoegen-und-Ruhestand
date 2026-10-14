@@ -11,7 +11,7 @@ import { projectOverview, planningYear } from '../overview/overview-model.js';
 import { sourceFingerprint } from '../overview/overview-simulation-summary.js';
 import { readOverviewSummary, OVERVIEW_SUMMARY_KEY, overviewScope } from '../overview/overview-storage.js';
 import { loadStoredBalanceStateFromData } from '../profile/profile-state.js';
-import { renderManagerPlanComparison } from './tranchen-manager-renderer.js';
+import { renderManagerPlanComparison, renderManagerPlanSummary } from './tranchen-manager-renderer.js';
 import { bindHouseholdPlanDynamicFlex } from '../shared/household-plan-dynamic-flex.js';
 
 export const managerPlanFieldId = path => 'managerPlan_' + path.replaceAll('.', '_');
@@ -74,7 +74,7 @@ export function createManagerHouseholdPlan({ doc, getProfileId, storage = persis
             changeBatch({ ...pending, ...applicable });
             for (const [path, value] of Object.entries(applicable)) bindings.get(path)?.project(value, { force: true });
         } });
-    const visible = (values, focusState) => { for (const binding of bindings.values()) binding.sync(values, validation); dynamic?.sync(focusState); };
+    const visible = (values, focusState) => { for (const binding of bindings.values()) binding.sync(values, validation); dynamic?.sync(focusState); renderManagerPlanSummary(doc, values); };
     function projectFields(force = false) {
         if (!confirmed) return;
         projectHouseholdPlanBindings(bindings, confirmed.values, { force });
@@ -138,6 +138,7 @@ export function createManagerHouseholdPlan({ doc, getProfileId, storage = persis
         clearTimer(); generation++; origin = getProfileId(); error = ''; validation = ''; saved = false; confirmed = null; scope = null;
         text('managerPlanScope', 'Planbereich noch nicht bestätigt');
         text('managerPlanCape', '—'); text('managerPlanCapeOrigin', 'Stand und Quelle nicht belegt');
+        renderManagerPlanSummary(doc, null);
         text('managerPlanInflation', 'Inflationsfortschreibung noch nicht belegt');
         if (node('managerPlanComparison')) node('managerPlanComparison').innerHTML = '';
         try {

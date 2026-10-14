@@ -482,7 +482,7 @@ export async function readPersistedRecords(allowKey = () => true) {
         error.code = 'persistence_backend_read_unavailable';
         throw error;
     }
-    const loaded = await adapter.loadAll();
+    const loaded = await (adapter.readPersistedRecords ? adapter.readPersistedRecords() : adapter.loadAll());
     const records = Object.create(null);
     Object.entries(loaded || {}).forEach(([key, value]) => {
         const normalizedKey = String(key);
@@ -677,6 +677,7 @@ export async function listSnapshots() {
 }
 
 export async function readSnapshot(id) {
+    if (typeof adapter?.readPersistedSnapshot === 'function') return adapter.readPersistedSnapshot(String(id || ''));
     if (typeof adapter?.readSnapshot === 'function') {
         return adapter.readSnapshot(String(id || ''));
     }
@@ -904,6 +905,44 @@ export async function getMetadata(key) {
     return adapter.readMetadata?.(key) ?? null;
 }
 
+/** Gerätepräferenzen liegen bisher direkt im Web Storage. */
+export async function captureNewBeginningPreferences(win = persistenceWindow) {
+    const { isSnapshotTechnicalKey } = await import('./persistence-key-policy.js');
+    const storage = win?.localStorage, result = Object.create(null);
+    for (let i = 0; i < (storage?.length || 0); i++) {
+        const key = storage.key(i);
+        if (isSnapshotTechnicalKey(key)) result[key] = storage.getItem(key);
+    }
+    return result;
+}
+
+/** Alte Migrationskopien dürfen nach dem Leerstart nicht wieder lebendig werden.
+ * Fachrecords werden ausschließlich durch den Adapter ersetzt. */
+export async function resetNewBeginningBrowserStorage({ window: win = persistenceWindow, deleteSnapshots = false,
+    records = {}, navigationOperation } = {}) {
+    const { isAllowedPersistenceImportKey, isSnapshotTechnicalKey } = await import('./persistence-key-policy.js');
+    navigationOperation?.check();
+    const owned = key => isAllowedPersistenceImportKey(key) || isSnapshotTechnicalKey(key)
+        || key === PROBELAUF_STATE_KEY || deleteSnapshots && key === LOCAL_SNAPSHOT_ARCHIVE_KEY;
+    const local = win?.localStorage;
+    // Der Fallback-Hauptspeicher wurde bereits transaktional geschrieben.
+    if (local && !isLocalStorageFallbackAdapter()) {
+        const keys = Array.from({ length: local.length }, (_, i) => local.key(i)).filter(owned);
+        keys.forEach(key => local.removeItem(key));
+        for (const [key, value] of Object.entries(records)) if (isSnapshotTechnicalKey(key)) local.setItem(key, value);
+        for (const key of keys) {
+            if (local.getItem(key) !== (isSnapshotTechnicalKey(key) ? records[key] ?? null : null)) throw new Error('Browser-Einstellungen konnten nicht bestätigt werden.');
+        }
+    }
+    const session = win?.sessionStorage;
+    if (session) {
+        const keys = Array.from({ length: session.length }, (_, i) => session.key(i))
+            .filter(key => owned(key) || key.startsWith('rs_') || key.startsWith('balance.annual-retry.'));
+        keys.forEach(key => session.removeItem(key));
+        if (keys.some(key => session.getItem(key) !== null)) throw new Error('Sitzungseinstellungen konnten nicht gelöscht werden.');
+    }
+}
+
 /** Auch gewöhnliche Eingaben ohne eigenen Dirty-Provider verwerfen einen Reload. */
 export function observeInputChanges(notify, doc = globalThis.document) {
     if (!doc?.addEventListener) return () => {};
@@ -1118,6 +1157,8 @@ export const PersistenceFacade = {
     getDirtyState,
     getPersistenceStatus,
     getMetadata,
+    captureNewBeginningPreferences,
+    resetNewBeginningBrowserStorage,
     bindLifecycleFlush,
     bindTauriClose,
     unbindLifecycleFlush,

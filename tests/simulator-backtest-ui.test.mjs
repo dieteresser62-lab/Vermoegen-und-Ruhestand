@@ -287,8 +287,16 @@ for (const shape of ['vollständig', 'ohne dataset', 'ohne optionale Hosts', 'oh
         if (chip) {
             assertEqual(chip.textContent, label, `${shape}: kein veralteter Chiptext`);
             assertEqual(chip.getAttribute('data-status'), kind, `${shape}: Chip ohne dataset unterstützt`);
-        } else assert(region.innerHTML.includes('Code:'), 'Fehlender Codehost erhält Inlinecode');
+        } else assert(region.innerHTML.includes(['completed', 'ruin'].includes(kind) ? 'Backtest ' : 'Code:'), 'Fehlender Codehost erhält lesbaren Status oder Fehlercode');
     }
+}
+{
+    const doc = new MockDocument(['backtestStatus', 'backtestDiagnosisCode']);
+    const presentation = describeHistoricalBacktestResult({ outcome: { kind: 'completed' }, completedYears: 26, requestedYears: 26 });
+    renderHistoricalBacktestStatus(doc, presentation);
+    assertEqual(presentation.code, 'BACKTEST_COMPLETED', 'Interner Abschlusscode bleibt unverändert');
+    assertEqual(doc.getElementById('backtestDiagnosisCode').textContent, 'Backtest fertig', 'Abschluss nennt verständlichen Status');
+    assert(!doc.getElementById('backtestStatus').innerHTML.includes('BACKTEST_COMPLETED') && presentation.action.startsWith('Prüfe '), 'Abschluss zeigt persönliche Ansprache ohne technischen Abschlusscode');
 }
 {
     const doc = new MockDocument(['backtestNotices', 'backtestNoticeList']);

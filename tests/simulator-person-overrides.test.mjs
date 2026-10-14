@@ -48,9 +48,9 @@ assertEqual(JSON.stringify(entries), original, 'Zentrale Eingabedaten unverände
 const previous = { document: globalThis.document, window: globalThis.window, sessionStorage: globalThis.sessionStorage, confirm: globalThis.confirm };
 try {
     const legacyAccumulation = { sim_accumulationPhaseEnabled: '1', sim_accumulationDurationYears: '25', sim_accumulationSparrate: '2000', sim_sparrateIndexing: 'wage' };
-    const records = { ...entries[0].data, ...legacyAccumulation, sim_p1Monatsrente: '1111', [PROFILE_STORAGE_KEYS.current]: 'a', [PROFILE_STORAGE_KEYS.active]: 'a', [PROFILE_STORAGE_KEYS.registry]: JSON.stringify({ version: 1, profiles: Object.fromEntries(entries.map(e => [e.profileId, { meta: { id: e.profileId, name: e.name, belongsToHousehold: true }, data: e.data }])) }) };
-    const writes = [], sessions = [], deleted = [];
-    const backend = { name: 'person-override-fixture', async open() {}, async loadAll() { return { ...records }; }, async saveBatch({ deletes, upserts }) { writes.push(...upserts); deleted.push(...deletes); deletes.forEach(k => delete records[k]); upserts.forEach(([k,v]) => records[k] = v); } };
+    const records = { ...entries[0].data, ...legacyAccumulation, sim_p1Monatsrente: '1111', sim_p1PersonIncome: '750', sim_r2PersonIncome: '750', [PROFILE_STORAGE_KEYS.current]: 'a', [PROFILE_STORAGE_KEYS.active]: 'a', [PROFILE_STORAGE_KEYS.registry]: JSON.stringify({ version: 1, profiles: Object.fromEntries(entries.map(e => [e.profileId, { meta: { id: e.profileId, name: e.name, belongsToHousehold: true }, data: e.data }])) }) };
+    const writes = [], sessions = [];
+    const backend = { name: 'person-override-fixture', async open() {}, async loadAll() { return { ...records }; }, async saveBatch({ deletes, upserts }) { writes.push(...upserts); deletes.forEach(k => delete records[k]); upserts.forEach(([k,v]) => records[k] = v); } };
     PersistenceFacade.resetPersistenceForTests(backend); await PersistenceFacade.init({ installLifecycleHooks: false });
     const doc = createSelectionDocument(), listeners = {};
     doc.addEventListener = (t, f) => (listeners[t] ||= []).push(f);
@@ -60,14 +60,21 @@ try {
         const n = addField(doc, id, '', selects.includes(id) ? simulatorSelectOptions(id) : null);
         n.setCustomValidity = v => n.validationMessage = v;
     }
+    const details = doc.body.appendChild(doc.createElement('details')); details.id = 'simPersonDetails'; details.open = false;
     const cache = doc.body.appendChild(doc.createElement('div')); cache.id = 'personEditorCache'; cache.hidden = true;
     for (const [role, prefix] of [['p1', 'p1'], ['r2', 'r2'], ['sharedPension', 'rentAdj']]) {
         const card = doc.body.appendChild(doc.createElement('section'));
         const list = card.appendChild(doc.createElement('dl')); list.id = role === 'sharedPension' ? 'sharedPensionValues' : role + 'PersonValues';
         const editors = cache.appendChild(doc.createElement('div')); editors.id = role === 'sharedPension' ? 'sharedPensionEditors' : role + 'PersonEditors';
+        let essentialEditors;
+        if (role !== 'sharedPension') {
+            const detailCard = details.appendChild(doc.createElement('section'));
+            const detailList = detailCard.appendChild(doc.createElement('dl')); detailList.id = role + 'PersonDetailValues';
+            essentialEditors = cache.appendChild(doc.createElement('div')); essentialEditors.id = role + 'EssentialEditors';
+        }
         for (const id of SIMULATOR_PERSON_FIELD_IDS.filter(id => id.startsWith(prefix))) {
             const field = doc.getElementById(id);
-            editors.appendChild(field.parentNode);
+            (essentialEditors && ['Rentenbeginn', 'Monatsrente'].some(suffix => id === role + suffix) ? essentialEditors : editors).appendChild(field.parentNode);
         }
     }
     const cape = addField(doc, 'marketCapeRatio', '20');
@@ -77,10 +84,13 @@ try {
     initializePersonOverrides(entries, 'a', 2026, doc);
     initInputPersistence();
     const personList = doc.getElementById('p1PersonValues');
-    const listText = () => personList.children.map(node => node.textContent).join(' · ');
+    const detailList = doc.getElementById('p1PersonDetailValues');
+    const listText = () => [...personList.children, ...detailList.children].map(node => node.textContent).join(' · ');
+    assertEqual(personList.children.filter(node => node.tagName === 'DT').map(node => node.textContent).join(','), 'Rentenbeginn,Monatliche Rente', 'Normalansicht zeigt genau Rentenbeginn und Rente bei null sonstigen Einkünften');
     assert(listText().includes('Alter am 01.01.2026 · 67 Jahre'), 'Startalterbeleg zeigt Januaralter mit Referenzjahr');
-    assert(doc.getElementById('r2PersonValues').children.map(node => node.textContent).join(' · ').includes('Alter am 01.01.2026 · 66 Jahre'), 'Partnerbeleg zeigt Januaralter mit Referenzjahr');
+    assert(doc.getElementById('r2PersonDetailValues').children.map(node => node.textContent).join(' · ').includes('Alter am 01.01.2026 · 66 Jahre'), 'Partnerbeleg zeigt Januaralter mit Referenzjahr');
     const simulatorHtml = readFileSync(new URL('../Simulator.html', import.meta.url), 'utf8');
+    assert(!/p1PersonIncome|r2PersonIncome|Sonstige Einkünfte/.test(simulatorHtml), 'Simulator-Markup enthält keine Anzeige für sonstige Einkünfte');
     for (const id of ['p1StartAlter', 'r2StartAlter']) assert(simulatorHtml.includes(`<label for="${id}">Alter am 01.01.</label>`), 'Alternativer Startalterwert ist ausdrücklich am 01.01. bezeichnet: ' + id);
     assert(listText().includes('14.03.1958') && listText().includes('1.000 €') && listText().includes('9 %'), 'Personenliste enthält deutsch formatierte Werte');
     assert(listText().includes('Rentenbeginn in') && listText().includes('2 Jahren'), 'Nur positiver Rentenoffset erzeugt Zukunftshinweis');
@@ -94,12 +104,32 @@ try {
         for (const fn of [...(listeners[type] || [])]) fn({ target, type });
         target.dispatchEvent({ type });
     };
+    const incomeEntries = entries.map(entry => ({ ...entry, data: { ...entry.data, profile_sonstige_einkuenfte: '750' } }));
+    const baselineInputs = JSON.stringify(readDocumentPersonInputs(doc).combined);
+    initializePersonOverrides(incomeEntries, 'a', 2026, doc);
+    for (const active of [false, true]) {
+        fire('personDeviationToggle', active);
+        for (const role of ['p1', 'r2']) {
+            const card = doc.getElementById(role + 'PersonValues').parentNode;
+            const detailCard = doc.getElementById(role + 'PersonDetailValues').parentNode;
+            const text = [...card.querySelectorAll('*'), ...detailCard.querySelectorAll('*')].map(node => node.textContent).join(' · ');
+            assert(!text.includes('Sonstige Einkünfte'), `750 Euro sonstige Einkünfte erscheinen nicht in der Personenkarte: ${role}, Abweichung ${active}`);
+            assertEqual(doc.getElementById(role + 'EssentialEditors').parentNode, active ? card : cache, 'Personenkarte wechselt weiterhin zwischen übernommenen Rentenwerten und Eingaben');
+        }
+        assertEqual(JSON.stringify(readDocumentPersonInputs(doc).combined), baselineInputs, 'Gespeicherte Einkommensabweichungen und Profileinkünfte ändern keine Simulator-Eingaben');
+    }
+    fire('p1Monatsrente', 1800, 'input');
+    assertEqual(readPensionInputs(doc).renteMonatlich, 1800, 'Rentenabweichung bleibt bei vorhandenen sonstigen Einkünften wirksam');
+    assert(!doc.body.querySelectorAll('*').some(node => node.textContent.includes('Sonstige Einkünfte')), 'Auch eine geänderte Rentenabweichung zeigt keine sonstigen Einkünfte');
+    initializePersonOverrides(entries, 'a', 2026, doc);
+    details.open = false;
     for (const id of SIMULATOR_PERSON_FIELD_IDS) assert(doc.getElementById(id).disabled, `Normalmodus sperrt auch Alias/Partner/Modus ${id}`);
     fire('p1Monatsrente', 9999); fire('r2Steuerquote', 99, 'input');
     assertEqual(readPensionInputs(doc).renteMonatlich, 1000, 'Ausgelöste Ereignisse auf gesperrten Feldern beeinflussen keine Rechnung');
     const baseline = await backend.loadAll(), bundleBefore = JSON.stringify(exportProfilesBundle().registry);
     fire('personDeviationToggle', true);
-    assert(doc.getElementById('p1Geburtsdatum') === editorNode && doc.getElementById('p1PersonEditors').parentNode === personList.parentNode, 'Abweichung versetzt dieselben Editor-Knoten in die Karte');
+    assert(details.open && doc.getElementById('p1EssentialEditors').parentNode === personList.parentNode, 'Abweichung öffnet Details automatisch und versetzt Rentenfelder in die offene Karte');
+    assert(doc.getElementById('p1Geburtsdatum') === editorNode && doc.getElementById('p1PersonEditors').parentNode === detailList.parentNode, 'Abweichung versetzt dieselben Editor-Knoten in die Karte');
     assert(!doc.getElementById('p1Geburtsdatum').disabled && doc.getElementById('p1StartAlter').disabled, 'Alternative ist Geburtstag statt Alterswrite');
     fire('p1Geburtsdatum', '1956-01-01', 'input'); fire('r2Monatsrente', 2000, 'input'); fire('p1SparerPauschbetrag', 900);
     assertEqual(readPensionInputs(doc).renteStartMonate, 3, 'Produktiver Reader erhält Oktoberanteil ohne alte Keyauswahl');
@@ -156,44 +186,6 @@ try {
     assertEqual(afterApply.profile_rente_monatlich, '1000', 'Optimizerübernahme schreibt keine zentrale Rente');
     assertEqual(afterApply.sim_p1Monatsrente, '1111', 'Optimizerübernahme speichert keine alternative Rente und verändert keine Altquelle');
     resetPersonOverrides(doc);
-    // Produktiver Reset mit bestätigtem Flush und tatsächlichem Reloadaufruf.
-    const { initResetButton } = await import('../app/simulator/simulator-main-reset.js');
-    const resetDoc = createSelectionDocument();
-    let reloaded = 0;
-    resetDoc.defaultView.location = { reload: () => { reloaded++; } };
-    const resetButton = addField(resetDoc, 'resetBtn');
-    globalThis.document = resetDoc; globalThis.confirm = () => true;
-    const resetController = initializePersonOverrides(entries, 'a', 2026, resetDoc);
-    resetController.activate(true); resetController.set('a', 'profile_rente_monatlich', 9999);
-    initResetButton({ requestConfirmation: () => true }); await resetButton.listeners.click[0](); await PersistenceFacade.flush();
-    assertEqual(reloaded, 1, 'Produktiver Reset wartet auf bestätigten Flush und ruft Reload auf');
-    assert(!readDocumentPersonInputs(resetDoc).context.deviationApplied, 'Produktiver Reset verwirft den Personenentwurf');
-    const resetRecords = await backend.loadAll();
-    for (const [key,value] of Object.entries(legacyAccumulation)) assertEqual(resetRecords[key], value, 'Reset bewahrt Legacy-Ansparwert bytegleich: ' + key);
-    assertEqual(resetRecords.profile_rente_monatlich, '1000', 'Neu gelesenes Backend nach Reset: zentrale Rente unverändert');
-    assertEqual(resetRecords.sim_p1Monatsrente, '1111', 'Reset schreibt oder löscht keine alte Personenquelle');
-    assert(!deleted.includes('sim_p1Monatsrente'), 'Reset-Schreibrekorder weist auch ausbleibende Personenlöschungen nach');
-    // Der Reset löscht Modellparameter jetzt auch in der Registry; Personen bleiben geschützt.
-    const resetRegistry = JSON.parse(resetRecords[PROFILE_STORAGE_KEYS.registry]);
-    const registryBeforeReset = JSON.parse(afterApply[PROFILE_STORAGE_KEYS.registry]);
-    for (const [key, value] of Object.entries(registryBeforeReset.profiles.a.data).filter(([key]) => key.startsWith('profile_'))) {
-        assertEqual(resetRegistry.profiles.a.data[key], value, `Neu gelesenes Backend nach Reset: Personen-/Vermögenswert in Registry unverändert: ${key}`);
-        assertEqual(resetRecords[key], afterApply[key], `Neu gelesenes Backend nach Reset: Personen-/Vermögenswert live unverändert: ${key}`);
-    }
-    for (const [key, value] of Object.entries(legacyAccumulation)) {
-        assertEqual(resetRegistry.profiles.a.data[key], value, `Reset bewahrt Legacy-Ansparwert in Registry: ${key}`);
-    }
-    for (const key of ['sim_simStartVermoegen', 'sim_marketCapeRatio']) {
-        assert(Object.hasOwn(afterApply, key), `Resetfixture enthält Modellparameter live: ${key}`);
-        assert(!Object.hasOwn(resetRecords, key), `Neu gelesenes Backend nach Reset: Modellparameter fehlt live: ${key}`);
-        assert(!Object.hasOwn(resetRegistry.profiles.a.data, key), `Neu gelesenes Backend nach Reset: Modellparameter fehlt in Registry: ${key}`);
-    }
-    const { updatedAt, ...resetMeta } = resetRegistry.profiles.a.meta;
-    assert(!Number.isNaN(Date.parse(updatedAt)), 'Reset hinterlegt gültigen Speicherzeitstempel');
-    assertEqual(JSON.stringify(resetMeta), JSON.stringify(registryBeforeReset.profiles.a.meta), 'Reset erhält Profilmetadaten außer Speicherzeitstempel');
-    assertEqual(JSON.stringify(resetRegistry.profiles.b), JSON.stringify(registryBeforeReset.profiles.b), 'Reset erhält anderes Profil bytegleich');
-    globalThis.document = doc;
-
     for (const subset of [entries.slice(0, 1), entries]) {
         const baselineEntries = JSON.stringify(subset);
         initializePersonOverrides(subset, 'a', 2026, doc);

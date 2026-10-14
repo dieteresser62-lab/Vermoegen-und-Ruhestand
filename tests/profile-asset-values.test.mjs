@@ -177,7 +177,7 @@ function createValidProfileValues() {
     assertEqual(confirmed.sources.geschlecht[0], 'bestätigt', 'Nur ausdrückliche Geschlechtsbestätigung ändert die Herkunft');
 }
 
-// Echte Writerintegration: jede bestätigte Korrektur bleibt gespeichert.
+// Echte Writerintegration: nur der letzte bestätigte Tagesstand bleibt gespeichert.
 {
     const storage = createLocalStorageMock();
     const values = { ...createValidProfileValues(), tagesgeld: 50000 };
@@ -202,8 +202,8 @@ function createValidProfileValues() {
     const raw = storage.getItem(PROFILE_CASH_HISTORY_KEY);
     const history = assertCashHistory(JSON.parse(raw));
     assertEqual(history.baselineValue, 50000, 'Tagesnetto-Writer: tatsächlicher vorheriger Betrag bleibt Basis');
-    assertEqual(JSON.stringify(history.entries), JSON.stringify(sequence.map(value => ({ date: '2026-01-03', value }))),
-        'Tagesnetto-Writer: gesamte bestätigte Zwischenwertfolge bleibt bestehen');
+    assertEqual(JSON.stringify(history.entries), JSON.stringify([{ date: '2026-01-03', value: 45000 }]),
+        'Tagesnetto-Writer: nur der letzte bestätigte Tagesstand bleibt bestehen');
     const result = project(history);
     assertEqual(result.metrics.withdrawals, 5000, 'Tagesnetto-Writer: gespeicherte Historie ergibt Nettorückgang 5000');
     assertEqual(result.end.allocation.cash, 45000, 'Tagesnetto-Writer: gespeicherter Tagesabschluss 45000');

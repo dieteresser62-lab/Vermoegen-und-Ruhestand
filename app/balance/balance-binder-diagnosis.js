@@ -119,7 +119,7 @@ export function createDiagnosisHandlers({ dom, appState }) {
         if (txnDiag) {
             text += `\n--- Transaktionsdiagnostik ---\n`;
             text += `Status: ${determineReasonStatus(txnDiag.blockReason, txnDiag.wasTriggered)} (${describeReason(txnDiag.blockReason)})\n`;
-            text += `Ausgelöst: ${txnDiag.wasTriggered ? 'Ja' : 'Nein'}\n`;
+            text += `Empfehlung ausgelöst: ${txnDiag.wasTriggered ? 'Ja' : 'Nein'}\n`;
             text += `Blockierter Betrag: ${UIUtils.formatCurrency(txnDiag.blockedAmount || 0)}\n`;
             if (txnDiag.blockReason && txnDiag.blockReason !== 'none') {
                 text += `Grundcode: ${txnDiag.blockReason}\n`;
@@ -314,7 +314,7 @@ export function createDiagnosisHandlers({ dom, appState }) {
             }
         }
         text += `\n===== Ende der Diagnose =====`;
-        return displayDiagnosisText(text);
+        return displayDiagnosisText(text, { formatNumbers: false });
     };
 
     return {

@@ -279,7 +279,7 @@ try {
     assertEqual(readSimulatorHouseholdPlan({ profileId: 'x' }).entry.values.floorBedarf, 9900, 'Außenperson hat eigenen Planbereich');
     assertEqual(buildSimulatorInputsFromProfileData(spyData).startFloorBedarf, 31001, 'Sekundärer Personenreader verwendet Plan ohne Altplanreads');
     assertEqual(combineSimulatorProfiles(entries.slice(0, 2), 'a').combined.minimumFlexAnnual, 3003, 'Zwei Personen verwenden denselben einzelnen Mindest-Flex');
-    assertEqual(clearHouseholdSimulatorNeeds().source, 'household_plan_v1', 'Simulatorreset löscht keinen gemeinsamen Plan');
+    assertEqual(clearHouseholdSimulatorNeeds().source, 'household_plan_v1', 'Bedarfshelper löscht keinen gemeinsamen Plan');
     assertEqual(persistenceStorage.getItem(HOUSEHOLD_PLAN_KEY), raw, 'Resethelper erhält Planrohbytes');
     const fingerprintData = Object.defineProperties({ ...backend }, Object.getOwnPropertyDescriptors(spyData));
     const fp = sourceFingerprint({ registry: { profiles }, activeId: 'a', liveData: fingerprintData, scope, kind: 'backtest' });

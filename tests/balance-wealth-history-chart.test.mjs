@@ -21,7 +21,10 @@ for (const id of ['managerWealthHistory', 'managerWealthChart', 'managerWealthTa
 }
 assert(!html.includes('id="tab-expenses"') && expensesPage.includes('id="expensesHistoryTitle"'), 'Jahresausgaben bleiben auf der Ausgabenseite');
 const expensesDisplay = { isVisible: () => true, chart: { innerHTML: '' }, table: { innerHTML: '' }, hint: { textContent: '' } };
-const expensesStore = { version: 1, years: { '2026': { months: { '1': { profiles: { A: { categories: { Ausgabe: -120 } } } } } } } };
+const expensesStore = { version: 1, years: {
+    '2025': { months: { '1': { profiles: { A: { categories: { Ausgabe: -100 } } } } } },
+    '2026': { months: { '1': { profiles: { A: { categories: { Ausgabe: -120 } } } } } }
+} };
 const expensesBefore = JSON.stringify(expensesStore);
 assert(renderBalanceExpensesHistory(expensesDisplay, { status: 'ok', store: expensesStore }, 2026), 'Jahresvergleich bleibt auf der eigenständigen Seite renderbar');
 assert(expensesDisplay.chart.innerHTML.includes('Historische Jahresbudgets werden nicht gespeichert') && expensesDisplay.table.innerHTML.includes('Ø pro Monat'), 'Budgetgrenze und Teiljahresvergleich sind in den erzeugten Ausgabeninhalten erklärt');

@@ -671,7 +671,7 @@
     <div class="suite-shell">
         <header class="suite-header">
             <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
-            <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span id="managerQuoteContext" class="pv-context-pill pv-quote-context">Kursdatum unbekannt</span><span class="pv-context-pill">Profilwerte speichern <strong>automatisch</strong> · Tranchen beim <strong>Bestätigen</strong></span></div>
+            <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span class="pv-context-pill pv-quote-context"><span id="managerQuoteContext">Kurse: Datum unbekannt</span><span aria-hidden="true">·</span><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Details zu Kursständen und Speicherung" aria-describedby="managerQuoteInfo">ⓘ</button><span id="managerQuoteInfo" class="ds-info-pop" role="tooltip"><span id="managerQuoteDetails"></span><span>Profilwerte speichern automatisch · Tranchen beim Bestätigen.</span></span></span></span></div>
             <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Probelauf …</button>
         </header>
         <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
@@ -702,13 +702,15 @@
 
     <div class="container">
 
-        <header class="pv-heading ds-page-head"><div class="ds-page-copy"><p class="pv-eyebrow">Personen &amp; Vermögen</p><h1 id="managerPageTitle">Alles über dich, an einem Ort.</h1>
-            <p class="subtitle">Person, Einkommen und Vermögen an einem Ort.</p></div>
+        <header class="pv-heading ds-page-head"><div class="ds-page-copy"><h1 id="managerPageTitle">Personen &amp; Vermögen</h1></div>
             <div class="pv-heading-actions ds-page-actions">
                 <button type="button" id="updatePricesBtn" class="ds-button ds-button-secondary"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/></svg>Kurse aktualisieren</button>
             </div>
         </header>
-        <nav id="managerSectionNav" class="pv-section-nav" role="tablist" aria-label="Ansichten"></nav>
+        <div class="pv-section-bar">
+            <nav id="managerSectionNav" class="pv-section-nav" role="tablist" aria-label="Ansichten"></nav>
+            <button id="managePeopleBtn" type="button" class="ds-button ds-button-secondary pv-add-person" aria-haspopup="dialog" aria-controls="managerPeopleModal">+ Person anlegen</button>
+        </div>
         <div id="managerProfileRecovery" class="ds-note ds-note-error" role="alert" hidden></div>
 
         <div id="priceUpdateStatus" class="hint" role="status" aria-live="polite"></div>
@@ -716,9 +718,9 @@
         <section class="persistence-panel ds-note" aria-labelledby="tranchePersistenceStatus">
             <div id="tranchePersistenceStatus" class="persistence-status" role="status" aria-live="polite"></div>
             <div id="trancheRecoveryActions" class="recovery-actions" hidden>
-                <a class="recovery-link ds-button ds-button-primary" href="index.html">Abbrechen und zur Startseite</a>
-                <a class="recovery-link ds-button ds-button-primary" href="Daten-Sicherung.html#fullBackupImportBtn" data-profile-handoff data-profile-handoff-export="false">Zentrales Backup wiederherstellen</a>
-                <button id="revealCorruptPayloadBtn" class="btn-secondary ds-button ds-button-secondary" type="button">Rohdaten lokal anzeigen</button>
+                <a class="recovery-link ds-text-link" href="index.html">Abbrechen und zur Startseite →</a>
+                <a class="recovery-link ds-text-link" href="Daten-Sicherung.html#fullBackupImportBtn" data-profile-handoff data-profile-handoff-export="false">Zentrales Backup wiederherstellen →</a>
+                <button id="revealCorruptPayloadBtn" class="btn-secondary ds-button ds-button-secondary" type="button">▸ Rohdaten lokal zeigen</button>
                 <button id="copyCorruptPayloadBtn" class="btn-secondary ds-button ds-button-secondary" type="button" hidden>Rohdaten kopieren</button>
                 <button id="resetCorruptPayloadBtn" class="btn-danger ds-button ds-button-danger" type="button">Beschädigte Daten zurücksetzen</button>
                 <pre id="corruptPayloadPreview" class="raw-payload" hidden></pre>
@@ -728,29 +730,31 @@
                 <button id="retryTrancheSaveBtn" class="btn-secondary ds-button ds-button-secondary" type="button" hidden>Speichern erneut versuchen</button>
             </div>
         </section>
-        <button id="managePeopleBtn" type="button" class="ds-button pv-add-person" aria-haspopup="dialog" aria-controls="managerPeopleModal">+ Person anlegen</button>
         <div id="managerPlanPanel" role="tabpanel" aria-labelledby="managerPlanTab" tabindex="-1" hidden>
         <div class="pv-plan-overview">
         <div id="managerHousehold" class="pv-household-grid" aria-label="Haushalt und Personen"></div>
-        <p id="managerHistoryStartStatus" class="history-note" role="status" aria-live="polite"></p>
         </div>
-        <section id="managerHouseholdPlan" class="ds-card pv-household-plan" aria-labelledby="haushalt-plan">
-            <header><h2 id="haushalt-plan" tabindex="-1">Haushalt &amp; Plan</h2>
-                <div class="pv-plan-scope"><span>Gilt für</span><span id="managerPlanScope" class="ds-plan-chip">Bestätigter Planbereich</span><span>· Änderungen werden automatisch gespeichert · <span id="managerPlanInflation">Inflationsfortschreibung noch nicht belegt</span></span></div>
+        <section id="managerHouseholdPlan" class="pv-household-plan" aria-labelledby="haushalt-plan">
+            <section class="ds-card pv-plan-needs" aria-labelledby="haushalt-plan">
+            <header><h2 id="haushalt-plan" tabindex="-1">Bedarf pro Jahr <small>in heutigen Euro</small></h2>
+                <div class="pv-plan-scope"><span>Gilt für</span><span id="managerPlanScope" class="ds-plan-chip">Bestätigter Planbereich</span><span>· Änderungen werden automatisch gespeichert</span><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Inflationsfortschreibung erläutern" aria-describedby="managerPlanInflation">ⓘ</button><span id="managerPlanInflation" class="ds-info-pop" role="tooltip">Inflationsfortschreibung noch nicht belegt</span></span></div>
             </header>
             <p id="managerPlanStatus" role="status" aria-live="polite">Planbereich wird geprüft …</p>
-            <details id="managerPlanTechnical" hidden><summary>Technische Details</summary><p id="managerPlanTechnicalMessage"></p></details>
+            <details id="managerPlanTechnical" hidden><summary><span class="pv-disclosure-action"><span>▸ Technische Details zeigen</span><span>▾ Technische Details ausblenden</span></span></summary><p id="managerPlanTechnicalMessage"></p></details>
             <div class="ds-actions"><button id="managerPlanResume" type="button" class="ds-button ds-button-secondary" hidden>Planungsdaten zusammenführen</button><button id="managerPlanRetry" type="button" class="ds-button ds-button-secondary" hidden>Speichern wiederholen</button></div>
+            <div class="pv-need-fields">
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_floorBedarf">Grundbedarf (Floor)<small>muss immer gedeckt sein</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_floorBedarf" data-manager-plan-field="floorBedarf" disabled data-money-input></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBedarf">Wunschbedarf (Flex)<small>wird in schwachen Jahren gekürzt</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBedarf" data-manager-plan-field="flexBedarf" disabled data-money-input></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_minimumFlexAnnual">Mindest-Flex<small>Untergrenze der Kürzung</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_minimumFlexAnnual" data-manager-plan-field="minimumFlexAnnual" disabled data-money-input></div>
+            </div>
+            </section>
+            <details id="managerPlanMore" class="ds-card pv-plan-more">
+                <summary><span><strong id="managerPlanMoreTitle">Weitere Planwerte</strong><span id="managerPlanMoreSummary" class="pv-summary-values">Planbereich wird geprüft …</span></span><span class="pv-disclosure-action"><span>▸ zeigen</span><span>▾ ausblenden</span></span></summary>
             <div class="pv-plan-groups household-plan-groups">
-                <section class="pv-plan-group household-plan-group"><h3>Bedarf <small>pro Jahr, heutige Euro</small></h3>
-                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_floorBedarf">Grundbedarf (Floor)<small>muss immer gedeckt sein</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_floorBedarf" data-manager-plan-field="floorBedarf" disabled></div>
-                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBedarf">Wunschbedarf (Flex)<small>wird in schwachen Jahren gekürzt</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBedarf" data-manager-plan-field="flexBedarf" disabled></div>
-                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_minimumFlexAnnual">Mindest-Flex<small>Untergrenze der Kürzung</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_minimumFlexAnnual" data-manager-plan-field="minimumFlexAnnual" disabled></div>
-                    <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div></section>
                 <section class="pv-plan-group household-plan-group"><h3>Flex-Budget <small>Puffer für Kürzungsjahre</small></h3>
-                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBudgetAnnual">Budget pro Jahr</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBudgetAnnual" data-manager-plan-field="flexBudgetAnnual" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBudgetAnnual">Budget pro Jahr</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBudgetAnnual" data-manager-plan-field="flexBudgetAnnual" disabled data-money-input></div>
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBudgetYears">Reicht für</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBudgetYears" data-manager-plan-field="flexBudgetYears" disabled></div>
-                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBudgetRecharge">Wiederauffüllen pro Jahr</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBudgetRecharge" data-manager-plan-field="flexBudgetRecharge" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBudgetRecharge">Wiederauffüllen pro Jahr</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBudgetRecharge" data-manager-plan-field="flexBudgetRecharge" disabled data-money-input></div>
                     <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div></section>
                 <section class="pv-plan-group household-plan-group"><h3>Reserven <small></small></h3>
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_liquidityRunwayYears">Liquiditäts-Reichweite<small>Tagesgeld + Geldmarkt in Jahren Entnahme</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_liquidityRunwayYears" data-manager-plan-field="liquidityRunwayYears" disabled></div>
@@ -785,52 +789,65 @@
                     <p class="pv-plan-note household-plan-note">Wird im Jahresabschluss aktualisiert; der Simulator nimmt ihn als Startwert.</p>
                     <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div>
                 </section>
+                <section class="pv-plan-group household-plan-group"><h3>Nicht hier</h3><p class="pv-plan-note household-plan-note">Gold/Bonds-Ziele, Steuern, Pflegereserve, Tagesgeld und Renten stehen je Person. Monte-Carlo, Zeitraum, Stresstests und Pflegemodell stehen im Simulator.</p></section>
             </div>
-            <p class="pv-plan-note household-plan-note">Nicht hier, weil schon pro Person zentral: Gold/Bonds-Ziele, Steuern, Pflegebucket, Tagesgeld, Renten. Nur im Simulator: Monte-Carlo, Zeitraum, Stresstests, Pflegemodell.</p>
+            </details>
         </section>
-        <section id="managerPlanComparisonCard" class="ds-card pv-plan-comparison-card" aria-labelledby="managerPlanComparisonTitle">
-            <h2 id="managerPlanComparisonTitle">Planvergleich</h2>
+        <details id="managerPlanComparisonCard" class="ds-card pv-plan-comparison-card" aria-labelledby="managerPlanComparisonTitle">
+            <summary><h2 id="managerPlanComparisonTitle">Planvergleich</h2><span class="pv-disclosure-action"><span>▸ zeigen</span><span>▾ ausblenden</span></span></summary>
             <div id="managerPlanComparison" aria-label="Planbeleg und Vorschau"></div>
-            <a href="Balance.html" data-profile-handoff class="ds-button ds-button-secondary">Vorschau in der Balance rechnen</a>
-        </section>
+            <a href="Balance.html" data-profile-handoff class="ds-text-link">Vorschau in der Balance rechnen →</a>
+        </details>
 
         </div>
         <div id="managerPersonPanel" role="tabpanel" tabindex="-1" hidden>
         <div id="managerProfileValues" class="profile-values pv-profile-grid">
             <div id="profileValidationStatus" class="profile-validation-status" role="alert" aria-live="assertive" hidden></div>
-<div id="personendaten" class="pv-person-data-heading"><div><h2>Personendaten · <span id="managerPersonProfileName">–</span></h2><p>Einmal hier pflegen – Balance und Simulator übernehmen die Werte. Ein Klick auf eine Zeile klappt sie auf.</p></div><a class="ds-text-link" href="#managerDepotTitle">Depot</a><button id="managerCardsToggleAll" aria-expanded="false" type="button" class="ds-button ds-button-secondary" aria-controls="managerPersonBody managerAssetsBody managerCareBody">Alle aufklappen</button></div>
-<div id="managerBirthSupplement" class="ds-note ds-note-warning pv-birth-supplement" hidden><div><strong>Geburtsdatum einmal ergänzen</strong><p id="managerBirthSuggestion"></p></div><label for="managerBirthDate">Vollständiges Geburtsdatum (TT.MM.JJJJ)</label><input id="managerBirthDate" type="text" class="ds-input" placeholder="TT.MM.JJJJ" aria-describedby="managerBirthSuggestion managerBirthError"><button id="managerBirthApply" type="button" class="ds-button ds-button-primary">Übernehmen</button><p id="managerBirthError" role="status" aria-live="polite"></p></div>
-<section class="ds-card pv-profile-card pv-person-disclosure"><button id="managerPersonToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerPersonBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span><span><strong>Person &amp; Einkommen</strong><span id="managerPersonSummary" class="ds-help"></span></span><span class="pv-chevron" aria-hidden="true">⌄</span></button><div id="managerPersonBody" class="pv-card-body" role="region" aria-labelledby="managerPersonToggle" hidden><div class="pv-fields">
+<section id="managerPersonGlance" class="ds-card pv-person-glance" aria-labelledby="managerPersonGlanceTitle"><header id="personendaten" class="pv-person-data-heading"><div><h2 id="managerPersonGlanceTitle">Auf einen Blick · <span id="managerPersonProfileName">–</span></h2><p class="ds-help">Balance und Simulator übernehmen die Werte.</p></div><div class="ds-actions"><a class="ds-text-link" href="#managerDepotTitle">Zum Depot →</a><button id="managerCardsToggleAll" aria-expanded="false" type="button" class="ds-button ds-button-secondary" aria-controls="managerPersonBody managerAssetsBody managerCareBody">▸ Alle Details zeigen</button></div></header><div class="pv-fields">
+<div class="form-group">
+            <div class="pv-label-help">
+                <label for="profileTagesgeld">Tagesgeld</label>
+                <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Tagesgeld" aria-describedby="managerFieldHelp4">i</button><span id="managerFieldHelp4" class="ds-info-pop" role="tooltip">Tagesgeld und Girokonto. Wird in der Balance-App als Tagesgeld genutzt.</span></span>
+            </div>
+                <div class="ds-unit-frame"><input type="text" id="profileTagesgeld" placeholder="0" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileTagesgeldUnit" data-money-input><span id="profileTagesgeldUnit">€</span></div>
+                <p class="ds-help">Speichert beim Verlassen oder mit Enter.</p>
+            </div>
+<div class="form-group">
+            <div class="pv-label-help">
+                <label for="profileRenteMonatlich">Monatliche Rente, netto</label>
+                <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Rente und Einkünfte" aria-describedby="managerFieldHelp2">i</button><span id="managerFieldHelp2" class="ds-info-pop" role="tooltip">Erwartete Nettorente (nach Kranken- und Pflegeversicherung) in heutigen Werten, z. B. aus der Renteninformation; bis zum Rentenbeginn passt die App sie gemäß Rentenanpassung an. Bestehende Nettowerte bleiben netto; eine übernommene Legacy-Jahresbruttorente behält die bisherige gerundete Monatsbasis, ohne neue Netto-/Bruttoumrechnung.</span></span>
+            </div>
+                <div class="ds-unit-frame"><input type="text" id="profileRenteMonatlich" placeholder="0" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileRenteMonatlichUnit" data-money-input><span id="profileRenteMonatlichUnit">€/Monat</span></div>
+                <p id="managerPensionStartStatus" class="ds-help"></p>
+            </div>
+<div class="form-group">
+            <div class="pv-label-help">
+                <label for="profileSonstigeEinkuenfte">Sonstige Einkünfte im Monat</label>
+                <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Sonstige Einkünfte" aria-describedby="managerFieldHelp3">i</button><span id="managerFieldHelp3" class="ds-info-pop" role="tooltip">Gehalt, Unterhalt, sonstige Zuflüsse.</span></span>
+            </div>
+                <div class="ds-unit-frame"><input type="text" id="profileSonstigeEinkuenfte" placeholder="0" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileSonstigeEinkuenfteUnit" data-money-input><span id="profileSonstigeEinkuenfteUnit">€/Monat</span></div>
+            </div>
+</div></section>
+
+<section class="ds-card pv-profile-card pv-person-disclosure"><button id="managerPersonToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerPersonBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span><span><strong>Person, Rente &amp; Steuern</strong><span id="managerPersonSummary" class="ds-help"></span></span><span id="managerPersonAction" class="pv-disclosure-action">▸ zeigen</span></button><div id="managerPersonBody" class="pv-card-body" role="region" aria-labelledby="managerPersonToggle" hidden><div id="managerBirthSupplement" class="ds-note ds-note-warning pv-birth-supplement" hidden><div><strong>Geburtsdatum einmal ergänzen</strong><p id="managerBirthSuggestion"></p></div><label for="managerBirthDate">Vollständiges Geburtsdatum (TT.MM.JJJJ)</label><input id="managerBirthDate" type="text" class="ds-input" placeholder="TT.MM.JJJJ" aria-describedby="managerBirthSuggestion managerBirthError"><button id="managerBirthApply" type="button" class="ds-button ds-button-primary">Übernehmen</button><p id="managerBirthError" role="status" aria-live="polite"></p></div><div class="pv-fields">
 <div class="pv-person-group"><h4>Person</h4><div class="form-group" data-person-field="profileGeburtsdatum"><label for="profileGeburtsdatum">Geburtsdatum</label><input id="profileGeburtsdatum" type="text" class="ds-input" placeholder="TT.MM.JJJJ" aria-describedby="profilePersonDateStatus"></div><p id="profilePersonDateStatus" class="ds-help"></p>
 <div class="form-group" data-person-field="profileGeschlecht"><label for="profileGeschlecht">Geschlecht</label><select id="profileGeschlecht" class="ds-select" aria-describedby="profileGenderStatus"><option value="m">Männlich</option><option value="w">Weiblich</option><option value="d">Divers</option></select><p id="profileGenderStatus" class="ds-help" role="status"></p><button type="button" id="profileGenderConfirm" class="ds-button ds-button-quiet ds-text-link">Auswahl bestätigen</button></div>
 </div><div class="pv-person-group"><h4>Rente</h4><div class="form-group" data-person-field="profileRentenbeginn"><label for="profileRentenbeginn">Rentenbeginn (Datum)</label><input id="profileRentenbeginn" aria-describedby="managerPensionStatus" type="text" class="ds-input" placeholder="TT.MM.JJJJ"><p id="managerPensionStatus" class="ds-help"></p></div>
 <div class="form-group" data-person-field="profileRentenanpassungArt"><label for="profileRentenanpassungArt">Rentenanpassung</label><select id="profileRentenanpassungArt" class="ds-select" hidden><option value="wage">Lohnentwicklung</option><option value="cpi">Inflation</option><option value="fix">Fester Satz (0 = keine)</option></select><div id="profilePensionSegments" class="pv-person-segments" role="group" aria-label="Rentenanpassung"></div></div>
 <div class="form-group" data-person-field="profileRentenanpassungPct"><label for="profileRentenanpassungPct">Fester Rentenanpassungssatz (% p.a.)</label><input id="profileRentenanpassungPct" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de"></div>
 <div class="form-group"><input id="profileRenteAktiv" class="ds-input" type="hidden" disabled value="false" aria-describedby="managerPensionStatus"><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Rentenstatus erläutern" aria-describedby="managerRenteExplanation">i</button><span id="managerRenteExplanation" class="ds-info-pop" role="tooltip">Der Rentenbeginn bestimmt, ab wann und mit wie vielen Monaten die Rente im Planungsjahr wirkt. Sonstige Einkünfte werden unabhängig ganzjährig berücksichtigt. Der Status bleibt abgeleitet.</span></span></div>
-<div class="form-group">
-                <label for="profileRenteMonatlich">Monatliche Rente, netto</label>
-                <div class="ds-unit-frame"><input type="text" id="profileRenteMonatlich" placeholder="0" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileRenteMonatlichUnit"><span id="profileRenteMonatlichUnit">€</span></div>
-                <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Rente und Einkünfte" aria-describedby="managerFieldHelp2">i</button><span id="managerFieldHelp2" class="ds-info-pop" role="tooltip">Erwartete Nettorente (nach Kranken- und Pflegeversicherung) in heutigen Werten, z. B. aus der Renteninformation; bis zum Rentenbeginn passt die App sie gemäß Rentenanpassung an. Bestehende Nettowerte bleiben netto; eine übernommene Legacy-Jahresbruttorente behält die bisherige gerundete Monatsbasis, ohne neue Netto-/Bruttoumrechnung.</span></span>
-            </div>
-</div><div class="pv-person-group"><h4>Steuer &amp; Sonstiges</h4><div class="form-group" data-person-field="profileKirchensteuerPct"><label for="profileKirchensteuerPct">Kirchensteuer (%)</label><input id="profileKirchensteuerPct" type="hidden" class="ds-input" placeholder="0" inputmode="decimal" lang="de"><div id="profileChurchSegments" class="pv-person-segments" role="group" aria-label="Kirchensteuer"></div></div>
-<div class="form-group" data-person-field="profileSparerPauschbetrag"><label for="profileSparerPauschbetrag">Sparer-Pauschbetrag (€ pro Person)</label><input id="profileSparerPauschbetrag" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de"></div>
+
+</div><div class="pv-person-group"><h4>Steuern</h4><div class="form-group" data-person-field="profileKirchensteuerPct"><label for="profileKirchensteuerPct">Kirchensteuer (%)</label><input id="profileKirchensteuerPct" type="hidden" class="ds-input" placeholder="0" inputmode="decimal" lang="de"><div id="profileChurchSegments" class="pv-person-segments" role="group" aria-label="Kirchensteuer"></div></div>
+<div class="form-group" data-person-field="profileSparerPauschbetrag"><label for="profileSparerPauschbetrag">Sparer-Pauschbetrag (€ pro Person)</label><input id="profileSparerPauschbetrag" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de" data-money-input></div>
 <div class="form-group" data-person-field="profileRenteSteuerquotePct"><label for="profileRenteSteuerquotePct">Steuerquote der Rente (%)</label><input id="profileRenteSteuerquotePct" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de"></div>
-<div class="form-group">
-                <label for="profileSonstigeEinkuenfte">Sonstige Einkünfte im Monat</label>
-                <div class="ds-unit-frame"><input type="text" id="profileSonstigeEinkuenfte" placeholder="0" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileSonstigeEinkuenfteUnit"><span id="profileSonstigeEinkuenfteUnit">€</span></div>
-                <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Sonstige Einkünfte" aria-describedby="managerFieldHelp3">i</button><span id="managerFieldHelp3" class="ds-info-pop" role="tooltip">Gehalt, Unterhalt, sonstige Zuflüsse.</span></span>
-            </div></div></div><p>Änderungen werden automatisch gespeichert.</p><p class="ds-help">Im Haushalt wirken Rentenanpassung und Pflegekonfiguration des Hauptprofils.</p><button type="button" id="profileManagePeopleBtn" class="ds-button ds-button-secondary" aria-label="Aktive Person verwalten" aria-haspopup="dialog" aria-controls="managerPeopleModal">Person verwalten …</button></div></section><section class="ds-card pv-profile-card pv-assets-disclosure"><button id="managerAssetsToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerAssetsBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="M3 10h18"></path></svg></span><span><strong>Tagesgeld &amp; Gold</strong><span id="managerAssetsSummary" class="ds-help"></span></span><span class="pv-chevron" aria-hidden="true">⌄</span></button><div id="managerAssetsBody" class="pv-card-body" role="region" aria-labelledby="managerAssetsToggle" hidden><div class="pv-fields"><div class="form-group">
-                <label for="profileTagesgeld">Tagesgeld / Girokonto</label>
-                <div class="ds-unit-frame"><input type="text" id="profileTagesgeld" placeholder="0" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileTagesgeldUnit"><span id="profileTagesgeldUnit">€</span></div>
-                <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Tagesgeld" aria-describedby="managerFieldHelp4">i</button><span id="managerFieldHelp4" class="ds-info-pop" role="tooltip">Wird in der Balance-App als Tagesgeld genutzt.</span></span>
-            </div>
-<div class="form-group">
+</div></div><p>Änderungen werden automatisch gespeichert.</p><p class="ds-help">Im Haushalt wirken Rentenanpassung und Pflegekonfiguration des Hauptprofils.</p><button type="button" id="profileManagePeopleBtn" class="ds-button ds-button-secondary" aria-label="Aktive Person verwalten" aria-haspopup="dialog" aria-controls="managerPeopleModal">Person verwalten …</button></div></section><section class="ds-card pv-profile-card pv-assets-disclosure"><div class="pv-supplement-header"><button id="managerAssetsToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerAssetsBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="M3 10h18"></path></svg></span><span class="pv-supplement-copy"><strong>Gold</strong><span id="managerAssetsSummary" class="ds-help"></span></span><span id="managerAssetsAction" class="pv-disclosure-action">▸ zeigen</span></button><div class="pv-supplement-switch">
                     <label class="ds-toggle" for="profileGoldAktivToggle"><input type="checkbox" class="ds-checkbox" role="switch" id="profileGoldAktivToggle" aria-controls="profileGoldAktiv"><span class="ds-slider" aria-hidden="true"></span><span>Gold-Strategie aktiv</span></label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Gold-Strategie" aria-describedby="managerFieldHelp5">i</button><span id="managerFieldHelp5" class="ds-info-pop" role="tooltip">Steuert, ob Gold in der Planung aktiv ist.</span></span>
                     <select id="profileGoldAktiv" class="ds-select" hidden>
                         <option value="false">Nein</option>
                         <option value="true">Ja</option>
                     </select>
-                </div>
+                </div></div><div id="managerAssetsBody" class="pv-card-body" role="region" aria-labelledby="managerAssetsToggle" hidden><div class="pv-fields">
+
 <div class="pv-gold-ratios"><div class="form-group">
                     <div class="pv-label-help"><label for="profileGoldZiel">Ziel-Anteil</label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zum Gold-Zielanteil" aria-describedby="managerFieldHelp8">i</button><span id="managerFieldHelp8" class="ds-info-pop" role="tooltip">Zielanteil von Gold am Depot in Prozent.</span></span></div>
                     <div class="ds-unit-frame"><input type="text" id="profileGoldZiel" placeholder="7,5" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileGoldZielUnit"><span id="profileGoldZielUnit">%</span></div>
@@ -849,17 +866,17 @@
                         <option value="false">Nein</option>
                         <option value="true">Ja</option>
                     </select>
-                </div></div></div></section><section class="ds-card pv-profile-card pv-care-disclosure"><button id="managerCareToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerCareBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg></span><span><strong>Pflegereserve</strong><span id="managerCareSummary" class="ds-help"></span></span><span class="pv-chevron" aria-hidden="true">⌄</span></button><div id="managerCareBody" class="pv-card-body" role="region" aria-labelledby="managerCareToggle" hidden><span id="managerCareActive" class="ds-badge pv-care-chip" hidden>aktiv</span><div class="pv-fields"><div class="form-group">
+                </div></div></div></section><section class="ds-card pv-profile-card pv-care-disclosure"><div class="pv-supplement-header"><button id="managerCareToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerCareBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg></span><span class="pv-supplement-copy"><strong>Pflegereserve</strong><span id="managerCareSummary" class="ds-help"></span></span><span id="managerCareAction" class="pv-disclosure-action">▸ zeigen</span></button><div class="pv-supplement-switch">
                     <label class="ds-toggle" for="profileHealthBucketEnabledToggle"><input type="checkbox" class="ds-checkbox" role="switch" id="profileHealthBucketEnabledToggle" aria-controls="profileHealthBucketEnabled"><span class="ds-slider" aria-hidden="true"></span><span>Pflegereserve aktiv</span></label>
                     <select id="profileHealthBucketEnabled" class="ds-select" hidden>
                         <option value="false">Nein</option>
                         <option value="true">Ja</option>
                     </select>
                     <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Pflegereserve" aria-describedby="managerFieldHelp6">i</button><span id="managerFieldHelp6" class="ds-info-pop" role="tooltip">Ziel innerhalb der Liquidität.</span></span>
-                </div>
+                </div></div><div id="managerCareBody" class="pv-card-body" role="region" aria-labelledby="managerCareToggle" hidden><span id="managerCareActive" class="ds-badge pv-care-chip" hidden>aktiv</span><div class="pv-fields">
 <div class="form-group">
                     <div class="pv-label-help"><label for="profileHealthBucketInitialAmount">Zielbetrag</label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Pflegebucket-Zielbetrag" aria-describedby="managerFieldHelp7">i</button><span id="managerFieldHelp7" class="ds-info-pop" role="tooltip">Diagnostisch inflationsindexiert, nominal gehalten.</span></span></div>
-                    <div class="ds-unit-frame"><input type="text" id="profileHealthBucketInitialAmount" placeholder="150000" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileHealthBucketInitialAmountUnit"><span id="profileHealthBucketInitialAmountUnit">€</span></div>
+                    <div class="ds-unit-frame"><input type="text" id="profileHealthBucketInitialAmount" placeholder="150000" required class="ds-input" lang="de" inputmode="decimal" aria-describedby="profileHealthBucketInitialAmountUnit" data-money-input><span id="profileHealthBucketInitialAmountUnit">€</span></div>
                 </div>
 <div class="form-group">
                     <label for="profileHealthBucketAssetSource">Quelle</label>
@@ -909,7 +926,7 @@
 
 
         <section class="ds-card pv-depot" aria-labelledby="managerDepotTitle">
-            <header class="pv-depot-header"><div><h2 id="managerDepotTitle">Depot · <span id="managerDepotProfileName">–</span></h2><p id="managerDepotCount" class="pv-depot-count"></p></div><div class="pv-heading-actions"><button type="button" id="depotAddTrancheBtn" class="ds-button ds-button-secondary">+ Kauf eintragen</button><button type="button" id="depotOpenSaleEntryBtn" class="ds-button ds-button-primary">Verkauf eintragen</button></div></header>
+            <header class="pv-depot-header"><div><h2 id="managerDepotTitle">Depot · <span id="managerDepotProfileName">–</span></h2><p id="managerDepotCount" class="pv-depot-count"></p></div><div class="pv-heading-actions"><button type="button" id="depotAddTrancheBtn" class="ds-button ds-button-secondary">+ Kauf eintragen</button><button type="button" id="depotOpenSaleEntryBtn" class="ds-button ds-button-secondary">Verkauf eintragen</button></div></header>
             <div class="stats" id="stats"></div>
             <div id="tranchenTable"></div>
         </section>
@@ -920,21 +937,36 @@
             <div id="reconciliationStatus" class="reconciliation-status" role="status" aria-live="polite"></div>
             <div id="reconciliationCashStatuses" aria-live="polite"></div>
         </section>
-        <details id="managerTechnical" class="ds-card pv-technical"><summary>Technik</summary><p id="managerTechnicalProfile">Profil-Kennung wird geladen</p><p>Profil-Kennung, Kursdienst-Verweis und geschütztes Löschen aller Tranchen. Speicher- und Recoveryfehler erscheinen oberhalb der Profilwerte.</p><div class="controls"><a id="proxyHealthBtn" class="btn-secondary ds-button ds-button-secondary" href="Daten-Sicherung.html#kursdienst" data-profile-handoff data-profile-handoff-export="false">Kursdienst prüfen</a><button type="button" id="clearTranchesBtn" class="btn-danger ds-button ds-button-danger">Alle Tranchen löschen</button></div></details>
+        <details id="managerTechnical" class="ds-card pv-technical"><summary><span class="pv-disclosure-action"><span>▸ Technik zeigen</span><span>▾ Technik ausblenden</span></span></summary><p id="managerTechnicalProfile">Profil-Kennung wird geladen</p><p>Profil-Kennung, Kursdienst-Verweis und geschütztes Löschen aller Tranchen. Speicher- und Recoveryfehler erscheinen oberhalb der Profilwerte.</p><div class="controls"><a id="proxyHealthBtn" class="ds-text-link" href="Daten-Sicherung.html#kursdienst" data-profile-handoff data-profile-handoff-export="false">Kursdienst prüfen →</a><button type="button" id="clearTranchesBtn" class="btn-danger ds-button ds-button-danger">Alle Tranchen löschen</button></div></details>
         </div>
         <div id="managerHistoryPanel" role="tabpanel" aria-labelledby="managerHistoryTab" tabindex="-1" hidden>
         <section id="managerWealthHistory" class="ds-plan-card manager-wealth-history" aria-labelledby="managerWealthTitle">
             <header class="ds-plan-card-head"><div class="ds-card-title"><h2 id="managerWealthTitle">Vermögensverlauf</h2><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Erläuterung zum Vermögensverlauf" aria-expanded="false" aria-describedby="managerWealthInfo" aria-controls="managerWealthInfo">ⓘ</button><span id="managerWealthInfo" class="ds-info-pop" role="tooltip">
             <span id="managerWealthContext"></span>
-            <span>Die Tageslinie zeigt die Entwicklung aus Beständen und Tageskursen. Rauten zeigen unverändert erfasste Stände, die davon abweichen können. Erfasste Stände, Tabelle und Kennzahlen enthalten Tagesgeld, Geldmarkt-ETF und Aktien-ETF (Alt- und Neu-Depot), ohne Gold und separate Anleihen. Die Tageslinie behält alle ihre Anlageformen.</span>
+            <span>Die Tageslinie zeigt die Entwicklung aus Beständen und Tageskursen. Rauten zeigen unverändert erfasste Stände, die davon abweichen können. Die Gruppe „Aus erfassten Ständen“ und die Tabelle enthalten Tagesgeld, Geldmarkt-ETF und Aktien-ETF (Alt- und Neu-Depot), ohne Gold und separate Anleihen. Die Gruppe „Aus Tageskursen“ und die Tageslinie behalten alle ihre Anlageformen.</span>
             <span>Automatische Erfassung nach Ausgabenimport, wenn die Kurse höchstens sieben Tage alt sind. „Stand jetzt erfassen“ verwendet dieselbe Kursgrenze; ohne kursabhängige Bestände ist die Erfassung ebenfalls möglich.</span>
             <span id="managerWealthDailyNote"></span></span></span></div>
                 <button id="managerCaptureWealthBtn" type="button" class="ds-button ds-button-secondary">Stand jetzt erfassen</button></header>
             <div id="managerHistorySwitch" class="manager-history-switch" aria-label="Verlauf für Haushalt oder Person"></div>
+            <h3 class="manager-history-group-title">Aus erfassten Ständen</h3>
             <div id="managerWealthMetrics" class="wealth-metrics ds-kpi-strip ds-metric"></div>
             <p id="managerWealthStatus" role="status"></p><p id="managerWealthHint"></p>
+            <p id="managerWealthBasis" class="manager-wealth-basis"></p>
             <div id="managerWealthChart" class="ds-chart-surface manager-wealth-chart"></div>
             <ul id="managerWealthLegend" class="history-legend" aria-label="Diagrammlegende"></ul>
+            <section class="manager-daily-history" aria-labelledby="managerDailyTitle">
+                <header class="history-heading"><div class="ds-card-title"><h3 id="managerDailyTitle" class="manager-history-group-title">Aus Tageskursen</h3><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Erläuterung zu den Tageskennzahlen" aria-expanded="false" aria-describedby="managerDailyInfo" aria-controls="managerDailyInfo">ⓘ</button><span id="managerDailyInfo" class="ds-info-pop" role="tooltip"></span></span></div>
+                    <div id="managerHistoryPeriods" class="history-periods" role="group" aria-label="Zeitraum der Tageskurse">
+                        <button type="button" class="ds-button ds-button-secondary" data-manager-history-period="all" aria-pressed="true">Seit Beginn der Aufzeichnung</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-manager-history-period="year" aria-pressed="false">Laufendes Jahr</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-manager-history-period="12m" aria-pressed="false">12 Monate</button>
+                    </div>
+                </header>
+                <p id="managerDailyPeriod" class="manager-wealth-basis"></p>
+                <p id="managerDailyStatus" class="manager-wealth-basis"></p>
+                <div id="managerDailyAllocation" class="manager-daily-allocation" aria-label="Aufteilung am letzten Tagesabschluss"></div>
+                <div id="managerDailyMetrics" class="wealth-metrics ds-kpi-strip ds-metric"></div>
+            </section>
             <div id="managerWealthTable" class="ds-table-scroll ds-table-box" tabindex="0" role="region" aria-label="Erfasste Vermögensstände"></div>
         </section>
         </div>
@@ -973,14 +1005,14 @@
                 </div>
                 <div class="form-group">
                     <label for="reconcileGrossProceeds">Tatsächlicher Bruttoerlös (€) *</label>
-                    <input id="reconcileGrossProceeds" type="text" required class="ds-input" inputmode="decimal" lang="de">
+                    <input id="reconcileGrossProceeds" type="text" required class="ds-input" inputmode="decimal" lang="de" data-money-input>
                 </div>
                 <div class="form-group">
                     <label for="reconcileFees">Tatsächliche Kosten (€) *</label>
-                    <input id="reconcileFees" type="text" value="0" required class="ds-input" inputmode="decimal" lang="de">
+                    <input id="reconcileFees" type="text" value="0" required class="ds-input" inputmode="decimal" lang="de" data-money-input>
                 </div>
                 <details class="reconciliation-recommendation">
-                    <summary>Optionale Empfehlung zum Abweichungsvergleich erfassen</summary>
+                    <summary><span class="pv-disclosure-action"><span>▸ Optionale Empfehlung zeigen</span><span>▾ Optionale Empfehlung ausblenden</span></span></summary>
                     <div class="reconciliation-recommendation-fields">
                         <div class="form-group">
                             <label for="reconcileRecommendedShares">Empfohlene Stückzahl</label>
@@ -988,7 +1020,7 @@
                         </div>
                         <div class="form-group">
                             <label for="reconcileRecommendedGross">Empfohlener Bruttoerlös (€)</label>
-                            <input id="reconcileRecommendedGross" type="text" class="ds-input" inputmode="decimal" lang="de">
+                            <input id="reconcileRecommendedGross" type="text" class="ds-input" inputmode="decimal" lang="de" data-money-input>
                         </div>
                     </div>
                 </details>
@@ -999,7 +1031,7 @@
                             <select id="reconcileCashStatus" class="ds-select"><option value="pending_manual_posting">Nein – manuell offen halten</option><option value="confirmed_already_reflected">Ja – schon enthalten</option></select>
                             <small>Keine automatische Cashbuchung. Offene Verkäufe bleiben sichtbar, bis Sie den Cashstand bestätigen.</small>
                         </div>
-                        <div id="reconcileInitialCashBalanceGroup" class="form-group" hidden><label for="reconcileInitialCashBalance">Bestätigter Cashstand nach Berücksichtigung (€) *</label><input id="reconcileInitialCashBalance" type="text" class="ds-input" inputmode="decimal" lang="de"><small>Der Stand wird mit Nettoerlös und Nachweiszeitpunkt dokumentiert.</small></div>
+                        <div id="reconcileInitialCashBalanceGroup" class="form-group" hidden><label for="reconcileInitialCashBalance">Bestätigter Cashstand nach Berücksichtigung (€) *</label><input id="reconcileInitialCashBalance" type="text" class="ds-input" inputmode="decimal" lang="de" data-money-input><small>Der Stand wird mit Nettoerlös und Nachweiszeitpunkt dokumentiert.</small></div>
                     </div>
                 </fieldset>
                 <fieldset id="saleStep3" class="pv-sale-step" hidden><legend>Schreibfreie Vorschau</legend>
@@ -1090,10 +1122,10 @@
                     <input type="text" id="shares" required class="ds-input" inputmode="decimal" lang="de">
                 </div><div class="form-group">
                     <label for="purchasePrice">Kaufpreis pro Stück (€) *</label>
-                    <input type="text" id="purchasePrice" required class="ds-input" inputmode="decimal" lang="de">
+                    <input type="text" id="purchasePrice" required class="ds-input" inputmode="decimal" lang="de" data-money-input>
                 </div><div class="form-group">
                     <label for="currentPrice">Aktueller Kurs (€)</label>
-                    <input type="text" id="currentPrice" placeholder="Leer = Kaufpreis" class="ds-input" inputmode="decimal" lang="de">
+                    <input type="text" id="currentPrice" placeholder="Leer = Kaufpreis" class="ds-input" inputmode="decimal" lang="de" data-money-input>
                 </div><div class="form-group">
                     <label for="tqf">Teilfreistellung *</label>
                     <input type="text" id="tqf" value="0" required class="ds-input" inputmode="decimal" lang="de">

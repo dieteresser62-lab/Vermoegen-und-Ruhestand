@@ -4,7 +4,7 @@ Generiert aus [funktionsinventar.json](funktionsinventar.json). Änderungen und 
 
 Prüfstatus: geprüft · Anwendungscode-Basis (sourceRevision): 0e39685f2d01c4964e2f64c9bbad69e22afea4a1 · Schema: 2
 
-sourceRevision bezeichnet dauerhaft den Anwendungscode vor der Design-Grundlage, nicht den aktuellen Inventarcommit. Die historische Registerprovenienz ist die erste Inventarerhebung (d0418d2 bis db728d0); baselineAudit erhält deren Ausgangskennungen unabhängig davon. Der Fortsetzungscommit 0f4ebce bezeichnet den Inventarstand vor dieser Nachschärfung. Die Basisrevision behauptet kein dort vorhandenes Inventar; das Schutzgate benötigt keinen Live-Git-Zugriff.
+## Grenzen
 
 Das statische Gate prüft Struktur, Erzeugerort und unterstützte Erzeugung. Es beweist weder Laufzeitaufruf oder DOM-Anfügen noch Bedienung, Optik und fachliche Semantik. Identische Anker können mehrere Elemente bezeichnen.
 
@@ -12,223 +12,318 @@ Geschützte Belege verlangen den vollständigen Selektor und den eigenen Anker a
 
 Delegierte Codebezüge nennen eindeutige Ereignisfelder in delegates: jeder statische Treffer liegt unter ancestor, dynamische Felder folgen inventarisierten Hostketten. functions erfasst alle benannten Definitionen oder echten lokalen Importbindungen; leere Listen verlangen eine begründete nonFunction-Klassifikation. HTML-Definitionen stammen ausdrücklich aus inline-module oder gemäß Operatorentscheidung vom 04.10.2026 aus inline-classic. Kommentare, Strings, Aufrufe und externe Scriptattribute liefern keinen Definitionsnachweis. Der Nachweis prüft weder importierte Laufzeittypen noch Funktionskörperidentität.
 
-Fahrplanreihenfolge: 1 → 2 → 6.2 → 3.1 → 3.2 → 3.3 → 4.1 → 4.2 → 4.3 → 5 → 6.3
+## Arbeitsbereiche
 
-## Dynamische Schutzstatistik
+### Übersicht
 
-193 Funktionseinträge; 393 dynamische Belege:
+Quelle: `index.html`
 
-- geschützt: **371**
-- ungeschützt (Anker fehlt): **6**
-- ungeschützt (Erzeugungsform vom Prüfer nicht unterstützt): **16**
+| Kennung | Seite | Bereich | Bezeichnung | Zustand | Speicherwirkung | Testabdeckung | Paket | Handbuch |
+|---|---|---|---|---|---|---|---|---|
+| I01 | index.html | Profile und Übersicht | Startseite: Vermögen, Alter heute, Plan, Abschlüsse, Musterstart | sichtbar, bedingt sichtbar | keine; persistent: ui\_suite\_sidebar\_collapsed; persistent: overview\_balance\_summary\_v1; persistent: overview\_… | Node 15; Browser 6; Risiko 1; Schuld 0 | 1, 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I24 | index.html | Jahresabschluss | Gemeinsame Dynamic-Flex-Voreinstellungen im Abschlussentwurf | bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 0; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#jahr-abschliessen) |
+| I23 | index.html | Monats- und Jahresabschluss | Jahresabschluss und Plananpassung direkt auf der Startseite | bedingt sichtbar, sichtbar | nur Sitzung; nur Sitzung: balance.annual-retry.once; persistent: profile\_tagesgeld, profile\_cash\_history\_v1, … | Node 5; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#jahr-abschliessen) |
+| I22 | index.html | Haushalt & Plan | Einmalige sichere Zusammenführung der Planungsdaten | bedingt sichtbar | nur Sitzung; persistent: household\_plan\_v1, annual\_plan\_record\_v1 | Node 5; Browser 4; Risiko 0; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I21 | index.html | Ausgaben im Abschlussdialog | CSV, Beispielausgaben, Vorschau und bestätigte Vermögenserfassung | bedingt sichtbar | persistent: balance\_expenses\_v1.years\[year\].months\[month\].profiles\[profileId\] | Node 5; Browser 1; Risiko 0; Schuld 0 | 1 | [Kapitel](../../Handbuch.html#ausgaben) |
+| I20 | index.html | Monatsabschluss | Tagesgeld je Haushaltsperson, gemeinsame Bestätigung und Frischehinweis | bedingt sichtbar, sichtbar | persistent: overview\_month\_provision\_v1, profile\_tagesgeld, profile\_cash\_his… | Node 8; Browser 2; Risiko 1; Schuld 0 | 1, 6.3 | [Kapitel](../../Handbuch.html#monat-abschliessen) |
+| I19 | index.html | Personenumstellung | Aufschub und sichere Wiederholung der Personenübernahme | bedingt sichtbar | nur Sitzung; persistent: profile\_person\_schema\_version, profile\_person\_migration\_v1, rs\_p… | Node 5; Browser 2; Risiko 0; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I17 | index.html | Arbeitsstand und letzte Ergebnisse | Gemeinsame offene Pflichtschritte und gespeicherte Simulationsbelege | bedingt sichtbar | persistent: overview\_simulation\_summary\_v1, rs\_profiles\_v1 | Node 5; Browser 1; Risiko 0; Schuld 0 | 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I16 | index.html | Vermögensverlauf | Tagesverlauf mit Nullstartstapeln oder Gesamtfläche, gleichmäßigem Raster und Originaltagesanzeige | bedingt sichtbar | keine | Node 13; Browser 1; Risiko 1; Schuld 0 | 6.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
+| I02 | index.html | Personenverwaltung (Ersatzort für Startseite) | Profil auswählen und wechseln | sichtbar | persistent: rs\_profiles\_v1.profiles\[profileId\].data, rs\_profiles\_v1.profiles…; persistent: rs\_wealth\_history\_… | Node 9; Browser 6; Risiko 2; Schuld 0 | 5, 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I03 | index.html | Personenverwaltung (Ersatzort für Startseite) | Profil anlegen und leeren Namen abweisen | sichtbar, bedingt sichtbar | persistent: rs\_profiles\_v1.profiles\[newId\].meta, rs\_profiles\_v1.profiles\[new… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5, 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I04 | index.html | Personenverwaltung (Ersatzort für Startseite) | Profil umbenennen, löschen und Löschbestätigung | sichtbar | persistent: rs\_profiles\_v1.profiles\[profileId\].meta.name, rs\_profiles\_v1.pro…; persistent: rs\_profiles\_v1.pro… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5, 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I05 | index.html | Profile und Übersicht | Vermögen & Ruhestand: Fachnavigation, bestätigter Flush und Profil-Handoff | sichtbar, bedingt sichtbar | nur Sitzung; persistent: rs\_profiles\_v1, rs\_current\_profile, rs\_active\_profile | Node 12; Browser 10; Risiko 1; Schuld 0 | 1, 2 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I06 | index.html | Profile und Übersicht | Handbuch über den Suite-Rahmen öffnen | sichtbar | keine | Node 1; Browser 4; Risiko 1; Schuld 0 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I07 | index.html | Profile und Übersicht | Vollsicherung: Erinnerung, Kopfpille und dynamischer zentraler Einstieg | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 6.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| I08 | index.html | Profile und Übersicht | Import-Deep-Link zur zentralen Sicherung | sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 2, 6.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| I09 | index.html | Profile und Übersicht | Registry-/Profil-Recovery: Export, bestätigter Reset, erneut versuchen | bedingt sichtbar, bewusst gesperrt | keine; persistent: rs\_profiles\_v1 oder genau recovery.storageKey / profiles\[profile… | Node 4; Browser 2; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| I10 | index.html | Sicherung und Recovery | Speicher-Migrationswarnung, Importzugang und Schließen | bedingt sichtbar, sichtbar | nur Sitzung; keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| I11 | index.html | Entwickler | Entwicklertelemetrie über URL-Schalter | bedingt sichtbar | persistent: enableWorkerTelemetry | Node 0; Browser 0; Risiko 0; Schuld 1 | 1, 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I12 | index.html | Kopfzeile und Altanker | Altanker zum gemeinsamen Probelaufdialog (ersetzt Aufklappzeile) | sichtbar | nur Sitzung | Node 1; Browser 0; Risiko 1; Schuld 0 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+| I13 | index.html | Profile und Übersicht | Profilkontext beim Zurückkehren aus Browsercache erneuern | sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 1, 2 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I14 | index.html | Profile und Übersicht | Einmaliger sitzungsweiter Kursabruf nach Appstart | sichtbar, bedingt sichtbar | nur Sitzung: rs\_startup\_prices\_session\_v1; persistent: depot\_tranchen, rs\_profiles\_v1 | Node 11; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I15 | index.html | Profile und Übersicht | Persistente Verlaufsdatengrundlage und fortsetzbarer Tageskursjob | bedingt sichtbar | nur Sitzung: rs\_history\_fetch\_session\_v1; persistent: rs\_wealth\_history\_start\_v1, profile\_wealth\_history\_lots… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
+| I18 | index.html | Kopfzeile und Probelaufband | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 13; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
 
-Gemischte Einträge sind nur für ihre einzeln als geschützt ausgewiesenen Belege geschützt. Beide ungeschützten Kategorien zählen separat.
+#### Seitenzusätze
 
-## Funktionsübersicht
+- **Tastatur:** Suite-Rahmenlinks und zentrale Sicherungseinstiege mit geschütztem Handoff und Flush. Native Tab-/Enter-/details-Bedienung; alte Sicherungs-/Importhashes führen zur zentralen Seite, \#probelaufControls nutzt nach sicherer Bindung denselben geschützten Kopfstartdialog. (I02, I05, I06, I08, I12)
+- **Druck:** css/suite-frame.css @media print blendet Kopf, Hauptnavigation, Sprunglink und Fehlerhost aus und löst Rahmencontainerzwänge. Kein eigener Druckknopf; Seiteninhalt ohne zusätzliche Drucköffnung. Geschlossene Erweitert-Klappe und Devtools werden nicht für Druck geöffnet; Browserdruck bleibt ungeprüft. (I01, I12, I11, I05)
+- **Meldungen:** Oberer Profil-/Speicher-Recoveryhost und fullBackupStatus; vier ruhige Kopfpillen. Speichertechnik ausschließlich auf Daten & Sicherung (D02). (I02, I03, I04, I07, I08, I09, I10)
+- **Dialoge:** Vollimportdialoge liegen auf Daten & Sicherung; Profil-Recoveryreset und Personenumstellung behalten ihre Seitendialoge. Probelaufende verwendet Probelauf beenden/Weiter testen. Personenverwaltung liegt im Manager. (I04, I07, I09, I11)
+- **Handbuchanker:** Handbuch bleibt über den Suite-Rahmen mit bestehendem Handoff und Flush erreichbar. (I06, I05)
 
-| Kennung | Seite | Bereich | Bezeichnung | Zustand | Speicherwirkung | Testabdeckung | Paket |
-|---|---|---|---|---|---|---|---|
-| I01 | index.html | Profile und Übersicht | Startseite: Vermögen, Alter heute, Plan, Abschlüsse, Musterstart | sichtbar, bedingt sichtbar | keine; persistent: ui\_suite\_sidebar\_collapsed; persistent: overview\_balance\_summary\_v1; persistent: overview\_… | Node 15; Browser 6; Risiko 1; Schuld 0 | 1, 6.3 |
-| I24 | index.html | Jahresabschluss | Gemeinsame Dynamic-Flex-Voreinstellungen im Abschlussentwurf | bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 0; Schuld 0 | 3.2 |
-| I23 | index.html | Monats- und Jahresabschluss | Jahresabschluss und Plananpassung direkt auf der Startseite | bedingt sichtbar, sichtbar | nur Sitzung; nur Sitzung: balance.annual-retry.once; persistent: profile\_tagesgeld, profile\_cash\_history\_v1, … | Node 5; Browser 1; Risiko 1; Schuld 0 | 3.2 |
-| I22 | index.html | Haushalt & Plan | Einmalige sichere Zusammenführung der Planungsdaten | bedingt sichtbar | nur Sitzung; persistent: household\_plan\_v1, annual\_plan\_record\_v1 | Node 5; Browser 4; Risiko 0; Schuld 0 | 5 |
-| I21 | index.html | Ausgaben im Abschlussdialog | CSV, Beispielausgaben, Vorschau und bestätigte Vermögenserfassung | bedingt sichtbar | persistent: balance\_expenses\_v1.years\[year\].months\[month\].profiles\[profileId\] | Node 5; Browser 1; Risiko 0; Schuld 0 | 1 |
-| I20 | index.html | Monatsabschluss | Tagesgeld je Haushaltsperson, gemeinsame Bestätigung und Frischehinweis | bedingt sichtbar, sichtbar | persistent: overview\_month\_provision\_v1, profile\_tagesgeld, profile\_cash\_his… | Node 8; Browser 2; Risiko 1; Schuld 0 | 1, 6.3 |
-| I19 | index.html | Personenumstellung | Aufschub und sichere Wiederholung der Personenübernahme | bedingt sichtbar | nur Sitzung; persistent: profile\_person\_schema\_version, profile\_person\_migration\_v1, rs\_p… | Node 5; Browser 2; Risiko 0; Schuld 0 | 5 |
-| I17 | index.html | Arbeitsstand und letzte Ergebnisse | Gemeinsame offene Pflichtschritte und gespeicherte Simulationsbelege | bedingt sichtbar | persistent: overview\_simulation\_summary\_v1, rs\_profiles\_v1 | Node 5; Browser 1; Risiko 0; Schuld 0 | 6.3 |
-| I16 | index.html | Vermögensverlauf | Tagesverlauf mit Nullstartstapeln oder Gesamtfläche, gleichmäßigem Raster und Originaltagesanzeige | bedingt sichtbar | keine | Node 13; Browser 1; Risiko 1; Schuld 0 | 6.3 |
-| I02 | index.html | Personenverwaltung (Ersatzort für Startseite) | Profil auswählen und wechseln | sichtbar | persistent: rs\_profiles\_v1.profiles\[profileId\].data, rs\_profiles\_v1.profiles…; persistent: rs\_wealth\_history\_… | Node 9; Browser 6; Risiko 2; Schuld 0 | 5, 6.3 |
-| I03 | index.html | Personenverwaltung (Ersatzort für Startseite) | Profil anlegen und leeren Namen abweisen | sichtbar, bedingt sichtbar | persistent: rs\_profiles\_v1.profiles\[newId\].meta, rs\_profiles\_v1.profiles\[new… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5, 6.3 |
-| I04 | index.html | Personenverwaltung (Ersatzort für Startseite) | Profil umbenennen, löschen und Löschbestätigung | sichtbar | persistent: rs\_profiles\_v1.profiles\[profileId\].meta.name, rs\_profiles\_v1.pro…; persistent: rs\_profiles\_v1.pro… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5, 6.3 |
-| I05 | index.html | Profile und Übersicht | Vermögen & Ruhestand: Fachnavigation, bestätigter Flush und Profil-Handoff | sichtbar, bedingt sichtbar | nur Sitzung; persistent: rs\_profiles\_v1, rs\_current\_profile, rs\_active\_profile | Node 12; Browser 10; Risiko 1; Schuld 0 | 1, 2 |
-| I06 | index.html | Profile und Übersicht | Handbuch über den Suite-Rahmen öffnen | sichtbar | keine | Node 1; Browser 4; Risiko 1; Schuld 0 | 1, 2, 6.3 |
-| I07 | index.html | Profile und Übersicht | Vollsicherung: Erinnerung, Kopfpille und dynamischer zentraler Einstieg | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 6.2 |
-| I08 | index.html | Profile und Übersicht | Import-Deep-Link zur zentralen Sicherung | sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 2, 6.2 |
-| I09 | index.html | Profile und Übersicht | Registry-/Profil-Recovery: Export, bestätigter Reset, erneut versuchen | bedingt sichtbar, bewusst gesperrt | keine; persistent: rs\_profiles\_v1 oder genau recovery.storageKey / profiles\[profile… | Node 4; Browser 2; Risiko 1; Schuld 0 | 1, 5 |
-| I10 | index.html | Sicherung und Recovery | Speicher-Migrationswarnung, Importzugang und Schließen | bedingt sichtbar, sichtbar | nur Sitzung; keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 2 |
-| I11 | index.html | Entwickler | Entwicklertelemetrie über URL-Schalter | bedingt sichtbar | persistent: enableWorkerTelemetry | Node 0; Browser 0; Risiko 0; Schuld 1 | 1, 6.3 |
-| I12 | index.html | Kopfzeile und Altanker | Altanker zum gemeinsamen Probelaufdialog (ersetzt Aufklappzeile) | sichtbar | nur Sitzung | Node 1; Browser 0; Risiko 1; Schuld 0 | 6.3 |
-| I13 | index.html | Profile und Übersicht | Profilkontext beim Zurückkehren aus Browsercache erneuern | sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 1, 2 |
-| I14 | index.html | Profile und Übersicht | Einmaliger sitzungsweiter Kursabruf nach Appstart | sichtbar, bedingt sichtbar | nur Sitzung: rs\_startup\_prices\_session\_v1; persistent: depot\_tranchen, rs\_profiles\_v1 | Node 10; Browser 1; Risiko 1; Schuld 0 | 5 |
-| I15 | index.html | Profile und Übersicht | Persistente Verlaufsdatengrundlage und fortsetzbarer Tageskursjob | bedingt sichtbar | nur Sitzung: rs\_history\_fetch\_session\_v1; persistent: rs\_wealth\_history\_start\_v1, profile\_wealth\_history\_lots… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5 |
-| I18 | index.html | Kopfzeile und Probelaufband | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 13; Browser 2; Risiko 0; Schuld 1 | 6.3 |
-| B01 | Balance.html | Hülle und Navigation | Vermögen & Ruhestand: Kopfzeile, Hilfe und Übergabe zu Personen & Vermögen | sichtbar, bedingt sichtbar | keine; persistent: ui\_suite\_sidebar\_collapsed | Node 10; Browser 15; Risiko 1; Schuld 0 | 2 |
-| B49 | Balance.html | Personenumstellung | Aufschub und sichere Wiederholung der Personenübernahme | bedingt sichtbar | nur Sitzung; persistent: profile\_person\_schema\_version, profile\_person\_migration\_v1, rs\_p… | Node 5; Browser 2; Risiko 0; Schuld 0 | 5 |
-| B02 | Balance.html | Tabs | Drei Balance-Reiter: Überblick, Bedarf & Strategie und Diagnose | sichtbar, bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 2, 3.3 |
-| B03 | Balance.html | Profilverbund | Haushaltsauswahl und Entnahmeverteilung | bedingt sichtbar, technisch verborgen | persistent: rs\_profiles\_v1.profiles\[profileId\].meta.belongsToHousehold; persistent: household\_withdrawal\_mode | Node 1; Browser 1; Risiko 3; Schuld 0 | 3.1, 3.2, 5 |
-| B04 | Balance.html | Profilverbund | Versteckte Profil-, Renten- und Depotbrücken | technisch verborgen, sichtbar | keine | Node 2; Browser 1; Risiko 1; Schuld 0 | 3.2, 5 |
-| B05 | Balance.html | Bedarf & Strategie → Übernommen | Übernahmezeilen für Einkünfte und aggregierte Bestände; verborgene Wertträger | technisch verborgen, bedingt sichtbar | keine | Node 2; Browser 2; Risiko 1; Schuld 0 | 3.1, 3.2, 5 |
-| B07 | Balance.html | Jahresprozess | Lesende Jahresinflation und Fortschreibung im Jahresabschluss | bedingt sichtbar, bewusst gesperrt | keine | Node 4; Browser 1; Risiko 1; Schuld 0 | 3.2 |
-| B08 | Balance.html | Jahresprozess | Jahresprozess: transaktionaler Speicherabschluss über vorhandene Zugänge | sichtbar, bedingt sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails.inputs, ruhestandsmodellVa…; persistent: ruhestandsmodellVa… | Node 14; Browser 9; Risiko 2; Schuld 0 | 3.2 |
-| B09 | Balance.html | Monats- und Jahresabschluss | Jahresdialog, lokale Prüfschritte und Plananpassung | bedingt sichtbar | nur Sitzung; nur Sitzung: balance.annual-retry.once; persistent: profile\_tagesgeld, profile\_cash\_history\_v1, … | Node 20; Browser 7; Risiko 1; Schuld 0 | 3.2 |
-| B12 | Balance.html | Marktdaten | Marktdatenkorrektur und tatsächliche Provenienz in Bedarf & Strategie | bedingt sichtbar, sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails.inputs.endeVJ, ruhestandsm… | Node 3; Browser 1; Risiko 1; Schuld 0 | 3.2 |
-| B13 | Balance.html | Bedarf und Strategie | Lesende Planwerte und gemeinsamer lokaler Versuch mit Auswahlübernahme | bedingt sichtbar, sichtbar | persistent: household\_plan\_v1 | Node 6; Browser 5; Risiko 2; Schuld 0 | 3.2 |
-| B14 | Balance.html | Bedarf & Strategie → Alle Parameter | Flex-Krisenbudget | bedingt sichtbar | persistent: household\_plan\_v1 | Node 0; Browser 0; Risiko 1; Schuld 0 | 3.2 |
-| B15 | Balance.html | Bedarf und Strategie | CAPE, Dynamic-Flex-Preset und technische Detailansicht | bedingt sichtbar, sichtbar, technisch verborgen | persistent: household\_plan\_v1 | Node 7; Browser 2; Risiko 2; Schuld 0 | 3.2 |
-| B16 | Balance.html | Bedarf & Strategie → Alle Parameter | VPW-Horizont | bedingt sichtbar, bewusst gesperrt | persistent: household\_plan\_v1 | Node 1; Browser 1; Risiko 1; Schuld 0 | 3.2 |
-| B17 | Balance.html | Bedarf & Strategie → Alle Parameter | Go-Go und Langlebigkeitsmodi | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: household\_plan\_v1 | Node 2; Browser 0; Risiko 2; Schuld 0 | 3.2 |
-| B18 | Balance.html | Bedarf und Strategie | Entnahmestrategie und drei Töpfe | bedingt sichtbar, sichtbar, technisch verborgen | persistent: household\_plan\_v1 | Node 1; Browser 1; Risiko 2; Schuld 0 | 3.2 |
-| B19 | Balance.html | Bedarf und Strategie | Liquidität, Rebalancing und Verkaufsgrenzen | bedingt sichtbar, sichtbar | persistent: household\_plan\_v1 | Node 1; Browser 0; Risiko 1; Schuld 0 | 3.2 |
-| B20 | Balance.html | Steuerdaten | Lesender Personen-SPB und Steuern; verborgene Einstands- und TQF-Brücken | bedingt sichtbar, technisch verborgen, sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails.inputs.kirchensteuerSatz, … | Node 3; Browser 0; Risiko 1; Schuld 0 | 3.2, 5 |
-| B21 | Balance.html | Zentrale Sicherungseinstiege | Balance-Dateiaustausch über Navigation und Alt+E/Alt+I | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 6.2, 3.2 |
-| B22 | Balance.html | Zentrale Sicherungseinstiege | Wiederherstellung über Jahres-Recovery und alten Deeplink | bedingt sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 6.2, 3.2 |
-| B23 | Balance.html | Sicherung | Bisherige Ordnerverbindung unter Daten & Sicherung | sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 6.2 |
-| B31 | Balance.html | Überblick | Budget, Handlungskurzfassung, Bedarf, Markt und Entnahme | bedingt sichtbar, sichtbar, technisch verborgen | keine | Node 12; Browser 3; Risiko 2; Schuld 0 | 3.1 |
-| B32 | Balance.html | Ergebnisse | Vorher-/Nachher-KPIs | bedingt sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 3.1 |
-| B33 | Balance.html | Ergebnisse | Pflegebucket als diagnostische Reserve im Überblick | bedingt sichtbar | keine | Node 2; Browser 1; Risiko 1; Schuld 0 | 3.1 |
-| B34 | Balance.html | Ergebnisse | Entnahmeklappe im Überblick; Kapitalfluss im Handlungsdialog | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 3.1 |
-| B35 | Balance.html | Ergebnisse | Handlung als Text kopieren | bedingt sichtbar | keine | Node 2; Browser 0; Risiko 1; Schuld 0 | 3.1 |
-| B36 | Balance.html | Diagnose | Diagnosereiter öffnen, filtern und kopieren | sichtbar, bedingt sichtbar, technisch verborgen | nur Sitzung | Node 2; Browser 0; Risiko 1; Schuld 0 | 2, 3.3 |
-| B37 | Balance.html | Diagnose | Statuschips, Entscheidungsbaum, Leitplanken und Transaktionsgrenzen | bedingt sichtbar | keine | Node 4; Browser 1; Risiko 2; Schuld 0 | 3.3 |
-| B38 | Balance.html | Diagnose | Alle Kennzahlen mit vollständigen Diagnose-Schlüsselparametern | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 1; Schuld 0 | 3.3 |
-| B39 | Balance.html | Meldungen | Berechnungs-, Feld-, Engine-, Persistenz- und Profilwarnungen | bedingt sichtbar, sichtbar | keine | Node 3; Browser 3; Risiko 1; Schuld 0 | 1, 3.1, 3.2 |
-| B40 | Balance.html | Tastatur und Dialoge | Tastenkürzel und Dialogschließen | sichtbar, bedingt sichtbar | keine | Node 0; Browser 0; Risiko 1; Schuld 0 | 2, 6.2, 3.2, 3.3 |
-| B41 | Balance.html | Druck | Vollständiger Handlungsplan im nativen Details-/Druckdialog | sichtbar, bedingt sichtbar | keine | Node 4; Browser 2; Risiko 1; Schuld 0 | 2, 3.1, 3.3 |
-| B42 | Balance.html | Hilfen | Kontexthilfen, native Klappen und Entwicklertelemetrie | bedingt sichtbar | persistent: enableWorkerTelemetry | Node 1; Browser 0; Risiko 1; Schuld 1 | 1, 2, 3.2 |
-| B45 | Balance.html | Meldungen | Unabhängige Erfolg-, Hinweis- und Fehlertoasts | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 3.1, 3.3 |
-| B46 | Balance.html | Meldungen | Aktionsmeldungen: Jahresvorprüfung im offenen Dialog, sonst bestehender Seitenkanal | bedingt sichtbar, sichtbar | nur Sitzung | Node 6; Browser 3; Risiko 1; Schuld 0 | 1, 3.1, 3.2, 3.3 |
-| B47 | Balance.html | Überblick → Und jetzt? | Offene manuelle Cashbuchungen und Cashstatus-Auditwarnung | bedingt sichtbar | keine | Node 2; Browser 1; Risiko 1; Schuld 0 | 3.2 |
-| B48 | Balance.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 |
-| B25 | Ausgaben.html | Ausgaben | Jahr, Personen und vier Kennzahlen im gemeinsamen Anzeigebereich | bedingt sichtbar | nur Sitzung | Node 5; Browser 3; Risiko 2; Schuld 0 | 3.3 |
-| B26 | Ausgaben.html | Ausgaben | Monats-/Profilmatrix als alleiniger CSV-Importweg, Details und Löschen | bedingt sichtbar | persistent: balance\_expenses\_v1.years\[year\].months\[month\].profiles\[profileId… | Node 8; Browser 4; Risiko 1; Schuld 0 | 3.3 |
-| B50 | Ausgaben.html | Ausgaben im Probelauf | Beispielausgaben, Vorschau und bestätigter Fachimport | bedingt sichtbar | persistent: balance\_expenses\_v1.years\[year\].months\[month\].profiles\[profileId… | Node 4; Browser 1; Risiko 0; Schuld 0 | 1 |
-| B27 | Ausgaben.html | Ausgaben-Check | Native Ausgabendetails und Top-3-Kategorien | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 3.3 |
-| B28 | Ausgaben.html | Ausgaben | Ausgaben-Recovery mit Export vor Reset | bedingt sichtbar | keine; persistent: balance\_expenses\_v1.activeYear, balance\_expenses\_v1.years | Node 2; Browser 1; Risiko 2; Schuld 0 | 1, 3.3 |
-| B43 | Ausgaben.html | Ausgaben | Ausgaben je Jahr: Diagramm, Tabelle und sichere Zustände | bedingt sichtbar | keine | Node 5; Browser 2; Risiko 3; Schuld 0 | 3.3 |
-| B44 | Ausgaben.html | Ausgaben → Verlauf | Automatische Vermögenserfassung nach bestätigtem Ausgabenimport | bedingt sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails.wealthHistory, rs\_profiles…; keine | Node 4; Browser 1; Risiko 1; Schuld 0 | 3.3 |
-| E01 | Ausgaben.html | Ausgaben | Kategorien nach Jahr und Person mit erhaltenen Erstattungen | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 0; Schuld 0 | 3.3 |
-| E02 | Ausgaben.html | Ausgaben | Fälliger Monatsabschluss und Import unabhängig vom Ansichtsjahr | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 0; Schuld 0 | 3.3 |
-| S01 | Simulator.html | Hauptnavigation | Vermögen & Ruhestand: Seitennavigation und fünf Haupttabs | sichtbar, bedingt sichtbar | nur Sitzung; persistent: ui\_suite\_sidebar\_collapsed | Node 12; Browser 15; Risiko 2; Schuld 0 | 4.1 |
-| S75 | Simulator.html | Personenumstellung | Aufschub und sichere Wiederholung der Personenübernahme | bedingt sichtbar | nur Sitzung; persistent: profile\_person\_schema\_version, profile\_person\_migration\_v1, rs\_p… | Node 5; Browser 2; Risiko 0; Schuld 0 | 5 |
-| S02 | Simulator.html | Annahmen | Fünf Annahmenschritte, Detailklappen, Statuschips und reine Zahlenanzeige | bedingt sichtbar | nur Sitzung | Node 4; Browser 0; Risiko 2; Schuld 0 | 4.1 |
-| S03 | Simulator.html | Annahmen | Haushaltsprofile, Auswahl und Blockiermeldungen | sichtbar, bedingt sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1.profiles\[profileId\].meta.belongsToHousehold | Node 11; Browser 9; Risiko 3; Schuld 0 | 4.1 |
-| S04 | Simulator.html | Annahmen | Aggregiertes Startportfolio | bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 4; Browser 1; Risiko 2; Schuld 0 | 4.1 |
-| S05 | Simulator.html | Annahmen | Versteckte Portfolio-/Goldwerte | technisch verborgen | nur Sitzung | Node 0; Browser 1; Risiko 2; Schuld 0 | 4.1 |
-| S06 | Simulator.html | Annahmen | Planwerte gemeinsam ausprobieren und ausgewählt übernehmen | bedingt sichtbar | persistent: household\_plan\_v1, household\_simulator\_needs\_v1, household\_simul…; nur Sitzung | Node 4; Browser 2; Risiko 2; Schuld 0 | 4.1 |
-| S07 | Simulator.html | Annahmen | Flex-Krisenbudget und CAPE | bedingt sichtbar | persistent: household\_plan\_v1 | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.1 |
-| S08 | Simulator.html | Annahmen | Dynamische Entnahme: Voreinstellung und Details | bedingt sichtbar, bewusst gesperrt | persistent: household\_plan\_v1, sim\_dynamicFlexPreset, sim\_dynamicFlexShowAdv… | Node 4; Browser 2; Risiko 2; Schuld 0 | 4.1 |
-| S09 | Simulator.html | Annahmen | Horizontmethode und Anwendbarkeit | bewusst gesperrt, bedingt sichtbar | persistent: household\_plan\_v1 | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.1 |
-| S10 | Simulator.html | Annahmen | Go-Go und Langlebigkeit | bewusst gesperrt | persistent: household\_plan\_v1 | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.1 |
-| S11 | Simulator.html | Annahmen | Standard-/Drei-Topf-Strategie | bedingt sichtbar | persistent: household\_plan\_v1 | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.1 |
-| S12 | Simulator.html | Annahmen | Liquiditäts-Reichweite, Gold-Umschichtungsband und Verkaufsgrenzen | bedingt sichtbar | persistent: household\_plan\_v1; nur Sitzung | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.1 |
-| S13 | Simulator.html | Annahmen | Hauptprofil: zentrale Personenwerte und flüchtige Rechenalternativen | bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 5; Browser 3; Risiko 2; Schuld 0 | 4.1 |
-| S14 | Simulator.html | Annahmen | Gemeinsame und ältere Rentenanpassungsfelder | bewusst gesperrt, technisch verborgen, bedingt sichtbar | nur Sitzung | Node 5; Browser 4; Risiko 2; Schuld 0 | 4.1 |
-| S15 | Simulator.html | Annahmen | Versteckte Rentenbrücke | technisch verborgen | nur Sitzung | Node 5; Browser 3; Risiko 2; Schuld 0 | 4.1 |
-| S16 | Simulator.html | Annahmen | Partner und zweite Rente | bewusst gesperrt, bedingt sichtbar, technisch verborgen | nur Sitzung | Node 7; Browser 4; Risiko 2; Schuld 0 | 4.1 |
-| S17 | Simulator.html | Annahmen | Hinterbliebenenrente | bedingt sichtbar | nur Sitzung | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.1 |
-| S19 | Simulator.html | Annahmen | Pflege aktivieren, Modell, Ramp-up und Dauer | bedingt sichtbar | persistent: sim\_pflegefallLogikAktivieren, sim\_pflegeModellTyp, sim\_pflegeRa… | Node 3; Browser 0; Risiko 2; Schuld 0 | 4.1 |
-| S20 | Simulator.html | Annahmen | Pflegekostenmodell und Hinweise | bedingt sichtbar | persistent: sim\_pflegeKostenStaffelPreset, sim\_pflegeMaxFloor, sim\_pflegeReg… | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.1 |
-| S21 | Simulator.html | Annahmen | Pflegegrade 1–5: Kosten, Flex-Kürzung und Mortalität | bedingt sichtbar | persistent: sim\_pflegeStufe1Zusatz, sim\_pflegeStufe1FlexCut, sim\_pflegeStufe… | Node 1; Browser 0; Risiko 3; Schuld 0 | 4.1 |
-| S22 | Simulator.html | Annahmen | Simulator zurücksetzen | sichtbar | persistent: sim\_\*, household\_simulator\_needs\_v1, household\_simulator\_needs\_w… | Node 5; Browser 2; Risiko 2; Schuld 0 | 4.1 |
-| S23 | Simulator.html | Monte-Carlo | MC-Setup öffnen/schließen und Zusammenfassung | sichtbar, bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 |
-| S24 | Simulator.html | Monte-Carlo | MC-Anzahl, Dauer, Methode, Blockgröße, Seed, RNG | sichtbar, bewusst gesperrt | persistent: sim\_mcAnzahl, sim\_mcDauer, sim\_mcMethode, sim\_mcBlockSize, sim\_m… | Node 2; Browser 2; Risiko 2; Schuld 0 | 4.2 |
-| S25 | Simulator.html | Monte-Carlo | Workersteuerung und Ressourcenbestätigung | sichtbar, bedingt sichtbar | persistent: sim\_mcWorkerCount, sim\_mcWorkerBudget; nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 |
-| S26 | Simulator.html | Monte-Carlo | CAPE-Sampling und historische Auswahl | sichtbar, bedingt sichtbar | persistent: sim\_useCapeSampling, sim\_mcStartYearMode, sim\_mcStartYearFilter,… | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.2 |
-| S27 | Simulator.html | Monte-Carlo | Stresspreset und Tail-Risk-Parameter | sichtbar, bedingt sichtbar | nur Sitzung | Node 0; Browser 1; Risiko 3; Schuld 0 | 4.2 |
-| S28 | Simulator.html | Monte-Carlo | Seriell-/Worker-Vergleich mit Laufzeiten und Fallback | sichtbar, bedingt sichtbar | nur Sitzung | Node 0; Browser 0; Risiko 2; Schuld 0 | 4.2 |
-| S29 | Simulator.html | Monte-Carlo | Monte-Carlo in Ergebnis und Einstellungen starten und abbrechen | sichtbar, bewusst gesperrt, technisch verborgen, bedingt sichtbar | nur Sitzung | Node 5; Browser 4; Risiko 2; Schuld 0 | 4.2 |
-| S30 | Simulator.html | Monte-Carlo | MC-Fehler und Fehler schließen | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.2 |
-| S31 | Simulator.html | Monte-Carlo | Vollständigen MC-Lauf exportieren | bedingt sichtbar, bewusst gesperrt, sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 |
-| S32 | Simulator.html | Monte-Carlo | Vier MC-Ergebnisansichten | sichtbar, bedingt sichtbar | nur Sitzung | Node 3; Browser 1; Risiko 2; Schuld 0 | 4.2 |
-| S33 | Simulator.html | Monte-Carlo | MC-Zusammenfassung und Kernantworten | bedingt sichtbar | nur Sitzung | Node 7; Browser 5; Risiko 4; Schuld 0 | 4.2 |
-| S34 | Simulator.html | Monte-Carlo | Haupt-KPIs und exakte Werte | bedingt sichtbar | nur Sitzung | Node 3; Browser 3; Risiko 2; Schuld 0 | 4.2 |
-| S35 | Simulator.html | Monte-Carlo | Nominale und reale Drawdown-Karten: vier Prozentkennzahlen | bedingt sichtbar | nur Sitzung | Node 4; Browser 3; Risiko 2; Schuld 0 | 4.2 |
-| S36 | Simulator.html | Monte-Carlo | Erweiterte operative, Risiko- und Tail-KPIs | bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 |
-| S37 | Simulator.html | Monte-Carlo | Stress-KPI-Ausgabe | bedingt sichtbar | nur Sitzung | Node 2; Browser 0; Risiko 2; Schuld 0 | 4.2 |
-| S38 | Simulator.html | Monte-Carlo | Entnahmequoten-Heatmap | sichtbar, bedingt sichtbar | nur Sitzung | Node 6; Browser 4; Risiko 3; Schuld 0 | 4.2 |
-| S39 | Simulator.html | Monte-Carlo | Pflege-KPIs je Person | bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 |
-| S40 | Simulator.html | Monte-Carlo | Pflege-KPIs Haushalt und Reserve | bedingt sichtbar | nur Sitzung | Node 2; Browser 0; Risiko 2; Schuld 0 | 4.2 |
-| S41 | Simulator.html | Monte-Carlo | Szenarioauswahl, Vermögensverläufe und Endwertverteilung | bedingt sichtbar | nur Sitzung | Node 15; Browser 6; Risiko 3; Schuld 0 | 4.2 |
-| S42 | Simulator.html | Monte-Carlo | Detailliert und Pflege-Spalten | bedingt sichtbar | persistent: showCareDetails, worstLogDetailLevel | Node 7; Browser 3; Risiko 2; Schuld 0 | 4.2 |
-| S43 | Simulator.html | Monte-Carlo | Szenarioexport und Replay-Wechsel | bedingt sichtbar | nur Sitzung | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.2 |
-| S44 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Auswahl, Status und Pfadfixierung | sichtbar, bedingt sichtbar, bewusst gesperrt | persistent: sim.stressReplay.active.v1 | Node 3; Browser 1; Risiko 2; Schuld 0 | 4.3 |
-| S45 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Herkunft und Kompatibilität | sichtbar, bedingt sichtbar | nur Sitzung | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.3 |
-| S46 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay importieren/exportieren/verwerfen | bewusst gesperrt, sichtbar, technisch verborgen, bedingt sichtbar | persistent: sim.stressReplay.active.v1 | Node 3; Browser 1; Risiko 2; Schuld 0 | 4.3 |
-| S47 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Variantenname, drei Bedarfsfelder und Baseline | bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 1; Browser 1; Risiko 3; Schuld 0 | 4.3 |
-| S48 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Expertenfelder | bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 3; Schuld 0 | 4.3 |
-| S49 | Simulator.html | Werkstatt / Stresspfad-Replay | Patchvorschau, Variantenliste und Aktionen | bedingt sichtbar, bewusst gesperrt | persistent: sim.stressReplay.active.v1 | Node 3; Browser 2; Risiko 3; Schuld 0 | 4.3 |
-| S50 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Kernaussage und drei Vergleichsansichten | sichtbar, bedingt sichtbar | nur Sitzung; persistent: overview\_simulation\_summary\_v1, rs\_profiles\_v1 | Node 4; Browser 2; Risiko 3; Schuld 0 | 4.3 |
-| S51 | Simulator.html | Historischer Backtest | Backtestperiode, Validierung und Datenhinweis | sichtbar, bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.3 |
-| S52 | Simulator.html | Historischer Backtest | Rolling Cohorts | sichtbar, bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 3; Browser 1; Risiko 3; Schuld 0 | 4.3 |
-| S53 | Simulator.html | Historischer Backtest | Backtest starten, Status und Hinweise | sichtbar, bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 4; Browser 2; Risiko 2; Schuld 0 | 4.3 |
-| S54 | Simulator.html | Historischer Backtest | Backtest-Kennzahlen, Portfoliochart und Krisenübersicht | bedingt sichtbar | nur Sitzung | Node 11; Browser 2; Risiko 3; Schuld 0 | 4.3 |
-| S55 | Simulator.html | Historischer Backtest | Backtestlog, Detailmodus und Raw-Exporte | bedingt sichtbar | persistent: backtestLogDetailLevel | Node 13; Browser 4; Risiko 2; Schuld 0 | 4.3 |
-| S56 | Simulator.html | Historischer Backtest | Engine-/Parity-Diagnose | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 3; Schuld 0 | 4.3 |
-| S57 | Simulator.html | Werkstatt / Parameter-Sweep | Sweep-Laufzahl und Arbeitslast | sichtbar | persistent: sim.sweep.runs | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.3 |
-| S58 | Simulator.html | Werkstatt / Parameter-Sweep | Sieben Sweep-Ranges und Anwendbarkeit | sichtbar, bedingt sichtbar | persistent: sim.sweep.liquidityRunwayYears, sim.sweep.goldRebalancingBand, s… | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.3 |
-| S59 | Simulator.html | Werkstatt / Parameter-Sweep | Sweep starten/abbrechen und Status | sichtbar, bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 4; Browser 4; Risiko 2; Schuld 0 | 4.3 |
-| S60 | Simulator.html | Werkstatt / Parameter-Sweep | Sweep-Metrik, Achsen und Heatmap | bedingt sichtbar | nur Sitzung | Node 5; Browser 2; Risiko 3; Schuld 0 | 4.3 |
-| S61 | Simulator.html | Werkstatt / Parameter-Sweep | Führende Kombination und Parameterübernahme | bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.3 |
-| S62 | Simulator.html | Werkstatt / Parameter-Sweep | Sensitivität und Pareto | bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 4; Browser 2; Risiko 3; Schuld 0 | 4.3 |
-| S63 | Simulator.html | Werkstatt / Parameter-Sweep | Sweep-Entwickler-/Demoausgaben | bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 3; Browser 1; Risiko 3; Schuld 0 | 4.3 |
-| S64 | Simulator.html | Werkstatt / Auto-Optimize | Auto-Optimize-Ziel und Quantil | sichtbar, bedingt sichtbar | nur Sitzung | Node 2; Browser 2; Risiko 2; Schuld 0 | 4.3 |
-| S65 | Simulator.html | Werkstatt / Auto-Optimize | Sieben Optimierungs-Presets | sichtbar | nur Sitzung | Node 2; Browser 2; Risiko 2; Schuld 0 | 4.3 |
-| S66 | Simulator.html | Werkstatt / Auto-Optimize | Dynamische Parameterblöcke, Min/Max/Schritt | sichtbar, bedingt sichtbar | nur Sitzung | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.3 |
-| S67 | Simulator.html | Werkstatt / Auto-Optimize | Optimierungsläufe, Seeds, Flex-Modus und Constraints | sichtbar | nur Sitzung | Node 0; Browser 1; Risiko 2; Schuld 0 | 4.3 |
-| S68 | Simulator.html | Werkstatt / Auto-Optimize | Optimierung starten, Fortschritt, Fehler und Ergebnis übernehmen | bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 6; Browser 3; Risiko 2; Schuld 0 | 4.3 |
-| S69 | Simulator.html | Werkstatt / Auto-Optimize | Champion, Testmetriken, Deltas, Stabilität und Modellstatus | bedingt sichtbar | nur Sitzung | Node 3; Browser 3; Risiko 4; Schuld 0 | 4.3 |
-| S70 | Simulator.html | Übergreifende Bedienung | Toasts, kontextuelle Hilfen und Formvalidierung | sichtbar, bedingt sichtbar | nur Sitzung | Node 1; Browser 0; Risiko 3; Schuld 0 | 2 |
-| S71 | Simulator.html | Übergreifende Bedienung | Tastatur und Druck | sichtbar, bedingt sichtbar | nur Sitzung | Node 3; Browser 2; Risiko 2; Schuld 0 | 2 |
-| S72 | Simulator.html | Übergreifende Bedienung | Worker-Telemetrie | bedingt sichtbar | persistent: enableWorkerTelemetry | Node 0; Browser 0; Risiko 2; Schuld 0 | 2 |
-| S73 | Simulator.html | Profilkontext und Navigation | Profil-Lifecycle: Bootstrap, Handoff, Hintergrundspeicherung und BFCache | sichtbar | persistent: rs\_profiles\_v1.profiles\[profileId\].data | Node 6; Browser 2; Risiko 2; Schuld 0 | 2 |
-| S74 | Simulator.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 12; Browser 2; Risiko 0; Schuld 1 | 6.3 |
-| V01 | depot-tranchen-manager.html | Personen & Vermögen | Vermögen & Ruhestand: Zurücknavigation, interner Profilkontext und Kartenalter | sichtbar, bedingt sichtbar | keine; persistent: ui\_suite\_sidebar\_collapsed | Node 12; Browser 16; Risiko 2; Schuld 0 | 2, 5 |
-| V27 | depot-tranchen-manager.html | Personenumstellung | Aufschub und sichere Wiederholung der Personenübernahme | bedingt sichtbar | nur Sitzung; persistent: profile\_person\_schema\_version, profile\_person\_migration\_v1, rs\_p… | Node 5; Browser 2; Risiko 0; Schuld 0 | 5 |
-| V02 | depot-tranchen-manager.html | Personen & Vermögen | Tagesgeld separat von Tranchen | bedingt sichtbar, bewusst gesperrt | persistent: profile\_tagesgeld, rs\_profiles\_v1.profiles\[profileId\].data.profi…; persistent: profile\_cash\_histo… | Node 7; Browser 0; Risiko 1; Schuld 0 | 5 |
-| V03 | depot-tranchen-manager.html | Personen & Vermögen | Personendaten: heutiges Alter, Januarplanung und Herkunft | bedingt sichtbar, bewusst gesperrt, sichtbar | persistent: profile\_rente\_aktiv, profile\_rente\_monatlich, profile\_sonstige\_e…; nur Sitzung: rs\_manager\_person… | Node 18; Browser 6; Risiko 1; Schuld 0 | 5 |
-| V04 | depot-tranchen-manager.html | Personen & Vermögen | Goldstrategie: Aktivierung, Ziel, Floor, Band und Steuerfreiheit | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: profile\_gold\_aktiv, profile\_gold\_ziel\_pct, profile\_gold\_floor\_pc… | Node 3; Browser 0; Risiko 1; Schuld 0 | 5 |
-| V05 | depot-tranchen-manager.html | Personen & Vermögen | Pflegebucket: Aktivierung, Betrag, Quelle und Pflegegrad | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: profile\_health\_bucket, rs\_profiles\_v1.profiles\[profileId\].data.p… | Node 3; Browser 1; Risiko 1; Schuld 0 | 5 |
-| V06 | depot-tranchen-manager.html | Personen & Vermögen | Pflegebucket-Policies: Trigger, Deckung, Rendite und Inflationssicht | bedingt sichtbar, bewusst gesperrt | persistent: profile\_health\_bucket, rs\_profiles\_v1.profiles\[profileId\].data.p… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5 |
-| V07 | depot-tranchen-manager.html | Personen & Vermögen | Profil- und Planvalidierung, Autosave, bestätigte Writes und Warteschlange | bedingt sichtbar, bewusst gesperrt | persistent: profile\_tagesgeld, profile\_rente\_aktiv, profile\_rente\_monatlich,…; persistent: household\_plan\_v1 | Node 6; Browser 1; Risiko 1; Schuld 0 | 1, 5 |
-| V07.1 | depot-tranchen-manager.html | Haushalt & Plan | Gemeinsame Dynamic-Flex-Voreinstellungen im Manager | bedingt sichtbar | persistent: household\_plan\_v1 | Node 2; Browser 1; Risiko 0; Schuld 0 | 1 |
-| V08 | depot-tranchen-manager.html | Tranchen und Kurse | Kauf eintragen: neue Tranche öffnen | sichtbar, bewusst gesperrt | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 |
-| V09 | depot-tranchen-manager.html | Tranchen und Kurse | Zeilenaktionen bearbeiten/löschen und gesamten Bestand löschen | sichtbar, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 4; Browser 2; Risiko 1; Schuld 0 | 5 |
-| V10 | depot-tranchen-manager.html | Tranchen und Kurse | EUR-Kursbatch, Proxycheck, Teilfehler und Preisprovenienz | sichtbar, bewusst gesperrt, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 5; Browser 3; Risiko 1; Schuld 0 | 1, 5 |
-| V11 | depot-tranchen-manager.html | Tranchen und Kurse | Depotbewertung, Tranchensumme, Kursstand und leerer Bestand | sichtbar, bedingt sichtbar | keine | Node 5; Browser 2; Risiko 1; Schuld 0 | 5 |
-| V12 | depot-tranchen-manager.html | Tranchen und Kurse | Gruppiertes Depot: Anlageformen, Gruppensummen und Kaufdatumssortierung sowie Kursverlauf und aufklappbare Details | sichtbar, bedingt sichtbar | keine | Node 10; Browser 2; Risiko 4; Schuld 0 | 5 |
-| V13 | depot-tranchen-manager.html | Tranchendialog | Identifikation, Bestand und Kurseingaben | bedingt sichtbar | nur Sitzung | Node 4; Browser 1; Risiko 1; Schuld 0 | 5 |
-| V14 | depot-tranchen-manager.html | Tranchendialog | Kategorie-/Typvertrag, Teilfreistellung, explizite Steuerfreiheit und Notiz | bedingt sichtbar, technisch verborgen | nur Sitzung | Node 4; Browser 2; Risiko 1; Schuld 0 | 5 |
-| V15 | depot-tranchen-manager.html | Tranchendialog | Speichern, Dialogretry, Abbruch, Feldfehler und Dialogtastatur | bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 6; Browser 4; Risiko 2; Schuld 0 | 5 |
-| V16 | depot-tranchen-manager.html | Meldungen und Recovery | Speicherstatus und Load-/Save-Retry | bedingt sichtbar | nur Sitzung | Node 4; Browser 2; Risiko 1; Schuld 0 | 1, 5 |
-| V17 | depot-tranchen-manager.html | Meldungen und Recovery | Korrupte Tranchen: bewusst Rohdaten anzeigen/kopieren, Reset und Rückwege | bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 5 |
-| V18 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Broker-Ausführung über exakte Profil-/Tranche-/Action-ID erfassen | sichtbar, bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 2; Browser 2; Risiko 2; Schuld 0 | 5 |
-| V19 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Optionale Empfehlung und Ist-Abweichung | sichtbar, bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 |
-| V20 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Schreibfreie Vorschau, Status, getrennte Bestätigung und Abbruch | sichtbar, bedingt sichtbar, bewusst gesperrt | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr…; persistent: profile\_wealth\_his… | Node 5; Browser 2; Risiko 2; Schuld 0 | 1, 5 |
-| V21 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Cashstatuswahl in Verkaufsschritt 2 | sichtbar, bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 2; Browser 2; Risiko 1; Schuld 0 | 5 |
-| V22 | depot-tranchen-manager.html | Verkäufe & Cashstatus | Dynamische Cashhistorie, Altverkäufe, wirksamer Nachweis und Aktionen | sichtbar, bedingt sichtbar, bewusst gesperrt | keine | Node 2; Browser 1; Risiko 3; Schuld 0 | 1, 5 |
-| V23 | depot-tranchen-manager.html | Cashdialog | Cashbestätigung und lineare Korrektur mit Grund, Fokus und Konfliktprüfung | bedingt sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1.trancheReconciliation.actions, rs\_profiles\_v1.tra… | Node 9; Browser 4; Risiko 2; Schuld 0 | 5 |
-| V24 | depot-tranchen-manager.html | Hilfen und Bedienung | Feldhilfen, Labels und Tabellen-/Dialogzugänglichkeit | bedingt sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 2, 5 |
-| V25 | depot-tranchen-manager.html | Kurszeit-Datenvertrag | asOf: Lokales Kursdatum im Depot, Provenienz und Balance-Kursfrische | sichtbar, bewusst gesperrt, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 11; Browser 3; Risiko 1; Schuld 0 | 5 |
-| V26 | depot-tranchen-manager.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 |
-| B29 | depot-tranchen-manager.html | Vermögensverlauf | Stand jetzt erfassen mit bestätigten Quellen und Sieben-Tage-Kursgate | sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails, rs\_profiles\_v1 | Node 2; Browser 0; Risiko 0; Schuld 0 | 3.3 |
-| B30 | depot-tranchen-manager.html | Vermögensverlauf | Gemeinsame Tageslinie, Abschlussrauten, drei Kennzahlen und vollständige Tabelle | sichtbar | keine | Node 2; Browser 0; Risiko 0; Schuld 0 | 3.3 |
-| H01 | Handbuch.html | Navigation | Vermögen & Ruhestand: Handbuch und Seiteneinstieg | sichtbar, bedingt sichtbar | keine; nur Sitzung; persistent: ui\_suite\_sidebar\_collapsed | Node 9; Browser 15; Risiko 1; Schuld 0 | 1, 2, 6.3 |
-| H02 | Handbuch.html | Navigation | Schnellstart und vollständiges Handbuch | sichtbar, bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 2, 6.3 |
-| H03 | Handbuch.html | Navigation | Inhaltsverzeichnis, Taböffnung, Hash und Fokus | sichtbar, bedingt sichtbar | nur Sitzung | Node 0; Browser 0; Risiko 1; Schuld 0 | 1, 2, 6.3 |
-| H04 | Handbuch.html | Handbuchartikel | Überblick, Einrichtung und Datensicherheit | bedingt sichtbar, sichtbar | keine | Node 0; Browser 0; Risiko 1; Schuld 1 | 1, 2, 6.3 |
-| H05 | Handbuch.html | Handbuchartikel | Simulator-Grundlagen und Eingaben | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 1; Schuld 2 | 1, 2, 6.3 |
-| H06 | Handbuch.html | Handbuchartikel | Simulator-Auswertung und fortgeschrittene Verfahren | bedingt sichtbar | keine | Node 3; Browser 0; Risiko 1; Schuld 1 | 1, 2, 6.3 |
-| H07 | Handbuch.html | Handbuchartikel | Balance-Jahresprozess, Marktdaten und Archiv | bedingt sichtbar | keine | Node 2; Browser 0; Risiko 1; Schuld 1 | 1, 2, 6.3 |
-| H08 | Handbuch.html | Handbuchartikel | Balance-Ergebnisse und laufende Nutzung | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 1; Schuld 0 | 1, 2, 6.3 |
-| H09 | Handbuch.html | Handbuchartikel | Profilverbund und Tranchenlebenszyklus | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 1 | 1, 2, 6.3 |
-| H10 | Handbuch.html | Handbuchartikel | Onboarding und regelmäßige Pflege | bedingt sichtbar | keine | Node 0; Browser 0; Risiko 1; Schuld 0 | 1, 2, 6.3 |
-| H11 | Handbuch.html | Handbuchartikel | Probleme, FAQ und Glossar | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 1; Schuld 0 | 1, 2, 6.3 |
-| H12 | Handbuch.html | Handbuchartikel | Datenquellen, Versionen, Dokumente und Support | bedingt sichtbar | keine | Node 0; Browser 0; Risiko 1; Schuld 1 | 1, 2, 6.3 |
-| H13 | Handbuch.html | Handbuchartikel | Tabellen, Hinweise, Warnungen und Druck | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 2; Schuld 0 | 1, 2, 6.3 |
-| H14 | Handbuch.html | Navigation | Native Kapitelquerlinks ohne TOC-Taböffnung | bedingt sichtbar | nur Sitzung | Node 0; Browser 0; Risiko 1; Schuld 0 | 1, 2, 6.3 |
-| H15 | Handbuch.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 |
-| D01 | Daten-Sicherung.html | Vollsicherung | Vollsicherung ausgeben und einspielen, bestätigte Zeit und Vergleichsbasis | sichtbar, technisch verborgen | persistent: overview\_last\_full\_backup\_v1, rs\_data\_backup\_summary\_v1 | Node 11; Browser 5; Risiko 0; Schuld 0 | 6.2 |
-| D02 | Daten-Sicherung.html | Zustand und Navigation | Sicherungszustand, Archiv, Kurse und Speicher | sichtbar, bedingt sichtbar, technisch verborgen | keine; persistent: rs\_daily\_prices\_v1, rs\_wealth\_history\_start\_v1, profile\_wealth\_h… | Node 9; Browser 2; Risiko 1; Schuld 0 | 6.2, 6.3 |
-| D03 | Daten-Sicherung.html | Wiederherstellungspunkte | Punkte mit Vorschau zurückholen und sicher aufbewahren | technisch verborgen, sichtbar | persistent: rs\_snapshot\_archive\_v1 | Node 4; Browser 1; Risiko 1; Schuld 0 | 6.3 |
-| D04 | Daten-Sicherung.html | Austausch | Personenaustausch, weitere Balance-/Ordnerwege und Simulatorprotokolle | sichtbar, technisch verborgen, bedingt sichtbar | persistent: rs\_profiles\_v1, ruhestandsmodellValues\_v29\_guardrails | Node 3; Browser 1; Risiko 1; Schuld 0 | 6.3 |
+### Balance
 
-## Zusätzliche Auftretensorte
+Quelle: `Balance.html`
+
+| Kennung | Seite | Bereich | Bezeichnung | Zustand | Speicherwirkung | Testabdeckung | Paket | Handbuch |
+|---|---|---|---|---|---|---|---|---|
+| B01 | Balance.html | Hülle und Navigation | Vermögen & Ruhestand: Kopfzeile, Hilfe und Übergabe zu Personen & Vermögen | sichtbar, bedingt sichtbar | keine; persistent: ui\_suite\_sidebar\_collapsed | Node 10; Browser 15; Risiko 1; Schuld 0 | 2 | [Kapitel](../../Handbuch.html#balance) |
+| B49 | Balance.html | Personenumstellung | Aufschub und sichere Wiederholung der Personenübernahme | bedingt sichtbar | nur Sitzung; persistent: profile\_person\_schema\_version, profile\_person\_migration\_v1, rs\_p… | Node 5; Browser 2; Risiko 0; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#balance) |
+| B02 | Balance.html | Tabs | Drei Balance-Reiter: Überblick, Bedarf & Strategie und Diagnose | sichtbar, bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 2, 3.3 | [Kapitel](../../Handbuch.html#balance) |
+| B03 | Balance.html | Profilverbund | Haushaltsauswahl und Entnahmeverteilung | bedingt sichtbar, technisch verborgen | persistent: rs\_profiles\_v1.profiles\[profileId\].meta.belongsToHousehold; persistent: household\_withdrawal\_mode | Node 1; Browser 1; Risiko 3; Schuld 0 | 3.1, 3.2, 5 | [Kapitel](../../Handbuch.html#balance) |
+| B04 | Balance.html | Profilverbund | Versteckte Profil-, Renten- und Depotbrücken | technisch verborgen, sichtbar | keine | Node 2; Browser 1; Risiko 1; Schuld 0 | 3.2, 5 | [Kapitel](../../Handbuch.html#balance) |
+| B05 | Balance.html | Bedarf & Strategie → Übernommen | Lesende Kachelreihe für Einkünfte und Bestände; verborgene Wertträger | technisch verborgen, bedingt sichtbar | keine | Node 3; Browser 2; Risiko 1; Schuld 0 | 3.1, 3.2, 5 | [Kapitel](../../Handbuch.html#balance) |
+| B07 | Balance.html | Jahresprozess | Lesende Jahresinflation und Fortschreibung im Jahresabschluss | bedingt sichtbar, bewusst gesperrt | keine | Node 4; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#jahr-abschliessen) |
+| B08 | Balance.html | Jahresprozess | Jahresprozess: transaktionaler Speicherabschluss über vorhandene Zugänge | sichtbar, bedingt sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails.inputs, ruhestandsmodellVa…; persistent: ruhestandsmodellVa… | Node 14; Browser 9; Risiko 2; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
+| B09 | Balance.html | Monats- und Jahresabschluss | Jahresdialog, lokale Prüfschritte und Plananpassung | bedingt sichtbar | nur Sitzung; nur Sitzung: balance.annual-retry.once; persistent: profile\_tagesgeld, profile\_cash\_history\_v1, … | Node 18; Browser 7; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#jahr-abschliessen) |
+| B12 | Balance.html | Marktdaten | Lesende Marktdatenkacheln, Korrekturfelder und Provenienz | bedingt sichtbar, sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails.inputs.endeVJ, ruhestandsm… | Node 4; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
+| B13 | Balance.html | Bedarf und Strategie | Drei offene Bedarfswerte und gemeinsamer lokaler Versuch mit Auswahlübernahme | bedingt sichtbar, sichtbar | persistent: household\_plan\_v1 | Node 7; Browser 5; Risiko 2; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
+| B14 | Balance.html | Bedarf & Strategie → Alle Parameter | Flex-Krisenbudget | bedingt sichtbar | persistent: household\_plan\_v1 | Node 0; Browser 0; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#warum-gekuerzt) |
+| B15 | Balance.html | Bedarf & Strategie → Alle Parameter | CAPE, Dynamic-Flex-Preset und technische Detailansicht | bedingt sichtbar, sichtbar, technisch verborgen | persistent: household\_plan\_v1 | Node 7; Browser 2; Risiko 2; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#warum-gekuerzt) |
+| B16 | Balance.html | Bedarf & Strategie → Alle Parameter | VPW-Horizont | bedingt sichtbar, bewusst gesperrt | persistent: household\_plan\_v1 | Node 1; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
+| B17 | Balance.html | Bedarf & Strategie → Alle Parameter | Go-Go und Langlebigkeitsmodi | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: household\_plan\_v1 | Node 2; Browser 0; Risiko 2; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
+| B18 | Balance.html | Bedarf & Strategie → Alle Parameter | Entnahmestrategie und drei Töpfe | bedingt sichtbar, sichtbar, technisch verborgen | persistent: household\_plan\_v1 | Node 1; Browser 1; Risiko 2; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
+| B19 | Balance.html | Bedarf & Strategie → Alle Parameter | Liquidität, Rebalancing und Verkaufsgrenzen | bedingt sichtbar, sichtbar | persistent: household\_plan\_v1 | Node 2; Browser 0; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
+| B20 | Balance.html | Steuerdaten | Lesender Personen-SPB und Steuern; verborgene Einstands- und TQF-Brücken | bedingt sichtbar, technisch verborgen, sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails.inputs.kirchensteuerSatz, … | Node 3; Browser 0; Risiko 1; Schuld 0 | 3.2, 5 | [Kapitel](../../Handbuch.html#balance) |
+| B21 | Balance.html | Zentrale Sicherungseinstiege | Balance-Dateiaustausch über Navigation und Alt+E/Alt+I | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 6.2, 3.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| B22 | Balance.html | Zentrale Sicherungseinstiege | Wiederherstellung über Jahres-Recovery und alten Deeplink | bedingt sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 6.2, 3.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| B23 | Balance.html | Sicherung | Bisherige Ordnerverbindung unter Daten & Sicherung | sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 6.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| B31 | Balance.html | Überblick | Budget, Handlungskurzfassung, Bedarf, Markt und Entnahme | bedingt sichtbar, sichtbar, technisch verborgen | keine | Node 12; Browser 3; Risiko 2; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
+| B32 | Balance.html | Ergebnisse | Vorher-/Nachher-KPIs | bedingt sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
+| B33 | Balance.html | Ergebnisse | Pflegebucket als diagnostische Reserve im Überblick | bedingt sichtbar | keine | Node 2; Browser 1; Risiko 1; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
+| B34 | Balance.html | Ergebnisse | Entnahmeklappe im Überblick; Kapitalfluss im Handlungsdialog | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
+| B35 | Balance.html | Ergebnisse | Handlung als Text kopieren | bedingt sichtbar | keine | Node 2; Browser 0; Risiko 1; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
+| B36 | Balance.html | Diagnose | Diagnosereiter öffnen, filtern und kopieren | sichtbar, bedingt sichtbar, technisch verborgen | nur Sitzung | Node 2; Browser 0; Risiko 1; Schuld 0 | 2, 3.3 | [Kapitel](../../Handbuch.html#balance) |
+| B37 | Balance.html | Diagnose | Statuschips, Entscheidungsbaum, Leitplanken und Transaktionsgrenzen | bedingt sichtbar | keine | Node 4; Browser 1; Risiko 2; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#balance) |
+| B38 | Balance.html | Diagnose | Alle Kennzahlen mit vollständigen Diagnose-Schlüsselparametern | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 1; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#balance) |
+| B39 | Balance.html | Meldungen | Berechnungs-, Feld-, Engine-, Persistenz- und Profilwarnungen | bedingt sichtbar, sichtbar | keine | Node 3; Browser 3; Risiko 1; Schuld 0 | 1, 3.1, 3.2 | [Kapitel](../../Handbuch.html#balance) |
+| B40 | Balance.html | Tastatur und Dialoge | Tastenkürzel und Dialogschließen | sichtbar, bedingt sichtbar | keine | Node 0; Browser 0; Risiko 1; Schuld 0 | 2, 6.2, 3.2, 3.3 | [Kapitel](../../Handbuch.html#balance) |
+| B41 | Balance.html | Druck | Vollständiger Handlungsplan im nativen Details-/Druckdialog | sichtbar, bedingt sichtbar | keine | Node 4; Browser 2; Risiko 1; Schuld 0 | 2, 3.1, 3.3 | [Kapitel](../../Handbuch.html#balance) |
+| B42 | Balance.html | Hilfen | Kontexthilfen, native Klappen und Entwicklertelemetrie | bedingt sichtbar | persistent: enableWorkerTelemetry | Node 1; Browser 0; Risiko 1; Schuld 1 | 1, 2, 3.2 | [Kapitel](../../Handbuch.html#balance) |
+| B45 | Balance.html | Meldungen | Unabhängige Erfolg-, Hinweis- und Fehlertoasts | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 3.1, 3.3 | [Kapitel](../../Handbuch.html#balance) |
+| B46 | Balance.html | Meldungen | Aktionsmeldungen: Jahresvorprüfung im offenen Dialog, sonst bestehender Seitenkanal | bedingt sichtbar, sichtbar | nur Sitzung | Node 6; Browser 3; Risiko 1; Schuld 0 | 1, 3.1, 3.2, 3.3 | [Kapitel](../../Handbuch.html#balance) |
+| B47 | Balance.html | Überblick → Und jetzt? | Offene manuelle Cashbuchungen und Cashstatus-Auditwarnung | bedingt sichtbar | keine | Node 2; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
+| B48 | Balance.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+
+#### Seitenzusätze
+
+- **Tastatur:** Suite-Rahmenlinks nativ mit Navigationsschutz. Drei Balance-Reiter (Überblick, Bedarf & Strategie und Diagnose) mit Klick/Enter/Space sowie Arrow/Home/End, roving tabindex, ARIA und Fokus. Alt+j/e/i bleiben erhalten. Der Handlungsplan ist ein nativer Dialog; Schließen/Escape des Handlungsplans führt zurück zum Auslöser. Info per Hover/Fokus/Klick mit Escape und Fokuswechsel. Aktionsfehler behalten Schließfokus und Scope. (B02, B36, B40, B46, B01)
+- **Druck:** Der native actionDetailsDialog enthält den vollständigen Handlungsplan, Empfehlungshinweis und aktuellen fachlichen Kontextfuß. Kopfdruck öffnet denselben Dialog. Druck blendet Rahmen, Eingaben, Historien, Meldungen, Overlays und andere Dialoge aus; keine Beschneidung durch Bildschirm-Maximalhöhe. Popupdruck ist extern offen. (B41, B45, B46, B01)
+- **Meldungen:** Getrennte Fehler-, Toast- und Aktionsfehlerhosts unter den drei Reitern; ebenso Engine-/Persistenz-/Profilwarnungen und dauerhafter Pending-Recoveryhinweis. clearError bleibt auf Berechnungsfehler beschränkt; Scope, Toastfrist und Diagnose-Rückfokus bleiben erhalten. (B39, B45, B46)
+- **Dialoge:** Jahresdialog, Handkurs und Handlungsplan behalten ihre Fachverträge. Jahres-Recovery führt mit Punkt-ID zur zentralen Vorschau; Snapshotrestore, Punktlöschung und Ordnerverbindung liegen auf Daten & Sicherung. Alte Balance-Sicherungskarte ist entfernt. (B08, B09, B22, B23, B36, B41)
+- **Handbuchanker:** Inhalts-Hilfelink a\[href="Handbuch.html"\]\[target="\_blank"\] öffnet nativ ohne Hash den manual-Standardtab; der getrennte Handbuchlink im Rahmen öffnet im selben Tab nach Export und bestätigtem Flush. Keine Balance-spezifische Kapitel-/Fokusübergabe. (B01)
+
+### Ausgaben
+
+Quelle: `Ausgaben.html`
+
+| Kennung | Seite | Bereich | Bezeichnung | Zustand | Speicherwirkung | Testabdeckung | Paket | Handbuch |
+|---|---|---|---|---|---|---|---|---|
+| B25 | Ausgaben.html | Ausgaben | Jahr, Personen und vier Kennzahlen im gemeinsamen Anzeigebereich | bedingt sichtbar | nur Sitzung | Node 5; Browser 3; Risiko 2; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
+| B26 | Ausgaben.html | Ausgaben | Monats-/Profilmatrix als alleiniger CSV-Importweg, Details und Löschen | bedingt sichtbar | persistent: balance\_expenses\_v1.years\[year\].months\[month\].profiles\[profileId… | Node 8; Browser 4; Risiko 1; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
+| B50 | Ausgaben.html | Ausgaben im Probelauf | Beispielausgaben, Vorschau und bestätigter Fachimport | bedingt sichtbar | persistent: balance\_expenses\_v1.years\[year\].months\[month\].profiles\[profileId… | Node 4; Browser 1; Risiko 0; Schuld 0 | 1 | [Kapitel](../../Handbuch.html#probelauf) |
+| B27 | Ausgaben.html | Ausgaben-Check | Native Ausgabendetails und Top-3-Kategorien | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
+| B28 | Ausgaben.html | Ausgaben | Ausgaben-Recovery mit Export vor Reset | bedingt sichtbar | keine; persistent: balance\_expenses\_v1.activeYear, balance\_expenses\_v1.years | Node 2; Browser 1; Risiko 2; Schuld 0 | 1, 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
+| B43 | Ausgaben.html | Ausgaben | Ausgaben je Jahr: Diagramm, Tabelle und sichere Zustände | bedingt sichtbar | keine | Node 5; Browser 2; Risiko 3; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
+| B44 | Ausgaben.html | Ausgaben → Verlauf | Automatische Vermögenserfassung nach bestätigtem Ausgabenimport | bedingt sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails.wealthHistory, rs\_profiles…; keine | Node 4; Browser 1; Risiko 1; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
+| E01 | Ausgaben.html | Ausgaben | Kategorien nach Jahr und Person mit erhaltenen Erstattungen | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
+| E02 | Ausgaben.html | Ausgaben | Fälliger Monatsabschluss und Import unabhängig vom Ansichtsjahr | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
+
+#### Seitenzusätze
+
+- **Tastatur:** Native Rahmenlinks, Jahres-/Personensegmente und Zellknöpfe; Details mit Fokusführung, Escape und bestätigter Löschung. (B25, B26, B50, B27, B28, B43, B44, E01, E02)
+- **Druck:** Browserdruck der Ausgabenansicht; Bild-/Druckabnahme extern offen. (B25, B26, B50, B27, B28, B43, B44, E01, E02)
+- **Meldungen:** Kennzahlen, Recovery und getrennte Import-/Capturemeldungen am neuen Ort. (B25, B26, B50, B27, B28, B43, B44, E01, E02)
+- **Dialoge:** D5-Vorschau, Monatsdetails/Löschen, Recovery und gemeinsamer Monats-/Jahresdialog. (B25, B26, B50, B27, B28, B43, B44, E01, E02)
+- **Handbuchanker:** Handbuch.html\#ausgaben; alter Kapitelanker \#balance-ausgaben-check bleibt Alias. (B25, B26, B50, B27, B28, B43, B44, E01, E02)
+
+### Simulator
+
+Quelle: `Simulator.html`
+
+| Kennung | Seite | Bereich | Bezeichnung | Zustand | Speicherwirkung | Testabdeckung | Paket | Handbuch |
+|---|---|---|---|---|---|---|---|---|
+| S01 | Simulator.html | Hauptnavigation | Vermögen & Ruhestand: Seitennavigation und fünf Haupttabs | sichtbar, bedingt sichtbar | nur Sitzung; persistent: ui\_suite\_sidebar\_collapsed | Node 12; Browser 15; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S75 | Simulator.html | Personenumstellung | Aufschub und sichere Wiederholung der Personenübernahme | bedingt sichtbar | nur Sitzung; persistent: profile\_person\_schema\_version, profile\_person\_migration\_v1, rs\_p… | Node 5; Browser 2; Risiko 0; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#simulator) |
+| S02 | Simulator.html | Annahmen | Annahmen: Bedarf offen, gemeinsamer Parameterzugang, Personen- und Pflegedetails | bedingt sichtbar | nur Sitzung | Node 4; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S03 | Simulator.html | Annahmen | Haushaltsprofile, Auswahl und Blockiermeldungen | sichtbar, bedingt sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1.profiles\[profileId\].meta.belongsToHousehold | Node 11; Browser 9; Risiko 3; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S04 | Simulator.html | Annahmen | Aggregiertes Startportfolio | bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 4; Browser 1; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S05 | Simulator.html | Annahmen | Versteckte Portfolio-/Goldwerte | technisch verborgen | nur Sitzung | Node 0; Browser 1; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S06 | Simulator.html | Annahmen | Planwerte gemeinsam ausprobieren und ausgewählt übernehmen | bedingt sichtbar | persistent: household\_plan\_v1, household\_simulator\_needs\_v1, household\_simul…; nur Sitzung | Node 4; Browser 2; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S07 | Simulator.html | Annahmen | Flex-Krisenbudget und CAPE | bedingt sichtbar | persistent: household\_plan\_v1 | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S08 | Simulator.html | Annahmen | Dynamische Entnahme: Voreinstellung und Details | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: household\_plan\_v1, sim\_dynamicFlexPreset, sim\_dynamicFlexShowAdv… | Node 4; Browser 2; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S09 | Simulator.html | Annahmen | Horizontmethode und Anwendbarkeit | bewusst gesperrt, bedingt sichtbar | persistent: household\_plan\_v1 | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S10 | Simulator.html | Annahmen | Go-Go und Langlebigkeit | bewusst gesperrt | persistent: household\_plan\_v1 | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S11 | Simulator.html | Annahmen | Standard-/Drei-Topf-Strategie | bedingt sichtbar | persistent: household\_plan\_v1 | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S12 | Simulator.html | Annahmen | Liquiditäts-Reichweite, Gold-Umschichtungsband und Verkaufsgrenzen | bedingt sichtbar | persistent: household\_plan\_v1; nur Sitzung | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S13 | Simulator.html | Annahmen | Hauptprofil: zentrale Personenwerte und flüchtige Rechenalternativen | bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 7; Browser 3; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S14 | Simulator.html | Annahmen | Gemeinsame und ältere Rentenanpassungsfelder | bewusst gesperrt, technisch verborgen, bedingt sichtbar | nur Sitzung | Node 5; Browser 4; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S15 | Simulator.html | Annahmen | Versteckte Rentenbrücke | technisch verborgen | nur Sitzung | Node 5; Browser 3; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S16 | Simulator.html | Annahmen | Partner und zweite Rente | bewusst gesperrt, bedingt sichtbar, technisch verborgen | nur Sitzung | Node 9; Browser 4; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S17 | Simulator.html | Annahmen | Hinterbliebenenrente | bedingt sichtbar | nur Sitzung | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S19 | Simulator.html | Annahmen | Pflege aktivieren, Modell, Ramp-up und Dauer | bedingt sichtbar | persistent: sim\_pflegefallLogikAktivieren, sim\_pflegeModellTyp, sim\_pflegeRa… | Node 3; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S20 | Simulator.html | Annahmen | Pflegekostenmodell und Hinweise | bedingt sichtbar | persistent: sim\_pflegeKostenStaffelPreset, sim\_pflegeMaxFloor, sim\_pflegeReg… | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S21 | Simulator.html | Annahmen | Pflegegrade 1–5: Kosten, Flex-Kürzung und Mortalität | bedingt sichtbar | persistent: sim\_pflegeStufe1Zusatz, sim\_pflegeStufe1FlexCut, sim\_pflegeStufe… | Node 1; Browser 0; Risiko 3; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S23 | Simulator.html | Monte-Carlo | Alle Parameter aus Monte Carlo öffnen und Zusammenfassung lesen | sichtbar, bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S24 | Simulator.html | Monte-Carlo | MC-Anzahl, Dauer, Methode, Blockgröße, Seed, RNG | sichtbar, bewusst gesperrt | persistent: sim\_mcAnzahl, sim\_mcDauer, sim\_mcMethode, sim\_mcBlockSize, sim\_m… | Node 2; Browser 2; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S25 | Simulator.html | Monte-Carlo | Workersteuerung und Ressourcenbestätigung | sichtbar, bedingt sichtbar | persistent: sim\_mcWorkerCount, sim\_mcWorkerBudget; nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S26 | Simulator.html | Monte-Carlo | CAPE-Sampling und historische Auswahl | sichtbar, bedingt sichtbar | persistent: sim\_useCapeSampling, sim\_mcStartYearMode, sim\_mcStartYearFilter,… | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S27 | Simulator.html | Monte-Carlo | Stresspreset und Tail-Risk-Parameter | sichtbar, bedingt sichtbar | nur Sitzung | Node 0; Browser 1; Risiko 3; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S28 | Simulator.html | Monte-Carlo | Seriell-/Worker-Vergleich mit Laufzeiten und Fallback | sichtbar, bedingt sichtbar | nur Sitzung | Node 0; Browser 0; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S29 | Simulator.html | Monte-Carlo | Monte-Carlo in Ergebnis und Einstellungen starten und abbrechen | sichtbar, bewusst gesperrt, technisch verborgen, bedingt sichtbar | nur Sitzung | Node 5; Browser 4; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S30 | Simulator.html | Monte-Carlo | MC-Fehler und Fehler schließen | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S31 | Simulator.html | Monte-Carlo | Vollständigen MC-Lauf exportieren | bedingt sichtbar, bewusst gesperrt, sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| S32 | Simulator.html | Monte-Carlo | Vier MC-Ergebnisansichten | sichtbar, bedingt sichtbar | nur Sitzung | Node 3; Browser 1; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S33 | Simulator.html | Monte-Carlo | MC-Zusammenfassung und Kernantworten | bedingt sichtbar | nur Sitzung | Node 8; Browser 5; Risiko 4; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S34 | Simulator.html | Monte-Carlo | Haupt-KPIs und exakte Werte | bedingt sichtbar | nur Sitzung | Node 3; Browser 3; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S35 | Simulator.html | Monte-Carlo | Nominale und reale Drawdown-Karten: vier Prozentkennzahlen | bedingt sichtbar | nur Sitzung | Node 4; Browser 3; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S36 | Simulator.html | Monte-Carlo | Erweiterte operative, Risiko- und Tail-KPIs | bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S37 | Simulator.html | Monte-Carlo | Stress-KPI-Ausgabe | bedingt sichtbar | nur Sitzung | Node 2; Browser 0; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S38 | Simulator.html | Monte-Carlo | Entnahmequoten-Heatmap | sichtbar, bedingt sichtbar | nur Sitzung | Node 6; Browser 4; Risiko 3; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S39 | Simulator.html | Monte-Carlo | Pflege-KPIs je Person | bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S40 | Simulator.html | Monte-Carlo | Pflege-KPIs Haushalt und Reserve | bedingt sichtbar | nur Sitzung | Node 2; Browser 0; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S41 | Simulator.html | Monte-Carlo | Szenarioauswahl, Vermögensverläufe und Endwertverteilung | bedingt sichtbar | nur Sitzung | Node 15; Browser 6; Risiko 3; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S42 | Simulator.html | Monte-Carlo | Detailliert und Pflege-Spalten | bedingt sichtbar | persistent: showCareDetails, worstLogDetailLevel | Node 7; Browser 3; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S43 | Simulator.html | Monte-Carlo | Szenarioexport und Replay-Wechsel | bedingt sichtbar | nur Sitzung | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| S44 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Auswahl, Status und Pfadfixierung | sichtbar, bedingt sichtbar, bewusst gesperrt | persistent: sim.stressReplay.active.v1 | Node 3; Browser 1; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S45 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Herkunft und Kompatibilität | sichtbar, bedingt sichtbar | nur Sitzung | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S46 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay importieren/exportieren/verwerfen | bewusst gesperrt, sichtbar, technisch verborgen, bedingt sichtbar | persistent: sim.stressReplay.active.v1 | Node 3; Browser 1; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| S47 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Variantenname, drei Bedarfsfelder und Baseline | bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 1; Browser 1; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S48 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Expertenfelder | bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S49 | Simulator.html | Werkstatt / Stresspfad-Replay | Patchvorschau, Variantenliste und Aktionen | bedingt sichtbar, bewusst gesperrt | persistent: sim.stressReplay.active.v1 | Node 3; Browser 2; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S50 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Kernaussage und drei Vergleichsansichten | sichtbar, bedingt sichtbar | nur Sitzung; persistent: overview\_simulation\_summary\_v1, rs\_profiles\_v1 | Node 4; Browser 2; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S51 | Simulator.html | Historischer Backtest | Backtestperiode, Validierung und Datenhinweis | sichtbar, bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#simulator) |
+| S52 | Simulator.html | Historischer Backtest | Rolling Cohorts | sichtbar, bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 3; Browser 1; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#simulator) |
+| S53 | Simulator.html | Historischer Backtest | Backtest starten, Status und Hinweise | sichtbar, bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 4; Browser 2; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#simulator) |
+| S54 | Simulator.html | Historischer Backtest | Backtest-Kennzahlen, Portfoliochart und Krisenübersicht | bedingt sichtbar | nur Sitzung | Node 12; Browser 2; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#simulator) |
+| S55 | Simulator.html | Historischer Backtest | Backtestlog, Detailmodus und Raw-Exporte | bedingt sichtbar | persistent: backtestLogDetailLevel | Node 13; Browser 4; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| S56 | Simulator.html | Historischer Backtest | Engine-/Parity-Diagnose | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#simulator) |
+| S57 | Simulator.html | Werkstatt / Parameter-Sweep | Sweep-Laufzahl und Arbeitslast | sichtbar | persistent: sim.sweep.runs | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S58 | Simulator.html | Werkstatt / Parameter-Sweep | Sieben Sweep-Ranges und Anwendbarkeit | sichtbar, bedingt sichtbar | persistent: sim.sweep.liquidityRunwayYears, sim.sweep.goldRebalancingBand, s… | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S59 | Simulator.html | Werkstatt / Parameter-Sweep | Sweep starten/abbrechen und Status | sichtbar, bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 4; Browser 4; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S60 | Simulator.html | Werkstatt / Parameter-Sweep | Sweep-Metrik, Achsen und Heatmap | bedingt sichtbar | nur Sitzung | Node 5; Browser 2; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S61 | Simulator.html | Werkstatt / Parameter-Sweep | Führende Kombination und Parameterübernahme | bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S62 | Simulator.html | Werkstatt / Parameter-Sweep | Sensitivität und Pareto | bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 4; Browser 2; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S63 | Simulator.html | Werkstatt / Parameter-Sweep | Sweep-Entwickler-/Demoausgaben | bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 3; Browser 1; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#ausgaben) |
+| S64 | Simulator.html | Werkstatt / Auto-Optimize | Auto-Optimize-Ziel und Quantil | sichtbar, bedingt sichtbar | nur Sitzung | Node 2; Browser 2; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S65 | Simulator.html | Werkstatt / Auto-Optimize | Sieben Optimierungs-Presets | sichtbar | nur Sitzung | Node 2; Browser 2; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S66 | Simulator.html | Werkstatt / Auto-Optimize | Dynamische Parameterblöcke, Min/Max/Schritt | sichtbar, bedingt sichtbar | nur Sitzung | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S67 | Simulator.html | Werkstatt / Auto-Optimize | Optimierungsläufe, Seeds, Flex-Modus und Constraints | sichtbar | nur Sitzung | Node 0; Browser 1; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S68 | Simulator.html | Werkstatt / Auto-Optimize | Optimierung starten, Fortschritt, Fehler und Ergebnis übernehmen | bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 6; Browser 3; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S69 | Simulator.html | Werkstatt / Auto-Optimize | Champion, Testmetriken, Deltas, Stabilität und Modellstatus | bedingt sichtbar | nur Sitzung | Node 3; Browser 3; Risiko 4; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
+| S70 | Simulator.html | Übergreifende Bedienung | Toasts, kontextuelle Hilfen und Formvalidierung | sichtbar, bedingt sichtbar | nur Sitzung | Node 1; Browser 0; Risiko 3; Schuld 0 | 2 | [Kapitel](../../Handbuch.html#simulator) |
+| S71 | Simulator.html | Übergreifende Bedienung | Tastatur und Druck | sichtbar, bedingt sichtbar | nur Sitzung | Node 3; Browser 2; Risiko 2; Schuld 0 | 2 | [Kapitel](../../Handbuch.html#simulator) |
+| S72 | Simulator.html | Übergreifende Bedienung | Worker-Telemetrie | bedingt sichtbar | persistent: enableWorkerTelemetry | Node 0; Browser 0; Risiko 2; Schuld 0 | 2 | [Kapitel](../../Handbuch.html#simulator) |
+| S73 | Simulator.html | Profilkontext und Navigation | Profil-Lifecycle: Bootstrap, Handoff, Hintergrundspeicherung und BFCache | sichtbar | persistent: rs\_profiles\_v1.profiles\[profileId\].data | Node 6; Browser 2; Risiko 2; Schuld 0 | 2 | [Kapitel](../../Handbuch.html#simulator) |
+| S74 | Simulator.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 12; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+
+#### Seitenzusätze
+
+- **Tastatur:** Suite-Rahmenlinks mit nativem Tab/Enter und sichtbarem Fokus; ein delegierter Klickbinder hält übernommene Navigation bis zum bestätigten Flush. Haupttabs nur Klick/native Enter/Space, kein ARIA-/Arrowmuster. S02: native Schrittknöpfe (ds-step-toggle) mit Enter/Space und aria-expanded, native details und Segmentknöpfe; Weiter/Zurück entfällt; gebundene Selects sind aus Tabreihenfolge und Barrierefreiheitsbaum entfernt, Labelaktivierung und Korrekturzugang fokussieren den gedrückten oder ersten freigegebenen Segmentknopf. MC-Cockpit: direkte vier Tablistener mit Pfeilen/Home/End/roving tabindex. Replayvergleich: click/keydown am statischen Vergleichshost delegiert, rerenderfester Fokus. Native details/Formular-/Selectbedienung; disabled-Fieldsets/Profil-/Busy-Sperren wirken zusätzlich. Werkstatt: drei sichtbare Kartenknöpfe, Pfeile/Home/End, aktive Tönung, Öffnen/Schließen mit Rückfokus; eine Fläche. Info-Popups unterstützen Hover, Fokus, Klick, Escape mit Rückfokus und Außenklick. (S01, S02, S23, S32, S47, S48, S50, S71)
+- **Druck:** css/suite-frame.css @media print verbirgt den Rahmen und löst Containerzwänge. simulator.css zeigt als S71-Ausnahmen MC-/Werkstattahnen, Replaywerkzeug, MC-Setup, vier MC-Ansichten und drei Replayvergleiche auch bei verborgenem Replay. Sweep-/Auto-Optimize-Werkzeuge werden samt vorhandener Heatmap/Pareto beziehungsweise Championausgabe auch mit hidden und bei inaktiver Werkstatt gedruckt. Replay-Expertenfelder sind im Druck zugänglich. Navigation/Karten entfallen; Grafik-, Overflow- und Stickyregeln bleiben wirksam. Druck ändert weder DOM-Werkzeugwahl noch Fokus; für geschlossene Annahmenschritte und Detailklappen bleibt die Auswahl erhalten; MC-Kennzahlen und Floor-/KPI-Texte drucken auch geschlossen, ohne Tooltipduplikate. \#print-footer ist leer ohne Writer. Simulator.html und Designsystem tools registrieren die Werkzeugmatrix, letztere mit Ausgaben bei 1366/1920/2560 px; Ausführung extern offen. Vollständiger Setup-/Backtest-/Sweep-/Optimizerdruck bleibt Prüflücke. (S01, S02, S23, S32, S50, S55, S60, S69, S71)
+- **Meldungen:** Getrennte Profil-/Migrationsstatus, customValidity der Haushaltsbedarfe, MC-runstatus/alert-Fehlerbox/exportstatus, Replay-live-status/Vorschau/technische Vergleichsfehler, Backtest-feldbezogene Fehler/status/notices, Sweep-status und Auto-Optimize-progress plus gemeinsame Seitendialoge für Hinweise, Großlast und Pareto. Kurzlebige Exporttoasts und title-Normalisierung ersetzen diese dauerhaften Zustände nicht. „Niedrige Entnahme“ nur an der sichtbaren Entnahme, strikt unter endlicher CaR-Schwelle auf Basis der realen Jahresentnahme; ohne zugehörige Schwelle keine Markierung. Verkäufe neutral, Käufe hervorgehoben; Rohzeilen und JSON/CSV unverändert. Node-Belege für Zellzuordnung, Exportgleichheit und Kontrast; externe EXE-/Bildabnahme offen. (S03, S06, S29, S30, S31, S44, S45, S49, S50, S51, S53, S57, S59, S62, S68, S70)
+- **Dialoge:** Replay-Ersetzen/-Import/-Verwerfen und Sweep-Großlast nutzen app/shared/page-dialog.js mit konkreten Bestätigungs-/Abbruchknöpfen. Pareto verwendet requestPageChoice mit zwei Selects, acht bisherigen Metriken und Diagramm anzeigen/Abbrechen. Hinweise nutzen Verstanden ohne fachliche Zustimmung. Pending/Busy und Kontextprüfung schützen Jobs/Writes. MC-Ergebnispanels, Filechooser, Inline-Telemetrie und Navigationsschutz bleiben eigenständig. Browser-/Bild-/WebViewabnahme extern offen. (S46, S57, S59, S62, S68, S72)
+- **Handbuchanker:** Inhalts-Hilfelink a\[href="Handbuch.html"\]\[target="\_blank"\] ohne Kapitelhash öffnet nativ den manual-Standardtab. Rahmenlinks zu Handbuch und Übersicht wechseln im selben Tab nach Export und bestätigtem Flush; kein spezieller Simulator-Handbuchanker. (S01, S73)
+
+### Personen & Vermögen
+
+Quelle: `depot-tranchen-manager.html`
+
+| Kennung | Seite | Bereich | Bezeichnung | Zustand | Speicherwirkung | Testabdeckung | Paket | Handbuch |
+|---|---|---|---|---|---|---|---|---|
+| V01 | depot-tranchen-manager.html | Personen & Vermögen | Vermögen & Ruhestand: Zurücknavigation, interner Profilkontext und Kartenalter | sichtbar, bedingt sichtbar | keine; persistent: ui\_suite\_sidebar\_collapsed | Node 12; Browser 16; Risiko 2; Schuld 0 | 2, 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V27 | depot-tranchen-manager.html | Personenumstellung | Aufschub und sichere Wiederholung der Personenübernahme | bedingt sichtbar | nur Sitzung; persistent: profile\_person\_schema\_version, profile\_person\_migration\_v1, rs\_p… | Node 5; Browser 2; Risiko 0; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V02 | depot-tranchen-manager.html | Personen & Vermögen | Tagesgeld separat von Tranchen | bedingt sichtbar, bewusst gesperrt | persistent: profile\_tagesgeld, rs\_profiles\_v1.profiles\[profileId\].data.profi…; persistent: profile\_cash\_histo… | Node 10; Browser 0; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V03 | depot-tranchen-manager.html | Personen & Vermögen | Personendaten: heutiges Alter, Januarplanung und Herkunft | bedingt sichtbar, bewusst gesperrt, sichtbar | persistent: profile\_rente\_aktiv, profile\_rente\_monatlich, profile\_sonstige\_e…; keine | Node 16; Browser 6; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V04 | depot-tranchen-manager.html | Personen & Vermögen | Goldstrategie: Aktivierung, Ziel, Floor, Band und Steuerfreiheit | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: profile\_gold\_aktiv, profile\_gold\_ziel\_pct, profile\_gold\_floor\_pc… | Node 3; Browser 0; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V05 | depot-tranchen-manager.html | Personen & Vermögen | Pflegebucket: Aktivierung, Betrag, Quelle und Pflegegrad | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: profile\_health\_bucket, rs\_profiles\_v1.profiles\[profileId\].data.p… | Node 3; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V06 | depot-tranchen-manager.html | Personen & Vermögen | Pflegebucket-Policies: Trigger, Deckung, Rendite und Inflationssicht | bedingt sichtbar, bewusst gesperrt | persistent: profile\_health\_bucket, rs\_profiles\_v1.profiles\[profileId\].data.p… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V07 | depot-tranchen-manager.html | Personen & Vermögen | Profil- und Planvalidierung, Autosave, bestätigte Writes und Warteschlange | bedingt sichtbar, bewusst gesperrt | persistent: profile\_tagesgeld, profile\_rente\_aktiv, profile\_rente\_monatlich,…; persistent: household\_plan\_v1 | Node 7; Browser 1; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V07.1 | depot-tranchen-manager.html | Haushalt & Plan | Gemeinsame Dynamic-Flex-Voreinstellungen im Manager | bedingt sichtbar | persistent: household\_plan\_v1 | Node 2; Browser 1; Risiko 0; Schuld 0 | 1 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V08 | depot-tranchen-manager.html | Tranchen und Kurse | Kauf eintragen: neue Tranche öffnen | sichtbar, bewusst gesperrt | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V09 | depot-tranchen-manager.html | Tranchen und Kurse | Zeilenaktionen bearbeiten/löschen und gesamten Bestand löschen | sichtbar, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 4; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V10 | depot-tranchen-manager.html | Tranchen und Kurse | EUR-Kursbatch, Proxycheck, Teilfehler und Preisprovenienz | sichtbar, bewusst gesperrt, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 6; Browser 3; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V11 | depot-tranchen-manager.html | Tranchen und Kurse | Depotbewertung, Tranchensumme, Kursstand und leerer Bestand | sichtbar, bedingt sichtbar | keine | Node 5; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V12 | depot-tranchen-manager.html | Tranchen und Kurse | Gruppiertes Depot: Anlageformen, Gruppensummen und Kaufdatumssortierung sowie Kursverlauf und aufklappbare Details | sichtbar, bedingt sichtbar | keine | Node 10; Browser 2; Risiko 4; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
+| V13 | depot-tranchen-manager.html | Tranchendialog | Identifikation, Bestand und Kurseingaben | bedingt sichtbar | nur Sitzung | Node 4; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V14 | depot-tranchen-manager.html | Tranchendialog | Kategorie-/Typvertrag, Teilfreistellung, explizite Steuerfreiheit und Notiz | bedingt sichtbar, technisch verborgen | nur Sitzung | Node 4; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V15 | depot-tranchen-manager.html | Tranchendialog | Speichern, Dialogretry, Abbruch, Feldfehler und Dialogtastatur | bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 6; Browser 4; Risiko 2; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V16 | depot-tranchen-manager.html | Meldungen und Recovery | Speicherstatus und Load-/Save-Retry | bedingt sichtbar | nur Sitzung | Node 4; Browser 2; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| V17 | depot-tranchen-manager.html | Meldungen und Recovery | Korrupte Tranchen: bewusst Rohdaten anzeigen/kopieren, Reset und Rückwege | bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| V18 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Broker-Ausführung über exakte Profil-/Tranche-/Action-ID erfassen | sichtbar, bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 2; Browser 2; Risiko 2; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#verkauf) |
+| V19 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Optionale Empfehlung und Ist-Abweichung | sichtbar, bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#verkauf) |
+| V20 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Schreibfreie Vorschau, Status, getrennte Bestätigung und Abbruch | sichtbar, bedingt sichtbar, bewusst gesperrt | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr…; persistent: profile\_wealth\_his… | Node 5; Browser 2; Risiko 2; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#verkauf) |
+| V21 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Cashstatuswahl in Verkaufsschritt 2 | sichtbar, bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 2; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#verkauf) |
+| V22 | depot-tranchen-manager.html | Verkäufe & Cashstatus | Dynamische Cashhistorie, Altverkäufe, wirksamer Nachweis und Aktionen | sichtbar, bedingt sichtbar, bewusst gesperrt | keine | Node 2; Browser 1; Risiko 3; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#verkauf) |
+| V23 | depot-tranchen-manager.html | Cashdialog | Cashbestätigung und lineare Korrektur mit Grund, Fokus und Konfliktprüfung | bedingt sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1.trancheReconciliation.actions, rs\_profiles\_v1.tra… | Node 9; Browser 4; Risiko 2; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V24 | depot-tranchen-manager.html | Hilfen und Bedienung | Feldhilfen, Labels und Tabellen-/Dialogzugänglichkeit | bedingt sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 2, 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V25 | depot-tranchen-manager.html | Kurszeit-Datenvertrag | asOf: Lokales Kursdatum im Depot, Provenienz und Balance-Kursfrische | sichtbar, bewusst gesperrt, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 11; Browser 3; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V26 | depot-tranchen-manager.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+| B29 | depot-tranchen-manager.html | Vermögensverlauf | Stand jetzt erfassen mit bestätigten Quellen und Sieben-Tage-Kursgate | sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails, rs\_profiles\_v1 | Node 2; Browser 0; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
+| B30 | depot-tranchen-manager.html | Vermögensverlauf | Tageslinie und Tageskennzahlen getrennt von erfassten Ständen, Abschlussrauten und Tabelle | sichtbar | keine | Node 2; Browser 0; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
+
+#### Seitenzusätze
+
+- **Tastatur:** Suite-Rahmenlinks mit nativem Tab/Enter und sichtbarem Fokus; ein delegierter Klickbinder hält übernommene Navigation bis zum bestätigten Flush. Keine globalen Tastenkürzel. Native Tab/Enter/Space und details-Bedienung; fokussierbare dynamische Scrollregion. Tranche-/Cashmodal: direkter keydown für Escape/Tab/Shift+Tab, Erstfokus Name/Cashbalance und gespeicherter Rückfokus. Escape/Abbrechen prüfen echte Commitflags; Dirty-Schließen verlangt Verwerfen. Tranchenhintergrund ignoriert Dirty-Klicks und erhält Fokus, Cashhintergrund bleibt ein geprüfter Schließweg. Die oberste Schutznachfrage konsumiert Escape. Cash-Cancelbutton ist während Cashcommit zusätzlich disabled. Keine pauschale Tastaturvollabdeckung behauptet. Tranchendialoge lösen entfernte Auslöser nach Editrender über stabile ID neu auf. Cash-Rückfokus löst erneuerte Auslöser über den Zielverkauf auf; Browserabnahme offen. (V12, V15, V19, V23, V24, V01)
+- **Druck:** css/suite-frame.css @media print blendet Kopf, Hauptnavigation, Sprunglink und Fehlerhost aus und löst Rahmencontainerzwänge. Keine eigene @media print-Regel und kein Druckbutton in depot-tranchen-manager.html. Browserdruck druckt den aktuellen sichtbaren Bestand; verborgene Modals/geschlossene Empfehlungsdetails werden nicht eigens geöffnet, Tabelle kann breit bleiben. Vollständiger Druck ist Prüflücke, keine bereits erfüllte neue Druckfunktion. (V12, V19, V24, V01)
+- **Meldungen:** Getrennte Hosts für Kurs-/Proxytext, Persistenzstatus mit pending/error/ok und quantifizierter Legacy-Steuerwarnung, Profilfeldalert, Tranchefeldalert, Reconcile-status und dynamischen Cashdialogfehler. Unavailable erhält bestätigten Bestand/Loadretry, corrupt sperrt Verarbeitung und bietet bewusste Rohdaten-/Reset-/Backupwege. Fehlflush rollt zurück und liefert priorisierten Saveretry, nicht unbestätigten Erfolg. Unlesbarer Cashaudit meldet ausdrücklich unvollständige Liste statt leeren Bestand. (V07, V10, V15, V16, V17, V20, V22, V23)
+- **Dialoge:** Tranchendialog und Cashbestätigungs-/Korrekturdialog behalten ihre Lifecycle-/Fokusbindung. Einzel-/Gesamtlöschung, Corruptreset, Ausführungsabgleich und Profillöschung verwenden den gemeinsamen Seitendialog app/shared/page-dialog.js. Kurshinweise nutzen Verstanden. Keine fachliche Zustimmung bei Escape, Signalabbruch oder Öffnungsfehler. Kein eigener Bestandimport/-export; zentraler Backupimport per Link zur Startseite. (V08, V09, V10, V13, V14, V15, V17, V20, V23)
+- **Handbuchanker:** Rahmenlink zu Handbuch.html ohne Kapitelhash; kein direkter Handbuchkapitelanker. \#managerBackLink führt nach Export und bestätigtem Flush zu index.html. Recoverylinks erhalten Navigationsschutz und Flush ohne Export zu index.html bzw. index.html\#fullBackupImportBtn; der Hash fokussiert den zentralen Backupimport. Anerkannte Manager-Sprungziele laufen beim Start und bei Hashwechseln zentral über startTranchenManagerPage/openManagerOverviewTarget; Karten und Personenverwaltung binden nur ihre eigenen Bedienereignisse. (V01, V17, V24)
+
+### Handbuch
+
+Quelle: `Handbuch.html`
+
+| Kennung | Seite | Bereich | Bezeichnung | Zustand | Speicherwirkung | Testabdeckung | Paket | Handbuch |
+|---|---|---|---|---|---|---|---|---|
+| H01 | Handbuch.html | Navigation | Vermögen & Ruhestand: Handbuch und Seiteneinstieg | sichtbar, bedingt sichtbar | keine; nur Sitzung; persistent: ui\_suite\_sidebar\_collapsed | Node 9; Browser 15; Risiko 1; Schuld 0 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| H02 | Handbuch.html | Navigation | Kapitelstart und Suche über den Kapiteltext | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| H03 | Handbuch.html | Navigation | Mitlaufende Kapitelnavigation, Hilfesprünge, Hash und Fokus | bedingt sichtbar | nur Sitzung | Node 0; Browser 0; Risiko 1; Schuld 0 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#haeufige-fragen) |
+| H04 | Handbuch.html | Handbuchartikel | Erste Schritte: Personen, Bestände, Tagesgeld und Sicherung | bedingt sichtbar, sichtbar | keine | Node 0; Browser 0; Risiko 1; Schuld 1 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| H05 | Handbuch.html | Handbuchartikel | Simulator-Annahmen: Bedarf, Parameterzugang, Personen und Pflege | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 1; Schuld 2 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#simulator) |
+| H06 | Handbuch.html | Handbuchartikel | Simulator-Auswertung und fortgeschrittene Verfahren | bedingt sichtbar | keine | Node 3; Browser 0; Risiko 1; Schuld 1 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| H07 | Handbuch.html | Handbuchartikel | Balance-Jahresprozess, Marktdaten und Archiv | bedingt sichtbar | keine | Node 2; Browser 0; Risiko 1; Schuld 1 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#balance) |
+| H08 | Handbuch.html | Handbuchartikel | Balance lesen: Jahresbeschluss, Mindest-Flex und Parameterzugang | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 1; Schuld 0 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#balance) |
+| H09 | Handbuch.html | Handbuchartikel | Personen & Vermögen: Auf einen Blick, Planwerte und Tranchen | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 1 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| H10 | Handbuch.html | Handbuchartikel | Onboarding und regelmäßige Pflege | bedingt sichtbar | keine | Node 0; Browser 0; Risiko 1; Schuld 0 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| H11 | Handbuch.html | Handbuchartikel | Probleme, FAQ und Glossar | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 1; Schuld 0 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#begriffe) |
+| H12 | Handbuch.html | Handbuchartikel | Datenquellen, Versionen, Dokumente und Support | bedingt sichtbar | keine | Node 0; Browser 0; Risiko 1; Schuld 1 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#haeufige-fragen) |
+| H13 | Handbuch.html | Handbuchartikel | App-Bilder, Tabellen und Hinweise | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 2; Schuld 0 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#haeufige-fragen) |
+| H14 | Handbuch.html | Navigation | Querverweise öffnen Kapitel und Abschnitte | bedingt sichtbar | nur Sitzung | Node 0; Browser 0; Risiko 1; Schuld 0 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#haeufige-fragen) |
+| H15 | Handbuch.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+
+#### Seitenzusätze
+
+- **Tastatur:** Native Links und Buttons mit Tab/Enter; Kapitelbinder setzt Zielfokus und Hash. Strg+K/Cmd+K fokussiert die Suche; Escape leert sie. Rahmenhandoff und Flush bleiben beim App-Wechsel erhalten. (H01, H02, H03, H14)
+- **Druck:** Keine eigenen Druckregeln oder Druckaktionen im Handbuch; bestehender Suite-Rahmen unverändert. (H13, H01)
+- **Meldungen:** Direkte Hilfesprünge zeigen Hinweisleiste und Abschnittsmarkierung; Suche zeigt Trefferzahl oder einen verständlichen Leertreffertext. (H02, H03, H13)
+- **Dialoge:** Keine eigenen Fachdaten- oder Tourdialoge. Bestehender Navigationsschutz des Suite-Rahmens bleibt erhalten. (H12)
+- **Handbuchanker:** Rahmenlink öffnet den Aufgabenstart. Direkte Hashziele aus HTML und Renderern öffnen passende Kapitel; alte IDs bleiben Aliasse. Die Kapitelnavigation ändert keinen Fachspeicher. (H01, H03, H14)
+- **Externer Anker:** index.html → kein Kapitelhash; H01; Tab start; Kein Fokusaufruf beim Laden; normale Seitennavigation ohne Hash.; Handbuchkarte geschützt im gleichen Tab ohne Export; separater Rahmenlink mit Profilhandoff.
+- **Externer Anker:** Balance.html → kein Kapitelhash; H01; Tab start; Kein Fokusaufruf beim Laden; normale Seitennavigation ohne Hash.; Inhaltshilfe: neuer Tab durch target=\_blank; Rahmen: gleicher Tab mit Profilhandoff.
+- **Externer Anker:** Simulator.html → kein Kapitelhash; H01; Tab start; Kein Fokusaufruf beim Laden; normale Seitennavigation ohne Hash.; Inhaltshilfe: neuer Tab durch target=\_blank; Rahmen: gleicher Tab mit Profilhandoff.
+- **Externer Anker:** depot-tranchen-manager.html → kein Kapitelhash; H01; Tab start; Kein Fokusaufruf beim Laden; normale Seitennavigation ohne Hash.; Rahmenlink im gleichen Tab mit Profilhandoff.
+
+### Daten & Sicherung
+
+Quelle: `Daten-Sicherung.html`
+
+| Kennung | Seite | Bereich | Bezeichnung | Zustand | Speicherwirkung | Testabdeckung | Paket | Handbuch |
+|---|---|---|---|---|---|---|---|---|
+| D05 | Daten-Sicherung.html | Neu beginnen | Gesamten Appbestand löschen und mit Erststart neu beginnen | sichtbar, technisch verborgen | persistent: rs\_profiles\_v1, rs\_snapshot\_archive\_v1, ui\_suite\_sidebar\_collaps… | Node 1; Browser 0; Risiko 0; Schuld 0 | 6.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| D01 | Daten-Sicherung.html | Vollsicherung | Vollsicherung ausgeben und einspielen, bestätigte Zeit und Vergleichsbasis | sichtbar, technisch verborgen | persistent: overview\_last\_full\_backup\_v1, rs\_data\_backup\_summary\_v1 | Node 11; Browser 5; Risiko 0; Schuld 0 | 6.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| D02 | Daten-Sicherung.html | Zustand und Navigation | Sicherungszustand, Archiv, Kurse und Speicher | sichtbar, bedingt sichtbar, technisch verborgen | keine; persistent: rs\_daily\_prices\_v1, rs\_wealth\_history\_start\_v1, profile\_wealth\_h… | Node 9; Browser 2; Risiko 1; Schuld 0 | 6.2, 6.3 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| D03 | Daten-Sicherung.html | Wiederherstellungspunkte | Punkte mit Vorschau zurückholen und sicher aufbewahren | technisch verborgen, sichtbar | persistent: rs\_snapshot\_archive\_v1 | Node 4; Browser 1; Risiko 1; Schuld 0 | 6.3 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+| D04 | Daten-Sicherung.html | Austausch | Personenaustausch, weitere Balance-/Ordnerwege und Simulatorprotokolle | sichtbar, technisch verborgen, bedingt sichtbar | persistent: rs\_profiles\_v1, ruhestandsmodellValues\_v29\_guardrails | Node 3; Browser 1; Risiko 1; Schuld 0 | 6.3 | [Kapitel](../../Handbuch.html#daten-sicherung) |
+
+#### Seitenzusätze
+
+- **Tastatur:** Native Tab-/Enter-Bedienung und bestehender geschützter Suite-Handoff. (D01, D02, D03)
+- **Druck:** Suite-Rahmen und Backupaktionen im Druck ausgeblendet; externe Druckabnahme ausstehend. (D01, D02, D03)
+- **Meldungen:** Sicherungsstatus live; fehlende Zeit, Basis und unlesbare Daten ausdrücklich benannt. (D01, D02, D03)
+- **Dialoge:** Vollimport mit bestehendem Seitendialog, Recoverydatei und bestätigtem Archivpunkt. (D01, D02, D03)
+- **Handbuchanker:** Handbuch über geschützten Direktanker \#daten-sicherung; TOC, Hash und Fokus führen zum Kapitel Daten sichern & wiederherstellen. (D01, D02, D03)
+
+
+### Zusätzliche Auftretensorte
 
 - **I24 → Balance.html · Jahresabschluss:** \[data-plan-dynamic-presets\], \[data-plan-dynamic-preset\], \[data-plan-dynamic-hint\], \[data-plan-dynamic-details\]; Node 2, Browser 1.
 - **I23 → Balance.html · Plan prüfen / Plan anpassen:** \[data-annual-plan-toggle\], \[data-annual-plan-panel\], \[data-annual-plan-discard\], \[data-annual-plan-adjusted\], \[data-plan-segment\], \[data-plan-segment-value\]; Node 1, Browser 1.
 - **I22 → Balance.html · Haushalt & Plan:** \#householdPlanNotice, \[data-household-plan-open\], \#householdPlanDialog, \[data-household-plan-field\], \[data-household-plan-sources\], \[data-household-plan-validation\], \[data-household-plan-reset\], \[data-household-plan-later\], \[data-household-plan-accept\]; Node 2, Browser 3.
 - **I22 → Simulator.html · Haushalt & Plan:** \#householdPlanNotice, \[data-household-plan-open\], \#householdPlanDialog, \[data-household-plan-field\], \[data-household-plan-sources\], \[data-household-plan-validation\], \[data-household-plan-reset\], \[data-household-plan-later\], \[data-household-plan-accept\]; Node 2, Browser 3.
-- **I02 → depot-tranchen-manager.html · Haushalt und Ansichten:** \#managerHousehold, \#managerSectionNav, \#managePeopleBtn, \#managerPeopleModal, \#managerPlanPanel, \#managerPersonPanel, \#managerHistoryStartStatus, \[data-manager-profile\], \[data-manager-people\], .pv-avatar, .pv-person-card, .pv-household-card, .pv-tab, \#managerHistoryStartForm, \#managerHistoryStart, \#managerHistoryStartConfirm, .pv-person-history, \[data-history-start-form\], \[data-history-start-input\], \[data-history-recovery\], \#managerHistoryRecoveryStatus, .history-measurement; Node 9, Browser 2.
+- **I02 → depot-tranchen-manager.html · Haushalt und Ansichten:** \#managerHousehold, \#managerSectionNav, \#managePeopleBtn, \#managerPeopleModal, \#managerPlanPanel, \#managerPersonPanel, \[data-manager-profile\], \[data-manager-people\], .pv-avatar, .pv-person-card, .pv-household-card, .pv-tab, \#managerHistoryStartStatus, \#managerHistoryStartForm, \#managerHistoryStart, \#managerHistoryStartConfirm, .pv-person-history, \[data-history-start-form\], \[data-history-start-input\], \[data-history-recovery\], \#managerHistoryRecoveryStatus, .history-measurement; Node 9, Browser 2.
 - **I03 → depot-tranchen-manager.html · Personen verwalten:** \#managePeopleBtn, \#managerPeopleModal, \#managerPeopleList, \#managerPersonName, \#managerPeopleStatus, \#managerPeopleForm, \#managerPersonCreateBtn, \#managerHousehold, \#profileManagePeopleBtn, \[data-manager-people\]; Node 2, Browser 1.
 - **I04 → depot-tranchen-manager.html · Personen verwalten:** \#managePeopleBtn, \#managerPeopleModal, \#managerPeopleList, \#managerPersonName, \#managerPeopleStatus, \#managerPeopleForm, \#managerPersonRenameBtn, \#managerPersonRenameCancelBtn, \#managerHousehold, \#profileManagePeopleBtn, \[data-person-action="rename"\], \[data-person-action="delete"\], \[data-person-membership\], \[data-manager-people\]; Node 2, Browser 1.
 - **I09 → depot-tranchen-manager.html · Unabhängige Profil-Recovery:** \#managerProfileRecovery, \[data-profile-recovery\], \[data-profile-recovery-action="retry"\], \[data-profile-recovery-action="export"\], \[data-profile-recovery-action="reset"\]; Node 1, Browser 1.
@@ -238,85 +333,19 @@ Gemischte Einträge sind nur für ihre einzeln als geschützt ausgewiesenen Bele
 - **I18 → Handbuch.html · Kopfzeile und Probelaufband:** \#probelaufBand, \#probelaufBandText, \[data-probelauf-action\], \#probelaufStart, \#probelaufStatus; Node 1, Browser 1.
 - **I18 → Daten-Sicherung.html · Kopfzeile und Probelaufband (ohne zusätzliche Karte):** \#probelaufBand, \#probelaufBandText, \[data-probelauf-action\], \#probelaufStart, \#probelaufStatus; Node 1, Browser 1.
 
-## Seitenzusätze
+## Schutz und Risiken
 
-### index.html
+### Dynamische Schutzstatistik
 
-- **Tastatur:** Suite-Rahmenlinks und zentrale Sicherungseinstiege mit geschütztem Handoff und Flush. Native Tab-/Enter-/details-Bedienung; alte Sicherungs-/Importhashes führen zur zentralen Seite, \#probelaufControls nutzt nach sicherer Bindung denselben geschützten Kopfstartdialog. (I02, I05, I06, I08, I12)
-- **Druck:** css/suite-frame.css @media print blendet Kopf, Hauptnavigation, Sprunglink und Fehlerhost aus und löst Rahmencontainerzwänge. Kein eigener Druckknopf; Seiteninhalt ohne zusätzliche Drucköffnung. Geschlossene Erweitert-Klappe und Devtools werden nicht für Druck geöffnet; Browserdruck bleibt ungeprüft. (I01, I12, I11, I05)
-- **Meldungen:** Oberer Profil-/Speicher-Recoveryhost und fullBackupStatus; vier ruhige Kopfpillen. Speichertechnik ausschließlich auf Daten & Sicherung (D02). (I02, I03, I04, I07, I08, I09, I10)
-- **Dialoge:** Vollimportdialoge liegen auf Daten & Sicherung; Profil-Recoveryreset und Personenumstellung behalten ihre Seitendialoge. Probelaufende verwendet Probelauf beenden/Weiter testen. Personenverwaltung liegt im Manager. (I04, I07, I09, I11)
-- **Handbuchanker:** Handbuch bleibt über den Suite-Rahmen mit bestehendem Handoff und Flush erreichbar. (I06, I05)
+193 Funktionseinträge; 398 dynamische Belege:
 
-### Balance.html
+- geschützt: **376**
+- ungeschützt (Anker fehlt): **6**
+- ungeschützt (Erzeugungsform vom Prüfer nicht unterstützt): **16**
 
-- **Tastatur:** Suite-Rahmenlinks nativ mit Navigationsschutz. Drei Balance-Reiter (Überblick, Bedarf & Strategie und Diagnose) mit Klick/Enter/Space sowie Arrow/Home/End, roving tabindex, ARIA und Fokus. Alt+j/e/i bleiben erhalten. Der Handlungsplan ist ein nativer Dialog; Schließen/Escape des Handlungsplans führt zurück zum Auslöser. Info per Hover/Fokus/Klick mit Escape und Fokuswechsel. Aktionsfehler behalten Schließfokus und Scope. (B02, B36, B40, B46, B01)
-- **Druck:** Der native actionDetailsDialog enthält den vollständigen Handlungsplan, Empfehlungshinweis und aktuellen fachlichen Kontextfuß. Kopfdruck öffnet denselben Dialog. Druck blendet Rahmen, Eingaben, Historien, Meldungen, Overlays und andere Dialoge aus; keine Beschneidung durch Bildschirm-Maximalhöhe. Popupdruck ist extern offen. (B41, B45, B46, B01)
-- **Meldungen:** Getrennte Fehler-, Toast- und Aktionsfehlerhosts unter den drei Reitern; ebenso Engine-/Persistenz-/Profilwarnungen und dauerhafter Pending-Recoveryhinweis. clearError bleibt auf Berechnungsfehler beschränkt; Scope, Toastfrist und Diagnose-Rückfokus bleiben erhalten. (B39, B45, B46)
-- **Dialoge:** Jahresdialog, Handkurs und Handlungsplan behalten ihre Fachverträge. Jahres-Recovery führt mit Punkt-ID zur zentralen Vorschau; Snapshotrestore, Punktlöschung und Ordnerverbindung liegen auf Daten & Sicherung. Alte Balance-Sicherungskarte ist entfernt. (B08, B09, B22, B23, B36, B41)
-- **Handbuchanker:** Inhalts-Hilfelink a\[href="Handbuch.html"\]\[target="\_blank"\] öffnet nativ ohne Hash den manual-Standardtab; der getrennte Handbuchlink im Rahmen öffnet im selben Tab nach Export und bestätigtem Flush. Keine Balance-spezifische Kapitel-/Fokusübergabe. (B01)
+Gemischte Einträge sind nur für ihre einzeln als geschützt ausgewiesenen Belege geschützt. Beide ungeschützten Kategorien zählen separat.
 
-### Ausgaben.html
-
-- **Tastatur:** Native Rahmenlinks, Jahres-/Personensegmente und Zellknöpfe; Details mit Fokusführung, Escape und bestätigter Löschung. (B25, B26, B50, B27, B28, B43, B44, E01, E02)
-- **Druck:** Browserdruck der Ausgabenansicht; Bild-/Druckabnahme extern offen. (B25, B26, B50, B27, B28, B43, B44, E01, E02)
-- **Meldungen:** Kennzahlen, Recovery und getrennte Import-/Capturemeldungen am neuen Ort. (B25, B26, B50, B27, B28, B43, B44, E01, E02)
-- **Dialoge:** D5-Vorschau, Monatsdetails/Löschen, Recovery und gemeinsamer Monats-/Jahresdialog. (B25, B26, B50, B27, B28, B43, B44, E01, E02)
-- **Handbuchanker:** Handbuch.html\#ausgaben; alter Kapitelanker \#balance-ausgaben-check bleibt Alias. (B25, B26, B50, B27, B28, B43, B44, E01, E02)
-
-### Simulator.html
-
-- **Tastatur:** Suite-Rahmenlinks mit nativem Tab/Enter und sichtbarem Fokus; ein delegierter Klickbinder hält übernommene Navigation bis zum bestätigten Flush. Haupttabs nur Klick/native Enter/Space, kein ARIA-/Arrowmuster. S02: native Schrittknöpfe (ds-step-toggle) mit Enter/Space und aria-expanded, native details und Segmentknöpfe; Weiter/Zurück entfällt; gebundene Selects sind aus Tabreihenfolge und Barrierefreiheitsbaum entfernt, Labelaktivierung und Korrekturzugang fokussieren den gedrückten oder ersten freigegebenen Segmentknopf. MC-Cockpit: direkte vier Tablistener mit Pfeilen/Home/End/roving tabindex. Replayvergleich: click/keydown am statischen Vergleichshost delegiert, rerenderfester Fokus. Native details/Formular-/Selectbedienung; disabled-Fieldsets/Profil-/Busy-Sperren wirken zusätzlich. Werkstatt: drei sichtbare Kartenknöpfe, Pfeile/Home/End, aktive Tönung, Öffnen/Schließen mit Rückfokus; eine Fläche. Info-Popups unterstützen Hover, Fokus, Klick, Escape mit Rückfokus und Außenklick. (S01, S02, S23, S32, S47, S48, S50, S71)
-- **Druck:** css/suite-frame.css @media print verbirgt den Rahmen und löst Containerzwänge. simulator.css zeigt als S71-Ausnahmen MC-/Werkstattahnen, Replaywerkzeug, MC-Setup, vier MC-Ansichten und drei Replayvergleiche auch bei verborgenem Replay. Sweep-/Auto-Optimize-Werkzeuge werden samt vorhandener Heatmap/Pareto beziehungsweise Championausgabe auch mit hidden und bei inaktiver Werkstatt gedruckt. Replay-Expertenfelder sind im Druck zugänglich. Navigation/Karten entfallen; Grafik-, Overflow- und Stickyregeln bleiben wirksam. Druck ändert weder DOM-Werkzeugwahl noch Fokus; für geschlossene Annahmenschritte und Detailklappen bleibt die Auswahl erhalten; MC-Kennzahlen und Floor-/KPI-Texte drucken auch geschlossen, ohne Tooltipduplikate. \#print-footer ist leer ohne Writer. Simulator.html und Designsystem tools registrieren die Werkzeugmatrix, letztere mit Ausgaben bei 1366/1920/2560 px; Ausführung extern offen. Vollständiger Setup-/Backtest-/Sweep-/Optimizerdruck bleibt Prüflücke. (S01, S02, S23, S32, S50, S55, S60, S69, S71)
-- **Meldungen:** Getrennte Profil-/Migration-/Resetstatus, customValidity der Haushaltsbedarfe, MC-runstatus/alert-Fehlerbox/exportstatus, Replay-live-status/Vorschau/technische Vergleichsfehler, Backtest-feldbezogene Fehler/status/notices, Sweep-status und Auto-Optimize-progress plus gemeinsame Seitendialoge für Hinweise, Großlast und Pareto. Kurzlebige Exporttoasts und title-Normalisierung ersetzen diese dauerhaften Zustände nicht. „Niedrige Entnahme“ nur an der sichtbaren Entnahme, strikt unter endlicher CaR-Schwelle auf Basis der realen Jahresentnahme; ohne zugehörige Schwelle keine Markierung. Verkäufe neutral, Käufe hervorgehoben; Rohzeilen und JSON/CSV unverändert. Node-Belege für Zellzuordnung, Exportgleichheit und Kontrast; externe EXE-/Bildabnahme offen. (S03, S06, S22, S29, S30, S31, S44, S45, S49, S50, S51, S53, S57, S59, S62, S68, S70)
-- **Dialoge:** Reset, Replay-Ersetzen/-Import/-Verwerfen und Sweep-Großlast nutzen app/shared/page-dialog.js mit konkreten Bestätigungs-/Abbruchknöpfen. Pareto verwendet requestPageChoice mit zwei Selects, acht bisherigen Metriken und Diagramm anzeigen/Abbrechen. Hinweise nutzen Verstanden ohne fachliche Zustimmung. Pending/Busy und Kontextprüfung schützen Jobs/Writes. MC-Ergebnispanels, Filechooser, Inline-Telemetrie und Navigationsschutz bleiben eigenständig. Browser-/Bild-/WebViewabnahme extern offen. (S22, S46, S57, S59, S62, S68, S72)
-- **Handbuchanker:** Inhalts-Hilfelink a\[href="Handbuch.html"\]\[target="\_blank"\] ohne Kapitelhash öffnet nativ den manual-Standardtab. Rahmenlinks zu Handbuch und Übersicht wechseln im selben Tab nach Export und bestätigtem Flush; kein spezieller Simulator-Handbuchanker. (S01, S73)
-
-### depot-tranchen-manager.html
-
-- **Tastatur:** Suite-Rahmenlinks mit nativem Tab/Enter und sichtbarem Fokus; ein delegierter Klickbinder hält übernommene Navigation bis zum bestätigten Flush. Keine globalen Tastenkürzel. Native Tab/Enter/Space und details-Bedienung; fokussierbare dynamische Scrollregion. Tranche-/Cashmodal: direkter keydown für Escape/Tab/Shift+Tab, Erstfokus Name/Cashbalance und gespeicherter Rückfokus. Escape/Abbrechen prüfen echte Commitflags; Dirty-Schließen verlangt Verwerfen. Tranchenhintergrund ignoriert Dirty-Klicks und erhält Fokus, Cashhintergrund bleibt ein geprüfter Schließweg. Die oberste Schutznachfrage konsumiert Escape. Cash-Cancelbutton ist während Cashcommit zusätzlich disabled. Keine pauschale Tastaturvollabdeckung behauptet. Tranchendialoge lösen entfernte Auslöser nach Editrender über stabile ID neu auf. Cash-Rückfokus löst erneuerte Auslöser über den Zielverkauf auf; Browserabnahme offen. (V12, V15, V19, V23, V24, V01)
-- **Druck:** css/suite-frame.css @media print blendet Kopf, Hauptnavigation, Sprunglink und Fehlerhost aus und löst Rahmencontainerzwänge. Keine eigene @media print-Regel und kein Druckbutton in depot-tranchen-manager.html. Browserdruck druckt den aktuellen sichtbaren Bestand; verborgene Modals/geschlossene Empfehlungsdetails werden nicht eigens geöffnet, Tabelle kann breit bleiben. Vollständiger Druck ist Prüflücke, keine bereits erfüllte neue Druckfunktion. (V12, V19, V24, V01)
-- **Meldungen:** Getrennte Hosts für Kurs-/Proxytext, Persistenzstatus mit pending/error/ok und quantifizierter Legacy-Steuerwarnung, Profilfeldalert, Tranchefeldalert, Reconcile-status und dynamischen Cashdialogfehler. Unavailable erhält bestätigten Bestand/Loadretry, corrupt sperrt Verarbeitung und bietet bewusste Rohdaten-/Reset-/Backupwege. Fehlflush rollt zurück und liefert priorisierten Saveretry, nicht unbestätigten Erfolg. Unlesbarer Cashaudit meldet ausdrücklich unvollständige Liste statt leeren Bestand. (V07, V10, V15, V16, V17, V20, V22, V23)
-- **Dialoge:** Tranchendialog und Cashbestätigungs-/Korrekturdialog behalten ihre Lifecycle-/Fokusbindung. Einzel-/Gesamtlöschung, Corruptreset, Ausführungsabgleich und Profillöschung verwenden den gemeinsamen Seitendialog app/shared/page-dialog.js. Kurshinweise nutzen Verstanden. Keine fachliche Zustimmung bei Escape, Signalabbruch oder Öffnungsfehler. Kein eigener Bestandimport/-export; zentraler Backupimport per Link zur Startseite. (V08, V09, V10, V13, V14, V15, V17, V20, V23)
-- **Handbuchanker:** Rahmenlink zu Handbuch.html ohne Kapitelhash; kein direkter Handbuchkapitelanker. \#managerBackLink führt nach Export und bestätigtem Flush zu index.html. Recoverylinks erhalten Navigationsschutz und Flush ohne Export zu index.html bzw. index.html\#fullBackupImportBtn; der Hash fokussiert den zentralen Backupimport. Anerkannte Manager-Sprungziele laufen beim Start und bei Hashwechseln zentral über startTranchenManagerPage/openManagerOverviewTarget; Karten und Personenverwaltung binden nur ihre eigenen Bedienereignisse. (V01, V17, V24)
-
-### Handbuch.html
-
-- **Tastatur:** Suite-Rahmenlinks mit nativem Tab/Enter und sichtbarem Fokus; ein delegierter Klickbinder hält übernommene Navigation bis zum bestätigten Flush. Keine eigenen Tastenkürzel oder Arrow-/Home-/End-Handler für role=tab. Native Buttons/Links sind fokussierbar; TOC setzt Zielfokus per Script. (H01, H02, H03, H14)
-- **Druck:** css/suite-frame.css @media print blendet Kopf, Hauptnavigation, Sprunglink und Fehlerhost aus und löst Rahmencontainerzwänge. Keine zusätzliche Inhaltsdruckregel, kein Druckbutton. CSS blendet inaktive content-section aus; vollständigen Druck beider Panels vor Umbau prüfen. (H13, H01)
-- **Meldungen:** Statische warning-box/Informationstexte; ungültige Tabs und TOC-Ziele erzeugen console.warn, keine sichtbaren Fehlerdialoge. (H02, H03, H13)
-- **Dialoge:** Keine confirm-, alert- oder DOM-Dialoge im Handbuch; Guided-Tours ist eine Pfadangabe, kein Tour-Dialog. (H12)
-- **Handbuchanker:** Alle fünf Seiten enthalten einen Rahmenlink ohne Hash zum manual-Standardpanel im selben Tab nach bestätigtem Handoff. Zusätzlich erhält die Handbuchkarte der Startseite Schutz und Flush ohne Export; native Hilfe im neuen Tab auf Balance/Simulator bleibt eigenständig. Kapitel-IDs H04–H12, TOC H03 und Querverweise H14 bleiben unverändert. (H01, H03, H14)
-- **Externer Anker:** index.html → kein Kapitelhash; H01; Tab manual; Kein Fokusaufruf beim Laden; normale Seitennavigation ohne Hash.; Handbuchkarte geschützt im gleichen Tab ohne Export; separater Rahmenlink mit Profilhandoff.
-- **Externer Anker:** Balance.html → kein Kapitelhash; H01; Tab manual; Kein Fokusaufruf beim Laden; normale Seitennavigation ohne Hash.; Inhaltshilfe: neuer Tab durch target=\_blank; Rahmen: gleicher Tab mit Profilhandoff.
-- **Externer Anker:** Simulator.html → kein Kapitelhash; H01; Tab manual; Kein Fokusaufruf beim Laden; normale Seitennavigation ohne Hash.; Inhaltshilfe: neuer Tab durch target=\_blank; Rahmen: gleicher Tab mit Profilhandoff.
-- **Externer Anker:** depot-tranchen-manager.html → kein Kapitelhash; H01; Tab manual; Kein Fokusaufruf beim Laden; normale Seitennavigation ohne Hash.; Rahmenlink im gleichen Tab mit Profilhandoff.
-
-### Daten-Sicherung.html
-
-- **Tastatur:** Native Tab-/Enter-Bedienung und bestehender geschützter Suite-Handoff. (D01, D02, D03)
-- **Druck:** Suite-Rahmen und Backupaktionen im Druck ausgeblendet; externe Druckabnahme ausstehend. (D01, D02, D03)
-- **Meldungen:** Sicherungsstatus live; fehlende Zeit, Basis und unlesbare Daten ausdrücklich benannt. (D01, D02, D03)
-- **Dialoge:** Vollimport mit bestehendem Seitendialog, Recoverydatei und bestätigtem Archivpunkt. (D01, D02, D03)
-- **Handbuchanker:** Handbuch über geschützten Direktanker \#daten-sicherung; TOC, Hash und Fokus führen zum Kapitel Daten sichern & wiederherstellen. (D01, D02, D03)
-
-## Entfallen auf Nutzerentscheid (05.10.2026)
-
-- **B06:** Entfallen auf Nutzerentscheid (05.10.2026): Statusklappe, manuelles Nachrücken/Undo, Markt-CSV beziehungsweise Balance-Reset entfernt. Cashhinweis bleibt separat als B47 im Überblick erhalten.
-- **B10:** Entfallen auf Nutzerentscheid (05.10.2026): Statusklappe, manuelles Nachrücken/Undo, Markt-CSV beziehungsweise Balance-Reset entfernt. Cashhinweis bleibt separat als B47 im Überblick erhalten.
-- **B11:** Entfallen auf Nutzerentscheid (05.10.2026): Statusklappe, manuelles Nachrücken/Undo, Markt-CSV beziehungsweise Balance-Reset entfernt. Cashhinweis bleibt separat als B47 im Überblick erhalten.
-- **B24:** Entfallen auf Nutzerentscheid (05.10.2026): Statusklappe, manuelles Nachrücken/Undo, Markt-CSV beziehungsweise Balance-Reset entfernt. Cashhinweis bleibt separat als B47 im Überblick erhalten.
-- **S18:** P16 Slice 1 entfernt die Ansparbedienung. Alte vier Speicherschlüssel bleiben unverändert erhalten, Simulatoradapter ignorieren sie; explizite DOM-freie Rechnungen bleiben bestehen.
-
-## Ausgangsregister und Detailquelle
-
-162 Ausgangskennungen bleiben mit Status, Begründung und aktuellen Kennungsbezügen in der JSON-Quelle nachvollziehbar. Zustandsgruppen benennen ihre Selektoren ausdrücklich; Prüf-, Speicher-, Bindungs- und Testdetails stehen dort vollständig.
-
-Die lesbare Schema-2-Quelle schreibt Status, Modul-/Dateipfade, Speicherkeys, Zielpakete und Selektoren unmittelbar aus. Gemeinsame Definitionen enthalten ausschließlich tatsächlich wiederholte Langtexte ab 80 Unicode-Zeichen mit unterscheidbaren sprechenden Namen; jede Definition steht auf einer eigenen Zeile. `@bereich.inhalt` verweist auf einen Langtext, `@@` erhält ein wörtliches @; `join` verbindet ausschließlich Textteile in beschreibenden Feldern. Lokale Audit-/Prüfbezüge nennen den Index im eigenen Eintrag; Zielbezüge benennen den konkreten Zielort und Änderungsgrund. Der allgemeine Resolver unterstützt weiterhin Objektbezüge und Tabellen für Vertragsproben, das lesbare Quellformat erlaubt sie nicht. Fehlende Referenzen, falsche Typen und Zyklen sind Vertragsfehler.
-
-Inklusive UTF-8-Bytegrenzen: Quelle 1500000 B (ausdrückliche Nutzer-/Operatorentscheidung vom 06.10.2026), Lesefassung 225000 B, kompakt serialisierter aufgelöster Eintrag 20000 B. Höchstens 2000 Unicode-Zeichen je Quellzeile.
-
-## Funktionen ohne vollständigen Zielbildplatz
+### Funktionen ohne vollständigen Zielbildplatz
 
 - **I04:** Personen & Vermögen → Personen verwalten / Personenreiter — Umbenennen, bestätigtes Löschen und Schutz des letzten Defaultprofils ergänzen.
 - **I09:** Personen & Vermögen → Profil-Recovery (auch Startseite) — Recovery sichtbar ergänzen; Exportvoraussetzung, gezielten Scope und Sperren erhalten.
@@ -328,7 +357,7 @@ Inklusive UTF-8-Bytegrenzen: Quelle 1500000 B (ausdrückliche Nutzer-/Operatoren
 - **B42:** Kontexthilfen / Entwicklerbereich — Entwicklerbereich separat erhalten und nicht mit druckbarem Finanzbericht verwechseln.
 - **B46:** Meldungen — Eigenen persistent sichtbaren Aktionskanal mit Scope und manuellem Schließen ergänzen; keine Vermischung mit zeitlich begrenzten Toasts.
 - **B27:** Ausgaben → Ausgaben-Check — Erhaltener Ablauf auf der eigenständigen Ausgabenseite; Filter sind lesend, Imports nutzen D5.
-- **V04:** Personen & Vermögen → Tagesgeld & Gold → Goldstrategie — Alle fünf Felder ergänzen; Strategie-Steuerfreiheit ist keine stille Umklassifizierung von taxExempt eines Lots.
+- **V04:** Personen & Vermögen → Person → Gold — Alle fünf Felder ergänzen; Strategie-Steuerfreiheit ist keine stille Umklassifizierung von taxExempt eines Lots.
 - **V05:** Personen & Vermögen → Pflegereserve — Vollständige Quelle und Pflegegrad-/Betragsvertrag statt verkürzter Geldmarktangabe.
 - **V06:** Personen & Vermögen → Pflegereserve → Policies — Alle vier Policies mit vollständigen Labels erhalten.
 - **V07:** Personen & Vermögen → Profilkarten → Validierung und Autosave — Autosavevertrag erhalten; aktive gültige Dezimaleingaben bis zum Verlassen unverändert lassen, dann ohne Rundung deutsch anzeigen. Reiner DOM-Wechsel erzeugt weder Save noch Dirty-Zustand.
@@ -344,23 +373,16 @@ Inklusive UTF-8-Bytegrenzen: Quelle 1500000 B (ausdrückliche Nutzer-/Operatoren
 - **V21:** Vermögen → Ausführung → Cashstatuswahl — Vollständige Offen/Bereits-enthalten-Wahl und Cashstandnachweis ergänzen.
 - **V22:** Gemeinsamer Status → Vermögen → Vorgänge — Unvollständigkeit/Altstatus, wirksame Nachweise und Korrekturaktionen erhalten.
 - **V23:** Gemeinsamer Dialog → Vermögen → Cashabgleich — Grund, erwartete Revision, Feldfehler und Fokus erhalten; ausdrückliche Dialogbestätigung übernimmt absoluten Tagesgeldstand samt Cashhistorie und Audit gemeinsam, ohne Nettoerlös zu addieren.
-- **H02:** Handbuch → Erste Schritte und vollständiges Handbuch — Schnellstart-Unteransicht ergänzen; beide Panels und ARIA-Zustände erhalten.
-- **H05:** Handbuch → Simulator-Grundlagen und Eingaben — Alle Kapitel und Anker am Zielort erhalten; kurze Zielbildtexte ersetzen die Bestandsartikel nicht.
-- **H06:** Handbuch → Replay, Backtest, Ergebnisse, Szenario-Log, Sweep, Best Practices — Vollständige Fachkapitel für Replay, Backtest, Log, Sweep und Best Practices ergänzen.
-- **H08:** Handbuch → Balance-Auswertung und laufende Nutzung — Eigene Kapitel zu Verlauf, Ausgaben, Kapitalfluss und Verlusttopf ergänzen.
-- **H09:** Handbuch → Profile, Haushalt und Tranchenlebenszyklus — Profilwechsel, Haushalt, operative Zustände, Verkauf und manuelle Cashbestätigung als vollständige Kapitel ergänzen.
-- **H10:** Handbuch → Wochen-/Jahres-Onboarding und Pflege — Komplette Wochen-/Jahresabläufe und Pflegecheckliste ergänzen.
-- **H11:** Hilfe → Probleme, FAQ und Begriffe — Probleme, FAQ und Glossar als vollständige Inhalte ergänzen.
-- **H12:** Handbuch → Datenquellen, Versionen, Dokumente und Support — Referenzkapitel und Guided-Tours-Pfad erhalten; keine vorhandene interaktive Tour behaupten.
-- **H13:** Handbuch → Artikel, Tabellen, Hinweise, Druck — Vollständige Artikel übernehmen und bewusste Druckdarstellung beider Panels ergänzen.
 
-## Änderungsrisiko
+### Änderungsrisiko
 
 Nachweise gelten für das durch das genannte Paket berührte Verhalten. Jedes Lückenpaket gehört zum Zielpaketsatz des Eintrags. Generische spätere Zuordnungen tragen „vorläufig – wird in der Paket-Idee eingeordnet“. Bei fehlendem Anker zuerst data-* ergänzen, Beleg und Bediennachweis aktualisieren, danach umbauen.
 
 Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 
-### Paket 2
+#### Zuordnung 2
+
+Paketbezug: 2.
 
 - **I05:** Beide Fachkarten mit realem Profilbundle und Startseiten-Fehlermeldung; verschachtelte CTA-Buttons gesondert prüfen. — Paket 2 ersetzt die Fachnavigation im gemeinsamen Rahmen; bestätigten Flush, blockierten Wechsel bei Speicherfehler und den unterschiedlichen Profil-Handoff beider Fachkarten erhalten.
 - **I10:** Konkreter Inline-Bannerablauf mit Quarantänehinweis, Importzielverweis und Schließen; persistence prüft Backendzustände, nicht diesen Renderer. — Paket 2 verlagert den seitenweiten Recoverybereich in den gemeinsamen Rahmen; Banner, Importzugang und sitzungsweises Schließen müssen außerhalb der Sicherungskarte erreichbar bleiben.
@@ -380,11 +402,13 @@ Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 - **S72:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
 - **S73:** Lifecycleordnung mit echter Facade Node-geprüft; Browser-Unloadabschluss und BFCache samt Backendfehlern bleiben bestmöglich und extern zu prüfen. — Keine garantierte asynchrone Unloadspeicherung. Native Dialoge, Haushaltsreload und Historienwege sind registriert, in der Sandbox aber nicht ausführbar.
 - **S73:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
-- **V01:** BFCache-/Sichtbarkeitsrückkehr im echten Browser prüfen; vorhandener Mock deckt nur visibilitychange ab. — Paket 2 verändert Rücknavigation und Profilanzeige; Einzelprofil-Handoff sowie erneutes Laden bei BFCache-/Sichtbarkeitsrückkehr müssen zum aktiven Profil passen.
-- **V01 · \[data-profile-id\]:** Eigener Attributanker vorhanden; vollständiger Bediennachweis bleibt offen. — Paket 2 verändert Rücknavigation und Profilanzeige; Einzelprofil-Handoff sowie erneutes Laden bei BFCache-/Sichtbarkeitsrückkehr müssen zum aktiven Profil passen. Den eigenen data-profile-id-Anker der Profilanzeige erhalten.
+- **V01:** BFCache-/Sichtbarkeitsrückkehr im echten Browser prüfen; vorhandener Mock deckt nur visibilitychange ab. — Profil-ID, Einzelprofil-Handoff und BFCache-/Sichtbarkeitsrückkehr müssen zum aktiven Profil passen.
+- **V01 · \[data-profile-id\]:** Eigener Attributanker vorhanden; vollständiger Bediennachweis bleibt offen. — Profil-ID, Einzelprofil-Handoff und BFCache-/Sichtbarkeitsrückkehr müssen zum aktiven Profil passen.
 - **V24:** Screenreader, komplette Labels-/Tabreihenfolge beider Dialoge und tatsächlicher Ausdruck; partielle Renderer-/Browserbelege sind kein Gesamt-A11y-/Drucknachweis. — Paket 2 verändert Dialog-, Tabellen- und Druckcontainer; Labels, Hilfeschalter und Tabreihenfolge beider Dialoge müssen erreichbar und der Ausdruck verständlich bleiben.
 
-### Paket 6.2
+#### Zuordnung 6.2
+
+Paketbezug: 6.2.
 
 - **I07:** Nativer Dateidialog, echter Import-/Exportklick, Abbruch, Reload und sämtliche UI-Fehlerzustände im Startseitenlayout; eine künftige Importvorschau ist keine Bestandsfunktion. — vorläufig – wird in der Paket-Idee eingeordnet
 - **I08:** Initialer Backup-Deep-Link mit Fokus; Backendtests allein prüfen diesen DOM-Ablauf nicht. — vorläufig – wird in der Paket-Idee eingeordnet
@@ -392,10 +416,12 @@ Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 - **B22:** Bedienung und Darstellung dieses Bereichs sind nicht vollständig durch einen gezielten Browserfall belegt. — vorläufig – wird in der Paket-Idee eingeordnet
 - **B23:** Erfolgreiche Ordnerberechtigung und reale Dateischreibung ohne umfassenden Browsernachweis. — vorläufig – wird in der Paket-Idee eingeordnet
 
-### Paket 3.1
+#### Zuordnung 3.1
+
+Paketbezug: 3.1.
 
 - **B31:** Bedienung und Darstellung dieses Bereichs sind nicht vollständig durch einen gezielten Browserfall belegt. — vorläufig – wird in der Paket-Idee eingeordnet
-- **B31:** Warum-Referenzzustände \[01\](entwuerfe/warum-gekuerzt/01-dein-fall-zugeklappt.html) · \[02\](entwuerfe/warum-gekuerzt/02-dein-fall-aufgeklappt.html) · \[03\](entwuerfe/warum-gekuerzt/03-baerenmarkt-aufgeklappt.html) · \[04\](entwuerfe/warum-gekuerzt/04-nicht-gekuerzt.html); zugehörige Bilder für 1920/2560 im Entwurfsverzeichnis; externe Abnahme ausstehend. — Node-Prüfungen ersetzen keine Bildabnahme; Inhaltsbreitengrenze und fehlender Nachher-Runway sind dokumentierte Verträge. Die Warum-Treppe ist mit Node-/DOM-Tests belegt; Browsergrundbedienung, Bildvergleich bei 1920×1080/2560×1440 und Kandidaten-EXE bleiben bis zur externen Messung ausstehend.
+- **B31:** Vier historische Warum-Referenzzustände samt Bildern für 1920/2560 sind in den Archivbelegen erfasst; externe Abnahme ausstehend. — Node-Prüfungen ersetzen keine Bildabnahme; Inhaltsbreitengrenze und fehlender Nachher-Runway sind dokumentierte Verträge. Die Warum-Treppe ist mit Node-/DOM-Tests belegt; Browsergrundbedienung, Bildvergleich bei 1920×1080/2560×1440 und Kandidaten-EXE bleiben bis zur externen Messung ausstehend.
 - **B32:** Bedienung und Darstellung dieses Bereichs sind nicht vollständig durch einen gezielten Browserfall belegt. — vorläufig – wird in der Paket-Idee eingeordnet
 - **B33:** Positive Pflegebucketdiagnostik und sämtliche Policy-/Deckungszustände benötigen gezielten Browsernachweis. — vorläufig – wird in der Paket-Idee eingeordnet
 - **B34:** Bedienung und Darstellung dieses Bereichs sind nicht vollständig durch einen gezielten Browserfall belegt. — vorläufig – wird in der Paket-Idee eingeordnet
@@ -404,7 +430,9 @@ Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 - **B45:** Screenreaderansage und reale Zeitmessung nicht im Browserfall; Timervertrag gezielt im Node-Test. — vorläufig – wird in der Paket-Idee eingeordnet
 - **B46:** Automatische Ansage mit realem Screenreader bleibt ungemessen; DOM-/Fokusvertrag in Node und Browser geprüft. — vorläufig – wird in der Paket-Idee eingeordnet
 
-### Paket 3.2
+#### Zuordnung 3.2
+
+Paketbezug: 3.2.
 
 - **I23:** Browserfälle registriert, noch nicht extern ausgeführt. — Browser-, Bild- und Tauri-Abnahme durch die Steuerung offen.
 - **B03:** Offen: Bildabnahme 03/04 (1920/2560 px). — Bildabnahme extern offen.
@@ -426,7 +454,9 @@ Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 - **B19:** Bedienung und Darstellung dieses Bereichs sind nicht vollständig durch einen gezielten Browserfall belegt. — vorläufig – wird in der Paket-Idee eingeordnet
 - **B47:** P13b: Balance annual commit mit aktivem Jahreszugang, erstem Jahresschritt und Übergang zur Startseite sowie Monats-/Importweg registriert, noch nicht extern ausgeführt. — Browser-/WebView-Abnahme durch die Steuerung außerhalb der Sandbox offen; Nodebelege ersetzen sie nicht.
 
-### Paket 3.3
+#### Zuordnung 3.3
+
+Paketbezug: 3.3.
 
 - **B37:** Bedienung und Darstellung dieses Bereichs sind nicht vollständig durch einen gezielten Browserfall belegt. — vorläufig – wird in der Paket-Idee eingeordnet
 - **B37:** Offen: Referenzen 07/08/09 und Abschlussrundgang 01–09 bei 1920/2560 px, Browser-Smoke und Kandidaten-EXE. — Node-Prüfungen ersetzen keine externe optische Abnahme.
@@ -442,7 +472,9 @@ Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 - **B43 · table:** Stabiler Anker und daran gebundener Bediennachweis fehlen. — vorläufig – wird in der Paket-Idee eingeordnet
 - **B44:** Keine neue Stichtageingabe oder stillschweigende automatische Kursaktualisierung aus dem Import ableiten. — vorläufig – wird in der Paket-Idee eingeordnet
 
-### Paket 4.1
+#### Zuordnung 4.1
+
+Paketbezug: 4.1.
 
 - **S01:** Nicht jede Eingabe-, Fehler-, Fokus- und Druckkombination ist gezielt getestet — vorläufig – wird in der Paket-Idee eingeordnet
 - **S01:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
@@ -486,10 +518,10 @@ Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 - **S21:** Kosten, Flex-Kürzung und Mortalität: Nicht jede Eingabe-, Fehler-, Fokus- und Druckkombination ist gezielt getestet — vorläufig – wird in der Paket-Idee eingeordnet
 - **S21:** Paket 4.1: Alle 15 Pflegegrad-Eingaben vollständig aufgeführt, aber keine Browsermutation jedes Zusatz-/FlexCut-/Mortalityfelds einschließlich Reload und Kostenpresetrückwechsel. — vorläufig – wird in der Paket-Idee eingeordnet
 - **S21:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
-- **S22:** Nicht jede Eingabe-, Fehler-, Fokus- und Druckkombination ist gezielt getestet — vorläufig – wird in der Paket-Idee eingeordnet
-- **S22:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
 
-### Paket 4.2
+#### Zuordnung 4.2
+
+Paketbezug: 4.2.
 
 - **S23:** Nicht jede Eingabe-, Fehler-, Fokus- und Druckkombination ist gezielt getestet — vorläufig – wird in der Paket-Idee eingeordnet
 - **S23:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
@@ -539,7 +571,9 @@ Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 - **S43:** Nicht jede Eingabe-, Fehler-, Fokus- und Druckkombination ist gezielt getestet — vorläufig – wird in der Paket-Idee eingeordnet
 - **S43:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
 
-### Paket 4.3
+#### Zuordnung 4.3
+
+Paketbezug: 4.3.
 
 - **S44:** Nicht jede Eingabe-, Fehler-, Fokus- und Druckkombination ist gezielt getestet — vorläufig – wird in der Paket-Idee eingeordnet
 - **S44:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
@@ -606,7 +640,9 @@ Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 - **S69 · \[data-auto-optimize-model-status\]:** Eigener Attributanker vorhanden; vollständiger Bediennachweis bleibt offen. — vorläufig – wird in der Paket-Idee eingeordnet
 - **S69:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
 
-### Paket 5
+#### Zuordnung 5
+
+Paketbezug: 5.
 
 - **I02:** Echter Startseitenwechsel mit gültigen Optionen, Badge und Fehler-/Recoveryzuständen. — vorläufig – wird in der Paket-Idee eingeordnet
 - **I02:** Stabiler Anker und daran gebundener Bediennachweis fehlen. — vorläufig – wird in der Paket-Idee eingeordnet Historische Startseitenoption durch Managerreiter ersetzt; externe Bedienabnahme bleibt offen.
@@ -653,7 +689,9 @@ Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 - **V23:** Browserprüfung des Rückfokus nach Cashcommit; der erneuerte Aktionsknoten wird jetzt über targetActionId aufgelöst. — vorläufig – wird in der Paket-Idee eingeordnet
 - **V25:** ISIN-/Ticker-/Kategorie-/Typänderung, leerer Kurs und Kursflush-Retry im echten Browser; Node belegt Feldmatrix und Rollback, bestehender Smoke nur Notiz/Preis sowie Frischekette. — vorläufig – wird in der Paket-Idee eingeordnet
 
-### Paket 6.3
+#### Zuordnung 6.3
+
+Paketbezug: 6.3.
 
 - **I01:** Profilbadge, Fallback unbekannt und Abgrenzung zur Haushaltsauswahl nicht gezielt geprüft. — Browser-/WebView-Abnahme einschließlich P13b-Jahreszugang und Monats-/Importweg extern offen.
 - **I20:** Browserfälle sind registriert. — Externe Browser-/WebView-Ausführung und Bildabnahme bleiben offen.
@@ -679,17 +717,21 @@ Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 - **D03:** Registrierter Browserfall; externe Ausführung offen. — Sandbox ohne Server und Browser.
 - **D04:** Registrierter Browserfall; externe Ausführung offen. — Sandbox ohne Server und Browser.
 
-## Testschuld
+### Testschuld
 
 Vorhandene Nachweislücken ohne durch diesen Umbau geändertes Verhalten. Der Paketbezug dient der Einordnung und begründet keine Pflicht vor diesem Paket.
 
 Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 
-### Paket 3.2
+#### Zuordnung 3.2
+
+Paketbezug: 3.2.
 
 - **B42:** tests/worker-telemetry.test.mjs existiert nicht; echte Toggle-/Clipboard-/Reportbedienung ohne gezielten Nachweis. — Entwicklertelemetrie bleibt fachlich unverändert; fehlender Bediennachweis ist Testschuld.
 
-### Paket 6.3
+#### Zuordnung 6.3
+
+Paketbezug: 6.3.
 
 - **I11:** Telemetrie-UI einschließlich Reload und alert; eine tests/worker-telemetry.test.mjs existiert nicht und wird nicht als Nachweis geführt. — Entwicklertelemetrie bleibt fachlich unverändert; fehlender Bediennachweis ist Testschuld.
 - **I18:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Echte Reload-/Seiten-/Darstellungsprüfung erfolgt durch die Steuerung; Node-Workflow deckt Muster und synthetische Kurswege ab. Fortschritt und Fremdcommit-Ablehnung sind in Node regressionsgesichert; echte Browserabnahme dieser beiden Befunde bleibt offen.
@@ -705,7 +747,7 @@ Schrift- und Farbänderungen allein verlangen keinen pauschalen Bediennachweis.
 - **H12:** architecture-evidence.test.mjs prüft Architektur-Evidenzregister, nicht diese Handbuchkapitel; Ausgangsbezug ist korrigiert. — Vorhandene Nachweislücke; kein durch dieses Designpaket geändertes Verhalten.
 - **H15:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Echte Reload-/Seiten-/Darstellungsprüfung erfolgt durch die Steuerung; Node-Workflow deckt Muster und synthetische Kurswege ab. Fortschritt und Fremdcommit-Ablehnung sind in Node regressionsgesichert; echte Browserabnahme dieser beiden Befunde bleibt offen.
 
-## Prüfergrenzen
+### Prüfergrenzen
 
 Nicht unterstützte Erzeugungsformen sind kein automatischer Auftrag zur Produktänderung. Ihr stabiler Anker ist nur lexikalisch am genannten Ort geprüft.
 
@@ -723,9 +765,9 @@ Nicht unterstützte Erzeugungsformen sind kein automatischer Auftrag zur Produkt
 - **V22 · \[data-cash-action="correct"\]:** app/tranches/tranchen-manager-renderer.js / buildReconciliationCashStatusesHtml — Verschachtelte bedingte Aktionsmarkupvariable; der Prüfer löst ternäre Zweige nicht auf.
 - **V22 · \[data-target-action-id\]:** app/tranches/tranchen-manager-renderer.js / buildReconciliationCashStatusesHtml — Eigener Buttonanker vorhanden; bedingte action-Templatevariable wird nicht aufgelöst.
 
-## Befunde außerhalb des Inventars
+### Befunde außerhalb des Inventars
 
-### F-01
+#### F-01
 
 Kennungen: I06 · Quelle: index.html / apps-grid: a.app-card \> button.cta-button
 
@@ -733,7 +775,7 @@ Alle drei Anchor-Karten enthalten ein interaktives button.cta-button als Kind. V
 
 Nur dokumentiert; Bereinigung im späteren Karten-/Navigationsumbau, keine Anwendungsänderung in Paket 0.
 
-### F-02
+#### F-02
 
 Kennungen: H02 · Quelle: Handbuch.html / tabs-container / switchTab
 
@@ -741,7 +783,7 @@ role=tab-Buttons setzen aria-selected, besitzen aber weder roving tabindex noch 
 
 Nur dokumentiert; Tastaturnavigation im späteren Hüllen-/Handbuchumbau prüfen und ergänzen.
 
-### F-03
+#### F-03
 
 Kennungen: B02 · Quelle: app/balance/balance-binder.js / handleTabClick
 
@@ -749,7 +791,7 @@ Slice 1: fünf Reiter mit gemeinsamem Klick-/Tastaturpfad für active, hidden, A
 
 Historischer Ausgangsbefund umgesetzt; Browserabnahme extern offen.
 
-### F-04
+#### F-04
 
 Kennungen: B36 · Quelle: app/balance/balance-binder.js / selectTab
 
@@ -757,7 +799,7 @@ Slice 1: Diagnose ist ein reguläres Reiterpanel; Drawer, Overlay und Schließkn
 
 Historischer Ausgangsbefund durch Reitervertrag ersetzt; Copy-/Filterverträge bleiben.
 
-### F-05
+#### F-05
 
 Kennungen: S01, S02 · Quelle: app/simulator/simulator-main-tabs.js / initTabSwitching; Simulator.html: fieldset.collapsible legend
 
@@ -765,7 +807,7 @@ Haupttabs besitzen nur .active-Klickwechsel ohne ARIA-/Arrowvertrag; Accordionle
 
 Nur dokumentiert; zugängliche Setup-/Hüllennavigation im späteren Paket 2/4.1 klären, keine Produktänderung in Paket 0.
 
-### F-06
+#### F-06
 
 Kennungen: V09, V15, V23 · Quelle: app/tranches/tranchen-manager-page.js / persistTranchen / executeCashPosting: finally render vor eigenem bestätigtem Dialogschluss
 
@@ -773,10 +815,36 @@ Historisch konnte der Cashrückfokus auf einen entfernten Auslöser zeigen. Pake
 
 Historische Kennung bleibt erhalten. Echte Browserfokusprüfung durch Steuerung offen.
 
-### F-07
+#### F-07
 
 Kennungen: V16, V20 · Quelle: app/tranches/tranchen-manager-page.js / setManagerControlsBlocked; renderReconciliationState / renderReconciliationPreview; initTranchenManagerPage und Commit-finally: render vor renderPersistenceState
 
 Historisch konnte der Persistenzrender fachliche Preview-/Confirm-Sperren aufheben. Paket 5, Slice 3 verbindet globale Sperre mit vorhandenem Bestand und ready-Preview; fachliche Handlerprüfung bleibt erhalten.
 
 Historische Kennung bleibt erhalten. Endgültige Zustände sind in Node geprüft; echte Browserprüfung durch Steuerung offen.
+
+
+## Herkunft
+
+sourceRevision bezeichnet dauerhaft den Anwendungscode vor der Design-Grundlage, nicht den aktuellen Inventarcommit. Die historische Registerprovenienz ist die erste Inventarerhebung (d0418d2 bis db728d0); baselineAudit erhält deren Ausgangskennungen unabhängig davon. Der Fortsetzungscommit 0f4ebce bezeichnet den Inventarstand vor dieser Nachschärfung. Die Basisrevision behauptet kein dort vorhandenes Inventar; das Schutzgate benötigt keinen Live-Git-Zugriff.
+
+Fahrplanreihenfolge: 1 → 2 → 6.2 → 3.1 → 3.2 → 3.3 → 4.1 → 4.2 → 4.3 → 5 → 6.3
+
+### Entfallen auf Nutzerentscheid
+
+Nutzerentscheid vom 05.10.2026.
+
+- **B06:** Entfallen auf Nutzerentscheid (05.10.2026): Statusklappe, manuelles Nachrücken/Undo, Markt-CSV beziehungsweise Balance-Reset entfernt. Cashhinweis bleibt separat als B47 im Überblick erhalten.
+- **B10:** Entfallen auf Nutzerentscheid (05.10.2026): Statusklappe, manuelles Nachrücken/Undo, Markt-CSV beziehungsweise Balance-Reset entfernt. Cashhinweis bleibt separat als B47 im Überblick erhalten.
+- **B11:** Entfallen auf Nutzerentscheid (05.10.2026): Statusklappe, manuelles Nachrücken/Undo, Markt-CSV beziehungsweise Balance-Reset entfernt. Cashhinweis bleibt separat als B47 im Überblick erhalten.
+- **B24:** Entfallen auf Nutzerentscheid (05.10.2026): Statusklappe, manuelles Nachrücken/Undo, Markt-CSV beziehungsweise Balance-Reset entfernt. Cashhinweis bleibt separat als B47 im Überblick erhalten.
+- **S18:** P16 Slice 1 entfernt die Ansparbedienung. Alte vier Speicherschlüssel bleiben unverändert erhalten, Simulatoradapter ignorieren sie; explizite DOM-freie Rechnungen bleiben bestehen.
+- **S22:** Auf Nutzerentscheid vom 13.10.2026 entfernt: Karte und Knopf zum Zurücksetzen aller Simulator-Einstellungen.
+
+### Ausgangsregister und Detailquelle
+
+162 Ausgangskennungen bleiben mit Status, Begründung und aktuellen Kennungsbezügen in der JSON-Quelle nachvollziehbar. Zustandsgruppen benennen ihre Selektoren ausdrücklich; Prüf-, Speicher-, Bindungs- und Testdetails stehen dort vollständig.
+
+Die lesbare Schema-2-Quelle schreibt Status, Modul-/Dateipfade, Speicherkeys, Zielpakete und Selektoren unmittelbar aus. Gemeinsame Definitionen enthalten ausschließlich tatsächlich wiederholte Langtexte ab 80 Unicode-Zeichen mit unterscheidbaren sprechenden Namen; jede Definition steht auf einer eigenen Zeile. `@bereich.inhalt` verweist auf einen Langtext, `@@` erhält ein wörtliches @; `join` verbindet ausschließlich Textteile in beschreibenden Feldern. Lokale Audit-/Prüfbezüge nennen den Index im eigenen Eintrag; Zielbezüge benennen den konkreten Zielort und Änderungsgrund. Der allgemeine Resolver unterstützt weiterhin Objektbezüge und Tabellen für Vertragsproben, das lesbare Quellformat erlaubt sie nicht. Fehlende Referenzen, falsche Typen und Zyklen sind Vertragsfehler.
+
+Inklusive UTF-8-Bytegrenzen: Quelle 1500000 B (ausdrückliche Nutzer-/Operatorentscheidung vom 06.10.2026), Lesefassung 225000 B, kompakt serialisierter aufgelöster Eintrag 20000 B. Höchstens 2000 Unicode-Zeichen je Quellzeile.

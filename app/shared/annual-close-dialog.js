@@ -4,7 +4,7 @@ import { createCloseDialog, createCloseResult, advanceCloseImport, closeReadines
 import { createTagesgeldFields, parseMonthlyCashInput } from '../shared/tagesgeld-fields.js';
 import { projectOverviewMonthSteps, createOverviewStepContent, projectConfirmedMonthResult, preserveCloseDetails } from '../overview/overview-month-confirmation.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
-import { createAnnualActionResult, createAnnualPlanResult, projectAnnualCloseResult } from './annual-close-result.js';
+import { createAnnualActionResult, createAnnualPlanResult, createAnnualExpenseStatus, projectAnnualCloseResult } from './annual-close-result.js';
 import { projectAnnualPreview, formatAnnualNeed } from '../balance/balance-annual-preview.js';
 import { createAnnualPlanEditor } from './annual-plan-editor.js';
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
@@ -47,32 +47,35 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
     const button = (text, id) => { const element = node('button', text, id); element.type = 'button'; element.className = 'ds-button ds-button-secondary'; return element; };
     const previewContent = (preview, title = 'Planvorschau') => {
         const body = node('section'); body.dataset.annualPreview = ''; body.append(node('h3', `${title} ${preview.targetYear} → ${preview.planningYear}`));
+        const outcome = node('div'); outcome.dataset.annualPlanOutcomeHost = '';
+        if (evaluatePlan && !preview.confirmed) outcome.append(node('p', 'Monatsbudget und Vermögensentnahme werden berechnet …'));
+        body.append(outcome);
+        const calculations = node('details'); calculations.dataset.annualCalculations = '';
+        calculations.append(node('summary', 'Berechnungsgrundlagen'));
+        body.append(node('h4', 'Rentenbezugsmonate'));
         for (const person of preview.people) {
-            body.append(node('h4', person.name));
-            if (person.error) { body.append(node('p', person.error)); continue; }
-            body.append(node('p', `${person.startAlter}\u00a0Jahre am 01.01.${preview.planningYear}`),
+            if (person.error) { body.append(node('p', `${person.name}: ${person.error}`)); continue; }
+            body.append(node('p', `${person.name}: ${person.monateImJahr} Bezugsmonate · ${money(person.renteMonatlich)} monatlich · ${money(person.renteImJahr)} im Jahr.`));
+            calculations.append(node('h4', person.name), node('p', `${person.startAlter}\u00a0Jahre am 01.01.${preview.planningYear}`),
                 node('p', person.ageStatus === 'fallback' ? 'Geburtsdatum einmal ergänzen; das hinterlegte Alter bleibt bis dahin unverändert.' : 'Aus dem Geburtsdatum abgeleitet; vollendete Jahre am 1. Januar.'),
-                node('p', `Rente: ${money(person.renteMonatlich)} monatlich · ${person.monateImJahr} Bezugsmonate · ${money(person.renteImJahr)} im Planungsjahr.`),
                 node('p', `Rentenbezugsgröße im Budget: ${money(person.budgetPensionMonthly)} im Jahresdurchschnitt pro Monat.`));
         }
         if (!preview.people.length) body.append(node('p', 'Personenquellen fehlen. Bitte zentral ergänzen.'));
-        for (const need of preview.needs.filter(need => ['floorBedarf', 'flexBedarf'].includes(need.id))) {
-            body.append(node('p', `${need.id === 'floorBedarf' ? 'Grundbedarf' : 'Flex-Bedarf'} jährlich: ${formatAnnualNeed(need, preview)}`));
-        }
+        if (!evaluatePlan || preview.confirmed) for (const need of preview.needs.filter(need => ['floorBedarf', 'flexBedarf'].includes(need.id)))
+            outcome.append(node('p', `${need.id === 'floorBedarf' ? 'Grundbedarf' : 'Flex-Bedarf'} jährlich: ${formatAnnualNeed(need, preview)}`));
         if (!preview.needs.length) body.append(node('p', 'Die Bedarfsvorschau erscheint nach dem Inflationsabruf.'));
-        return body;
+        body.append(calculations); return body;
     };
     const replace = (body, content) => { Array.from(body.children || []).forEach(child => child.remove()); body.append(content); };
     const open = ({ title, subtitle = '', progressNames = null, opener = doc().activeElement, steps = [], model = getModel(), onClose = () => true } = {}) => {
         if (handle?.root.open) return handle;
         monthResults = null; monthReceipt = null; retryAction = null; hidePreparationBackup = () => {};
-        closeButton = button('Schließen', 'annualCloseBtn'); closeButton.id = 'annualCloseBtn';
+        closeButton = button('Schließen', 'annualCloseBtn'); closeButton.id = 'annualCloseBtn'; closeButton.hidden = true;
         confirmButton = button('Jahr abschließen', 'annualConfirmBtn'); confirmButton.id = 'annualConfirmBtn'; confirmButton.className = 'ds-button ds-button-primary'; confirmButton.hidden = true;
         retryButton = button('Mit diesem Kurs erneut abschließen', 'annualRetryBtn'); retryButton.id = 'annualRetryBtn'; retryButton.hidden = true;
         logButton = button('Protokoll anzeigen', 'annualShowLog'); logButton.id = 'annualShowLog'; logButton.hidden = true;
         recoveryButton = button('Wiederherstellungspunkte anzeigen', 'annualShowRecovery'); recoveryButton.id = 'annualShowRecovery'; recoveryButton.hidden = true;
         handle = createCloseDialog({ doc: doc(), id: 'balanceAnnualClose', title, subtitle, progressNames,
-            footnote: 'Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. Alle sechs Vorbereitungsschritte ansehen und Tagesgeld aller Personen bestätigen; gültige Jahrespflichtdaten sind erforderlich. Ein Wiederherstellungspunkt wird vor dem Speichern erstellt.',
             eyebrow: 'Monats- und Jahresabschluss', steps,
             actions: [closeButton, logButton, recoveryButton, confirmButton, retryButton], returnFocus: () => opener?.focus?.(),
             onClose: async () => {
@@ -215,15 +218,15 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
         };
         const contents = new Map();
         const project = next => {
-            const steps = projectOverviewMonthSteps(next).slice(0, 3).map(step => ({ ...step, contentOwnResult: true,
+            const steps = projectOverviewMonthSteps(next).slice(0, 3).map(step => ({ ...step, progressByVisit: true, contentOwnResult: true,
                 content: preserveCloseDetails(contents.get(step.id), createOverviewStepContent({ doc: doc(), model: next, step, status, wealthStatus })) }));
             steps.forEach(step => contents.set(step.id, step.content));
             const budget = steps.find(step => step.id === 'budget');
-            const annual = next.annual || {};
-            budget.content.append(node('p', `Jahresausgaben ${annual.year ?? targetYear}: ${money(annual.total)} · Jahresbudget: ${money(Number.isFinite(annual.budget) ? annual.budget * 12 : null)}${annual.complete ? '' : ' · unvollständig'}`));
-            return [...steps, { id: 'cash', title: `Tagesgeld am 31.12.${targetYear}`, content: cashBody, contentOwnResult: true, state: cash?.ready ? 'entered' : 'open', result: cash?.ready ? 'Eingetragen – wird erst mit dem Jahresabschluss gespeichert.' : 'Einmaliger Jahresendstand je Person' },
-                { id: 'market', title: 'Marktdaten automatisch holen', content: marketBody, prepared: true, preparing: loading, done: !loading && Object.keys(effectiveMarket).length === 3, result: !loading && Object.keys(effectiveMarket).length === 3 ? 'Vollständig vorbereitet · noch nicht gespeichert' : 'Pflichtwerte ergänzen' },
-                { id: 'preview', title: `Plan ${targetYear + 1} prüfen`, content: previewBody, prepared: true, preparing: loading || planLoading, done: !loading && Object.keys(effectiveMarket).length === 3 && !planLoading && (!planEditor || planEditor.read().valid), result: 'Planwerte ansehen und bei Bedarf bewusst anpassen.' }];
+            budget.content.append(createAnnualExpenseStatus({ doc: doc(), model: next, targetYear }));
+            if (!next.annual?.complete) budget.result += ` · Jahr ${targetYear} noch unvollständig`;
+            return [...steps, { id: 'cash', title: `Tagesgeld am 31.12.${targetYear}`, continueLabel: 'Weiter zum Tagesgeld', content: cashBody, contentOwnResult: true, state: cash?.ready ? 'entered' : 'open', result: cash?.ready ? 'Eingetragen – wird erst mit dem Jahresabschluss gespeichert.' : 'Einmaliger Jahresendstand je Person' },
+                { id: 'market', title: 'Marktdaten automatisch holen', continueLabel: 'Weiter zu den Marktdaten', content: marketBody, progressByVisit: true, prepared: true, preparing: loading, done: !loading && Object.keys(effectiveMarket).length === 3, result: !loading && Object.keys(effectiveMarket).length === 3 ? 'Vollständig vorbereitet · noch nicht gespeichert' : 'Pflichtwerte ergänzen' },
+                { id: 'preview', title: `Plan ${targetYear + 1} prüfen`, continueLabel: `Weiter zum Plan ${targetYear + 1}`, content: previewBody, progressByVisit: true, prepared: true, preparing: loading || planLoading, done: !loading && Object.keys(effectiveMarket).length === 3 && !planLoading && (!planEditor || planEditor.read().valid), result: 'Planwerte ansehen und bei Bedarf bewusst anpassen.' }];
         };
         const pending = new Promise(resolve => { endPreparation = resolve; });
         const current = open({ title: `${monthName(model)} und Jahr ${targetYear} abschließen`, opener, steps: project(model), model,
@@ -233,9 +236,13 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
                 return await onClose?.() !== false;
             } });
         if (!current) { endPreparation = null; return Promise.resolve(null); }
-        const backupNote = node('section'); backupNote.className = 'close-dialog-backup ds-note ds-note-warning';
+        const conditions = node('details'); conditions.dataset.annualCloseConditions = '';
+        conditions.append(node('summary', 'Abschlussbedingungen'),
+            node('p', 'Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. Alle sechs Vorbereitungsschritte ansehen und Tagesgeld aller Personen bestätigen; gültige Jahrespflichtdaten sind erforderlich. Ein Wiederherstellungspunkt wird vor dem Speichern erstellt.'));
+        current.content.append(conditions);
+        const backupNote = node('section'); backupNote.className = 'close-dialog-backup annual-close-backup';
         const backupButton = button('Jetzt sichern'); backupButton.dataset.overviewBackup = '';
-        backupNote.append(node('p', 'Vor dem Jahresabschluss empfiehlt sich eine aktuelle Vollsicherung.'), backupButton);
+        backupNote.append(node('p', 'Vollsicherung vor dem Jahresabschluss empfohlen.'), backupButton);
         const backupStatus = node('p'); backupStatus.className = 'close-dialog-backup-status'; backupStatus.hidden = true;
         backupStatus.setAttribute('role', 'status'); backupStatus.dataset.annualBackupStatus = '';
         const footer = current.root.querySelector('[data-close-dialog-footer]'); footer.append(backupNote, backupStatus, ...Array.from(footer.children));
@@ -281,9 +288,10 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
                 if (revision !== planRevision || signal?.aborted || !current.root.open) return;
                 if (!planEditor) {
                     planEditor = createAnnualPlanEditor({ doc: doc(), listen: current.listen,
+                        getPreview: () => projectPreview({ targetYear, inflation: effectiveMarket.inflation }),
                         evaluate: adoptedPlanPatch => evaluatePlan({ targetYear, marketData: planMarket, adoptedPlanPatch, signal }),
                         onState: () => { onDirty(dirty()); sync(); } });
-                    previewBody.append(planEditor.root);
+                    replace(previewBody.querySelector('[data-annual-plan-outcome-host]'), planEditor.root);
                     current.closed.then(() => planEditor.dispose());
                 }
                 await planEditor.setBase(initial.values);
@@ -368,7 +376,11 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
         const action = createAnnualActionResult({ doc: doc(), result: actionResult });
         const annual = node('section'); annual.id = 'annualResults';
         annual.append(createAnnualPlanResult({ doc: doc(), result: actionResult }),
-            node('p', `Monatsbudget Plan ${model.summary.year}: ${money(model.summary.monthlyBudget)}`));
+            node('p', `Monatsbudget Plan ${model.summary.year}: ${money(model.summary.monthlyBudget)}`),
+            createAnnualExpenseStatus({ doc: doc(), model, targetYear: results.targetYear }));
+        const receiptDetails = node('details'); receiptDetails.dataset.annualReceiptDetails = '';
+        receiptDetails.append(node('summary', 'Zum Abschlussbeleg'),
+            node('p', 'Jahr und Monat haben getrennte Wiederherstellungspunkte. Der Monatsbetrag stammt aus dem bestätigten Plan. Die Anzeige bestätigt keine ausgeführte Überweisung.'));
         const peoplePreview = projectPreview({ targetYear: results.targetYear, confirmed: true });
         for (const person of peoplePreview.people) {
             annual.append(node('h4', person.name));
@@ -383,7 +395,8 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
         if (monthReceipt) {
             current.root.dataset.annualMonthResult = 'confirmed';
             const data = projectConfirmedMonthResult(model, session.request.cash);
-            body = createCloseResult({ doc: doc(), ...data, planYear: model.summary.year, actionSection: action, yearSection: annual });
+            body = createCloseResult({ doc: doc(), ...data, planYear: model.summary.year, actionSection: action, yearSection: annual,
+                successText: `${data.month} und ${results.targetYear} abgeschlossen.${actionResult.action ? ` Handlungsanweisung ${actionResult.year} festgeschrieben.` : ''}` });
             body.dataset.annualCombinedResult = 'C';
             body.append(node('h3', 'Wiederherstellungspunkte'), node('p', 'Wiederherstellungspunkte für Jahr und Monat angelegt.'));
             current.setTitle(`${data.month} und Jahr ${results.targetYear} abgeschlossen`);
@@ -398,8 +411,9 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
             current.setStatus(session.phase === 'recovery' ? 'Wiederherstellung erforderlich. Bitte den Monatswiederherstellungspunkt in der Sicherungsverwaltung prüfen.' : '');
             confirmButton.textContent = 'Erneut versuchen';
         }
+        body.append(receiptDetails, logButton);
         current.setResult(body);
-        current.setFootnote('Jahr und Monat haben getrennte Wiederherstellungspunkte. Der Monatsbetrag stammt aus dem bestätigten Plan. Die Anzeige bestätigt keine ausgeführte Überweisung.');
+        current.setFootnote(''); closeButton.hidden = true;
         confirmButton.hidden = false; confirmButton.disabled = session.phase === 'recovery'; confirmButton.dataset.overviewMonthAccept = '';
         recoveryButton.hidden = session.phase !== 'recovery'; retryButton.hidden = true; logButton.hidden = false;
     };
@@ -469,6 +483,8 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
                 body.append(retryMonth);
             }
         }
+        body.append(logButton);
+        current.setFootnote('');
         current.setMessage(''); current.setResult(body); current.setStatus(results.confirmed ? 'Jahr gespeichert · Monatsbetrag noch nicht bereitgestellt' : results.recovery?.message || ''); current.setBusy(false);
     };
     return { showAnnualPreparation, showUpdateResultModal,

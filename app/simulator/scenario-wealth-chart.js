@@ -1,6 +1,7 @@
 import { escapeProtocolHtml as escape } from './protocol-renderer.js';
 import { buildWealthFanModel } from './wealth-fan-aggregation.js';
 import { renderWealthFanBands } from './wealth-fan-chart.js';
+import { formatCurrency } from './simulator-formatting.js';
 
 export const WEALTH_SCENARIO_KEYS = ['worst', 'p5', 'p10', 'p25', 'p50', 'p75', 'p90', 'p95', 'best'];
 export const WEALTH_SCENARIO_COLORS = ['var(--bad)', 'color-mix(in srgb, var(--bad) 80%, var(--warn))', 'var(--warn)', 'var(--accent-line)', 'var(--text-main)', 'color-mix(in srgb, var(--good) 55%, var(--surface))', 'color-mix(in srgb, var(--good) 80%, var(--surface))', 'var(--good)', 'color-mix(in srgb, var(--good) 85%, var(--text-main))'];
@@ -140,7 +141,7 @@ function renderScenarioOutliers(paths, { maximum, maxValue, x, width }) {
     }).join('');
     return `<g class="scenario-outliers">${guides}${marks.map(mark => {
         const { path, value, text } = mark;
-        const name = `${path.scenario.label} · ${formatScenarioWealthTick(value)} €`;
+        const name = `${path.scenario.label} · ${formatCurrency(value)}`;
         return `<foreignObject x="${mark.left}" y="${mark.top}" width="${mark.width}" height="${height}"><button xmlns="http://www.w3.org/1999/xhtml" type="button" class="ds-scenario-outlier" style="color:${path.color};font-size:${fontSize}px;line-height:${height}px" data-scenario-id="${escape(path.id)}" title="${escape(name)}" aria-label="${escape(name)}">${escape(text)}</button></foreignObject>`;
     }).join('')}</g>`;
 }

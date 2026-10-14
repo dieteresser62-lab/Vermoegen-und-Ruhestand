@@ -156,3 +156,28 @@ const monthBefore = { rs_profiles_v1: registry, rs_current_profile: 'a', rs_acti
     overview_month_provision_v1: JSON.stringify({ version: 1, entries: { syntheticScopeKey: { month: '2026-10', scope: { key: 'synthetic_person_ids' } } } }) };
 const monthPoint = buildSnapshot({ id: 'month-diff', activeProfileId: 'a', records: { rs_profiles_v1: registry, rs_current_profile: 'a', rs_active_profile: 'a' } });
 assert(restorePreviewRows(buildSnapshotRestorePlan(monthPoint, monthBefore)).some(row => row.title === 'Monatsabschluss Oktober 2026' && row.action === 'entfällt'), 'Vorschau erklärt entfallende Monatsbelege ohne interne Scopekennungen');
+
+{
+const flexScope = { kind: 'single', ids: ['a'], key: JSON.stringify(['single', ['a']]) };
+const flexCommon = { scope: flexScope, completedAt: '2026-10-12T12:00:00Z', priceBasis: 'nominal',
+    fingerprintVersion: 2, sourceFingerprint: 'a'.repeat(64), runFingerprint: 'b'.repeat(64), deviationApplied: false };
+const flexOld = { ...flexCommon, kind: 'backtest', statement: 'completed',
+    metrics: { startYear: 2000, endYear: 2002, failureYear: null, endWealthReal: 100 } };
+const flexNew = { ...flexCommon, kind: 'montecarlo', statement: 'Floor gedeckt bis Laufende',
+    metrics: { runs: 2, covered: 2, successPct: 100, median: 10, p5: 1,
+        minimumFlexStartNominalEur: 30000, minimumFlexYearSharePct: 100 / 6,
+        minimumFlexAffectedRunSharePct: 50, flexPaidMedianNominalEur: 32500,
+        flexDesiredMedianNominalEur: 45000, flexPaidMinimumNominalEur: 29000 } };
+const flexRecord = JSON.stringify({ version: 1, entries: {
+    [JSON.stringify([flexScope.key, 'backtest'])]: flexOld, [JSON.stringify([flexScope.key, 'montecarlo'])]: flexNew } });
+const flexLegacyRecord = JSON.stringify({ version: 1, entries: { [JSON.stringify([flexScope.key, 'backtest'])]: flexOld } });
+    await init();
+    const withResults = buildSnapshot({ id: 'results-target', activeProfileId: 'a', createdAt: '2026-01-01T12:00:00Z',
+        records: { ...snapshot.records, overview_simulation_summary_v1: flexRecord } });
+    snapshots.set(withResults.id, withResults);
+    p.setItemSync('overview_simulation_summary_v1', flexLegacyRecord); await p.flush();
+    const restore = createDataRestorationController({ guard: createNavigationGuard(), reload: () => true });
+    await restore.preview(withResults.id);
+    assertEqual((await restore.executeRestore()).status, 'restored', 'Datenseitencontroller restauriert Alt-/Neu-Belege');
+    assertEqual(records.overview_simulation_summary_v1, flexRecord, 'Datenseitenrestore löscht oder verändert keine Ergebniswerte');
+}

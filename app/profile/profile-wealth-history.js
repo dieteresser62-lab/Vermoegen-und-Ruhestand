@@ -16,10 +16,19 @@ export function assertCashHistory(value) {
 export function appendCashHistory(raw, before, after, date = localHistoryDate()) {
     const current = requireHistoryRecord(raw, assertCashHistory);
     if (![before, after].every(value => typeof value === 'number' && Number.isFinite(value) && value >= 0)) throw new Error('Ungültiger Tagesgeldwert.');
-    if (before === after) return current;
     historyDay(date);
     if (current && (current.entries.at(-1)?.value ?? current.baselineValue) !== before) throw new Error('Tagesgeldhistorie und aktueller Betrag widersprechen sich.');
-    return assertCashHistory({ version: 1, baselineValue: current?.baselineValue ?? before, entries: [...(current?.entries || []), { date, value: after }] });
+    if (before !== after && current?.entries.at(-1)?.date > date) throw new Error('Ungültiger Tagesgeldeintrag.');
+    const dayEntries = (current?.entries || []).filter(entry => entry.date === date);
+    if (before === after && dayEntries.length <= 1) return current;
+    // Ohne Wertänderung nur Altbestand mit dem letzten Wert dieses Tages verdichten.
+    const dayValue = before === after ? dayEntries.at(-1).value : after;
+    // Nur den geschriebenen Tag ersetzen; ältere Mehrfacheinträge bleiben lesbar.
+    const entries = (current?.entries || []).filter(entry => entry.date !== date);
+    const previousValue = entries.filter(entry => entry.date < date).at(-1)?.value ?? current?.baselineValue ?? before;
+    if (dayValue !== previousValue) entries.push({ date, value: dayValue });
+    entries.sort((left, right) => left.date.localeCompare(right.date));
+    return assertCashHistory({ version: 1, baselineValue: current?.baselineValue ?? before, entries });
 }
 export function assertWealthLots(value) {
     assertHistoryObject(value);

@@ -46,3 +46,11 @@ const collisionDoc = createPresentationTestDocument();
 const reserved = collisionDoc.createElement('span'); reserved.id = `ds-field-reason-${Number(secondReason.id.split('-').at(-1)) + 1}`; collisionDoc.body.appendChild(reserved);
 const third = collisionDoc.createElement('input'); collisionDoc.body.appendChild(third);
 assert(setFieldState(third, 'empty', 'Noch keine Daten').id !== reserved.id, 'Bestehende fremde ID wird nicht doppelt vergeben');
+
+const row = doc.createElement('div'), frame = doc.createElement('div'); frame.className = 'ds-unit-frame';
+frame.classList = { contains: name => frame.className.split(/\s+/).includes(name) };
+const framed = doc.createElement('input'), unit = doc.createElement('span'); unit.textContent = '€/Jahr';
+doc.body.appendChild(row); row.appendChild(frame); frame.appendChild(framed); frame.appendChild(unit);
+const framedReason = setFieldState(framed, 'adopted', 'aus Haushalt & Plan');
+assert(framedReason.parentNode === row && frame.children.length === 2, 'Herkunft steht außerhalb der Zeile aus Wert und Einheit');
+assert(framed.getAttribute('aria-describedby') === framedReason.id, 'Ausgelagerter Grund bleibt dem Feld zugeordnet');

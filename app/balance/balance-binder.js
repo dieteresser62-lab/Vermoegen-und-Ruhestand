@@ -128,21 +128,6 @@ function bindBalancePresentation() {
     document.getElementById('balanceNextAnnual')?.addEventListener('click', () => {
         UIBinder.openNextAnnual();
     });
-    const marketUpdate = document.getElementById('balanceMarketUpdate');
-    const annualButton = dom.controls?.jahresabschlussBtn;
-    const nextAnnual = document.getElementById('balanceNextAnnual');
-    const syncAnnualAccess = () => {
-        if (marketUpdate) marketUpdate.disabled = Boolean(annualButton?.disabled || nextAnnual?.disabled);
-    };
-    marketUpdate?.addEventListener('click', () => {
-        syncAnnualAccess();
-        if (marketUpdate.disabled || actionBlocked()) return;
-        annualButton?.click();
-    });
-    if (typeof MutationObserver !== 'undefined') {
-        const observer = new MutationObserver(syncAnnualAccess);
-        for (const button of [annualButton, nextAnnual]) if (button) observer.observe(button, { attributes: true, attributeFilter: ['disabled'] });
-    }
     // Fachabrufe liefern ältere Ladetexte; nur deren sichtbarer Host wird bereinigt.
     const progressButton = dom.controls?.btnJahresUpdate;
     if (progressButton && typeof MutationObserver !== 'undefined') {
@@ -155,7 +140,6 @@ function bindBalancePresentation() {
         observer.observe(progressButton, { childList: true, characterData: true, subtree: true });
         normalizeProgressText();
     }
-    syncAnnualAccess();
     document.getElementById('balanceChangeScope')?.addEventListener('click', () => {
         UIBinder.selectTab(dom.containers.tabButtons?.querySelector('[data-tab="strategy"]'));
         const household = document.getElementById('profilverbund-profile-list');
@@ -165,10 +149,6 @@ function bindBalancePresentation() {
         target?.focus();
     });
     document.getElementById('printAction')?.addEventListener('click', () => window.print());
-    document.getElementById('printPlan')?.addEventListener('click', e => {
-        open(e.currentTarget);
-        window.print();
-    });
     document.querySelectorAll('[data-balance-tab]').forEach(button => button.addEventListener('click', () => {
         UIBinder.selectTab(dom.containers.tabButtons?.querySelector(`[data-tab="${button.dataset.balanceTab}"]`));
     }));

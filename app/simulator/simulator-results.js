@@ -3,6 +3,7 @@ import { freezePersonDataContext, personDataContextFor } from './simulator-perso
 import { renderPersonDataNotice } from './protocol-renderer.js';
 import { bindScenarioLogView, disposeScenarioLogView } from './scenario-log-view.js';
 import { buildWealthDistribution, renderWealthDistribution } from './wealth-distribution.js';
+import { formatChartEuro } from './results-formatting.js';
 import { renderWealthFanChart } from './wealth-fan-chart.js';
 import { initializePortfolio } from './simulator-portfolio-init.js';
 import { getProtocolColumns, createProtocolPersonContext } from './protocol-columns.js';
@@ -61,7 +62,8 @@ function projectStressReplayScenario(scenario) {
     }
 
     label.textContent = scenario.label || 'Unbenannter Lauf';
-    wealth.textContent = scenario.failed ? 'FAILED' : formatCurrency(scenario.endVermoegen);
+    wealth.textContent = scenario.failed ? 'Ruin' : formatChartEuro(scenario.endVermoegen);
+    wealth.title = scenario.failed ? 'Ruin' : formatCurrency(scenario.endVermoegen);
     care.textContent = scenario.careEverActive ? 'Pflegefall enthalten' : 'Nicht als Pflegefall markiert';
     empty.hidden = true;
     details.hidden = false;
@@ -138,8 +140,13 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
     disposeScenarioLogView(document);
     const distributionHost = document.getElementById('wealthDistribution');
     const fanHost = document.getElementById('wealthFanChart');
+    if (distributionHost) distributionHost.innerHTML = '';
     const renderDistribution = mode => {
-        if (distributionHost) distributionHost.innerHTML = renderWealthDistribution(buildWealthDistribution(results, scenarioLogs, mode));
+        if (distributionHost) {
+            const showAllMarks = distributionHost.querySelector?.('#wealthShowAllMarks')?.checked === true;
+            const detailsOpen = distributionHost.querySelector?.('.wealth-statistics-details')?.open === true;
+            distributionHost.innerHTML = renderWealthDistribution(buildWealthDistribution(results, scenarioLogs, mode), { showAllMarks, detailsOpen });
+        }
         if (fanHost) fanHost.innerHTML = renderWealthFanChart(results?.wealthFan, { mode, initialWealth: portfolioTotal(initializePortfolio(inputs || {})), startYear: displayContext.startYear, startAge: inputs?.startAlter });
     };
     const scenarioContainer = document.getElementById('scenarioLogContainer');
@@ -178,7 +185,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
 
     const pflegeResultsContainer = document.getElementById('pflegeKpiResults');
     const summaryBox = document.getElementById('pflegeKpiSummary');
-    renderCareSection(summaryBox, pflegeResultsContainer, viewModel.careMetrics);
+    renderCareSection(summaryBox, pflegeResultsContainer, viewModel.careMetrics, personDisplayContext);
 
     // 5. Szenario-Log Auswahl (ersetzt den alten Worst-Run-Log)
     if (scenarioLogs && scenarioContainer) {
@@ -221,11 +228,13 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                         goldAktiv: inputs?.goldAktiv,
                         inputs, startYear: displayContext.startYear, personDisplayContext
                     });
+                    const scenarioLabel = { earliestCareP1: personDisplayContext.persons[0]?.name,
+                        earliestCareP2: personDisplayContext.persons[1]?.name }[scenario.key];
                     if (summary) summary.innerHTML = renderProtocolSummary(scenario.logDataRows, {
                         personDataContext,
                         source: 'mc', endWealth: scenario.endVermoegen,
                         outcome: scenario.failed ? 'ruin' : scenario.logDataRows.at(-1)?.recordType === 'terminal_death' ? 'all_dead' : scenario.failed === false ? 'no_ruin' : undefined,
-                        subtitle: `${scenario.label || 'Szenario'} · ${scenario.logDataRows.length} Jahreszeilen · nominale Euro`
+                        subtitle: `${scenarioLabel ? `Frühester Pflegeeintritt ${scenarioLabel}` : scenario.label || 'Szenario'} · ${scenario.logDataRows.length} Jahreszeilen · nominale Euro`
                     });
                     projectStressReplayScenario(scenario);
                     selectStressReplayScenario(scenario);
@@ -248,7 +257,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                 projectStressReplayScenario(null);
                 selectStressReplayScenario(null);
                 if (summary) summary.innerHTML = '';
-                output.innerHTML = '<p class="ds-note ds-note-error" role="alert">Das Szenarioprotokoll konnte nicht angezeigt werden. Wählen Sie ein anderes Szenario.</p>';
+                output.innerHTML = '<p class="ds-note ds-note-error" role="alert">Das Szenarioprotokoll konnte nicht angezeigt werden. Wähle ein anderes Szenario.</p>';
                 output.style.display = 'block';
                 console.error('Szenarioprotokoll fehlgeschlagen:', error);
             }
@@ -332,7 +341,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
 
         bindScenarioLogView({
             document, logs: scenarioLogs,
-            chartOptions: { initialWealth: portfolioTotal(initializePortfolio(inputs || {})), startYear: displayContext.startYear, startAge: inputs?.startAlter, realByRun: results?.wealthView?.realByRun, wealthFan: results?.wealthFan },
+            chartOptions: { initialWealth: portfolioTotal(initializePortfolio(inputs || {})), startYear: displayContext.startYear, startAge: inputs?.startAlter, realByRun: results?.wealthView?.realByRun, wealthFan: results?.wealthFan, personDisplayContext },
             onSelect: renderSelectedScenario,
             onMode: renderDistribution
         });

@@ -217,7 +217,7 @@ const lifeRows = [
 ];
 const lifeOptions = { source: 'mc', inputs: lifeInputs, startYear: 2039, personDisplayContext: lifeContext };
 const person1 = getProtocolColumns(lifeOptions).find(c => c.id === 'person1-status');
-assertEqual(person1.header, 'SP', 'Personenkopf verwendet Initialen');
+assertEqual(person1.header, 'Synthetische Person', 'Personenkopf verwendet den berechneten Namen');
 assertEqual(person1.label, 'Synthetische Person', 'Langkopf bewahrt vollständigen Namen');
 assert(Object.isFrozen(lifeContext) && Object.isFrozen(lifeContext.persons[0]), 'Separater Anzeigekontext ist tief eingefroren');
 names[0].name = 'Umbenannt';
@@ -242,7 +242,7 @@ for (const logDetailLevel of ['normal', 'detailed']) for (const showCareDetails 
 const noCare = renderProtocolTable(lifeRows, { ...lifeOptions, personDisplayContext: createProtocolPersonContext({ ...lifeInputs, pflegefallLogikAktivieren: false }, names) });
 assert(!noCare.includes('PG ') && noCare.includes('Umbenannt: lebt'), 'Pflege aus zeigt nur Lebensstatus, ohne Pflegekürzel');
 const unknownColumn = getProtocolColumns({ source: 'mc' }).find(c => c.id === 'person1-status');
-assertEqual(unknownColumn.header, 'P1', 'Fehlender Name bleibt P1');
+assertEqual(unknownColumn.header, 'Person 1', 'Nur bei fehlendem Namen steht eine Personennummer');
 assertEqual(protocolPersonPresentation([{}], 0, unknownColumn).title, 'Person 1: Lebensstatus unbekannt', 'Fehlende Lebensdaten erfinden kein Lebt');
 assertEqual(protocolPersonPresentation([{ Person1Alive: 0 }], 0, unknownColumn, { startYear: 2039 }).title, 'Person 1: verstorben · Todesjahr unbekannt', 'Fehlende Jahresdaten erfinden kein Todesjahr');
 assertEqual(getProtocolColumns({ source: 'mc', inputs: { partner: { aktiv: false } } }).filter(c => c.group === 'persons').length, 1, 'Einzelperson besitzt genau eine Statusspalte');
@@ -272,8 +272,8 @@ assertEqual(protocolPersonPresentation([{ jahr: 1, Person1Alive: 1 }, { jahr: 4,
         people[0].name = 'Nachträglich geändert';
         const opts = { source: 'mc', personDisplayContext: context };
         const cols = getProtocolColumns(opts).filter(c => c.group === 'persons');
-        assertEqual(cols.map(c => c.header).join('/'), expected.join('/'), 'Eindeutige höchstens zweistellige Personenköpfe');
-        assert(cols.every(c => Array.from(c.header).length <= 2), 'Unicodezeichen statt UTF-16-Hälften');
+        assertEqual(cols.map(c => c.header).join('/'), names.map((name, i) => name || `Person ${i + 1}`).join('/'), 'Personenköpfe verwenden vollständige eingefrorene Namen');
+        assert(cols.every(c => !c.header.includes('Nachträglich geändert')), 'Spätere Namensänderung verändert den Laufbeleg nicht');
         const markup = renderProtocolTable([{ jahr: 1, Person1Alive: 1, Person2Alive: 1 }], opts);
         for (const col of cols) {
             const safe = col.title.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');

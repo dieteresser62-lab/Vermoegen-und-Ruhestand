@@ -9,6 +9,7 @@ const DAYS_30 = 30 * 86400000;
 const isPlanMigration = point => point.kind === SNAPSHOT_KINDS.householdPlanMigrationRecovery
     || point.kind === 'manual' && point.label === 'Vor Umstellung Haushalt & Plan';
 export function snapshotOccasion(point) {
+    if (point.kind === SNAPSHOT_KINDS.newBeginningBefore) return 'vor Neu beginnen · dauerhaft';
     if (isPlanMigration(point)) return 'Planumstellung · dauerhaft';
     if (point.kind === SNAPSHOT_KINDS.annualClosePreMutation) return 'Jahresabschluss · dauerhaft';
     if (point.kind === SNAPSHOT_KINDS.personDataMigrationRecovery) return 'Personenumstellung · dauerhaft';

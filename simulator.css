@@ -1677,6 +1677,7 @@ fieldset.collapsible legend .legend-text {
 .sim-result-grid > section { min-width: 0; padding: var(--space-4); font-size: var(--balance-body); }
 .sim-overview-backtest, .sim-overview-crises { grid-column: span 7; }
 .sim-overview-mc, .sim-overview-assumptions { grid-column: span 5; }
+.sim-overview-mc { align-self: start; }
 .sim-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .sim-result-grid h2 { font-size: var(--balance-h2); text-align: left; border: 0; padding: 0; margin: 0 0 12px; }
 .sim-result-grid h3 { font-size: var(--balance-h3); text-align: left; margin: 0; }
@@ -1685,6 +1686,14 @@ fieldset.collapsible legend .legend-text {
 .sim-hero-amount { font: 500 var(--balance-amount)/1.15 var(--font-serif); margin: 16px 0 8px; color: var(--text-main); }
 .sim-mc-answers { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); margin-bottom: var(--space-4); }
 .sim-mc-answer { min-width: 0; overflow-wrap: anywhere; }
+.sim-answer-count { font: 500 var(--value-md)/1.4 var(--font-serif); margin: var(--space-2) 0; }
+.sim-mc-answer .sim-hero-amount { font-size: var(--value-lg); }
+.sim-answer-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); margin: var(--space-3) 0; }
+.sim-answer-pair > div { min-width: 0; }
+.sim-answer-pair p { margin: 0; }
+.sim-answer-pair .sim-answer-metric-value { font: 500 var(--value-lg)/1.2 var(--font-serif); margin: var(--space-2) 0; }
+.sim-answer-subtitle, .sim-price-basis { color: var(--text-muted); }
+#tab-montecarlo .kpi-card .sim-answer-metric-value { font-size: var(--value-md); }
 .sim-overview-chart { width: 100%; min-width: 0; overflow-x: auto; margin: 20px 0; }
 .sim-overview-chart .ds-portfolio-svg { width: 100%; min-width: 820px; height: auto; }
 .ds-portfolio-svg.ds-portfolio-calendar { width: auto; max-width: none; height: auto; }
@@ -1761,12 +1770,6 @@ fieldset.collapsible legend .legend-text {
 .sim-parameters > summary { color: var(--accent); padding: 14px 0; font-size: var(--balance-body); cursor: pointer; }
 .sim-parameter-body { padding-top: 8px; }
 .sim-step-navigation { display: flex; justify-content: flex-end; gap: 12px; margin-top: 22px; }
-.sim-assumptions-reset { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; padding: 24px; margin-top: 24px; }
-.sim-assumptions-reset h2 { text-align: left; font-size: var(--balance-h3); margin: 0; padding: 0; border: 0; }
-.sim-assumptions-reset h2::after { content: none; }
-.sim-assumptions-reset > div { flex: 1; min-width: 0; text-align: left; }
-.sim-assumptions-reset > button { width: auto; flex: 0 0 auto; }
-.sim-assumptions-reset p { color: var(--text-muted); font-size: var(--balance-help); }
 .sim-care-reserve strong { font-weight: 500; }
 .sim-help-link { display: inline-block; margin-top: 24px; color: var(--accent); }
 @container simulator-content (min-width: 2300px) {
@@ -1781,7 +1784,6 @@ fieldset.collapsible legend .legend-text {
 @container simulator-content (max-width: 640px) {
  .sim-field-grid { grid-template-columns: minmax(0, 1fr); }
  .sim-field-grid > * { grid-column: 1; }
- .sim-assumptions-reset { flex-direction: column; align-items: flex-start; }
 }
 .ds-action-icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; vertical-align: middle; }
 .ds-step-toggle:focus-visible, .ds-text-link:focus-visible { outline: var(--ring-width) solid var(--ring-color); outline-offset: var(--ring-offset); border-radius: 4px; }
@@ -1815,9 +1817,9 @@ fieldset.collapsible legend .legend-text {
 .sim-card-actions, #tab-montecarlo .log-export-buttons { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .sim-card-actions { margin-top: 24px; }
 .sim-card-actions .log-export-buttons { display: contents; }
-#tab-backtesting .summary-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+#tab-backtesting .summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 #tab-montecarlo .summary-grid, #tab-montecarlo .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-#tab-montecarlo .kpi-grid-primary { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+#tab-montecarlo .mc-primary-card .kpi-grid-primary { grid-template-columns: minmax(0, 1fr); }
 #tab-montecarlo .kpi-grid-pair { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 #tab-montecarlo .mc-setup-content { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding-top: 24px; }
 #tab-montecarlo .mc-setup-content > .ds-control-group:first-child { grid-column: 1 / -1; }
@@ -1833,9 +1835,9 @@ fieldset.collapsible legend .legend-text {
 .sim-metric-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 #tab-montecarlo .ds-info-pop { font-size: var(--balance-help); }
 #tab-montecarlo .ds-info-button { flex: 0 0 auto; margin: 0; }
-.mc-overview-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 24px; }
+.mc-overview-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
 .mc-overview-grid > * { min-width: 0; }
-.mc-floor-value { font: 500 52px/1.05 var(--font-serif); color: var(--text-main); margin: 18px 0 12px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.mc-floor-value { font: 500 var(--value-md)/1.3 var(--font-serif); color: var(--text-main); margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .mc-floor-card.is-warning { background: var(--warn-soft); }
 .mc-floor-card.is-warning .mc-floor-value { color: var(--warn); }
 .mc-floor-interval { color: var(--text-muted); font-size: var(--balance-help); }
@@ -1854,6 +1856,25 @@ fieldset.collapsible legend .legend-text {
 #tab-montecarlo .kpi-card .value-line, #tab-montecarlo .summary-item > span { font: 500 20px/1.25 var(--font-serif); overflow-wrap: anywhere; }
 #tab-montecarlo .sim-metric-heading > strong, #tab-montecarlo .kpi-secondary-value { overflow-wrap: anywhere; }
 .mc-primary-card, .mc-drawdown-card { margin-top: 24px; }
+.mc-primary-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); align-items: start; gap: var(--space-4); }
+.mc-primary-card > h3 { grid-column: 1 / -1; margin-bottom: 0; }
+.mc-wealth-summary { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); align-items: start; gap: var(--space-4); }
+.sim-metric-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+#tab-montecarlo .sim-metric-list > .sim-metric-row, #tab-backtesting .sim-metric-list > .sim-metric-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: var(--space-1) var(--space-4); padding: var(--space-2) 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; margin: 0; }
+#tab-montecarlo .sim-metric-row .sim-metric-heading { align-items: center; justify-content: flex-start; }
+#tab-montecarlo .sim-metric-row .value-line, #tab-backtesting .sim-metric-row > span:not(.ds-visually-hidden) { font: 500 var(--value-md)/1.3 var(--font-serif); text-align: right; }
+#tab-montecarlo .sim-metric-row .sim-answer-pair { margin: 0; gap: var(--space-4); }
+#tab-montecarlo .sim-metric-row .sim-answer-metric-value { font-size: var(--value-md); }
+.sim-metric-row .sim-price-basis, .sim-metric-row .kpi-status-line, .sim-metric-row .kpi-description { grid-column: 1 / -1; }
+#tab-montecarlo .sim-run-summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); padding-block: var(--space-3); }
+.sim-run-summary .sim-answer-count { margin: 0; }
+.sim-run-summary .mc-outcome-bar { flex-basis: 100%; height: 6px; margin: 0; }
+.sim-run-summary .mc-outcome-legend { flex: 1 0 100%; }
+#tab-montecarlo .mc-wealth-summary > .summary-item > span, #tab-backtesting .sim-backtest-primary .summary-item > span:not(.ds-visually-hidden) { font-size: var(--value-lg); }
+#tab-montecarlo .mc-primary-card .kpi-grid-primary .value-line { font-size: var(--value-lg); }
+#tab-backtesting .sim-metric-row > strong { margin: 0; }
+.sim-backtest-supplementary { margin-top: var(--space-4); grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--space-4); }
+.mc-primary-card > .sim-metric-list, .sim-care-groups .sim-metric-list { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-4); }
 #tab-montecarlo .mc-primary-card > h3, #tab-montecarlo .mc-drawdown-card > h4 { margin-top: 0; }
 .mc-more-metrics { margin-top: 24px; }
 .mc-more-metrics > summary { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; cursor: pointer; padding: 14px 16px; border: 1px dashed var(--border-strong); border-radius: 12px; color: var(--accent); }
@@ -1906,7 +1927,15 @@ fieldset.collapsible legend .legend-text {
 #tab-montecarlo .sim-metric-heading > strong { color: var(--text-muted); font-size: var(--balance-body); }
 #tab-montecarlo .ds-info-button { width: 30px; height: 30px; min-height: 30px; padding: 0; border-radius: 50%; background: var(--surface); color: var(--text-muted); }
 #tab-montecarlo .sim-care-groups { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
-#tab-montecarlo .sim-care-groups h3 { font: 600 var(--balance-h3)/1.3 var(--font-sans); margin: 0 0 16px; }
+#tab-montecarlo .sim-care-groups h3 { font: 600 var(--balance-h3)/1.3 var(--font-sans); text-align: left; margin: 0 0 16px; }
+.sim-care-comparison-scroll { overflow-x: auto; }
+.sim-care-comparison { width: 100%; table-layout: fixed; }
+.sim-care-comparison th, .sim-care-comparison td { padding: var(--space-3) var(--space-4); vertical-align: middle; overflow-wrap: anywhere; }
+.sim-care-comparison th { text-align: left; }
+.sim-care-comparison tbody th { font-weight: 400; }
+.sim-care-comparison .sim-price-basis { display: block; margin-top: var(--space-1); font-weight: 400; }
+.sim-care-value { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.sim-care-value > strong { font: 500 var(--value-md)/1.3 var(--font-serif); }
 #tab-backtesting .ds-field { display: flex; flex-direction: column; gap: 6px; }
 #tab-backtesting label, #tab-montecarlo label { font-size: var(--balance-body); line-height: 1.4; }
 #tab-backtesting .backtest-period-hint, #tab-montecarlo small { font-size: var(--balance-help); }
@@ -2063,9 +2092,6 @@ fieldset.collapsible legend .legend-text {
 .sim-tranche-status { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; margin-top: 12px; box-shadow: none; }
 .sim-tranche-warning { color: var(--warn); }
 .sim-tranche-warning[role="alert"] { color: var(--bad); }
-.sim-assumption-step .ds-field:has([data-field-state="adopted"]) > label::after { content: 'übernommen'; display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: var(--surface-sunken); color: var(--text-muted); font-size: var(--balance-help); }
-.sim-assumption-step .ds-unit-frame:has([data-field-state="adopted"]) { border-style: dashed; background: var(--surface-sunken); }
-.sim-assumption-step .ds-field-reason[data-field-state="adopted"] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .sim-assumption-step .ds-field, .sim-assumption-step .ds-unit-frame { position: relative; }
 .sim-assumption-step .ds-unit-frame > .ds-field-reason { position: absolute; }
 .sim-number-display { display: none; pointer-events: none; position: absolute; left: 14px; right: 44px; bottom: 0; min-height: var(--plan-field-height); align-items: center; font: inherit; color: var(--text-main); font-variant-numeric: tabular-nums; }
@@ -2091,7 +2117,6 @@ fieldset.collapsible legend .legend-text {
 .sim-care-table :is(th, td) { padding: 10px 12px; border-bottom: 1px solid var(--border); }
 .sim-care-table .ds-input { min-width: 70px; }
 .sim-care-table tr:last-child td { border-bottom: 0; }
-.sim-assumptions-reset p { margin: 6px 0 0; }
 @media (max-width: 620px) {
     .sim-card-heading { flex-wrap: wrap; }
     .sim-assumption-step .sim-step-status { max-width: 110px; }
@@ -2198,6 +2223,9 @@ fieldset.collapsible legend .legend-text {
 
 .wealth-sentence { font-size: 19px; line-height: 1.7; }
 .wealth-population { color: var(--text-muted); }
+.wealth-marker-toggle { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: var(--text-sm); color: var(--text-muted); }
+.wealth-distribution-view:not(:has(#wealthShowAllMarks:checked)) .wealth-marker-extra { display: none; }
+.wealth-statistics-details { margin: 16px 0; }
 .wealth-bin { fill: var(--accent-soft); }
 .wealth-bin-middle { fill: var(--accent-line); }
 .wealth-middle-band { fill: var(--accent-soft); }
@@ -2389,3 +2417,82 @@ input[data-plan-trial-readonly][type="text"] { text-align: right; }
 .sim-overview-mc .sim-mc-answers:empty { display: none; }
 .sim-overview-mc .sim-mc-answer { padding: var(--space-3); }
 .sim-overview-mc .sim-mc-answer .sim-hero-amount { margin: var(--space-2) 0; }
+
+@media screen {
+    .sim-mc-answer .sim-flex-note { font-size: var(--balance-help); white-space: normal; overflow: visible; text-overflow: clip; }
+}
+
+/* FR-6: Zentrale Jahreswerte und Erklärungen vollständig lesbar. */
+.sim-cut-metric, .sim-mc-answer, .kpi-card { min-width: 0; }
+.sim-cut-metric > strong, .sim-mc-answer .sim-hero-amount { white-space: normal; overflow-wrap: anywhere; }
+.sim-result-grid .sim-cut-note, .kpi-card .kpi-description { white-space: normal; overflow: visible; }
+
+/* U-2: gemeinsame Bedarfswerte und ein Parameterzugang in Annahmen. */
+#tab-annahmen .sim-assumptions-grid > .sim-assumption-step { grid-column: 1 / -1; }
+#tab-annahmen .sim-need-card { gap: var(--plan-content-gap); }
+#tab-annahmen .sim-need-card h2 { font: 600 var(--balance-h2)/var(--leading-heading) var(--font-serif); }
+#tab-annahmen .sim-all-parameters { padding: 0; border: 0; background: transparent; }
+#tab-annahmen .sim-all-parameters > .mc-setup-content { padding: var(--space-4) 0 0; }
+#tab-annahmen .sim-parameter-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); }
+#tab-annahmen .sim-parameter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: var(--plan-grid-gap); }
+#tab-annahmen .sim-parameter-card { padding: 20px; gap: 14px; background: var(--surface-sunken); }
+#tab-annahmen .sim-parameter-card .sim-field-grid { grid-template-columns: minmax(0, 1fr); }
+#tab-annahmen .sim-parameter-card .ds-input,
+#tab-annahmen .sim-parameter-card .sim-number-display,
+#tab-annahmen .sim-person-card .ds-input,
+#tab-annahmen .sim-person-card .sim-number-display,
+#tab-annahmen .sim-person-details .ds-input,
+#tab-annahmen .sim-person-details .sim-number-display,
+#tab-annahmen .sim-person-values dd,
+#tab-annahmen .sim-care-details .ds-input,
+#tab-annahmen .sim-care-details .sim-number-display,
+#tab-annahmen #simCareDurationDisplay,
+#tab-annahmen #simCareReserve { font: 500 var(--value-md)/1.3 var(--font-serif); }
+#tab-annahmen .ds-need-values .ds-unit-frame > input { font: 500 var(--value-lg)/1.2 var(--font-serif); }
+#tab-annahmen .ds-need-values .ds-unit-frame > .sim-number-display { font: 500 var(--value-lg)/1.2 var(--font-serif); justify-content: flex-end; min-height: var(--need-field-height); right: 76px; }
+#tab-annahmen #simGoldBandFrame[data-gold-active="false"]:has([data-plan-trial-readonly="true"]) { display: none; }
+#tab-annahmen .sim-person-values { margin-block: 8px; }
+#tab-annahmen .sim-person-card { border: 0; padding: 0; background: transparent; }
+#tab-annahmen .sim-person-details > summary,
+#tab-annahmen .sim-care-details > summary { color: var(--accent); cursor: pointer; }
+#tab-annahmen .sim-person-details { margin-top: var(--space-3); }
+#tab-annahmen .ds-plan-card-head .sim-toggle-row { width: auto; padding: 0; }
+#tab-annahmen #simStep4Content { margin-top: var(--space-3); }
+#tab-annahmen #simStep4Content .sim-person-grid { margin-block: 0; }
+#tab-annahmen .sim-person-card h3 { margin: 0 0 var(--space-2); font: 600 var(--balance-h3)/var(--leading-heading) var(--font-serif); overflow-wrap: anywhere; }
+#tab-annahmen .sim-person-card .sim-person-values,
+#tab-annahmen .sim-person-card .sim-field-grid { grid-template-columns: repeat(2, minmax(0, 15rem)); gap: var(--space-1) var(--plan-field-gap-inline); margin: 0; }
+#tab-annahmen .sim-person-card .sim-person-values dt { grid-row: 1; font-size: var(--balance-help); }
+#tab-annahmen .sim-person-card .sim-person-values dd { grid-row: 2; text-align: left; }
+#tab-annahmen .sim-person-card .sim-person-values :first-of-type { grid-column: 1; }
+#tab-annahmen .sim-person-card .sim-person-values :nth-of-type(2) { grid-column: 2; }
+#tab-annahmen .sim-person-card .sim-person-values dd,
+#tab-annahmen .sim-person-card .ds-input,
+#tab-annahmen .sim-person-card .sim-number-display { font: 500 var(--value-lg)/1.2 var(--font-serif); }
+#tab-annahmen .sim-person-card .sim-person-values dd.sim-person-note { font: 400 var(--text-sm)/var(--leading-body) var(--font-sans); white-space: normal; }
+#tab-annahmen .sim-person-card label { font-size: var(--balance-help); }
+#tab-annahmen .sim-person-details .sim-person-grid { margin-top: var(--space-3); }
+#tab-annahmen .sim-person-details h3 { margin: 0 0 var(--space-2); overflow-wrap: anywhere; }
+#tab-annahmen .sim-person-details .sim-person-values { grid-template-columns: 11rem minmax(0, 1fr); gap: var(--space-1) var(--space-3); }
+#tab-annahmen .sim-person-details .sim-person-values dd { text-align: left; white-space: normal; }
+#tab-annahmen .sim-person-details .sim-field-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+#tab-annahmen .sim-person-details .sim-field-grid > .ds-field { display: grid; grid-template-columns: 11rem minmax(0, 1fr); align-items: center; gap: var(--space-1) var(--space-3); }
+#tab-annahmen .sim-person-details .ds-field > .ds-field-reason,
+#tab-annahmen .sim-person-details .ds-field > .sim-select-segment { grid-column: 2; }
+#tab-annahmen .sim-assumption-step[data-assumption-step="5"] { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 0 var(--space-4); padding-block: var(--space-4); }
+#tab-annahmen #simCareSummary { margin: 0; white-space: normal; grid-column: 2; }
+#tab-annahmen .care-panel-toggle { grid-column: 4; grid-row: 1; flex-direction: row; align-items: center; gap: var(--space-2); }
+#tab-annahmen .care-panel-toggle .sim-toggle-row { width: auto; padding: 0; white-space: nowrap; }
+/* Die native Klappe verteilt Kopf und Inhalt in dasselbe Kartenraster. */
+#tab-annahmen .sim-care-details,
+#tab-annahmen .sim-care-details::details-content { display: contents; }
+#tab-annahmen .sim-care-details > summary { grid-column: 3; grid-row: 1; white-space: nowrap; }
+#tab-annahmen .sim-care-details > .sim-step-content { grid-column: 1 / -1; margin-top: 0; }
+#tab-annahmen .sim-care-details:not([open]) > .sim-step-content { display: none; }
+#tab-annahmen .sim-care-more { margin-top: var(--space-4); }
+@media (max-width: 1100px) {
+    #tab-annahmen .sim-parameter-grid { grid-template-columns: minmax(0, 1fr); }
+    #tab-annahmen .ds-plan-card-head, #tab-annahmen .sim-parameter-head { flex-wrap: wrap; }
+}
+#tab-annahmen .sim-parameter-column { display: flex; flex-direction: column; min-width: 0; gap: var(--plan-grid-gap); }
+#tab-annahmen .ds-source a { color: var(--accent); }

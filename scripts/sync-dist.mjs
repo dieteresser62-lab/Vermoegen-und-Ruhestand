@@ -48,6 +48,7 @@ const USAGE = 'Usage: node scripts/sync-dist.mjs [--rev <commit-ish>] [--out <di
  */
 export function isDistRuntimePath(relativePath) {
     const normalized = String(relativePath).replace(/\\/g, '/');
+    if (normalized === 'CHANGELOG.md' || /^docs\/ui\/[^.][\w/-]*\.png$/.test(normalized)) return true;
     if (ROOT_RUNTIME_FILE_PATTERN.test(normalized)) return true;
     const slash = normalized.indexOf('/');
     return slash > 0 && DIST_RUNTIME_DIRECTORIES.includes(normalized.slice(0, slash));
@@ -89,7 +90,7 @@ function assertWorkingTreeMatchesHead(repoRoot) {
     if (trackedChanges) {
         throw new Error('Tracked files have uncommitted changes; commit them first or pass --rev to build a specific commit.');
     }
-    const scope = ['--', ...DIST_RUNTIME_DIRECTORIES, ':(top,glob)*.html', ':(top,glob)*.js', ':(top,glob)*.css'];
+    const scope = ['--', ...DIST_RUNTIME_DIRECTORIES, 'docs/ui', 'CHANGELOG.md', ':(top,glob)*.html', ':(top,glob)*.js', ':(top,glob)*.css'];
     const untracked = runGit(repoRoot, ['ls-files', '-z', '--others', '--exclude-standard', ...scope]);
     const ignored = runGit(repoRoot, ['ls-files', '-z', '--others', '--ignored', '--exclude-standard', ...scope]);
     const unversioned = [...new Set(`${untracked}\0${ignored}`.split('\0'))]
@@ -123,6 +124,19 @@ function listRuntimeEntries(repoRoot, commit) {
         throw new Error(`Commit ${commit} lacks required runtime files: ${missing.join(', ')}.`);
     }
     return entries;
+}
+
+// Bilder sind ebenso wie das Handbuch aus dem gewählten Commit zu lesen.
+// Fehlende Bilddateien dürfen keine unvollständige Offline-Auslieferung ergeben.
+function selectHandbookFiles(files) {
+    const handbook = files.find(file => file.path === 'Handbuch.html').data.toString('utf8');
+    const present = new Set(files.map(file => file.path));
+    const images = new Set();
+    for (const match of handbook.matchAll(/<img\b[^>]*\bsrc=["'](docs\/ui\/[^"']+)["']/g)) {
+        if (!present.has(match[1])) throw new Error(`Handbook image '${match[1]}' is missing from the selected commit.`);
+        images.add(match[1]);
+    }
+    return files.filter(file => !file.path.startsWith('docs/ui/') || images.has(file.path));
 }
 
 function readBlobs(repoRoot, entries) {
@@ -175,7 +189,7 @@ function prepareOutputDirectory(repoRoot, outDir) {
 export function syncDist({ repoRoot, rev = null, outDir = path.join(repoRoot, 'dist') }) {
     if (rev === null) assertWorkingTreeMatchesHead(repoRoot);
     const commit = resolveCommit(repoRoot, rev ?? 'HEAD');
-    const files = readBlobs(repoRoot, listRuntimeEntries(repoRoot, commit));
+    const files = selectHandbookFiles(readBlobs(repoRoot, listRuntimeEntries(repoRoot, commit)));
 
     const resolvedOut = prepareOutputDirectory(repoRoot, outDir);
     for (const file of files) {

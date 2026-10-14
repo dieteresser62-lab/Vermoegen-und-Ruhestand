@@ -62,7 +62,7 @@
             <div class="data-column">
                 <section class="data-section ds-card" id="daten-sicherung" aria-labelledby="dataFullTitle">
                     <div class="data-section-heading"><h2 id="dataFullTitle">Vollsicherung</h2><p class="data-muted">Eine Datei mit allem: Personen, Depots, Ausgaben, Tagesgeld-Historie, Tageskurse und Einstellungen. Lege sie z. B. in deinen Sync-Ordner.</p></div>
-                    <div id="dataBackupBox" class="data-backup-box" data-state="unknown"><span class="data-backup-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path><path class="data-backup-check" d="m8.5 12 2.5 2.5 4.5-5"></path><path class="data-backup-alert" d="M12 8v5m0 3v.1"></path></svg></span><div class="data-backup-text"><b id="dataBackupTitle">Sicherung wird gelesen</b><p id="dataBackupChanges" class="data-muted"></p></div><div class="ds-actions"><button id="fullBackupImportBtn" type="button" class="ds-button ds-button-secondary">Sicherung einspielen …</button><button id="fullBackupBtn" type="button" class="ds-button ds-button-primary">Jetzt sichern</button></div></div>
+                    <div id="dataBackupBox" class="data-backup-box" data-state="unknown"><span class="data-backup-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path><path class="data-backup-check" d="m8.5 12 2.5 2.5 4.5-5"></path><path class="data-backup-alert" d="M12 8v5m0 3v.1"></path></svg></span><div class="data-backup-text"><b id="dataBackupTitle">Vollsicherung als Datei</b><p id="dataBackupChanges" class="data-muted" hidden></p></div><div class="ds-actions"><button id="fullBackupImportBtn" type="button" class="ds-button ds-button-secondary">Sicherung einspielen …</button><button id="fullBackupBtn" type="button" class="ds-button ds-button-primary">Jetzt sichern</button></div></div>
                     <input id="fullBackupImportFile" type="file" accept="application/json,.json" hidden>
                     <div id="dataContent" class="data-content-chips" aria-label="Inhalt der Vollsicherung"></div><p id="fullBackupStatus" role="status" aria-live="polite"></p>
                     <p class="data-backup-note"><svg class="data-context-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5m0-9v.1"></path></svg><span>Die Startseite erinnert dich, wenn die letzte Vollsicherung älter als 30 Tage ist. Beim Einspielen wird vorher automatisch ein Wiederherstellungspunkt angelegt.</span></p>
@@ -70,7 +70,7 @@
                 </section>
                 <section class="data-section ds-card" id="wiederherstellung" aria-labelledby="dataRestoreTitle"><h2 id="dataRestoreTitle">Wiederherstellungspunkte</h2><p class="data-muted">Die App legt sie selbst an, bevor sie etwas Wichtiges ändert. Damit holst du einen früheren Stand zurück, ohne eine Datei suchen zu müssen.</p><p id="dataRestoreStatus" role="status" aria-live="polite"></p><ol id="dataSnapshotList" class="data-timeline"></ol>
                     <div id="dataRestorePreviewHome"><section id="dataRestorePreview" class="data-restore-preview" hidden aria-labelledby="dataRestorePreviewTitle"><h3 id="dataRestorePreviewTitle" tabindex="-1">Zurückholen</h3><table class="data-restore-table"><thead><tr><th>Bereich</th><th>Änderung</th></tr></thead><tbody id="dataRestoreChanges"></tbody></table><p class="data-backup-note">Vorher wird der heutige Stand als eigener Punkt „vor Zurückholen“ gesichert – du kannst also auch das wieder rückgängig machen.</p><div class="ds-actions"><button id="dataRestoreCancel" type="button" class="ds-button ds-button-secondary">Abbrechen</button><button id="dataRestoreConfirm" type="button" class="ds-button ds-button-primary">Auf diesen Stand zurückholen</button></div></section></div>
-                    <p class="data-muted data-retention-note">Aufbewahrung: alle Punkte der letzten 30 Tage, danach je Monat der letzte; Punkte vor Jahresabschlüssen und vor Umstellungen bleiben dauerhaft. Aufgeräumt wird nur, was durch einen neueren Punkt abgedeckt ist.</p>
+                    <details id="dataRetentionDetails" class="data-technical"><summary id="dataRetentionSummary">Wie lange bleiben Punkte erhalten?</summary><p>Alle Punkte der letzten 30 Tage bleiben erhalten, danach je Monat der letzte. Punkte vor Jahresabschlüssen und vor Umstellungen bleiben dauerhaft. Aufgeräumt wird nur, was durch einen neueren Punkt abgedeckt ist.</p></details>
                     <button id="dataRetentionPreview" type="button" class="data-text-action">Aufräumen …</button>
                     <details id="dataRestoreDetails" class="data-technical"><summary>Technische Details</summary><p id="dataRestoreTechnical"></p></details></section>
             </div>
@@ -85,8 +85,9 @@
                 </section>
                 <section class="data-section ds-card" aria-labelledby="dataStorageTitle">
                     <div class="data-storage-heading"><div class="data-section-heading"><h2 id="dataStorageTitle">Speicher</h2><p id="dataStorageBackend" class="data-muted">Alle Daten liegen auf diesem Rechner – nichts in einer Cloud.</p></div><button id="dataStorageOpen" type="button" class="ds-button ds-button-secondary" hidden disabled>Ordner öffnen</button></div>
-                    <div id="dataStorageBar" class="data-storage-bar" aria-hidden="true"><span id="dataStorageLiveBar"></span><span id="dataStoragePriceBar"></span><span id="dataStorageArchiveBar"></span></div>
-                    <div id="dataStorageDetail" class="data-storage-legend"></div><p id="dataStorageLocation" class="data-storage-path" hidden></p><p id="dataStorageLocationStatus" role="status" aria-live="polite"></p>
+                    <p id="dataStorageTotal" class="data-storage-total">Speichergröße wird gelesen</p>
+                    <div id="dataStorageDetail" class="data-storage-legend"></div>
+                    <details id="dataStorageLocationDetails" class="data-technical" hidden><summary id="dataStorageLocationSummary">Speicherort anzeigen</summary><p id="dataStorageLocation" class="data-storage-path" hidden></p></details><p id="dataStorageLocationStatus" role="status" aria-live="polite"></p>
                     <p class="data-muted data-storage-note">Zur Einordnung: Selbst 100 Wertpapiere über 10 Jahre ergeben nur wenige MB Tageskurse.</p>
                     <details id="dataStorageDetails" class="data-technical"><summary>Technische Details</summary><p id="dataStorageLocationTechnical"></p><p id="dataStorageTechnical"></p><p>Der Browserspeicher ist an Browserprofil und Herkunft gebunden. Browser und EXE übertragen keine Daten automatisch.</p><p>Die Größe ist eine Näherung aus den gespeicherten Inhalten, keine physische Dateigröße oder verfügbare Speichergrenze. Kurskopien in Wiederherstellungspunkten zählen zum Archiv.</p></details>
                 </section>
@@ -107,6 +108,12 @@
                 </section>
             </div>
         </div>
+        <section class="data-section ds-card data-new-beginning" id="neu-beginnen" aria-labelledby="dataNewBeginningTitle">
+            <div><h2 id="dataNewBeginningTitle">Neu beginnen</h2><p class="data-muted">Alle Daten dieser App löschen und mit der Erststart-Seite neu anfangen.</p></div>
+            <button id="dataNewBeginningOpen" type="button" class="ds-button ds-button-danger" aria-describedby="dataNewBeginningReason" disabled>Neu beginnen …</button>
+            <p id="dataNewBeginningReason" role="status">Speicher wird geprüft …</p>
+            <details class="data-technical"><summary>Technische Details</summary><p id="dataNewBeginningTechnical"></p></details>
+        </section>
     </div>
     <script type="module" src="app/data/data-page.js"></script>
             </main>

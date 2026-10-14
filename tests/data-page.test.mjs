@@ -26,7 +26,8 @@ const model = await projectDataModel({ records: { overview_last_full_backup_v1: 
 renderDataPage(doc, model);
 assertEqual(doc.getElementById('dataBackupAge').textContent, 'vor 31 Tagen', 'Zustand 02 liest tatsächliche Sicherungszeit');
 assertEqual(doc.getElementById('dataBackupTile').dataset.state, 'warning', 'Überfällige Sicherung zeigt Warnzustand');
-assert(doc.getElementById('dataBackupChanges').textContent.includes('noch nicht erfasst'), 'Altbackup erfindet keine Nullaktivität');
+assert(doc.getElementById('dataBackupChanges').hidden && doc.getElementById('dataBackupChanges').textContent === '', 'Altbackup ohne Vergleichsbasis lässt die Änderungszeile weg');
+assertEqual(doc.getElementById('dataBackupTitle').textContent, 'Vollsicherung als Datei', 'Hauptblock wiederholt ohne Basis keine Sicherungszeit');
 assert(doc.getElementById('dataStorageTechnical').textContent.includes('IndexedDB ruhestand-suite'), 'Speicher nennt den tatsächlichen Backendvertrag nur in Details');
 assert(doc.getElementById('dataStorageTechnical').textContent.includes('Gespeicherte Einträge: 1'), 'Eintragszahl steht auf Daten & Sicherung in den Speicherdetails');
 renderDataPage(doc, await projectDataModel({ records: { overview_last_full_backup_v1: time }, now: new Date('2026-09-30T12:00:00.000Z') }));
@@ -130,7 +131,11 @@ for (const [id, host] of [['dataModelTechnical', 'dataBackupDetails'], ['dataBac
     assert(block.includes(`id="${id}"`), id + ': technische Ursache gehört zum richtigen Detailhost');
 }
 assert(html.includes('Alles, was die App speichert, liegt auf diesem Rechner.'), 'Kopfeinleitung entspricht dem Entwurf');
-assert(html.includes('Die Startseite erinnert dich, wenn die letzte Vollsicherung älter als 30 Tage ist.'), 'Beiger Entwurfshinweis bleibt wörtlich erhalten');
+assert(html.includes('Die Startseite erinnert dich, wenn die letzte Vollsicherung älter als 30 Tage ist.'), 'Neutrale Erinnerung erklärt die unveränderte 30-Tage-Regel');
+for (const [id, label] of [['dataRetentionDetails', 'Wie lange bleiben Punkte erhalten?'], ['dataStorageLocationDetails', 'Speicherort anzeigen']]) {
+    assert(new RegExp(`<details id="${id}"[^>]*><summary[^>]*>${label.replace('?', '\\?')}</summary>`).test(html)
+        && !new RegExp(`<details id="${id}"[^>]*\\bopen\\b`).test(html), id + ': vorhandene Einzelheiten sind zunächst zugeklappt');
+}
 const css = fs.readFileSync(new URL('../css/daten-sicherung.css', import.meta.url), 'utf8');
 assert(css.includes('.data-page > #error-container:empty') && css.includes('.data-page > #dataPageStatus:empty'), 'Leere Alert-/Livehosts erzeugen keine oberen Flexabstände');
 
@@ -147,12 +152,16 @@ const projected = await projectDataModel({ records: synthetic, now, snapshots: [
 renderDataPage(doc, projected);
 assertEqual(doc.getElementById('dataHouseholdContext').textContent, 'Haushalt: Max + Erika', 'Kontext benutzt echte Haushaltsnamen');
 assertEqual(doc.getElementById('dataBackupContext').textContent, 'Gesichert am 01.09.2026', 'Kontextchip benutzt echte Sicherungszeit');
-assertEqual(doc.getElementById('dataSnapshotCount').textContent, '2 Punkte', 'Punktkachel zeigt tatsächliche Anzahl');
+assertEqual(doc.getElementById('dataSnapshotCount').textContent, '0 verfügbar · 2 gesperrt', 'Punktkachel trennt verfügbare und gesperrte Punkte');
+assertEqual(doc.getElementById('dataSnapshotTile').dataset.state, 'warning', 'Gesperrte Punkte werden nicht grün zusammengefasst');
 assert(doc.getElementById('dataSnapshotDetail').textContent.includes('01.01.2026'), 'Ältester Punkt wird unabhängig von Eingabereihenfolge ermittelt');
 assertEqual(doc.getElementById('dataContent').children.length, 6, 'Passender Bestand liefert sechs fachliche Chiparten');
 assert(textOf(doc.getElementById('dataContent')).includes('2 Tageskurse'), 'Chip zählt wirkliche Tageskurse statt Musterwert');
-assert(doc.getElementById('dataBackupChanges').textContent.includes('keine Änderungen'), 'Bekannter identischer Bestand zeigt ausdrücklich unveränderte Vergleichsbereiche');
-assertEqual(doc.getElementById('dataStorageArchiveBar').style.width, `${3000000 / projected.totalBytes * 100}%`, 'Speicherbalken benutzt unveränderte Bytes');
+assert(!doc.getElementById('dataBackupChanges').hidden
+    && doc.getElementById('dataBackupChanges').textContent === 'Keine Änderungen in Monatsabschlüssen, Tagesgeld-Einträgen und Tranchen.', 'Bekannter identischer Bestand zeigt ausdrücklich unveränderte Vergleichsbereiche');
+assertEqual(doc.getElementById('dataBackupTitle').textContent, 'Seit der letzten Sicherung geändert:', 'Hauptblock zeigt Änderungen statt wiederholtem Sicherungsdatum');
+assert(!html.includes('id="dataStorageBar"'), 'Speicherzusammensetzung wird ohne Füllstandsbalken angezeigt');
+assertEqual(doc.getElementById('dataStorageTotal').textContent, doc.getElementById('dataStorageSize').textContent + ' lokal gespeichert', 'Kompakte Speicherangabe benutzt die unveränderte Gesamtgröße');
 assertEqual(doc.getElementById('dataStorageDetail').children[2].textContent, 'Wiederherstellungspunkte 3,0 MB', 'MB-Legende verwendet dezimale Umrechnung mit deutschem Komma');
 assert(checkMainText(mainText()), 'Gerenderte synthetische Haupttexte sind alltagssprachlich');
 const sampleProfile = Object.values(JSON.parse(synthetic.rs_profiles_v1).profiles)[0];
@@ -182,6 +191,7 @@ for (const records of [
 const diff = { months: { added: 1, changed: 2, removed: 3 }, cash: { added: 2, changed: 1, removed: 1 }, tranches: { added: 3, changed: 1, removed: 2 } };
 renderDataPage(doc, { ...projected, changes: diff });
 const changesText = doc.getElementById('dataBackupChanges').textContent;
+assert(changesText.includes('Geprüft: Monatsabschlüsse, Tagesgeld-Einträge und Tranchen.'), 'Änderungszeile grenzt den tatsächlich geprüften Datenumfang ein');
 for (const phrase of ['1 Monatsabschluss neu', '2 Monatsabschlüsse geändert', '3 Monatsabschlüsse entfernt', '1 Tagesgeld-Eintrag geändert', '2 Tranchen entfernt']) assert(changesText.includes(phrase), 'Fachlicher Aktivitätstext erhält ' + phrase);
 assert(checkMainText(mainText()), 'Aktivitätstexte enthalten keine technischen Bezeichner');
 
@@ -199,15 +209,51 @@ for (const records of [{}, { overview_last_full_backup_v1: 'kaputt' }, { rs_prof
     assert(checkMainText(mainText()), 'Leer-/Fehlerhaupttexte enthalten keine technischen Ursachen');
     assertEqual(doc.getElementById('dataSnapshotTile').dataset.state, 'unknown', 'Archivfehler wird kein grüner Nullbestand');
     assertEqual(doc.getElementById('dataStorageTile').dataset.state, 'unknown', 'Unbekannte Archivgröße erzeugt keinen grünen Gesamtwert');
+    assertEqual(doc.getElementById('dataStorageTotal').textContent, 'Speichergröße nicht vollständig verfügbar', 'Unbekannte Teilgröße behauptet keinen vollständigen Speicherwert');
+    assert(doc.getElementById('dataBackupChanges').hidden && !doc.getElementById('dataBackupChanges').textContent, 'Fehlende oder fehlerhafte Vergleichsbasis entfernt auch einen vorherigen Änderungsstand');
     assert(doc.getElementById('dataStorageTechnical').textContent.includes('IndexedDB snapshots'), 'Archivursache bleibt in Speicherdetails erreichbar');
 }
 renderDataPage(doc, { ...projected, priceCoverage: { state: 'current', quoteCount: 5, updatedCount: 5, total: 12, openIntervals: 0, quoteAt: Date.parse(time), rows: [] } });
 assertEqual(doc.getElementById('dataPriceCount').textContent, '5 von 5 aktuell', 'Kachel nennt ausschließlich bestätigte Aktualisierungen');
-assert(doc.getElementById('dataPriceDetail').textContent.includes('12 Tageskurse · keine Lücken'), 'Erklärzeile nennt gespeicherte Kurse und offene Zeiträume');
+assert(doc.getElementById('dataPriceDetail').textContent.includes('Tageskurse vollständig'), 'Vollständigkeit stammt aus bestätigten Zeiträumen');
 const healthOnly = await projectDataModel({ records: synthetic, now, serviceReport: { status: 'available', attemptedAt: now.getTime() } });
 renderDataPage(doc, healthOnly);
-assertEqual(doc.getElementById('dataPriceCount').textContent, 'Kurslage unbekannt', 'Bloße Diensterreichbarkeit erfindet keine Aktualisierung');
-assertEqual(doc.getElementById('dataPriceTile').dataset.state, 'unknown', 'Bloßer Healthcheck bleibt ohne grünen Erfolg');
+assertEqual(doc.getElementById('dataPriceCount').textContent, 'Kursdaten fehlen oder sind unbrauchbar', 'Bloße Diensterreichbarkeit behebt keine fehlenden Tageskurse');
+assertEqual(doc.getElementById('dataPriceTile').dataset.state, 'error', 'Bloßer Healthcheck macht fehlende Tageskurse nicht grün');
+
+const storedCoverage = { state: 'offline', quoteCount: 1, usableQuoteCount: 1, total: 1, openIntervals: 0,
+    quoteAt: Date.parse(time), attemptedAt: now.getTime(), rows: [], issues: [] };
+renderDataPage(doc, { ...projected, priceCoverage: storedCoverage });
+assertEqual(doc.getElementById('dataPriceTile').dataset.state, 'warning', 'Fehlgeschlagener Abruf bei vollständigen brauchbaren Kursen ist gelb');
+assertEqual(doc.getElementById('dataPriceCount').textContent, 'Letzter Kursabruf fehlgeschlagen', 'Kursstatus benennt den fehlgeschlagenen Abruf');
+assertEqual(doc.getElementById('dataPriceDetail').textContent, 'Gespeicherte Kurse vom 01.09.2026 · Tageskurse vollständig', 'Gespeicherter Stand benutzt Kursdatum statt Versuchsdatum');
+assert(doc.getElementById('dataPriceServiceText').hidden && !doc.getElementById('dataPriceServiceText').textContent, 'Abruffehler erscheint nicht nochmals unter der Statuskachel');
+for (const patch of [{ usableQuoteCount: 0 }, { missingHistory: true }, { unreadable: true, total: null }]) {
+    renderDataPage(doc, { ...projected, priceCoverage: { ...storedCoverage, ...patch } });
+    assertEqual(doc.getElementById('dataPriceTile').dataset.state, 'error', 'Fehlende oder unlesbare Kursdaten werden rot angezeigt');
+}
+renderDataPage(doc, { ...projected, priceCoverage: { ...storedCoverage, openIntervals: 1 } });
+assert(!doc.getElementById('dataPriceDetail').textContent.includes('vollständig'), 'Offene Zeiträume werden nicht als vollständige Tageskurse ausgegeben');
+renderDataPage(doc, { ...projected, priceCoverage: { ...storedCoverage, issues: ['Ticker fehlt'] } });
+assert(doc.getElementById('dataPriceDetail').textContent.includes('nicht prüfbar'), 'Ungeklärte Wertpapiere erzeugen keine vollständige Tageskursmeldung');
+doc.getElementById('dataPriceActionStatus').textContent = 'Kursdienst nicht erreichbar. Bitte versuche es später erneut.';
+renderDataPage(doc, { ...projected, priceCoverage: { ...storedCoverage, serviceReport: { status: 'offline', kind: 'health' } } });
+assertEqual(doc.getElementById('dataPriceCount').textContent, 'Kursdienst nicht erreichbar', 'Gescheiterte Dienstprüfung behauptet keinen gescheiterten Kursabruf');
+assertEqual(doc.getElementById('dataPriceActionStatus').textContent, '', 'Dienstfehler steht nur einmal im Haupttext');
+
+const availablePoint = { id: 'full', kind: 'full-backup-import-recovery', label: 'Vollbackup-Import Recovery 2026-10-13T12:00:00Z', createdAt: time };
+const blockedPoint = { id: 'removed', kind: 'annual-close-pre-mutation', activeProfileId: 'deleted-person', createdAt: time };
+renderDataPage(doc, { ...projected, snapshots: [availablePoint, blockedPoint] });
+assertEqual(doc.getElementById('dataSnapshotCount').textContent, '1 verfügbar · 1 gesperrt', 'Vollimport ohne Personenzuordnung und gesperrter Personenpunkt werden getrennt gezählt');
+const pointRows = doc.getElementById('dataSnapshotList').children;
+assertEqual(pointRows[0].children[0].textContent, 'Vor dem Einspielen einer Sicherung', 'Technischer Importname wird nur für die Anzeige verständlich benannt');
+assert(!textOf(doc.getElementById('dataSnapshotList')).includes('Name unbekannt'), 'Unbekannter Punktname wird weggelassen');
+assert(textOf(pointRows[1]).includes('Eine neu angelegte Person mit demselben Namen'), 'Sperrerklärung nennt die fehlende direkte Lösung');
+renderDataPage(doc, { ...projected, snapshots: [availablePoint] });
+assertEqual(doc.getElementById('dataSnapshotTile').dataset.state, 'ok', 'Nur vollständig verfügbare Punkte erhalten einen grünen Status');
+renderDataPage(doc, { ...projected, snapshots: [{ ...availablePoint, kind: 'probelauf-before' }] });
+assertEqual(doc.getElementById('dataSnapshotCount').textContent, '0 verfügbar · 1 gesperrt', 'Probelaufpunkt bleibt für das Zurückholen auf dieser Seite gesperrt');
+assert(textOf(doc.getElementById('dataSnapshotList')).includes('Probelauf beenden'), 'Probelaufpunkt nennt seinen vorhandenen Rückweg');
 
 const backupStatus = dataBackupStatus(doc);
 for (const raw of ['IndexedDB kv rs_profiles_v1 SYNTHETIC_WRITE_FAILED', 'Quota UTF-8 SHA-Fingerabdruck serialisiert', 'Store metadata snapshots Browser-Dateidialog']) {

@@ -1,50 +1,54 @@
-# German gross-wage growth proxy
+# Deutscher Bruttolohn-Wachstumsproxy
 
-This directory pins the JST R6 and Destatis inputs used to generate
+Die festgeschriebenen Eingaben aus JST R6 und Destatis liefern die Grundlage für
 `GermanGrossWageGrowthChainV2`.
 
-## Source and identity
+## Quellen und Reihenidentität
 
-| File | Series / role | SHA-256 |
+| Datei | Reihe / Verwendung | SHA-256 |
 | --- | --- | --- |
-| `../global-equity-research-chain/originals/JSTdatasetR6.xlsx` | JST R6 `DEU.wage` nominal-wage levels; consecutive-level changes supply the 1925-1946 research proxy | `c1bb91fe56ea50d4f27af5c0fc897d481e89ae38ce41eaecab62134c9354981d` |
-| `originals/destatis-bruttomonatsverdienst-index-2026-08-01.html` | Index of average gross monthly earnings without special payments; annual index levels and changes | `1f62492a2efe78fba3ec2ac81dfd90a1c4ccd6f8b68b7bcc6c53ae4d8cd51f1a` |
+| `../global-equity-research-chain/originals/JSTdatasetR6.xlsx` | JST R6 `DEU.wage`, nominale Lohnindexstände; Veränderungen aufeinanderfolgender Indexstände liefern den Forschungsproxy für 1925-1946 | `c1bb91fe56ea50d4f27af5c0fc897d481e89ae38ce41eaecab62134c9354981d` |
+| `originals/destatis-bruttomonatsverdienst-index-2026-08-01.html` | Index of average gross monthly earnings without special payments; jährliche Indexstände und Veränderungen der durchschnittlichen Bruttomonatsverdienste ohne Sonderzahlungen | `1f62492a2efe78fba3ec2ac81dfd90a1c4ccd6f8b68b7bcc6c53ae4d8cd51f1a` |
 
-The source page was retrieved on 2026-08-01 and is published as of 2026-03-10.
-It contains index levels from 1946 and published annual changes from 1947
-through 2025. The source's stated German territorial definition and long-series
-method changes remain part of the qualification.
+Die Quellenseite wurde am 2026-08-01 abgerufen und trägt den
+Veröffentlichungsstand 2026-03-10. Sie enthält Indexstände ab 1946 und
+veröffentlichte Jahresveränderungen für 1947-2025. Die territoriale Abgrenzung
+Deutschlands und die Methodenwechsel der langen Reihe bleiben Teil ihrer
+Einordnung.
 
-## Runtime mapping and limitation
-
-Run:
+## Laufzeitzuordnung und Grenzen
 
 ```text
 npm run build:german-gross-wage-data
 npm run verify:german-gross-wage-data
 ```
 
-The published percentage for reporting year `t` is applied once in simulation
-year `t` when `rentAdjMode=wage`. For 1925-1946, the generator derives the
-same year-`t` percentage from consecutive JST R6 `DEU.wage` levels. This early
-segment is a macrohistory research proxy, not an official Destatis observation.
-The generated method contract records four discontinuities: 1925 is the
-chain-start normalization, 1945 is an `estimated` wartime/post-war bridge for
-which no market-wage observation exists, 1947 is the JST-to-Destatis source
-seam, and 1948 retains the currency-reform context. The 1946 change remains
-the last JST proxy observation before the source seam.
-The official segment uses Destatis from 1947. It records the former federal
-territory through 1990, the post-reunification territory from 1991, the 2007
-coverage change to producing industry and services, and the earnings-survey
-method introduced in 2022. The one-decimal index levels for 1947-1955 range
-from 1.9 to 4.5; the 1947 change additionally uses the preceding 1946 level
-1.8. Together these values imply a maximum documented half-unit relative
-level effect of about 2.8 percent.
+Die veröffentlichte Prozentänderung für das Berichtsjahr `t` wird im
+Simulationsjahr `t` einmal angewandt, wenn `rentAdjMode=wage` gilt. Für
+1925-1946 leitet der Generator dieselbe Prozentänderung für Jahr `t` aus
+aufeinanderfolgenden JST-R6-Indexständen von `DEU.wage` ab. Dieses frühe Segment ist ein
+makrohistorischer Forschungsproxy und keine amtliche Destatis-Beobachtung.
 
-The generated series is a broad gross-earnings escalation proxy without special
-payments. It is not the historical statutory German pension-adjustment series,
-does not reproduce pension-formula factors or protection clauses, and is not a
-substitute for an individual pension notice. The combined primary-input hash
-is `cfd5c598a8bc846a96966fa8ff7388d80c30f3ada39edbfe90d39f234eef9d9b`;
-the generated 101-value hash is
+Der erzeugte Methodenvertrag kennzeichnet vier Brüche: 1925 ist die Normierung
+am Reihenanfang; 1945 eine mit `estimated` markierte Kriegs- und
+Nachkriegsbrücke ohne beobachteten Marktlohn; 1947 der Quellenwechsel von JST
+zu Destatis; 1948 der Kontext der Währungsreform. Die Veränderung für 1946
+bleibt die letzte JST-Proxybeobachtung vor dem Quellenwechsel.
+
+Das amtliche Segment nutzt Destatis ab 1947. Es unterscheidet das frühere
+Bundesgebiet bis 1990, das wiedervereinigte Deutschland ab 1991, die
+Erweiterung auf Produzierendes Gewerbe und Dienstleistungen 2007 sowie die
+2022 eingeführte Methode der Verdiensterhebung. Die auf eine Dezimalstelle
+gerundeten Indexstände für 1947-1955 liegen zwischen 1.9 und 4.5. Die
+Veränderung für 1947 verwendet außerdem den vorherigen Indexstand 1.8 aus
+1946. Daraus ergibt sich ein dokumentierter maximaler relativer Einfluss
+von etwa 2.8 Prozent durch die halbe Einheit der letzten Indexdezimalstelle.
+
+Die Reihe liefert einen allgemeinen Proxy für die Fortschreibung von
+Bruttoverdiensten ohne Sonderzahlungen. Sie bildet weder die historische
+gesetzliche Rentenanpassung in Deutschland noch die Faktoren der Rentenformel
+oder Schutzklauseln ab und ersetzt keinen individuellen Rentenbescheid.
+Der kombinierte Hash der primären Eingaben lautet
+`cfd5c598a8bc846a96966fa8ff7388d80c30f3ada39edbfe90d39f234eef9d9b`;
+der Hash der 101 erzeugten Werte lautet
 `e10e581f6994e07ed0a943b3716dd8fd5dea7b8b272d47a546466af8701a3057`.

@@ -5,7 +5,7 @@
 .overview-eyebrow { font-size: var(--balance-help); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
 .overview-heading h1 { font-family: var(--font-serif); font-size: var(--balance-h1); line-height: 1.08; font-weight: 500; margin: 6px 0 8px; }
 .overview-lead { color: var(--text-muted); font-size: var(--balance-body); }
-.overview-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--space-4); align-items: start; }
+.overview-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--space-4); align-items: start; }
 .overview-assets, .overview-plan { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .overview-focus { grid-column: 1; grid-row: 1; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; border-color: var(--accent-line); background: linear-gradient(160deg, var(--accent-soft), var(--surface) 46%); }
 .overview-assets { grid-column: 2; grid-row: 1; }
@@ -70,7 +70,8 @@
 .overview-year-month[data-state="partial"] .overview-month-bar { background: repeating-linear-gradient(135deg,var(--border-strong) 0 5px,var(--surface) 5px 10px); border: 1px solid var(--border-strong); }
 .overview-year-month[data-state="open"] .overview-bar-space { border: 1px dashed var(--border); border-radius: 5px; }
 .overview-year-month[data-state="missing"] .overview-bar-space { background: repeating-linear-gradient(135deg,var(--surface-sunken) 0 2px,var(--surface) 2px 10px); border: 1px dotted var(--border-strong); border-radius: 5px; }
-.overview-budget-line { position: absolute; width: 100%; border-top: 1px dashed var(--accent); z-index: 1; }
+.overview-budget-line { position: absolute; width: 100%; border-top: 1px solid var(--accent); z-index: 1; }
+.overview-budget-line[data-budget-status="provisional"] { border-top-style: dashed; }
 .overview-month-state { color: var(--text-muted); overflow-wrap: anywhere; }
 .overview-year-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 22px; border-top: 1px solid var(--border); padding-top: 20px; }
 .overview-year-metric { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -97,7 +98,6 @@
 .overview-pill:focus-visible, .overview-card-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .overview-card-link { color: var(--accent); font-size: var(--balance-help); text-decoration: none; }
 .overview-card-link:hover { text-decoration: underline; }
-.overview-manage { align-self: flex-start; margin-top: -10px; }
 .overview-assets .overview-card-heading { flex-wrap: wrap; align-items: center; }
 .overview-assets #overviewAssetTitle { font-family: var(--font-sans); font-size: var(--balance-help); color: var(--text-muted); }
 .overview-asset-number { display: flex; align-items: baseline; gap: 12px; }
@@ -118,7 +118,11 @@
 .overview-year-key.is-partial { background: repeating-linear-gradient(135deg,var(--border-strong) 0 2px,var(--surface) 2px 4px); }
 .overview-year-key.is-open { border-style: dashed; }
 .overview-year-key.is-missing { border-style: dotted; background: repeating-linear-gradient(135deg,var(--surface-sunken) 0 2px,var(--surface) 2px 4px); }
+.overview-legend .overview-year-budget-key { width: 24px; height: 0; border-top: 1px solid var(--accent); border-radius: 0; vertical-align: middle; }
+.overview-year-budget-key[data-budget-status="provisional"] { border-top-style: dashed; }
 .overview-price-context { position: relative; min-width: 0; max-width: 100%; }
+.overview-price-context [hidden] { display: none; }
+.overview-price-context > .ds-info { vertical-align: middle; }
 .overview-price-details { position: absolute; top: calc(100% + 8px); left: 0; width: min(440px, calc(100vw - 48px)); z-index: 5; }
 .overview-price-details:not([open]) { display: none; }
 .overview-price-details[open] { padding: 16px 20px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 6px 24px color-mix(in srgb, var(--text-main) 12%, transparent); overflow-wrap: anywhere; }
@@ -126,7 +130,7 @@
 .overview-price-details summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 /* Monatsentscheidung im nativen Top-Layer mit Bausteinfeldern und Rückfokus. */
 
-/* Abschlusskarte oder schlichte Hinweise → Kennzahlen → Verlauf. */
+/* Nächster Abschluss → Vermögen, Budget, Plan → Personen und Ausgaben → Verlauf. */
 .overview-reminders { grid-column: 1 / -1; min-width: 0; }
 .overview-reminders p { margin: 0; }
 .overview-reminders .overview-cash-warning { margin-top: var(--space-2); }
@@ -134,9 +138,15 @@
 .overview-metrics { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: var(--space-4); min-width: 0; }
 .overview-metrics > section { grid-column: auto; grid-row: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .overview-metrics h2 { font: 500 var(--balance-help)/1.4 var(--font-sans); color: var(--text-muted); }
-.overview-kpi-number { font: 500 var(--balance-kpi)/1.1 var(--font-serif); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.overview-metrics .overview-hero-number { font-size: var(--balance-amount); }
-.overview-metrics .overview-manage { margin-top: 0; }
+.overview-kpi-number { font: 500 var(--value-lg)/1.1 var(--font-serif); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.overview-metrics .overview-hero-number { font-size: var(--value-xl); }
+.overview-metric-value { display: flex; align-items: center; min-height: calc(var(--value-xl) * 1.1); }
+.overview-metrics .overview-asset-number { align-items: baseline; }
+.overview-metric-source { min-height: 1.4em; line-height: 1.4; }
+.overview-metric-source [data-probelauf-price-info] .ds-info-pop { top: auto; bottom: calc(100% + var(--space-2)); }
+.overview-metrics .overview-card-link { align-self: start; margin-top: auto; }
+.overview-plan-state { flex-wrap: wrap; gap: var(--space-2); }
+.overview-plan-state > .overview-muted { font-size: var(--value-md); }
 .overview-year, .overview-asset-details { grid-column: auto; grid-row: auto; }
 .overview-asset-details { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 @container suite-content (max-width: 70rem) {
@@ -144,12 +154,12 @@
     .overview-metrics { grid-template-columns: minmax(0,1fr); }
 }
 .overview-history { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; padding: var(--space-4); }
-.overview-history .history-chart { height: 294px; min-width: 0; box-sizing: border-box; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.overview-history .history-chart { height: 176px; min-width: 0; box-sizing: border-box; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-md); }
 .overview-history .wealth-history-svg { height: 100%; }
-.overview-history .history-metrics { grid-template-columns: repeat(5,minmax(0,1fr)); gap: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
+.overview-history .history-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); }
 .overview-history .history-metric { padding: var(--space-3) var(--space-4); border-left: 1px solid var(--border); }
 .overview-history .history-metric:first-child { border-left: 0; }
-.overview-history .history-metric strong { font-size: 24px; }
+.overview-history .history-metric strong { font-size: var(--value-md); }
 .overview-history [data-history-sign="positive"] { color: var(--good); }
 .overview-history [data-history-sign="negative"] { color: var(--bad); }
 .overview-history [data-history-sign="zero"] { color: var(--text-main); }
@@ -182,6 +192,8 @@
 .overview-completed summary:hover { color: var(--text-main); }
 .overview-focus-top { flex-wrap: wrap; align-items: start; }
 .overview-focus-top > .ds-button { flex: none; align-self: center; }
+.overview-annual-status-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.overview-annual-status-actions > .ds-button { flex: none; }
 .overview-focus-icon { width: 40px; height: 40px; border-radius: var(--radius-md); }
 .overview-page .overview-focus-why { max-width: none; }
 .overview-focus-foot { padding-top: var(--space-2); }

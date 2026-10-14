@@ -23,7 +23,8 @@ function monthlyDisplay(value) {
 
 /** Gemeinsam verwendete, schreibfreie und text-sichere Personenfelder. */
 export function createTagesgeldFields({ doc = document, people, title = 'Tagesgeld-Stand jetzt',
-    explanation = 'Nach der Überweisung des Monatsbetrags. Fließt in den Vermögensverlauf ein.', prefix = 'tagesgeld', monthly = false, closePresentation = false, requireConfirmation = false }) {
+    explanation = 'Nach der Überweisung des Monatsbetrags. Fließt in den Vermögensverlauf ein.', prefix = 'tagesgeld', monthly = false, closePresentation = false, requireConfirmation = false, asOfLabel = '' }) {
+    const monthlyClose = monthly && closePresentation && requireConfirmation;
     const root = doc.createElement('section'); root.className = 'tagesgeld-fields' + (closePresentation ? ' tagesgeld-close-fields' : '');
     const heading = doc.createElement('h3'); heading.textContent = title;
     const hint = doc.createElement('p'); hint.textContent = explanation;
@@ -37,6 +38,9 @@ export function createTagesgeldFields({ doc = document, people, title = 'Tagesge
         input.dataset.tagesgeldPerson = person.id;
         input.value = person.value === null ? '' : monthly ? monthlyDisplay(person.value) : displayDecimalInput(person.value);
         label.setAttribute('for', input.id); label.textContent = closePresentation ? `Tagesgeld ${person.name}` : `${person.name} · Tagesgeld (€)`;
+        if (asOfLabel) {
+            const date = doc.createElement('small'); date.textContent = asOfLabel; date.dataset.tagesgeldDate = ''; label.append(date);
+        }
         const last = doc.createElement('small'); last.id = `${input.id}-hint`;
         last.textContent = person.error ? person.error : person.lastDate
             ? monthly ? `zuletzt bestätigt am ${cashDateDisplay(person.lastDate)}: ${monthlyDisplay(person.value)} €`
@@ -46,20 +50,31 @@ export function createTagesgeldFields({ doc = document, people, title = 'Tagesge
         error.className = 'tagesgeld-error';
         input.setAttribute('aria-describedby', `${last.id} ${error.id}`);
         row.append(label, input, last, error);
+        let source;
         if (requireConfirmation) {
-            const source = doc.createElement('small');
+            source = doc.createElement('small'); source.dataset.tagesgeldStatus = '';
             source.textContent = person.lastDate ? `Vorbelegt aus dem Stand vom ${cashDateDisplay(person.lastDate)} · bitte bestätigen.` : 'Vorbelegter Stand · bitte bestätigen.';
             row.append(source);
         }
         if (monthly) { const unit = doc.createElement('span'); unit.className = 'tagesgeld-unit'; unit.textContent = '€'; row.append(unit); }
         root.append(row);
-        return { person, input, error };
+        return { person, input, error, source };
     });
     if (closePresentation) root.append(hint);
     const confirmed = new Set();
     const parse = field => {
         if (field.person.error) throw new Error(field.person.error);
         return monthly ? parseMonthlyCashInput(field.input.value) : parseCashInput(field.input.value);
+    };
+    const syncPresentation = () => {
+        if (!monthlyClose) return;
+        for (const field of fields) {
+            field.source.textContent = confirmed.has(field.person.id)
+                ? 'Stand erfasst – wird mit dem Monatsabschluss gespeichert.'
+                : field.input.getAttribute('aria-invalid') === 'true' ? 'Bitte einen gültigen Kontostand eingeben.'
+                    : field.input.value.trim() ? 'Letzten Stand übernommen – bitte prüfen.' : 'Bitte einen Kontostand eingeben.';
+        }
+        confirmationButton.hidden = api.ready;
     };
     const validateField = field => {
         try {
@@ -83,10 +98,12 @@ export function createTagesgeldFields({ doc = document, people, title = 'Tagesge
             if (!requireConfirmation) return;
             for (const field of fields) listen(field.input, 'input', () => {
                 if (validateField(field)) confirmed.add(field.person.id);
+                syncPresentation();
                 onChange();
             });
             listen(confirmationButton, 'click', () => {
                 try { api.read(); fields.forEach(field => confirmed.add(field.person.id)); } catch { /* Feldfehler sind sichtbar. */ }
+                syncPresentation();
                 onChange();
             });
         },
@@ -107,8 +124,10 @@ export function createTagesgeldFields({ doc = document, people, title = 'Tagesge
                 error.textContent = failure.message; input.setAttribute('aria-invalid', 'true'); invalid ||= input;
             }
         }
+        syncPresentation();
         if (invalid) { invalid.focus(); throw new Error('Bitte die markierten Tagesgeldfelder prüfen.'); }
         return { people: structuredClone(people), values };
     } };
+    syncPresentation();
     return api;
 }

@@ -81,7 +81,6 @@ import {
 } from '../app/shared/persistence-facade.js';
 import { RESET_RELOAD_REQUIRED_MESSAGE } from '../app/shared/navigation-guard.js';
 import { createLocalStorageAdapter } from '../app/shared/persistence-adapter-localstorage.js';
-import { initResetButton } from '../app/simulator/simulator-main-reset.js';
 
 console.log('--- Profile Storage Tests ---');
 
@@ -113,76 +112,6 @@ try {
     global.localStorage = createLocalStorageMock();
     global.window = { name: '' };
 
-    console.log('Regression Reset: echter Klick, Reload, Index und Profilwechsel erhalten Löschungen');
-    {
-        const deletedKeys = ['sim_mcAnzahl', 'sim_mcDauer', 'sim_mcSeed'];
-        const data = { profile_person_schema_version: '1', profile_geburtsdatum: '1960-05-06',
-            profile_tagesgeld: '12345', depot_tranchen: '[{"id":"synthetic-reset-lot"}]',
-            sim_accumulationDurationYears: '5', sim_mcAnzahl: '100', sim_mcDauer: '20', sim_mcSeed: '123' };
-        const other = { meta: { id: 'b', name: 'Andere synthetische Person' }, data: { profile_tagesgeld: '999', sim_mcSeed: '456' } };
-        const records = { ...data, rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
-            a: { meta: { id: 'a', name: 'Synthetischer Reset' }, data }, b: other
-        } }), rs_current_profile: 'a', rs_active_profile: 'a', etfProxyUrl: 'synthetischer globaler Wert' };
-        const adapter = { loadAll: async () => ({ ...records }), saveBatch: async ({ deletes, upserts }) => {
-            deletes.forEach(key => { delete records[key]; }); upserts.forEach(([key, value]) => { records[key] = value; });
-        } };
-        const oldDocument = global.document, oldConfirm = global.confirm, oldWindow = global.window;
-        let click, reloads = 0;
-        const button = { disabled: false, addEventListener: (type, handler) => { if (type === 'click') click = handler; } };
-        global.document = { getElementById: id => id === 'resetBtn' ? button : null };
-        global.window = { location: { reload: () => { reloads++; } } };
-        global.confirm = () => true;
-        try {
-            resetPersistenceForTests(adapter); await initPersistence({ installLifecycleHooks: false, debounceMs: 60000 });
-            // Seit Paket 9 fragt der Reset über den Seitendialog; hier wird die Zustimmung wie in den übrigen Reset-Tests eingespeist.
-            initResetButton({ requestConfirmation: async () => true });
-            assertEqual((await click()).status, 'reloaded', 'Echter Reset bestätigt gemeinsamen Flush und Reload');
-            assertEqual(reloads, 1, 'Reset lädt genau einmal neu');
-            const verifyDeleted = stage => {
-                for (const key of deletedKeys) {
-                    assertEqual(persistenceStorage.getItem(key), null, `${stage}: ${key} fehlt live`);
-                    assertEqual(getProfileData('a')[key], undefined, `${stage}: ${key} fehlt in Registry`);
-                    assertEqual(records[key], undefined, `${stage}: ${key} fehlt im Livebackend`);
-                    assertEqual(JSON.parse(records.rs_profiles_v1).profiles.a.data[key], undefined, `${stage}: ${key} fehlt im Registrybackend`);
-                }
-            };
-            verifyDeleted('Reset');
-            // Neue Dokumentgeneration: nur bestätigten Backendstand laden, alte Sperre bleibt im alten Dokument.
-            resetPersistenceForTests(adapter); await initPersistence({ installLifecycleHooks: false, debounceMs: 60000 });
-            bootstrapProfileContext({ preserveLiveProfileData: true });
-            verifyDeleted('Preserve-Bootstrap');
-            bootstrapProfileContext();
-            for (const key of deletedKeys) assertEqual(persistenceStorage.getItem(key), null, `Indexstart stellt ${key} nicht wieder her`);
-            const verify = stage => {
-                const saved = getProfileData('a');
-                for (const key of deletedKeys) {
-                    assertEqual(saved[key], undefined, `${stage}: ${key} fehlt in Registry`);
-                    assertEqual(persistenceStorage.getItem(key), null, `${stage}: ${key} fehlt live`);
-                }
-                for (const key of ['profile_geburtsdatum', 'profile_tagesgeld', 'depot_tranchen', 'sim_accumulationDurationYears']) {
-                    assertEqual(saved[key], data[key], `${stage}: ${key} bleibt in Registry erhalten`);
-                    assertEqual(persistenceStorage.getItem(key), data[key], `${stage}: ${key} bleibt live erhalten`);
-                }
-                const second = JSON.parse(persistenceStorage.getItem('rs_profiles_v1')).profiles.b;
-                assertEqual(JSON.stringify(stage === 'Rückwechsel' ? second.data : second), JSON.stringify(stage === 'Rückwechsel' ? other.data : other), `${stage}: anderes Profil bleibt abgesehen vom normalen Wechselzeitstempel erhalten`);
-                assertEqual(persistenceStorage.getItem('etfProxyUrl'), records.etfProxyUrl, `${stage}: globale Einstellung bleibt erhalten`);
-            };
-            verify('Indexstart');
-            assertEqual(switchProfile('b'), true, 'Wechsel zur zweiten Person');
-            assertEqual(switchProfile('a'), true, 'Rückwechsel zur Resetperson');
-            verify('Rückwechsel');
-            await flush();
-            for (const key of deletedKeys) {
-                assertEqual(records[key], undefined, `Backend enthält ${key} nicht live`);
-                assertEqual(JSON.parse(records.rs_profiles_v1).profiles.a.data[key], undefined, `Backend enthält ${key} nicht in Registry`);
-            }
-        } finally {
-            resetPersistenceForTests(); global.window = oldWindow;
-            if (oldDocument === undefined) delete global.document; else global.document = oldDocument;
-            if (oldConfirm === undefined) delete global.confirm; else global.confirm = oldConfirm;
-        }
-    }
-
     console.log('Expliziter Löschauftrag: leerer Capture, Werte und wiederholte Löschung');
     for (const live of [true, false]) {
         localStorage.clear();
@@ -209,7 +138,7 @@ try {
             assertEqual(JSON.stringify(JSON.parse(localStorage.getItem('rs_profiles_v1')).profiles.b), JSON.stringify(other), `${live}/${attempt}: anderes Profil bytegleich`);
             assertEqual(localStorage.getItem('etfProxyUrl'), 'global erhalten', `${live}/${attempt}: globaler Wert erhalten`);
         }
-        // Der Saver schreibt die Registry; der Reset besitzt die anschließende Live-Löschung.
+        // Der Saver schreibt die Registry; sein Aufrufer besitzt die anschließende Live-Löschung.
         assertEqual(localStorage.getItem('sim_mcSeed'), live ? '999' : null, 'Saver löscht keine Livewerte vor seinem Aufrufer');
         const before = serializeStorage(localStorage);
         let writes = 0, removals = 0;
@@ -225,65 +154,6 @@ try {
             assertEqual(writes, 0, 'Unzulässiger Löschauftrag wird vor jedem Registrywrite abgewiesen');
             assertEqual(removals, 0, 'Unzulässiger Löschauftrag wird vor jeder Live-Löschung abgewiesen');
         } } finally { localStorage.setItem = originalSet; localStorage.removeItem = originalRemove; }
-    }
-
-    console.log('Echter Reset: Recovery-/Capturefehler vor Registrywrite und Live-Löschung');
-    for (const fault of ['missing-registry', 'registry', 'current', 'missing-current', 'active', 'mismatch', 'registry-field', 'iteration', 'value', 'balance']) {
-        const data = { profile_person_schema_version: '1', profile_geburtsdatum: '1960-05-06', profile_tagesgeld: '12345',
-            sim_mcAnzahl: '100', sim_mcDauer: '20', sim_mcSeed: '123' };
-        const records = { ...data, rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
-            a: { meta: { id: 'a', name: 'Fehlerperson' }, data }, b: { meta: { id: 'b', name: 'Andere Person' }, data: {} }
-        } }), rs_current_profile: 'a', rs_active_profile: 'a' };
-        if (fault === 'missing-registry') delete records.rs_profiles_v1;
-        if (fault === 'registry') records.rs_profiles_v1 = '{synthetisch-korrupt';
-        if (fault === 'current') records.rs_current_profile = 'ghost';
-        if (fault === 'missing-current') delete records.rs_current_profile;
-        if (fault === 'active') records.rs_active_profile = 'ghost';
-        if (fault === 'mismatch') records.rs_active_profile = 'b';
-        if (fault === 'registry-field') {
-            const registry = JSON.parse(records.rs_profiles_v1);
-            registry.profiles.a.data[CONFIG.STORAGE.LS_KEY] = '{synthetisch-korrupt';
-            records.rs_profiles_v1 = JSON.stringify(registry);
-        }
-        if (fault === 'balance') records[CONFIG.STORAGE.LS_KEY] = '{synthetisch-korrupt';
-        const oldDocument = global.document, oldConfirm = global.confirm, oldWindow = global.window, oldError = console.error;
-        const originalKey = persistenceStorage.key, originalGet = persistenceStorage.getItem;
-        const originalSet = persistenceStorage.setItem, originalRemove = persistenceStorage.removeItem;
-        let click, reloads = 0, writes = 0, removals = 0, batches = 0;
-        const button = { disabled: false, addEventListener: (type, handler) => { if (type === 'click') click = handler; } };
-        global.document = { getElementById: id => id === 'resetBtn' ? button : null };
-        global.window = { location: { reload: () => { reloads++; } } }; global.confirm = () => true;
-        console.error = () => {};
-        try {
-            resetPersistenceForTests({ loadAll: async () => ({ ...records }), saveBatch: async () => { batches++; } });
-            await initPersistence({ installLifecycleHooks: false, debounceMs: 60000 });
-            const before = JSON.stringify(exportAllSync().records);
-            persistenceStorage.setItem = (...args) => { writes++; return originalSet(...args); };
-            persistenceStorage.removeItem = (...args) => { removals++; return originalRemove(...args); };
-            if (fault === 'iteration') persistenceStorage.key = () => { throw new Error('SYNTHETIC_CAPTURE_ITERATION'); };
-            if (fault === 'value') persistenceStorage.getItem = key => {
-                if (key === 'sim_mcSeed') throw new Error('SYNTHETIC_CAPTURE_VALUE');
-                return originalGet(key);
-            };
-            initResetButton();
-            const result = await click();
-            assertEqual(result.status, 'failed', `${fault}: echter Reset lehnt fehlerhaften Kontext/Capture ab`);
-            assert(Boolean(result.error), `${fault}: Fehler bleibt belegbar`);
-            assertEqual(writes, 0, `${fault}: keine Registrywrites oder Defaultanlage`);
-            assertEqual(removals, 0, `${fault}: keine Live-Löschung`);
-            assertEqual(JSON.stringify(exportAllSync().records), before, `${fault}: Cache bleibt bytegleich`);
-            persistenceStorage.key = originalKey; persistenceStorage.getItem = originalGet;
-            assertEqual((await click()).status, 'failed', `${fault}: Retry bestätigt keinen unvollständigen Reset`);
-            assertEqual(reloads, 0, `${fault}: kein Erfolgsreload`);
-            assertEqual(batches, 0, `${fault}: kein Flush eines abgewiesenen Resets`);
-            assertEqual(JSON.stringify(exportAllSync().records), before, `${fault}: auch Retry erhält Cache`);
-        } finally {
-            persistenceStorage.key = originalKey; persistenceStorage.getItem = originalGet;
-            persistenceStorage.setItem = originalSet; persistenceStorage.removeItem = originalRemove;
-            resetPersistenceForTests(); global.window = oldWindow; console.error = oldError;
-            if (oldDocument === undefined) delete global.document; else global.document = oldDocument;
-            if (oldConfirm === undefined) delete global.confirm; else global.confirm = oldConfirm;
-        }
     }
 
     console.log('Regression Befund 6: gewöhnlicher Saver erhält vollständige Registry bei MC-Teilbestand');

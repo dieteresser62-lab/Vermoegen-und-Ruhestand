@@ -1,6 +1,7 @@
 import { buildWealthDistribution, renderWealthDistribution } from '../app/simulator/wealth-distribution.js';
 import { ScenarioAnalyzer } from '../app/simulator/scenario-analyzer.js';
 import { quantile } from '../app/simulator/simulator-utils.js';
+import { formatChartEuro } from '../app/simulator/results-formatting.js';
 
 function result(values, realValues = values, ruin = 0) {
     return { finalOutcomes: { distribution: { values, sampleSize: values.length, requestedRuns: values.length + 2, excludedRuns: 2 }, p10: quantile(values, .1), p25: quantile(values, .25), p50: quantile(values, .5) }, wealthView: { realValues }, outcomeInventory: { ruin } };
@@ -42,27 +43,33 @@ const data = result([10, 20, 30, 40], [10, 20, 3, 40]);
 const sourcesBefore = JSON.stringify({ data, logs });
 const nominal = buildWealthDistribution(data, logs, 'nominal');
 const real = buildWealthDistribution(data, logs);
-assertEqual(nominal.marks.find(m => m.key === 'p25').value, 20, 'P25-Szenariomarke: floor(4*.25) wählt den zweiten Lauf');
-assertEqual(nominal.p25, 17.5, 'Satz-P25: unabhängiges interpoliertes Orakel weicht erlaubt von der Marke ab');
-assertEqual(nominal.p10, 13, 'Satz-P10 ist interpoliert, nicht floor ausgewählt');
-assertEqual(nominal.p75, 32.5, 'Satz-P75 ist interpoliert');
-assert(Math.abs(real.p10 - 5.1) < 1e-12, 'Reale Satzwerte werden aus der Realpopulation interpoliert');
-assertEqual(real.p25, 8.25, 'Reales Satz-P25: eigenes Zahlenorakel');
-assertEqual(real.p75, 25, 'Reales Satz-P75: eigenes Zahlenorakel');
-assertEqual(real.ladder.find(m => m.key === 'p50').gap, -17, 'Nominale Leiterreihenfolge zeigt ehrlichen negativen Realabstand');
-for (const mark of real.marks) {
-    const source = logs.characteristic.find(s => s.key === mark.key);
-    const expected = source.endVermoegen / source.logDataRows[0].inflation_factor_cum;
-    assertEqual(mark.value, expected, `${mark.key}: Realmarke stammt aus demselben nominal ausgewählten Pfad`);
-    assert(mark.sourceIdentity === source.sourceIdentity, `${mark.key}: Quellidentität bleibt unverändert`);
+assertEqual(nominal.marks.find(m => m.key === 'p25').value, 17.5, 'P25 ist der interpolierte Verteilungswert, kein ausgewählter Lauf');
+assertEqual(nominal.p10, 13, 'Nominales P10 aus allen Endwerten');
+assertEqual(nominal.p75, 32.5, 'Nominales P75 aus allen Endwerten');
+assertClose(real.p10, 5.1, 1e-12, 'Reales P10 aus unabhängig sortierter Realpopulation');
+assertEqual(real.p25, 8.25, 'Reales P25 aus unabhängig sortierter Realpopulation');
+assertEqual(real.p75, 25, 'Reales P75 aus unabhängig sortierter Realpopulation');
+assertEqual(real.p50, 15, 'Realer Median gehört zur Verteilung statt zum nominalen Medianlauf mit Wert 3');
+for (const model of [nominal, real]) {
+    assert(model.marks.every((mark, index) => index === 0 || mark.value >= model.marks[index-1].value), 'Alle dargestellten Perzentile sind monoton');
+    assert(model.ladder.every(mark => mark.gap === null || mark.gap >= 0), 'Perzentilabstände sind nicht negativ');
+    assert(model.marks.every(mark => !Object.hasOwn(mark, 'sourceIdentity')), 'Verteilungskennzahlen behaupten keinen Quelllauf');
 }
-assert(renderWealthDistribution(real).includes('Abstände können negativ sein'), 'Lesart erklärt reale Rangfolge ohne neue Szenarioauswahl');
-assertEqual(JSON.stringify({ data, logs }), sourcesBefore, 'Rendern erhält Quellobjekte, Identitäten und Satzquantile unverändert');
+const realHtml = renderWealthDistribution(real);
+for (const [value, expected] of [[1234567.89, '1,2\u00a0Mio. €'], [125000.12, '125\u00a0Tsd. €'], [123.45, '123\u00a0€'], [-1234567.89, '-1,2\u00a0Mio. €'], [0, '0\u00a0€'], [null, '—'], [Infinity, '—']]) {
+    assertEqual(formatChartEuro(value), expected, 'Diagrammtexte kürzen Eurobeträge und kennzeichnen fehlende Werte');
+}
+const millionModel = buildWealthDistribution(result([1000000.12, 1234567.89, 2000000.34]), null, 'nominal');
+const millionHtml = renderWealthDistribution(millionModel);
+assert(millionHtml.includes('Median <b title="1.234.567,89\u00a0€">1,2\u00a0Mio. €</b>'), 'Median zuerst gerundet, genauer Betrag im Tooltip');
+assert(millionHtml.includes('P25–P75') && !millionHtml.includes('id="wealthShowAllMarks" checked') && !millionHtml.includes('wealth-statistics-details" open'), 'Erster Blick zeigt mittlere Streuung; weitere Marken und genaue Werte starten geschlossen');
+assert(renderWealthDistribution(millionModel, { showAllMarks: true, detailsOpen: true }).includes('id="wealthShowAllMarks" checked') && renderWealthDistribution(millionModel, { detailsOpen: true }).includes('wealth-statistics-details" open'), 'Anzeige kann Marken und genaue Details wieder geöffnet übernehmen');
+assert(realHtml.includes('Verteilungskennzahlen · heutige Euro') && realHtml.includes('Ausgewählte Szenarien'), 'Verteilung und Einzelpfade sind sichtbar getrennt');
+assert(!realHtml.includes('Abstände können negativ sein'), 'Perzentile benötigen keine Erklärung einer abweichenden Szenariorangfolge');
+assertEqual(JSON.stringify({ data, logs }), sourcesBefore, 'Anzeige erhält Quellobjekte und nominale Szenarioauswahl');
 const fractional = structuredClone(logs);
-fractional.characteristic.find(s => s.key === 'worst').endVermoegen = 10.4;
-fractional.characteristic.find(s => s.key === 'p5').endVermoegen = 10.49;
-const precise = buildWealthDistribution(data, fractional, 'nominal');
-assert(Math.abs(precise.ladder[1].gap - .09) < 1e-10, 'Abstand verwendet ungerundete Werte statt gerundeter Anzeige');
+fractional.characteristic.find(s => s.key === 'p5').endVermoegen = 999;
+assertEqual(JSON.stringify(buildWealthDistribution(data, fractional, 'nominal')), JSON.stringify(nominal), 'Szenarioänderung verändert keine Verteilungskennzahl');
 
 // Echter Aggregator: technische Pufferplätze werden ausgeschlossen; Pflegegruppen
 // liefern gemeinsam die bestehende Realpopulation, ohne Änderung der Export-KPIs.
@@ -94,7 +101,7 @@ const withSources = buildMonteCarloAggregates({ inputs: {}, totalRuns: 5, buffer
 assertEqual(JSON.stringify(withSources.wealthView.realByRun), '[0,0,50,100,null]', 'Quellindex bleibt global; technischer Pfad kann keine Endmarke liefern');
 const earlyDeath = { characteristic: [{ key: 'p50', endVermoegen: 100, sourceIdentity: { absoluteRunIndex: 2 }, logDataRows: [{ jahr: 1, recordType: 'terminal_death' }] }], random: [] };
 const earlyDeathView = buildWealthDistribution(withSources, earlyDeath);
-assertEqual(earlyDeathView.marks.find(mark => mark.key === 'p50').value, 50, 'Tod vor der ersten Finanzmessung nutzt die vorhandene reale Pfadbeobachtung statt einen erfundenen Inflationsfaktor');
+assertEqual(earlyDeathView.p50, 25, 'Median verwendet die ganze Realpopulation auch bei einem ausgewählten frühen Todespfad');
 assert(!JSON.stringify(withSources.wealthView).includes('realByRun'), 'Flüchtige Quellzuordnung ist kein serialisierter Ergebnis-/Exportvertrag');
 
 // 98 % Outcome-Ruin plus erfolgreiche Nullwerte: nur positive Werte skalieren die Achse.
@@ -109,11 +116,10 @@ for (const [mode, expectedLimit] of [['nominal', 7850], ['real', 3925]]) {
     assertEqual(model.bins.reduce((n, bin) => n + bin.count, 0) + model.ruinCount + model.overflowCount, 1000, `${mode}: alle Fälle gezählt`);
     assertClose(model.bins.reduce((n, bin) => n + bin.sharePct, 0) + model.ruinSharePct + model.overflowSharePct, 100, 1e-10, `${mode}: gleicher Prozentnenner`);
     const html = renderWealthDistribution(model);
-    assert(html.includes('In mehr als 10 % der Läufe ist das Vermögen aufgebraucht.'), 'Null-P10 verwendet den beauftragten Alltagssatz');
+    assert(html.includes('Das 10-%-Perzentil des Endvermögens liegt bei 0 €.'), 'Null-P10 verwendet den beauftragten Alltagssatz');
     assert(html.includes('Rest →') && html.includes('Oberhalb '), 'Echter Rest zeigt Balken und Hinweis');
-    assert(html.includes('Die Marken sind die Szenario-Läufe; ihre Reihenfolge richtet sich nach dem nominalen Endvermögen.'), 'Lesart erklärt die unveränderte Szenarioreihenfolge');
-    assert(html.includes('Die Beträge im Satz beschreiben die Verteilung aller Läufe und können von den Marken abweichen.'), 'Satzbeträge und Szenariomarken werden ausdrücklich unterschieden');
-    if (mode === 'real') assert(html.includes('Abstände können negativ sein'), 'Realer Zusatz erklärt abweichende Abstände');
+    assert(html.includes('Perzentile über alle auswertbaren Läufe, einschließlich Ruin.'), 'Lesart nennt die gesamte Finanzpopulation');
+    assert(html.includes('Ausgewählte Szenarien mit Jahresprotokoll'), 'Einzelpfade werden in ihre eigene Ansicht verwiesen');
     assert(!html.includes('Index floor') && !html.includes('Beobachtungspopulation'), 'Sichtbare Lesart vermeidet technische Begriffe');
 }
 assertEqual(JSON.stringify(ruinHeavy), heavyBefore, 'Ruinlastige Anzeige erhält Originalresultate und Satzquantile');

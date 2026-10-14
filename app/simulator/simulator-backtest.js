@@ -1,6 +1,8 @@
 import { simulatorRunAssumptions } from './simulator-run-assumptions.js';
 import { beginSimulationSummary, completeSimulationSummary } from './simulator-overview-summary.js';
-import { personDataContextFor } from './simulator-person-overrides.js';
+import { personDataContextFor, readDocumentPersonInputs } from './simulator-person-overrides.js';
+import { createProtocolPersonContext } from './protocol-columns.js';
+import { projectMinimumFlexDisplay } from './results-metrics.js';
 import { renderProtocolSummary } from './protocol-renderer.js';
 "use strict";
 
@@ -60,8 +62,8 @@ const BACKTEST_RUNNING_STATUS = createBacktestUiStatus(
     'running',
     'BACKTEST_RUNNING',
     'Backtest läuft',
-    'Der kanonische historische Lauf wird berechnet.',
-    'Warten Sie auf den fachlichen Endstatus.'
+    'Der historische Zeitraum wird berechnet.',
+    'Warte, bis der Backtest fertig ist.'
 );
 
 let activeBacktest = null;
@@ -110,7 +112,7 @@ function canonicalAttribute(value) {
     return escapeBacktestHtml(String(value));
 }
 
-function summaryItem({ label, displayValue, rawValue, metricId = null, resultField = null, className = '' }) {
+function summaryItem({ label, displayValue, rawValue, metricId = null, resultField = null, className = '', compact = false }) {
     const attributes = [
         metricId ? `data-metric-id="${escapeBacktestHtml(metricId)}"` : '',
         resultField ? `data-result-field="${escapeBacktestHtml(resultField)}"` : '',
@@ -120,12 +122,12 @@ function summaryItem({ label, displayValue, rawValue, metricId = null, resultFie
     const valueMarkup = metricId?.endsWith('_eur') && Number.isFinite(rawValue)
         ? `<span aria-hidden="true">${escapeBacktestHtml(displayValue)}</span><span class="ds-visually-hidden">${escapeBacktestHtml(formatCurrency(rawValue))}</span>`
         : `<span>${escapeBacktestHtml(displayValue)}</span>`;
-    return `<div class="summary-item ds-card ds-metric ${escapeBacktestHtml(className)}" ${attributes}><strong>${escapeBacktestHtml(label)}</strong>${valueMarkup}</div>`;
+    return `<div class="summary-item ds-card ds-metric${compact ? ' sim-metric-row' : ''} ${escapeBacktestHtml(className)}" ${attributes}><strong>${escapeBacktestHtml(label)}</strong>${valueMarkup}</div>`;
 }
 
 function summaryPair(label, parts) {
     const values = parts.map(({ field, display, raw, title }) => `<span data-result-field="${field}" data-canonical-value="${canonicalAttribute(raw)}" title="${escapeBacktestHtml(title)}">${escapeBacktestHtml(display)}</span>`).join(' · ');
-    return `<div class="summary-item ds-card ds-metric"><strong>${escapeBacktestHtml(label)}</strong><span class="summary-pair">${values}</span></div>`;
+    return `<div class="summary-item ds-card ds-metric sim-metric-row"><strong>${escapeBacktestHtml(label)}</strong><span class="summary-pair">${values}</span></div>`;
 }
 
 function currencyOrDash(value) {
@@ -151,8 +153,16 @@ function renderBacktestSummary(result) {
 
     const caption = document.getElementById('backtestResultPeriod');
     if (caption) caption.textContent = `${result.request?.startYear ?? '—'}–${result.request?.endYear ?? '—'} · ${result.completedYears ?? 0} von ${result.requestedYears ?? 0} Jahren ausgewertet`;
-    summaryElement.innerHTML = `<div class="summary-grid">
-        ${summaryItem({ label: 'Ergebnis', displayValue: outcomeLabel, rawValue: outcome, resultField: 'outcome', className: `backtest-outcome-${outcome}` })}
+    const restriction = projectMinimumFlexDisplay(result, { backtest: true });
+    const restrictionValue = restriction.legacy
+        ? `${metrics.flex_reduction_years_gte_10_pct ?? '—'} von ${result.completedYears ?? '—'} Jahren`
+        : restriction.valid ? `${restriction.count} von ${restriction.observationCount} Jahren · ${restriction.value}` : '—';
+    summaryElement.innerHTML = `<div class="summary-grid sim-backtest-primary">
+        ${summaryItem({ label: 'Endvermögen', displayValue: currencyOrDash(metrics.wealth_end_nominal_eur), rawValue: metrics.wealth_end_nominal_eur, metricId: 'wealth_end_nominal_eur' })}
+        ${summaryItem({ label: 'Gesamte Entnahmen', displayValue: currencyOrDash(metrics.withdrawal_total_nominal_eur), rawValue: metrics.withdrawal_total_nominal_eur, metricId: 'withdrawal_total_nominal_eur' })}
+        <div class="summary-item ds-card ds-metric"><strong>${escapeBacktestHtml(restriction.title)}</strong><span>${escapeBacktestHtml(restrictionValue)}</span><small>${escapeBacktestHtml(restriction.legacy ? restriction.basisNote : restriction.valid ? '' : restriction.reason)}</small></div>
+    </div><div class="sim-metric-list sim-backtest-supplementary">
+        ${summaryItem({ label: 'Ergebnis', displayValue: outcomeLabel, rawValue: outcome, resultField: 'outcome', compact: true })}
         ${summaryPair('Startjahr · Endjahr', [
             { field: 'period_start', display: result.request?.startYear ?? '—', raw: result.request?.startYear, title: 'Startjahr' },
             { field: 'period_end', display: result.request?.endYear ?? '—', raw: result.request?.endYear, title: 'Endjahr' }
@@ -161,14 +171,12 @@ function renderBacktestSummary(result) {
             { field: 'requested_years', display: result.requestedYears ?? '—', raw: result.requestedYears, title: 'Angeforderte Jahre' },
             { field: 'completed_years', display: result.completedYears ?? '—', raw: result.completedYears, title: 'Wirtschaftlich ausgewertete Jahre' }
         ])}
-        ${summaryItem({ label: 'Jahreszeilen', displayValue: result.rows?.length ?? 0, rawValue: result.rows?.length ?? 0, resultField: 'row_count' })}
-        ${summaryItem({ label: 'Startvermögen', displayValue: currencyOrDash(metrics.wealth_start_nominal_eur), rawValue: metrics.wealth_start_nominal_eur, metricId: 'wealth_start_nominal_eur' })}
-        ${summaryItem({ label: 'Endvermögen', displayValue: currencyOrDash(metrics.wealth_end_nominal_eur), rawValue: metrics.wealth_end_nominal_eur, metricId: 'wealth_end_nominal_eur' })}
-        ${summaryItem({ label: 'Gesamte Entnahmen', displayValue: currencyOrDash(metrics.withdrawal_total_nominal_eur), rawValue: metrics.withdrawal_total_nominal_eur, metricId: 'withdrawal_total_nominal_eur', className: 'highlight' })}
-        ${summaryItem({ label: 'Max. Kürzungsdauer (≥ 10 %)', displayValue: `${metrics.flex_reduction_longest_streak_gte_10_pct ?? '—'} Jahre`, rawValue: metrics.flex_reduction_longest_streak_gte_10_pct, metricId: 'flex_reduction_longest_streak_gte_10_pct' })}
-        ${summaryItem({ label: 'Jahre mit Kürzung (≥ 10 %)', displayValue: `${metrics.flex_reduction_years_gte_10_pct ?? '—'} von ${result.completedYears ?? '—'}`, rawValue: metrics.flex_reduction_years_gte_10_pct, metricId: 'flex_reduction_years_gte_10_pct' })}
-        ${summaryItem({ label: 'Gezahlte Steuern', displayValue: currencyOrDash(metrics.tax_total_nominal_eur), rawValue: metrics.tax_total_nominal_eur, metricId: 'tax_total_nominal_eur', className: 'tax' })}
-        ${summaryItem({ label: healthBucket.enabled ? 'Pflegebucket am Laufende (im Endvermögen enthalten)' : 'Pflegebucket am Laufende (deaktiviert; im Endvermögen enthalten)', displayValue: currencyOrDash(metrics.health_bucket_end_nominal_eur), rawValue: metrics.health_bucket_end_nominal_eur, metricId: 'health_bucket_end_nominal_eur' })}
+        ${summaryItem({ label: 'Jahreszeilen', displayValue: result.rows?.length ?? 0, rawValue: result.rows?.length ?? 0, resultField: 'row_count', compact: true })}
+        ${summaryItem({ label: 'Startvermögen', displayValue: currencyOrDash(metrics.wealth_start_nominal_eur), rawValue: metrics.wealth_start_nominal_eur, metricId: 'wealth_start_nominal_eur', compact: true })}
+        ${summaryItem({ label: 'Max. Kürzungsdauer (≥ 10 %)', displayValue: `${metrics.flex_reduction_longest_streak_gte_10_pct ?? '—'} Jahre`, rawValue: metrics.flex_reduction_longest_streak_gte_10_pct, metricId: 'flex_reduction_longest_streak_gte_10_pct', compact: true })}
+        ${summaryItem({ label: 'Jahre mit Kürzung (≥ 10 %)', displayValue: `${metrics.flex_reduction_years_gte_10_pct ?? '—'} von ${result.completedYears ?? '—'}`, rawValue: metrics.flex_reduction_years_gte_10_pct, metricId: 'flex_reduction_years_gte_10_pct', compact: true })}
+        ${summaryItem({ label: 'Gezahlte Steuern', displayValue: currencyOrDash(metrics.tax_total_nominal_eur), rawValue: metrics.tax_total_nominal_eur, metricId: 'tax_total_nominal_eur', compact: true })}
+        ${summaryItem({ label: healthBucket.enabled ? 'Pflegebucket am Laufende (im Endvermögen enthalten)' : 'Pflegebucket am Laufende (deaktiviert; im Endvermögen enthalten)', displayValue: currencyOrDash(metrics.health_bucket_end_nominal_eur), rawValue: metrics.health_bucket_end_nominal_eur, metricId: 'health_bucket_end_nominal_eur', compact: true })}
         ${summaryPair('Pflegereserve: Zieldeckung · Lücke', [
             { field: 'health_bucket_coverage_pct', display: healthCoverage, raw: healthBucket.realCoveragePct, title: 'Pflegebucket-Zieldeckung' },
             { field: 'health_bucket_target_gap', display: currencyOrDash(healthBucket.targetGap), raw: healthBucket.targetGap, title: 'Pflegebucket-Ziellücke' }
@@ -241,7 +249,7 @@ export function renderInvalidatedBacktestStatus(phase) {
         ['preparing', 'running'].includes(phase) ? 'running' : phase,
         'BACKTEST_HOUSEHOLD_CHANGED', titles[phase],
         'Der bisherige Backtest wurde verworfen. Für die aktuelle Auswahl liegt noch kein Ergebnis vor.',
-        'Warten Sie auf den Ersatzlauf oder prüfen Sie die Personendaten und Eingaben.'
+        'Warte auf den Ersatzlauf oder prüfe die Personendaten und Eingaben.'
     ));
     if (phase === 'idle') {
         const chip = document.getElementById('backtestPeriodStatus');
@@ -300,7 +308,7 @@ function executeBacktest(options = {}) {
                 'BACKTEST_PERIOD_INVALID',
                 'Zeitraum korrigieren',
                 'Mindestens ein Zeitraumfeld ist leer, nicht ganzzahlig, rückwärts oder außerhalb der Datensatzgrenzen.',
-                'Korrigieren Sie das markierte Feld und starten Sie den Backtest erneut.'
+                'Korrigiere das markierte Feld und starte den Backtest erneut.'
             ));
             return null;
         }
@@ -308,6 +316,9 @@ function executeBacktest(options = {}) {
         renderHistoricalBacktestStatus(document, BACKTEST_RUNNING_STATUS);
         const inputs = (dependencies.validateInputs || validateSimulatorInputs)((dependencies.getInputs || getCommonInputs)());
         const personDataContext = personDataContextFor(inputs);
+        const entries = readDocumentPersonInputs()?.entries || [];
+        const personDisplayContext = createProtocolPersonContext(inputs, (personDataContext?.persons || []).map(person =>
+            entries.find(entry => entry.profileId === person.profileId)));
         const overviewToken = beginOverviewRun('backtest', readOverviewAssumptions('backtest', inputs, {
             startYear: validation.startYear, endYear: validation.endYear
         }), { startedAt: new Date().toISOString(), automatic: dependencies.automatic === true,
@@ -355,6 +366,7 @@ function executeBacktest(options = {}) {
         window.globalBacktestData = Object.freeze({
             automatic: dependencies.automatic === true,
             personDataContext,
+            personDisplayContext,
             result: backtestResult,
             rows: backtestResult.rows,
             startJahr: validation.startYear,
@@ -407,8 +419,8 @@ function executeBacktest(options = {}) {
                 ? formatSimulatorValidationError(error)
                 : 'Die Eingaben oder der Lauf konnten technisch nicht sicher verarbeitet werden.',
             isInputValidation
-                ? 'Korrigieren Sie die betroffene Simulator-Eingabe und starten Sie erneut.'
-                : 'Prüfen Sie die Eingaben und starten Sie erneut. Bleibt der Code bestehen, melden Sie ihn zur Diagnose.'
+                ? 'Korrigiere die betroffene Simulator-Eingabe und starte erneut.'
+                : 'Prüfe die Eingaben und starte erneut. Bleibt der Code bestehen, melde ihn zur Diagnose.'
         ), { focus: !isInputValidation && options.focus !== false });
         if (isInputValidation && options.focus !== false) focusBacktestElement(document, error?.errors?.[0]?.fieldId);
         return null;
@@ -480,6 +492,7 @@ export function renderBacktestLog() {
     const columns = buildBacktestColumnDefinitions(logDetailLevel, {
         display: true,
         strategyMode: window.globalBacktestData?.decumulationMode,
+        personDisplayContext: window.globalBacktestData?.personDisplayContext,
         goldAktiv: window.globalBacktestData?.goldAktiv
     });
 
@@ -488,7 +501,8 @@ export function renderBacktestLog() {
         columns,
         formatColumnValue,
         { startYear: window.globalBacktestData.result?.request?.startYear ?? window.globalBacktestData.startJahr,
-            inputs: window.globalBacktestData.result?.request?.inputs }
+            inputs: window.globalBacktestData.result?.request?.inputs,
+            personDisplayContext: window.globalBacktestData?.personDisplayContext }
     );
     const protocolSummary = document.getElementById('backtestProtocolSummary');
     if (protocolSummary) {
@@ -520,8 +534,8 @@ export function exportBacktestLogData(format = 'json') {
             'technical_error',
             'BACKTEST_EXPORT_RESULT_MISSING',
             'Kein Backtest für den Export vorhanden',
-            'Es liegt kein kanonisches Backtest-Resultat vor.',
-            'Führen Sie zuerst einen vollständigen Backtest aus.'
+            'Es liegt noch kein Backtest-Ergebnis vor.',
+            'Führe zuerst einen vollständigen Backtest aus.'
         ), { focus: true });
         return;
     }
@@ -537,27 +551,27 @@ export function exportBacktestLogData(format = 'json') {
             HISTORICAL_EXPORT_SOURCE_COMMIT_REQUIRED: {
                 title: 'Quellstand des Backtests fehlt',
                 summary: 'Der JSON-Export benötigt den beim Lauf erfassten exakten Source-Commit.',
-                action: 'Starten Sie die Suite über den lokalen Server oder einen gültigen Desktop-Build und führen Sie den Backtest danach neu aus.'
+                action: 'Starte die Suite über den lokalen Server oder einen gültigen Desktop-Build und führe den Backtest danach neu aus.'
             },
             HISTORICAL_EXPORT_SOURCE_TREE_DIRTY: {
                 title: 'Quellstand des Backtests ist nicht sauber',
                 summary: `Der JSON-Export ist für den erfassten Quellbaumstatus „${error?.details?.sourceTreeStatus || 'unbekannt'}“ gesperrt.`,
-                action: 'Verwenden Sie einen aus einem sauberen Commit gestarteten beziehungsweise erzeugten Build.'
+                action: 'Verwende einen aus einem sauberen Commit gestarteten beziehungsweise erzeugten Build.'
             },
             HISTORICAL_EXPORT_QUANTIZATION_CONTRACT_REQUIRED: {
                 title: 'Quantisierungsvertrag fehlt oder ist ungültig',
                 summary: 'Der JSON-Export kann die beim Lauf verwendeten Rundungsregeln nicht vollständig belegen.',
-                action: 'Aktualisieren Sie Anwendung und Engine gemeinsam und führen Sie den Backtest erneut aus.'
+                action: 'Aktualisiere Anwendung und Engine gemeinsam und führe den Backtest erneut aus.'
             },
             HISTORICAL_EXPORT_PORTFOLIO_BOUNDARY_MISMATCH: {
                 title: 'Portfoliogrenzen sind widersprüchlich',
                 summary: 'Kanonische Metrik und unabhängige Jahreszeile stimmen nicht überein.',
-                action: 'Verwenden Sie dieses Ergebnis nicht weiter und melden Sie den angezeigten Fehlercode.'
+                action: 'Verwende dieses Ergebnis nicht weiter und melde den angezeigten Fehlercode.'
             },
             HISTORICAL_EXPORT_PERIOD_LENGTH_MISMATCH: {
                 title: 'Backtestzeitraum ist widersprüchlich',
                 summary: 'Angeforderte Jahreszahl und inklusive Kalenderperiode stimmen nicht überein.',
-                action: 'Verwenden Sie dieses Ergebnis nicht weiter und melden Sie den angezeigten Fehlercode.'
+                action: 'Verwende dieses Ergebnis nicht weiter und melde den angezeigten Fehlercode.'
             }
         }[error?.code];
         renderHistoricalBacktestStatus(document, createBacktestUiStatus(
@@ -565,7 +579,7 @@ export function exportBacktestLogData(format = 'json') {
             known ? error.code : 'BACKTEST_EXPORT_FAILED',
             known?.title || 'Backtest-Export fehlgeschlagen',
             known?.summary || `Der ${format.toUpperCase()}-Export konnte technisch nicht erstellt werden.`,
-            known?.action || 'Melden Sie den angezeigten Fehlercode zur Diagnose.'
+            known?.action || 'Melde den angezeigten Fehlercode zur Diagnose.'
         ), { focus: true });
     }
 }

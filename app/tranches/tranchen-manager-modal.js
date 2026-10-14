@@ -1,4 +1,4 @@
-import { readDecimalInput, displayDecimalInput } from './tranchen-manager-decimal-input.js';
+import { readDecimalInput, displayDecimalInput, canonicalDecimalInput, isMoneyInput } from './tranchen-manager-decimal-input.js';
 // @ts-check
 
 import { getPageNavigationGuard, isNavigationGuardDialogOpen } from '../shared/navigation-guard-dialog.js';
@@ -38,7 +38,9 @@ const modalSpecs = { tranche: [trancheFields, 'trancheModal', 'trancheForm'], ca
 function formSignature(doc, fields) {
     return JSON.stringify(fields.map(id => {
         const field = byId(doc, id);
-        return [id, field?.value ?? '', field?.checked === true];
+        const raw = field?.value ?? '';
+        const canonical = isMoneyInput(field) ? canonicalDecimalInput(raw, field) : 'NaN';
+        return [id, canonical === 'NaN' ? raw : canonical, field?.checked === true];
     }));
 }
 
@@ -155,7 +157,7 @@ function byId(doc, id) {
 
 function setFieldValue(doc, id, value) {
     const el = byId(doc, id);
-    if (el) el.value = ['shares', 'purchasePrice', 'currentPrice', 'tqf', 'cashPostingBalance'].includes(id) ? displayDecimalInput(value) : value ?? '';
+    if (el) el.value = ['shares', 'purchasePrice', 'currentPrice', 'tqf', 'cashPostingBalance'].includes(id) ? displayDecimalInput(value, el) : value ?? '';
 }
 
 export function resetTrancheForm(doc = document) {
@@ -287,8 +289,8 @@ function renderTrancheFormPreview(doc) {
         const price = byId(doc, 'currentPrice')?.value;
         const derived = calculateTrancheDerivedValues({
             shares: readDecimalInput(byId(doc, 'shares')?.value),
-            purchasePrice: readDecimalInput(byId(doc, 'purchasePrice')?.value),
-            currentPrice: price === '' ? undefined : readDecimalInput(price)
+            purchasePrice: readDecimalInput(byId(doc, 'purchasePrice')?.value, byId(doc, 'purchasePrice')),
+            currentPrice: price === '' ? undefined : readDecimalInput(price, byId(doc, 'currentPrice'))
         });
         preview.textContent = `Einstand ${formatDisplayNumber(derived.costBasis, { unit: 'currency', fractionDigits: 0 })} · Marktwert ${formatDisplayNumber(derived.marketValue, { unit: 'currency', fractionDigits: 0 })}`;
     } catch {
@@ -333,7 +335,7 @@ export function ensureCashPostingModal(doc = document) {
             <form id="cashPostingForm">
                 <div class="form-group">
                     <label for="cashPostingBalance">Aktuellen Tagesgeld-Stand übernehmen (€) *</label>
-                    <input class="ds-input" id="cashPostingBalance" type="text" inputmode="decimal" lang="de" required>
+                    <input class="ds-input" id="cashPostingBalance" data-money-input type="text" inputmode="decimal" lang="de" required>
                 </div>
                 <div id="cashPostingReasonGroup" class="form-group" hidden>
                     <label for="cashPostingReason">Korrekturgrund *</label>
@@ -446,7 +448,7 @@ export function readCashPostingForm(doc = document) {
         ...state.context,
         cashBalanceAfterPostingEur: rawBalance === '' || rawBalance === null || rawBalance === undefined
             ? Number.NaN
-            : readDecimalInput(rawBalance),
+            : readDecimalInput(rawBalance, byId(doc, 'cashPostingBalance')),
         correctionReason: byId(doc, 'cashPostingReason')?.value || ''
     };
 }
@@ -622,7 +624,7 @@ export function bindTrancheModalLifecycle(doc = document) {
 }
 
 export function readTrancheFromForm(existingId = null, doc = document, options = {}) {
-    const purchasePrice = readDecimalInput(byId(doc, 'purchasePrice').value);
+    const purchasePrice = readDecimalInput(byId(doc, 'purchasePrice').value, byId(doc, 'purchasePrice'));
     const currentPriceInput = byId(doc, 'currentPrice').value.trim();
     const tqfInput = byId(doc, 'tqf').value.trim();
     const derived = calculateTrancheDerivedValues({
@@ -633,7 +635,7 @@ export function readTrancheFromForm(existingId = null, doc = document, options =
         ticker: byId(doc, 'ticker').value,
         shares: readDecimalInput(byId(doc, 'shares').value),
         purchasePrice,
-        currentPrice: currentPriceInput === '' ? purchasePrice : readDecimalInput(currentPriceInput),
+        currentPrice: currentPriceInput === '' ? purchasePrice : readDecimalInput(currentPriceInput, byId(doc, 'currentPrice')),
         purchaseDate: byId(doc, 'purchaseDate').value,
         category: byId(doc, 'category').value,
         type: byId(doc, 'type').value,

@@ -570,16 +570,17 @@ async function runWorkerSuccessCase(browser, baseUrl) {
         }, beforeMode), 'Maßstabwechsel erhält vollständige Exportprojektion und Replayquelle');
         await page.locator('#mcViewTabRisk').click();
         assert(await page.locator('#wealthDistribution svg').isVisible()
-            && (await page.locator('#wealthDistribution .wealth-reading').textContent()).includes('Die Marken sind die Szenario-Läufe; ihre Reihenfolge richtet sich nach dem nominalen Endvermögen.')
-            && (await page.locator('#wealthDistribution .wealth-reading').textContent()).includes('Die Beträge im Satz beschreiben die Verteilung aller Läufe und können von den Marken abweichen.'),
-            'echter Lauf liefert Histogramm und ehrliche Lesart der Szenariomarken');
+            && await page.locator('#wealthDistribution [data-wealth-mark]:visible').count() === 3
+            && (await page.locator('#wealthDistribution .wealth-reading').textContent()).includes('Perzentile über alle auswertbaren Läufe, einschließlich Ruin.')
+            && (await page.locator('#wealthDistribution .wealth-reading').textContent()).includes('Ausgewählte Szenarien mit Jahresprotokoll'),
+            'echter Lauf liefert Histogramm mit Median, mittlerer Streuung und ehrlicher Lesart');
         assert(await page.locator('#wealthFanChart svg').isVisible()
             && (await page.locator('#wealthFanChart .wealth-population').textContent()).includes('nominale Euro'),
             'Jahresfächer und gemeinsamer Schalter verwenden nominale Jahreszähler');
         await page.locator('#mcWealthMode [data-wealth-mode="real"]').click();
         assert(await page.locator('#wealthDistribution .wealth-population').textContent().then(text => text.includes('heutige Euro')),
             'reales Histogramm verwendet vorhandene Endbeobachtungen');
-        assert((await page.locator('#wealthDistribution .wealth-reading').textContent()).includes('Abstände können negativ sein'), 'Realer Zusatz erklärt die mögliche abweichende Reihenfolge ohne neue Szenarioauswahl');
+        assert((await page.locator('#wealthDistribution .wealth-reading').textContent()).includes('Perzentile über alle auswertbaren Läufe'), 'Reale Verteilung zeigt ihre eigene Population; Szenarioauswahl bleibt erhalten');
         assert((await page.locator('#wealthFanChart .wealth-population').textContent()).includes('heutige Euro'),
             'Jahresfächer wechselt auf reale Jahreszähler');
         await page.locator('#mcViewTabLogs').click();
@@ -653,7 +654,7 @@ async function runWorkerSuccessCase(browser, baseUrl) {
         for (const label of [
             'Floor-Deckung im gewählten Horizont',
             'Endzustände',
-            'Anteil Kürzungsjahre (≥ 10 %)',
+            'mehr als 10 % unter Wunsch-Flex',
             'Reale Depotentnahme P10'
         ]) {
             assert(visibleResult.includes(label), `completed browser result shows ${label}`);
@@ -777,16 +778,8 @@ async function runFailedReplayProjectionCase(browser, baseUrl) {
         await page.locator('.tab-btn[data-tab="annahmen"]').click();
         await page.locator('#tab-annahmen').waitFor({ state: 'visible' });
         const need = page.locator('#tab-annahmen [data-assumption-step="2"]');
-        const toggle = need.locator('[data-step-toggle]');
-        if (await toggle.getAttribute('aria-expanded') === 'false') {
-            await toggle.click();
-        }
+        // Die Bedarfszeile bleibt im Entwurf offen; sie hat keinen Klappknopf mehr.
         const floorInput = need.locator('#startFloorBedarf');
-        await floorInput.evaluate(input => {
-            for (let parent = input.parentElement; parent; parent = parent.parentElement) {
-                if (parent.matches('details')) parent.open = true;
-            }
-        });
         await floorInput.waitFor({ state: 'visible' });
         assert(await floorInput.isEditable(), 'Floor-Eingabe muss im Rahmendatenbereich bedienbar sein');
         await floorInput.fill('2000000');
@@ -808,14 +801,14 @@ async function runFailedReplayProjectionCase(browser, baseUrl) {
         });
         assert(failedScenarioValue, 'failing withdrawal profile produces a failed characteristic scenario');
         await page.locator(`#scenarioWealthChart g[data-scenario-id="${failedScenarioValue}"]`).dispatchEvent('click');
-        assert(await page.locator('#stressReplaySelectedScenarioWealth').textContent() === 'FAILED',
-            'selecting a failed characteristic scenario projects FAILED before fixation');
+        assert(await page.locator('#stressReplaySelectedScenarioWealth').textContent() === 'Ruin',
+            'selecting a failed characteristic scenario projects Ruin before fixation');
 
         await page.locator('#mcShowReplayButton').click();
         await page.locator('#stressReplayFixButton').click();
         await page.locator('#stressReplayStatus').filter({ hasText: 'Stresspfad fixiert' }).waitFor({ timeout: 30000 });
-        assert(await page.locator('#stressReplaySelectedScenarioWealth').textContent() === 'FAILED',
-            'the failed scenario projection remains FAILED after fixation');
+        assert(await page.locator('#stressReplaySelectedScenarioWealth').textContent() === 'Ruin',
+            'the failed scenario projection remains Ruin after fixation');
         test.assertNoUnexpectedErrors();
     } finally {
         await test.context.close();

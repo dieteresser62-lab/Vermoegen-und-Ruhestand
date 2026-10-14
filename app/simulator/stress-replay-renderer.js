@@ -5,7 +5,7 @@ import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 
 const KPI_LABELS = Object.freeze({
     finalValueNominalEur: 'Endvermögen nominal',
-    finalValueRealEur: 'Endvermögen real',
+    finalValueRealEur: 'Endvermögen · heutige Euro',
     maximumDrawdownNominalPct: 'Maximaler Drawdown nominal',
     maximumDrawdownRealPct: 'Maximaler Drawdown real',
     totalWithdrawalsEur: 'Entnahmen gesamt',
@@ -137,7 +137,7 @@ export function renderStressReplayVariantListV1({ workspace, busy = false, readO
 function renderKpiTable(comparison) {
     const baseline = comparison.variants[0];
     const alternatives = comparison.variants.slice(1);
-    if (alternatives.length === 0) return '<p>Fügen Sie eine Variante hinzu, um Kennzahlen zu vergleichen.</p>';
+    if (alternatives.length === 0) return '<p>Füge eine Variante hinzu, um Kennzahlen zu vergleichen.</p>';
     const header = alternatives.map(entry => `<th scope="col">${escapeHtml(entry.label)}</th>`).join('');
     const rows = Object.keys(KPI_LABELS).map(field => {
         const cells = alternatives.map(entry => {

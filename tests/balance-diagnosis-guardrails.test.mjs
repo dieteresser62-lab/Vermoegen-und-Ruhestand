@@ -133,6 +133,20 @@ try {
     }
     const near = buildGuardrails([{ name: 'Runway', value: '61 Mon.', threshold: '60 Mon.', status: 'warn' }]).children[0];
     assert(!near.className.includes('guardrail-triggered') && near.children.at(-1).className.includes('ds-chip-warning'), 'Bloße Nähe färbt nur den Chip');
+    for (const [name, rule, expected] of [
+        ['Budget-Floor Deckung', 'min', 'Deckungsziel nicht erreicht'],
+        ['Runway (vs. Min)', 'min', 'Mindestgrenze unterschritten'],
+        ['Runway (vs. Ziel)', 'min', 'Mindestgrenze unterschritten'],
+        ['Entnahmequote', 'max', 'Grenze überschritten'],
+        ['Realer Drawdown (Gesamt)', 'max', 'Grenze überschritten']
+    ]) {
+        const { formatDiagnosisPayload } = await import('../app/balance/balance-diagnosis-format.js');
+        const raw = { guardrails: [{ name, rule, value: rule === 'min' ? 1 : 3, threshold: 2, type: 'months' }] };
+        const before = JSON.stringify(raw);
+        const payload = withGuardrailCardValues(formatDiagnosisPayload(raw), raw);
+        assertEqual(buildGuardrails(payload.guardrails).children[0].children.at(-1).textContent, expected, `${name}: Verletzung folgt der Grenzrichtung`);
+        assertEqual(JSON.stringify(raw), before, 'Leitplankenwortlaut verändert keine Rohwerte');
+    }
     console.log('✅ Balance diagnosis guardrails tests passed');
 } finally {
     if (prevDocument === undefined) delete global.document; else global.document = prevDocument;

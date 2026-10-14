@@ -316,7 +316,7 @@ export function writeHouseholdSimulatorNeedOverride(
         return {
             ok: false,
             reason: 'unsupported_schema',
-            message: 'Die gespeicherten Haushaltswerte stammen aus einer neueren Version. Bitte setzen Sie die Simulator-Einstellungen zurück, bevor Sie sie ändern.',
+            message: 'Die gespeicherten Haushaltswerte stammen aus einer neueren Version. Bitte setze die Simulator-Einstellungen zurück, bevor du sie änderst.',
             state: current
         };
     }

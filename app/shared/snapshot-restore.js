@@ -1,6 +1,6 @@
 import { SnapshotArchive, SNAPSHOT_KINDS, validateSnapshot } from './snapshot-archive.js';
 import { PersistenceFacade, persistenceStorage } from './persistence-facade.js';
-import { isAllowedPersistenceImportKey, isAllowedSnapshotRestoreLiveKey, PROBELAUF_STATE_KEY } from './persistence-key-policy.js';
+import { isAllowedPersistenceImportKey, isAllowedSnapshotRestoreLiveKey, isNewBeginningRecordKey, PROBELAUF_STATE_KEY } from './persistence-key-policy.js';
 import { PROFILE_STORAGE_KEYS as P } from '../profile/profile-state.js';
 import { isProfileScopedKey } from '../profile/profile-key-policy.js';
 import { CONFIG, StorageError } from '../balance/balance-config.js';
@@ -11,7 +11,7 @@ export const recordIdentity = value => JSON.stringify(Object.entries(value).sort
 const select = (records, allowKey) => Object.fromEntries(Object.entries(records).filter(([key]) => allowKey(key)));
 const parse = raw => raw ? JSON.parse(raw) : null;
 export function isFullImportRecoverySnapshot(snapshot) {
-    return snapshot?.kind === SNAPSHOT_KINDS.fullBackupImportRecovery
+    return snapshot?.kind === SNAPSHOT_KINDS.newBeginningBefore || snapshot?.kind === SNAPSHOT_KINDS.fullBackupImportRecovery
         || (snapshot?.restoreScope?.profileRegistryMode === 'replace-all-rollback'
             && snapshot?.restoreScope?.profileLiveDataMode === 'replace-all-rollback');
 }
@@ -30,13 +30,13 @@ export function buildSnapshotRestorePlan(input, currentRecords, { importRollback
     const scope = snapshot.restoreScope;
     const registry = parse(currentRecords[P.registry]);
     const full = isFullImportRecoverySnapshot(snapshot);
-    const mode = full ? (scope.liveKeyMode || (snapshot.kind === SNAPSHOT_KINDS.fullBackupImportRecovery ? 'full-import' : 'snapshot-full')) : 'standard';
-    if (!['standard', 'full-import', 'snapshot-full'].includes(mode)
+    const mode = full ? (scope.liveKeyMode || (snapshot.kind === SNAPSHOT_KINDS.newBeginningBefore ? 'new-beginning' : snapshot.kind === SNAPSHOT_KINDS.fullBackupImportRecovery ? 'full-import' : 'snapshot-full')) : 'standard';
+    if (!['standard', 'full-import', 'snapshot-full', 'new-beginning'].includes(mode)
         || (!full && !['preserve-by-default', 'restore-target-profile'].includes(scope.profileRegistryMode))) {
         throw new Error('Unbekannter Wiederherstellungsumfang. Dieser Punkt bleibt erhalten.');
     }
     const targetProfileId = scope.targetProfileId || snapshot.activeProfileId;
-    const allowKey = mode === 'full-import' ? isAllowedPersistenceImportKey
+    const allowKey = mode === 'new-beginning' ? isNewBeginningRecordKey : mode === 'full-import' ? isAllowedPersistenceImportKey
         : mode === 'snapshot-full' ? key => isAllowedSnapshotRestoreLiveKey(key, { mode: 'full' })
             : key => key === P.registry || isAllowedSnapshotRestoreLiveKey(key, { mode: 'standard', snapshotActiveProfileId: targetProfileId, currentRegistry: registry });
     // Der interne Importrollback behält seinen historischen profilfreien Vollfallback.
@@ -96,7 +96,7 @@ export async function executeSnapshotRestore(preview, options = {}) {
                 const fresh = await previewSnapshotRestore(preview.snapshot.id, { persistence, archive, navigationOperation: operation });
                 operation.check();
                 if (fresh.identity !== preview.identity) throw new Error('Der Bestand oder Punkt hat sich seit der Vorschau geändert. Bitte die Vorschau erneut öffnen.');
-                release = persistence.blockSyncWrites([], message, { predicate: isAllowedPersistenceImportKey });
+                release = persistence.blockSyncWrites([], message, { predicate: fresh.mode === 'new-beginning' ? fresh.allowKey : isAllowedPersistenceImportKey });
                 const full = fresh.mode !== 'standard';
                 const recovery = await archive.createSnapshot({ id: `before_restore_${globalThis.crypto.randomUUID()}`,
                     label: 'vor Zurückholen', kind: SNAPSHOT_KINDS.beforeRestoreRecovery, records: fresh.before,
@@ -115,6 +115,8 @@ export async function executeSnapshotRestore(preview, options = {}) {
                 await persistence.replaceRecordsTransactional(fresh.records, { allowKey: fresh.allowKey,
                     expectedRecords: fresh.before, navigationOperation: operation });
                 written = true;
+                if (fresh.mode === 'new-beginning') await persistence.resetNewBeginningBrowserStorage?.({
+                    window: options.window, records: fresh.records, navigationOperation: operation });
             }, flush: () => persistence.flush(),
             reload: () => {
                 const reload = options.reload || (() => globalThis.location?.reload?.());

@@ -9,10 +9,14 @@ const html = fs.readFileSync(new URL('../Simulator.html', import.meta.url), 'utf
 const tree = tokenizeHTML(html);
 const find = selector => tree.elements.filter(node => matchesSelector({ elements: [node] }, selector));
 assertEqual(find('[data-step-go]').length, 0, 'Reine Weiter-/Zurücknavigation ist entfernt');
-assertEqual(find('[data-assumption-step] .sim-step-status').length, 5, 'Fünf Schritte besitzen Statuschips');
+assertEqual(find('[data-assumption-step] .sim-step-status').length, 1, 'Profilwahl behält ihren Statuschip');
 assertEqual(find('.sim-care-table tbody tr').length, 5, 'Kostenstaffel enthält weiterhin fünf Pflegegrade');
 for (const prefix of ['p1', 'r2']) {
     const card = prefix === 'p1' ? '.sim-person-card[aria-labelledby="p1PersonSource"]' : '#sectionRente2';
+    assertEqual(find(`${card}.ds-card`).length, 0, `${prefix}: Personenblock hat keine eigene ds-card`);
+    const headingId = `${prefix}PersonSource`;
+    assertEqual(find(`${card} h3#${headingId}`).length, 1, `${prefix}: Name ist eine Überschrift`);
+    assertEqual(find(`#${headingId}.ds-source`).length, 0, `${prefix}: Name ist keine Herkunftszeile`);
     const suffixes = ['Geburtsdatum', 'StartAlter', 'Geschlecht', 'Rentenbeginn', 'Monatsrente',
         'StartInJahren', 'SparerPauschbetrag', 'KirchensteuerPct', ...(prefix === 'r2' ? ['Steuerquote'] : [])];
     for (const suffix of suffixes) {
@@ -31,7 +35,7 @@ for (const id of ['rentAdjMode', 'rentAdjPct']) {
     assertEqual(find(`[data-parameters="personen"] #${id}`).length, 0, `${id} ist getrennt von den Modellannahmen`);
 }
 for (const id of ['pflegeModellTyp', 'pflegeMinDauer', 'pflegeMaxDauer', 'pflegeRampUp', 'pflegeMaxFloor', 'pflegeRegionalZuschlag', 'pflegeKostenDrift']) {
-    assertEqual(find(`[data-parameters="pflege"] #${id}`).length, 0, `${id} liegt außerhalb der Pflegeklappe`);
+    assertEqual(find(`#simCareDetails #${id}`).length, 1, `${id} liegt in der geschlossenen Pflegeklappe`);
 }
 assertEqual(find('.sim-care-duration-field #pflegeMinDauer').length, 1, 'Pflegedauer gruppiert den bisherigen Minimumcontrol');
 assertEqual(find('.sim-care-duration-field #pflegeMaxDauer').length, 1, 'Pflegedauer gruppiert den bisherigen Maximumcontrol');
@@ -165,7 +169,7 @@ for (const parsed of tree.elements) {
 markupDoc.querySelectorAll = selector => query(tree.document, selector);
 markupDoc.querySelector = selector => markupDoc.querySelectorAll(selector)[0] ?? null;
 const parameterDetails = markupDoc.querySelectorAll('.sim-parameters');
-const counts = { portfolio: 0, bedarf: 3, strategie: 13, personen: 4, pflege: 1 };
+const counts = { portfolio: 0, personen: 4 };
 for (const partner of [false, true, false]) {
     markupDoc.getElementById('sectionRente2').style.display = partner ? 'block' : 'none';
     {
@@ -183,20 +187,24 @@ for (const partner of [false, true, false]) {
         }
     }
 }
-const carePreset = markupDoc.getElementById('pflegeKostenStaffelPreset');
-carePreset.disabled = true;
-refreshAssumptionFillStatus(markupDoc);
-assertEqual(parameterDetails.find(detail => detail.dataset.parameters === 'pflege').querySelector('summary')
-    .querySelector('.sim-parameter-count').textContent, '0 weitere', 'Sichtbare, aber gesperrte Controls zählen nicht als bedienbar');
-const careDetails = parameterDetails.find(detail => detail.dataset.parameters === 'pflege');
-assert(careDetails.hidden, 'Leere Pflegeklappe ist verborgen');
-const careValue = carePreset.value;
-careDetails.open = true;
-carePreset.disabled = false;
-refreshAssumptionFillStatus(markupDoc);
-assert(!careDetails.hidden && careDetails.open && !carePreset.disabled, 'Freigegebenes Zusatzfeld zeigt die Klappe wieder und erhält ihren Öffnungszustand');
-assertEqual(carePreset.value, careValue, 'Verbergen und Wiederzeigen erhalten Eingabewerte');
-assertEqual(find('.care-panel-toggle #simCareReserve').length, 1, 'Reservewerthost liegt bei der bestehenden Pflegeschalterzeile');
+// Die Pflegeklappe bleibt auch mit ausgeschalteter Logik erreichbar.
+const careDetails = markupDoc.getElementById('simCareDetails');
+const careToggle = markupDoc.getElementById('pflegefallLogikAktivieren');
+careToggle.checked = false; refreshAssumptionFillStatus(markupDoc);
+assert(!careDetails.hidden && !careDetails.open, 'Pflege aus verändert den geschlossenen Detailzugang nicht');
+assertEqual(markupDoc.getElementById('simCareSummary').textContent, 'Pflegefälle werden nicht gerechnet.', 'Zusammenfassung folgt dem Schalter');
+careToggle.checked = true; refreshAssumptionFillStatus(markupDoc);
+assert(markupDoc.getElementById('simCareSummary').textContent.includes('120.000 €')
+    && markupDoc.getElementById('simCareSummary').textContent.includes('3,5 %'), 'Pflegezusammenfassung zeigt die bestehenden Kostenannahmen');
+const goldOff = markupDoc.getElementById('simGoldOff');
+markupDoc.getElementById('goldAllokationAktiv').value = 'false'; refreshAssumptionFillStatus(markupDoc);
+assert(!goldOff.hidden && markupDoc.getElementById('simGoldBandFrame').dataset.goldActive === 'false', 'Gold aus ersetzt den normalen Bandwert');
+markupDoc.getElementById('goldAllokationAktiv').value = 'true'; refreshAssumptionFillStatus(markupDoc);
+assert(goldOff.hidden && markupDoc.getElementById('simGoldBandFrame').dataset.goldActive === 'true', 'Gold aktiv zeigt das erhaltene Band');
+assertEqual(find('.care-panel-toggle .ds-info .ds-info-pop #simCareReserve').length, 1, 'Reservewerthost liegt im Infofeld direkt am Pflegeschalter');
+assertEqual(find('.care-panel-toggle label #simCareReserve').length, 0, 'Pflegeschalter enthält nur seine Beschriftung');
+assert(html.match(/<span id="simCareReserveInfo"[^>]*>[\s\S]*?<\/span>/)?.[0].includes('Die Reserve bleibt auch bei ausgeschalteter Pflegelogik erhalten.'),
+    'Reserveerklärung bleibt im Infofeld erhalten');
 assertEqual(find('.sim-dynamic-flex-field #dynamicFlexPreset').length, 1, 'Presetselect bleibt in der breiten Strategiefeldgruppe');
 assertEqual(find('#chkPartnerAktiv[hidden][disabled][data-no-persist="true"]').length, 1,
     'Partnerstatus bleibt ein gesperrter, unsichtbarer und nicht persistierter Profilwertträger');
@@ -268,3 +276,24 @@ const runwayField = tree.elements.find(element => element.attrs.id === 'liquidit
 assert(runwayField && !Object.hasOwn(runwayField.attrs, 'hidden'), 'Liquiditäts-Reichweite bleibt unabhängig vom Versuch vorhanden');
 for (let parent = runwayField.parent; parent; parent = parent.parent)
     assert(parent !== trialBand, 'Liquiditäts-Reichweite liegt außerhalb des Versuchsbandes');
+
+// U-2: Sichtbarkeit beim Aufruf des Annahmenreiters, ohne gespeicherte Klappzustände.
+const byId = id => tree.elements.find(item => item.attrs.id === id);
+const inside = (item, host) => { for (let parent = item; parent; parent = parent.parent) if (parent === host) return true; return false; };
+const visible = item => {
+    for (let parent = item; parent && parent !== byId('tab-annahmen'); parent = parent.parent) {
+        if ('hidden' in parent.attrs || /display:\s*none/.test(parent.attrs.style || '')) return false;
+        if (parent.parent?.tag === 'details' && parent.tag !== 'summary' && !('open' in parent.parent.attrs)) return false;
+    }
+    return inside(item, byId('tab-annahmen'));
+};
+const needCard = tree.elements.find(item => item.attrs['aria-labelledby'] === 'simNeedHeading');
+assertEqual(tree.elements.filter(item => item.tag === 'input' && inside(item, needCard)).map(item => item.attrs.id).join(','),
+    'startFloorBedarf,startFlexBedarf,minimumFlexAnnual', 'Bedarf enthält genau dieselben drei Planfelder wie Balance');
+assert(['startFloorBedarf', 'startFlexBedarf', 'minimumFlexAnnual'].every(id => visible(byId(id))), 'Bedarf ist offen sichtbar');
+for (const id of ['mcSetupDisclosure', 'simPersonDetails', 'simCareDetails']) assert(!('open' in byId(id).attrs), id + ': bei jedem Seitenaufruf geschlossen');
+for (const id of ['marketCapeRatio', 'flexBudgetAnnual', 'liquidityRunwayYears', 'dynamicFlexPreset', 'rebalancingBand', 'mcAnzahl', 'mcDauer', 'stressPreset'])
+    assert(inside(byId(id), byId('mcSetupDisclosure')) && !visible(byId(id)), id + ': nur hinter Alle Parameter');
+assertEqual(find('.sim-parameter-card h3[data-plan-group-label]').map(item => item.attrs['data-plan-group-label']).join(','), '1,4,2,5,3', 'Gemeinsame Gruppen folgen dem Spaltenaufbau von Balance');
+assert(visible(byId('p1PersonValues')) && visible(byId('pflegefallLogikAktivieren')) && visible(byId('simCareSummary')), 'Personenübersicht, Pflegeschalter und Zusammenfassung sind sichtbar');
+assert(!visible(byId('sharedPensionValues')) && !visible(byId('pflegeModellTyp')) && !visible(byId('widowPensionMode')), 'Rentenanpassung, Modell- und Pflegeannahmen liegen hinter den Details');

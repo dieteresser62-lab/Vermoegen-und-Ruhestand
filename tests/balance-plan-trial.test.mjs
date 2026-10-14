@@ -143,7 +143,7 @@ try {
         initUIBinder(dom, state, update, debounce);
         const planResult = update({ mode: 'preview' }); assert(planResult.ok, count + ': Planrechnung erfolgreich'); await planResult.overviewPersistence; await P.flush();
         const quantile = doc.getElementById('survivalQuantile');
-        assert(quantile.disabled && quantile.value === '85 %', count + ': erster Update zeigt gesperrtes Prozentfeld');
+        assert(quantile.disabled && quantile.value === '85', count + ': erster Update zeigt gesperrtes Prozentfeld mit separater Einheit');
         assertEqual(seen.at(-1).survivalQuantile, .85, count + ': erster Update rechnet den echten Planwert');
         // Der bestehende Browser-Smoke verwendete noch die alte Bruchdarstellung.
         // Seit Slice 3 erwartet das gebundene Feld Prozent, die Engine weiterhin einen Bruch.
@@ -157,7 +157,7 @@ try {
         assert(quantileResult.ok && errors.length === 0, count + ': Prozent-Eingabe rechnet ohne Updatefehler');
         assertEqual(seen.at(-1).survivalQuantile, .8, count + ': 80 Prozent kommen als 0.8 bei der Engine an');
         quantile.dispatchEvent({ type: 'blur' });
-        assertEqual(quantile.value, '80 %', count + ': Blur zeigt den gerechneten Prozentwert');
+        assertEqual(quantile.value, '80', count + ': Blur zeigt den gerechneten Prozentwert ohne doppelte Einheit');
         trial.reset(); renderBalancePlanTrial(doc, { project: true });
         const annualState = StorageManager.loadState();
         annualState.annualPeriodMetadata = { schemaVersion: 1, lastCommittedPeriod: 'calendar-year:2025', pendingCommit: null };

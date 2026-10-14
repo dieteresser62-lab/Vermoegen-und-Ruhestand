@@ -219,7 +219,7 @@ export const FOUNDATION_ROLES = {
     'css/balance.css': { body: ['text-main', 'page'], '#btnJahresUpdate': ['text-main', 'surface'], '.btn.ds-button-primary': ['surface', 'text-main'], '.tranchen-warning': ['warn', null] },
     'simulator.css': { body: ['text-main', 'page'], '.panel': [null, 'surface'], fieldset: [null, 'surface-sunken'], 'button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item)': ['surface', 'text-main'], 'button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):disabled': ['text-muted', 'surface-sunken'], '.tranchen-warning': ['warn', null] },
     'css/overview.css': { '.overview-page': ['text-main', null], '.overview-pill': ['text-main', 'surface'] },
-    'Handbuch.html': { body: ['text-main', 'page'], '.info-card': [null, 'surface'], '.toc-card': [null, 'surface'], '.tab-btn.active': ['surface', 'text-main'] },
+    'Handbuch.html': { body: ['text-main', 'page'], '.hb-article': [null, 'surface'], '.hb-search': [null, 'surface'], '.step-number': ['surface', 'text-main'] },
     'css/suite-frame.css': { '.suite-header': [null, 'surface'], '.suite-brand': ['text-main', null], '.suite-navigation': [null, 'surface'], '.suite-navigation a': ['text-main', null], '.suite-navigation a[aria-current="page"]': [null, 'surface-sunken'], '.suite-navigation-status': ['bad', 'surface'] },
     'depot-tranchen-manager.html': { body: ['text-main', 'page'], '.container': [null, 'surface'], '.stat-card': ['text-main', 'surface-sunken'], '.stat-label': ['text-muted', null], '.btn-primary': ['surface', 'text-main'], '.btn-success': ['surface', 'good'], '.btn-danger': ['surface', 'bad'], '.btn-secondary': ['surface', 'text-main'], 'button:disabled': ['text-muted', 'surface-sunken'] }
 };
@@ -378,9 +378,6 @@ export function validateBalanceSimulatorRefinement(sources) {
         ['.sim-parameters[hidden]', { display: 'none' }],
         ['.sim-result-grid .sim-outcome-metrics > .ds-row', { display: 'grid', 'grid-template-rows': 'subgrid', 'grid-row': 'span 3', 'align-items': 'start' }],
         ['.sim-result-grid .sim-cut-note', { display: 'block', margin: '0', padding: '0', border: '0', 'border-radius': '0', background: 'transparent', color: 'var(--text-muted)', 'font-size': 'var(--balance-help)' }],
-        ['.sim-assumptions-reset h2', { 'text-align': 'left', border: '0', padding: '0' }],
-        ['.sim-assumptions-reset h2::after', { content: 'none' }],
-        ['.sim-assumptions-reset > button', { width: 'auto', flex: '0 0 auto' }],
         ['.sim-backtest-grid .sim-backtest-chart', { 'grid-column': '1 / -1', width: '100%' }]
     ]) {
         const actual = declarations('simulator.css', selector);
@@ -388,15 +385,13 @@ export function validateBalanceSimulatorRefinement(sources) {
             if (actual[property] !== value) errors.push(`${selector}: ${property} muss ${value} sein`);
         }
     }
-    const reset = rules('simulator.css', sources['simulator.css']).find(rule => rule.selector === '.sim-assumptions-reset');
-    if (reset?.declarations['flex-direction'] !== 'row') errors.push('Resetblock muss in breiter Ansicht eine Zeile sein');
     const input = declarations('simulator.css', '.sim-toggle-row > input');
     if (input.inset || input['z-index']) errors.push('Schalterinput überlagert die Zeile');
     const caption = declarations('css/balance.css', '.balance-action-table caption');
     if (caption['clip-path'] !== 'inset(50%)' || caption.display || caption.visibility) errors.push('Dialogcaption muss nur visuell verborgen sein');
     const hot = declarations('css/balance.css', '.balance-market-segment.phase-0');
     const peak = declarations('css/balance.css', '.balance-market-segment.phase-1, .balance-market-segment.phase-2');
-    if (hot.background !== peak.background || hot['--phase-color'] !== peak['--phase-color']) errors.push('Grünsättigung der Marktphasen weicht ab');
+    if (hot.background !== 'var(--warn-soft)' || hot['--phase-color'] !== 'var(--warn)' || peak.background !== 'var(--good-soft)' || peak['--phase-color'] !== 'var(--good)') errors.push('Warn- und Zielstatusfarben der Marktphasen weichen ab');
     return errors;
 }
 export function resolveValue(value, vars, visited = []) {
@@ -1018,9 +1013,9 @@ export function validatePersonenVermoegenLayout(sources) {
     const errors = [], css = sources['css/personen-vermoegen.css'];
     if (!css || !sources['depot-tranchen-manager.html'].includes('href="css/personen-vermoegen.css"')) errors.push('Personenseite: Stylesheet fehlt');
     for (const rule of rules('css/personen-vermoegen.css', css || '')) {
-        if (rule.declarations['font-size'] && !/^var\(--balance-/.test(rule.declarations['font-size'])) errors.push('Personenseite: Typografietoken fehlt');
+        if (rule.declarations['font-size'] && !/^var\(--(?:balance-|value-|text-)/.test(rule.declarations['font-size'])) errors.push('Personenseite: Typografietoken fehlt');
     }
-    if (!css?.includes('@container manager (min-width: 2300px)') || !css.includes('var(--balance-budget-wide)')) errors.push('Personenseite: Breittoken fehlt');
+    if (!css?.includes('var(--value-xl)') || !css.includes('var(--value-lg)') || !css.includes('var(--value-md)')) errors.push('Personenseite: Werttoken fehlt');
     const html = sources['depot-tranchen-manager.html'];
     if (/<div[^>]*class="container\s+ds-card"/.test(html)) errors.push('Personenseite: äußerer Kartenrahmen');
     const heading = html.match(/<header class="pv-heading ds-page-head">[\s\S]*?<\/header>/)?.[0] || '';
@@ -1091,7 +1086,7 @@ export function validateSimulatorOverviewFrame(sources) {
         || !wide.includes('.sim-crisis-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }')) errors.push('Simulator: breites Ergebnisraster ab 2300 px fehlt');
     for (const rule of rules('simulator.css', css)) {
         if (!rule.selector.includes('.sim-')) continue;
-        if (rule.declarations['font-size'] && !/^var\(--balance-/.test(rule.declarations['font-size'])) errors.push('Simulator: Typografietoken fehlt');
+        if (rule.declarations['font-size'] && !/^var\(--(?:balance-|value-(?:lg|md)\))/.test(rule.declarations['font-size'])) errors.push('Simulator: Typografietoken fehlt');
     }
     if (!css.includes('@media screen {\n    svg.chart-native-svg.chart-native-svg { display: block; width: auto; height: auto; min-width: 0; max-width: none; box-sizing: content-box; }')) errors.push('Simulator: native SVG-Pixelmaße fehlen');
     return errors;

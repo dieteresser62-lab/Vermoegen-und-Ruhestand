@@ -17,6 +17,7 @@ import { cloneStressContext, computeMarriageYearsCompleted } from './simulator-s
 import { ScenarioAnalyzer } from './scenario-analyzer.js';
 import { MC_HEATMAP_BINS, pickWorstRun, createMonteCarloBuffers } from './monte-carlo-runner-utils.js';
 import { buildMonteCarloAggregates } from './monte-carlo-aggregates.js';
+import { createMinimumFlexTracker, recordMinimumFlexYear, finalizeMinimumFlexPath } from './minimum-flex-metrics.js';
 import { createMonteCarloRunContext } from './mc-run-context.js';
 import { normalizeMonteCarloParametersV1 } from './monte-carlo-parameters.js';
 import {
@@ -424,7 +425,9 @@ export async function runMonteCarloSimulation({ inputs, monteCarloParams, widowO
         totals: chunk.totals,
         lists: chunk.lists,
         allRealWithdrawalsSample: chunk.allRealWithdrawalsSample,
-        wealthFan: chunk.wealthFan
+        wealthFan: chunk.wealthFan,
+        pathSummaries: chunk.pathSummaries,
+        pathMissingness: chunk.pathMissingness
     }), chunk.technicalInventory);
 
     onProgress(100);
@@ -588,6 +591,7 @@ export async function runMonteCarloChunk({
         let failed = false, totalTaxesThisRun = 0, totalTaxSavedByLossCarryThisRun = 0, kpiJahreMitKuerzungDieserLauf = 0, kpiMaxKuerzungDieserLauf = 0;
         let cutYearsNumeratorThisRun = 0;
         let cutDecisionYearsThisRun = 0;
+        const minimumFlexTracker = createMinimumFlexTracker();
         let lebensdauer = 0, jahreOhneFlex = 0, triggeredAge = null;
         let careEverActive = false;
         const careNeedTracker = createMonteCarloCareNeedTracker();
@@ -1016,6 +1020,7 @@ export async function runMonteCarloChunk({
                     healthBucketTargetGapThisRun = Number(result.logData.health_bucket_target_gap);
                 }
                 const cutPct = Number(result.logData.entscheidung.kuerzungProzent);
+                if (!isAccumulation) recordMinimumFlexYear(minimumFlexTracker, result.logData);
                 if (Number.isFinite(cutPct)) {
                     if (cutPct >= 10) kpiJahreMitKuerzungDieserLauf++;
                     if (!isAccumulation) {
@@ -1272,7 +1277,8 @@ export async function runMonteCarloChunk({
                 localIndex: i,
                 globalRunIndex: runIdx,
                 outcomeCode: MONTE_CARLO_OUTCOME_CODE.TECHNICAL_ERROR,
-                technicalError: true
+                technicalError: true,
+                minimumFlexRestriction: finalizeMinimumFlexPath(minimumFlexTracker, { technicalError: true })
             });
             continue;
         }
@@ -1303,7 +1309,8 @@ export async function runMonteCarloChunk({
                 localIndex: i,
                 globalRunIndex: runIdx,
                 outcomeCode: MONTE_CARLO_OUTCOME_CODE.TECHNICAL_ERROR,
-                technicalError: true
+                technicalError: true,
+                minimumFlexRestriction: finalizeMinimumFlexPath(minimumFlexTracker, { technicalError: true })
             });
             continue;
         }
@@ -1423,6 +1430,7 @@ export async function runMonteCarloChunk({
             maxDrawdownRealMissingnessCode: realMaxDrawdownMissingness[i],
             cutYearsNumerator: cutYearsNumeratorThisRun,
             cutYearsDenominator: cutDecisionYearsThisRun,
+            minimumFlexRestriction: finalizeMinimumFlexPath(minimumFlexTracker),
             realWithdrawalP10RealEur: realWithdrawalsThisRun.length > 0
                 ? quantile(realWithdrawalsThisRun, 0.10)
                 : null,

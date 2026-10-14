@@ -179,9 +179,9 @@ export function describeHistoricalBacktestResult(result) {
         return Object.freeze({
             kind: outcome,
             code: 'BACKTEST_COMPLETED',
-            title: 'Backtest vollständig abgeschlossen',
+            title: 'Backtest fertig',
             cause: `${result.completedYears ?? 0} von ${result.requestedYears ?? 0} angeforderten Jahren wurden wirtschaftlich ausgewertet.`,
-            action: 'Prüfen Sie Kennzahlen, Warnhinweise, Jahresprotokoll und Rohdatenexport gemeinsam.'
+            action: 'Prüfe Kennzahlen, Warnhinweise, Jahresprotokoll und Rohdatenexport gemeinsam.'
         });
     }
     if (outcome === 'ruin') {
@@ -193,7 +193,7 @@ export function describeHistoricalBacktestResult(result) {
             cause: ruinYear === null
                 ? 'Der vereinbarte Floor konnte in mindestens einem Simulationsjahr nicht vollständig gedeckt werden.'
                 : `Der vereinbarte Floor konnte im Jahr ${ruinYear} nicht vollständig gedeckt werden.`,
-            action: 'Prüfen Sie Entnahmebedarf, Vermögensaufteilung und das Ruin-Jahr im Jahresprotokoll.'
+            action: 'Prüfe Entnahmebedarf, Vermögensaufteilung und das Ruin-Jahr im Jahresprotokoll.'
         });
     }
     if (outcome === 'incomplete') {
@@ -203,7 +203,7 @@ export function describeHistoricalBacktestResult(result) {
             code,
             title: 'Backtest wegen unvollständiger Daten nicht ausgewertet',
             cause: 'Der historische Datenvertrag konnte den gewählten Zeitraum nicht lückenlos bereitstellen.',
-            action: 'Wählen Sie einen Zeitraum innerhalb der angezeigten Grenzen oder prüfen Sie den Datensatz.'
+            action: 'Wähle einen Zeitraum innerhalb der angezeigten Grenzen oder prüfe den Datensatz.'
         });
     }
     const code = stableCode(result?.error?.code ?? result?.outcome?.error?.code, 'BACKTEST_TECHNICAL_ERROR');
@@ -212,7 +212,7 @@ export function describeHistoricalBacktestResult(result) {
         code,
         title: 'Backtest technisch abgebrochen',
         cause: 'Der Lauf konnte technisch nicht vollständig verarbeitet werden.',
-        action: 'Prüfen Sie die Eingaben und starten Sie den Backtest erneut. Bleibt der Code bestehen, melden Sie ihn zur Diagnose.'
+        action: 'Prüfe die Eingaben und starte den Backtest erneut. Bleibt der Code bestehen, melde ihn zur Diagnose.'
     });
 }
 
@@ -229,8 +229,10 @@ export function renderHistoricalBacktestStatus(documentRef, presentation, { focu
         + `<div class="backtest-notice-row"><span>Ursache</span><span class="backtest-notice-value">${escapeBacktestHtml(presentation.cause)}</span></div>`
         + `<div class="backtest-notice-row"><span>Nächster Schritt</span><span class="backtest-notice-value">${escapeBacktestHtml(presentation.action)}</span></div>`;
     const code = documentRef?.getElementById('backtestDiagnosisCode');
-    if (code) code.textContent = `Code: ${presentation.code}`;
-    else region.innerHTML += `<span class="backtest-status-code">Code: ${escapeBacktestHtml(presentation.code)}</span>`;
+    const statusLabel = ({ completed: 'Backtest fertig', running: 'Backtest läuft', idle: 'Backtest bereit', ruin: 'Backtest mit Ruin beendet' })[kind]
+        || `Code: ${presentation.code}`;
+    if (code) code.textContent = statusLabel;
+    else region.innerHTML += `<span class="backtest-status-code">${escapeBacktestHtml(statusLabel)}</span>`;
     const chip = documentRef?.getElementById('backtestPeriodStatus');
     if (chip) {
         chip.textContent = ({ idle: 'Bereit', running: 'Wird berechnet', completed: 'Vollständig', ruin: 'Ruin',
@@ -269,7 +271,7 @@ export function summarizeHistoricalBacktestDataQuality(result) {
         limited,
         label: total === 0
             ? 'Keine historischen Jahresbeobachtungen wurden ausgewertet.'
-            : `${total} Beobachtungen (${parts.join(', ')}).${limited > 0 ? ' Begrenzte Datenqualität ist im Raw-Export markiert.' : ''}`
+            : `${total} Beobachtungen (${parts.join(', ')}).${limited > 0 ? ' Begrenzte Datenqualität ist im Export (Rohdaten) markiert.' : ''}`
     });
 }
 
@@ -352,7 +354,7 @@ export function renderHistoricalBacktestCohorts(documentRef, inventory, horizonY
 export function buildAccessibleBacktestTableHtml(rows, columns, formatValue, context = {}) {
     const describedColumns = columns.map(column => {
         const catalog = PROTOCOL_COLUMNS.find(item => column.id ? item.id === column.id : item.legacyHeader === column.header);
-        return { ...catalog, ...column, header: catalog?.header || column.header,
+        return { ...catalog, ...column, header: column.header || catalog?.header,
             title: column.title || (catalog ? `${catalog.label}. ${catalog.explanation}` : column.header) };
     });
     return renderProtocolTable(rows, { ...context, source: 'backtest', columns: describedColumns,

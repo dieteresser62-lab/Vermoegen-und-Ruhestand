@@ -43,16 +43,17 @@ export function renderProfileInputOrigins(dom, aggregated) {
     const currency = value => Number.isFinite(value) ? UIUtils.formatBalanceCurrency(value) : '—';
     const cash = amount('tagesgeld'), moneyMarket = amount('geldmarktEtf');
     const values = {
-        income: currency(amount('fixedIncomeAnnual')) + ' / Jahr',
-        cash: currency(Number.isFinite(cash) && Number.isFinite(moneyMarket) ? cash + moneyMarket : null),
-        depot: currency(amount('depotwertGesamt')),
+        income: currency(amount('fixedIncomeAnnual')),
+        cash: currency(cash),
+        'money-market': currency(moneyMarket),
+        depot: `${currency(amount('depotwertAlt'))} / ${currency(amount('depotwertNeu'))}`,
         'gold-bonds': `${currency(amount('goldWert'))} · ${currency(amount('initialBondBucket'))}`
     };
     for (const [key, value] of Object.entries(values)) {
         const target = doc.getElementById(`balanceAdopt-${key}-value`);
         if (target) target.textContent = value;
     }
-    for (const key of ['income', 'cash', 'depot', 'gold-bonds', 'costs']) {
+    for (const key of ['income', 'cash', 'money-market', 'depot', 'gold-bonds', 'costs']) {
         const row = doc.getElementById(`balanceAdopt-${key}`);
         const target = doc.getElementById(`balanceAdopt-${key}-source`);
         if (!row || !target) continue;
@@ -62,7 +63,7 @@ export function renderProfileInputOrigins(dom, aggregated) {
         target.textContent = `${origin} · ${aggregated ? 'Haushaltsprofile' : 'aktives Profil'}${key === 'costs' ? ' · für die Steuerschätzung' : ''}`;
     }
     const needSource = doc.getElementById('balanceNeedSource');
-    if (needSource) needSource.textContent = `${aggregated ? 'Haushalt · Summe der ausgewählten Profile' : 'Aktives Profil'} · Euro pro Jahr`;
+    if (needSource) needSource.textContent = `aus Haushalt & Plan · ${aggregated ? 'Summe der ausgewählten Profile' : 'aktives Profil'}`;
 }
 
 export function createProfileSyncHandlers({ dom, PROFILE_VALUE_KEYS }) {

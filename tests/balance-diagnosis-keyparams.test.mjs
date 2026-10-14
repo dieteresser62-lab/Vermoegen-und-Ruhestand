@@ -34,12 +34,12 @@ function flattenText(node) {
 }
 
 function findCardByLabel(grid, labelText) {
-    const cards = Array.isArray(grid?.children) ? grid.children : [];
-    return cards.find(card => {
-        const children = Array.isArray(card?.children) ? card.children : [];
-        const labelNode = children.find(ch => ch?.className === 'label');
-        return labelNode?.textContent === labelText;
-    }) || null;
+    if (grid?.className === 'key-param-card' && grid.children.some(ch => ch?.className === 'label' && ch.textContent === labelText)) return grid;
+    for (const child of grid?.children || []) {
+        const card = findCardByLabel(child, labelText);
+        if (card) return card;
+    }
+    return null;
 }
 
 setupDom();
@@ -116,7 +116,7 @@ setupDom();
     assert(txt.includes('Nicht genutzter Rahmen'), 'Unused VPW room should be rendered');
     assert(txt.includes('Mindest-Flex p.a.'), 'Minimum flex metric should be rendered');
     assert(txt.includes('Runway-Ziel'), 'Runway target smoothing metric should be rendered');
-    assert(txt.includes('50% Drawdown-Severity'), 'Runway target smoothing severity should be visible');
+    assert(txt.includes('50\u00a0% Drawdown-Severity'), 'Runway target smoothing severity should be visible');
     assert(txt.includes('Harte Mindestgrenze'), 'Runway target smoothing hard minimum should be visible');
     assert(txt.includes('Mindest-Flex Rate'), 'Minimum flex required rate should be rendered');
     assert(txt.includes('Mindest-Flex Effekt'), 'Minimum flex effect should be rendered');

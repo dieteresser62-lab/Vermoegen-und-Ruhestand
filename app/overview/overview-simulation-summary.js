@@ -13,6 +13,13 @@ const plain = value => value && typeof value === 'object' && !Array.isArray(valu
 const finite = value => value === null || (typeof value === 'number' && Number.isFinite(value));
 const text = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 180 && !/[\x00-\x1f]/.test(value);
 
+// Neue numerische Felder bleiben optional; die bisherigen Pflichtfelder gelten unverändert.
+export const OPTIONAL_FLEX_SUMMARY_FIELDS = [
+    'minimumFlexStartNominalEur', 'minimumFlexYearSharePct', 'minimumFlexAffectedRunSharePct',
+    'minimumFlexAffectedYearCount', 'minimumFlexObservationCount', 'flexPaidMedianNominalEur',
+    'flexDesiredMedianNominalEur', 'flexPaidMinimumNominalEur', 'legacyFlexCutYearSharePct', 'legacyFlexCutYearCount'
+];
+
 function validScope(scope) {
     if (!plain(scope) || !['single', 'household'].includes(scope.kind) || !Array.isArray(scope.ids)
         || !scope.ids.length || scope.ids.some(id => !text(id) || !id)
@@ -38,7 +45,14 @@ export function assertSimulationRecord(raw) {
                 'sourceFingerprint', 'runFingerprint', 'deviationApplied', 'metrics'].includes(field))) throw new Error('Ungültiger Simulationseintrag.');
         const fields = item.kind === 'backtest' ? ['startYear', 'endYear', 'failureYear', 'endWealthReal']
             : item.kind === 'montecarlo' ? ['runs', 'covered', 'successPct', 'median', 'p5'] : ['endWealthReal'];
-        if (Object.keys(item.metrics).some(field => !fields.includes(field))
+        const optional = item.kind === 'workshop' ? [] : OPTIONAL_FLEX_SUMMARY_FIELDS.filter(field =>
+            item.kind === 'backtest' ? !['minimumFlexAffectedRunSharePct', 'legacyFlexCutYearSharePct'].includes(field)
+                : !['minimumFlexAffectedYearCount', 'minimumFlexObservationCount', 'legacyFlexCutYearCount'].includes(field));
+        if (Object.keys(item.metrics).some(field => !fields.includes(field) && !optional.includes(field))
+            || optional.some(field => Object.hasOwn(item.metrics, field) && (!finite(item.metrics[field])
+                || item.metrics[field] !== null && (item.metrics[field] < 0
+                    || field.endsWith('Pct') && item.metrics[field] > 100
+                    || field.endsWith('Count') && !Number.isInteger(item.metrics[field]))))
             || fields.some(field => !Object.hasOwn(item.metrics, field) || !finite(item.metrics[field]))) throw new Error('Ungültige Simulationskennzahlen.');
         if (item.kind === 'backtest' && (![item.metrics.startYear, item.metrics.endYear].every(Number.isInteger)
             || item.metrics.endYear < item.metrics.startYear

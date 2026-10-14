@@ -13,8 +13,10 @@ import {
 import { runSweepChunk } from '../app/simulator/sweep-runner.js';
 import { SWEEP_REQUEST_VERSION } from '../app/simulator/monte-carlo-parameters.js';
 import { assertWealthFan } from '../app/simulator/wealth-fan-aggregation.js';
+import { summarizeMinimumFlexPaths } from '../app/simulator/minimum-flex-metrics.js';
 import {
     MONTE_CARLO_CHUNK_RESULT_VERSION,
+    MONTE_CARLO_MISSINGNESS_CODE,
     MONTE_CARLO_OUTCOME_CODE,
     assertMonteCarloChunkResultV1
 } from '../app/simulator/monte-carlo-chunk-result.js';
@@ -830,7 +832,7 @@ const transportBytes = (value, excluded = []) => JSON.stringify(value, (key, ite
         type: item.constructor.name, length: item.length,
         bytes: Buffer.from(item.buffer, item.byteOffset, item.byteLength).toString('hex')
     } : item);
-for (const inputs of [createInputs(), { ...createInputs(), startAlter: 110 },
+for (const inputs of [{ ...createInputs(), minimumFlexAnnual: 10000 }, { ...createInputs(), startAlter: 110 },
     { ...createInputs(), startAlter: 20, startVermoegen: 1, depotwertAlt: 1, einstandAlt: 1, zielLiquiditaet: 0, startFloorBedarf: 1000000, startFlexBedarf: 0 }]) {
     const params = { ...monteCarloParams, anzahl: 3, maxDauer: inputs.startAlter === 110 ? 1 : 5 };
     const { scenarioKey, compiledScenario } = compileScenario(inputs, widowOptions, params.methode, false, inputs.stressPreset);
@@ -889,5 +891,9 @@ for (const inputs of [createInputs(), { ...createInputs(), startAlter: 110 },
         assertWealthFan(serial.wealthFan, 3);
         assertEqual(transportBytes(responses[3].wealthFan), transportBytes(serial.wealthFan),
             'Validierter tatsächlich übertragener Fächer ist bytegleich zum seriellen optierten Lauf');
+        const minimumBlock = chunk => summarizeMinimumFlexPaths(chunk.pathSummaries, chunk.pathMissingness,
+            3, MONTE_CARLO_MISSINGNESS_CODE, inputs.minimumFlexAnnual);
+        assertEqual(JSON.stringify(minimumBlock(responses[3])), JSON.stringify(minimumBlock(serial)),
+            'Echter Worker und Direktpfad liefern dieselben Mindest-Flex-Werte, Beobachtungen und Fehlgründe');
     }
 }

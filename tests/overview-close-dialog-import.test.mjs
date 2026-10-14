@@ -19,6 +19,9 @@ function checkExampleButtons(root, month) {
     const one = root.querySelector('[data-overview-example-target="muster_a"]');
     const all = root.querySelector('[data-overview-example="all"]');
     const file = root.querySelector('[data-overview-expenses-file="muster_a"]');
+    const choose = root.querySelector('[data-overview-expenses-choose="muster_a"]');
+    assert(file.hidden && choose.textContent === 'CSV auswählen …', 'Gemeinsame Importzeile bietet beschrifteten Knopf statt nativem Dateifeld');
+    assertEqual(choose.getAttribute('aria-label'), 'CSV für Max auswählen', 'CSV-Auswahl nennt ihre Zielperson');
     assert(one.parent && one.parent === file.parent, 'Dateifeld und Beispielknopf stehen im gemeinsamen Zeilencontainer');
     assertEqual(file.parent.className, 'close-dialog-file-row', 'Monats- und Jahresdialog nutzen dieselbe Importzeile');
     assert(one.className.includes('ds-icon-button') && one.children[0].innerHTML === EXAMPLE_EXPENSES_ICON_HTML, 'Dialogeinzelaktion ist kompakt mit gemeinsamem Kopiersymbol');
@@ -103,7 +106,8 @@ export async function overviewImportFixture({ quoteAge = 0, single = false, unse
         preview: () => doc.getElementById('expensesImportPreview'),
         async csv({ id = 'muster_a', text = async () => 'Kategorie;Betrag\nLebensmittel;-120,50\n', accept = true } = {}) {
             await doc.querySelector('[data-close-dialog-activate="expenses"]')?.fire('click');
-            const field = doc.querySelector(`[data-overview-expenses-file="${id}"]`); field.files = [{ text }]; field.value = 'same.csv';
+            const replacement = doc.querySelector(`[data-close-expenses-replace="${id}"]`); if (replacement) replacement.open = true;
+            const field = doc.querySelector(`[data-overview-expenses-file="${id}"]`); field.files = [{ name: 'ausgaben.csv', text }]; field.value = 'same.csv';
             const job = field.fire('change');
             await this.waitPreview(job); assertEqual(field.value, '', 'Dateifeld wird für gleiche Auswahl zurückgesetzt');
             await doc.querySelector(accept ? '[data-expenses-preview-accept]' : '[data-expenses-preview-cancel]').fire('click'); await boundedImport(job);
@@ -138,6 +142,13 @@ for (const accept of [false, true]) {
     const f = await overviewImportFixture({ single: accept });
     try {
         await f.open(); const before = JSON.stringify(Object.fromEntries(f.backend));
+        const file = f.doc.querySelector('[data-overview-expenses-file="muster_a"]');
+        let selections = 0; file.click = () => { selections++; };
+        const choose = f.doc.querySelector('[data-overview-expenses-choose="muster_a"]');
+        await choose.fire('click');
+        assertEqual(selections, 1, 'CSV-Knopf öffnet das unveränderte Dateifeld seiner Person');
+        choose.disabled = true; await choose.fire('click');
+        assertEqual(selections, 1, 'Gesperrter CSV-Knopf öffnet keine Dateiauswahl'); choose.disabled = false;
         const cash = f.doc.querySelector('[data-tagesgeld-person]'); cash.value = '18.000,125'; await cash.fire('input');
         await f.csv({ accept });
         assertEqual(cash.value, '18.000,125', 'Importrefresh erhält existierenden Cashentwurf');
@@ -151,8 +162,21 @@ for (const accept of [false, true]) {
             const state = JSON.parse(f.backend.get(CONFIG.STORAGE.LS_KEY));
             assertEqual(state.wealthHistory.entries.filter(entry => entry.asOf === '2026-10-08').length, 1, 'Produktiver CSV-Folgejob erzeugt genau einen Tagespunkt');
         }
-        assert(f.doc.activeElement === f.doc.querySelector(accept ? '[data-close-dialog-activate="expenses"]' : '[data-overview-expenses-file="muster_a"]'),
-            accept ? 'Importabschluss fokussiert den sichtbaren Ausgabenschritt statt eines eingeklappten Dateifelds' : 'Vorschauabbruch fokussiert das aktuelle sichtbare Dateifeld');
+        assert(f.doc.activeElement === f.doc.querySelector(accept ? '[data-close-dialog-activate="expenses"]' : '[data-overview-expenses-choose="muster_a"]'),
+            accept ? 'Importabschluss fokussiert den sichtbaren Ausgabenschritt statt eines eingeklappten Dateifelds' : 'Vorschauabbruch fokussiert den sichtbaren CSV-Knopf');
+        assertEqual(f.doc.querySelector('[data-overview-expenses-filename="muster_a"]').textContent, 'ausgaben.csv', 'Dateiname bleibt neben der CSV-Auswahl nach dem Refresh erhalten');
+        if (accept) {
+            const replacement = f.doc.querySelector('[data-close-expenses-replace="muster_a"]');
+            assert(replacement && !replacement.open && replacement.querySelector('summary').textContent === 'Import ersetzen …', 'Nach erfolgreichem Import ist Ersetzen kompakt zugeklappt');
+            const summary = replacement.parent.querySelector('.close-dialog-expense-summary');
+            assertEqual(summary.querySelector('strong').textContent.replace(/\s/g, ' '), '120,50 €', 'Bestätigter Importbetrag bleibt vor dem Ersetzen sichtbar');
+            assertEqual(summary.querySelector('small').textContent, 'Import vorhanden', 'Vorhandener Import erhält eigenen sichtbaren Status');
+            const imported = JSON.stringify(Object.fromEntries(f.backend));
+            await f.csv({ accept: false });
+            assertEqual(JSON.stringify(Object.fromEntries(f.backend)), imported, 'Abgebrochenes Ersetzen bewahrt bestätigte Ausgaben und Vermögenspunkt');
+            assert(f.doc.querySelector('[data-close-expenses-replace="muster_a"]').open, 'Refresh erhält den geöffneten Ersetzenbereich');
+            assert(f.doc.activeElement === f.doc.querySelector('[data-overview-expenses-choose="muster_a"]'), 'Abbruch beim Ersetzen fokussiert die sichtbare CSV-Auswahl');
+        }
     } finally { await f.close(); }
     assertEqual(f.guard.reasons().length, 0, 'Alle Import- und Monatsleases enden sauber');
 }

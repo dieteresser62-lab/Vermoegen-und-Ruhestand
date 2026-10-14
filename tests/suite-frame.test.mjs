@@ -16,7 +16,7 @@ function replacementErrors(html, page) {
     let content = html.split('<main class="suite-content"')[1] || '';
     if (page === 'Balance.html') {
         const adopted = content.match(/<section\b[^>]*aria-labelledby="h-strategy-adopt"[^>]*>[\s\S]*?<\/section>/)?.[0] || '';
-        const editLink = '<a href="index.html" data-profile-handoff aria-label="Feste Einkünfte in Profile &amp; Rente bearbeiten">Bearbeiten</a>';
+        const editLink = '<a href="depot-tranchen-manager.html#personen" data-profile-handoff data-profile-handoff-export="false">In Personen &amp; Vermögen ändern</a>';
         if (adopted.split(editLink).length !== 2) errors.push('Profilbearbeitung');
         // Nur der geschützte Bearbeitungsweg in „Übernommen“ ist eine Fachaktion.
         // Weitere Startlinks im Inhalt bleiben doppelte Rahmennavigation.
@@ -39,7 +39,7 @@ function replacementErrors(html, page) {
     }
     if (page === 'Handbuch.html') {
         if (/class="(?:navbar|nav-brand|back-link)"|\.(?:navbar|nav-brand|back-link)\b/.test(html)) errors.push('Handbuchaltanteil');
-        for (const anchor of ['<h1>Benutzerhandbuch</h1>', 'id="inhaltsverzeichnis"', 'id="quickstart"', 'id="manual"', 'id="ueberblick"']) if (!content.includes(anchor)) errors.push(anchor);
+        for (const anchor of ['<h1>Wobei brauchst du Hilfe?</h1>', 'id="inhaltsverzeichnis"', 'id="quickstart"', 'id="manual"', 'id="ueberblick"']) if (!content.includes(anchor)) errors.push(anchor);
     }
     return errors;
 }
@@ -86,11 +86,11 @@ for (const page of pages) {
         assertEqual(replacementErrors(html.replace('<main class="suite-content"', '<main class="suite-content"><a href="index.html">Altlink</a><div'), page).includes('Altlink'), true, 'Gegenprobe erkennt doppelte native Startnavigation');
     }
     if (page === 'Balance.html') {
-        const editLink = '<a href="index.html" data-profile-handoff aria-label="Feste Einkünfte in Profile &amp; Rente bearbeiten">Bearbeiten</a>';
-        assertEqual(replacementErrors(html.replace(editLink, editLink + editLink), page).includes('Altlink'), true, 'Gegenprobe erkennt doppelte Profilbearbeitung');
-        assertEqual(replacementErrors(html.replace(editLink, editLink.replace(' data-profile-handoff', '')), page).includes('Altlink'), true, 'Gegenprobe erkennt ungeschützten Profilbearbeitungsweg');
+        const editLink = '<a href="depot-tranchen-manager.html#personen" data-profile-handoff data-profile-handoff-export="false">In Personen &amp; Vermögen ändern</a>';
+        assertEqual(replacementErrors(html.replace(editLink, editLink + editLink), page).includes('Profilbearbeitung'), true, 'Gegenprobe erkennt doppelte Profilbearbeitung');
+        assertEqual(replacementErrors(html.replace(editLink, editLink.replace(' data-profile-handoff', '')), page).includes('Profilbearbeitung'), true, 'Gegenprobe erkennt ungeschützten Profilbearbeitungsweg');
         assertEqual(replacementErrors(html.replace(editLink, ''), page).includes('Profilbearbeitung'), true, 'Gegenprobe erkennt verlorenen Profilbearbeitungsweg');
-        assertEqual(replacementErrors(html.replace(editLink, editLink.replace(' aria-label="Feste Einkünfte in Profile &amp; Rente bearbeiten"', '')), page).includes('Profilbearbeitung'), true, 'Gegenprobe erkennt verlorenen zugänglichen Namen des kurzen Bearbeitungslinks');
+        assertEqual(replacementErrors(html.replace(editLink, editLink.replace('In Personen &amp; Vermögen ändern', '')), page).includes('Profilbearbeitung'), true, 'Gegenprobe erkennt verlorenen sichtbaren Namen des Bearbeitungslinks');
     }
     if (page === 'depot-tranchen-manager.html') {
         assertEqual(replacementErrors(html.replace('href="Daten-Sicherung.html#fullBackupImportBtn"', 'href="index.html#fullBackupImportBtn"'), page).includes('href="Daten-Sicherung.html#fullBackupImportBtn"'), true, 'Gegenprobe erkennt das veraltete Recoveryziel auf der Startseite');
@@ -109,7 +109,7 @@ for (const page of pages) {
     assertEqual(frameErrors(html.replace(pageAttribute, ' data-suite-page="falsch"'), page).join(','), 'Seitenkennung', `${page}: Gegenprobe erkennt falsche Seitenkennung`);
     const nav = html.match(/<nav class="suite-navigation"[^>]*>[\s\S]*?<\/nav>/)[0];
     assertEqual(frameErrors(html.replace(nav, nav.replace(' data-profile-handoff-export="false"', '')), page).length > 0, true, 'Gegenprobe: fehlender Managerexportverzicht wird erkannt');
-    assertEqual(frameErrors(html.replace('aria-current="page"', ''), page).length > 0, true, 'Gegenprobe: falscher Aktivzustand wird erkannt');
+    assertEqual(frameErrors(html.replace(nav, nav.replace('aria-current="page"', '')), page).length > 0, true, 'Gegenprobe: falscher Aktivzustand wird erkannt');
 }
 const sources = readSources();
 assertEqual(validateCompletePresentation(sources).join('\n'), '', 'Rahmenstylesheet besteht die gemeinsame Farb-/Quellenprüfung');
@@ -307,4 +307,4 @@ for (const page of pages) {
 }
 const desktopConfig = JSON.parse(fs.readFileSync(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
 assert(desktopConfig.app.windows.every(win => win.title === 'Vermögen & Ruhestand'), 'Neuer Fenstertitel in Tauri');
-assertEqual(desktopConfig.productName, 'RuhestandSuite', 'Technischer Produktname bleibt erhalten');
+assertEqual(desktopConfig.productName, 'Vermögen & Ruhestand Entwicklung', 'Technischer Produktname kennzeichnet die Entwicklung');

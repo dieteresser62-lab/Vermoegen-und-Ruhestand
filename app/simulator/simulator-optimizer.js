@@ -247,7 +247,7 @@ export function displayBestParameters(bestResult, metricKey) {
     html += `<p><strong>Verglichen nach:</strong> ${metricLabels[metricKey] || metricKey}</p>`;
     html += `<p><strong>${bestResult.params ? 'Führender' : 'Geteilter'} Punktschätzer:</strong> ${formatMetricValue(bestResult.metricValue, metricKey)}</p>`;
     if (!bestResult.params) {
-        html += '<p>Es werden keine Parameter zur Übernahme angeboten. Verwenden Sie eine zusätzliche unterscheidende Metrik oder erhöhen Sie die Aussagekraft des Versuchsdesigns.</p>';
+        html += '<p>Es werden keine Parameter zur Übernahme angeboten. Verwende eine zusätzliche unterscheidende Metrik oder erhöhe die Aussagekraft des Versuchsdesigns.</p>';
         html += '</div>';
         container.innerHTML = html;
         container.style.display = 'block';

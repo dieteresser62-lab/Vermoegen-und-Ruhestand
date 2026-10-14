@@ -318,7 +318,7 @@ try {
                 if (mode === 'context') { model = { ...model, activeId: 'muster_b' }; refresh(); }
             } }
         });
-        await focus.fire('click', { target: { closest: () => button } });
+        await focus.fire('click', { target: { closest: selector => selector === '[data-overview-example]' ? button : null } });
         if (mode === 'timeout') assert.equal(status.textContent, 'Gerade wird noch gespeichert. Bitte in ein paar Sekunden erneut versuchen.');
         if (mode === 'context') assert.ok(/abgebrochen/.test(status.textContent));
         if (mode === 'cancel') assert.equal(status.textContent, 'Import abgebrochen.');

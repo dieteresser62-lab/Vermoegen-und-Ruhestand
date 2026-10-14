@@ -1,7 +1,7 @@
 [package]
-name = "ruhestand_suite"
+name = "vermoegen_und_ruhestand"
 version = "0.1.0"
-description = "Ruhestand Suite"
+description = "Vermögen & Ruhestand"
 authors = ["you"]
 license = "MIT"
 repository = ""

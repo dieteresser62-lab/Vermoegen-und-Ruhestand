@@ -3,6 +3,7 @@ import { previewSnapshotRetention, executeSnapshotRetention } from '../shared/sn
 import { requestPageConfirmation, showPageAlert } from '../shared/page-dialog.js';
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
 import { getProbelaufController } from '../shared/probelauf-state.js';
+import { snapshotTitle } from './data-snapshot-presentation.js';
 
 /** Vorschau speichert ausstehende Eingaben; Zielstand und Archiv bleiben unverändert. */
 export function createDataRestorationController(options = {}) {
@@ -86,11 +87,11 @@ export function restorePreviewRows(plan) {
     for (const id of new Set([...Object.keys(beforeProfiles), ...Object.keys(afterProfiles)])) {
         const before = beforeProfiles[id], after = afterProfiles[id];
         if (plan.mode === 'standard' && id !== plan.targetProfileId) continue;
-        rows.push({ title: 'Person: ' + (after?.meta?.name || before?.meta?.name || 'Name unbekannt'),
+        rows.push({ title: 'Person: ' + (after?.meta?.name || before?.meta?.name || 'ohne gespeicherten Namen'),
             action: !after ? 'entfällt' : !before ? 'kommt hinzu' : JSON.stringify(before) === JSON.stringify(after) ? 'unverändert' : 'wird zurückgesetzt',
             detail: '', removed: !after });
     }
-    const activeName = (records, profiles) => profiles[records.rs_current_profile || records.rs_active_profile]?.meta?.name || 'Name unbekannt';
+    const activeName = (records, profiles) => profiles[records.rs_current_profile || records.rs_active_profile]?.meta?.name || 'Person ohne gespeicherten Namen';
     if (plan.before.rs_current_profile !== plan.records.rs_current_profile || plan.before.rs_active_profile !== plan.records.rs_active_profile)
         rows.push({ title: 'Aktive Person', action: 'wird zurückgesetzt', detail: `${activeName(plan.before, beforeProfiles)} → ${activeName(plan.records, afterProfiles)}` });
     // Die Keypolicy des echten Plans entscheidet auch über die erhaltenen Bereiche.
@@ -157,7 +158,7 @@ export function bindDataRestoration(doc, { refresh = async () => {}, ...options 
             const preview = await controller.preview(button.dataset.restorePreview);
             if (!preview) return;
             const title = doc.getElementById('dataRestorePreviewTitle');
-            title.textContent = `Zurückholen auf ${preview.snapshot.label || 'Wiederherstellungspunkt'} – was sich ändert`;
+            title.textContent = `${snapshotTitle(preview.snapshot)} – was sich ändert`;
             const list = doc.getElementById('dataRestoreChanges'); list.replaceChildren();
             for (const row of restorePreviewRows(preview)) {
                 const item = doc.createElement('tr');

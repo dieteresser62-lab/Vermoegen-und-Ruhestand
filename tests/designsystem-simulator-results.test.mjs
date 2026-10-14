@@ -135,8 +135,34 @@ const displayBaseline = value => {
     }
     // Neue reine Darstellungsfelder sind separat gegen das Inventar geprüft.
     for (const card of copy.summaryCards) {
-        for (const key of ['displayRole', 'displayValue', 'intervalText', 'requestedRuns', 'outcomes']) delete card[key];
+        for (const key of ['displayRole', 'displayValue', 'intervalText', 'requestedRuns', 'outcomes', 'countText']) delete card[key];
     }
+    // SIM-1 ergänzt nur sichtbare Geldbasen; die vorhandenen Fachwerte bleiben im Digest.
+    for (const [cards, title, expected] of [
+        [copy.kpiDashboard.primary, 'Reale Depotentnahme P10', 'heutige Euro · unabhängig vom Euro-Schalter'],
+        [copy.kpiDashboard.primary, 'Ø Steuerersparnis Verlustvortrag', 'nominal · unabhängig vom Euro-Schalter'],
+        [copy.stressMetrics?.kpis, 'Reale Depotentnahme P10 (Stress)', 'heutige Euro · unabhängig vom Euro-Schalter']
+    ]) {
+        const card = cards?.find(card => card.title === title);
+        if (card) { assertEqual(card.priceBasis, expected, 'SIM-1 kennzeichnet die feste Geldbasis: ' + title); delete card.priceBasis; }
+    }
+    for (const card of copy.careMetrics?.cards || []) {
+        assert(['', 'heutige Euro · unabhängig vom Euro-Schalter', 'nominal · unabhängig vom Euro-Schalter'].includes(card.priceBasis), 'SIM-1 Pflegekarte nennt ihre Geldbasis');
+        delete card.priceBasis;
+    }
+    // FR-6/D18 ändern die Darstellung dieser Legacy-Karte; Rohwert bleibt hashrelevant.
+    const legacyFlexCard = copy.kpiDashboard.primary.find(card => card.title === 'mehr als 10 % unter Wunsch-Flex');
+    assert(legacyFlexCard, 'FR-6-Legacy-Karte ist ausdrücklich beschriftet');
+    assert(legacyFlexCard.tooltip.includes('einschließlich genau 10 %'), 'FR-6-Legacy-Karte erklärt unveränderte inklusive Altgrenze');
+    assertEqual(legacyFlexCard.description, 'Anteil der Entnahmejahre mit Flex-Kürzung ab 10 %.', 'D18-Legacy-Karte zeigt nur den kompakten Erklärungssatz');
+    // Das Viewmodell enthält keine Rohpopulation; Stichprobengröße aus dem geprüften Beschreibungssatz lesen.
+    const observedRuns = /Stichprobe: (\d+) Läufe/.exec(legacyFlexCard.tooltip)?.[1] || '0';
+    assertEqual(legacyFlexCard.tooltip, `Älteres Ergebnis: ältere Grundlage ohne Mindest-Flex-Messung. Medianer Anteil abgeschlossener Dekumulationsjahre mit mindestens 10 % Wunsch-Kürzung (einschließlich genau 10 %). Stichprobe: ${observedRuns} Läufe.`, 'Nur die freigegebene FR-6-Legacy-Erklärung wird im Altvergleich zurückgeführt');
+    assertEqual(legacyFlexCard.layout, 'exact-risk', 'FR-6-Zentralwert erhält vollständige Exaktwertdarstellung');
+    assertEqual(legacyFlexCard.decisionCritical, true, 'FR-6-Zentralwert bleibt im einfachen Modus sichtbar');
+    legacyFlexCard.title = 'Anteil Kürzungsjahre (≥ 10 %)';
+    legacyFlexCard.description = `Medianer Anteil erfolgreich abgeschlossener Dekumulationsjahre mit Flex-Kürzung von mindestens 10 %; Nenner sind abgeschlossene Dekumulationsjahre mit endlicher Kürzungsentscheidung. Stichprobe: ${observedRuns} Läufe.`;
+    delete legacyFlexCard.layout; delete legacyFlexCard.decisionCritical; delete legacyFlexCard.tooltip;
     const restoreText = item => {
         if (Array.isArray(item)) return item.map(restoreText);
         if (item && typeof item === 'object') return Object.fromEntries(Object.entries(item).map(([key, field]) =>
@@ -200,7 +226,7 @@ try {
     }
     for (const bad of [
         renderKpiCard({ title: 'Test', value: '0 %', tone: 'default' }).replace('ds-metric', ''),
-        fragments.find(s => s.includes('summary-grid')).replace('summary-item ds-card', 'summary-item'),
+        fragments.find(s => s.includes('mc-wealth-summary')).replace('summary-item ds-card', 'summary-item'),
         renderStressReplayPatchPreviewV1({ error: 'Fehler' }).replace('ds-note-error', ''),
         '<p style="color: #777">Text</p>', '<p style="opacity: .8">Text</p>'
     ]) assert(validateSimulatorResultMarkup(bad).length > 0, 'Gegenprobe im tatsächlich erzeugten Markup abgewiesen');
@@ -246,7 +272,7 @@ try {
             assert(crises.innerHTML.includes(`<strong>${expected}</strong>`), 'Krisenkarte zeigt den gerundeten Anzeigeprozentsatz mit U+2212');
             assert(!crises.innerHTML.includes('−0 %') && !crises.innerHTML.includes('-12 %') && !crises.innerHTML.includes('-13 %'), 'Kein Minus an Null und kein ASCII-Minus in der Krisenanzeige');
             assert(backtest.innerHTML.includes(`<p class="sim-backtest-foot">${foot}</p>`), 'Fußtext unterscheidet Öffnung, automatische Revision und manuellen Lauf');
-            assert(backtest.innerHTML.includes('<p class="ds-hint sim-cut-note">längstens 1 Jahre am Stück</p>'),
+            assert(backtest.innerHTML.includes('title="Älteres Ergebnis:') && backtest.innerHTML.includes('Längstens 1 Jahre am Stück.'),
                 'Kürzungsserie erhält die bestehende Hinweisrolle und die lokale ungerahmte Darstellung');
             assert(backtest.innerHTML.includes('<strong>12.346 €</strong>') && backtest.innerHTML.includes('<strong>988 €</strong>')
                 && backtest.innerHTML.includes('<strong>1 / 1</strong>'), 'Backtestkennzahlen behalten ihre vorhandenen Werte und Anzeigeformatierung');
@@ -257,7 +283,7 @@ try {
                 'Alle Kennzahlzeilen behalten Label und Wert als erste Rasterzellen');
             const cutMetric = rows[1];
             assert(matchesSelector({ elements: [cutMetric] }, '.sim-cut-metric')
-                && matchesSelector({ elements: [cutMetric.children[2]] }, '.sim-cut-metric > .ds-hint.sim-cut-note'),
+                && cutMetric.children.length === 2 && cutMetric.attrs.title?.includes('Längstens 1 Jahre am Stück.'),
                 'Kürzungsdauer steht direkt nach dem Wert innerhalb der zweiten Kennzahl');
             assertEqual(projectBacktestOverview(result).crises[0].changePct, originalChangePct, 'Unveränderter changePct-Rohwert nach Darstellung');
             assertEqual(JSON.stringify(result), before, 'Übersichtsrenderer verändert keine Jahresdaten');
@@ -276,6 +302,12 @@ try {
         && hostIds.indexOf('monteCarloAnswers') >= 0, 'Kernantworten stehen im echten Markup vor Kennzahlen und Grafiken');
     assert(css.includes('.sim-mc-answers { display: grid;') && css.includes('minmax(min(100%, 320px), 1fr)')
         && css.includes('.sim-mc-answer { min-width: 0; overflow-wrap: anywhere; }'), 'Antwortzeilen nutzen responsives Raster und ungekürzte Texte');
+    const flexNoteStyle = Object.assign({}, ...rules('simulator.css', css)
+        .filter(rule => rule.selector === '.sim-mc-answer .sim-flex-note').map(rule => rule.declarations));
+    assertEqual(flexNoteStyle['font-size'], 'var(--balance-help)', 'MC-Flex-Notiz nutzt die normale Hinweisgröße für kompakten Umbruch');
+    assertEqual(flexNoteStyle['white-space'], 'normal', 'MC-Flex-Notiz darf normal umbrechen');
+    assertEqual(flexNoteStyle.overflow, 'visible', 'MC-Flex-Notiz bleibt vollständig sichtbar');
+    assertEqual(flexNoteStyle['text-overflow'], 'clip', 'MC-Flex-Notiz erhält keine Ellipse');
     assert(!html.includes('Endvermögen und Floor-Deckung') && html.includes('aria-label="Ergebnisse der Monte-Carlo-Analyse"'), 'Zusätzlicher MC-Abschnittstitel entfällt bei erhaltener zugänglicher Ergebnisbezeichnung');
     assert(css.includes('.sim-assumption-step h2, #tab-montecarlo h2 { border-bottom: 0; padding-bottom: 0; }')
         && css.includes('.sim-assumption-step h2::after, #tab-montecarlo h2::after { content: none; }'), 'Annahmen und MC-Karten setzen die alte Unterlinie lokal zurück');

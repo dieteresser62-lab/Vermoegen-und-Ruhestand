@@ -745,7 +745,7 @@ try {
             value.focus = () => { focusAttempts.push(value); if (!value.disabled) doc.activeElement = value; };
             return value;
         };
-        for (const id of ['jahresabschlussBtn', 'btnJahresUpdate', 'balanceMarketUpdate', 'balanceNextAnnual', 'otherFocus', 'shiftedFocus']) node(id);
+        for (const id of ['jahresabschlussBtn', 'btnJahresUpdate', 'balanceNextAnnual', 'otherFocus', 'shiftedFocus']) node(id);
         const elements = { get: id => doc.getElementById(({ modalTitle: 'balanceAnnualCloseTitle', modalResults: 'annualResults', modalCloseBtn: 'annualCloseBtn' })[id] || id) };
         const dom = createAnnualDom();
         dom.containers = {}; dom.outputs = {};
@@ -777,7 +777,7 @@ try {
         const before = JSON.stringify(PersistenceFacade.exportAllSync().records);
         try {
             UIBinder.bindUI();
-            for (const access of ['balanceMarketUpdate', 'balanceNextAnnual', 'Alt+J', 'jahresabschlussBtn']) {
+            for (const access of ['btnJahresUpdate', 'balanceNextAnnual', 'Alt+J', 'jahresabschlussBtn']) {
                 console.log(`Normaljahr-Rückfokus: ${access}`);
                 const expected = elements.get(access === 'Alt+J' ? 'otherFocus' : access);
                 const eventsBefore = headEvents.length, runsBefore = running.length;
@@ -790,10 +790,12 @@ try {
                 } else if (access === 'jahresabschlussBtn') expected.dispatchClick(true);
                 else expected.click();
                 await settleUntil(() => doc.getElementById('balanceAnnualClose')?.open && running.length === runsBefore + 1);
-                assertEqual(headEvents.length, eventsBefore + 1, `${access}: gebundener Pfad dispatcht genau ein Kopfereignis`);
-                assertEqual(headEvents.at(-1).entryTarget, dom.controls.jahresabschlussBtn, `${access}: Kopfereignis enthält beim Eintritt currentTarget`);
-                assertEqual(headEvents.at(-1).event.isTrusted, access === 'jahresabschlussBtn', `${access}: Ereignisherkunft bleibt getrennt vom Fokus`);
-                assertEqual(headEvents.at(-1).event.currentTarget, null, `${access}: currentTarget ist nach dem Eintritt nicht mehr verfügbar`);
+                assertEqual(headEvents.length, eventsBefore + (access === 'btnJahresUpdate' ? 0 : 1), `${access}: gebundener Pfad dispatcht genau ein Kopfereignis`);
+                if (access !== 'btnJahresUpdate') {
+                    assertEqual(headEvents.at(-1).entryTarget, dom.controls.jahresabschlussBtn, `${access}: Kopfereignis enthält beim Eintritt currentTarget`);
+                    assertEqual(headEvents.at(-1).event.isTrusted, access === 'jahresabschlussBtn', `${access}: Ereignisherkunft bleibt getrennt vom Fokus`);
+                    assertEqual(headEvents.at(-1).event.currentTarget, null, `${access}: currentTarget ist nach dem Eintritt nicht mehr verfügbar`);
+                }
                 assert(!getPageNavigationGuard(doc).reasons().some(reason => ['commit', 'preparing', 'running'].includes(reason.phase)), `${access}: lesende Vorbereitung hält keine Jahreslease`);
                 assertEqual((await UIBinder.handleJahresabschluss()).status, 'in_flight', `${access}: Doppelzugang bleibt gesperrt`);
                 assertEqual(elements.get('modalTitle').textContent, 'Dezember und Jahr 2026 abschließen', `${access}: echte Normaljahrvorbereitung`);
@@ -808,7 +810,7 @@ try {
                 assertEqual(Boolean(doc.getElementById('balanceAnnualClose')), false, `${access}: Dialog bleibt geschlossen`);
                 if (doc.activeElement?.closest('dialog')) focusFailures.push(`${access}: Fokus im geschlossenen Dialog`);
                 assert([dom.controls.jahresabschlussBtn, dom.controls.btnJahresUpdate,
-                    elements.get('balanceMarketUpdate'), elements.get('balanceNextAnnual')].every(button => !button.disabled), `${access}: alle Zugangsbuttons sind freigegeben`);
+                    elements.get('balanceNextAnnual')].every(button => !button.disabled), `${access}: alle Zugangsbuttons sind freigegeben`);
                 assertEqual(getPageNavigationGuard(doc).reasons().length, 0, `${access}: keine verbliebene Laufzeitsperre`);
                 const live = StorageManager.loadState();
                 assertEqual(live.annualPeriodMetadata.pendingCommit, null, `${access}: kein Pending-Commit`);

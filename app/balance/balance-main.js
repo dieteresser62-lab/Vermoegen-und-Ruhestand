@@ -156,7 +156,6 @@ const dom = {
         importBtn: document.getElementById('importBtn'),
         importFile: document.getElementById('importFile'),
         btnJahresUpdate: document.getElementById('btnJahresUpdate'),
-        balanceMarketUpdate: document.getElementById('balanceMarketUpdate'),
         btnJahresUpdateLog: document.getElementById('btnJahresUpdateLog'),
         copyAction: document.getElementById('copyAction'),
         jahresabschlussBtn: document.getElementById('jahresabschlussBtn'),

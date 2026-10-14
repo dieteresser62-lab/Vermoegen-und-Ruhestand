@@ -1,6 +1,8 @@
 "use strict";
 
 import { formatDisplayFixed, formatDisplayScalar } from '../shared/designsystem-number-format.js';
+import { formatChartEuro } from './results-formatting.js';
+import { formatCurrency } from './simulator-formatting.js';
 
 import { heatmapColor, readChartTokens, heatmapLabelColor, CHART_LABEL } from '../shared/designsystem-chart-colors.js';
 import {
@@ -11,7 +13,6 @@ import {
 const formatFixed = (value, digits = 1) => formatDisplayFixed(value, digits);
 const formatPercent = (value, digits = 1) => `${formatFixed(value, digits)}\u00a0%`;
 const formatPercentFromRatio = (value, digits = 1) => formatPercent(value * 100, digits);
-const formatThousandsEuro = (value) => `${formatFixed(value / 1000, 0)}k\u00a0€`;
 const formatMonths = (value, digits = 1) => `${formatFixed(value, digits)}\u00a0Mo`;
 
 const formatHeatmapCellLabel = (pct) => {
@@ -379,7 +380,7 @@ export function renderSweepHeatmapSVG(sweepResults, metricKey, xParam, yParam, x
         const formatValue = (value, metric) => {
             const wealthMetrics = ['p10EndWealth', 'p25EndWealth', 'medianEndWealth', 'p75EndWealth', 'meanEndWealth', 'maxEndWealth'];
             if (wealthMetrics.includes(metric)) {
-                return formatThousandsEuro(value);
+                return formatChartEuro(value);
             } else if (metric === 'successProbFloor' || metric === 'worst5Drawdown') {
                 return formatPercent(value, 1);
             } else {
@@ -428,7 +429,8 @@ export function renderSweepHeatmapSVG(sweepResults, metricKey, xParam, yParam, x
                     isInvalidCombo ? '' : `CRN: ${comparison?.commonRandomNumbers === true ? 'aktiv' : 'nicht belegt'}`,
                     isInvalidCombo || successValue === null ? '' : `Success Prob: ${formatPercent(successValue, 1)}`,
                     isInvalidCombo || !successInterval ? '' : `Wilson 95%-KI: ${formatPercent(successInterval.lowerPct, 1)} bis ${formatPercent(successInterval.upperPct, 1)}`,
-                    isInvalidCombo || p10Value === null ? '' : `P10 End Wealth: ${formatThousandsEuro(p10Value)}`,
+                    isInvalidCombo || p10Value === null ? '' : `P10 End Wealth: ${formatCurrency(p10Value)}`,
+                    !isInvalidCombo && hasValue && metricKey.endsWith('EndWealth') ? `${metricKey}: ${formatCurrency(value)}` : '',
                     isInvalidCombo || drawdownValue === null ? '' : `Worst 5% DD: ${formatPercent(drawdownValue, 1)}`,
                     isInvalidCombo || runwayValue === null ? '' : `Min Runway: ${formatMonths(runwayValue, 1)}`,
                     isInvalidCombo || !drawdownQuantile?.quantileInTerminalRuinBlock

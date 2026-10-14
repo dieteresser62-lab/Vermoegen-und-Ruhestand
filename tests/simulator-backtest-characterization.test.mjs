@@ -634,7 +634,14 @@ function projectScenario({ id, oracleClass = 'target_expected', inputs, data, al
         period: periodIdentity,
         expectedRowCount,
         observedRowCount: rows.length,
-        canonicalRowsHash: stableHash(rows),
+        // Die gepinnte Finanz-Characterization erhält ihren bisherigen Zeilenvertrag.
+        // Nur die zwei additiven Mindest-Flex-Messfelder werden ausgenommen.
+        canonicalRowsHash: stableHash(rows.map(entry => {
+            const row = { ...entry.row };
+            delete row.flex_wunsch_haushalt_nominal;
+            delete row.flex_unter_mindestflex;
+            return { ...entry, row };
+        })),
         outcomeObservation: observeOutcome({ data, rows, alerts, requestedYears, uiStatus }),
         uiStatus,
         alerts,
@@ -993,7 +1000,9 @@ function buildLegacySchemaOracle(data) {
             Array.isArray(value) ? 'array' : typeof value
         ])),
         rowWrapperFields: Object.keys(first).sort(),
-        nestedRowFields: Object.keys(first.row || {}).sort(),
+        nestedRowFields: Object.keys(first.row || {}).filter(key => (
+            key !== 'flex_wunsch_haushalt_nominal' && key !== 'flex_unter_mindestflex'
+        )).sort(),
         canonicalResultSchemaVersion: data?.result?.schemaVersion || null,
         canonicalResultFrozen: Object.isFrozen(data?.result),
         canonicalRowsSharedByIdentity: data?.result?.rows === data?.rows,

@@ -22,6 +22,7 @@
             <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><a id="overviewHousehold" class="overview-pill" href="depot-tranchen-manager.html#personen" data-profile-handoff data-profile-handoff-export="false"><svg class="overview-pill-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7"/></svg><span id="overviewHouseholdLabel">Haushalt:</span> <b id="overviewHouseholdNames" class="overview-pill-names">wird geladen</b></a>
             <div class="overview-price-context">
                 <a id="overviewPrices" class="overview-pill" href="#kursdetails"><svg class="overview-pill-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/></svg><b id="overviewPricesValue">Kurszeit unbekannt</b></a>
+                <span class="ds-info" data-probelauf-price-info hidden><button type="button" class="ds-button ds-info-button" aria-label="Testkurse erklären" aria-describedby="overviewPriceTestInfo">ⓘ</button><span id="overviewPriceTestInfo" class="ds-info-pop" role="tooltip" data-probelauf-price-explanation></span></span>
                 <details id="kursdetails" class="overview-price-details ds-startup-prices">
                     <summary>Kursdetails schließen</summary>
                     <div id="startupPriceStatus" role="status" aria-live="polite">Kursabruf wartet auf Profil und Speicher.</div>
@@ -87,25 +88,42 @@
             <section id="overviewFocus" class="ds-card overview-focus" aria-labelledby="overviewFocusTitle"></section>
             <div id="overviewMetrics" class="overview-metrics">
             <section class="ds-card overview-assets" aria-labelledby="overviewAssetTitle">
-                <header class="overview-card-heading"><h2 id="overviewAssetTitle">Dein Vermögen</h2><span id="overviewQuoteDate" class="ds-badge">Kurszeit unbekannt</span></header>
-                <a class="overview-card-link overview-manage" href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false">Verwalten</a>
-                <div class="overview-asset-number"><span id="overviewAssets" class="overview-hero-number">—</span><span id="overviewAssetUnit" class="overview-euro" hidden>€</span></div>
-                <p id="overviewAssetStatus" class="overview-muted">Bestand wird geladen</p>
-                <p id="overviewComparison" class="overview-muted">Kein vollständiger Vergleichsstand</p>
+                <h2 id="overviewAssetTitle">Dein Vermögen</h2>
+                <div class="overview-asset-number overview-metric-value"><span id="overviewAssets" class="overview-hero-number">—</span><span id="overviewAssetUnit" class="overview-euro" hidden>€</span></div>
+                <p class="overview-muted overview-metric-source"><span id="overviewAssetStatus">Bestand wird geladen</span><span id="overviewAssetBasis" hidden><span id="overviewQuoteDate">Kurszeit unbekannt</span><span class="ds-info" data-probelauf-price-info hidden><button type="button" class="ds-button ds-info-button" aria-label="Testkurse erklären" aria-describedby="overviewAssetTestInfo">ⓘ</button><span id="overviewAssetTestInfo" class="ds-info-pop" role="tooltip" data-probelauf-price-explanation></span></span> · <span id="overviewComparison">Jahresendvergleich noch nicht belegbar</span></span></p>
+                <a class="overview-card-link overview-manage" href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false">Verwalten →</a>
             </section>
             <section class="ds-card overview-budget" aria-labelledby="overviewBudgetTitle">
                 <h2 id="overviewBudgetTitle">Monatsbudget</h2>
-                <strong id="overviewBudgetValue" class="overview-kpi-number">—</strong>
-                <p id="overviewBudgetSource" class="overview-muted">Noch kein passender Plan</p>
-                <a class="overview-card-link" href="Balance.html" data-profile-handoff>Budget in Balance ansehen</a>
+                <strong id="overviewBudgetValue" class="overview-kpi-number overview-metric-value">—</strong>
+                <p id="overviewBudgetSource" class="overview-muted overview-metric-source">Noch kein passender Plan</p>
+                <a id="overviewBudgetLink" class="overview-card-link" href="Balance.html" data-profile-handoff>Budget in Balance ansehen →</a>
             </section>
             <section class="ds-card overview-plan-metric" aria-labelledby="overviewPlanMetricTitle">
                 <h2 id="overviewPlanMetricTitle">Plan</h2>
-                <strong id="overviewPlanMetricValue" class="overview-kpi-number">—</strong>
-                <p id="overviewPlanMetricSource" class="overview-muted">Noch kein festgeschriebener Plan</p>
-                <a class="overview-card-link" href="#overviewPlanComparison">Plan und Vorschau vergleichen</a>
+                <div class="overview-metric-value overview-plan-state"><strong id="overviewPlanMetricValue" class="overview-kpi-number">Noch kein Jahresplan</strong><span id="overviewPlanMetricYear" class="overview-muted"></span></div>
+                <p id="overviewPlanMetricSource" class="overview-muted overview-metric-source">Entsteht im nächsten Jahresabschluss</p>
+                <a class="overview-card-link" href="#overviewPlanComparison">Plan und Vorschau vergleichen →</a>
             </section>
             </div>
+            <section id="overviewAssetDetails" class="ds-card overview-asset-details" aria-labelledby="overviewAssetDetailsTitle">
+                <h2 id="overviewAssetDetailsTitle">Personen &amp; Vermögen</h2>
+                <p id="overviewPeopleStand" class="overview-muted"></p>
+                <div id="overviewAllocation" class="overview-allocation" aria-label="Vermögensallokation"></div>
+                <div id="overviewLegend" class="overview-legend"></div>
+                <div id="overviewPeople" class="overview-people"></div>
+                <a class="overview-card-link" href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false">Personen &amp; Vermögen verwalten →</a>
+            </section>
+            <section id="overviewYearBand" class="ds-card overview-year" aria-labelledby="overviewYearTitle">
+                <header class="overview-card-heading"><div><h2 id="overviewYearTitle">Dein Jahr</h2><p id="overviewYearNote" class="overview-muted"></p></div><a id="overviewYearExpensesLink" class="overview-card-link" href="Ausgaben.html#ausgaben" data-profile-handoff>Ausgaben ansehen</a></header>
+                <p id="overviewYearStand" class="overview-muted"></p>
+                <div class="overview-year-plot">
+                    <p id="overviewYearBudget" class="overview-year-budget overview-muted" hidden></p>
+                    <div id="overviewYearChart" class="overview-year-chart" aria-label="Ausgaben in zwölf Kalendermonaten" aria-describedby="overviewYearBudget overviewYearStand"></div>
+                </div>
+                <div id="overviewYearLegend" class="overview-legend"></div>
+                <div id="overviewYearMetrics" class="overview-year-metrics"></div>
+            </section>
             <section id="overviewHistory" class="ds-card overview-history" aria-labelledby="overviewHistoryTitle">
                 <header class="history-heading"><div><h3 id="overviewHistoryTitle">Vermögensverlauf</h3><p id="overviewHistoryStand" class="overview-muted"></p></div>
                     <div id="overviewHistoryPeriods" class="history-periods" role="group" aria-label="Zeitraum">
@@ -119,22 +137,7 @@
                 <div id="overviewHistoryLegend" class="history-legend"></div>
                 <div id="overviewHistoryMetrics" class="history-metrics"></div>
                 <p id="overviewHistorySource" class="overview-muted"></p>
-            </section>
-            <section id="overviewYearBand" class="ds-card overview-year" aria-labelledby="overviewYearTitle">
-                <header class="overview-card-heading"><div><h2 id="overviewYearTitle">Dein Jahr</h2><p id="overviewYearNote" class="overview-muted"></p></div><a id="overviewYearExpensesLink" class="overview-card-link" href="Ausgaben.html#ausgaben" data-profile-handoff>Ausgaben ansehen</a></header>
-                <p id="overviewYearStand" class="overview-muted"></p>
-                <div class="overview-year-plot">
-                    <p id="overviewYearBudget" class="overview-year-budget overview-muted" hidden></p>
-                    <div id="overviewYearChart" class="overview-year-chart" aria-label="Ausgaben in zwölf Kalendermonaten" aria-describedby="overviewYearBudget overviewYearStand"></div>
-                </div>
-                <div id="overviewYearLegend" class="overview-legend"></div>
-                <div id="overviewYearMetrics" class="overview-year-metrics"></div>
-            </section>
-            <section id="overviewAssetDetails" class="ds-card overview-asset-details" aria-labelledby="overviewAssetDetailsTitle">
-                <h2 id="overviewAssetDetailsTitle">Allokation und Personen</h2>
-                <div id="overviewAllocation" class="overview-allocation" aria-label="Vermögensallokation"></div>
-                <div id="overviewLegend" class="overview-legend"></div>
-                <div id="overviewPeople" class="overview-people"></div>
+                <a id="overviewHistoryLink" class="overview-card-link" href="depot-tranchen-manager.html#verlauf" data-profile-handoff data-profile-handoff-export="false">Zum Verlauf →</a>
             </section>
             <section class="ds-card overview-plan" aria-labelledby="overviewPlanTitle">
                 <header class="overview-card-heading"><h2 id="overviewPlanTitle">Dein Plan</h2><span id="overviewPlanStatus" class="ds-badge" hidden></span></header>

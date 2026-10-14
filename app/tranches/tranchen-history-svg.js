@@ -372,7 +372,7 @@ export function renderWealthHistorySvg(history, { title = 'Vermögensverlauf', d
         const yy = n(y(value));
         grid += renderHistoryGridTick(value, left, right, yy, axisMoney(value, gridStep));
     }
-    const cropHint = floor > 0 ? ` Achse beginnt bei ${axisMoney(floor, step)} €; Zusammensetzung siehe Legende.` : '';
+    const cropHint = floor > 0 ? ` Achse beginnt bei ${axisMoney(floor, step)} €.` : '';
     const axisBreak = floor > 0 ? `<path class="history-axis-break" aria-hidden="true" d="M${left - 6},${bottom + 9}l4,-4l4,4l4,-4"/>` : '';
     let ticks = '', lastTick = -Infinity;
     for (const point of points) {
@@ -425,7 +425,8 @@ export function renderWealthHistorySvg(history, { title = 'Vermögensverlauf', d
         marks += `<g class="history-event history-${buy ? 'buy' : 'sell'}"><title>${escapeHtml(label)}</title><circle cx="${xx}" cy="${yy}" r="4"/>`;
         if (xx - lastLabel > 180) {
             const anchor = xx > right - 150 ? 'end' : 'start';
-            marks += `<text x="${xx}" y="${22 + (lane++ % 2) * 20}" text-anchor="${anchor}">${buy ? '▲ Kauf' : '▼ Verkauf'} ${escapeHtml(shortMoney(event.amount))} €</text>`;
+            const labelY = 22 + (lane++ % 2) * 20;
+            marks += `<line class="history-event-connector" x1="${xx}" x2="${xx}" y1="${labelY + 5}" y2="${yy - 6}"/><text x="${xx}" y="${labelY}" text-anchor="${anchor}">${buy ? '▲ Kauf' : '▼ Verkauf'} ${escapeHtml(shortMoney(event.amount))} €</text>`;
             lastLabel = xx;
         }
         marks += '</g>';
@@ -437,7 +438,7 @@ export function renderWealthHistorySvg(history, { title = 'Vermögensverlauf', d
     }
     const end = points.at(-1);
     const endLabel = Number.isFinite(end?.total) ? `<text class="history-end-value" x="${right}" y="${Math.max(top + 18, n(y(end.total)) - 12)}" text-anchor="end">${escapeHtml(shortMoney(end.total))} €</text>` : '';
-    return `<svg class="wealth-history-svg" tabindex="0" data-history-left="${left}" data-history-right="${right}" data-history-top="${top}" data-history-bottom="${bottom}" ${drawingAttributes(selection)} data-scale-floor="${floor}" data-scale-ceiling="${ceiling}" data-scale-step="${step}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="${id}-title ${id}-desc"><title id="${id}-title">${escapeHtml(title + cropHint)}</title><desc id="${id}-desc">${escapeHtml(description || (floor > 0 ? 'Gesamtfläche und Gesamtwert; Anlagebeträge in der Legende.' : 'Gestapelte Anlageformen und Gesamtwert.') + ' Schraffur kennzeichnet ungeprüfte Werktage. Pfeiltasten zeigen Originaltageswerte; Esc schließt die Tagesanzeige.')} Zeitraum ${escapeHtml(dateLabel(history.range.start))} bis ${escapeHtml(dateLabel(history.range.end))}.${escapeHtml(cropHint)}</desc><defs><pattern id="${id}-hatch" width="8" height="8" patternUnits="userSpaceOnUse"><path class="history-hatch" d="M-2,2L2,-2M0,8L8,0M6,10L10,6"/></pattern><clipPath id="${id}-clip"><rect x="${left}" y="${top}" width="${right - left}" height="${bottom - top}"/></clipPath></defs>${grid}${ticks}${axisBreak}<g clip-path="url(#${id}-clip)">${areas}${gaps}${line}</g>${marks}${endLabel}</svg>`;
+    return `<svg class="wealth-history-svg" tabindex="0" data-history-left="${left}" data-history-right="${right}" data-history-top="${top}" data-history-bottom="${bottom}" ${drawingAttributes(selection)} data-scale-floor="${floor}" data-scale-ceiling="${ceiling}" data-scale-step="${step}" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="${id}-title ${id}-desc"><title id="${id}-title">${escapeHtml(title + cropHint)}</title><desc id="${id}-desc">${escapeHtml(description || (floor > 0 ? 'Gesamtfläche und Gesamtwert.' : 'Gestapelte Anlageformen und Gesamtwert.') + ' Schraffur kennzeichnet ungeprüfte Werktage. Pfeiltasten zeigen Originaltageswerte; Esc schließt die Tagesanzeige.')} Zeitraum ${escapeHtml(dateLabel(history.range.start))} bis ${escapeHtml(dateLabel(history.range.end))}.${escapeHtml(cropHint)}</desc><defs><pattern id="${id}-hatch" width="8" height="8" patternUnits="userSpaceOnUse"><path class="history-hatch" d="M-2,2L2,-2M0,8L8,0M6,10L10,6"/></pattern><clipPath id="${id}-clip"><rect x="${left}" y="${top}" width="${right - left}" height="${bottom - top}"/></clipPath></defs>${grid}${ticks}${axisBreak}<g clip-path="url(#${id}-clip)">${areas}${gaps}${line}</g>${marks}${endLabel}</svg>`;
 }
 
 export function renderHistorySparkline(points, { title = 'Vermögensverlauf', width = 220, height = 60, kind = 'total', eventDays = [] } = {}) {

@@ -5,10 +5,8 @@ assertEqual(validateBalanceSimulatorRefinement(original).join('\n'), '', 'Balanc
 for (const [path, mutation, expected] of [
     ['simulator.css', s => s + '\n.sim-toggle-row > input { width: 100%; height: 100%; inset: 0; z-index: 1; }', 'Schalterinput'],
     ['simulator.css', s => s.replace('grid-template-rows: subgrid;', 'grid-template-rows: auto auto;'), 'grid-template-rows'],
-    ['simulator.css', s => s.replace('.sim-assumptions-reset { display: flex; flex-direction: row;', '.sim-assumptions-reset { display: flex; flex-direction: column;'), 'Resetblock'],
-    ['simulator.css', s => s.replace('h2::after { content: none;', 'h2::after { content: "";'), 'content'],
     ['simulator.css', s => s.replace('[data-profile-role-id] { white-space: nowrap;', '[data-profile-role-id] { white-space: normal;'), 'white-space'],
-    ['css/balance.css', s => s.replace('.balance-market-segment.phase-0 { --phase-color: var(--good); background: var(--good-soft);', '.balance-market-segment.phase-0 { --phase-color: var(--good); background: var(--surface);'), 'Grünsättigung'],
+    ['css/balance.css', s => s.replace('.balance-market-segment.phase-0 { --phase-color: var(--warn); background: var(--warn-soft);', '.balance-market-segment.phase-0 { --phase-color: var(--good); background: var(--good-soft);'), 'Warn- und Zielstatusfarben'],
     ['css/balance.css', s => s + '\n.balance-action-table caption { display: none; }', 'Dialogcaption']
 ]) {
     const changed = mutation(original[path]);

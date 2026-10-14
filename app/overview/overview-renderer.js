@@ -10,9 +10,20 @@ import { overviewPriceLabel, overviewPricesDone, overviewQuoteLabel, overviewBac
 import { projectOverviewMonthSteps } from './overview-month-confirmation.js';
 import { cashDateDisplay } from '../shared/tagesgeld-fields.js';
 import { EXAMPLE_EXPENSES_ICON_HTML, exampleExpensesLabel } from '../shared/designsystem-icons.js';
+import { getAppTestDate } from '../shared/app-clock.js';
+import { renderProbelaufPriceInfo } from '../shared/probelauf-price-ui.js';
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 }) : '—';
 const allocationNames = { aktien: 'Aktien', anleihe: 'Anleihen', geldmarkt: 'Geldmarkt', gold: 'Gold', cash: 'Tagesgeld' };
+const displayDate = date => date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+// Jahresgrenzstände sind eine andere Quelle als die Tageskurve. Schema 1
+// belegt den damaligen Personen-/Haushaltsumfang nicht; kein Zukunftsversprechen.
+function wealthComparisonBasis(comparison, year, retrospective = false) {
+    if (Number.isFinite(comparison?.delta)) return `${retrospective ? `im Jahr ${year} · ` : ''}seit Jahresendstand ${year - 1}`;
+    return comparison?.reason === 'Kein vollständiger Stand an den Jahresgrenzen'
+        ? `Kein vollständiger Jahresgrenzstand für ${year}` : `Jahresendvergleich ${year - 1} nicht belegbar`;
+}
 
 function actionOriginHtml(origin) {
     return `<p class="ds-source" data-action-origin>${escapeHtml(origin.label)} · ${escapeHtml(origin.previewLabel)} · <a href="Balance.html#handlungsanweisung" data-profile-handoff>Handlungsanzeige in Balance →</a></p>`;
@@ -21,6 +32,7 @@ function actionOriginHtml(origin) {
 // Ein brauchbarer gespeicherter Kursstand belegt keinen heutigen Abruf.
 // Die fachliche Frischeprüfung bleibt für Rechen- und Abschlussschritte unverändert.
 function todaysPricesConfirmed(model) {
+    if (getAppTestDate() !== null) return false;
     if (model.priceReport?.status !== 'complete' || !overviewPricesDone(model)) return false;
     const date = new Date(model.priceReport.retrievedAt ?? model.quoteDate ?? NaN);
     return Number.isFinite(date.getTime()) && date <= model.now && date.toDateString() === model.now.toDateString();
@@ -51,16 +63,18 @@ export function renderOverview(doc, model) {
     if (pricesPill) pricesPill.dataset.warning = String(['offline', 'timeout', 'changed', 'cancelled', 'storage-failed', 'recovery', 'unavailable'].includes(model.priceReport?.status)
         || Boolean(model.priceReport?.results?.some(result => result.status !== 'updated' && (!model.scope?.ids || !result.profileId || model.scope.ids.includes(result.profileId)))));
     set('overviewAssetTitle', members.length > 1 ? 'Euer Vermögen · Haushalt' : 'Dein Vermögen');
-    set('overviewQuoteDate', overviewQuoteLabel(model));
+    set('overviewQuoteDate', `Bestand am ${displayDate(model.now)} · ${overviewQuoteLabel(model)}`);
     set('overviewAssets', Number.isFinite(model.household?.assets) ? formatDisplayNumber(model.household.assets, { fractionDigits: 0 }) : '—');
     const unit = doc.getElementById('overviewAssetUnit'); if (unit) unit.hidden = !Number.isFinite(model.household?.assets);
     const assetStatus = !model.available ? 'Profildaten nicht verfügbar' : !members.length ? 'Keine Haushaltsauswahl' : !model.complete ? 'Haushaltsbestand unvollständig' : '';
     set('overviewAssetStatus', assetStatus);
     const statusNode = doc.getElementById('overviewAssetStatus'); if (statusNode) statusNode.hidden = !assetStatus;
+    const assetBasis = doc.getElementById('overviewAssetBasis'); if (assetBasis) assetBasis.hidden = Boolean(assetStatus);
     const comparison = model.comparison;
-    const period = model.annual?.retrospective ? `im Jahr ${model.annual.year}` : `seit Jahresanfang ${model.annual?.year || model.year}`;
+    const period = wealthComparisonBasis(comparison, model.annual?.year || model.year, model.annual?.retrospective);
     set('overviewComparison', Number.isFinite(comparison?.delta) ? `${comparison.delta > 0 ? '+' : ''}${money(comparison.delta)}${Number.isFinite(comparison.percent) ? ' · ' + formatDisplayNumber(comparison.percent, { unit: 'percent', fractionDigits: 1 }) : ''} · ${period}`
-        : 'Veränderung erscheint nach dem ersten Jahresendstand');
+        : period);
+    set('overviewPeopleStand', `Bestände und Alter am ${displayDate(model.now)} · Rente: erfasster Monatsbetrag`);
     const allocation = doc.getElementById('overviewAllocation');
     const allocationView = model.household ? overviewAllocationView(model.household.allocation) : {};
     if (allocation) allocation.innerHTML = model.household?.assets > 0 ? Object.entries(allocationView).filter(([, value]) => value > 0).map(([key, value]) =>
@@ -85,13 +99,24 @@ export function renderOverview(doc, model) {
     const budgetRow = planView.rows.find(row => row.label === 'Monatsbudget');
     const fixed = planView.recordStatus === 'valid';
     const hasPreview = ['current', 'stale'].includes(planView.previewStatus);
+    const stalePreview = planView.previewStatus === 'stale';
+    const previewDate = new Date(preview?.createdAt ?? NaN);
+    const previewTime = Number.isFinite(previewDate.getTime()) ? `gerechnet am ${displayDate(previewDate)}` : 'Rechendatum unbekannt';
+    set('overviewBudgetTitle', fixed || !hasPreview ? 'Monatsbudget' : 'Vorläufiges Monatsbudget');
     set('overviewBudgetValue', fixed ? budgetRow?.plan || '—' : hasPreview ? budgetRow?.preview || '—' : '—');
     set('overviewBudgetSource', fixed ? planView.planLabel
-        : hasPreview ? `${planView.recordStatus === 'invalid' ? planView.notice + ' ' : ''}Vorschau · vorläufig · ${planView.previewNotice}`
-            : planView.recordStatus === 'invalid' ? planView.notice : 'Noch kein passender Plan und keine Vorschau');
-    set('overviewPlanMetricValue', fixed || hasPreview ? String(planView.year) : '—');
-    set('overviewPlanMetricSource', fixed ? `${planView.planLabel}${planView.adjusted ? ' · bewusst angepasst' : ''}`
-        : `${planView.notice}${hasPreview ? ' Vorschau · vorläufig' : ''}`);
+        : planView.recordStatus === 'invalid' ? 'Jahresbeleg beschädigt · Sicherung prüfen'
+            : hasPreview ? `Für ${planView.year} · ${previewTime} · ${stalePreview ? 'Vorschau veraltet' : 'Jahresabschluss-Vorschau'}`
+                : `Für ${planView.year} in Balance rechnen`);
+    set('overviewBudgetLink', fixed ? 'Budget in Balance ansehen →'
+        : planView.recordStatus === 'invalid' ? 'Sicherung prüfen →'
+            : hasPreview && !stalePreview ? 'Vorschau in Balance ansehen →' : 'Vorschau in Balance rechnen →');
+    doc.getElementById('overviewBudgetLink')?.setAttribute('href', planView.recordStatus === 'invalid' ? 'Daten-Sicherung.html' : 'Balance.html');
+    set('overviewPlanMetricValue', fixed ? 'Plan festgeschrieben' : planView.recordStatus === 'invalid' ? 'Planbeleg prüfen' : 'Noch kein Jahresplan');
+    set('overviewPlanMetricYear', String(planView.year));
+    set('overviewPlanMetricSource', fixed ? planView.adjusted ? 'Im Jahresabschluss bewusst angepasst' : 'Im Jahresabschluss beschlossen'
+        : planView.recordStatus === 'invalid' ? 'Jahresbeleg beschädigt · Sicherung prüfen'
+            : hasPreview ? stalePreview ? 'Vorschau veraltet · noch vorläufig' : 'Vorschau vorhanden · noch vorläufig' : 'Entsteht im nächsten Jahresabschluss');
     set('overviewPlanTitle', 'Dein Plan');
     set('overviewPlanStatus', planView.recordStatus === 'valid' ? 'festgeschrieben' : '');
     const badge = doc.getElementById('overviewPlanStatus'); if (badge) badge.hidden = planView.recordStatus !== 'valid';
@@ -124,15 +149,16 @@ export function renderOverview(doc, model) {
     }
     renderOverviewYear(doc, model);
     renderOverviewHistory(doc, model);
+    renderProbelaufPriceInfo(doc);
 }
 
-function renderYearMonth(month, year, maximum, budget) {
+function renderYearMonth(month, year, maximum, budget, budgetStatus) {
     const name = calendarMonth(year, month.month);
     const labels = { complete: 'vollständig', partial: 'unvollständig', missing: 'Import fehlt', open: 'noch offen' };
     const detail = `${name}: ${labels[month.state]}${month.spent === null ? '' : ' · ' + money(month.spent)}${month.overBudget ? ' · über Budget' : ''}`;
     const height = month.spent === null ? 0 : Math.max(2, month.spent / maximum * 100);
     return `<div class="overview-year-month" data-overview-year-month="${month.month}" data-state="${month.state}" title="${escapeHtml(detail)}">
-        <div class="overview-bar-space">${budget === null ? '' : `<i class="overview-budget-line" style="bottom:${budget / maximum * 100}%" aria-hidden="true"></i>`}<span class="overview-month-bar${month.overBudget ? ' is-over' : ''}" style="height:${height}%" aria-hidden="true"></span></div>
+        <div class="overview-bar-space">${budget === null ? '' : `<i class="overview-budget-line" data-budget-status="${budgetStatus}" style="bottom:${budget / maximum * 100}%" aria-hidden="true"></i>`}<span class="overview-month-bar${month.overBudget ? ' is-over' : ''}" style="height:${height}%" aria-hidden="true"></span></div>
         <b>${escapeHtml(name.slice(0, 3))}</b>
         <span class="ds-sr-only">${escapeHtml(detail)}</span></div>`;
 }
@@ -162,40 +188,43 @@ export function renderOverviewYear(doc, model) {
     set('overviewYearNote', `${annual.retrospective ? 'Ausgaben je Monat' : 'Ausgaben bis einschließlich Vormonat'} · ${partial}`);
     set('overviewYearStand', annual.budget === null ? `Noch kein Budget für ${annual.year} – erscheint nach der ersten Balance-Rechnung.` : '');
     const yearHint = doc.getElementById('overviewYearStand'); if (yearHint) yearHint.hidden = annual.budget !== null;
-    set('overviewYearBudget', annual.budget === null ? '' : `Monatsbudget ${money(annual.budget)}`);
+    const provisional = annual.budgetStatus !== 'adopted';
+    const budgetStatus = provisional ? 'provisional' : 'adopted';
+    const budgetName = provisional ? 'Vorläufiges Monatsbudget' : 'Monatsbudget';
+    const staleBudget = provisional && annual.budgetPreviewStatus !== 'current';
+    set('overviewYearBudget', annual.budget === null ? '' : `${budgetName} ${money(annual.budget)} · ${annual.year}${staleBudget ? ' · Vorschau veraltet' : ''}`);
     const budgetLabel = doc.getElementById('overviewYearBudget'); if (budgetLabel) budgetLabel.hidden = annual.budget === null;
     const legend = doc.getElementById('overviewYearLegend');
     if (legend) legend.innerHTML = [
         ['complete', annual.budget === null ? 'Ausgaben' : 'Im Budget'], ...(annual.budget === null ? [] : [['over', 'Über Budget']]),
         ['partial', 'Teilweise'], ['open', 'Offen'], ['missing', 'Import fehlt']
-    ].map(([state, label]) => `<span><i class="overview-year-key is-${state}" aria-hidden="true"></i>${label}</span>`).join('');
+    ].map(([state, label]) => `<span><i class="overview-year-key is-${state}" aria-hidden="true"></i>${label}</span>`).join('')
+        + (annual.budget === null ? '' : `<span><i class="overview-year-budget-key" data-budget-status="${budgetStatus}" aria-hidden="true"></i>${budgetName}${staleBudget ? ' · Vorschau veraltet' : ''}</span>`);
     const maximum = Math.max(1, annual.budget || 0, ...annual.months.map(month => month.spent || 0)) * 1.15;
     if (budgetLabel && annual.budget !== null) budgetLabel.style.top = `calc(150px * ${1 - annual.budget / maximum})`;
-    if (chart) chart.innerHTML = annual.months.map(month => renderYearMonth(month, annual.year, maximum, annual.budget)).join('');
+    if (chart) chart.innerHTML = annual.months.map(month => renderYearMonth(month, annual.year, maximum, annual.budget, budgetStatus)).join('');
     const comparison = annual.comparison;
     const wealthValue = Number.isFinite(comparison?.delta) ? money(comparison.delta) : '';
-    const wealthDetail = Number.isFinite(comparison?.delta) ? `${annual.retrospective ? 'im Jahr' : 'seit Jahresanfang'} ${annual.year}${Number.isFinite(comparison.percent) ? ' · ' + formatDisplayNumber(comparison.percent, { unit: 'percent', fractionDigits: 1 }) : ''}`
-        : 'erscheint nach dem ersten Jahresendstand';
+    const wealthDetail = wealthComparisonBasis(comparison, annual.year, annual.retrospective)
+        + (Number.isFinite(comparison?.percent) ? ' · ' + formatDisplayNumber(comparison.percent, { unit: 'percent', fractionDigits: 1 }) : '');
+    const expensePeriod = annual.lastMonth ? `01.01.${annual.year} bis ${displayDate(new Date(annual.year, annual.lastMonth, 0))}` : `Noch kein abgeschlossener Monat ${annual.year}`;
     const sumDetail = annual.budgetPercent === null ? 'noch ohne Budget' : `${Math.round(annual.budgetPercent)} % des ${annual.retrospective ? 'Jahresbudgets' : 'Budgets bis Vormonat'}`;
     const highest = annual.highest ? `Höchster: ${calendarMonth(annual.year, annual.highest.month)} · ${money(annual.highest.spent)}` : 'Kein importierter Monat';
     const rows = annual.retrospective ? [
-        ['Ausgaben', money(annual.total), sumDetail + (annual.complete ? '' : ' · unvollständig')],
+        ['Ausgaben', money(annual.total), `${expensePeriod} · ${sumDetail}${annual.complete ? '' : ' · unvollständig'}`],
         ['Vermögen', wealthValue, wealthDetail],
-        ['Monate über Budget', annual.overBudgetCount === null ? '—' : `${annual.overBudgetCount} von ${annual.lastMonth}${annual.complete ? '' : ' · unvollständig'}`, highest + (annual.budget === null ? ' · noch ohne Budget' : '')],
-        ['Verkäufe', Number.isFinite(annual.sales?.count) ? String(annual.sales.count) : '—', Number.isFinite(annual.sales?.net) ? `${money(annual.sales.net)} netto ins Tagesgeld${annual.sales.unconfirmed ? ' · ' + annual.sales.unconfirmed + ' unbestätigt' : ''}` : 'Verkaufsnachweise nicht verfügbar']
+        ['Monate über Budget', annual.overBudgetCount === null ? '—' : `${annual.overBudgetCount} von ${annual.lastMonth}${annual.complete ? '' : ' · unvollständig'}`, `${expensePeriod} · ${highest}${annual.budget === null ? ' · noch ohne Budget' : ''}`],
+        ['Verkäufe', Number.isFinite(annual.sales?.count) ? String(annual.sales.count) : '—', `Im Jahr ${annual.year} · ` + (Number.isFinite(annual.sales?.net) ? `${money(annual.sales.net)} netto ins Tagesgeld${annual.sales.unconfirmed ? ' · ' + annual.sales.unconfirmed + ' unbestätigt' : ''}` : 'Verkaufsnachweise nicht verfügbar')]
     ] : [
-        ['Ausgaben bis Vormonat', money(annual.total), annual.complete ? sumDetail : 'Es fehlen noch Ausgaben · ' + sumDetail],
-        ['Hochrechnung', money(annual.forecast), annual.forecast === null ? 'Noch nicht genug vollständige Monate' : `aus den bisherigen Monaten hochgerechnet${annual.forecastIncomplete ? ' · unvollständig' : ''}`],
+        ['Ausgaben bis Vormonat', money(annual.total), `${expensePeriod} · ${annual.complete ? sumDetail : 'Es fehlen noch Ausgaben · ' + sumDetail}`],
+        ['Hochrechnung', money(annual.forecast), `Für ${annual.year} · ` + (annual.forecast === null ? 'Noch nicht genug vollständige Monate' : `aus ${expensePeriod}${annual.forecastIncomplete ? ' · unvollständig' : ''}`)],
         ['Vermögen', wealthValue, wealthDetail],
-        ['Jahresabschluss', 'Januar', `in ${annual.weeksToJanuary} Wochen · vorgesehener Abschlusszeitraum`]
+        ['Jahresabschluss', `Januar ${annual.year + 1}`, `für ${annual.year} · in ${annual.weeksToJanuary} Wochen`]
     ];
     if (metrics) metrics.innerHTML = rows.map(row => renderYearMetric(...row)).join('');
 }
 
 const calendarMonth = (year, month) => new Date(year, month - 1, 1).toLocaleDateString('de-DE', { month: 'long' });
-const expensesLink = (target, year, month) => 'Ausgaben.html?year=' + year + (month ? '&month=' + month : '') + '#' + target;
-const focusLink = (href, label, primary = false) => '<a class="ds-button ' + (primary ? 'ds-button-primary' : 'ds-button-secondary')
-    + '" href="' + escapeHtml(href) + '" data-profile-handoff>' + escapeHtml(label) + '</a>';
 const focusStep = (number, title, detail, action, done = false, warning = false) =>
     '<div class="overview-step' + (done ? ' is-done' : '') + '"><span class="overview-step-symbol' + (warning ? ' is-warning' : '')
     + '" aria-label="' + (done ? 'erledigt' : 'Schritt ' + number) + '">' + (done ? '✓' : number)
@@ -255,13 +284,13 @@ function annualFocusText(model) {
             stepDetail: unclearDetail
         },
         recovery: {
-            title: `Wiederherstellung für den Jahresabschluss ${closingYear} nötig.`,
+            title: `Jahresabschluss ${closingYear} wiederherstellen.`,
             lead: 'Der Jahresabschluss ist unvollständig. Prüfe zuerst den vorhandenen Wiederherstellungspunkt unter Daten & Sicherung.',
             stepTitle: 'Wiederherstellung öffnen',
             stepDetail: 'Der Jahresabschluss ist unvollständig. Prüfe zuerst den vorhandenen Wiederherstellungspunkt unter Daten & Sicherung.'
         },
         unavailable: {
-            title: `Daten für den Jahresabschluss ${closingYear} fehlen.`,
+            title: `Daten für ${closingYear} prüfen.`,
             lead: 'Die Profildaten für den Jahresabschluss sind nicht verfügbar. Prüfe Personen und Haushalt & Plan.',
             stepTitle: 'Daten prüfen',
             stepDetail: 'Die Profildaten für den Jahresabschluss sind nicht verfügbar. Prüfe Personen und Haushalt & Plan.'
@@ -269,47 +298,12 @@ function annualFocusText(model) {
     }[annualState];
 }
 
-/** Genaue Personenmonate bleiben im Modell; hier höchstens eine kurze Zusammenfassung. */
-function focusExpenseDetail(model, annual) {
-    const expenses = model.expenses;
-    if (expenses?.beforePlanning) return `Dieser Monat liegt vor dem Planungsbeginn ${model.firstPlanningYear}. Kein Import nötig.`;
-    if (expenses?.complete) return 'Alle Personen sind importiert · ' + money(expenses.spent);
-    const records = annual && expenses?.missingMonths ? expenses.missingMonths
-        : (expenses?.rows || []).filter(row => !row.present).map(row => ({ id: row.id, month: expenses.month }));
-    if (!records.length) return 'Ausgabenstand nicht verfügbar.';
-    const groups = new Map();
-    for (const row of records) {
-        if (!groups.has(row.id)) groups.set(row.id, new Set());
-        groups.get(row.id).add(row.month);
-    }
-    const entries = [...groups].map(([id, months]) => ({ id, months: [...months].sort((a, b) => a - b) }));
-    const name = id => {
-        const full = model.members?.find(person => person.id === id)?.name || id;
-        return full.length > 32 ? full.slice(0, 31) + '…' : full;
-    };
-    const first = entries[0].months;
-    const identical = entries.every(entry => entry.months.join(',') === first.join(','));
-    const contiguous = first.every((month, index) => index === 0 || month === first[index - 1] + 1);
-    let detail;
-    if (entries.length <= 2 && identical && contiguous) {
-        const start = calendarMonth(expenses.year, first[0]);
-        const range = first.length === 1 ? start : start + '–' + calendarMonth(expenses.year, first.at(-1));
-        detail = entries.length === 1 ? `${name(entries[0].id)}: ${first.length === 1 ? range + ' fehlt.' : first.length + ' Monate (' + range + ') fehlen.'}`
-            : `Für beide Personen ${first.length === 1 ? 'fehlt ' + range : 'fehlen ' + first.length + ' Monate (' + range + ')'}.`;
-    } else if (entries.length <= 2) {
-        detail = entries.map(entry => `${name(entry.id)}: ${entry.months.length} ${entry.months.length === 1 ? 'Monat' : 'Monate'}`).join(', ')
-            + ' fehlen. Details im Import.';
-    } else {
-        detail = `Bei ${entries.length} Personen fehlen Ausgaben für insgesamt ${entries.reduce((sum, entry) => sum + entry.months.length, 0)} Monate. Details im Import.`;
-    }
-    return detail + (annual ? ' Der Abschluss geht trotzdem.' : ' CSV aus dem Bankkonto importieren.');
-}
-
 /** Datenhaken sind Anzeigen. Nur die ausdrücklich bestätigte Bereitstellung schreibt. */
 export function renderOverviewFocus(doc, model) {
     const host = doc.getElementById('overviewFocus');
     if (!host || !model.occasion) return;
     const occasion = model.occasion, annual = occasion.kind === 'annual', play = ['play', 'start'].includes(occasion.kind);
+    const annualStatus = annual && ['unclear', 'recovery', 'unavailable'].includes(occasion.annualState);
     const firstYear = occasion.kind === 'start';
     const grid = doc.getElementById('overviewNormal');
     if (grid && host.parentNode === grid) {
@@ -322,10 +316,10 @@ export function renderOverviewFocus(doc, model) {
     const titleNode = doc.getElementById('overviewTitle'), lead = doc.getElementById('overviewLead');
     if (titleNode) titleNode.textContent = annual ? annualText.title
         : play ? open.length === 0 ? 'Alles erledigt bis zum Monatsanfang.' : open.length === 1 ? 'Ein Schritt offen: ' + open[0].title : `${open.length} Schritte offen` : `Monatsabschluss ${previousName}.`;
-    if (lead) lead.textContent = firstYear ? `Erstes Planungsjahr ${occasion.firstPlanningYear} · erster Jahresabschluss Anfang ${occasion.firstPlanningYear + 1}.` : annual ? annualText.lead
+    if (lead) lead.textContent = firstYear ? `Erstes Planungsjahr ${occasion.firstPlanningYear} · erster Jahresabschluss Anfang ${occasion.firstPlanningYear + 1}.` : annualStatus ? 'Prüfe zuerst den Jahresstatus in der Karte unten.' : annual ? annualText.lead
         : play ? previousName + ' ist abgeschlossen' + (todaysPricesConfirmed(model) ? ', die Kurse sind von heute.' : '.')
             : 'Vier kurze Schritte, dann ist der Monat erledigt. Danach siehst du, wie das Jahr bisher läuft.';
-    if (open.length && lead && !(annual && occasion.annualState === 'open')) lead.innerHTML = (play && !firstYear ? '' : escapeHtml(lead.textContent) + ' ') + open.map(step => `<a href="${escapeHtml(expensesDestination(step.href))}" data-profile-handoff data-next-step="${escapeHtml(step.id)}">${escapeHtml(step.title)}</a>`).join(' · ');
+    if (open.length && lead && !annual) lead.innerHTML = (play && !firstYear ? '' : escapeHtml(lead.textContent) + ' ') + open.map(step => `<a href="${escapeHtml(expensesDestination(step.href))}" data-profile-handoff data-next-step="${escapeHtml(step.id)}">${escapeHtml(step.title)}</a>`).join(' · ');
     const next = new Date(model.now.getFullYear(), model.now.getMonth() + 1, 1).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
     const warnings = (occasion.kind === 'monthly' ? [] : model.cashWarnings || []).map(person =>
         `<p class="overview-cash-warning" data-tagesgeld-warning="${escapeHtml(person.id)}">${escapeHtml(person.name)}: Tagesgeld zuletzt am ${escapeHtml(cashDateDisplay(person.date))} aktualisiert · <a class="overview-card-link" href="depot-tranchen-manager.html?person=${encodeURIComponent(person.id)}#profileTagesgeld" data-profile-handoff>Tagesgeld prüfen</a></p>`).join('');
@@ -335,20 +329,22 @@ export function renderOverviewFocus(doc, model) {
         host.innerHTML = '<p class="overview-muted">Nächster Monatsabschluss: ' + next + ' · Jahresabschluss: Januar.</p>' + warnings;
         return;
     }
-    const title = annual ? occasion.annualState === 'open' ? previousName + ' und Jahr ' + occasion.closingYear + ' abschließen' : previousName + ' · Jahresstatus ' + occasion.closingYear : previousName + ' abschließen';
-    const why = annual ? occasion.annualState === 'recovery' ? 'Jahresabschluss unvollständig. Zuerst den vorhandenen Wiederherstellungspunkt unter Daten & Sicherung prüfen.'
-            : occasion.annualState === 'unclear' ? annualText.stepDetail
-                : occasion.annualState === 'unavailable' ? 'Die Daten für den Jahresabschluss sind nicht verfügbar. Prüfe Personen und Haushalt & Plan.'
-                : 'Bis dahin gelten Monatsbetrag und Handlungsanweisung als vorläufig.'
+    const title = annualStatus ? annualText.title.replace(/\.$/, '') : annual ? previousName + ' und Jahr ' + occasion.closingYear + ' abschließen' : previousName + ' abschließen';
+    const why = annualStatus ? annualText.lead : annual ? 'Bis dahin gelten Monatsbetrag und Handlungsanweisung als vorläufig.'
             : 'Nach dem Import hält die App den Vermögensstand automatisch fest, wenn die Kurse frisch sind.';
     host.setAttribute('aria-labelledby', 'overviewFocusTitle');
     const icon = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="'
         + 'M4 6h16v14H4zM4 10h16M8 3v4M16 3v4' + '"/></svg>';
     const header = '<header class="overview-focus-top"><span class="overview-focus-icon">' + icon + '</span><div><div class="overview-card-heading"><span class="overview-muted">'
-        + (annual ? model.now.getMonth() === 0 ? 'Zum Jahresanfang' : 'Zum Monatsanfang' : 'Zum Monatsanfang') + '</span><span class="ds-badge' + (annual && occasion.annualState === 'open' ? ' overview-year-badge' : '') + '">'
+        + (annualStatus ? 'Jahresstatus' : annual ? model.now.getMonth() === 0 ? 'Zum Jahresanfang' : 'Zum Monatsanfang' : 'Zum Monatsanfang') + '</span><span class="ds-badge' + (annual && occasion.annualState === 'open' ? ' overview-year-badge' : '') + '">'
         + (annual ? { open: 'mit Jahresabschluss', unclear: 'Klärung nötig', recovery: 'Wiederherstellung nötig', unavailable: 'Daten fehlen' }[occasion.annualState] : 'offen') + '</span></div>' + renderFocusTitle(title)
         + '<p class="overview-focus-why">' + escapeHtml(why) + '</p></div>'
         + (annual ? renderFocusAnnualButton(occasion.annualState) : renderFocusMonthButton()) + '</header>';
+    if (annualStatus) {
+        host.className = 'ds-card overview-focus is-annual';
+        host.innerHTML = header + '<div class="overview-annual-status-actions"><span class="overview-muted">Vorher eine Vollsicherung erstellen.</span>' + renderFocusBackupButton() + '</div>' + warnings;
+        return;
+    }
     const steps = projectOverviewMonthSteps(model);
     const closeSteps = annual ? [...steps.slice(0, 3),
         { id: 'cash', title: 'Tagesgeld', state: 'open' }, { id: 'market', title: 'Marktdaten', state: 'open' },
@@ -358,12 +354,6 @@ export function renderOverviewFocus(doc, model) {
     const wasOpen = host.querySelector?.('[data-overview-completed]')?.open;
     let content = '<div class="overview-close-steps">' + closeSteps.filter(step => step.state !== 'done').map(row).join('') + '</div>'
         + (completed.length ? renderFocusCompleted(completed, row, wasOpen) : '');
-    if (annual && occasion.annualState !== 'open') {
-        content += '<p>' + escapeHtml(steps[0].result) + '</p>' + focusLink('#kursdetails', 'Details ansehen');
-        content += '<p class="overview-expense-detail">' + escapeHtml(focusExpenseDetail(model, true)) + '</p>' + focusLink(expensesLink('ausgaben-import', model.expenses?.year || occasion.previousYear, model.expenses?.missingMonths?.[0]?.month || model.expenses?.month || occasion.previousMonth), 'Import öffnen');
-        content += '<p class="overview-year-action"><b class="overview-step-title">' + escapeHtml(annualText.stepTitle) + '</b><span class="overview-step-detail">' + escapeHtml(annualText.stepDetail) + '</span></p>' + renderFocusBackupButton();
-        if (model.exampleExpensesAllowed) content += renderOverviewExampleActions(model);
-    }
     content += '<footer class="overview-focus-foot"><span class="overview-muted">Rund ' + (annual ? '10' : '5') + ' Minuten · Nächster Monatsabschluss: ' + next + '.</span></footer>';
     host.className = 'ds-card overview-focus' + (annual ? ' is-annual' : '');
     host.innerHTML = header + content + warnings;

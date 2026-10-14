@@ -171,3 +171,36 @@ assertEqual(sourceFingerprint({ ...loneContext, liveData: { ...loneData, [CONFIG
 const loneChanged = structuredClone(lonePlan.record);
 loneChanged.entries[overviewScope('household', ['a']).key].values.flexBedarf++;
 assert(sourceFingerprint({ ...loneContext, liveData: { ...loneData, [HOUSEHOLD_PLAN_KEY]: JSON.stringify(loneChanged) } }) !== loneFp, 'Wirksamer Einzelhaushaltsplan macht Balanceanzeige veraltet');
+
+// Alter Backtestbeleg und neuer MC-Beleg gemeinsam durch Ablage und Vollsicherung.
+{
+    const { buildMinimumFlexRestriction, deriveMinimumFlexPath } = await import('../app/simulator/minimum-flex-metrics.js');
+    const block = buildMinimumFlexRestriction([deriveMinimumFlexPath([40000, 28000, 35000].map(paid => ({
+        minimumFlexAnnual: 30000, flex_haushalt_erfuellt: paid, flex_wunsch_haushalt_nominal: 45000
+    })))], 30000);
+    const next = buildSimulationSummary(context, { ...result, minimumFlexRestriction: block }, { completedAt });
+    assertEqual(next.metrics.minimumFlexYearSharePct, block.yearSharePctP50, 'Neuer MC-Beleg erhält vorhandenen Anteil');
+    assertEqual(next.metrics.flexPaidMinimumNominalEur, 28000, 'Neuer MC-Beleg erhält nominales schwächstes Jahr');
+    const bt = buildSimulationSummary({ ...context, kind: 'backtest', sourceFingerprint: btSource }, {
+        request: { startYear: 2000, endYear: 2002 }, outcome: { kind: 'completed' },
+        metrics: { values: { wealth_end_real_eur: 12 }, minimumFlexRestriction: { ...block, path: deriveMinimumFlexPath([
+            { minimumFlexAnnual: 30000, flex_haushalt_erfuellt: 28000, flex_wunsch_haushalt_nominal: 45000 }
+        ]) } }
+    }, { completedAt });
+    assertEqual(bt.metrics.minimumFlexAffectedYearCount, 1, 'Backtestbeleg erhält Pfadzähler');
+    assertEqual(bt.metrics.minimumFlexObservationCount, 1, 'Backtestbeleg erhält Pfadnenner');
+    const { storage, map } = storageFixture();
+    await storeSimulationSummary(backtest, deps(storage)); await storeSimulationSummary(next, deps(storage));
+    const saved = map.get(OVERVIEW_SIMULATION_KEY);
+    const backup = normalizeFullPersistenceBackup(buildFullPersistenceBackup({ storage }));
+    assert(backup.ok, 'Alt-/Neu-Belege passieren strengen Vollbackupimport');
+    assertEqual(backup.backup.records[OVERVIEW_SIMULATION_KEY], saved, 'Vollbackup erhält Alt-/Neu-Belege bytegleich');
+    const decoded = assertSimulationRecord(saved);
+    assert(!Object.hasOwn(decoded.entries[simulationEntryKey(scope, 'backtest')].metrics, 'minimumFlexYearSharePct'), 'Altbeleg erhält keine erfundene Nullmessung');
+    assertEqual(decoded.entries[simulationEntryKey(scope, 'montecarlo')].metrics.flexPaidMedianNominalEur, 35000, 'Optionaler nominaler Betrag bleibt erhalten');
+    for (const value of ['33', -1, 101, NaN]) {
+        const bad = structuredClone(decoded); bad.entries[simulationEntryKey(scope, 'montecarlo')].metrics.minimumFlexYearSharePct = value;
+        let rejected = false; try { assertSimulationRecord(bad); } catch { rejected = true; }
+        assert(rejected, 'Optionale Importwerte bleiben streng validiert');
+    }
+}

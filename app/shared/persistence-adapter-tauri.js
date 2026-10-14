@@ -227,6 +227,19 @@ export function createTauriJsonFileAdapter(options = {}) {
         async loadAll() {
             return state.records;
         },
+        async readPersistedRecords() {
+            if (!invoke) invoke = getInvoke(options);
+            return normalizeState(await invoke('load_app_state')).records;
+        },
+        async readPersistedSnapshot(id) {
+            if (!invoke) invoke = getInvoke(options);
+            const read = async () => normalizeSnapshotArchive(await invoke('load_app_state', { target: SNAPSHOT_TARGET }))
+                .snapshots.find(entry => entry.id === getCanonicalLegacySnapshotId(id));
+            let point = await read();
+            if (!point) { await this.migrateLegacySnapshotsIfNeeded(); point = await read(); }
+            if (!point) throw new Error(`Snapshot ${id} wurde nicht gefunden.`);
+            return point;
+        },
         async saveBatch(batch) {
             if (!opened) await this.open();
             batch.deletes.forEach(key => {

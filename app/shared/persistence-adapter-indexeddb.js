@@ -20,7 +20,7 @@ const LEGACY_SNAPSHOT_DB_NAME = 'snapshotDB';
 const LEGACY_SNAPSHOT_DB_CLEANUP_METADATA_KEY = 'legacySnapshotDbCleanup';
 const LEGACY_SNAPSHOT_MIGRATION_METADATA_KEY = 'legacySnapshotMigration';
 const OUTDATED_MESSAGE = 'Datenbankverbindung veraltet, bitte diesen Tab neu laden.';
-const UPGRADE_BLOCKED_MESSAGE = 'IndexedDB-Upgrade blockiert. Bitte andere RuhestandSuite-Tabs schliessen oder neu laden.';
+const UPGRADE_BLOCKED_MESSAGE = 'IndexedDB-Upgrade blockiert. Bitte andere Vermögen & Ruhestand-Tabs schliessen oder neu laden.';
 
 function requestToPromise(request) {
     return new Promise((resolve, reject) => {

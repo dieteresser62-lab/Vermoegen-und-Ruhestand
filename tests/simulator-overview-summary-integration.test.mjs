@@ -409,6 +409,16 @@ try {
         await settle(); assertEqual(entry('backtest').statement, outcome, outcome + ': wirklicher Abschlussweg speichert Summary');
         assertEqual(entry('backtest').metrics.endWealthReal, outcome === 'ruin' ? 0 : 123.45, 'Kanonische reale Kennzahl unverändert');
     }
+    const { deriveMinimumFlexPath, buildMinimumFlexRestriction } = await import('../app/simulator/minimum-flex-metrics.js');
+    const minimumPath = deriveMinimumFlexPath([40000, 28000, 35000].map(paid => ({
+        minimumFlexAnnual: 30000, flex_wunsch_haushalt_nominal: 45000, flex_haushalt_erfuellt: paid
+    })));
+    const enrichedResult = btResult('completed');
+    enrichedResult.metrics.minimumFlexRestriction = { ...buildMinimumFlexRestriction([minimumPath], 30000), path: minimumPath };
+    runBacktest({ ...bt, runSinglePath: () => enrichedResult }); await settle();
+    assertEqual(entry('backtest').metrics.minimumFlexAffectedYearCount, 1, 'Wirklicher Abschlussweg speichert neue Pfadkennzahl');
+    assertEqual(entry('backtest').metrics.minimumFlexObservationCount, 3, 'Wirklicher Abschlussweg speichert neuen Nenner');
+    assertEqual(entry('backtest').metrics.flexPaidMedianNominalEur, 35000, 'Wirklicher Abschlussweg speichert nominalen Betrag');
     const previous = map.get(OVERVIEW_SIMULATION_KEY);
     for (const runSinglePath of [() => btResult('incomplete'), () => { throw new Error('SYNTHETIC_RUN_FAILURE'); }, () => { simulatorRunAssumptions.begin('backtest', {}, {}); return btResult('completed'); }]) {
         runBacktest({ ...bt, runSinglePath }); await settle();

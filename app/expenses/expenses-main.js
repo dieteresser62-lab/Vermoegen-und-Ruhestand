@@ -2,9 +2,11 @@ import { applyExpensesTarget } from '../shared/expenses-navigation.js';
 import { initializeProfilePage, whenProfileDisplayReady } from '../profile/profile-navigation.js';
 import { PersistenceFacade } from '../shared/persistence-facade.js';
 import { createExpensesController } from './expenses-controller.js';
+import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 const pages = new WeakMap();
 export function initExpensesPage(doc = globalThis.document, win = doc.defaultView, options = {}) {
     if (!pages.has(doc)) pages.set(doc, (async () => {
+        bindInfoPopovers(doc);
         const ready = await initializeProfilePage({ doc, win });
         const status = doc.getElementById('expensesStatus');
         if (!ready || !await whenProfileDisplayReady(doc) || win.__profileRecoveryBlocker || win.__personMigrationDeferred

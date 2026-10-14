@@ -14,9 +14,48 @@ assertEqual(appendCashHistory(null, 100, 100), null, 'Gleichbleibender Cashwert 
 let cash = appendCashHistory(null, 100, 80, '2026-01-02');
 cash = appendCashHistory(JSON.stringify(cash), 80, 90, '2026-01-02');
 assertEqual(cash.baselineValue, 100, 'Erste Änderung erhält bisherigen Betrag als rückwirkende Basis');
-assertEqual(JSON.stringify(cash.entries), '[{"date":"2026-01-02","value":80},{"date":"2026-01-02","value":90}]', 'Mehrere Änderungen desselben Tages bleiben in Bestätigungsreihenfolge');
+assertEqual(JSON.stringify(cash.entries), '[{"date":"2026-01-02","value":90}]', 'Zwei Änderungen am selben Tag ergeben nur den letzten Stand');
+const reverted = appendCashHistory(JSON.stringify(cash), 90, 100, '2026-01-02');
+assertEqual(reverted.entries.length, 0, 'Rückkehr zur Ausgangsbasis entfernt den Tageseintrag');
+const nextDay = appendCashHistory(JSON.stringify(cash), 90, 70, '2026-01-03');
+assertEqual(JSON.stringify(appendCashHistory(JSON.stringify(nextDay), 70, 90, '2026-01-03')), JSON.stringify(cash),
+    'Rückkehr auf den Vortagesstand entfernt nur den geschriebenen Tag');
+const legacy = { version: 1, baselineValue: 100, entries: [
+    { date: '2026-01-01', value: 80 }, { date: '2026-01-01', value: 90 },
+    ...[1, 12, 123, 1234, 12345].map(value => ({ date: '2026-01-02', value }))] };
+assertCashHistory(legacy);
+for (const value of [12345, 15000, 90]) {
+    const normalized = appendCashHistory(JSON.stringify(legacy), 12345, value, '2026-01-02');
+    assertEqual(JSON.stringify(normalized.entries.filter(entry => entry.date === '2026-01-01')), JSON.stringify(legacy.entries.slice(0, 2)),
+        'Andere Altbestandstage werden nicht aufgeräumt');
+    assertEqual(JSON.stringify(normalized.entries.filter(entry => entry.date === '2026-01-02')),
+        JSON.stringify(value === 90 ? [] : [{ date: '2026-01-02', value }]), 'Fünf Alteinträge werden auch bei unverändertem Stand zusammengefasst');
+}
+assertEqual(legacy.entries.length, 7, 'Schreibvorbereitung mutiert den Altbestand nicht');
+const historicalCash = { version: 1, baselineValue: 8000, entries: [
+    { date: '2026-05-01', value: 10000 }, { date: '2026-05-10', value: 12000 }] };
+for (const date of ['2026-04-30', '2026-05-01', '2026-05-05', '2026-05-10', '2026-05-15']) {
+    assertEqual(JSON.stringify(appendCashHistory(JSON.stringify(historicalCash), 12000, 12000, date)), JSON.stringify(historicalCash),
+        'Unveränderte Bestätigung an einem Tag ohne Mehrfacheinträge erhält den Verlauf: ' + date);
+}
+for (const dayValue of [11500, 10000]) {
+    const historicalLegacy = { ...historicalCash, entries: [historicalCash.entries[0],
+        { date: '2026-05-05', value: 11000 }, { date: '2026-05-05', value: dayValue }, historicalCash.entries[1]] };
+    const normalized = appendCashHistory(JSON.stringify(historicalLegacy), 12000, 12000, '2026-05-05');
+    const expected = [historicalCash.entries[0], ...(dayValue === 10000 ? [] : [{ date: '2026-05-05', value: dayValue }]), historicalCash.entries[1]];
+    assertEqual(JSON.stringify(normalized.entries), JSON.stringify(expected),
+        'Unveränderte Bestätigung fasst einen früheren Altbestandstag auf dessen letzten Wert zusammen: ' + dayValue);
+}
+const baselineLegacy = { ...historicalCash, entries: [
+    { date: '2026-05-01', value: 9000 }, { date: '2026-05-01', value: 8000 }, historicalCash.entries[1]] };
+assertEqual(JSON.stringify(appendCashHistory(JSON.stringify(baselineLegacy), 12000, 12000, '2026-05-01').entries),
+    JSON.stringify([historicalCash.entries[1]]), 'Früherer Altbestandstag entfällt bei Rückkehr zur Basis');
 let conflict; try { appendCashHistory(JSON.stringify(cash), 70, 60, '2026-01-03'); } catch (error) { conflict = error; }
 assert(conflict, 'Widersprüchlicher Cashwert wird abgewiesen statt Historie still umzudeuten');
+conflict = null; try { appendCashHistory(JSON.stringify(cash), 70, 70, '2026-01-02'); } catch (error) { conflict = error; }
+assert(conflict, 'Auch ein unveränderter Betrag verdeckt keinen Historienwiderspruch');
+conflict = null; try { appendCashHistory(JSON.stringify(cash), 90, 60, '2026-01-01'); } catch (error) { conflict = error; }
+assert(conflict, 'Eine neue Änderung vor dem letzten Historiendatum bleibt abgewiesen');
 const lot = { schemaVersion: 1, trancheId: 'lot-a', name: 'Synthetisch', shares: 10, purchasePrice: 80, currentPrice: 100,
     purchaseDate: '2020-01-02', ticker: 'TEST.DE', category: 'equity', type: 'aktien_neu', tqf: 0, notes: '' };
 const original = JSON.stringify(lot);
@@ -101,7 +140,7 @@ for (const mutate of [b => b.globals[WEALTH_HISTORY_START_KEY] = '{}', b => b.gl
     assertEqual(projected.householdHistory.end.total, 1150, 'Außenprofil trägt nicht zur Haushaltsverlaufsreihe bei');
     const nodes = new Map(['managerHousehold', 'managerProfileTabs', 'managerPageTitle'].map(id => [id, { innerHTML: '', textContent: '' }]));
     renderManagerProfiles({ getElementById: id => nodes.get(id) }, projected);
-    assert(nodes.get('managerHousehold').innerHTML.includes('Außerhalb Haushalt') && nodes.get('managerHousehold').innerHTML.includes('pv-active'), 'Außenprofil besitzt eigene Karte mit aktivem Rahmen und Haushaltszuordnung');
+    assert(nodes.get('managerHousehold').innerHTML.includes('Außerhalb Haushalt') && !nodes.get('managerHousehold').innerHTML.includes('pv-active'), 'Außenprofil besitzt eigene Karte mit Haushaltszuordnung ohne Auswahlrahmen');
     assert(nodes.get('managerHousehold').innerHTML.includes('managerHistoryStartForm'), 'Beginnbedienung sitzt an der Haushaltskarte');
     assertEqual(JSON.stringify(fixture), raw, 'Kartenprojektion und Rendern verändern auch eingefrorene Registry nicht');
 }

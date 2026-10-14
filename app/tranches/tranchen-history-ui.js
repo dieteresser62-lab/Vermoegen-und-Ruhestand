@@ -61,17 +61,23 @@ export function readManagerHistoryContext(registry, { storage = persistenceStora
 }
 
 const signClass = value => !Number.isFinite(value) || value === 0 ? 'history-neutral' : value > 0 ? 'history-positive' : 'history-negative';
-export function buildPersonHistoryHtml(history, title = 'Vermögensverlauf', context = null, infoId = 'personHistoryInfo') {
+export function buildPersonHistoryHtml(history, title = 'Vermögensverlauf', context = null, infoId = 'personHistoryInfo', { compact = false } = {}) {
     if (!history) return `<div class="pv-person-history"><p class="history-note">${context?.status === 'corrupt' ? 'Verlaufsdaten beschädigt: ' + escapeHtml(context.error) : 'Noch keine Verlaufshistorie.'}</p><div class="pv-history-placeholder" aria-hidden="true"></div></div>`;
     const m = history.metrics;
     const hasValues = history.points.some(p => Number.isFinite(p.total));
     return `<div class="pv-person-history"><p class="pv-history-change ${signClass(m.change)}">${Number.isFinite(m.change) ? `<strong>${m.change > 0 ? '+' : ''}${escapeHtml(money(m.change))}</strong> · ${escapeHtml(percent(m.percent))}` : 'Veränderung nicht verfügbar'}</p>
         ${hasValues ? renderHistorySparkline(history.points, { title, width: 280, height: 60, eventDays: history.events.map(e => e.day) }) : '<div class="pv-history-placeholder">Noch keine bewertbare Verlaufshistorie.</div>'}
-        <span class="ds-info pv-history-info"><button type="button" class="ds-button ds-info-button" aria-label="${escapeHtml(title)}: Messbeginn und Zeitraum" aria-expanded="false" aria-controls="${escapeHtml(infoId)}">ⓘ</button><span id="${escapeHtml(infoId)}" class="ds-info-pop" role="tooltip">${buildHistoryMeasurementHtml(history.measurementStart, m.status, history.range.start)}<br>Messstatus: ${m.status === 'complete' ? 'vollständig' : m.status === 'provisional' ? 'vorläufig' : 'nicht vollständig bewertbar'}.<br>Zeitraum ${date(history.range.startDate)} bis ${date(history.range.endDate)} · nach Entnahmen</span></span>
+        ${compact ? '' : buildPersonHistoryDetailsHtml(history, title, infoId)}</div>`;
+}
+
+export function buildPersonHistoryDetailsHtml(history, title = 'Vermögensverlauf', infoId = 'personHistoryInfo') {
+    if (!history) return '';
+    const m = history.metrics;
+    return `<span class="ds-info pv-history-info"><button type="button" class="ds-button ds-info-button" aria-label="${escapeHtml(title)}: Messbeginn und Zeitraum" aria-expanded="false" aria-controls="${escapeHtml(infoId)}">ⓘ</button><span id="${escapeHtml(infoId)}" class="ds-info-pop" role="tooltip">${buildHistoryMeasurementHtml(history.measurementStart, m.status, history.range.start)}<br>Messstatus: ${m.status === 'complete' ? 'vollständig' : m.status === 'provisional' ? 'vorläufig' : 'nicht vollständig bewertbar'}.<br>Zeitraum ${date(history.range.startDate)} bis ${date(history.range.endDate)} · nach Entnahmen</span></span>
         ${m.status !== 'complete' ? `<small>${m.status === 'provisional' ? 'Verlauf vorläufig' : 'Verlauf nicht vollständig bewertbar'}</small>` : ''}
         ${history.end?.total === null ? `<small>Teilabdeckung · bekannter Betrag ${escapeHtml(money(history.end.known))} · Gesamtwert nicht vollständig bewertbar.</small>` : ''}
         ${history.gaps.length ? '<small>Ungeprüfte Werktage · Nachladen beim nächsten Start</small>' : ''}
-        ${history.errors.length ? `<small>Historische Bewertung unvollständig: ${escapeHtml(history.errors.join(' · '))}</small>` : ''}</div>`;
+        ${history.errors.length ? `<small>Historische Bewertung unvollständig: ${escapeHtml(history.errors.join(' · '))}</small>` : ''}`;
 }
 
 export function projectTrancheHistory(tranche, context, profileId) {

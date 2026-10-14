@@ -48,11 +48,15 @@ function chartMarkup(rows, currentYear, hostWidth = 0) {
     const bars = rows.map((row, index) => {
         const status = yearStatus(row, currentYear);
         const slot = (width - 110) / rows.length;
-        const barWidth = slot - 20;
-        const x = 110 + index * slot + 10, center = x + barWidth / 2;
+        const barWidth = Math.min(64, slot - 20);
+        const x = 110 + index * slot + (slot - barWidth) / 2, center = x + barWidth / 2;
         return `<g><title>${escape(yearLabel(row, status))}: Ausgaben gesamt ${euro(row.annualUsed)}, ${row.monthsWithData} Monate mit Daten, Ø pro Monat ${euro(row.avgMonthly)}</title><rect class="expenses-year-bar${status.barClass ? ` ${status.barClass}` : ''}" x="${x}" y="${y(row.annualUsed)}" width="${barWidth}" height="${(row.annualUsed / maximum) * height}"/><text x="${center}" y="${y(row.annualUsed) - 8}" text-anchor="middle">${euro(row.annualUsed)}</text><text class="expenses-year-label" x="${center}" y="212" text-anchor="middle">${row.year}</text><text x="${center}" y="234" text-anchor="middle">${row.monthsWithData} Monate mit Daten</text><text x="${center}" y="254" text-anchor="middle">${status.showLabel ? status.label : ''}</text></g>`;
     }).join('');
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} 270" width="${width}" height="270" style="width:${width}px;min-width:${width}px;height:270px" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="expensesChartTitle" aria-describedby="expensesChartDesc"><title id="expensesChartTitle">Ausgaben je Jahr in nominalen Euro</title><desc id="expensesChartDesc">Säulen zeigen tatsächliche Jahresausgaben aller gespeicherten Profile. Laufende Teiljahre sind textlich markiert. Die folgende Tabelle enthält je Jahr die Ausgaben gesamt, Monate mit Daten und Ø pro Monat. Monate mit Daten sind Monate mit positiven Ausgaben; Nullimporte zählen nicht. Für den Vergleich unvollständiger Jahre dient Ø pro Monat, ohne Hochrechnung. Historische Jahresbudgets werden nicht gespeichert.</desc>${bars}</svg>`;
+}
+
+function singleYearMarkup(row, currentYear) {
+    return `<div class="expenses-year-summary"><div><strong>${row.year}</strong><span>${escape(yearStatus(row, currentYear).label + (row.origin || ''))}</span></div><div><span>Ausgegeben</span><b>${euro(row.annualUsed)}</b></div><div><span>Monate mit Daten</span><b>${row.monthsWithData}</b></div><div><span>Ø pro Monat</span><b>${euro(row.avgMonthly)}</b></div></div>`;
 }
 
 function tableMarkup(rows, currentYear) {
@@ -81,7 +85,8 @@ export function renderBalanceExpensesHistory(dom, result, currentYear, backend =
         });
         if (rows.some(row => !Number.isFinite(row.annualUsed) || !Number.isFinite(row.avgMonthly))) throw new Error('amount');
         if (rows.length) {
-            if (dom.chart) bindBalanceDisplaySize(dom.chart, width => {
+            if (dom.chart && rows.length === 1) dom.chart.innerHTML = singleYearMarkup(rows[0], currentYear);
+            else if (dom.chart) bindBalanceDisplaySize(dom.chart, width => {
                 dom.chart.innerHTML = chartMarkup(rows, currentYear, width);
             });
             if (dom.table) {

@@ -640,7 +640,7 @@ try {
 }
 
 const balanceSource = fs.readFileSync(new URL('../Balance.html', import.meta.url), 'utf8');
-assert(balanceSource.includes('Aus Haushalt &amp; Plan – gilt für Balance und Simulator. Hier lesend oder als flüchtiger Versuch.'), 'Balance benennt gemeinsame Planwirkung');
+assert(balanceSource.includes('<span id="balanceNeedSource">aus Haushalt &amp; Plan</span>') && balanceSource.includes('>Im Plan ändern</a>'), 'Balance benennt gemeinsame Planwirkung');
 assert(balanceSource.indexOf('id="balancePlanSource"') < balanceSource.indexOf('id="floorBedarf"'), 'Hinweis steht vor lesenden Planfeldern');
 assertEqual((balanceSource.match(/id="balancePlanSource"/g) || []).length, 1, 'Gemeinsame Balanceherkunft hat genau einen Hinweisanker');
 assert(/href="depot-tranchen-manager.html#haushalt-plan" data-profile-handoff data-profile-handoff-export="false"/.test(balanceSource), 'Balance-Link nutzt bewachten vorhandenen Profilhandoff');

@@ -38,6 +38,28 @@ try {
 {
 const { createHash } = await import('node:crypto');
 
+function projectLegacyFinancialBytes(result) {
+    const projection = JSON.parse(JSON.stringify(result));
+    // Nur additive Mindest-Flex-Messfelder ausnehmen; alle Altpfadbytes bleiben gepinnt.
+    for (const key of Object.keys(projection.buffers)) {
+        if (key.startsWith('__mcChunkV1Path_minimumFlex') || key === '__mcChunkV1Missing_minimumFlexRestriction') {
+            delete projection.buffers[key];
+        }
+    }
+    for (const key of Object.keys(projection.pathSummaries)) {
+        if (key.startsWith('minimumFlex')) delete projection.pathSummaries[key];
+    }
+    delete projection.pathMissingness.minimumFlexRestriction;
+    function removeAnnualFields(value) {
+        if (!value || typeof value !== 'object') return;
+        delete value.flex_wunsch_haushalt_nominal;
+        delete value.flex_unter_mindestflex;
+        for (const child of Object.values(value)) removeAnnualFields(child);
+    }
+    removeAnnualFields(projection);
+    return projection;
+}
+
 const { EngineAPI } = await import('../engine/index.mjs');
 const { buildSimulatorInputsFromProfileData } = await import(`../app/simulator/simulator-profile-inputs.js`);
 const { runMonteCarloChunk } = await import(`../app/simulator/monte-carlo-runner.js`);
@@ -59,7 +81,7 @@ for (const date of ['', '2026-01-01', '2024-07-15']) {
     const before = JSON.stringify(input);
     const result = await runMonteCarloChunk({ ...options, inputs: input });
     if (result.totals.failCount || JSON.stringify(input) !== before) throw new Error('Ungültiger Referenzlauf');
-    assertEqual(createHash('sha256').update(JSON.stringify(result)).digest('hex'), 'a9ccf4d36104c783eb9a34d8f447cb84cfb8eac8b6890ae6f0605414f87dfc3d', 'Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad bytegleich zur vorab gesicherten Quelle: ' + (date || 'fehlender Beginn'));
+    assertEqual(createHash('sha256').update(JSON.stringify(projectLegacyFinancialBytes(result))).digest('hex'), 'a9ccf4d36104c783eb9a34d8f447cb84cfb8eac8b6890ae6f0605414f87dfc3d', 'Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad bytegleich zur vorab gesicherten Quelle: ' + (date || 'fehlender Beginn'));
     assertEqual(JSON.stringify(input), before, 'Vollständige Adaptereingaben unverändert');
 }
 const legacy = { ...base, startAlter: 67, geschlecht: 'm', startSPB: 0, kirchensteuerSatz: .09,
@@ -67,7 +89,7 @@ const legacy = { ...base, startAlter: 67, geschlecht: 'm', startSPB: 0, kirchens
     accumulationPhase: { enabled: true, sparrate: 500, sparrateIndexing: 'none' }, transitionYear: 2 };
 const result = await runMonteCarloChunk({ ...options, inputs: legacy });
 assertEqual(result.totals.failCount, 0, 'Alter Offsetrequest durchläuft Ansparen und Übergang ohne Fehler');
-assertEqual(createHash('sha256').update(JSON.stringify(result)).digest('hex'), '775393f6abec4c4095789b8506ac953542748e1c1be875c14cf22f9939ad48cc', 'Vollständiger alter Offset-/Ansparrequest bytegleich zur vorherigen Quelle');
+assertEqual(createHash('sha256').update(JSON.stringify(projectLegacyFinancialBytes(result))).digest('hex'), '775393f6abec4c4095789b8506ac953542748e1c1be875c14cf22f9939ad48cc', 'Vollständiger alter Offset-/Ansparrequest bytegleich zur vorherigen Quelle');
 }
 
 {

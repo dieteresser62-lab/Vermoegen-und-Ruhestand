@@ -271,7 +271,6 @@ function createDomRefs(documentRef) {
     currencyInput.classList.add('currency');
 
     const controls = {
-        resetBtn: documentRef.register(new MockElement('resetBtn', 'button')),
         copyAction: documentRef.register(new MockElement('copyAction', 'button')),
         btnJahresUpdate: documentRef.register(new MockElement('btnJahresUpdate', 'button')),
         btnJahresUpdateLog: documentRef.register(new MockElement('btnJahresUpdateLog', 'button')),
@@ -670,7 +669,7 @@ async function runBalanceUiOrchestrationTests() {
         actionDialog.showModal = () => { actionDialog.open = true; };
         actionDialog.close = () => { actionDialog.open = false; (actionDialog.listeners.close || []).forEach(handler => handler()); };
         actionDialog.getBoundingClientRect = () => ({ left: 20, right: 100, top: 20, bottom: 100 });
-        const popupControls = Object.fromEntries(['openActionDetails', 'closeActionDetails', 'printAction', 'printPlan'].map(id => [id, documentRef.register(new MockElement(id, 'button'))]));
+        const popupControls = Object.fromEntries(['openActionDetails', 'closeActionDetails', 'printAction'].map(id => [id, documentRef.register(new MockElement(id, 'button'))]));
         let printed = 0; window.print = () => { printed++; };
         const info = new MockElement('info-host');
         const infoButton = new MockElement('info-button', 'button'); info.appendChild(infoButton);
@@ -711,10 +710,10 @@ async function runBalanceUiOrchestrationTests() {
         assertEqual(printed, 1, 'Popupdruck nutzt denselben vollständigen Plan');
         popupControls.closeActionDetails.click();
         assert(!actionDialog.open && documentRef.activeElement === popupControls.openActionDetails, 'Schließen führt zum Detailsauslöser zurück');
-        popupControls.printPlan.listeners.click[0]({ currentTarget: popupControls.printPlan });
-        assert(actionDialog.open && printed === 2, 'Kopfdruck öffnet denselben Plan');
+        popupControls.openActionDetails.listeners.click[0]({ currentTarget: popupControls.openActionDetails });
+        assert(actionDialog.open, 'Details lassen sich erneut öffnen');
         actionDialog.listeners.click[0]({ target: actionDialog, clientX: 10, clientY: 10 });
-        assert(!actionDialog.open && documentRef.activeElement === popupControls.printPlan, 'Außenklick führt zum jeweiligen Auslöser zurück');
+        assert(!actionDialog.open && documentRef.activeElement === popupControls.openActionDetails, 'Außenklick führt zum Detailsauslöser zurück');
         info.listeners.focusin[0]();
         assertEqual(infoButton.getAttribute('aria-expanded'), 'true', 'Info per Fokus geöffnet');
         infoButton.click();

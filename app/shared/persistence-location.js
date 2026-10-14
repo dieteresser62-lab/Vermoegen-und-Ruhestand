@@ -25,6 +25,8 @@ export async function bindPersistenceLocation(doc, options = {}) {
     const set = (node, text) => { if (node) node.textContent = text; };
     button.hidden = true; button.disabled = true;
     const report = await service.read();
+    const locationDetails = doc.getElementById('dataStorageLocationDetails');
+    if (locationDetails) locationDetails.hidden = report.status !== 'ready';
     host.hidden = report.status !== 'ready';
     host.textContent = report.status === 'ready' ? report.path : '';
     set(status, report.status === 'error' || report.status === 'unavailable' ? 'Der Datenordner ist gerade nicht zugänglich.' : '');

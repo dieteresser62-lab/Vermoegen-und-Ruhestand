@@ -55,6 +55,7 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
         const heading = element('h2', '', title); heading.id = `${id}Title`;
         const cross = element('button', 'close-dialog-cross', '×'); cross.type = 'button'; cross.dataset.closeDialogClose = '';
         cross.setAttribute('aria-label', 'Dialog schließen');
+        cross.title = 'Dialog schließen';
         const description = element('p', 'close-dialog-subtitle', subtitle); description.id = `${id}Subtitle`;
         header.append(overline, heading, cross, description);
         const content = element('div', 'close-dialog-content'); content.dataset.closeDialogContent = '';
@@ -72,18 +73,19 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
         const renderStates = () => {
             for (const [id, row] of rows) {
                 const neutral = ['not_applicable', 'skipped', 'entered'].includes(row.step.state);
-                const label = row.step.preparing ? 'wird vorbereitet …' : row.step.prepared && row.step.done ? (visited.has(id) ? 'geprüft' : 'bereit') : row.step.done ? 'erledigt' : row.step.state === 'entered' ? 'eingetragen' : row.step.state === 'not_applicable' ? 'entfällt' : row.step.state === 'skipped' ? 'übersprungen' : 'offen';
-                const state = row.step.done ? 'done' : neutral ? row.step.state : id === current ? 'current' : 'open';
+                const done = row.step.progressByVisit ? visited.has(id) : row.step.done;
+                const label = row.step.progressByVisit ? (done ? 'angesehen' : 'offen') : row.step.preparing ? 'wird vorbereitet …' : row.step.prepared && row.step.done ? (visited.has(id) ? 'geprüft' : 'bereit') : row.step.done ? 'erledigt' : row.step.state === 'entered' ? 'eingetragen' : row.step.state === 'not_applicable' ? 'entfällt' : row.step.state === 'skipped' ? 'übersprungen' : 'offen';
+                const state = done ? 'done' : neutral ? row.step.state : id === current ? 'current' : 'open';
                 row.root.dataset.state = state;
                 row.root.dataset.visited = String(visited.has(id));
                 row.button.setAttribute('aria-expanded', String(id === current));
                 row.button.setAttribute('aria-label', `${row.step.title} · ${label}${id === current ? ' · aktuell' : ''}`);
-                row.symbol.textContent = row.step.done || row.step.state === 'entered' ? '✓' : neutral ? '–' : String(row.index + 1);
+                row.symbol.textContent = done || row.step.state === 'entered' ? '✓' : neutral ? '–' : String(row.index + 1);
                 row.body.hidden = id !== current;
                 row.result.hidden = id === current || !row.step.result;
                 row.pill.textContent = label;
                 const next = nextRow(row);
-                row.next.textContent = next ? `Weiter zu ${next.step.title}` : '';
+                row.next.textContent = next ? next.step.continueLabel || `Weiter zu ${next.step.title}` : '';
                 if (next) row.body.append(row.next); else row.next.remove();
                 row.next.disabled = busy;
             }
@@ -121,6 +123,7 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
                 row.button.disabled = busy || Boolean(step.locked);
                 row.root.dataset.locked = String(Boolean(step.locked));
                 row.step = step; row.index = index; row.name.textContent = step.title; row.result.textContent = step.result || '';
+                row.result.classList.toggle('close-dialog-result-warning', step.resultTone === 'warning');
                 if (step.content && row.content !== step.content) {
                     Array.from(row.body.children || []).forEach(child => child.remove());
                     row.summary = element('p', 'close-dialog-step-summary');
@@ -219,7 +222,7 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
 
 /** Gemeinsames Ergebnis C: ausschließlich bestätigte, bereits formatierte Belegdaten. */
 export function createCloseResult({ doc = document, month, nextMonth, expenses, budgetComparison,
-    people = [], cashTotal, withdrawal, planYear, actionSection, yearSection } = {}) {
+    people = [], cashTotal, withdrawal, withdrawalLabel, planYear, budgetTone, actionSection, yearSection, successText } = {}) {
     const node = (tag, text, className = '') => {
         const element = doc.createElement(tag); element.className = className;
         if (text !== undefined) element.textContent = text;
@@ -228,21 +231,21 @@ export function createCloseResult({ doc = document, month, nextMonth, expenses, 
     const root = node('section', undefined, 'close-dialog-result');
     const banner = node('div', undefined, 'close-dialog-success'); banner.setAttribute('role', 'status');
     const check = node('span', '✓', 'close-dialog-success-symbol'); check.setAttribute('aria-hidden', 'true');
-    banner.append(check, node('strong', 'Alles gespeichert'), node('span', `${month} ist abgeschlossen.`));
+    banner.append(check, node('strong', 'Alles gespeichert'), node('span', successText || `${month} ist abgeschlossen.`));
     root.append(banner);
     if (actionSection) root.append(actionSection);
     if (yearSection) root.append(yearSection);
     root.append(node('h3', 'MONAT', 'close-dialog-result-heading'));
     const facts = node('dl', undefined, 'close-dialog-facts'); facts.dataset.closeDialogResultMonth = '';
-    const fact = (label, value, detail) => {
+    const fact = (label, value, detail, tone) => {
         const term = node('dt', label), description = node('dd', value);
-        if (detail) description.append(node('small', detail));
+        if (detail) description.append(node('small', detail, tone === 'warning' ? 'close-dialog-result-warning' : ''));
         facts.append(term, description);
     };
-    fact(`Ausgaben ${month}`, expenses, budgetComparison);
+    fact(`Ausgaben ${month}`, expenses, budgetComparison, budgetTone);
     for (const person of people) fact(`Tagesgeld ${person.name}`, person.value);
     fact('Tagesgeld gesamt', `Cashsumme: ${cashTotal}`);
-    fact(`Monatsbetrag ${nextMonth}`, withdrawal, planYear ? `Monatsinformation aus dem bestätigten Plan ${planYear}` : 'Monatsinformation aus dem bestätigten Plan');
+    fact(withdrawalLabel || `Monatsbetrag ${nextMonth}`, withdrawal, planYear ? `Monatsinformation aus dem bestätigten Plan ${planYear}` : 'Monatsinformation aus dem bestätigten Plan');
     root.append(facts);
     return root;
 }

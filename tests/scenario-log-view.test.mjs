@@ -234,7 +234,7 @@ const eventScenario = { label: 'Ereignisprobe', careEverActive: true, logDataRow
 ] };
 const eventBefore = JSON.stringify(eventScenario);
 const eventList = renderScenarioList([{ id: 'char_events', group: 'wealth', color: 'gray', scenario: eventScenario }], 'char_events', 'nominal', { startYear: 2039 });
-for (const event of ['P2 Pflege 2040 · † 2042', 'P1 † 2041'])
+for (const event of ['Person 2 Pflege 2040 · † 2042', 'Person 1 † 2041'])
     assert(eventList.includes(event), 'Szenarioliste erhält Lebensereignis: ' + event);
 assertEqual(JSON.stringify(eventScenario), eventBefore, 'Lebensereignisse verändern keine Szenariozeile');
 
@@ -339,19 +339,19 @@ assert(careNames.includes('data-scenario-group="care"') && careNames.includes('H
     const events = { ...worst, label: '<Ereignislauf>', logDataRows: eventRows };
     const render = (scenario, startYear) => renderScenarioList(buildScenarioEntries({ characteristic: [scenario] }), 'char_worst', 'nominal', { startYear });
     const calendar = render(events, 2026);
-    for (const text of ['P1 Pflege 2035 · † 2040', 'P2 † 2028']) assert(calendar.includes(`class="scenario-person-mark">${text}</span>`), 'Personenmarke enthält beobachtete Kalenderereignisse: ' + text);
-    for (const text of ['P1 Pflege Jahr 10 · † Jahr 15', 'P2 † Jahr 3']) assert(render(events).includes(text), 'Ohne Startjahr bleibt das relative Ereignisjahr erhalten');
+    for (const text of ['Person 1 Pflege 2035 · † 2040', 'Person 2 † 2028']) assert(calendar.includes(`class="scenario-person-mark">${text}</span>`), 'Personenmarke enthält beobachtete Kalenderereignisse: ' + text);
+    for (const text of ['Person 1 Pflege Jahr 10 · † Jahr 15', 'Person 2 † Jahr 3']) assert(render(events).includes(text), 'Ohne Startjahr bleibt das relative Ereignisjahr erhalten');
     assert(!render(worst, 2026).includes('scenario-details') && !render(worst, 2026).includes('scenario-person-mark'), 'Ereignislose Liste erzeugt keinen leeren Personenbereich');
-    assert(render({ ...worst, logDataRows: [{ jahr: 1, Person1Alive: false, CareP2_Active: true }] }, 2026).includes('P1 † 2026'), 'Ereignis im ersten Jahr ist beobachtet');
-    assert(render({ ...worst, logDataRows: [{ jahr: 1, Person1Alive: false, CareP2_Active: true }] }).includes('P2 Pflege Jahr 1'), 'Erstes Pflegejahr ohne Kalenderbasis bleibt relativ');
+    assert(render({ ...worst, logDataRows: [{ jahr: 1, Person1Alive: false, CareP2_Active: true }] }, 2026).includes('Person 1 † 2026'), 'Ereignis im ersten Jahr ist beobachtet');
+    assert(render({ ...worst, logDataRows: [{ jahr: 1, Person1Alive: false, CareP2_Active: true }] }).includes('Person 2 Pflege Jahr 1'), 'Erstes Pflegejahr ohne Kalenderbasis bleibt relativ');
     for (const logDataRows of [[{ jahr: 3, Person1Alive: 0, CareP2_Active: 1 }],
         [{ jahr: 1, Person1Alive: 1, CareP2_Active: 0 }, { jahr: 3, Person1Alive: 0, CareP2_Active: 1 }],
         [{ jahr: 1 }, { jahr: 2, Person1Alive: 0, CareP2_Active: 1 }]]) {
         const html = render({ ...worst, logDataRows }, 2026);
-        assert(html.includes('P1 † Jahr unbekannt') && html.includes('P2 Pflege Jahr unbekannt'), 'Unbeobachteter Übergang behauptet kein Kalenderjahr');
+        assert(html.includes('Person 1 † Jahr unbekannt') && html.includes('Person 2 Pflege Jahr unbekannt'), 'Unbeobachteter Übergang behauptet kein Kalenderjahr');
     }
     assert(!render({ ...worst, logDataRows: [{ jahr: 1, Person1Alive: '0', CareP2_Active: '1' }] }).includes('scenario-person-mark'), 'Unbekannte Personenfelder erfinden kein Ereignis');
-    assert(render({ ...worst, failed: false, endVermoegen: 0 }).includes('>0,00') && !render({ ...worst, failed: false, endVermoegen: 0 }).includes('is-ruin'), 'Nullvermögen ohne Ruin bleibt ein Betrag');
+    assert(render({ ...worst, failed: false, endVermoegen: 0 }).includes('>0\u00a0€') && !render({ ...worst, failed: false, endVermoegen: 0 }).includes('is-ruin'), 'Nullvermögen ohne Ruin bleibt ein Betrag');
     assert(render({ ...worst, endVermoegen: null }).includes('>Messung fehlt</small>'), 'Fehlender Wert bleibt ausdrücklich fehlend');
     assert(render({ ...worst, failed: true, logDataRows: [{ jahr: 3, recordType: 'terminal_ruin' }] }).includes('scenario-value is-ruin">Ruin Jahr 3'), 'Ruin ohne Kalenderbasis ersetzt den Betrag');
     const middle = { ...median, key: 'p25', label: 'Zwischenlauf' };
@@ -375,7 +375,7 @@ assert(careNames.includes('data-scenario-group="care"') && careNames.includes('H
     assert(hosts.scenarioNext.disabled && !hosts.scenarioPrevious.disabled, 'Ende sperrt nur die Randaktion');
     const heading = hosts.scenarioSelectedHeading.innerHTML;
     assert(heading.includes('Ausgewählt · Nach Endvermögen') && heading.includes('&lt;Ereignislauf&gt;'), 'Auswahlkopf enthält Gruppeneyebrow und sicheren Originalnamen');
-    assert(heading.includes('P1 Pflege 2035 · † 2040') && heading.includes('P2 † 2028') && heading.includes('>15 Logzeilen</span>'), 'Auswahlkopf enthält dieselben Personenmarken und tatsächliche Rohzeilenanzahl');
+    assert(heading.includes('Person 1 Pflege 2035 · † 2040') && heading.includes('Person 2 † 2028') && heading.includes('>15 Logzeilen</span>'), 'Auswahlkopf enthält dieselben Personenmarken und tatsächliche Rohzeilenanzahl');
     assert(!heading.includes('ds-note'), 'Auswahlkopf enthält kompakte Marken statt Notizkästen');
     assert(hosts.scenarioGroups.innerHTML.includes('class="scenario-group-count">3</span>') && hosts.scenarioGroups.innerHTML.includes('class="scenario-group-count">0</span>'), 'Gruppensegmente geben echte separate Anzahlen aus');
     for (const button of hosts.scenarioGroups.children) assertEqual(button.getAttribute('aria-pressed'), String(button.getAttribute('data-scenario-group') === 'wealth'), 'Vier Segmente besitzen den richtigen gedrückten Zustand');

@@ -167,6 +167,10 @@ export function initMonteCarloResultCockpit({
     settingsToggle?.addEventListener?.('click', () => {
         setupDisclosure.open = !setupDisclosure.open;
         syncDisclosure();
+        if (setupDisclosure.open && setupDisclosure.classList?.contains('sim-all-parameters')) {
+            activateSimulatorTab('annahmen', { documentRef });
+            setupDisclosure.scrollIntoView?.({ block: 'start' });
+        }
     });
     setupDisclosure?.addEventListener?.('toggle', syncDisclosure);
     syncDisclosure();

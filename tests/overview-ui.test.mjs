@@ -18,6 +18,8 @@ import { addDirectHouseholdPlans } from '../app/profile/household-plan-migration
 import { projectOverviewFromRecords } from '../app/overview/overview-model.js';
 import { summaryEntryKey, OVERVIEW_SUMMARY_KEY } from '../app/overview/overview-storage.js';
 import { getAppTestDate, setAppTestDate } from '../app/shared/app-clock.js';
+import { completedComparisonFixture } from './household-plan-comparison.test.mjs?fixture';
+import { ANNUAL_PLAN_RECORD_KEY } from '../app/profile/annual-plan-record.js';
 
 // Zeilenlokale Inhaltsprüfung: Texte im Lead oder Kartenfuß können fehlende
 // Schritttitel und Monatsbeträge hier nicht verdecken.
@@ -66,10 +68,26 @@ assertEqual((html.match(/id="kursdetails"/g) || []).length, 1, 'Kursdetailhost b
 assertEqual((html.match(/id="startupPriceStatus"/g) || []).length, 1, 'Kursstatushost bleibt eindeutig');
 assert(html.indexOf('id="kursdetails"') < html.indexOf('<header class="overview-heading ds-page-head">')
     && !html.includes('class="ds-card overview-details ds-startup-prices"'), 'Kursdetails liegen an der Kopfpille ohne untere Karte');
+for (const card of ['overview-assets', 'overview-budget', 'overview-plan-metric']) {
+    const section = html.match(new RegExp(`<section class="ds-card ${card}"[\\s\\S]*?<\\/section>`))[0];
+    assert(section.indexOf('<h2') < section.indexOf('overview-metric-value')
+        && section.indexOf('overview-metric-value') < section.indexOf('overview-metric-source')
+        && section.indexOf('overview-metric-source') < section.indexOf('overview-card-link'), card + ': Titel, Hauptwert, Bezug und Navigation in gemeinsamer Reihenfolge');
+    assert(section.match(/<a[^>]*class="overview-card-link[^>]*>[^<]+ →<\/a>/), card + ': Navigation endet mit Pfeil');
+}
 const doc = createPresentationTestDocument();
 for (const id of [...html.matchAll(/id="(overview[^"]+|overviewTrial|probelaufControls|kursdetails)"/g)].map(m => m[1])) {
     const node = doc.createElement('div'); node.id = id; node.dataset = {}; node.focus = () => { doc.activeElement = node; }; doc.body.appendChild(node);
 }
+// Wie im Browser entfernt ein neuer Leadtext die Links des vorherigen Anlasses.
+let leadText = '';
+Object.defineProperty(doc.getElementById('overviewLead'), 'textContent', {
+    get() { return leadText; },
+    set(value) {
+        leadText = String(value);
+        this.innerHTML = leadText.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    }
+});
 const events = {}; const win = { location: { hash: '#fullBackupImportBtn' }, addEventListener: (name, fn) => { events[name] = fn; } };
 let clickedTarget;
 const createTarget = doc.createElement.bind(doc);
@@ -96,6 +114,49 @@ assertEqual(doc.getElementById('overviewPlanRows').hidden, true, 'Fehlende Summa
 assertEqual(doc.getElementById('overviewPlanTitle').textContent, 'Dein Plan', 'Kartentitel bleibt ruhig');
 assertEqual(doc.getElementById('overviewPricesValue').textContent, 'Kurszeit unbekannt', 'Kein Datum ohne Provenienz');
 assert(doc.getElementById('overviewTitle').textContent.includes('Oktober'), 'Überschrift verwendet tatsächlichen Monat');
+{
+    const records = createMusterHaushaltRecords('2026-10-13');
+    const view = projectOverview({ registry: JSON.parse(records.rs_profiles_v1), activeId: records.rs_active_profile,
+        liveData: records, now: new Date(2026, 9, 13, 12) });
+    const previousDate = getAppTestDate(), before = JSON.stringify(view);
+    try {
+        setAppTestDate('2026-10-13'); renderOverview(doc, view);
+        assertEqual(doc.getElementById('overviewPricesValue').textContent, 'Testkurse, nicht echt', 'Kopfzeile kennzeichnet künstliche Kurse');
+        assert(doc.getElementById('overviewQuoteDate').textContent.includes('Bestand am 13.10.2026 · Testkurse, nicht echt'), 'Vermögenskarte behält Bestandsdatum neben dem Testkurshinweis');
+        assert(!doc.getElementById('overviewLead').textContent.includes('Kurse sind von heute'), 'Probelauflead behauptet keine echten heutigen Kurse');
+        assertEqual(JSON.stringify(view), before, 'Testkursanzeige verändert keine Vermögens- oder Abschlusswerte');
+    } finally { setAppTestDate(previousDate); }
+}
+
+for (const options of [{}, { adjusted: true }, { preview: 'missing' },
+    { receipt: false }, { receipt: false, preview: 'stale' }, { receipt: false, preview: 'missing' }, { corruptReceipt: true }]) {
+    const f = completedComparisonFixture(options);
+    if (options.corruptReceipt) f.records[ANNUAL_PLAN_RECORD_KEY] = '{broken';
+    const view = projectOverview({ registry: f.registry, activeId: 'z', liveData: f.records, now: f.now });
+    const before = JSON.stringify(view);
+    renderOverview(doc, view);
+    const fixed = view.planComparison.recordStatus === 'valid';
+    const provisional = !fixed && ['current', 'stale'].includes(view.planComparison.previewStatus);
+    assertEqual(doc.getElementById('overviewBudgetTitle').textContent, provisional ? 'Vorläufiges Monatsbudget' : 'Monatsbudget', 'Vorläufigkeit steht direkt über dem Betrag');
+    assertEqual(doc.getElementById('overviewBudgetValue').textContent, fixed ? moneyText(2000) : provisional ? moneyText(2100) : '—', 'Budgetkarte verwendet die passende Quelle ohne erfundenen Betrag');
+    assertEqual(doc.getElementById('overviewPlanMetricValue').textContent, fixed ? 'Plan festgeschrieben' : options.corruptReceipt ? 'Planbeleg prüfen' : 'Noch kein Jahresplan', 'Plankarte zeigt den tatsächlichen Zustand als Hauptinhalt');
+    assertEqual(doc.getElementById('overviewPlanMetricYear').textContent, '2026', 'Das Planjahr steht separat neben dem Zustand');
+    if (!fixed && !options.corruptReceipt) assert(doc.getElementById('overviewBudgetLink').textContent.includes('Vorschau in Balance'), 'Vorschau verweist auf den vorhandenen Rechenweg');
+    if (options.preview === 'stale') {
+        assert(doc.getElementById('overviewBudgetSource').textContent.includes('veraltet')
+            && doc.getElementById('overviewBudgetLink').textContent.includes('rechnen'), 'Veraltete Vorschau nennt Status und Aktualisierungsweg');
+        assert(doc.getElementById('overviewYearBudget').textContent.includes('Vorschau veraltet'), 'Veraltete Budgetlinie nennt denselben Vorbehalt');
+    }
+    if (view.annual.budget !== null) {
+        assertEqual(doc.getElementById('overviewYearBudget').textContent.startsWith('Vorläufiges'), provisional, 'Karte und Budgetlinie tragen denselben Status');
+        assert(doc.getElementById('overviewYearChart').innerHTML.includes(`data-budget-status="${fixed ? 'adopted' : 'provisional'}"`), 'Linienzeichnung kennt die gewählte Quelle');
+        assert(doc.getElementById('overviewYearLegend').innerHTML.includes(provisional ? 'Vorläufiges Monatsbudget' : 'Monatsbudget'), 'Legende erklärt den Linienstatus');
+    }
+    if (options.corruptReceipt) assertEqual(doc.getElementById('overviewBudgetLink').getAttribute('href'), 'Daten-Sicherung.html', 'Beschädigter Beleg behält den vorhandenen Sicherungsweg');
+    assert(doc.getElementById('overviewBudgetSource').textContent.includes('2026') || options.corruptReceipt, 'Budgetquelle nennt das Planjahr oder den beschädigten Beleg');
+    assert(doc.getElementById('overviewQuoteDate').textContent.includes('Bestand am ' + f.now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })), 'Aktueller Bestand nennt das Ansichtsdatum');
+    assertEqual(JSON.stringify(view), before, 'Die Kartenanzeige verändert keine Finanz- oder Abschlussdaten');
+}
 
 win.location.hash = '#kursdetails'; events.hashchange();
 assertEqual(doc.getElementById('kursdetails').open, true, 'Kurspille öffnet die erhaltenen Kursdetails');
@@ -145,10 +206,10 @@ const monthly = { ...focusBase, now: new Date(2027, 9, 1), occasion: { kind: 'mo
 renderOverview(doc, monthly);
 markup = focus.innerHTML;
 const monthlyRows = assertCloseStepContents(markup, monthly);
-assertEqual(monthlyRows.find(row => row.id === 'cash').detail.includes('Monatsbetrag Oktober: 500,00'), true,
+assertEqual(monthlyRows.find(row => row.id === 'cash').detail.includes('Geplante Entnahme aus dem Vermögen im Oktober: 500,00'), true,
     'Monatsbetrag Oktober bleibt mit seinem bisherigen Wert in der Detailzeile sichtbar');
-assert(markup.includes('September abschließen') && markup.includes('Monatsbetrag') && markup.includes('data-overview-month'), 'Monatsfokus benennt Abschlussmonat und Bereitstellungsmonat getrennt');
-assert(markup.includes('Monatsbetrag Oktober: 500,00') && markup.includes('Stand stimmt')
+assert(markup.includes('September abschließen') && markup.includes('Entnahme aus dem Vermögen im Oktober') && markup.includes('data-overview-month'), 'Monatsfokus benennt Abschlussmonat und Bereitstellungsmonat getrennt');
+assert(markup.includes('Geplante Entnahme aus dem Vermögen im Oktober: 500,00') && markup.includes('Stand stimmt')
     && markup.includes('Tagesgeld prüfen') && !markup.includes('Tagesgeld A:') && !markup.includes('data-tagesgeld-warning')
     && !markup.includes('#profileTagesgeld'), 'Fällige Monatskarte zeigt Betrag und Tagesgeldhinweis ohne zusätzliche Tagesgeldzugänge');
 assertEqual((markup.match(/data-overview-month(?:[ >])/g) || []).length, 1, 'Ein Startknopf erhält beide Monatsanker');
@@ -191,10 +252,10 @@ const annualCases = {
         title: 'Jahresstatus 2026 klären.',
         lead: 'Für 2026 gibt es Daten, aber keinen Abschlussvermerk. Bitte den Jahresstatus im Abschlussdialog einmal bestätigen.' },
     recovery: { badge: 'Wiederherstellung nötig', action: 'Wiederherstellung öffnen', stepTitle: 'Wiederherstellung öffnen',
-        title: 'Wiederherstellung für den Jahresabschluss 2026 nötig.',
+        title: 'Jahresabschluss 2026 wiederherstellen.',
         lead: 'Der Jahresabschluss ist unvollständig. Prüfe zuerst den vorhandenen Wiederherstellungspunkt unter Daten & Sicherung.' },
     unavailable: { badge: 'Daten fehlen', action: 'Daten prüfen', stepTitle: 'Daten prüfen',
-        title: 'Daten für den Jahresabschluss 2026 fehlen.',
+        title: 'Daten für 2026 prüfen.',
         lead: 'Die Profildaten für den Jahresabschluss sind nicht verfügbar. Prüfe Personen und Haushalt & Plan.' }
 };
 function assertAnnualPresentation(model, label, fresh = false) {
@@ -204,12 +265,18 @@ function assertAnnualPresentation(model, label, fresh = false) {
     const title = doc.getElementById('overviewTitle').textContent, lead = doc.getElementById('overviewLead').textContent;
     assertEqual(title, open ? `${new Date(model.occasion.previousYear, model.occasion.previousMonth - 1, 1).toLocaleDateString('de-DE', { month: 'long' })} und Jahr 2026 abschließen` : expected.title,
         label + ': zustandsgerechte Überschrift');
-    assertEqual(lead, (open && fresh ? 'Die Kurse sind von heute. ' : '') + expected.lead, label + ': zustandsgerechter Lead');
-    const step4 = focus.innerHTML.slice(focus.innerHTML.indexOf('<p class="overview-year-action">'), focus.innerHTML.indexOf('<footer'));
-    if (!open) assert(step4.includes(expected.stepTitle), label + ': passende Jahresaktion');
-    if (!open) assert(step4.includes((expected.stepDetail || expected.lead).replaceAll('&', '&amp;')), label + ': passender Jahreshinweis');
-    for (const [state, texts] of Object.entries(annualCases)) {
-        assertEqual(step4.includes('>' + texts.stepTitle + '</b>'), !open && state === annualState, label + ': kein fremder Jahrestext ' + state);
+    assertEqual(lead, open ? (fresh ? 'Die Kurse sind von heute. ' : '') + expected.lead
+        : 'Prüfe zuerst den Jahresstatus in der Karte unten.', label + ': zustandsgerechter Lead');
+    if (open) assertCloseStepContents(focus.innerHTML, model);
+    else {
+        assert(focus.innerHTML.includes(expected.title.slice(0, -1) + '</h2>'), label + ': Kartentitel ohne Monatsnamen');
+        assertEqual(focus.innerHTML.split(expected.lead.replaceAll('&', '&amp;')).length - 1, 1, label + ': Jahreshinweis genau einmal');
+        for (const obsolete of ['overview-close-step', 'overview-expense-detail', 'overview-year-action', 'Import öffnen', 'Details ansehen', 'Kein Import nötig']) {
+            assert(!focus.innerHTML.includes(obsolete), label + ': keine Abschlussmonatdarstellung ' + obsolete);
+        }
+        assert(!lead.includes('Monatsbetrag bereitstellen') && !doc.getElementById('overviewLead').innerHTML.includes('data-next-step'), label + ': Lead ohne nachgelagerte Monatslinks');
+        assertEqual((focus.innerHTML.match(/<button /g) || []).length, 2, label + ': nur Hauptaktion und Sicherung');
+        assert(focus.innerHTML.includes('Vorher eine Vollsicherung erstellen.') && focus.innerHTML.includes('data-overview-backup'), label + ': Sicherung bleibt erreichbar');
     }
     assertEqual(focus.innerHTML.includes('Inflation, ETF-Schlusskurs und Alter holen, prüfen, abschließen'), false, label + ': normale Abschlussdetails nur bei offen');
     if (!open) {
@@ -223,8 +290,8 @@ function assertAnnualPresentation(model, label, fresh = false) {
     assertEqual(focus.innerHTML.includes('Klärung nötig'), annualState === 'unclear', label + ': nur unklar hat Klärungsbadge');
     assertEqual(focus.innerHTML.includes('Jahresstatus klären'), annualState === 'unclear', label + ': nur unklar hat Klärungsaktion');
     assert(focus.innerHTML.includes('data-overview-annual'), label + ': gemeinsamer Jahresbinder bleibt erreichbar');
-    assert(focus.innerHTML.includes('data-overview-close-step="expenses"') && !focus.innerHTML.includes('disabled'),
-        label + ': Empfehlungen werden keine Sperren');
+    assertEqual(focus.innerHTML.includes('data-overview-close-step="expenses"'), open, label + ': Monatsschritte nur im regulären Jahresabschluss');
+    assert(!focus.innerHTML.includes('disabled'), label + ': Hauptaktion bleibt bedienbar');
     assertEqual(JSON.stringify(model), before, label + ': Darstellung verändert keinen Jahreszustand');
 }
 for (const now of [focusNow, monthly.now]) {
@@ -271,7 +338,7 @@ const bandStore = { years: { 2026: { months: {
     2: { profiles: { a: { categories: { total: -150 } } } }
 } } } };
 const yearArgs = { store: bandStore, scope: focusScope, now: new Date(2027, 0, 5), retrospective: true,
-    budgetSummary: { year: 2026, scope: focusScope, monthlyBudget: 100, createdAt: '2026-01-07T12:00:00Z' } };
+    budgetSummary: { year: 2026, scope: focusScope, monthlyBudget: 100, createdAt: '2026-01-07T12:00:00Z' }, budgetStatus: 'adopted' };
 const annualView = { ...projectOverviewYear(yearArgs), comparison: { delta: null, reason: 'Kein vollständiger Vergleichsstand' }, sales: { count: 2, net: 100, unconfirmed: 1 } };
 renderOverview(doc, { ...focusBase, annual: annualView });
 const chart = doc.getElementById('overviewYearChart'), metrics = doc.getElementById('overviewYearMetrics');
@@ -282,19 +349,20 @@ assertEqual((metrics.innerHTML.match(/class="overview-year-metric"/g) || []).len
 assert(metrics.innerHTML.includes('Verkäufe') && metrics.innerHTML.includes('netto ins Tagesgeld') && metrics.innerHTML.includes('unbestätigt'), 'Verkaufskennzahl nennt nur belegtes Netto und fehlende Bestätigung');
 assertEqual(doc.getElementById('overviewYearTitle').textContent, '2026 im Rückblick', 'Rückblicktitel zeigt Vorjahr');
 assertEqual(doc.getElementById('overviewYearExpensesLink').getAttribute('href'), 'Ausgaben.html?year=2026#ausgaben', 'Rückblick verlinkt das Vorjahr direkt auf Ausgaben');
-assertEqual(doc.getElementById('overviewYearBudget').textContent, 'Monatsbudget ' + moneyText(100), 'Belegter Monatsbetrag beschriftet Budgetlinie');
+assertEqual(doc.getElementById('overviewYearBudget').textContent, 'Monatsbudget ' + moneyText(100) + ' · 2026', 'Belegter Monatsbetrag beschriftet Budgetlinie');
 assertEqual(doc.getElementById('overviewYearBudget').style.top, `calc(150px * ${1 - 100 / (150 * 1.15)})`, 'Budgetbeschriftung folgt derselben unveränderten Skala wie die Linie');
 assertEqual(doc.getElementById('overviewYearStand').textContent, '', 'Budgetjahr zeigt keine technische Speicherstandzeile');
 const currentView = { ...projectOverviewYear({ ...yearArgs, now: new Date(2026, 9, 1), retrospective: false, budgetSummary: null }), comparison: annualView.comparison };
 renderOverview(doc, { ...monthly, annual: currentView });
 assertEqual((metrics.innerHTML.match(/class="overview-year-metric"/g) || []).length, 4, 'Laufendes Jahr hat genau vier Kennzahlen');
-assert(metrics.innerHTML.includes('Hochrechnung') && metrics.innerHTML.includes('Januar') && metrics.innerHTML.includes('vorgesehener Abschlusszeitraum'), 'Laufendes Jahr zeigt Hochrechnung und ehrlichen nächsten Abschlusszeitraum');
+assert(metrics.innerHTML.includes('01.01.2026 bis 30.09.2026') && metrics.innerHTML.includes('Januar 2027'), 'Ausgaben und nächster Abschluss nennen ihre Kalenderzeiträume');
+assert(metrics.innerHTML.includes('Hochrechnung') && metrics.innerHTML.includes('Januar') && metrics.innerHTML.includes('für 2026 · in'), 'Laufendes Jahr zeigt Hochrechnung und ehrlichen nächsten Abschlusszeitraum');
 assert(!chart.innerHTML.includes('overview-budget-line') && doc.getElementById('overviewYearStand').textContent === 'Noch kein Budget für 2026 – erscheint nach der ersten Balance-Rechnung.', 'Ohne historischen Record keine erfundene Budgetlinie');
 assert(chart.innerHTML.includes('noch offen'), 'Laufender und zukünftige Monate bleiben offen');
 assertEqual(doc.getElementById('overviewYearBudget').textContent, '', 'Fehlendes Budget löscht alten Linienbetrag');
 assertEqual(doc.getElementById('overviewYearBudget').hidden, true, 'Fehlendes Budget verbirgt Linienbeschriftung');
 assert(doc.getElementById('overviewYearLegend').innerHTML.includes('overview-year-key') && !doc.getElementById('overviewYearLegend').innerHTML.includes('Über Budget'), 'Kleine Farbfelder ohne unbelegtes Budget');
-assert(metrics.innerHTML.includes('aus den bisherigen Monaten hochgerechnet') && metrics.innerHTML.includes(moneyText(currentView.forecast)), 'Hochrechnung behält Betrag bei einfachem Text');
+assert(metrics.innerHTML.includes('Für 2026 · aus 01.01.2026 bis 30.09.2026') && metrics.innerHTML.includes(moneyText(currentView.forecast)), 'Hochrechnung behält Betrag bei einfachem Text');
 const zeroView = projectOverviewYear({ ...yearArgs, store: { years: { 2026: { months: { 1: { profiles: { a: { categories: { total: 0 } } } } } } } } });
 renderOverview(doc, { ...focusBase, annual: zeroView });
 assert(chart.innerHTML.includes('data-overview-year-month="1" data-state="complete" title="Januar: vollständig · ' + moneyText(0)), 'Nullausgaben behalten Betrag und vollständigen Importzustand');
@@ -368,14 +436,14 @@ for (const selectedScope of [householdScope, focusScope]) {
             household: { assets: currentAssets, allocation: { cash: currentAssets } }, firstStart: false };
         const oldComparison = { delta: -1000, percent: -50, reason: 'Alter synthetischer Vergleich' };
         renderOverview(doc, { ...model, comparison: oldComparison, annual: { ...annual, comparison: oldComparison } });
-        assert(doc.getElementById('overviewComparison').textContent.includes('-1.000') && doc.getElementById('overviewComparison').textContent.includes('-50,0') && doc.getElementById('overviewComparison').textContent.includes('2027'), 'Vorherige Kartendifferenz und Prozent mit Zeitraum sind tatsächlich gerendert');
+        assert(doc.getElementById('overviewComparison').textContent.includes('-1.000') && doc.getElementById('overviewComparison').textContent.includes('-50,0') && doc.getElementById('overviewComparison').textContent.includes('seit Jahresendstand 2026'), 'Vorherige Kartendifferenz und Prozent mit Zeitraum sind tatsächlich gerendert');
         assert(wealthRow().includes('%') && wealthRow().includes('€'), 'Vorherige Jahreskennzahl enthält Differenz und Prozent');
         const comparison = projectOverviewWealth({ states: members.map(() => structuredClone(formerHouseholdState)),
             members, scope: selectedScope, comparisonScope: selectedScope, year: 2027, retrospective, currentAssets });
         renderOverview(doc, { ...model, comparison, annual: { ...annual, comparison } });
         assertEqual(comparison.reason, comparisonReason, 'Modell verweigert weiterhin den unbelegten historischen Umfang');
-        assertEqual(doc.getElementById('overviewComparison').textContent, 'Veränderung erscheint nach dem ersten Jahresendstand', 'Vermögenskarte ersetzt alte Differenz und Prozent durch ehrlichen Leerhinweis');
-        assertEqual(wealthRow(), '<strong></strong><small>erscheint nach dem ersten Jahresendstand</small>', 'Jahreskennzahl ersetzt Differenz und Prozent durch ehrlichen Leerhinweis');
+        assertEqual(doc.getElementById('overviewComparison').textContent, 'Jahresendvergleich 2026 nicht belegbar', 'Vermögenskarte ersetzt alte Differenz und Prozent durch ehrlichen Leerhinweis');
+        assertEqual(wealthRow(), '<strong></strong><small>Jahresendvergleich 2026 nicht belegbar</small>', 'Jahreskennzahl ersetzt Differenz und Prozent durch ehrlichen Leerhinweis');
         assertEqual(doc.getElementById('overviewAssets').textContent,
             formatDisplayNumber(currentAssets, { fractionDigits: 0 }), 'Aktueller Haushalt oder Einzelbestand bleibt sichtbar');
         assertEqual(doc.getElementById('overviewAssetUnit').hidden, false, 'Euroeinheit bleibt getrennt sichtbar');
@@ -487,32 +555,29 @@ for (const [old, fresh, sum] of [[600000, 400000, 1000000], [600000, 0, 600000],
     assertEqual(JSON.stringify(view), before, 'Anzeige mutiert keine Haushalts-/Personenwerte');
 }
 
-// Kompakte Ausgabenhinweise behalten einen sicheren Importlink und genaue Modellrecords.
-const expenseStep = () => focus.innerHTML.match(/<p class="overview-expense-detail">([^<]*)<\/p>/)?.[1];
-const gapView = (records, people = [{ id: 'a', name: 'Alva' }, { id: 'b', name: 'Berta' }]) => ({ ...focusBase, occasion: { ...focusBase.occasion, annualState: 'unclear' }, members: people,
-    expenses: { year: 2026, month: 12, complete: false, rows: people.map(person => ({ id: person.id, present: false })), missingMonths: records } });
-const commonGaps = [10, 11, 12].flatMap(month => ['a', 'b'].map(id => ({ id, month })));
-const compactView = gapView(commonGaps), compactBefore = JSON.stringify(compactView);
-renderOverview(doc, compactView);
-assertEqual(expenseStep(), 'Für beide Personen fehlen 3 Monate (Oktober–Dezember). Der Abschluss geht trotzdem.', 'Identische drei Monatslücken werden einmal benannt');
-assert(focus.innerHTML.includes('Ausgaben.html?year=2026&amp;month=10#ausgaben-import'), 'Importziel öffnet ersten relevanten fehlenden Monat');
-assertEqual(JSON.stringify(compactView), compactBefore, 'Zusammenfassung verändert genaue Records nicht');
-renderOverview(doc, gapView([{ id: 'b', month: 12 }]));
-assertEqual(expenseStep(), 'Berta: Dezember fehlt. Der Abschluss geht trotzdem.', 'Einzelne Dezemberlücke benennt die betroffene Person');
-for (const records of [
-    [{ id: 'a', month: 1 }, { id: 'a', month: 5 }, { id: 'a', month: 12 }, { id: 'b', month: 2 }, { id: 'b', month: 4 }],
-    [1, 5, 12].flatMap(month => ['a', 'b'].map(id => ({ id, month })))
-]) {
-    renderOverview(doc, gapView(records));
-    assert(expenseStep().includes('Alva: 3 Monate') && expenseStep().includes('Details im Import'), 'Unterschiedliche oder zerstückelte Mengen nennen nur Anzahlen');
-    assert(!/Januar|Mai|Dezember/.test(expenseStep()), 'Zerstückelte Lücken erzeugen keine Monatsliste');
-    assert(expenseStep().length < 180, 'Zerstückelte Mengen bleiben ein kurzer Absatz');
-}
+// D16: derselbe alte Jahresstand im Oktober erzeugt nur die Jahresklärung.
+const octoberNow = new Date(2026, 9, 12);
+const octoberOccasion = deriveOverviewOccasion({ now: octoberNow, scope: focusScope, metadata: [null],
+    planning: { firstPlanningYear: 2026, errors: [], evidence: [{ id: 'a', kind: 'annual', year: 2025 }] } });
+assertEqual(octoberOccasion.annualState, 'unclear', 'Oktober mit altem Jahresstand bleibt ungeklärt');
+assertEqual(octoberOccasion.annualReason, 'missing_commit', 'Oktober reproduziert fehlenden Abschlussvermerk');
+const octoberModel = { ...focusBase, now: octoberNow, occasion: octoberOccasion, firstPlanningYear: 2026,
+    expenses: { year: 2025, month: 12, beforePlanning: true, complete: false, rows: [] },
+    exampleExpensesAllowed: true, cashWarnings: [{ id: 'a', name: 'A', date: '2026-01-20' }] };
+const octoberBefore = JSON.stringify(octoberModel);
+renderOverview(doc, octoberModel);
+assert(focus.innerHTML.includes('Jahresstatus 2025 klären</h2>') && !/September|Oktober|Dezember/.test(focus.innerHTML), 'Oktoberklärung benennt nur das Abschlussjahr');
+assert(!focus.innerHTML.includes('overview-close-step') && !focus.innerHTML.includes('Import öffnen'), 'Oktoberklärung hat keine Monats-Schrittliste und keinen Importknopf');
+const diagnosis2025 = 'Für 2025 gibt es Daten, aber keinen Abschlussvermerk. Bitte den Jahresstatus im Abschlussdialog einmal bestätigen.';
+assertEqual((focus.innerHTML + doc.getElementById('overviewLead').textContent).split(diagnosis2025).length - 1, 1, 'Abschlusssatz steht insgesamt genau einmal');
+assert(!doc.getElementById('overviewLead').innerHTML.includes('Monatsbetrag bereitstellen'), 'Oktoberlead bietet keinen verfrühten Monatsbetrag an');
+assertEqual(JSON.stringify(octoberModel), octoberBefore, 'Oktoberdarstellung erhält Ausgaben, Jahreszustand und Datenwege');
+// Rückkehr zum regulären Januar auf demselben DOM stellt alle sieben Schritte wieder her.
+renderOverview(doc, focusBase);
+assertCloseStepContents(focus.innerHTML, focusBase);
+assert(focus.innerHTML.includes('Dezember und Jahr 2026 abschließen</h2>') && focus.innerHTML.includes('Rund 10 Minuten'), 'Regulärer Januar behält Titel und Dauerhinweis');
+assert(!focus.innerHTML.includes('data-overview-backup'), 'Regulärer Januar erhält keinen zusätzlichen Sicherungsknopf');
 const manyPeople = Array.from({ length: 8 }, (_, index) => ({ id: 'person-' + index, name: 'Sehr langer synthetischer Name '.repeat(4) + index }));
-renderOverview(doc, gapView(manyPeople.flatMap(person => [10, 11, 12].map(month => ({ id: person.id, month }))), manyPeople));
-assertEqual(expenseStep(), 'Bei 8 Personen fehlen Ausgaben für insgesamt 24 Monate. Details im Import. Der Abschluss geht trotzdem.', 'Großer Haushalt bleibt kurz, ohne Namensliste');
-renderOverview(doc, gapView([{ id: 'b', month: 12 }], [{ id: 'b', name: '<img src=x onerror="evil">' }]));
-assert(expenseStep().includes('&lt;img') && !focus.innerHTML.includes('<img'), 'Zusammenfassung escaped Personennamen');
 renderOverview(doc, { ...monthly, members: manyPeople, expenses: { year: 2027, month: 9, complete: false, rows: manyPeople.map(person => ({ id: person.id, present: false })) } });
 assert(focus.innerHTML.includes('data-overview-close-step="expenses"') && !focus.innerHTML.includes('Sehr langer'), 'Monatskarte bleibt kompakt bei großen Haushalten');
 
@@ -543,9 +608,9 @@ for (const [annualReason, snippet] of [
     ['invalid_evidence', 'Gespeicherte Belege für 2026 sind beschädigt. Bitte die Daten in der Balance prüfen.']
 ]) {
     renderOverview(doc, { ...focusBase, occasion: { ...focusBase.occasion, annualState: 'unclear', annualReason } });
-    assertEqual(doc.getElementById('overviewLead').textContent, snippet, 'Klärungslead nennt eigenen Grund: ' + annualReason);
-    assertEqual((focus.innerHTML.match(new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 2,
-        'Fokusbegründung und Abschlussdetail verwenden denselben Jahresgrund: ' + annualReason);
+    assert(!doc.getElementById('overviewLead').textContent.includes(snippet), 'Lead verdoppelt Klärungsgrund nicht: ' + annualReason);
+    assertEqual((focus.innerHTML.match(new RegExp(snippet.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length, 1,
+        'Fokus nennt den eigenen Jahresgrund genau einmal: ' + annualReason);
     assert(focus.innerHTML.includes('data-overview-annual') && focus.innerHTML.includes('Jahresstatus klären'), 'Klärung behält Jahresziel');
 }
 
@@ -575,8 +640,7 @@ for (const [old, fresh, expected] of [[600000, 400000, 1000000], [600000, 0, 600
     renderOverviewHistory(doc, { ...historyView, history: source });
     const chart = doc.getElementById('overviewHistoryChart').innerHTML, legend = doc.getElementById('overviewHistoryLegend').innerHTML;
     assertEqual((chart.match(/class="history-area history-aktien"/g) || []).length, 0, 'Ausschnitt erzeugt keine Aktienfläche');
-    assertEqual((legend.match(/class="(?:history-aktien|overview-allocation-aktien)"/g) || []).length, 1, 'Ein Aktienbetrag in Verlaufslegende');
-    assert(legend.includes(`<b>${expected === null ? '—' : formatDisplayNumber(expected, { unit: 'currency', fractionDigits: 0 })}</b>`), 'Absoluter Aktienendbetrag einschließlich Null/Unbekannt');
+    assert(!legend.includes('<b>') && !legend.includes('overview-allocation-'), 'Aufteilung mit Beträgen ist in den Verlaufsreiter verschoben');
     assert(!chart.includes('history-aktien_alt') && !chart.includes('history-aktien_neu') && !/NaN|Infinity/.test(chart), 'Keine doppelten Aktienflächen oder ungültige Geometrie');
     assertEqual(JSON.stringify(source), before, 'Verlaufsrenderer erhält Fachbytes');
 }
@@ -584,18 +648,18 @@ const overviewStyles = selector => Object.assign({}, ...rules('css/overview.css'
 for (const [sign, token] of [['positive', 'good'], ['negative', 'bad'], ['zero', 'text-main'], ['missing', 'text-muted']]) {
     assertEqual(overviewStyles(`.overview-history [data-history-sign="${sign}"]`).color, `var(--${token})`, 'Vorzeichenfarbe verwendet bestehenden Token: ' + sign);
 }
-assertEqual(overviewStyles('.overview-history .history-chart').height, '294px', 'Kompakte Übersichtshöhe unabhängig von Kartenbreite');
+assertEqual(overviewStyles('.overview-history .history-chart').height, '176px', 'Kompakte Übersichtshöhe unabhängig von Kartenbreite');
 assert(!historyCss.includes('min-width: 700px'), 'Gemeinsame SVGklasse erzwingt keine Mindestbreite in Kleinverläufen');
 for (const [value, sign] of [[25, 'positive'], [-25, 'negative'], [0, 'zero'], [null, 'missing']]) {
     renderOverviewHistory(doc, { ...historyView, history: { ...historyView.history,
         metrics: { ...historyView.history.metrics, change: value, adjusted: value } } });
     assertEqual((doc.getElementById('overviewHistoryMetrics').innerHTML.match(new RegExp(`data-history-sign="${sign}"`, 'g')) || []).length,
-        2, 'Beide Veränderungskennzahlen haben Vorzeichenstatus: ' + sign);
+        1, 'Veränderung behält Vorzeichenstatus: ' + sign);
 }
 renderOverviewHistory(doc, historyView);
-assertEqual((doc.getElementById('overviewHistoryMetrics').innerHTML.match(/class="history-metric"/g) || []).length, 5, 'Verlauf besitzt fünf Kennzahlen');
+assertEqual((doc.getElementById('overviewHistoryMetrics').innerHTML.match(/class="history-metric"/g) || []).length, 2, 'Startseitenverlauf besitzt höchstens zwei Kennzahlen');
 assert(doc.getElementById('overviewHistoryChart').innerHTML.includes('history-total-area'), 'Positive Anleihenreihe zeigt Gesamtfläche');
-assert(doc.getElementById('overviewHistoryLegend').innerHTML.includes('Anleihen') && doc.getElementById('overviewHistoryLegend').innerHTML.includes(formatDisplayNumber(10, { unit: 'currency', fractionDigits: 0 })), 'Legende zeigt Tagesendwert');
+assert(!doc.getElementById('overviewHistoryLegend').innerHTML.includes('Anleihen') && doc.getElementById('overviewHistoryMetrics').innerHTML.includes(formatDisplayNumber(110, { unit: 'currency', fractionDigits: 0 })), 'Gesamtfläche erklärt die Gesamtlinie; Tagesendwert steht in der Kennzahl');
 assert(historyStatusText().includes('Ungeprüfte Werktage') && historyStatusText().includes('rückwirkend angenommen'), 'Lücke und Cashbasis getrennt benannt');
 assert(doc.getElementById('overviewHistoryStand').textContent.includes('05.01.2026') && !doc.getElementById('overviewHistoryStand').textContent.includes('Kurse von heute'), 'Schlusskursstichtag getrennt vom heutigen Bestand');
 const holidayOverviewInput = { startDate: '2026-01-01', today: '2026-01-07',
@@ -608,17 +672,18 @@ for (const period of ['all', 'year', '12m']) {
     renderOverviewHistory(doc, { historyPeriod: period, history: { status: 'ready', startDate: '2026-01-01', hints: [],
         ...evaluateWealthHistory({ ...holidayOverviewInput, period }) } });
     const html = doc.getElementById('overviewHistoryMetrics').innerHTML;
+    assert(html.includes('seit 02.01.2026 bis 06.01.2026'), period + ': Tagesvergleich nennt die tatsächliche Basis statt Jahresendstand');
     assert(historyStatusText().includes('Messbeginn 02.01.2026 · vorläufig'), period + ': sichtbarer tatsächlicher Messbeginn und Vorläufigkeit');
     assert(!doc.getElementById('overviewHistorySource').textContent.includes('Messbeginn') && doc.getElementById('overviewHistorySource').textContent.startsWith('Schlusskurse und bestätigte Bestände'), period + ': Fußzeile ohne zweiten Messbeginn');
     const hints = [...doc.getElementById('overviewHistoryStatus').innerHTML.matchAll(/<span class="history-measurement" title="([^"]+)">([^<]+)<\/span>/g)];
     assertEqual(hints.length, 1, period + ': genau ein sichtbarer gemeinsamer Hinweis');
     assertEqual(hints[0][2], 'Messbeginn 02.01.2026 · vorläufig', period + ': gemeinsame Basis ohne Duplikate');
     assert(hints[0][1].includes('ersten bewertbaren Tagesabschluss'), period + ': Titel erklärt verkürzte Messbasis');
-    for (const value of [100, 0, 1300]) assert(html.includes(formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 })), period + ': berechneter Kennzahlenwert ' + value);
-    assert(html.includes('9,1') && html.includes('7,7') && html.includes('05.01.2026') && html.includes('06.01.2026'), period + ': Prozente und Hoch-/Tiefdaten sichtbar');
-    assert(!html.includes('Nicht verfügbar') && !html.includes('vorläufig'), period + ': alle fünf Kennzahlen ohne Vorläufigkeitsanhänge');
+    for (const value of [100, 1200]) assert(html.includes(formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 })), period + ': berechneter Kennzahlenwert ' + value);
+    assert(html.includes('9,1') && html.includes('06.01.2026') && !html.includes('Größter Rückgang'), period + ': Prozent und Endtag sichtbar; Vertiefung im Verlaufsreiter');
+    assert(!html.includes('Nicht verfügbar') && !html.includes('vorläufig'), period + ': beide Kennzahlen ohne Vorläufigkeitsanhänge');
     const values = [...html.matchAll(/<strong[^>]*>([^<]+)<\/strong>/g)].map(match => match[1].replace(/\s+/g, ' ').trim());
-    assertEqual(JSON.stringify(values), JSON.stringify(['+100 €', '0 €', '+100 €', '1.300 €', '−7,7 %']), period + ': alle fünf Feiertagskennzahlorakel bleiben exakt');
+    assertEqual(JSON.stringify(values), JSON.stringify(['1.200 €', '+100 €']), period + ': Tagesabschluss und Feiertagsveränderung bleiben exakt');
 }
 const completeHistory = { status: 'ready', startDate: '2026-01-01', hints: [], ...evaluateWealthHistory({
     ...holidayOverviewInput, profiles: [{ ...holidayOverviewInput.profiles[0], cashHistory: { version: 1, baselineValue: 100, entries: [{ date: '2026-01-01', value: 100 }] } }],
@@ -635,7 +700,7 @@ for (const state of [completeHistory, { ...historyView.history, measurementStart
     if (state.status !== 'ready') assert(!statusHtml.includes('history-measurement'), 'Fehlende oder beschädigte Historie behält keinen veralteten Hinweis');
 }
 assertEqual(doc.getElementById('overviewHistorySource').textContent,
-    'Schlusskurse und bestätigte Bestände; Tagesgeld aus erfassten Ständen. Rückgänge können auch Transfers enthalten. „Ohne Entnahmen gerechnet“ ist keine Renditeberechnung.', 'Fußzeile erhält vollständige fachliche Lesehilfe');
+    'Schlusskurse und bestätigte Bestände; Tagesgeld aus erfassten Ständen.', 'Fußzeile nennt die Grundlage; ausführliche Lesehilfe im Verlaufsreiter');
 renderOverviewHistory(doc, { ...historyView, historyReport: { status: 'running' } });
 assert(historyStatusText().includes('nachgeladen'), 'Laufender Abruf lässt Grafik sichtbar');
 renderOverviewHistory(doc, { ...historyView, historyReport: { status: 'cancelled' } });
@@ -805,7 +870,7 @@ assertEqual(readDailyPrices(pendingStorage).raw, newPrices, 'Erst bestätigter F
         'Bekannter Teilbetrag ist kein vollständiger Kennzahlenwert');
 }
 
-// Ausschnittlegende: gemischte Anlagen, derselbe letzte Tag und keine Ersatzwerte.
+// Aufteilung und Beträge stehen im Verlaufsreiter; die Übersicht behält den vollständigen Endwert.
 for (const unknownEnd of [false, true]) {
     const points = historyView.history.points.map((p, i, all) => ({ ...p, total: unknownEnd && i === all.length - 1 ? null : 212000,
         known: 212000, allocation: { aktien_alt: 80000, aktien_neu: 20000, geldmarkt: 50000, cash: 42000, gold: unknownEnd && i === all.length - 1 ? null : 20000, anleihe: 0 } }));
@@ -813,12 +878,9 @@ for (const unknownEnd of [false, true]) {
     const bytes = JSON.stringify(mixed);
     renderOverviewHistory(doc, { ...historyView, history: mixed });
     const legend = doc.getElementById('overviewHistoryLegend').innerHTML;
-    assert(legend.includes('Stand 05.01.2026') && legend.includes('history-total-key'), 'Ausschnitt nennt den echten Endtag und Gesamtwert als Linie');
-    for (const [type, amount] of [['aktien', 100000], ['geldmarkt', 50000], ['cash', 42000], ['gold', unknownEnd ? null : 20000], ['anleihe', 0]]) {
-        assert(legend.includes(`class="overview-allocation-${type}"`) && legend.includes(`<b>${amount === null ? '—' : formatDisplayNumber(amount, { unit: 'currency', fractionDigits: 0 })}</b>`), 'Ausschnittlegende übernimmt Balkenfarbe und Originalbetrag: ' + type);
-    }
-    assert(!legend.includes('history-total-area'), 'Gesamtfläche ist keine Anlagenposition');
-    assertEqual(JSON.stringify(mixed), bytes, 'Gemischte Legende erhält Eingangsbytes');
+    assert(legend.includes('history-total-key') && !legend.includes('<b>'), 'Gesamtfläche erklärt Gesamtlinie ohne weitere Betragskennzahlen');
+    assert(doc.getElementById('overviewHistoryMetrics').innerHTML.includes(unknownEnd ? '—' : '212.000'), 'Fehlender Endwert erhält keinen Ersatzbetrag');
+    assertEqual(JSON.stringify(mixed), bytes, 'Kompakte Anzeige erhält Eingangsbytes');
 }
 
 // Umsetzen des wirklichen Knotens erhält die bereits gebundene Delegation.
@@ -885,7 +947,7 @@ for (const now of [new Date(2027, 0, 15, 12), new Date(2027, 9, 15, 12)]) {
     assertEqual(JSON.stringify(actual), before, 'Startseitenrender verändert keine Quellen oder Enginewerte');
 }
 
-// Sichtbare Entnahmensumme und zugängliche Basisannahme bei fehlender Historie.
+// Tagesveränderung und zugängliche Basisannahme bei fehlender Historie.
 {
     const profiles = [{ id: 'a', currentCash: 80, lots: [], cashHistory: { version: 1, baselineValue: 100,
         entries: [{ date: '2026-01-02', value: 80 }] } }, { id: 'b', currentCash: 50, lots: [] }];
@@ -895,7 +957,7 @@ for (const now of [new Date(2027, 0, 15, 12), new Date(2027, 9, 15, 12)]) {
         renderOverviewHistory(doc, { history });
         const html = doc.getElementById('overviewHistoryMetrics').innerHTML;
         const values = [...html.matchAll(/<strong[^>]*>([^<]+)<\/strong>/g)].map(match => match[1].replace(/\s+/g, ' ').trim());
-        assertEqual(values[1], allMissing ? '0 €' : '20 €', 'Sichtbare Entnahmen behalten Haushaltsbeiträge');
+        assertEqual(values[1], allMissing ? '0 €' : '-20 €', 'Veränderung bleibt nach Entnahmen gerechnet');
         assert(historyStatusText().includes('vorläufig'), 'Anzeige behauptet keinen vollständigen Verlauf');
         assert(doc.getElementById('overviewHistoryStatus').innerHTML.includes('rückwirkend angenommene Tagesgeldstände'), 'Basisannahme bleibt als zugänglicher Erklärungstitel erhalten');
     }
@@ -916,8 +978,7 @@ for (const now of [new Date(2027, 0, 15, 12), new Date(2027, 9, 15, 12)]) {
 renderOverview(doc, { ...focusBase, exampleExpensesAllowed: false });
 assert(!focus.innerHTML.includes('data-overview-example'), 'Normalbetrieb erzeugt keine Beispielaktionen');
 renderOverview(doc, { ...focusBase, occasion: { ...focusBase.occasion, annualState: 'unclear' }, exampleExpensesAllowed: true });
-assert(focus.innerHTML.includes('data-overview-example="one"') && focus.innerHTML.includes('data-overview-example="all"'), 'Explizit geprüfter aktiver Probelauf erzeugt beide Ausgabenaktionen');
-assert(focus.innerHTML.includes('Beispiele für alle'), 'Sammelaktion trägt den vereinbarten kurzen Wortlaut');
+assert(!focus.innerHTML.includes('data-overview-example') && !focus.innerHTML.includes('Beispiele für alle'), 'Ungeklärter Jahresstatus bietet auch im Probelauf keine Ausgabenaktionen an');
 
 renderOverview(doc, monthly);
 assertEqual((focus.innerHTML.match(/Rund 5 Minuten/g) || []).length, 1, 'Monatskarte enthält genau einen Dauerhinweis');

@@ -169,7 +169,7 @@ export const HOUSEHOLD_PLAN_FIELDS = [
     },
     {
         "path": "horizonMethod",
-        "label": "Planungshorizont",
+        "label": "Horizont-Methode",
         "options": [
             [
                 "mean",
@@ -263,6 +263,7 @@ export const HOUSEHOLD_PLAN_FIELDS = [
 /** Karten folgen den gemeinsamen Gruppen; Zusatzanzeigen sind keine Planfelder. */
 export const HOUSEHOLD_PLAN_CARDS = Object.freeze({
     need: HOUSEHOLD_PLAN_GROUPS[0].label,
+    needAnnual: `${HOUSEHOLD_PLAN_GROUPS[0].label} pro Jahr`,
     strategy: `${HOUSEHOLD_PLAN_GROUPS[2].label} & ${HOUSEHOLD_PLAN_GROUPS[3].label.split(' & ')[0]}`
 });
 export const HOUSEHOLD_PLAN_DISPLAY_FIELDS = Object.freeze({
@@ -270,7 +271,7 @@ export const HOUSEHOLD_PLAN_DISPLAY_FIELDS = Object.freeze({
     'cape.asOf': Object.freeze({ label: 'CAPE-Datum', source: 'household-plan' }),
     'cape.source': Object.freeze({ label: 'CAPE-Quelle', source: 'household-plan' }),
     rebalancingBand: Object.freeze({ label: 'Gold-Umschichtungsband', unit: '%', source: 'profile' }),
-    dynamicFlexPreset: Object.freeze({ label: 'Dynamische Entnahme', options: DYNAMIC_FLEX_OPTIONS, source: 'derived' })
+    dynamicFlexPreset: Object.freeze({ label: 'Voreinstellung', options: DYNAMIC_FLEX_OPTIONS, source: 'derived' })
 });
 
 /** Textknoten ändern, Infoknöpfe und kleine Hilfekinder erhalten. */
@@ -371,7 +372,7 @@ function shiftDecimalText(value, places) {
     return sign + shifted.replace(/^0+(?=\d)/, '').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
 }
 
-export function formatHouseholdPlanValue(value, path, { editing = false } = {}) {
+export function formatHouseholdPlanValue(value, path, { editing = false, includeUnit = true } = {}) {
     const spec = descriptions.get(path) || HOUSEHOLD_PLAN_DISPLAY_FIELDS[path];
     if (value === null || value === undefined) return '';
     if (spec?.checkbox) return value ? 'An' : 'Aus';
@@ -380,7 +381,7 @@ export function formatHouseholdPlanValue(value, path, { editing = false } = {}) 
     if (editing) return shiftDecimalText(value, spec?.scale === 100 ? 2 : 0).replace('.', ',');
     const scaled = value * (spec?.scale || 1);
     const number = scaled.toLocaleString('de-DE', { minimumFractionDigits: path === 'goGoMultiplier' ? 2 : 0, maximumFractionDigits: 2 });
-    return number + (spec?.unit ? ' ' + spec.unit : '');
+    return number + (includeUnit && spec?.unit ? ' ' + spec.unit : '');
 }
 
 const bindings = new WeakMap();
@@ -393,7 +394,7 @@ export function writeBoundHouseholdPlanField(field, value) {
     const state = field && bindings.get(field);
     if (!state) return false;
     state.value = value;
-    field.value = state.text = formatHouseholdPlanValue(value, state.path, { editing: state.focused });
+    field.value = state.text = formatHouseholdPlanValue(value, state.path, { editing: state.focused, includeUnit: state.includeUnit });
     return true;
 }
 export function readHouseholdPlanField(field, path) {
@@ -408,7 +409,7 @@ export function readHouseholdPlanField(field, path) {
 }
 
 /** Bindet einmalig native Anker; reine Projektion/Fokus/Blur ruft onChange nie auf. */
-export function bindHouseholdPlanField({ doc, field, row, path, listen, onChange, onFocusStateChange = () => {}, nativeOnly = false } = {}) {
+export function bindHouseholdPlanField({ doc, field, row, path, listen, onChange, onFocusStateChange = () => {}, nativeOnly = false, includeUnit = true } = {}) {
     bindings.get(field)?.dispose?.();
     projectHouseholdPlanFieldLabel({ doc, field, path });
     const spec = descriptions.get(path), removers = [], buttons = [];
@@ -418,7 +419,7 @@ export function bindHouseholdPlanField({ doc, field, row, path, listen, onChange
         else node.addEventListener(kind, fn);
         removers.push(() => node.removeEventListener?.(kind, fn));
     };
-    const state = { path, value: undefined, text: undefined, focused: false, correcting: false, invalid: false };
+    const state = { path, value: undefined, text: undefined, focused: false, correcting: false, invalid: false, includeUnit };
     let visibleValues = null;
     bindings.set(field, state);
     let errorNode, segment;
@@ -466,7 +467,7 @@ export function bindHouseholdPlanField({ doc, field, row, path, listen, onChange
             const wasCorrecting = state.correcting;
             const value = readHouseholdPlanField(field, path); state.focused = false;
             state.correcting = false;
-            if (!state.invalid && (value === null || Number.isFinite(value))) field.value = state.text = formatHouseholdPlanValue(value, path);
+            if (!state.invalid && (value === null || Number.isFinite(value))) field.value = state.text = formatHouseholdPlanValue(value, path, { includeUnit });
             onFocusStateChange({ correctionChanged: wasCorrecting, blurredField: field, relatedTarget: event.relatedTarget });
         });
     }
@@ -482,7 +483,7 @@ export function bindHouseholdPlanField({ doc, field, row, path, listen, onChange
             if (force) state.correcting = false;
             state.value = value;
             if (spec.checkbox) field.checked = value;
-            else field.value = state.text = spec.options ? value : formatHouseholdPlanValue(value, path);
+            else field.value = state.text = spec.options ? value : formatHouseholdPlanValue(value, path, { includeUnit });
             sync();
         },
         sync(values, error = '') {

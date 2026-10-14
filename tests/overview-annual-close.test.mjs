@@ -296,8 +296,8 @@ const checkAction = (root, receipt) => {
     const section = root.querySelector('[data-annual-action-result]');
     assert(visible(section), 'Beschlossene Handlung steht in eigenem sichtbarem Element');
     const texts = dialogElements(section).map(node => node.textContent);
-    assert(texts.includes(`Handlungsanweisung ${receipt.year} (verbindlich)`), 'Handlung nennt das bestätigte Planjahr');
-    assert(texts.some(text => text.includes(receipt.adopted.action.type === 'NONE' ? 'Nichts tun – kein Handlungsbedarf' : receipt.adopted.action.title)), 'Handlung enthält den Titel aus dem persistierten adopted-Beleg');
+    assert(texts.includes(`Handlungsanweisung ${receipt.year} · festgeschrieben`), 'Handlung nennt das bestätigte Planjahr');
+    assert(texts.some(text => text.includes(receipt.adopted.action.type === 'NONE' ? 'Nichts tun – kein Handlungsbedarf' : receipt.adopted.action.title === 'Profilverbund-Transaktionen' ? 'Vorgeschlagene Verkäufe nach Person' : receipt.adopted.action.title)), 'Handlung enthält den Titel aus dem persistierten adopted-Beleg');
     for (let node = section; node; node = node.parent) {
         assert(!node.className?.includes('ds-note-error') && node.getAttribute('role') !== 'alert', 'Handlung wird nicht als Fehler gekennzeichnet');
     }
@@ -855,7 +855,7 @@ try {
             f.controls.showAction();
             const root = f.doc.getElementById('balanceAnnualClose'), section = root.querySelector('[data-annual-action-result]');
             assert(root.open && visible(section), missing + ': Fehlende beschlossene Handlung wird sichtbar erklärt');
-            assert(section.children[1].textContent.includes('fehlt eine bestätigte Handlungsanweisung'), missing + ': kein Rückfall auf Vorschau');
+            assert(dialogElements(section).some(node => node.textContent.includes('fehlt eine bestätigte Handlungsanweisung')), missing + ': kein Rückfall auf Vorschau');
             assert(!root.querySelector('[data-annual-preview]'), missing + ': kein als Beschluss ausgegebener Vorschauplan');
             await f.doc.getElementById('annualCloseBtn').fire('click');
             assertEqual(await storageEvidence(f), before, missing + ': Backendbytes und Snapshotbestand erhalten'); f.close();

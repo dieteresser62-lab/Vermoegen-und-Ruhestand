@@ -28,11 +28,14 @@ export function renderExpensesPage(doc, view, { corrupt = false, occasion = null
     doc.getElementById('expensesRemaining')?.classList.toggle('expense-negative', available && view.annualBudget !== null && view.stats.annualRemaining < 0);
     put('expensesCategoriesTitle', `Wofür? ${view.year} nach Kategorien`);
     const host = doc.getElementById('expensesCategories'); host.replaceChildren();
+    const largestCategory = view.categories.reduce((maximum, category) => Math.max(maximum, category.amount), 0);
     if (available && view.categories.length) for (const category of view.categories) {
         const row = doc.createElement('div'); row.className = 'expense-category';
         const name = doc.createElement('span'); name.textContent = category.name + (category.amount < 0 ? ' · Erstattung' : '');
         const track = doc.createElement('span'); track.className = 'expense-category-track'; track.setAttribute('aria-hidden', 'true');
-        const bar = doc.createElement('span'); bar.style.width = `${category.bar}%`; track.appendChild(bar);
+        const bar = doc.createElement('span');
+        bar.style.width = `${largestCategory > 0 ? Math.max(0, category.amount) / largestCategory * 100 : 0}%`;
+        track.appendChild(bar);
         const share = category.share > 0 && category.share < 0.5 ? '< 1' : Math.round(category.share);
         const value = doc.createElement('span'); value.className = 'expense-category-value'; value.textContent = `${euro(category.amount)} · ${share} %`;
         row.append(name, track, value); host.appendChild(row);

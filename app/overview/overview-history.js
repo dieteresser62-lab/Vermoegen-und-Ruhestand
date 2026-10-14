@@ -49,19 +49,15 @@ export function renderOverviewHistory(doc, model) {
     }).update(ready && history.points.length ? view : null);
     const legend = doc.getElementById('overviewHistoryLegend');
     const cropped = ready && wealthHistoryScale(view.points).floor > 0;
-    const endpoint = view?.points.at(-1);
-    if (legend) legend.innerHTML = ready ? (cropped && endpoint ? `<span class="history-legend-stand">Stand ${escapeHtml(day(endpoint.day))}</span>` : '')
-        + view.types.map(type => `<span><i class="${cropped ? 'overview-allocation-' : 'history-'}${type}"></i>${escapeHtml(cropped && type === 'cash' ? 'Tagesgeld' : HISTORY_TYPE_LABELS[type] || type)} <b>${escapeHtml(money(endpoint?.allocation[type]))}</b></span>`).join('')
+    if (legend) legend.innerHTML = ready ? (cropped ? '' : view.types.filter(type => view.points.some(point => point.allocation[type] > 0)).map(type => `<span><i class="history-${type}"></i>${escapeHtml(HISTORY_TYPE_LABELS[type] || type)}</span>`).join(''))
         + '<span><i class="history-total-key"></i>Gesamtwert</span><span><i class="history-buy-key"></i>Kauf</span><span><i class="history-sell-key"></i>Verkauf</span>' + (history.gaps.length ? '<span><i class="history-gap-key"></i>Ungeprüfte Werktage</span>' : '') : '';
     const metrics = doc.getElementById('overviewHistoryMetrics');
     const m = ready ? history.metrics : {};
     const qualifier = m.status === 'provisional' || m.status === 'complete' ? '' : ' · nicht vollständig bewertbar';
-    if (metrics) metrics.innerHTML = historyMetric('Veränderung', signed(m.change), percent(m.percent) + ' · nach Entnahmen' + qualifier, m.change ?? null)
-        + historyMetric('Entnahmen', money(m.withdrawals), 'Aus erfassten Tagesgeld-Rückgängen' + (m.withdrawals == null ? ' · Historie fehlt' : ''))
-        + historyMetric('Ohne Entnahmen gerechnet', signed(m.adjusted), percent(m.adjustedPercent) + qualifier, m.adjusted ?? null)
-        + historyMetric('Höchststand', money(m.peak?.value), m.peak ? 'am ' + day(m.peak.day) + qualifier : 'Nicht verfügbar')
-        + historyMetric('Größter Rückgang', m.drawdown ? '−' + percent(m.drawdown.percent) : '—', m.drawdown ? m.drawdown.percent === 0 ? 'Kein Rückgang' + qualifier : `${day(m.drawdown.from)} bis ${day(m.drawdown.to)}${qualifier}` : 'Nicht verfügbar');
-    set('overviewHistorySource', 'Schlusskurse und bestätigte Bestände; Tagesgeld aus erfassten Ständen. Rückgänge können auch Transfers enthalten. „Ohne Entnahmen gerechnet“ ist keine Renditeberechnung.');
+    const period = ready && Number.isInteger(history.measurementStart) ? `seit ${day(history.measurementStart)} bis ${day(history.range.end)} · ` : 'Noch keine bewertbare Vergleichsbasis · ';
+    if (metrics) metrics.innerHTML = historyMetric('Letzter Tagesabschluss', money(history?.end?.total), ready ? `am ${day(history.range.end)} · aus Beständen und Tageskursen` : 'Nicht verfügbar')
+        + historyMetric('Veränderung', signed(m.change), period + percent(m.percent) + ' · nach Entnahmen' + qualifier, m.change ?? null);
+    set('overviewHistorySource', 'Schlusskurse und bestätigte Bestände; Tagesgeld aus erfassten Ständen.');
 }
 
 const bindings = new WeakMap();

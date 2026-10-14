@@ -1,5 +1,31 @@
 import { detectDynamicFlexPreset } from '../shared/dynamic-flex-presets.js';
 import { syncDynamicFlexPresetSelection, refreshDynamicFlexControls } from '../simulator/simulator-main-dynamic-flex.js';
+import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
+import { UIUtils } from './balance-utils.js';
+
+/** Lesende Kacheln verwenden dieselben Werte wie die aktuelle Balancevorschau. */
+export function renderBalanceStrategyValues(doc, input, marketYear) {
+    if (!doc?.getElementById) return;
+    const set = (id, text) => { const node = doc?.getElementById(id); if (node) node.textContent = text; };
+    const currency = value => Number.isFinite(value) ? UIUtils.formatBalanceCurrency(value) : '—';
+    const price = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 2 }) : '—';
+    for (const [id, offset] of [['endeVJ', 0], ['endeVJ_1', 1], ['endeVJ_2', 2], ['endeVJ_3', 3]]) {
+        set(`balanceMarket-${id}-value`, price(input[id]));
+        set(`balanceMarket-${id}-detail`, String(marketYear - offset));
+    }
+    set('balanceMarket-ath-value', price(input.ath));
+    set('balanceMarket-ath-detail', Number.isFinite(input.jahreSeitAth)
+        ? input.jahreSeitAth === 0 ? 'aktuell'
+            : input.jahreSeitAth < 0.1 ? 'vor weniger als 0,1 Jahren'
+            : `vor ${formatDisplayNumber(input.jahreSeitAth)} Jahren` : 'Zeit seit Hoch nicht belegt');
+    set('balanceMarket-cape-value', `${Number.isFinite(input.marketCapeRatio) ? formatDisplayNumber(input.marketCapeRatio, { fractionDigits: 2, minimumFractionDigits: 0 }) : '—'} · ${Number.isFinite(input.inflation) ? formatDisplayNumber(input.inflation, { unit: 'percent' }) : '—'}`);
+    set('balanceAdopt-costs-value', [input.costBasisAlt, input.costBasisNeu, input.goldCost].every(Number.isFinite)
+        ? currency(input.costBasisAlt + input.costBasisNeu + input.goldCost) : '—');
+    set('balanceAdopt-costs-detail', 'Teilfreistellung je Tranche');
+    const frame = doc?.getElementById('balanceGoldBandFrame'), off = doc?.getElementById('balanceGoldOff');
+    if (frame) frame.dataset.goldActive = String(input.goldAktiv === true);
+    if (off) off.hidden = input.goldAktiv === true;
+}
 
 // Reiner DOM-Adapter. Werte und Sperren gehören weiterhin den nativen Controls;
 // nur ein ausdrücklicher Segmentklick löst deren bestehendes change aus.
@@ -163,7 +189,7 @@ export function bindBalancePresentationControls(root, { onParametersToggle = () 
             const preset = doc.getElementById('dynamicFlexPreset');
             const revealCustom = customRequested && !preset?.disabled;
             customRequested = false;
-            if (parameters && (revealCustom || preset?.value === 'custom' && lastPreset !== 'custom') && !parameters.open) parameters.open = true;
+            if (parameters && (revealCustom || lastPreset !== undefined && preset?.value === 'custom' && lastPreset !== 'custom') && !preset?.disabled && !parameters.open) parameters.open = true;
             lastPreset = preset?.value;
             const advanced = doc.getElementById('dynamicFlexShowAdvanced');
             if (parameters && advanced && parameters.open !== advanced.checked) onParametersToggle(parameters.open);
@@ -199,6 +225,7 @@ export function bindBalancePresentationControls(root, { onParametersToggle = () 
                 const description = ids.filter(id => id !== dynamicOffNote?.id)
                     .map(id => doc.getElementById(id)?.textContent || '').filter(Boolean).join(' ');
                 if (reason) {
+                    if (reason.getAttribute('data-field-state') !== state) reason.setAttribute('data-field-state', state);
                     if (reason.textContent !== description) reason.textContent = description;
                     if (reason.hidden !== !description) reason.hidden = !description;
                     setDescription(host, [...(description ? [reason.id] : []), ...(sharedOff ? [dynamicOffNote.id] : [])]);

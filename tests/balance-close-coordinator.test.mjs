@@ -29,7 +29,7 @@ try {
     const root = doc.getElementById('balanceAnnualClose');
     assertEqual(root.querySelectorAll('[data-close-dialog-step]').length, 6, 'Jahresdialog hat sechs Vorbereitungsschritte');
     const symbols = dialogElements(root).filter(node => node.className === 'close-dialog-step-symbol').map(node => node.textContent);
-    assertEqual(symbols.join(','), '1,2,–,4,5,6', 'Offene und unbestätigte Schritte behalten ihre Nummer; entfällt zeigt seinen Status');
+    assertEqual(symbols.join(','), '✓,2,–,4,5,6', 'Haken steht für angesehen; offene und unbestätigte Schritte behalten ihre Nummer');
     assert(!root.querySelector('[data-close-dialog-step="month"]') && !root.querySelector('[data-close-dialog-group]'), 'Kein siebter Schritt und keine Jahres-/Januargruppe');
     assert(!doc.getElementById('annualMonthStepConfirm'), 'Vorabzugang bietet keine schreibende Monatsbestätigung');
     assertEqual(root.querySelectorAll('[data-tagesgeld-person]').length, 2, 'Jahresendstand für jede Haushaltsperson genau einmal');

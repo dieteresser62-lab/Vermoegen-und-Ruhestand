@@ -1,62 +1,64 @@
-# German CPI research chain
+# Deutsche Verbraucherpreis-Forschungsreihe
 
-This directory pins the licensed source artifacts used to generate the Simulator's
-German annual consumer-price inflation series for 1925-2025.
+Die festgeschriebenen, lizenzierten Quelldateien liefern die deutsche jährliche
+Verbraucherpreisinflation des Simulators für 1925-2025.
 
-## Build
-
-Run:
+## Erzeugen und prüfen
 
 ```text
 npm run build:german-cpi-data
 npm run verify:german-cpi-data
 ```
 
-The build writes `app/simulator/german-cpi-chain.js`. Verification reconstructs
-the module from the pinned originals and fails if an original hash or the
-generated module differs.
+Der Build schreibt `app/simulator/german-cpi-chain.js`. Die Prüfung
+rekonstruiert das Modul aus den festgeschriebenen Originalen und bricht ab,
+wenn ein Originalhash oder das erzeugte Modul abweicht.
 
-## Source artifacts
+## Quelldateien
 
-| Artifact | SHA-256 | Use |
+| Datei | SHA-256 | Verwendung |
 | --- | --- | --- |
-| `../global-equity-research-chain/originals/JSTdatasetR6.xlsx` | `c1bb91fe56ea50d4f27af5c0fc897d481e89ae38ce41eaecab62134c9354981d` | German `cpi` levels for the 1925-1949 proxy segment |
-| `originals/destatis-vpi-lange-reihen-2025-06.xlsx` | `8c728e44fa400d762009fa34507a34e1fee3947641d2579484d7d040763b11f4` | Official annual levels and annual rates for 1950-2024 |
-| `originals/destatis-vpi-current-2026-07-10.html` | `82ab91a5e53db7cd74cdf4f7b4d85813e586fbd3ae0bbd3d01a6cb231b596743` | Official 2025 annual-average index and annual rate |
+| `../global-equity-research-chain/originals/JSTdatasetR6.xlsx` | `c1bb91fe56ea50d4f27af5c0fc897d481e89ae38ce41eaecab62134c9354981d` | Deutsche `cpi`-Indexstände für das Proxysegment 1925-1949 |
+| `originals/destatis-vpi-lange-reihen-2025-06.xlsx` | `8c728e44fa400d762009fa34507a34e1fee3947641d2579484d7d040763b11f4` | Amtliche Jahresindexstände und Jahresraten für 1950-2024 |
+| `originals/destatis-vpi-current-2026-07-10.html` | `82ab91a5e53db7cd74cdf4f7b4d85813e586fbd3ae0bbd3d01a6cb231b596743` | Amtlicher Jahresdurchschnittsindex und Jahresrate für 2025 |
 
-The Destatis long-series workbook has source vintage `2025-06`; the current
-HTML snapshot is pinned as of `2026-07-10`. The workbook is read from its machine-oriented
-`csv-611xx-01` and `csv-611xx-02` worksheets. The current HTML snapshot is
-read only from the two pinned total-index table entries for annual averages and
-annual change rates.
+Die Destatis-Arbeitsmappe mit den langen Reihen hat den Quellenstand
+`2025-06`; der aktuelle HTML-Stand ist auf `2026-07-10` festgeschrieben.
+Die Arbeitsmappe wird aus den maschinenorientierten Blättern `csv-611xx-01`
+und `csv-611xx-02` gelesen. Aus dem HTML-Stand werden ausschließlich die beiden
+festgeschriebenen Tabellenbereiche für den Gesamtindex ausgewertet:
+Jahresdurchschnitte und jährliche Veränderungsraten.
 
-## Series contract
+## Reihenvertrag
 
-- 1925-1949: percentage change calculated from consecutive JST R6 German CPI
-  levels; evidence class `proxy`. Normalized to 1938=126, the 1925-1948
-  levels are exact integers,
-  so the implied annual-rate resolution is only about 0.48-0.85 percentage
-  points rather than the 0.1-point resolution of the published Destatis rates.
-- 1950-1962: former West Germany, four-person households of workers and
-  employees with medium income; evidence class `official` with the population
-  qualifier `proxy_population`.
-- 1963-1991: former West Germany, all private households; evidence class
-  `official`.
-- 1992-2025: German Verbraucherpreisindex; evidence class `official`.
+- 1925-1949: prozentuale Veränderung aufeinanderfolgender deutscher
+  CPI-Indexstände aus JST R6; Evidenzklasse `proxy`. Bei einer Normierung auf
+  1938=126 sind die Indexstände für 1925-1948 ganzzahlig. Die daraus
+  abgeleiteten Jahresraten haben nur eine Auflösung von etwa 0.48-0.85
+  Prozentpunkten gegenüber 0.1 Prozentpunkten bei den veröffentlichten
+  Destatis-Raten.
+- 1950-1962: früheres Bundesgebiet, Vierpersonenhaushalte von Arbeitern und
+  Angestellten mit mittlerem Einkommen; Evidenzklasse `official` mit dem
+  Bevölkerungszusatz `proxy_population`.
+- 1963-1991: früheres Bundesgebiet, alle privaten Haushalte;
+  Evidenzklasse `official`.
+- 1992-2025: deutscher Verbraucherpreisindex; Evidenzklasse `official`.
 
-Every transition-year rate comes from one internally consistent source series.
-Published Destatis rates are cross-checked against rounded annual levels with a
-maximum tolerance of 0.06 percentage points.
-The 1948 Destatis value for the four-person household series is a second-half
-average, so the chain deliberately keeps JST through 1949 and starts Destatis
-with its published 1950 rate. The Harmonised Index of Consumer Prices
-(HICP/HVPI) is not part of this chain.
+Jede Rate an einem Reihenübergang stammt aus einer in sich konsistenten
+Quellenreihe. Die veröffentlichten Destatis-Raten werden gegen die gerundeten
+Jahresindexstände geprüft; die maximale Toleranz beträgt 0.06 Prozentpunkte.
+Der Destatis-Wert für 1948 aus der Vierpersonenhaushaltsreihe ist ein
+Durchschnitt des zweiten Halbjahres. Deshalb bleibt die Kette bis 1949 bei
+JST und beginnt Destatis mit der veröffentlichten Rate für 1950. Der
+Harmonisierte Verbraucherpreisindex (Harmonised Index of Consumer Prices,
+HICP/HVPI) gehört nicht zu dieser Kette.
 
-The proxy must not be read as an unrestricted market-price history. German
-price controls and the wartime price freeze materially affect 1936-1948.
-The 1949 JST level is the segment's unique non-integer endpoint and acts as a
-splice across the 1948 currency reform: the selected JST change is
-`+7.0352%`, while the Destatis former-West-German medium-income-household
-levels `28.5 -> 28.2` imply `-1.0526%`. The difference is `8.0878` percentage
-points. This is a documented proxy decision, not a claim that the JST rate is
-the official German 1949 inflation rate.
+Der Proxy bildet keinen uneingeschränkten Verlauf von Marktpreisen ab.
+Deutsche Preiskontrollen und der Preisstopp während des Krieges beeinflussen
+1936-1948 erheblich. Der JST-Indexstand für 1949 ist der einzige nicht
+ganzzahlige Endpunkt des Segments und überbrückt die Währungsreform von 1948.
+Die gewählte JST-Veränderung beträgt `+7.0352%`. Die Destatis-Indexstände
+`28.5 -> 28.2` für Haushalte mit mittlerem Einkommen im früheren Bundesgebiet
+ergeben dagegen `-1.0526%`. Die Differenz beträgt `8.0878` Prozentpunkte.
+Das ist eine dokumentierte Proxyentscheidung; die JST-Rate wird damit nicht
+als amtliche deutsche Inflationsrate für 1949 ausgewiesen.

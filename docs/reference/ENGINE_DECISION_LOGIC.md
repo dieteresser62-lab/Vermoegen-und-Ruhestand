@@ -1,277 +1,153 @@
-# Engine Decision Logic
+# Entscheidungsfolge der Engine
 
-Diese Datei beschreibt die fachliche Entscheidungslogik der Engine und der
-nachgelagerten Balance-/Simulator-Pfade. Ziel ist eine lesbare Uebersicht fuer
-fachliche Diskussionen, nicht eine vollstaendige Code-Dokumentation jeder
-Hilfsfunktion.
+[core.mjs](../../engine/core.mjs) koordiniert die Jahresentscheidung. Sie liefert Bedarf, Ziel-Liquidität, Aktion und Diagnose. Ein Liquiditätsziel allein löst noch keine Auffüllung aus; die Transaktionsregeln entscheiden, ob gehandelt wird.
 
-## 1. Zweck der Jahresentscheidung
+Eingabe- und Ergebnisformen stehen in der [Engine-Referenz](../../engine/README.md). [FACHKONZEPT](FACHKONZEPT.md) erklärt Formeln, Policies und Aussagegrenzen. [DATENVERTRAEGE](DATENVERTRAEGE.md) führt persistierte States und Belege. Die Entscheidungen hier betreffen den Rechenvorschlag, keine bestätigte Broker-Ausführung.
 
-Die Engine beantwortet pro Jahr im Kern vier Fragen:
+## Jahresfolge
 
-| Frage | Ergebnis |
-|---|---|
-| Wie hoch ist der geplante Bedarf? | `spendingResult` mit Floor/Flex/Guardrails |
-| Wie hoch soll die Liquiditaet sein? | `zielLiquiditaet` auf Basis von Profil, Bedarf und Markt |
-| Muss gehandelt werden? | `action.type`: `NONE` oder `TRANSACTION` |
-| Wenn gehandelt wird: woher und wohin? | `quellen`, `verwendungen`, Steuerdaten und Diagnose |
-
-Die fachliche Leitidee ist nicht "Liquiditaet immer auf Ziel auffuellen",
-sondern "nur handeln, wenn die Regeln einen echten Bedarf oder eine guenstige
-Rebalancing-Situation erkennen".
-
-## 2. Jahresablauf
+Core normalisiert und validiert Eingaben, bestimmt Vermögen und Markt und bereitet den Bedarf vor. Spending-Policies liefern die finale Entnahme; daraus entstehen Liquiditätsziel und Aktion. Auf Wunsch folgt die Drei-Topf-Finalisierung. Steuerabschluss und Flussprüfung gehen dem Folgestate und der Diagnose voraus. Das Diagramm zeigt diese Jahresfolge.
 
 ```mermaid
 flowchart TD
-    A["Jahresstart: Input + LastState"] --> B["Input normalisieren und validieren"]
-    B --> C["Marktanalyse"]
-    C --> D["Bedarf und Spending berechnen"]
-    D --> E["Ziel-Liquiditaet berechnen"]
-    E --> F["Transaktionsbedarf bestimmen"]
-    F --> G{"Transaktion noetig?"}
-
-    G -- "Nein" --> H{"Surplus-Rebalancing moeglich?"}
-    H -- "Ja" --> I["Ueberschuss-Liquiditaet investieren"]
-    H -- "Nein" --> J["Keine Aktion"]
-
-    G -- "Ja" --> K["Sale Engine: Verkaufsquellen und Steuern"]
-    K --> L{"3-Bucket aktiv?"}
-    L -- "Ja" --> M["3-Bucket-Postprocessing"]
-    L -- "Nein" --> N["Standard-Aktion"]
-
-    I --> O["Jahresergebnis"]
-    J --> O
-    M --> O
-    N --> O
+    A["Input und Vorjahresstate"] --> B["Normalisieren und validieren"]
+    B --> C["Vermögen und Markt bestimmen"]
+    C --> D["Bedarf und Dynamic Flex vorbereiten"]
+    D --> E["Spending und Policies"]
+    E --> F["Liquiditätsziel aus finaler Entnahme"]
+    F --> G["Aktion bestimmen"]
+    G --> H["Drei Töpfe bei Bedarf finalisieren"]
+    H --> I["Steuerabschluss und Flüsse prüfen"]
+    I --> J["Folgestate und Diagnose liefern"]
 ```
 
-Code-Mapping:
+Quellen: [core.mjs](../../engine/core.mjs), [InputValidator.mjs](../../engine/validators/InputValidator.mjs), [MarketAnalyzer.mjs](../../engine/analyzers/MarketAnalyzer.mjs), [SpendingPlanner.mjs](../../engine/planners/SpendingPlanner.mjs), [transaction-utils.mjs](../../engine/transactions/transaction-utils.mjs), [transaction-action.mjs](../../engine/transactions/transaction-action.mjs), [three-bucket-logic.mjs](../../engine/transactions/three-bucket-logic.mjs) und [tax-settlement.mjs](../../engine/tax-settlement.mjs).
 
-| Schritt | Modul |
-|---|---|
-| Jahresorchestrierung | `engine/core.mjs` |
-| Marktanalyse | `engine/analyzers/MarketAnalyzer.mjs` |
-| Spending | `engine/planners/SpendingPlanner.mjs` |
-| Ziel-Liquiditaet | `engine/transactions/transaction-utils.mjs` |
-| Transaktionsentscheidung | `engine/transactions/transaction-action.mjs` |
-| Verkauf/Steuern | `engine/transactions/sale-engine.mjs` |
-| 3-Bucket | `engine/transactions/three-bucket-logic.mjs` |
+| Schritt | Quelle und Ergebnis |
+| --- | --- |
+| Normalisierung/Validierung | `core.mjs`, `InputValidator.mjs`; ungültige Felder liefern `ValidationError` |
+| Vermögen/Markt | `core.mjs`, `MarketAnalyzer.mjs`; aktuelle Liquidität, Gesamtvermögen, Regime und Renditesignale |
+| Bedarf | `core.mjs`; Rentenabzug, statischer oder wirksamer dynamischer Flex, vorläufige Reichweite |
+| Entnahme | `SpendingPlanner.mjs`; finale finanzierte Entnahme und nächster Plannerstate |
+| Liquiditätsziel | `transaction-utils.mjs`; Ziel aus der final geplanten Nettoentnahme |
+| Aktion | `transaction-action.mjs`; keine Aktion, Auffüllung oder Umschichtung |
+| Drei Töpfe | `three-bucket-logic.mjs`; finalisierte Quellen/Verwendungen und Diagnose |
+| Jahresabgleich | `tax-settlement.mjs`, `core.mjs`; finale Steuer, Quellenattribution und geprüfte Flüsse |
+| Ausgabe | `core.mjs`; normalisierter Input, Kandidatenstate, Diagnose und UI-Werte |
 
-Die Spending-Rechnung kann zusätzlich `spendingResult.flexTrace` liefern, das
-bei ausdrücklich angeforderter Diagnose im bestehenden `ui.spending` ankommt.
-Diese eingefrorenen Momentaufnahmen lesen
-die tatsächlichen Flex-Raten und ihre Monatswirkung: Rohziel mit
-Vermögensdämpfung beziehungsweise Vorjahresbezug/Alarm, Glättung,
-Änderungsgrenzen, S-Kurve, Bären-/Runway-Caps, Guardrails, Mindest-Flex,
-Flex-Budget, finale Glättung, Safety/Notlage und Floor-geschützte Rundung.
-Positive Monatswirkungen sind Anhebungen, negative Kürzungen; der letzte
-Betrag entspricht dem tatsächlich finanzierten Netto-Flex aus dem Vermögen.
-Safety-Ziel und wirksamer Cap bleiben getrennt; der Rundungsabschlag nutzt
-den geschützten Endbetrag statt der ungeschützten Quantisierung. Ohne
-Netto-Flex entsteht keine künstliche Kürzung. Liste, Einträge und primitive
-Kennzahlen sind unveränderlich. Nicht endliche Diagnosekennzahlen wie Runway
-bei Bedarf null werden im Trace zu `null`; die Policy-Rechnung bleibt unverändert.
-Bestehende Persistenz- und Exportpfade erhalten keinen Trace.
-Die interne Planner-Option `includeFlexTrace: false` lässt dieselbe Rechnung
-ohne Collector laufen. `EngineAPI.simulateSingleYear` und `_internal_calculateModel`
-erfassen standardmäßig keinen Trace; der optionale dritte Parameter
-`{ includeFlexTrace: true }` schaltet die Diagnose ausdrücklich zu. Monte-Carlo-,
-Worker-, Sweep-, Backtest- und Replayaufrufe erzeugen somit keinen Collector.
-Handlungsentscheidungen, Entnahme-/Steuerwerte und Glättungsanker bleiben gleich. Nachweis:
-`tests/spending-flex-trace.test.mjs`; UI-/EXE-Abnahme erfolgt gesondert.
+Die vorläufige Runway wird vor den Spending-Policies aus dem noch ungekürzten Bedarf berechnet. Das finale Liquiditätsziel verwendet dagegen die geprüfte geplante Jahresentnahme. So kann eine Kürzung die spätere Transaktionsbasis ändern. Der geplante Entnahmevertrag wird über [planned-withdrawal-contract.js](../../types/planned-withdrawal-contract.js) aufgelöst; widersprüchliche Resultate werden zurückgewiesen.
 
-## 3. Liquiditaetsentscheidung
+## Bedarf und Flex-Trace
 
-Die Ziel-Liquiditaet wird dynamisch berechnet. Unterhalb des ATH kann das Ziel
-Richtung Mindest-Runway sinken; oberhalb des ATH kann der Puffer steigen. In
-schwierigeren Marktregimen wird Flex-Bedarf nur teilweise in die Zielrechnung
-einbezogen.
+Core rechnet Renteneinkommen zuerst gegen den Floor, einen Überschuss gegen den statischen Flex. Wirksames Dynamic Flex berechnet den Flex danach aus Vermögen, Horizont und erwarteter realer Rendite. Angeforderte Aktivierung, Safetyunterdrückung und Wiederanlauf bleiben in `ui.vpw` getrennt sichtbar.
+
+[SpendingPlanner.mjs](../../engine/planners/SpendingPlanner.mjs) bereitet Rohziel, Vermögensdämpfung und interne Flex-Glättung vor. Die anschließende [spending-policy-pipeline.mjs](../../engine/planners/spending-policy-pipeline.mjs) prüft die feste Reihenfolge `SpendingPolicyOrderV2`:
+
+1. `alarm` verarbeitet das Alarmsignal.
+2. `guardrails` wendet Spending-Grenzen an.
+3. `minimum_flex` hebt die Rate auf das finanzierbare Mindestziel an.
+4. `flex_budget` begrenzt sie durch das verfügbare Budget.
+5. `final_smoothing` wendet die abschließenden Änderungsgrenzen an.
+6. `safety_cap` prüft die strukturelle Obergrenze und eine schwere Flex-Notlage.
+
+Danach ermittelt der Planner die quantisierte Jahresentnahme und den tatsächlich finanzierten Flex. Floor-Schutz und Rundung gehören zum Endergebnis. Die Policy-Diagnose nennt unter anderem `finalLimitingPolicy`, Mindeststatus und Safetybindung. Ein Mindestziel ist deshalb nicht gleichbedeutend mit einer garantierten Auszahlung. Die fachlichen Bedingungen und FR-6 stehen im [Fachkonzept](FACHKONZEPT.md).
+
+Ein aktiver Safetykandidat hält Rohziel, Policy-Ziel, wirksamen Cap und Herkunft getrennt fest. Bestehende Abwärtsgrenzen können das Ziel schrittweise wirksam machen. Bei schwerer Flex-Notlage wird die Flex-Rate auf null gesetzt; der geplante Floor bleibt unverändert. Der nächste Glättungsanker kann dabei die Rate vor dem Notlageneingriff bewahren. Diagnose und Folgestate sind gemeinsam zu lesen.
+
+Das Notlage-Gate wird nach Mindest-Flex ausgewertet. Es verlangt gleichzeitig einen tiefen Bärenmarkt, einen realen Gesamtvermögensdrawdown über der Schwelle und eine kritische geschützte Portfolioentnahmequote. Es bereitet den Safetykandidaten vor; Flex-Budget und finale Glättung laufen anschließend weiterhin. Erst der abschließende Safety-Cap setzt bei aktiver Notlage Flex auf null. Ohne Notlage schützt ein normaler Safetykandidat das zulässige Mindestziel und respektiert die Änderungsgrenzen.
+
+Das Diagramm zeigt die Entnahme-Kette und die Vorbereitung des Safety-Caps durch das Notlage-Gate.
 
 ```mermaid
 flowchart TD
-    A["Aktuelle Liquiditaet und Ziel-Liquiditaet"] --> B{"Puffer/Runway kritisch?"}
-
-    B -- "Ja, Baer oder Recovery" --> C["Runway-Notfuellung Baer"]
-    B -- "Ja, neutral" --> D["Runway-Notfuellung neutral"]
-    B -- "Nein" --> E{"Nicht-Baerenmarkt?"}
-
-    E -- "Ja" --> F["Opportunistisches Rebalancing pruefen"]
-    E -- "Nein" --> G["Keine regulare Auffuellung"]
-
-    C --> H["Verkauf berechnen"]
-    D --> H
-    F --> I{"Bedarf oder Rebalancing ueber Schwelle?"}
-    I -- "Ja" --> H
-    I -- "Nein" --> J["Keine Aktion"]
-    G --> J
+    Alarm["Alarm und interne Flex-Rate vorbereiten"] --> Guardrails["Guardrails; bei aktivem Alarm ausgesetzt"]
+    Guardrails --> Minimum["Finanzierbaren Mindest-Flex prüfen"]
+    Minimum --> Gate{"Schwere Flex-Notlage nach allen drei Bedingungen?"}
+    Gate -->|"Ja"| Emergency["Safety-Ziel 0; Mindestschutz aufheben"]
+    Gate -->|"Nein"| Normal["Normalen Safetykandidaten mit Mindestziel schützen"]
+    Emergency --> Budget["Flex-Budget anwenden"]
+    Normal --> Budget
+    Budget --> Smoothing["Finale Glättung anwenden"]
+    Smoothing --> Safety["Safety-Cap anwenden; bei Notlage Flex auf 0"]
+    Safety --> Quantization["Entnahme quantisieren und Floor schützen"]
 ```
 
-Wichtige Zonen:
+Quellen: [SpendingPlanner.mjs](../../engine/planners/SpendingPlanner.mjs) und [alarm-policy.mjs](../../engine/planners/alarm-policy.mjs) für Alarm und Entnahme; [spending-policy-pipeline.mjs](../../engine/planners/spending-policy-pipeline.mjs) für Reihenfolge, Notlage-Gate und Safety-Cap; [spending-guardrails.mjs](../../engine/planners/spending-guardrails.mjs), [minimum-flex-policy.mjs](../../engine/planners/minimum-flex-policy.mjs), [flex-budget-policy.mjs](../../engine/planners/flex-budget-policy.mjs) und [final-rate-policy.mjs](../../engine/planners/final-rate-policy.mjs) für die einzelnen Policies; [spending-policy-helpers.mjs](../../engine/planners/spending-policy-helpers.mjs) für die geschützte Quantisierung.
 
-| Zone | Bedeutung | Typische Aktion |
-|---|---|---|
-| Komfortzone | Liquiditaet ausreichend | keine Aktion oder Surplus-Rebalancing |
-| Toleranzzone | unter Ziel, aber nicht kritisch | haeufig keine Aktion, ggf. Opportunismus |
-| Guardrail-Zone | Runway/Coverage unter Schwelle | begrenztes Auffuellen |
-| Notfallzone | Zahlungsfaehigkeit/Floor gefaehrdet | Mindestschwellen werden gelockert |
+[flex-trace.mjs](../../engine/planners/flex-trace.mjs) zeichnet nur auf, wenn der Aufrufer die Diagnose ausdrücklich anfordert. Die Momentaufnahmen enthalten Rohziel-/Vermögenswirkung, interne Glättung und Grenzen, Policywirkung und geschützte Rundung. Positive Monatswirkung bedeutet Anhebung, negative Kürzung. Ein nicht endlicher Diagnosewert wird `null`; das ändert die Policyrechnung nicht.
 
-## 4. Verkaufsquellen
+Der Trace endet beim finanzierten Netto-Flex aus dem Vermögen. Er ist keine Messreihe des ausgezahlten Haushalts-Flex über mehrere Simulatorjahre. [balance-flex-trace.js](../../app/balance/balance-flex-trace.js) liest ihn für die Diagnose; Persistenz- und Exportpfade übernehmen ihn nicht. Die Option und die Fehlerformen führt die [Engine-Referenz](../../engine/README.md#optionaler-flex-trace).
 
-Die Verkaufsreihenfolge haengt vom Kontext ab. Sie ist aktuell nicht als
-gemeinsame Zielquoten-Logik fuer Gold und Bonds modelliert, sondern durch
-Sonderregeln bestimmt.
+## Liquidität und Transaktionsbedarf
 
-| Kontext | Aktuelle Logik |
-|---|---|
-| Defensive Situation oder Emergency Sale | Gold, dann Bonds, dann Aktien |
-| Gold ueber Obergrenze | Gold, dann Aktien |
-| Standard-Sale-Engine | Bonds, dann Aktien, dann Gold |
-| 3-Bucket Bad Year | Aktienverkaeufe werden durch Bond-Verkaeufe ersetzt |
-| Simulator Forced Sale ohne 3-Bucket | Aktien, dann Gold |
-| Simulator Forced Sale mit 3-Bucket Bad Year | Bonds only |
+[transaction-action.mjs](../../engine/transactions/transaction-action.mjs) verbindet aktuelle Liquidität, Ziel, Markt und finale Entnahme. [transaction-utils.mjs](../../engine/transactions/transaction-utils.mjs) berechnet Ziele und Handelsgrenzen; [liquidity-runway-contract.js](../../types/liquidity-runway-contract.js) liefert die kanonische Reichweitenpolicy.
+
+| Prüfstelle | Folge |
+| --- | --- |
+| Puffer-/Runway-Unterschreitung in Bär oder Recovery | Notauffüllung und begrenzte Verkaufsplanung prüfen |
+| harte Runway-Unterschreitung im neutralen Pfad | neutrale Notauffüllung prüfen |
+| geeigneter Markt und ausreichender Handelsbetrag | opportunistische Auffüllung prüfen |
+| Gold unter Zielband | Kaufbedarf prüfen, bei fehlender Liquidität blockieren oder auf Überschuss begrenzen |
+| Gold über Zielband | Verkauf/Umschichtung prüfen |
+| überschüssige Liquidität | Surplus-Rebalancing prüfen |
+| Trigger oder Handelsgrenze nicht erfüllt | keine Aktion mit Blockgrund |
+
+[transaction-opportunistic.mjs](../../engine/transactions/transaction-opportunistic.mjs) berechnet die opportunistische Auffüllung. [transaction-surplus.mjs](../../engine/transactions/transaction-surplus.mjs) prüft die Investition eines Überschusses. Ein geringer Abstand zum Ziel kann in der Toleranz bleiben. Notfallpfade können andere Handelsgrenzen anwenden als reguläre Umschichtungen.
+
+Die Transaktionsdiagnose hält Trigger, Blockgrund, blockierten Betrag, Schwellen und potenzielle Aktion fest. `action.type` unterscheidet `NONE` und `TRANSACTION`. Die Anzeige muss einen unterdrückten Handel von einem fehlgeschlagenen Rechenvertrag unterscheiden.
+
+## Quellenwahl und Jahressteuer
+
+[sale-engine.mjs](../../engine/transactions/sale-engine.mjs) normalisiert verfügbare Tranchen, ordnet die Quellen und berechnet steuerliche Rohwerte. IDs und `sourceProfileId` bleiben im Breakdown erhalten. Innerhalb der Anlagegruppen gelten die dort implementierten Steuer-/Datumsordnungen.
+
+| Kontext der Sale-Engine | Reihenfolge im ausgeführten Code |
+| --- | --- |
+| defensiver Kontext oder Emergency Sale | Gold, Anleihen, Aktien |
+| Gold über Obergrenze | Gold, Aktien |
+| Standard | Anleihen, Aktien, Gold |
+
+Die Standardreihenfolge enthält Anleihen vor Aktien, obwohl ein Quellkommentar Aktien zuerst nennt. Auch der defensive Kommentar verkürzt die tatsächliche Reihenfolge. Für die Referenz gilt die ausführbare Quellenliste. Der Überbandpfad für Gold nimmt Anleihen nicht in diese Liste auf.
+
+Gold-Floor begrenzt reguläre Verkäufe. Notfallaufrufe können ihn umgehen. Goldziel, Band und Steuerannahme sind eigene Regeln; Gold und Anleihen werden nicht durch einen gemeinsamen Quotensolver geordnet. Die Modellgrenzen stehen im [Fachkonzept](FACHKONZEPT.md).
+
+Die Sale-Engine liefert Rohaggregate und vorläufige Steuerwerte. [tax-settlement.mjs](../../engine/tax-settlement.mjs) verrechnet den Jahresverlustvortrag, den Pauschbetrag und die steuerpflichtigen Gewinne. Core verteilt die finale Steuer auf Quellen, passt den Vorschlag an und prüft anschließend die Quellen-/Verwendungsflüsse. `taxSettlementDeferred` kennzeichnet eine ausdrücklich verschobene Finalisierung; sie ist kein bestätigter Jahresabschluss.
+
+Der Haushaltsweg kann eine nachgelagerte profilweise Steuerattribution benötigen. Der Simulator sammelt außerdem Rohwerte tatsächlich ausgeführter Pfadtransaktionen. Aufrufer dürfen eine vorläufige Sale-Steuer deshalb nicht zusätzlich zur finalen Jahressteuer abbuchen. Die Aufrufgrenzen führt das [Engine-README](../../engine/README.md#ergebnisse-und-diagnose).
+
+## Drei Töpfe
+
+[three-bucket-logic.mjs](../../engine/transactions/three-bucket-logic.mjs) ergänzt eine vorhandene Aktion. `decumulation.mode = 3_bucket_jilge` aktiviert den Pfad; Aktienrendite und `drawdownTrigger` bestimmen das schlechte Jahr.
+
+Das Diagramm zeigt den Quellenersatz in `applyThreeBucketLogic`; der anschließende Refill hat einen eigenen Aufruf.
 
 ```mermaid
 flowchart TD
-    A["Sale Engine"] --> B{"Defensiver Kontext?"}
-    B -- "Ja" --> C["Gold -> Bonds -> Aktien"]
-    B -- "Nein" --> D{"Gold ueber Obergrenze?"}
-    D -- "Ja" --> E["Gold -> Aktien"]
-    D -- "Nein" --> F["Bonds -> Aktien -> Gold"]
+    A["Vorhandene Aktion"] --> B{"Drei Töpfe aktiv?"}
+    B -->|"Nein"| Z["Aktion übernehmen"]
+    B -->|"Ja"| C{"Schlechtes Aktienjahr?"}
+    C -->|"Nein"| Z
+    C -->|"Ja"| D{"Positiver<br/>Netto-Verkaufsbedarf?"}
+    D -->|"Nein"| E["Verkaufsquellen leeren"]
+    D -->|"Ja"| F["Verkäufe auf verfügbare<br/>Anleihelots begrenzen"]
+    F --> G["Nettoerlös und ungedeckte<br/>Liquidität ausweisen"]
 ```
 
-Hinweis: Im Standardfall sagt der Code-Kommentar "Aktien zuerst", der Code
-ordnet aber `bondKeys` vor Aktien ein. Das ist eine fachliche Pruefstelle.
+Quelle: [three-bucket-logic.mjs](../../engine/transactions/three-bucket-logic.mjs), Funktion `applyThreeBucketLogic`.
 
-Innerhalb einer Assetklasse werden Detailtranchen nach dem kanonischen
-Kategorie-/Typ-Vertrag validiert und steuerbewusst geordnet. Doppelte IDs oder
-widerspruechliche Paare erreichen die Sale-Engine nicht. `trancheId` und
-`sourceProfileId` bleiben im Breakdown erhalten.
+`applyThreeBucketLogic` ersetzt im schlechten Jahr die betroffenen Verkaufsquellen durch Anleihen. Reichen sie nicht, wird `unmetLiquidity` ausgewiesen. Die Funktion selbst lässt im normalen/guten Jahr den Refill einem anderen Schritt. `appendBondReplenishment` und `finalizeThreeBucketAction` führen die ergänzende Auffüllung und finale Prüfung aus.
 
-## 5. Gold-Logik
+Die Diagnose hält Modus, schlechtes Jahr, Anleihebestand vor/nach der Aktion, Verkäufe, Refill und ungedeckte Liquidität fest. Balance zeigt die bereits finalisierte Aktion und attribuiert sie im Haushalt; der Simulator hat nach der Auszahlung einen eigenen Refillanschluss. Die jeweilige Modulreferenz legt fest, wer den Schritt ausführt.
 
-Gold wird ueber Zielquote, Rebalancing-Band und Floor gesteuert.
+## Nachgelagerte Simulator- und Balancepfade
 
-| Regel | Wirkung |
-|---|---|
-| Gold unter Untergrenze | Gold-Kaufbedarf kann entstehen |
-| Liquiditaet unter Ziel | Gold-Kauf wird blockiert bzw. auf Cash-Surplus begrenzt |
-| Gold ueber Obergrenze | Gold-Verkaufsbedarf kann entstehen |
-| Gold-Floor aktiv | normale Verkaeufe duerfen den Floor nicht unterschreiten |
-| Emergency/Notfall | Gold-Floor kann ignoriert werden |
+[simulator-engine-direct.js](../../app/simulator/simulator-engine-direct.js) prüft und führt den Vorschlag auf seinem kopierten Portfolio aus. Die finale Jahresentnahme und ein zusätzlicher Netto-Floormonat bilden die Liquiditätsdeckung vor der Auszahlung. Erst wird ein zulässiger Pflegebucketbeitrag geprüft, dann ein Forced Sale. Ein weiterer Verkaufspfad kann einen Auszahlungsausfall behandeln. Anleihe-Refill, Cashzinsen und Steuerabgleich folgen danach.
 
-```mermaid
-flowchart TD
-    A["Gold aktiv?"] -->|Nein| Z["Keine Gold-Sonderlogik"]
-    A -->|Ja| B["Zielwert und Band berechnen"]
-    B --> C{"Gold unter Band?"}
-    C -- "Ja" --> D["Gold-Kaufbedarf"]
-    C -- "Nein" --> E{"Gold ueber Band?"}
-    E -- "Ja" --> F["Gold-Verkaufsbedarf"]
-    E -- "Nein" --> G["Gold neutral"]
-    D --> H{"Liquiditaet unter Ziel?"}
-    H -- "Ja" --> I["Gold-Kauf blockieren oder begrenzen"]
-    H -- "Nein" --> J["Gold-Kauf aus Surplus/Transaktion moeglich"]
-```
+Forced Sales besitzen eigene Quellenregeln. Ohne Drei-Topf-Sonderfall können Aktien und Gold dienen; im schlechten Drei-Topf-Jahr arbeitet der Deckungspfad mit Anleihen. Das ist nicht dieselbe Quellenfolge wie im regulären Standardverkauf. Der Jahrespfad unterscheidet technischen Fehler von finanzieller Zahlungsunfähigkeit. Details stehen in der [Simulatorreferenz](SIMULATOR_MODULES_README.md#ein-simulatorjahr).
 
-## 6. 3-Bucket-Jilge
+Balance rechnet den Haushalt einmal und attribuiert die finalisierte Aktion auf die Eigentümerprofile. Das [Postprocessing](../../app/balance/balance-action-postprocessor.js) nimmt diese Aktion für die Anzeige entgegen, ohne einen zweiten Einzelprofil-Drei-Topf-Lauf auszuführen. Ein Vorschauergebnis schreibt keine reale Verkaufsausführung. [TRANCHEN_MODULES_README](TRANCHEN_MODULES_README.md#depot-und-ausgeführte-verkäufe) führt den Bestätigungsweg.
 
-Der 3-Bucket-Modus ist eine nachgelagerte Speziallogik. Die Engine erzeugt
-zunaechst eine normale Aktion. Danach kann 3-Bucket diese Aktion veraendern.
+## Grenzen der Entscheidung
 
-```mermaid
-flowchart TD
-    A["Normale Engine-Aktion"] --> B{"3-Bucket aktiv?"}
-    B -- "Nein" --> Z["Aktion bleibt unveraendert"]
-    B -- "Ja" --> C{"Aktienrendite < Drawdown-Trigger?"}
+Die wichtigsten Unterschiede für die Codepflege sind Quellenfolge, Gold-Floor, Drei-Topf-Ersatz und Simulator-Forced-Sale. Sie dürfen nicht zu einer vermeintlich einheitlichen Reservepolicy zusammengezogen werden. Eine geplante Entnahme, ein finanzierter Flexbetrag und eine tatsächlich bestätigte Auszahlung sind ebenfalls unterschiedliche Werte.
 
-    C -- "Ja" --> D["Bad Year"]
-    D --> E["Geplante Aktienverkaeufe messen"]
-    E --> F{"Bond-Tranchen vorhanden?"}
-    F -- "Ja" --> G["Netto-Bedarf nur aus Bonds decken"]
-    F -- "Nein" --> H["Unmet Liquidity erfassen"]
-
-    C -- "Nein" --> I["Good/Normal Year"]
-    I --> J{"Bondbucket unter Ziel?"}
-    J -- "Ja" --> K["Aktien verkaufen und Bonds auffuellen"]
-    J -- "Nein" --> Z
-```
-
-Wichtige Parameter:
-
-| Parameter | Bedeutung |
-|---|---|
-| `decumulation.mode` | aktiviert `3_bucket_jilge` |
-| `drawdownTrigger` | Schwelle fuer Bad Year |
-| `bondTargetFactor` | Ziel: Faktor mal Jahresentnahme |
-| `bondRefillThreshold` | Toleranz, ab wann Refill erfolgt |
-| `bondNominalReturn` | Legacy-Default aus der 3-Bucket-Konfiguration; der Simulator bewertet Bond-Tranchen mit dem jeweiligen `yearData.zinssatz` |
-
-## 7. Simulator-Zusatzlogik
-
-Der Simulator nutzt die Engine pro Jahr, fuehrt danach aber weitere
-Jahresmechaniken aus: Portfolio mutieren, Entnahme auszahlen, Forced Sales und
-Bond-Refill.
-
-Alle Mutationen erfolgen auf tiefen Kopien. Teilverkaeufe reduzieren Stueckzahl,
-Marktwert und Cost Basis desselben Simulationslots; Vollverkaeufe entfernen es,
-und Kaeufe erzeugen neue `simlot:`-Lots. Der profilgebundene Realbestand bleibt
-unveraendert.
-
-```mermaid
-flowchart TD
-    A["Engine simulateSingleYear"] --> B["3-Bucket Override anwenden"]
-    B --> C["Transaktion auf Portfolio anwenden"]
-    C --> D["Forced Shortfall vor Auszahlung berechnen"]
-    D --> E{"Liquiditaetsluecke?"}
-    E -- "Ja" --> F["Pflegebucket pruefen"]
-    F --> G["Forced Sale zur Liquiditaetsdeckung"]
-    E -- "Nein" --> H["Auszahlung aus Liquiditaet"]
-    G --> H
-    H --> I["Payout-Fallback pruefen"]
-    I --> J["3-Bucket Bond-Refill Postprocessing"]
-    J --> K["Cash-Zinsen und Jahresergebnis"]
-```
-
-Forced-Shortfall-Formel im Simulator:
-
-```text
-forcedShortfall =
-    max(0, JahresentnahmeTarget + 1 Monat Netto-Floor - aktuelle Liquiditaet)
-```
-
-## 8. Balance-App-Zusatzlogik
-
-Die Balance-App nutzt dieselbe Engine-Jahresentscheidung. Danach gibt es ein
-Postprocessing fuer Profilverbund und 3-Bucket.
-
-```mermaid
-flowchart TD
-    A["Balance liest Profil-/Haushaltsinputs"] --> B["Genau ein Engine simulateSingleYear"]
-    B --> C{"Profilverbund aktiv?"}
-    C -- "Ja" --> D["Haushaltsaktion einmal finalisieren"]
-    C -- "Nein" --> E["Single-Profil-Postprocessing"]
-    D --> F["Quellen, Steuern und Verwendungen auf Profile attribuieren"]
-    E --> G["Diagnose rendern"]
-    F --> G
-```
-
-Balance-Empfehlung und Simulatorergebnis sind schreibfrei gegen
-`depot_tranchen`. Eine reale Broker-Ausfuehrung wird nur im Profil-Assets-Manager
-ueber Vorschau und separate Bestaetigung reconciliert. Identische `actionId` plus
-identische Daten sind ein No-op; Profilwechsel, Ueberverkauf oder veralteter
-Vorschaustand blockieren.
-
-## 9. Bekannte fachliche Spannungen
-
-| Punkt | Aktueller Stand |
-|---|---|
-| Bonds vs. Gold | keine gemeinsame Reserve-Entscheidung nach relativer Ueber-/Untergewichtung |
-| 3-Bucket Bad Year | Bonds verdraengen Aktienverkaeufe, Gold wird in dieser Speziallogik nicht gleichrangig betrachtet |
-| Standard-Sale-Order | Code verkauft Bonds vor Aktien und Gold; Kommentar nennt Aktien zuerst |
-| Simulator Forced Sale | hat eigene Fallback-Reihenfolge, die nicht identisch mit der normalen Sale Engine ist |
-| Refill-Logik | Bond-Refill wird in guten Jahren separat aus Aktien finanziert |
-
-Diese Punkte sind keine Fehlerbeschreibung, sondern markieren Stellen, an denen
-fachliche Zielsetzung und technische Implementierung bewusst abgeglichen werden
-sollten.
+Fachliche Spannungen und Modellgrenzen werden in [FACHKONZEPT](FACHKONZEPT.md) bewertet. Der [wissenschaftliche Rahmen](WISSENSCHAFTLICHER_RAHMEN.md#guardrails-und-erholung) erklärt den Forschungsbezug der Entnahmeregeln und die [Grenze von Mindest-Flex](WISSENSCHAFTLICHER_RAHMEN.md#mindest-flex-und-einschränkung). Änderungen an der Reihenfolge oder an Fluss-/Steuerverträgen benötigen die betroffenen Aufrufer und Vertragsprüfungen aus dem [Test-README](../../tests/README.md#schutzprüfungen). Eine reine Diagnoseänderung darf die Entnahme, Aktion und Stateanker nicht verändern.

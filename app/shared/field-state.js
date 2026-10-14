@@ -32,7 +32,9 @@ export function setFieldState(field, state, reason = '') {
         const node = presentation.node;
         if (node.textContent !== reason) node.textContent = reason;
         if (node.getAttribute('data-field-state') !== state) node.setAttribute('data-field-state', state);
-        if (field.nextSibling !== node) field.parentNode.insertBefore(node, field.nextSibling);
+        // Einheitenrahmen enthält nur Wert und Einheit; Hinweise stehen darunter.
+        const anchor = field.parentNode.classList?.contains('ds-unit-frame') ? field.parentNode : field;
+        if (anchor.nextSibling !== node) anchor.parentNode.insertBefore(node, anchor.nextSibling);
         descriptions.push(id);
     } else {
         presentation.node?.remove();

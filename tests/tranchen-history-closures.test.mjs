@@ -1,4 +1,4 @@
-import { projectHistoryClosures, renderManagerWealthHistory } from '../app/tranches/tranchen-history-closures.js';
+import { projectHistoryClosures, renderManagerWealthHistory, managerHistoryLegend, dailyHistoryMetricsMarkup } from '../app/tranches/tranchen-history-closures.js';
 import { renderWealthHistorySvg } from '../app/tranches/tranchen-history-svg.js';
 import { historyDay } from '../app/tranches/tranchen-history-store.js';
 import { createManualWealthHistoryEntry, createAnnualWealthHistoryEntry } from '../types/wealth-history-contract.js';
@@ -32,16 +32,17 @@ const alone = projectHistoryClosures(null, state);
 assertEqual(alone.chart.points.length, 0, 'Ohne Tageslinie werden keine Tageswerte erfunden');
 assert(!renderWealthHistorySvg(alone.chart).includes('class="history-total"'), 'Marken allein zeichnen keine Tageslinie');
 assertEqual(projectHistoryClosures(null, {}).chart, null, 'Leerer Bestand bleibt leer');
-const nodes = Object.fromEntries(['managerWealthChart', 'managerWealthContext', 'managerWealthMetrics', 'managerWealthTable', 'managerWealthHint', 'managerWealthLegend', 'managerWealthDailyNote', 'managerWealthStatus'].map(id => [id, { innerHTML: '', textContent: '' }]));
+const nodes = Object.fromEntries(['managerWealthChart', 'managerWealthContext', 'managerWealthMetrics', 'managerWealthTable', 'managerWealthHint', 'managerWealthLegend', 'managerWealthDailyNote', 'managerWealthBasis', 'managerWealthStatus', 'managerDailyMetrics', 'managerDailyPeriod', 'managerDailyStatus', 'managerDailyAllocation', 'managerDailyInfo'].map(id => [id, { innerHTML: '', textContent: '' }]));
 const doc = { getElementById: id => nodes[id] };
 const registry = { profiles: { a: { data: { [CONFIG.STORAGE.LS_KEY]: JSON.stringify(state) } }, b: { data: {} } } };
 const model = { profiles: [{ id: 'a', name: 'A', history }, { id: 'b', name: 'B' }], householdHistory: history };
 renderManagerWealthHistory(doc, model, registry, 'a', { kind: 'person' });
-assertEqual(nodes.managerWealthMetrics.innerHTML, summaryMarkup(projection.rows), 'Drei Kennzahlen entsprechen bestehender Abschlussaufbereitung');
+assertEqual(nodes.managerWealthMetrics.innerHTML, summaryMarkup(projection.rows, { missingComparisonHint: 'Jahresvergleich braucht zwei erfasste Stände' }), 'Drei Kennzahlen entsprechen bestehender Abschlussaufbereitung');
 assertEqual(nodes.managerWealthTable.innerHTML, tableMarkup(projection.rows), 'Tabelle erhält Beträge, Spalten und Reihenfolge');
 assert(nodes.managerWealthContext.textContent.includes('bei A gespeichert'), 'Historische Zuordnung behauptet keinen heutigen Personenumfang');
 assert(nodes.managerWealthTable.innerHTML.indexOf('02.01.2027') < nodes.managerWealthTable.innerHTML.indexOf('31.12.2026'), 'Neueste Stände zuerst');
-assert(nodes.managerWealthMetrics.innerHTML.includes('Kein zweiter Stand im Jahr'), 'Kein erfundener Jahresvergleich');
+assert(nodes.managerWealthMetrics.innerHTML.includes('Jahresvergleich braucht zwei erfasste Stände'), 'Jahresvergleich erklärt die fehlenden erfassten Stände unabhängig von Tageskursen');
+assert(nodes.managerWealthBasis.textContent.includes('Kurve aus Beständen und Tageskursen') && nodes.managerWealthBasis.textContent.includes('Rauten aus erfassten Ständen'), 'Sichtbare Herkunft trennt berechnete Kurve und gespeicherte Stände');
 renderManagerWealthHistory(doc, model, registry, 'b', { kind: 'plan' });
 assertEqual(nodes.managerWealthTable.innerHTML, '', 'Profilwechsel entfernt fremde Abschlussstände');
 assert(nodes.managerWealthChart.innerHTML.includes('history-total'), 'Haushaltsansicht erhält Tageslinie unabhängig von Abschlussständen');
@@ -56,3 +57,51 @@ assertEqual(nodes.managerWealthStatus.textContent, 'Vermögensstand gesichert', 
 renderManagerWealthHistory(doc, model, registry, 'a', { kind: 'history', historyScope: 'household' });
 assertEqual(nodes.managerWealthStatus.textContent, '', 'Haushaltswechsel entfernt fremden Erfolg');
 assert(nodes.managerWealthDailyNote.textContent.startsWith('Tageslinie des Haushalts'), 'Haushaltswahl zeichnet Haushaltslinie');
+
+const croppedLegend = managerHistoryLegend(history);
+assert(croppedLegend.includes('Gesamtvermögen') && !croppedLegend.includes('history-cash'), 'Gesamtfläche bei positiver Untergrenze zeigt keine Anlagefarben');
+assert(!croppedLegend.includes('Jahresabschluss') && !croppedLegend.includes('Unterjährig') && !croppedLegend.includes('Kauf') && !croppedLegend.includes('Verkauf'), 'Nicht gezeichnete Marken fehlen in Legende');
+assert(managerHistoryLegend(projection.chart).includes('history-cash'), 'Abschlusswerte in Skalenbasis können die sichtbare Stapelung ermöglichen');
+const markersLegend = managerHistoryLegend(alone.chart);
+assert(markersLegend.includes('Jahresabschluss') && markersLegend.includes('Unterjährig') && !markersLegend.includes('Gesamtvermögen'), 'Stände ohne Kurve erklären nur gezeichnete Rauten');
+const visible = { ...history, types: ['cash', 'gold'], points: [{ ...history.points[0], total: 0, allocation: { cash: 0, gold: 0 } },
+    { ...history.points[0], day: day + 1, total: 80, allocation: { cash: 80, gold: 0 } }],
+    events: [{ kind: 'buy', day: day + 1 }, { kind: 'sell', day: day + 2 }], gaps: [[day, day]] };
+const visibleLegend = managerHistoryLegend(visible);
+assert(visibleLegend.includes('history-cash') && !visibleLegend.includes('history-gold'), 'Nur Anlageflächen mit sichtbarem Betrag stehen in Legende');
+assert(visibleLegend.includes('Kauf') && !visibleLegend.includes('Verkauf') && visibleLegend.includes('Ungeprüfte Werktage'), 'Legende zeigt nur bewertbar gezeichnete Ereignisse und vorhandene Schraffur');
+assertEqual(managerHistoryLegend(null), '', 'Kein Diagramm erhält keine Legende');
+renderManagerWealthHistory(doc, { profiles: [{ id: 'a', name: 'A' }] }, registry, 'a', { kind: 'history', historyScope: 'person' });
+assert(nodes.managerWealthBasis.textContent.startsWith('Keine bewertbare Tageskurve'), 'Marken ohne Kurse behaupten keine berechnete Tageskurve');
+renderManagerWealthHistory(doc, { profiles: [{ id: 'b', name: 'B' }] }, registry, 'b', { kind: 'history', historyScope: 'person' });
+assertEqual(nodes.managerWealthBasis.textContent, '', 'Leere Auswahl entfernt fremde Datenbasis');
+assertEqual(nodes.managerWealthLegend.innerHTML, '', 'Leere Auswahl entfernt fremde Legende');
+assertEqual(JSON.stringify([state, history]), before, 'Neue Erklärung und Legende ändern keine Datenquellen');
+
+// Die verschobenen Kennzahlen behalten dieselbe Tagesbewertung, auch bei abweichenden erfassten Ständen.
+const { evaluateWealthHistory } = await import('../app/tranches/tranchen-history-model.js');
+const start = historyDay('2026-01-01');
+const daily = evaluateWealthHistory({ startDate: '2026-01-01', today: '2026-01-07',
+    profiles: [{ id: 'a', currentCash: 100, cashHistory: { version: 1, baselineValue: 100, entries: [] },
+        lots: [{ trancheId: 'holiday', purchaseDate: '2025-12-15', shares: 10, purchasePrice: 200, type: 'anleihe', ticker: 'BOND', name: 'Mustermann' }] }],
+    prices: { symbols: { BOND: { currency: 'EUR', days: [start + 1, start + 4, start + 5], closes: [100, 120, 110], queried: [[start, start + 5]] } } } });
+frozen(daily);
+const values = html => [...html.matchAll(/class="expenses-card-value[^"]*">([^<]+)</g)].map(match => match[1].replace(/\s+/g, ' ').trim());
+assertEqual(JSON.stringify(values(dailyHistoryMetricsMarkup(daily))), JSON.stringify(['+100 €', '0 €', '+100 €', '1.300 €', '−7,7 %']), 'Alle fünf verschobenen Feiertagskennzahlen bleiben exakt');
+const dailyModel = { profiles: [{ id: 'a', name: 'Max Mustermann', history: daily }, { id: 'b', name: 'Erika Mustermann' }], householdHistory: daily };
+renderManagerWealthHistory(doc, dailyModel, registry, 'a', { kind: 'history', historyScope: 'household' });
+assert(nodes.managerDailyPeriod.innerHTML.includes('02.01.2026 · vorläufig') && nodes.managerDailyPeriod.innerHTML.includes('06.01.2026'), 'Eigene Tagesgruppe nennt Messbeginn, Status und Endtag');
+assert(!nodes.managerDailyPeriod.innerHTML.includes('2027'), 'Erfasste Stände erweitern niemals den Kennzahlenzeitraum');
+assert(nodes.managerDailyAllocation.innerHTML.includes('06.01.2026') && nodes.managerDailyAllocation.innerHTML.includes('1.100'), 'Aufteilung nennt den tatsächlichen Tagesendbetrag');
+assert(nodes.managerDailyInfo.innerHTML.includes('Transfers') && nodes.managerDailyInfo.innerHTML.includes('keine Renditeberechnung') && nodes.managerDailyInfo.innerHTML.includes('rückwirkend angenommen'), 'Vollständige Lesehilfe und Basisannahme im vorhandenen Infofeld');
+const dailyBytes = JSON.stringify(dailyModel);
+renderManagerWealthHistory(doc, dailyModel, registry, 'b', { kind: 'history', historyScope: 'person' });
+assertEqual(nodes.managerDailyAllocation.innerHTML, '', 'Person ohne Verlauf behält keine fremde Aufteilung');
+assert(nodes.managerDailyStatus.textContent.includes('Noch keine') && values(nodes.managerDailyMetrics.innerHTML).every(value => value === '—'), 'Fehlende Tageshistorie zeigt keine erfundenen Nullen');
+assertEqual(JSON.stringify(dailyModel), dailyBytes, 'Haushalts-/Personenwechsel verändert keine Tagesquelle');
+for (const missing of [false, true]) {
+    const cash = evaluateWealthHistory({ startDate: '2026-01-01', today: '2026-01-04', profiles: [
+        { id: 'a', currentCash: 80, lots: [], cashHistory: missing ? null : { version: 1, baselineValue: 100, entries: [{ date: '2026-01-02', value: 80 }] } },
+        { id: 'b', currentCash: 50, lots: [] }] });
+    assertEqual(values(dailyHistoryMetricsMarkup(cash))[1], missing ? '0 €' : '20 €', 'Entnahmen behalten Haushaltsbeiträge trotz fehlender Cashhistorie');
+}

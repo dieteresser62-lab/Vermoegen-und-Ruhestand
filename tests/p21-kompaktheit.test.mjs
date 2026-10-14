@@ -117,7 +117,9 @@ const overviewHtml = read('index.html');
 const overviewDoc = overviewDocument(overviewHtml);
 const grid = overviewDoc.getElementById('overviewNormal');
 const order = () => grid.children.slice(0, 3).map(node => node.id).join(',');
-assertEqual(order(), 'overviewFocus,overviewMetrics,overviewHistory', 'Startseiten-DOM beginnt mit Fokus, Kennzahlen und Verlauf');
+assertEqual(order(), 'overviewFocus,overviewMetrics,overviewAssetDetails', 'Startseiten-DOM beginnt mit Fokus, Kennzahlen und Personen');
+assert(overviewHtml.indexOf('id="overviewAssetDetails"') < overviewHtml.indexOf('id="overviewYearBand"')
+    && overviewHtml.indexOf('id="overviewYearBand"') < overviewHtml.indexOf('id="overviewHistory"'), 'Personen und Ausgaben stehen vor dem Verlauf');
 const metricCards = overviewDoc.getElementById('overviewMetrics').children;
 assertEqual(metricCards.map(node => node.getAttribute('aria-labelledby')).join(','), 'overviewAssetTitle,overviewBudgetTitle,overviewPlanMetricTitle', 'Kennzahlenfolge Vermögen, Monatsbudget, Plan');
 const brokenOrder = overviewDocument(overviewHtml);
@@ -127,7 +129,7 @@ const overviewCss = read('css/overview.css');
 assert(!/@media\s*\((?:min|max)-width/.test(overviewCss), 'Übersicht entscheidet neue Breiten an suite-content');
 assert(!overviewCss.includes('grid[data-occasion="play"]'), 'Kein Anlassraster verschiebt schlichte Hinweise ans Ende');
 const finalRule = selector => Object.assign({}, ...rules('css/overview.css', overviewCss).filter(rule => rule.selector === selector).map(rule => rule.declarations));
-assertEqual(finalRule('.overview-history .history-chart').height, '294px', 'Verlaufsfläche liegt im Zielbereich 292–296 px');
+assertEqual(finalRule('.overview-history .history-chart').height, '176px', 'Verlaufsfläche ist auf 176 px verkürzt');
 assertEqual(finalRule('.overview-metrics').display, 'grid', 'Drei Kennzahlen besitzen ihren eigenen schrumpfbaren Container');
 const balanceHtml = read('Balance.html'), balanceTree = tokenizeHTML(balanceHtml);
 const hero = balanceTree.elements.find(node => node.attrs.class?.includes('ov-hero'));
@@ -153,7 +155,7 @@ try {
     for (const kind of ['monthly', 'annual', 'play', 'start']) {
         const model = { ...base, occasion: { ...base.occasion, kind, annualState: 'open' } }, before = JSON.stringify(model);
         renderOverview(overviewDoc, model);
-        assertEqual(order(), 'overviewFocus,overviewMetrics,overviewHistory', kind + ': tatsächliche DOM-Reihenfolge bleibt stabil');
+        assertEqual(order(), 'overviewFocus,overviewMetrics,overviewAssetDetails', kind + ': tatsächliche DOM-Reihenfolge bleibt stabil');
         assertEqual(JSON.stringify(model), before, kind + ': Modellbytes bleiben erhalten');
         if (['play', 'start'].includes(kind)) {
             assert(!focus.className.includes('ds-card') && !focus.innerHTML.includes('overview-play') && !focus.innerHTML.includes('Durchspielen'), kind + ': Hinweise ohne Fokuskarte oder Simulatorwerkzeuge');
@@ -190,17 +192,17 @@ try {
         rows: [{ label: 'Monatsbudget', plan: '1.234 €', preview: '9.999 €' }] };
     for (const [comparison, value, source] of [
         [fixed, '1.234 €', 'festgeschrieben'],
-        [{ ...fixed, recordStatus: 'missing', previewStatus: 'current', notice: 'Noch kein festgeschriebener Plan', previewNotice: 'Gerechnet am 01.07.2027' }, '9.999 €', 'Vorschau · vorläufig'],
-        [{ ...fixed, recordStatus: 'missing', previewStatus: 'stale', notice: 'Noch kein festgeschriebener Plan', previewNotice: 'Vorschau noch nicht mit dem aktuellen Plan gerechnet' }, '9.999 €', 'noch nicht mit dem aktuellen Plan gerechnet'],
-        [{ ...fixed, recordStatus: 'invalid', previewStatus: 'current', notice: 'Der Jahresbeleg ist beschädigt.' }, '9.999 €', 'beschädigt. Vorschau · vorläufig'],
+        [{ ...fixed, recordStatus: 'missing', previewStatus: 'current', notice: 'Noch kein festgeschriebener Plan', previewNotice: 'Gerechnet am 01.07.2027' }, '9.999 €', 'Jahresabschluss-Vorschau'],
+        [{ ...fixed, recordStatus: 'missing', previewStatus: 'stale', notice: 'Noch kein festgeschriebener Plan', previewNotice: 'Vorschau noch nicht mit dem aktuellen Plan gerechnet' }, '9.999 €', 'Vorschau veraltet'],
+        [{ ...fixed, recordStatus: 'invalid', previewStatus: 'current', notice: 'Der Jahresbeleg ist beschädigt.' }, '9.999 €', 'beschädigt'],
         [{ ...fixed, recordStatus: 'invalid', previewStatus: 'missing', notice: 'Der Jahresbeleg ist beschädigt.' }, '—', 'beschädigt'],
-        [{ ...fixed, recordStatus: 'missing', previewStatus: 'missing', notice: 'Noch kein festgeschriebener Plan' }, '—', 'keine Vorschau']
+        [{ ...fixed, recordStatus: 'missing', previewStatus: 'missing', notice: 'Noch kein festgeschriebener Plan' }, '—', 'Für 2027 in Balance rechnen']
     ]) {
         renderOverview(overviewDoc, { ...base, planComparison: comparison });
         assertEqual(overviewDoc.getElementById('overviewBudgetValue').textContent, value, 'Budgetkennzahl priorisiert belegte Quelle: ' + source);
         assert(overviewDoc.getElementById('overviewBudgetSource').textContent.includes(source), 'Budgetkennzahl zeigt Herkunft/Leerstand: ' + source);
     }
-    assertEqual(overviewDoc.getElementById('overviewPlanMetricValue').textContent, '—', 'Leerer Plan bekommt kein scheinbar bestätigtes Jahr');
+    assertEqual(overviewDoc.getElementById('overviewPlanMetricValue').textContent, 'Noch kein Jahresplan', 'Leerer Plan zeigt den tatsächlichen Zustand');
     assertEqual(JSON.stringify(records), original, 'Gruppieren, Aufklappen und Kennzahlen erhalten Finanzrecords');
     await PersistenceFacade.flush();
     assertEqual(overviewWrites, 0, 'Rendering und native Details schreiben keine Fachdaten');
@@ -217,7 +219,7 @@ const depotLinks = managerTree.elements.filter(node => node.attrs.href === '#man
 assertEqual(depotLinks.length, 1, 'Genau ein Depot-Sprung im sichtbaren Personenansichtskopf');
 assertEqual(managerNode('managerSectionNav').attrs.role, 'tablist', 'Keine zusätzliche Sprungleiste');
 const managerCss = read('css/personen-vermoegen.css');
-assert(managerCss.includes('@container manager (min-width: 1280px)') && managerCss.includes('grid-template-columns: minmax(0, 1fr) minmax(0, 2fr)'), 'Plananfang und Haushaltsvermögen stehen ab nutzbarer Inhaltsbreite nebeneinander');
+assert(managerCss.includes('.pv-plan-overview .pv-household-grid { grid-template-columns: repeat(3, minmax(0, 1fr))') && managerCss.includes('#managerPlanPanel { display: grid; grid-template-columns: minmax(0, 1fr)'), 'Vermögenskarten stehen nebeneinander, die Bedarfszeile folgt über volle Breite');
 const simulatorTree = tokenizeHTML(read('Simulator.html'));
 const resultAnswers = simulatorTree.elements.find(node => node.attrs.id === 'overviewMonteCarloAnswers');
 const mcOverview = simulatorTree.elements.find(node => node.attrs.id === 'overviewMonteCarlo');

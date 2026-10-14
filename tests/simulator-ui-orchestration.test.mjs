@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PersistenceFacade, persistenceStorage } from '../app/shared/persistence-facade.js';
-import { getPageNavigationGuard } from '../app/shared/navigation-guard-dialog.js';
 import strict from 'node:assert/strict';
 import { syncSelectionText } from '../app/shared/designsystem-selection-text.js';
 import { bindHouseholdPlanField, readBoundHouseholdPlanField, writeBoundHouseholdPlanField } from '../app/shared/household-plan-fields.js';
@@ -166,21 +165,6 @@ class MockDocument {
 }
 
 
-function installResetDialog(doc) {
-    for (const id of ['navigationGuardDialog', 'navigationGuardTitle', 'navigationGuardDescription', 'navigationGuardStay', 'navigationGuardLeave', 'suiteNavigationStatus']) {
-        const el = doc.register(new MockElement(id, 'button'));
-        el.isConnected = true;
-        el.focus = () => { doc.activeElement = el; };
-        el.showModal = () => { el.open = true; };
-        el.close = () => { el.open = false; (el.listeners.close || []).slice().forEach(fn => fn()); };
-        el.removeEventListener = (type, fn) => { el.listeners[type] = (el.listeners[type] || []).filter(current => current !== fn); };
-    }
-    return async id => {
-        for (let i = 0; i < 100 && !doc.getElementById('navigationGuardDialog').open; i++) await Promise.resolve();
-        (doc.getElementById(id).listeners.click || []).slice().forEach(fn => fn());
-    };
-}
-
 function createLocalStorageMock() {
     const store = new Map();
     return {
@@ -293,7 +277,6 @@ async function runSimulatorUiOrchestrationTests() {
     const [
         mainModule,
         tabsModule,
-        resetModule,
         partnerModule,
         stressModule,
         persistModule,
@@ -307,7 +290,6 @@ async function runSimulatorUiOrchestrationTests() {
     ] = await Promise.all([
         import('../app/simulator/simulator-main.js'),
         import('../app/simulator/simulator-main-tabs.js'),
-        import('../app/simulator/simulator-main-reset.js'),
         import('../app/simulator/simulator-main-partner.js'),
         import('../app/simulator/simulator-main-stress.js'),
         import('../app/simulator/simulator-main-input-persist.js'),
@@ -350,233 +332,6 @@ async function runSimulatorUiOrchestrationTests() {
         assert(sweepButton.classList.contains('active'), 'Geklickter Tab-Button wird aktiviert');
         assert(!overviewPanel.classList.contains('active'), 'Vorheriges Panel wird deaktiviert');
         assert(sweepPanel.classList.contains('active'), 'Ziel-Panel wird aktiviert');
-    }
-
-    console.log('Test 3: reset button removes only simulator persistence keys');
-    {
-        const resetBtn = registerElement(documentRef, 'resetBtn', { tagName: 'button' });
-        const profileStatus = registerElement(documentRef, 'simProfileStatus');
-        let reloadCalls = 0;
-        window.location.reload = () => { reloadCalls += 1; getPageNavigationGuard().revokeNative(); };
-        persistenceStorage.setItem('sim_startFloorBedarf', '24000');
-        persistenceStorage.setItem(
-            householdNeedsModule.HOUSEHOLD_SIMULATOR_NEEDS_STORAGE_KEY,
-            JSON.stringify({ schemaVersion: 1, startFloorBedarf: '24002' })
-        );
-        persistenceStorage.setItem('profile_name', 'nicht loeschen');
-        persistenceStorage.setItem('rs_profiles_v1', JSON.stringify({ version: 1, profiles: {
-            a: { meta: { id: 'a', name: 'Synthetischer Reset' }, data: {
-                profile_name: 'nicht loeschen', sim_startFloorBedarf: '24000'
-            } }
-        } }));
-        persistenceStorage.setItem('rs_current_profile', 'a'); persistenceStorage.setItem('rs_active_profile', 'a');
-
-        resetModule.initResetButton({ requestConfirmation: () => true });
-        const choose = installResetDialog(documentRef), guard = getPageNavigationGuard();
-        const result = guard.register('reset-result', { read: () => ({ result: true }) });
-        const declined = Promise.all(resetBtn.listeners.click.map(handler => handler()));
-        choose('navigationGuardStay'); await declined;
-        assertEqual(persistenceStorage.getItem('sim_startFloorBedarf'), '24000', 'Simulator-Resetablehnung erhält die echten Einstellungen');
-        assertEqual(reloadCalls, 0, 'Simulator-Resetablehnung lädt nicht neu');
-        result.unregister();
-        await Promise.all(resetBtn.listeners.click.map(handler => handler()));
-
-        assertEqual(persistenceStorage.getItem('sim_startFloorBedarf'), null, 'Reset entfernt sim_-Keys');
-        const resetHouseholdNeeds = householdNeedsModule.readHouseholdSimulatorNeedsState();
-        assertEqual(resetHouseholdNeeds.status, 'profile_default', 'Reset deaktiviert den Haushaltsbedarf-Override');
-        assertEqual(resetHouseholdNeeds.values, null, 'Reset hinterlaesst keine wirksamen Haushaltswerte');
-        assertEqual(persistenceStorage.getItem('profile_name'), 'nicht loeschen', 'Reset laesst fremde Keys unveraendert');
-        assertEqual(reloadCalls, 1, 'Reset loest genau einen Reload aus');
-
-        const originalFlush = PersistenceFacade.flush;
-        const originalConsoleError = console.error;
-        PersistenceFacade.flush = async () => { throw new Error('synthetic flush failure'); };
-        console.error = () => {};
-        resetBtn.disabled = false;
-        reloadCalls = 0;
-        await Promise.all(resetBtn.listeners.click.map(handler => handler()));
-        assert(profileStatus.textContent.includes('nicht dauerhaft gespeichert'),
-            'Fehlgeschlagener Reset-Flush wird sichtbar gemeldet');
-        assertEqual(reloadCalls, 0, 'Fehlgeschlagener Reset-Flush laedt die Seite nicht neu');
-        assertEqual(resetBtn.disabled, false, 'Reset bleibt nach Flush-Fehler erneut ausfuehrbar');
-        PersistenceFacade.flush = originalFlush;
-        console.error = originalConsoleError;
-        let finish;
-        PersistenceFacade.flush = () => new Promise(resolve => { finish = resolve; });
-        const writing = Promise.all(resetBtn.listeners.click.map(handler => handler()));
-        for (let i = 0; i < 20; i++) await Promise.resolve();
-        assert(guard.reasons().some(reason => reason.phase === 'commit'), 'Echter Simulatorreset schützt den offenen Flush');
-        assertEqual(await guard.prepare(), null, 'Appnavigation kann Simulatorresetflush nicht überholen');
-        (documentRef.listeners.input || []).forEach(handler => handler({ target: resetBtn }));
-        finish(true); await writing;
-        assertEqual(reloadCalls, 0, 'Neue Eingabe nach Simulatorreset-Zustimmung verhindert Reload');
-        assertEqual(resetBtn.disabled, false, 'Verworfene Simulatorreset-Zustimmung erlaubt erneuten Versuch');
-        PersistenceFacade.flush = originalFlush;
-        await PersistenceFacade.flush();
-        await Promise.all(resetBtn.listeners.click.map(handler => handler()));
-        assertEqual(reloadCalls, 1, 'Explizite Wiederholung lädt den bestätigten Simulatorreset einmal');
-        // Das Reload-Doppel ersetzt keine Module; die nächste Prüfung simuliert den neuen Cache.
-        PersistenceFacade.resetPersistenceRuntimeForTests();
-    }
-
-
-    console.log('Gezählte Resetabschlussprüfungen mit echtem Handler und Adapter');
-    {
-    const savedDocument = global.document, savedWindow = global.window, savedLocation = global.location, savedStorage = global.localStorage;
-    const originalFlush = PersistenceFacade.flush, originalError = console.error;
-    for (const outcome of ['input', 'change', 'foreign', 'reloadthrow', 'false', 'throw', 'cancel', 'confirm', 'success']) {
-        let mutations = 0, reloads = 0, batches = 0, flushes = 0, release, fail = outcome === 'throw';
-        const documentRef = new MockDocument();
-        installBrowserGlobals(documentRef, createLocalStorageMock());
-        const button = registerElement(documentRef, 'resetBtn', { tagName: 'button' });
-        registerElement(documentRef, 'simProfileStatus');
-        const ordinary = registerElement(documentRef, 'horizonYears', { value: '30' });
-        const ordinaryExisting = registerElement(documentRef, 'mcSeed', { value: '123' });
-        const household = registerElement(documentRef, 'startFloorBedarf', { value: '24000' });
-        registerElement(documentRef, 'startFlexBedarf', { value: '12000' });
-        registerElement(documentRef, 'minimumFlexAnnual', { value: '6000' });
-        const householdKey = householdNeedsModule.HOUSEHOLD_SIMULATOR_NEEDS_STORAGE_KEY;
-        const ackKey = householdNeedsModule.HOUSEHOLD_SIMULATOR_NEEDS_WARNING_ACK_KEY;
-        const records = { sim_startFloorBedarf: '24000', sim_mcSeed: '123', [householdKey]: JSON.stringify({ schemaVersion: 1, mode: 'profile_default', source: 'test' }), [ackKey]: 'alte Quittierung', unrelated: 'erhalten' };
-        records.rs_profiles_v1 = JSON.stringify({ version: 1, profiles: { a: {
-            meta: { id: 'a', name: 'Synthetischer Reset' }, data: { sim_startFloorBedarf: '24000', sim_mcSeed: '123', profile_tagesgeld: '12345' }
-        } } });
-        records.rs_current_profile = 'a'; records.rs_active_profile = 'a';
-        const runReset = () => button.listeners.click[0]();
-        const initial = JSON.stringify(records);
-        const choose = installResetDialog(documentRef), guard = getPageNavigationGuard();
-        const status = documentRef.getElementById('suiteNavigationStatus');
-        const guardMessages = [];
-        Object.defineProperty(status, 'textContent', { get() { return guardMessages.at(-1) || ''; }, set(value) { guardMessages.push(value); }, configurable: true });
-        const adapter = { async loadAll() { return { ...records }; }, async saveBatch({ deletes, upserts }) {
-            batches++; await new Promise(resolve => { release = resolve; });
-            if (fail) throw new Error('SYNTHETIC_RESET_WRITE');
-            deletes.forEach(key => { delete records[key]; }); upserts.forEach(([key, value]) => { records[key] = value; });
-        } };
-        PersistenceFacade.resetPersistenceForTests(adapter);
-        await PersistenceFacade.init({ installLifecycleHooks: false });
-        PersistenceFacade.flush = async () => { flushes++; if (outcome === 'false' && flushes === 1) return false; return originalFlush(); };
-        window.location.reload = () => { if (outcome === 'reloadthrow' && reloads === 0) { reloads++; throw new Error('SYNTHETIC_RELOAD'); } reloads++; guard.revokeNative(); };
-        persistModule.initInputPersistence();
-        household.dataset.householdNeedLastValidValue = '24000';
-        const baseline = household.dataset.householdNeedLastValidValue;
-        // Zählt die tatsächliche Haushaltsschreibmutation vor Installation der Sperre.
-        const originalSet = persistenceStorage.setItem;
-        persistenceStorage.setItem = (key, value) => { if (key === householdKey && JSON.parse(String(value)).source === 'reset') mutations++; return originalSet(key, value); };
-        resetModule.initResetButton({ requestConfirmation: () => true });
-        console.error = (...args) => { if (outcome === 'cancel') logs.push(args); };
-        const logs = [];
-        let provider;
-        if (outcome === 'cancel') provider = guard.register('failed-cancel', { read: () => ({ phase: 'running', operationId: 1 }), cancel: () => false });
-        if (outcome === 'confirm') { button.listeners.click = []; resetModule.initResetButton({ requestConfirmation: () => false }); }
-        const task = runReset();
-        if (outcome === 'cancel') choose('navigationGuardLeave');
-        for (let i = 0; i < 100; i++) await Promise.resolve();
-        if (['cancel', 'confirm'].includes(outcome)) {
-            const result = await task;
-            assertEqual(result.status, 'cancelled', `${outcome}: Vorbereitungsabbruch korrekt`);
-            assertEqual(mutations, 0, `${outcome}: keine Resetmutation`);
-            assertEqual(flushes, 0, `${outcome}: kein Resetflush`);
-            assertEqual(batches, 0, `${outcome}: kein Adapterwrite`);
-            assertEqual(reloads, 0, `${outcome}: kein Reload`);
-            assertEqual(JSON.stringify(records), initial, `${outcome}: Backend unverändert`);
-            assertEqual(JSON.stringify(PersistenceFacade.exportAllSync().records), initial, `${outcome}: Cache unverändert`);
-            assertEqual(logs.length, 0, `${outcome}: kein falsches Speicherfehlerlog`);
-            assert(!documentRef.getElementById('simProfileStatus').textContent.includes('nicht dauerhaft'), `${outcome}: kein falscher Speicherfehlerstatus`);
-            if (outcome === 'cancel') assert(status.textContent.includes('abgebrochen'), 'Rahmenabbruchhinweis bleibt erhalten');
-            provider?.unregister(); global.confirm = () => true;
-            PersistenceFacade.setItemSync('sim_mcSeed', 'normaler Write');
-            assertEqual(PersistenceFacade.getItemSync('sim_mcSeed'), 'normaler Write', `${outcome}: keine neue Schreibsperre`);
-        } else {
-            assertEqual(mutations, 1, `${outcome}: genau eine tatsächliche Resetmutation vor Flushende`);
-            assertEqual(JSON.stringify(records), initial, `${outcome}: Backend vor Flushbestätigung unverändert`);
-            const pendingProfile = JSON.parse(PersistenceFacade.getItemSync('rs_profiles_v1')).profiles.a.data;
-            assertEqual(pendingProfile.sim_mcSeed, undefined, `${outcome}: Registrylöschung im gemeinsamen noch unbestätigten Cache`);
-            assertEqual(pendingProfile.sim_startFloorBedarf, undefined, `${outcome}: Bedarf auch in Registry gelöscht`);
-            if (outcome !== 'false') assertEqual(await runReset().then(result => result.status), 'cancelled', `${outcome}: Doppelreset überholt offenen Reset nicht`);
-            if (outcome !== 'false') {
-                assert(guard.reasons().some(reason => reason.phase === 'commit'), `${outcome}: offener Resetflush hält Commit`);
-                assertEqual(await guard.prepare(), null, `${outcome}: fremde Navigation überholt Flush nicht`);
-            }
-            const firstPostWriteMessage = guardMessages.length;
-            if (['input', 'change'].includes(outcome)) (documentRef.listeners[outcome] || []).forEach(handler => handler({ target: button }));
-            if (outcome === 'foreign') {
-                const foreign = guard.register('temporary-commit', { read: () => ({ phase: 'commit' }) }); foreign.unregister();
-            }
-            release?.(); const result = await task;
-            assertEqual(result.status, ['false', 'throw'].includes(outcome) ? 'failed' : outcome === 'success' ? 'reloaded' : 'reload_required', `${outcome}: phasengerechter Handlerabschluss`);
-            assertEqual(reloads, ['success', 'reloadthrow'].includes(outcome) ? 1 : 0, `${outcome}: gezählter Reloadcallback`);
-            assert(guardMessages.slice(firstPostWriteMessage).every(text => !text.includes('abgebrochen')), `${outcome}: Guard behauptet nach Schreibbeginn keinen Resetabbruch`);
-            if (result.status === 'reload_required') {
-                assertEqual(documentRef.getElementById('simProfileStatus').hidden, false, `${outcome}: Statushost sichtbar`);
-                for (const text of ['Reset gespeichert', 'nicht neu geladen', 'neu laden', 'nicht gespeichert']) assert(documentRef.getElementById('simProfileStatus').textContent.includes(text), `${outcome}: Abschlussstatus enthält ${text}`);
-                assert(!documentRef.getElementById('simProfileStatus').textContent.includes('abgebrochen'), `${outcome}: Handler behauptet keinen Resetabbruch`);
-            }
-            if (result.status === 'failed') {
-                assertEqual(JSON.stringify(records), initial, `${outcome}: fehlgeschlagener Flush bestätigt weder Registry noch Live-Löschung`);
-                assert(documentRef.getElementById('simProfileStatus').textContent.includes('nicht dauerhaft'), `${outcome}: zutreffender Speicherfehler`);
-                assert(!documentRef.getElementById('simProfileStatus').textContent.includes('Reset gespeichert'), `${outcome}: keine falsche Speicherbestätigung`);
-            }
-            if (!['false', 'throw'].includes(outcome)) { assertEqual(PersistenceFacade.keysSync().filter(key => key.startsWith('sim_')).length, 0, `${outcome}: alle sim_-Keys im Cache entfernt`);
-            assertEqual(Object.keys(records).filter(key => key.startsWith('sim_')).length, 0, `${outcome}: alle sim_-Keys im Backend entfernt`);
-            const householdState = householdNeedsModule.readHouseholdSimulatorNeedsState();
-            assertEqual(householdState.status, 'profile_default', `${outcome}: Haushaltsmarker auf Profildefault`);
-            assertEqual(householdState.source, 'reset', `${outcome}: Haushaltsmarker bezeichnet Reset`);
-            assertEqual(PersistenceFacade.getItemSync(ackKey), null, `${outcome}: Warnungsquittierung im Cache entfernt`);
-            assertEqual(records[ackKey], undefined, `${outcome}: Warnungsquittierung im Backend entfernt`); }
-            const cache = JSON.stringify(PersistenceFacade.exportAllSync().records);
-            ordinary.value = '99'; ordinaryExisting.value = '99999'; household.value = '99999';
-            for (const type of ['input', 'change']) {
-                ordinary.dispatchEvent({ type }); ordinaryExisting.dispatchEvent({ type }); household.dispatchEvent({ type });
-            }
-            assertEqual(PersistenceFacade.getItemSync('sim_horizonYears'), null, `${outcome}: neuer sim_-Key durch echten Autosave nicht angelegt`);
-            assertEqual(PersistenceFacade.getItemSync('sim_mcSeed'), null, `${outcome}: echter Autosave legt gelöschten gewöhnlichen Key nicht wieder an`);
-            assertEqual(PersistenceFacade.getItemSync('sim_startFloorBedarf'), null, `${outcome}: gelöschter sim_-Key nicht wieder angelegt`);
-            assertEqual(household.dataset.householdNeedLastValidValue, baseline, `${outcome}: keine persistierte Erfolgsbaseline nach Sperre`);
-            assertEqual(householdNeedsModule.readHouseholdSimulatorNeedsState().source, 'reset', `${outcome}: Haushaltsautosave überschreibt Resetmarker nicht`);
-            if (result.status === 'failed') assert(!documentRef.getElementById('simProfileStatus').textContent.includes('Reset gespeichert'), `${outcome}: abgewiesener Autosave behauptet keinen gespeicherten Reset`);
-            assertEqual(JSON.stringify(PersistenceFacade.exportAllSync().records), cache, `${outcome}: alte Writes verändern Cache nicht`);
-            if (result.status !== 'reloaded') {
-                const retryReason = guard.register('retry-result', { read: () => ({ result: true }) });
-                const previousFlushes = flushes;
-                const stay = runReset(); choose('navigationGuardStay');
-                assertEqual((await stay).status, 'cancelled', `${outcome}: Bleiben bei Wiederholung erhält Resetbestand`);
-                assertEqual(flushes, previousFlushes, `${outcome}: Bleiben startet keinen Wiederholungsflush`);
-                assertEqual(mutations, 1, `${outcome}: Bleiben mutiert nicht erneut`);
-                fail = false;
-                const retry = runReset(); choose('navigationGuardLeave');
-                for (let i = 0; i < 100; i++) await Promise.resolve();
-                assertEqual(mutations, 1, `${outcome}: explizite Wiederholung mutiert nicht erneut`);
-                ordinary.value = '99'; ordinaryExisting.value = '99999'; household.value = '99999';
-            for (const type of ['input', 'change']) {
-                ordinary.dispatchEvent({ type }); ordinaryExisting.dispatchEvent({ type }); household.dispatchEvent({ type });
-            }
-            assertEqual(PersistenceFacade.getItemSync('sim_horizonYears'), null, `${outcome}: neuer sim_-Key durch echten Autosave nicht angelegt`);
-            assertEqual(PersistenceFacade.getItemSync('sim_mcSeed'), null, `${outcome}: echter Autosave legt gelöschten gewöhnlichen Key nicht wieder an`);
-            assertEqual(PersistenceFacade.getItemSync('sim_startFloorBedarf'), null, `${outcome}: gelöschter sim_-Key nicht wieder angelegt`);
-            assertEqual(household.dataset.householdNeedLastValidValue, baseline, `${outcome}: keine persistierte Erfolgsbaseline nach Sperre`);
-            assertEqual(householdNeedsModule.readHouseholdSimulatorNeedsState().source, 'reset', `${outcome}: Haushaltsautosave überschreibt Resetmarker nicht`);
-                release?.(); const retryResult = await retry;
-                assertEqual(retryResult.status, 'reloaded', `${outcome}: Wiederholung bestätigt Flush und Reload`);
-                retryReason.unregister();
-                assertEqual(reloads, outcome === 'reloadthrow' ? 2 : 1, `${outcome}: genau ein erfolgreicher Reload`);
-            }
-            await originalFlush();
-            assertEqual(JSON.stringify(PersistenceFacade.exportAllSync().records), cache, `${outcome}: weiterer Flush verändert Cache nicht`);
-            assertEqual(JSON.stringify(records), cache, `${outcome}: Backend entspricht bestätigtem Resetcache`);
-            assertEqual(batches, outcome === 'throw' ? 2 : 1, `${outcome}: gemeinsamer Registry-/Livebatch, bei Adapterfehler einmaliger Retry`);
-            assertEqual(records.unrelated, 'erhalten', `${outcome}: fremde Schlüssel bleiben erhalten`);
-            const saved = JSON.parse(records.rs_profiles_v1).profiles.a.data;
-            assertEqual(saved.sim_mcSeed, undefined, `${outcome}: bestätigte Registry enthält gelöschten Seed nicht`);
-            assertEqual(saved.sim_startFloorBedarf, undefined, `${outcome}: bestätigte Registry enthält gelöschten Bedarf nicht`);
-            assertEqual(saved.profile_tagesgeld, '12345', `${outcome}: Registry erhält Vermögen`);
-            assertEqual(mutations, 1, `${outcome}: Abschluss bleibt einmalig`);
-        }
-        persistenceStorage.setItem = originalSet;
-        PersistenceFacade.flush = originalFlush; console.error = originalError;
-        PersistenceFacade.resetPersistenceForTests();
-    }
-    global.document = savedDocument; global.window = savedWindow; global.location = savedLocation; global.localStorage = savedStorage;
     }
 
     console.log('Test 4: central simulator controls persist and update visible state');
@@ -934,7 +689,7 @@ async function runSimulatorUiOrchestrationTests() {
 
     console.log('Test 10: missing profile selection fails closed while migration remains pending');
     {
-        const profileStatus = documentRef.getElementById('simProfileStatus');
+        const profileStatus = registerElement(documentRef, 'simProfileStatus');
         profileSelectionModule.initSimulatorProfileSelection();
         assert(window.__profileRecoveryBlocker?.message.includes('Bedarfsmigration bleibt ausstehend'),
             'Fehlender Profilverbund setzt einen expliziten Recovery-Blocker');

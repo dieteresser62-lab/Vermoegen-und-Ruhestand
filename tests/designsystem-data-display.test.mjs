@@ -114,7 +114,8 @@ assertEqual(JSON.stringify(store), beforeStore, 'Verlaufsanzeige verändert kein
 
 const sources = readSources();
 assert(sources['Ausgaben.html'].includes('Vergleich aller gespeicherten Personen, unabhängig vom Anzeigefilter.')
-    && sources['app/balance/balance-expenses-renderer.js'].includes('Summe der gewählten Profile'), 'Jahresvergleich und Matrix nennen ihre unterschiedlichen vorhandenen Profilbezüge');
+    && sources['app/balance/balance-expenses-renderer.js'].includes('th.textContent = profile.name || profile.profileId;'),
+    'Jahresvergleich nennt alle gespeicherten Personen, Matrixspalten nennen die gewählten Personen');
 assert(sources['css/components.css'].includes('font-variant-numeric: tabular-nums'), 'Managerzahlspalten nutzen die tabellarische Tabellenrolle');
 
 // Slice 9: Ausgabegrenzen ohne andere Rundung an binären Halbwerten.

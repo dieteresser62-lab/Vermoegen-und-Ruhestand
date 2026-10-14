@@ -111,7 +111,8 @@ export const MONTE_CARLO_MISSINGNESS_CODE = Object.freeze({
     TECHNICAL_ERROR: 3,
     NO_OBSERVATIONS: 4,
     DIED_BEFORE_FIRST_OBLIGATION: 5,
-    MISSING_INFLATION: 6
+    MISSING_INFLATION: 6,
+    MISSING_YEAR_VALUES: 7
 });
 
 export const MONTE_CARLO_BUFFER_FIELDS = Object.freeze({
@@ -209,6 +210,13 @@ export const MONTE_CARLO_PATH_SUMMARY_FIELDS = Object.freeze({
     maxDrawdownRealObservationCount: Uint32Array,
     cutYearsNumerator: Uint32Array,
     cutYearsDenominator: Uint32Array,
+    minimumFlexCompletedYearCount: Uint32Array,
+    minimumFlexObservationCount: Uint32Array,
+    minimumFlexAffectedYearCount: Uint32Array,
+    minimumFlexYearShareRatio: Float64Array,
+    minimumFlexPaidMedianNominalEur: Float64Array,
+    minimumFlexDesiredMedianNominalEur: Float64Array,
+    minimumFlexPaidMinimumNominalEur: Float64Array,
     cutYearShareRatio: Float32Array,
     realWithdrawalP10RealEur: Float64Array,
     realWithdrawalObservationCount: Uint32Array,
@@ -240,6 +248,7 @@ export const MONTE_CARLO_PATH_SUMMARY_FIELDS = Object.freeze({
 
 export const MONTE_CARLO_PATH_MISSINGNESS_FIELDS = Object.freeze({
     path: Uint8Array,
+    minimumFlexRestriction: Uint8Array,
     maxDrawdownRealPct: Uint8Array,
     cutYearShareRatio: Uint8Array,
     realWithdrawalP10RealEur: Uint8Array,
@@ -378,6 +387,7 @@ export function recordMonteCarloPathSummaryV1({
     maxDrawdownRealMissingnessCode = MONTE_CARLO_MISSINGNESS_CODE.NO_OBSERVATIONS,
     cutYearsNumerator = 0,
     cutYearsDenominator = 0,
+    minimumFlexRestriction = null,
     realWithdrawalP10RealEur = null,
     realWithdrawalObservationCount = 0,
     meanWithdrawalRateRatio = null,
@@ -413,6 +423,13 @@ export function recordMonteCarloPathSummaryV1({
 
     pathSummaries.globalRunIndex[localIndex] = globalRunIndex;
     pathSummaries.outcomeCode[localIndex] = outcomeCode;
+    const minimum = minimumFlexRestriction;
+    pathSummaries.minimumFlexCompletedYearCount[localIndex] = minimum?.completedYearCount ?? 0;
+    pathSummaries.minimumFlexObservationCount[localIndex] = minimum?.observationCount ?? 0;
+    for (const field of ['minimumFlexAffectedYearCount', 'minimumFlexYearShareRatio',
+        'minimumFlexPaidMedianNominalEur', 'minimumFlexDesiredMedianNominalEur', 'minimumFlexPaidMinimumNominalEur']) {
+        pathSummaries[field][localIndex] = 0;
+    }
 
     if (technicalError) {
         for (const values of Object.values(pathMissingness)) {
@@ -422,6 +439,17 @@ export function recordMonteCarloPathSummaryV1({
     }
 
     pathMissingness.path[localIndex] = MONTE_CARLO_MISSINGNESS_CODE.OBSERVED;
+    pathMissingness.minimumFlexRestriction[localIndex] = !minimum || minimum.missingReason === 'no_observations'
+        ? MONTE_CARLO_MISSINGNESS_CODE.NO_OBSERVATIONS
+        : minimum.missingReason === null ? MONTE_CARLO_MISSINGNESS_CODE.OBSERVED
+            : MONTE_CARLO_MISSINGNESS_CODE.MISSING_YEAR_VALUES;
+    if (minimum?.missingReason === null) {
+        pathSummaries.minimumFlexAffectedYearCount[localIndex] = minimum.affectedYearCount;
+        pathSummaries.minimumFlexYearShareRatio[localIndex] = minimum.affectedYearCount / minimum.observationCount;
+        pathSummaries.minimumFlexPaidMedianNominalEur[localIndex] = minimum.paidMedianNominalEur;
+        pathSummaries.minimumFlexDesiredMedianNominalEur[localIndex] = minimum.desiredMedianNominalEur;
+        pathSummaries.minimumFlexPaidMinimumNominalEur[localIndex] = minimum.paidMinimumNominalEur;
+    }
     pathSummaries.finalValueNominalEur[localIndex] = Number(finalValueNominalEur) || 0;
     pathSummaries.finalValueRealEur[localIndex] = Number(finalValueRealEur) || 0;
     pathSummaries.volatilityPct[localIndex] = Number(volatilityPct) || 0;
@@ -749,6 +777,36 @@ export function assertMonteCarloChunkResultV1(result, {
                 }
             }
             const nominalDrawdown = result.pathSummaries.maxDrawdownPct[localIndex];
+            const minimumCount = result.pathSummaries.minimumFlexObservationCount[localIndex];
+            const minimumCompleted = result.pathSummaries.minimumFlexCompletedYearCount[localIndex];
+            const minimumAffected = result.pathSummaries.minimumFlexAffectedYearCount[localIndex];
+            const minimumState = result.pathMissingness.minimumFlexRestriction[localIndex];
+            const minimumRatio = result.pathSummaries.minimumFlexYearShareRatio[localIndex];
+            const minimumAmounts = [
+                result.pathSummaries.minimumFlexPaidMedianNominalEur[localIndex],
+                result.pathSummaries.minimumFlexDesiredMedianNominalEur[localIndex],
+                result.pathSummaries.minimumFlexPaidMinimumNominalEur[localIndex]
+            ];
+            if (minimumCount > minimumCompleted || minimumAffected > minimumCount) {
+                throw contractError(`financial path ${globalIndex} has inconsistent minimum-flex counts.`);
+            }
+            if (minimumState === MONTE_CARLO_MISSINGNESS_CODE.OBSERVED) {
+                if (minimumCount === 0 || minimumCount !== minimumCompleted
+                    || minimumRatio !== minimumAffected / minimumCount
+                    || minimumAmounts.some(value => !Number.isFinite(value) || value < 0)
+                    || minimumAmounts[2] > minimumAmounts[0]) {
+                    throw contractError(`financial path ${globalIndex} has invalid observed minimum-flex statistics.`);
+                }
+            } else {
+                const validMissing = minimumState === MONTE_CARLO_MISSINGNESS_CODE.NO_OBSERVATIONS
+                    ? minimumCompleted === 0 && minimumCount === 0
+                    : minimumState === MONTE_CARLO_MISSINGNESS_CODE.MISSING_YEAR_VALUES
+                        && minimumCompleted > minimumCount;
+                if (!validMissing || minimumRatio !== 0 || minimumAffected !== 0
+                    || minimumAmounts.some(value => value !== 0)) {
+                    throw contractError(`financial path ${globalIndex} has invalid minimum-flex missingness.`);
+                }
+            }
             if (!Number.isFinite(nominalDrawdown) || nominalDrawdown < 0 || nominalDrawdown > 100) {
                 throw contractError(`financial path ${globalIndex} has a nominal drawdown outside 0..100.`);
             }

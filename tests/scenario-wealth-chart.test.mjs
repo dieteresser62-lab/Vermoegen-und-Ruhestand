@@ -252,7 +252,7 @@ for (const displayWidth of [1100, 1450]) {
         const html = draw([single], width), [box] = boxes(html);
         assertClose(box.x + box.w / 2, 88 + 1.5 * (width - 180) / 4, 1e-9, 'Einzelmarke liegt am unabhängig berechneten Austritt in Jahr 1,5');
         assert(box.button.includes('>↑ 1.250</button>') && box.button.includes('style="color:#357;'), 'Randmarkentext ist kurz und trägt die Linienfarbe');
-        assert(box.button.includes('title="Original single · 1.250 €"') && box.button.includes('aria-label="Original single · 1.250 €"'), 'Tooltip und zugänglicher Name erhalten Originalname und Euro');
+        assert(box.button.includes(`title="Original single · ${formatCurrency(1250)}"`) && box.button.includes(`aria-label="Original single · ${formatCurrency(1250)}"`), 'Tooltip und zugänglicher Name erhalten Originalname und genauen Eurobetrag');
         assert(!html.includes('Marken scrollbar'), 'Randmarken erzeugen keinen Scrollkasten');
     }
     const missing = boxes(draw([make('gap', [[1, 500], [2, null], [3, 2000]])]))[0];

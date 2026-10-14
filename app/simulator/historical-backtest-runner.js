@@ -241,6 +241,7 @@ function attachCanonicalMetrics(result) {
     return deepFreeze({
         ...result,
         metrics,
+        minimumFlexRestriction: metrics.minimumFlexRestriction,
         summary: {
             ...result.summary,
             startWealth: values.wealth_start_nominal_eur ?? result.summary.startWealth,

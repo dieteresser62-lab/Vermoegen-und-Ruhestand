@@ -127,7 +127,17 @@ for (let index = 0; index < 3; index++) {
     assertEqual(fullCalendar[index].logData.liquiditaet, targetFor(36000 * 1.02 ** index), 'Volles Kalenderziel verwendet beide Bruttobasen');
 }
 // Auf HEAD 721fa5f1 vor der Produktänderung gesichert; vollständige Belege, keine Fremdbaseline.
-const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+function projectLegacyFinancialBytes(value) {
+    const projection = structuredClone(value);
+    // Nur die zwei additiven Mindest-Flex-Jahresfelder aus dem gepinnten Altpfad ausnehmen.
+    for (const year of Array.isArray(projection) ? projection : [projection]) {
+        if (!year.logData) continue;
+        delete year.logData.flex_wunsch_haushalt_nominal;
+        delete year.logData.flex_unter_mindestflex;
+    }
+    return projection;
+}
+const hash = value => createHash('sha256').update(JSON.stringify(projectLegacyFinancialBytes(value))).digest('hex');
 assertEqual(hash(legacy), '671c34ba8c7130b510b80288de1096bcb83d1eccc05a6a6fc24d6a3c996b855f', 'Vollständiger Altpfad bleibt bytegleich');
 const zeroTax = runYears({ ...accumulationInputs, partner: { ...accumulationInputs.partner, steuerquotePct: 0 } }, 0);
 assertEqual(hash(zeroTax), 'e7dcbc508aca94dd90322dc4744f1287a89d22a8d9d380867d81fe0b5de3668c', 'Nullquote erhält vollständigen Lauf bis auf ausdrücklich korrigierte Rentenspalten');

@@ -1,15 +1,15 @@
 import { comparisonScopeMatches } from '../profile/household-plan-comparison.js';
 import { appNow } from '../shared/app-clock.js';
 
-/** Lesende Herkunftsprojektion. Nur der passende Jahresbeleg ist verbindlich. */
+/** Lesende Herkunftsprojektion. Nur der passende Jahresbeleg ist festgeschrieben. */
 export function projectBalanceActionOrigin({ comparison = null, year = appNow().getFullYear(), scope = null, occasion = null } = {}) {
     const confirmed = comparison?.confirmedAction;
     const valid = comparison?.recordStatus === 'valid' && comparison.year === year
         && comparisonScopeMatches(comparison.scope, scope) && confirmed?.year === year
         && Number.isFinite(Date.parse(confirmed.committedAt)) && confirmed.action;
     const label = valid
-        ? `Handlungsanweisung ${year} · verbindlich aus dem Jahresabschluss vom ${new Date(confirmed.committedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
-        : 'Noch keine verbindliche Handlungsanweisung';
+        ? `Handlungsanweisung ${year} · festgeschrieben im Jahresabschluss vom ${new Date(confirmed.committedAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`
+        : 'Noch keine Handlungsanweisung aus dem Jahresabschluss';
     // Vorschau nennt das Abschlussjahr wie der Jahresknopf, nicht das Folgeplanjahr.
     const closingYear = occasion?.closingYear ?? year - 1;
     const firstYear = occasion?.annualState === 'not_applicable' ? occasion.firstPlanningYear : null;
@@ -23,6 +23,6 @@ export function projectBalanceActionOrigin({ comparison = null, year = appNow().
         notice: comparison?.recordStatus === 'invalid' ? comparison.notice : '',
         previewYear,
         previewLabel: `Vorläufige Vorschau · Jahresabschluss ${previewYear}`,
-        previewNotice: `So sähe es aus, wenn heute Jahresabschluss wäre. Gehandelt wird erst nach dem Jahresabschluss ${previewYear}.${firstNotice} Die Umsetzung bleibt deine Entscheidung; es gibt keine Ablage oder Umsetzungsbestätigung.`
+        previewNotice: `So sähe es aus, wenn heute Jahresabschluss wäre. Der Plan wird im Jahresabschluss ${previewYear} festgeschrieben.${firstNotice} Die Umsetzung bleibt deine Entscheidung.`
     };
 }

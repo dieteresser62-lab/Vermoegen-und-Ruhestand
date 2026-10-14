@@ -265,10 +265,13 @@ for (const empty of [null, JSON.stringify({ version: 1, years: { '2026': { month
     assertEqual(display.hint.textContent, 'Noch keine Ausgabendaten vorhanden.', 'Verständlicher Leerhinweis');
     assertEqual(display.chart.innerHTML + display.table.innerHTML, '', 'Leerzustand entfernt Fehler und Werte');
 }
-raw = JSON.stringify({ years: { '2026': { months: { '1': importedMonth({ Ausgabe: -1e300 }) } } } });
+raw = JSON.stringify({ years: { '2025': { months: { '1': importedMonth({ Ausgabe: -1 }) } },
+    '2026': { months: { '1': importedMonth({ Ausgabe: -1e300 }) } } } });
 assert(refreshBalanceExpensesHistory(display, options), 'Sehr großer endlicher Betrag darstellbar');
 const coordinates = [...display.chart.innerHTML.matchAll(/\s(?:x|y|width|height|x1|x2|y1|y2)="([^"]+)"/g)];
 assert(coordinates.length > 0 && coordinates.every(match => Number.isFinite(Number(match[1]))), 'SVG-Koordinaten bleiben endlich');
+assert([...display.chart.innerHTML.matchAll(/<rect[^>]*width="([^"]+)"/g)].every(match => Number(match[1]) <= 64),
+    'Jahresvergleich begrenzt die Balkenbreite auch bei wenigen Jahren');
 assertEqual(writes, 0, 'Aktive/inaktive Darstellung, Leer- und Fehlerzustände schreiben nie');
 assertEqual(JSON.stringify(fixture), JSON.stringify(loadExpensesStoreResult({ getItem: () => JSON.stringify(fixture) }).store), 'Darstellung verändert eingefrorene Eingabedaten nicht');
 
@@ -299,6 +302,14 @@ assert(!display.table.innerHTML.includes('Beispieldaten'), 'Altbestand und echte
 const standalone = { ...display, panel: null, isVisible: () => true };
 assert(refreshBalanceExpensesHistory(standalone, options), 'Eigenständige Seite rendert ohne aktives Balancepanel');
 assert(standalone.table.innerHTML.includes('2026'), 'Eigenständiger Jahresvergleich enthält historische Werte');
+assert(standalone.chart.innerHTML.includes('expenses-year-summary') && !standalone.chart.innerHTML.includes('<svg'),
+    'Ein importiertes Jahr erscheint als kompakte Zusammenfassung ohne Diagramm');
+assert(standalone.chart.innerHTML.includes('laufendes Teiljahr') && standalone.chart.innerHTML.includes(UIUtils.formatBalanceCurrency(100)),
+    'Jahreszusammenfassung erhält Status und Istbetrag');
+raw = JSON.stringify({ version: 1, years: { '2026': { months: { '1': importedMonth({ Nullimport: 0 }) } }, '2027': { months: {} } } });
+assert(refreshBalanceExpensesHistory(standalone, options), 'Ein Nullimportjahr neben einem Leerjahr ist darstellbar');
+assert(standalone.chart.innerHTML.includes('expenses-year-summary') && !standalone.chart.innerHTML.includes('<svg')
+    && standalone.chart.innerHTML.includes('<b>0</b>'), 'Nullimportjahr bleibt als Zusammenfassung mit null positiven Datenmonaten sichtbar');
 raw = '{synthetic-corrupt';
 assert(!refreshBalanceExpensesHistory(standalone, options), 'Eigenständiger Jahresvergleich meldet beschädigte Daten');
 assertEqual(standalone.chart.innerHTML + standalone.table.innerHTML, '', 'Eigenständige Recovery entfernt veraltete Diagramm- und Tabellenwerte');

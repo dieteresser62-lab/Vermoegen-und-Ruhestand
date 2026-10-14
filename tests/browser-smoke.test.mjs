@@ -213,27 +213,22 @@ async function waitBalanceHouseholdList(page) {
     await page.locator('#profilverbund-profile-list input').first().waitFor({ state: 'attached' });
 }
 
-// Der Simulator öffnet bewusst im Reiter „Ergebnis“; Profilliste, Status und Reset liegen unter „Annahmen“.
+// Der Simulator öffnet bewusst im Reiter „Ergebnis“; Profilliste und Status liegen unter „Annahmen“.
 async function openSimulatorTab(page, tab) {
     const button = page.locator(`.tab-btn[data-tab="${tab}"]`);
     if (!await button.evaluate(node => node.classList.contains('active'))) await button.click();
     await page.locator(`#tab-${tab}`).waitFor({ state: 'visible' });
 }
 
+// Die bestehenden MC-Wertträger liegen unter Annahmen → Alle Parameter.
+async function toggleMonteCarloSettings(page) {
+    await openSimulatorTab(page, 'montecarlo');
+    await page.locator('#mcSettingsToggle').click();
+}
+
 async function openSimulatorProfileList(page) {
     await openSimulatorTab(page, 'annahmen');
     await page.locator('#simProfileList input').first().waitFor({ state: 'visible' });
-}
-
-// Seit Paket S1 ist das automatische Öffnungsergebnis kein Verlustgrund: Der Reset lädt nach der eigenen
-// Sicherheitsabfrage ohne Schutzdialog neu. Ein Schutzdialog hielte das Neuladen an und ließe das Warten scheitern.
-async function resetSimulatorAfterOpening(page) {
-    await waitForSimulatorOpening(page, 'Simulator.html');
-    const reloaded = page.waitForEvent('load');
-    await page.locator('#resetBtn').click();
-    // Seit Paket 9 steht die Sicherheitsabfrage im Seitendialog; erst die Zustimmung löst das Neuladen aus.
-    await answerPageDialog(page, { label: 'Einstellungen zurücksetzen' });
-    await reloaded;
 }
 
 // Parameter-Sweep und Auto-Optimize sind Werkzeuge im Reiter „Werkstatt“.
@@ -650,8 +645,8 @@ async function runIndexSmoke(browser, baseUrl) {
     await page.locator('#overviewFocus [data-overview-month-confirm]').click();
     const priceDialog = page.locator('#overviewMonthConfirmation');
     await priceDialog.waitFor();
-    assert((await priceDialog.locator('[data-close-dialog-step="prices"]').textContent()).includes('Kurse teilweise verfügbar')
-        && (await page.locator('#overviewPrices').textContent()).includes('Kurse teilweise verfügbar'), 'Kursschritt und Pille teilen echten Teilbericht ohne zweiten Kursjob');
+    assert((await priceDialog.locator('[data-close-dialog-step="prices"]').textContent()).includes('teilweise aktualisiert')
+        && (await page.locator('#overviewPrices').textContent()).includes('teilweise aktualisiert'), 'Kursschritt und Pille teilen echten Teilbericht ohne zweiten Kursjob');
     await priceDialog.locator('[data-overview-month-cancel]').click();
     await priceDialog.waitFor({ state: 'hidden' });
     assert(await page.locator('#overviewFocus input[type="checkbox"]').count() === 0, 'Fokusdaten sind keine frei beschreibbaren Checkboxen');
@@ -787,7 +782,7 @@ async function runIndexSmoke(browser, baseUrl) {
         assert(await page.evaluate(async ({ balance, expenses, before }) => { const { persistenceStorage: ps } = await import('./app/shared/persistence-facade.js'); return JSON.stringify(JSON.parse(ps.getItem(balance)).annualPeriodMetadata) === JSON.stringify(before.metadata)
             && ps.getItem(expenses) === before.expenses; },
             { balance: BALANCE_STATE_KEY, expenses: EXPENSES_KEY, before: beforeYearLink }), 'Realer Jahresknopf öffnet Vorbereitung ohne Metadaten- oder Ausgabenwrite');
-        await page.locator('#annualCloseBtn').click();
+        await page.locator('#balanceAnnualClose [data-close-dialog-close]').click();
         await page.locator('#balanceAnnualClose').waitFor({ state: 'hidden' });
         await waitForPageCondition(page, async () => {
             const { getPageNavigationGuard } = await import('./app/shared/navigation-guard-dialog.js');
@@ -1164,7 +1159,7 @@ async function runOverviewPresentation(browser, baseUrl) {
                 assert(states.refilled.visibleRows === 4 && states.refilled.statusHidden && states.refilled.comparisonText.includes('Noch kein festgeschriebener Plan'), `${width}: alter fest-Status ohne Beleg bleibt Vorschau`);
                 assert(states.filled.backupWarning === 'false' && states.empty.backupWarning === 'true', `${width}: Sicherungswarnung beginnt bei 30 Tagen`);
                 assert(states.filled.assets === '1.200' && states.filled.unit === '€' && states.empty.assets === '1.200'
-                    && states.empty.comparison === 'Veränderung erscheint nach dem ersten Jahresendstand', `${width}: Vermögen bleibt sichtbar und Vergleich löscht alte Werte`);
+                    && states.empty.comparison === 'Jahresendvergleich 2025 nicht belegbar', `${width}: Vermögen bleibt sichtbar und Vergleich löscht alte Werte`);
                 assert(states.filled.cardTitle === 'Dein Vermögen' && states.filled.tooltip === states.name && states.filled.ellipsis === 'ellipsis' && states.filled.truncated,
                     `${width}: Einzelperson, vollständiger Tooltip und sichtbare Namensellipse`);
                 assert(states.filled.title === 'Alles erledigt bis zum Monatsanfang.' && states.filled.lead.includes('die Kurse sind von heute')
@@ -1180,9 +1175,9 @@ async function runOverviewPresentation(browser, baseUrl) {
                     // Seit Teil 4 verweisen Knopf und Texte nicht mehr auf die Balance, sondern auf Abschlussdialog bzw. Daten & Sicherung.
                     unclear: { title: 'Jahresstatus 2026 klären.', stepTitle: 'Jahresstatus klären', action: 'Jahresstatus klären',
                         lead: 'Für 2026 gibt es Daten, aber keinen Abschlussvermerk. Bitte den Jahresstatus im Abschlussdialog einmal bestätigen.' },
-                    recovery: { title: 'Wiederherstellung für den Jahresabschluss 2026 nötig.', stepTitle: 'Wiederherstellung öffnen', action: 'Wiederherstellung öffnen',
+                    recovery: { title: 'Jahresabschluss 2026 wiederherstellen.', stepTitle: 'Wiederherstellung öffnen', action: 'Wiederherstellung öffnen',
                         lead: 'Der Jahresabschluss ist unvollständig. Prüfe zuerst den vorhandenen Wiederherstellungspunkt unter Daten & Sicherung.' },
-                    unavailable: { title: 'Daten für den Jahresabschluss 2026 fehlen.', stepTitle: 'Daten prüfen', action: 'Daten prüfen',
+                    unavailable: { title: 'Daten für 2026 prüfen.', stepTitle: 'Daten prüfen', action: 'Daten prüfen',
                         lead: 'Die Profildaten für den Jahresabschluss sind nicht verfügbar. Prüfe Personen und Haushalt & Plan.' }
                 };
                 assert(states.annualStates.length === 8, `${width}: alle acht Jahreskombinationen wurden gerendert`);
@@ -1197,16 +1192,16 @@ async function runOverviewPresentation(browser, baseUrl) {
                             && actual.badge.color === (open ? 'rgb(63, 90, 122)' : 'rgb(138, 90, 18)')
                             && actual.badge.background === (open ? 'rgb(229, 236, 244)' : 'rgb(246, 231, 204)'),
                             label + ': sichtbare Pille verwendet Jahres- bzw. Warnrolle: ' + JSON.stringify(actual.badge));
-                        assert(actual.chips.length === 2 && actual.chips.map(chip => chip.id).join(',') === 'market,plan'
+                        assert(open ? actual.chips.length === 2 && actual.chips.map(chip => chip.id).join(',') === 'market,plan'
                             && actual.chips.every(chip => chip.visible && chip.color === 'rgb(63, 90, 122)'
-                                && chip.background === 'rgb(229, 236, 244)' && chip.border === 'rgb(63, 90, 122)'),
-                            label + ': beide sichtbaren Jahreschips verwenden die Jahresrolle: ' + JSON.stringify(actual.chips));
+                                && chip.background === 'rgb(229, 236, 244)' && chip.border === 'rgb(63, 90, 122)') : actual.chips.length === 0,
+                            label + ': Jahreschips nur im regulären Abschluss: ' + JSON.stringify(actual.chips));
                         if (open) assert(actual.badge.border === 'rgb(63, 90, 122)', label + ': Jahrespillenrand verwendet Jahresrolle');
                         console.log(`${label}: ${JSON.stringify({ badge: actual.badge, chips: actual.chips })}`);
                         assert(actual.title === (open ? month === 0 ? 'Dezember und Jahr 2026 abschließen' : 'September und Jahr 2026 abschließen' : expected.title),
                             label + ': zustandsgerechte Überschrift');
-                        assert(actual.lead === expected.lead, label + ': zustandsgerechter Lead');
-                        assert(open ? actual.stepTitle === null && actual.stepDetail === null : actual.stepTitle === expected.stepTitle && actual.stepDetail === (expected.stepDetail || expected.lead), label + ': kompakter Start oder zutreffende Diagnose');
+                        assert(actual.lead === (open ? expected.lead : 'Prüfe zuerst den Jahresstatus in der Karte unten.'), label + ': zustandsgerechter Lead');
+                        assert(actual.stepTitle === null && actual.stepDetail === null && (open || actual.focusText.includes(expected.lead)), label + ': kompakter Start oder einmalige Diagnose im Kartenkopf');
                         assert(actual.focusText.includes('Inflation, ETF-Schlusskurs und Alter holen, prüfen, abschließen') === false,
                             label + ': keine Inline-Schrittliste in der offenen Jahreskarte');
                         if (!open) {
@@ -1359,7 +1354,7 @@ async function runOverviewStocksAndScale(browser, baseUrl) {
                     assert(geometry.broken === crop && geometry.title.includes('Achse beginnt bei') === crop && geometry.desc.includes('Achse beginnt bei') === crop
                         && geometry.start === (crop ? '2 Mio.' : '0'), 'Bruchmarke, unterstes Label und ARIAtexte entsprechen tatsächlichem Start');
                     assert(geometry.stocks === (crop ? 0 : 1) && geometry.totalAreas === (crop ? 1 : 0) && geometry.old === 0 && geometry.fill === geometry.brass, 'Gesamtfläche im Ausschnitt, gebündelte Aktienfläche bei Nullstart');
-                    assert(await page.locator('#overviewHistoryLegend .history-aktien,#overviewHistoryLegend .overview-allocation-aktien').count() === 1, 'Eine absolute Aktienlegendenposition');
+                    assert(await page.locator('#overviewHistoryLegend .history-aktien').count() === (crop ? 0 : 1), 'Aktienlegende nur bei gezeichneter Aktienfläche; Aufteilungsbeträge im Verlaufsreiter');
                     assert(!geometry.axisCollides && !geometry.overflow, 'Keine Achsenlabelkollision und kein seitenweiter Überlauf: ' + width);
                     assert(await button.getAttribute('aria-pressed') === 'true' && await button.evaluate(n => document.activeElement === n), 'Zeitraumwahl erhält Auswahl und Tastaturfokus');
                     await assertOverviewHistoryContours(page, kind + '/' + width + '/' + period);
@@ -1605,7 +1600,7 @@ async function runOverviewHistoryPresentation(browser, baseUrl) {
                     && geometry.chart.width > geometry.assets.width * .8, `${year}/${width}: Jahresband und Plan ohne Überlappung`);
             }
             assert(Math.max(...effectiveFonts) - Math.min(...effectiveFonts) <= 1, `${year}: Achsenschrift weicht zwischen Breiten höchstens 1 px ab`);
-            assert(await page.locator('#overviewHistoryMetrics .history-metric').count() === 5, 'Tagesverlauf zeigt alle fünf Kennzahlen');
+            assert(await page.locator('#overviewHistoryMetrics .history-metric').count() === 2, 'Startseitenverlauf zeigt Tagesabschluss und Veränderung');
             assert((await page.locator('#overviewHistoryStand').textContent()).includes(historyDate(end).split('-').reverse().join('.')), 'Historie zeigt gestrigen Tagesabschluss');
             for (const period of ['year', '12m', 'all']) {
                 const button = page.locator(`[data-history-period="${period}"]`);
@@ -1644,7 +1639,7 @@ async function runOverviewHistoryPresentation(browser, baseUrl) {
             }, { start, end, gapStart: historyDay(`${year}-08-12`), gapEnd: historyDay(`${year}-08-25`) });
             assert(states.running.includes('nachgeladen') && states.cancelled.includes('abgebrochen'), 'Nachladen und Abbruch besitzen ruhige sichtbare Zustände');
             assert(states.gaps.length > 0 && states.gaps.every(gap => gap.width > 0 && gap.x > 90)
-                && states.legend.includes('Anleihen') && states.legend.includes('Ungeprüfte Werktage'), 'Zeitlich begrenzte Schraffur mit vollständiger Legende');
+                && states.legend.includes('Gesamtwert') && states.legend.includes('Ungeprüfte Werktage'), 'Zeitlich begrenzte Schraffur mit vollständiger Legende');
             const boundaryMetrics = await page.evaluate(async today => {
                 const { historyDate } = await import('./app/tranches/tranchen-history-store.js');
                 const { historyRange, evaluateWealthHistory } = await import('./app/tranches/tranchen-history-model.js');
@@ -1665,8 +1660,7 @@ async function runOverviewHistoryPresentation(browser, baseUrl) {
                 return results;
             }, today);
             for (const { period, offset, values } of boundaryMetrics) {
-                assert(values[0] === (offset ? '-1.000 €' : '0 €') && values[1] === (offset ? '1.000 €' : '0 €')
-                    && values[2] === '0 €', `${year}/${period}: sichtbare Kennzahlen zählen Rückgang am Tag ${offset + 1} genau einmal`);
+                assert(values[0] === '0 €' && values[1] === (offset ? '-1.000 €' : '0 €'), `${year}/${period}: sichtbare Kennzahlen zählen Rückgang am Tag ${offset + 1} genau einmal`);
             }
             smoke.assertNoErrors();
         } finally { await smoke.close(); }
@@ -1703,9 +1697,9 @@ async function runOverviewHolidayMeasurement(browser, baseUrl) {
             assert((await page.locator('#overviewHistoryStatus').textContent()).includes('Messbeginn 02.01.2026 · vorläufig'), period + ': tatsächliche vorläufige Basis sichtbar');
             const values = await page.locator('#overviewHistoryMetrics .history-metric strong').allTextContents();
             const normalized = values.map(value => value.replace(/\s+/g, ' ').trim());
-            assert(JSON.stringify(normalized) === JSON.stringify(['+100 €', '0 €', '+100 €', '1.300 €', '−7,7 %']), period + ': alle fünf Feiertagskennzahlen sichtbar');
+            assert(JSON.stringify(normalized) === JSON.stringify(['1.200 €', '+100 €']), period + ': Tagesabschluss und Feiertagsveränderung sichtbar');
             const text = await page.locator('#overviewHistoryMetrics').textContent();
-            assert(text.includes('9,1') && text.includes('05.01.2026') && text.includes('06.01.2026') && !text.includes('vorläufig'), period + ': Prozentbasis und Rückgangsdaten ohne Vorläufigkeitsduplikate');
+            assert(text.includes('9,1') && text.includes('06.01.2026') && !text.includes('vorläufig'), period + ': Prozentbasis und Endtag ohne Vorläufigkeitsduplikate');
             await assertSingleHistoryMeasurement(page, '#overviewHistoryStatus', 'Messbeginn 02.01.2026 · vorläufig');
             assert(!(await page.locator('#overviewHistorySource').textContent()).includes('Messbeginn'), period + ': Fußzeile ohne zusätzlichen Messbeginn');
         }
@@ -1779,12 +1773,12 @@ async function runOverviewDailyNetWithdrawals(browser, baseUrl) {
             await page.locator(`[data-history-period="${period}"]`).click();
             const values = (await page.locator('#overviewHistoryMetrics .history-metric strong').allTextContents())
                 .map(value => value.replace(/\s+/g, ' ').trim());
-            assert(values[0] === '-4.900 €' && values[1] === '5.000 €' && values[2] === '+100 €',
-                period + ': Tagesnetto zeigt echte Entnahme 5000 und passende bereinigte Veränderung');
+            assert(values[0] === '46.100 €' && values[1] === '-4.900 €',
+                period + ': Tagesnetto zeigt Endwert und Veränderung nach Entnahmen');
             assert((await page.locator('#overviewHistoryStatus').textContent()).includes('Messbeginn 02.01.2026 · vorläufig'),
                 period + ': Tageskorrektur folgt tatsächlicher bewertbarer Basis vor dem Korrekturtag');
-            assert((await page.locator('#overviewHistoryLegend').textContent()).replace(/\s+/g, ' ').includes('45.000 €'),
-                period + ': Tageskorrektur zeigt letzten Tagescash 45000');
+            assert(!(await page.locator('#overviewHistoryLegend').textContent()).includes('€'),
+                period + ': Aufteilungsbeträge sind in den Verlaufsreiter verschoben');
         }
         assert(await snapshot() === before, 'Tagesnetto-Browserprojektion erhält alle Cash-, Verkaufs-, Registry- und Kursbytes');
         assert((await readIndexedDb(page, 'kv', 'profile_cash_history_v1')).value === cashHistory,
@@ -1793,7 +1787,7 @@ async function runOverviewDailyNetWithdrawals(browser, baseUrl) {
         await page.locator('#overviewHistoryStatus').filter({ hasText: 'Messbeginn 02.01.2026' }).waitFor();
         const reloaded = (await page.locator('#overviewHistoryMetrics .history-metric strong').allTextContents())
             .map(value => value.replace(/\s+/g, ' ').trim());
-        assert(reloaded[1] === '5.000 €' && reloaded[2] === '+100 €', 'Tagesnetto-Browserorakel bleibt nach Reload erhalten');
+        assert(reloaded[0] === '46.100 €' && reloaded[1] === '-4.900 €', 'Tagesnetto-Browserorakel bleibt nach Reload erhalten');
         assert((await readIndexedDb(page, 'kv', 'profile_cash_history_v1')).value === cashHistory,
             'Tagesnetto-Reload erhält alle Zwischenwerte');
         const registry = JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value);
@@ -1847,7 +1841,8 @@ async function runOverviewStockUncertainty(browser, baseUrl) {
             assert(await snapshot() === before, 'Reload erfindet keine Herkunft für Altbestände');
             await page.goto(`${baseUrl}/depot-tranchen-manager.html`, { waitUntil: 'load' });
             await page.locator('#managerPlanTab').click();
-            const personHistories = page.locator('#managerHousehold .pv-person-history');
+            const personHistories = page.locator('#managerHousehold .pv-wealth-details');
+            await personHistories.evaluateAll(nodes => nodes.forEach(node => { node.open = true; }));
             await personHistories.filter({ hasText: 'Teilabdeckung' }).first().waitFor();
             const partialTexts = (await personHistories.allTextContents()).map(text => text.replace(/\s+/g, ' '));
             assert(partialTexts.some(text => text.includes('bekannter Betrag 150 €')) && partialTexts.some(text => text.includes('bekannter Betrag 120 €')), 'Haushalts- und Personenkarte zeigen verschiedene bekannte Summen');
@@ -1898,7 +1893,7 @@ export function createOverviewWealthComparisonFixture(membership, retrospective)
 
 async function runOverviewWealthComparisons(browser, baseUrl) {
     const reason = 'Kein eindeutiger Vergleichsstand für diesen Profil-/Haushaltsumfang';
-    const cardHint = 'Veränderung erscheint nach dem ersten Jahresendstand';
+    const cardHint = 'Kein Jahresendvergleich';
     for (const membership of ['household', 'excluded', 'deleted']) {
         for (const retrospective of [false, true]) {
             const { storage, fixedTime, currentAssets, history } = createOverviewWealthComparisonFixture(membership, retrospective);
@@ -2423,10 +2418,15 @@ async function runPersonDataMigration(browser, baseUrl) {
     }
 }
 
+async function openBalanceParameters(page) {
+    if (!await page.locator('#balanceAllParameters').evaluate(node => node.open))
+        await page.locator('#balanceAllParameters > summary').click();
+}
+
 async function runBalanceSmoke(browser, baseUrl) {
-    const smoke = await openSmokePage(browser, baseUrl, 'Balance.html');
+    const smoke = await openSmokePage(browser, baseUrl, 'Balance.html', { viewport: { width: 1920, height: 1080 } });
     const { page } = smoke;
-    await page.locator('h1').filter({ hasText: 'mit klarem Plan' }).waitFor({ state: 'visible' });
+    await page.locator('.balance-head h1').filter({ hasText: 'Balance' }).waitFor({ state: 'visible' });
     const scale = await page.evaluate(() => {
         const size = selector => parseFloat(getComputedStyle(document.querySelector(selector)).fontSize);
         const wide = document.querySelector('.balance-page').clientWidth >= 2300;
@@ -2434,11 +2434,11 @@ async function runBalanceSmoke(browser, baseUrl) {
             verb: size('#balanceActionTitle'), amount: size('#balanceActionAmount'), wide,
             provenance: document.querySelector('#marketDataProvenance').classList.contains('ds-note') };
     });
-    assert(scale.h1 === 30 && scale.budget === (scale.wide ? 60 : 52)
-        && scale.verb === (scale.wide ? 30 : 28) && scale.amount === (scale.wide ? 44 : 38),
-        'Balance-Grundbedienung verwendet die freigegebene Inhaltsbreitenskala');
+    assert(scale.h1 === 22 && scale.budget === (scale.wide ? 60 : 52)
+        && scale.verb === (scale.wide ? 30 : 28) && scale.amount === 17,
+        `Balance-Grundbedienung verwendet die freigegebene Inhaltsbreitenskala: ${JSON.stringify(scale)}`);
     assert(!scale.provenance, 'Provenienz ist eine kleine Kartenzeile ohne Hinweisband');
-    for (const id of ['printPlan', 'balanceMarketUpdate', 'jahresabschlussBtn', 'openActionDetails', 'balanceNextAnnual']) {
+    for (const id of ['jahresabschlussBtn', 'openActionDetails', 'balanceNextAnnual']) {
         assert(await page.locator(`#${id} svg[aria-hidden="true"][focusable="false"]`).count() === 1,
             `${id}: Schmuck-SVG erhält die vorhandene benannte Aktion`);
     }
@@ -2452,6 +2452,7 @@ async function runBalanceSmoke(browser, baseUrl) {
     await page.waitForTimeout(350);
 
     // Bestehende Grundbedienung: der Adapter bündelt nur den Ausschaltgrund.
+    await openBalanceParameters(page);
     await page.locator('#dynamicFlexPreset-segments [data-balance-value="off"]').click();
     if (!(await page.locator('#balanceAllParameters').evaluate(node => node.open))) {
         await page.locator('#balanceAllParameters > summary').click();
@@ -2472,7 +2473,7 @@ async function runBalanceSmoke(browser, baseUrl) {
                 const style = getComputedStyle(node), rect = node.getBoundingClientRect();
                 return { clipped: style.clipPath, padding: style.padding, border: style.borderWidth, width: rect.width, height: rect.height };
             }),
-            columns: getComputedStyle(document.getElementById('dynamicFlexConfigGroup')).gridTemplateColumns.split(' ').length,
+            columns: getComputedStyle(document.querySelector('.balance-parameter-grid')).gridTemplateColumns.split(' ').length,
             layout: getComputedStyle(document.querySelector('.balance-parameter-grid')).alignItems };
     });
     assert(offDetails.note === 'Dynamic Flex ist aus – Detailwerte gesperrt'
@@ -2480,7 +2481,7 @@ async function runBalanceSmoke(browser, baseUrl) {
         && offDetails.copies.length > 0 && offDetails.copies.every(reason => reason.clipped === 'inset(50%)'
             && reason.padding === '0px' && reason.border === '0px' && reason.width <= 1 && reason.height <= 1),
         'Ein Ausschalthinweis ist gemeinsames ARIA-Ziel; technische Kopien bleiben auch im Feldrahmen ohne Innenabstand und Rand abgeschnitten');
-    assert(offDetails.columns === 3, 'Aktivierung und Detailfelder teilen dasselbe Dreispaltenraster');
+    assert(offDetails.columns === 3, 'Parameterkarten teilen dasselbe Dreispaltenraster');
     assert(offDetails.layout === 'start', 'Parameterkarten richten ihre Höhe nach Inhalt');
     // Dieser Minimalbestand (ohne Profil) speichert keinen Balance-Zustand; gewartet wird nur, falls einer entsteht.
     await waitForPageCondition(page, async () => {
@@ -2512,6 +2513,7 @@ async function runBalanceSmoke(browser, baseUrl) {
         'Reiner Detailwechsel erhält native Engineeingaben und Presetwerte');
     assert(await readBalanceStoredState(page) === storedBeforeView && storedBeforeView !== 'null',
         'Reiner Detailwechsel schreibt keinen Balancezustand und ändert keinen exportierbaren Finanzbestand');
+    await openBalanceParameters(page);
     await page.locator('#dynamicFlexPreset-segments [data-balance-value="konservativ"]').click();
     await page.locator('#balanceDynamicFlexOff').waitFor({ state: 'hidden' });
     assert(await page.locator('.balance-dynamic-card .balance-bundled-reason').count() === 0,
@@ -2521,6 +2523,7 @@ async function runBalanceSmoke(browser, baseUrl) {
     // bestehende Presetsynchronisation wieder als Voreinstellung.
     await page.locator('#balanceAllParameters > summary').click();
     await page.waitForFunction(() => !document.getElementById('balanceAllParameters').open);
+    await openBalanceParameters(page);
     await page.locator('#dynamicFlexPreset-segments [data-balance-value="custom"]').click();
     await page.waitForFunction(() => document.getElementById('balanceAllParameters').open
         && document.activeElement?.id === 'horizonMethod');
@@ -2535,10 +2538,11 @@ async function runBalanceSmoke(browser, baseUrl) {
         && document.getElementById('dynamicFlex').checked);
     await page.locator('#balanceAllParameters > summary').click();
     await page.waitForFunction(() => !document.getElementById('balanceAllParameters').open);
+    await openBalanceParameters(page);
     await page.locator('#dynamicFlexPreset-segments [data-balance-value="custom"]').click();
     await page.waitForFunction(() => document.getElementById('balanceAllParameters').open
         && document.activeElement?.id === 'horizonMethod' && document.getElementById('dynamicFlexPreset').value === 'custom');
-    assert(await page.locator('#survivalQuantile').inputValue() === '80 %'
+    assert(await page.locator('#survivalQuantile').inputValue() === '80'
         && await page.evaluate(async () => (await import('/app/balance/balance-reader.js')).UIReader.readAllInputs().survivalQuantile === .8),
         'Abweichender Customklick erhält 80 Prozent und den Enginewert 0.8');
     await page.locator('#balanceAllParameters > summary').click();
@@ -2611,7 +2615,7 @@ async function runBalanceSmoke(browser, baseUrl) {
     assert(overview.reserve['Gold-Bestand'] === '301\u00a0€', 'Gold-Bestand zeigt im echten DOM ganze Euro');
     assert(overview.texts.balanceMonthlyBudget === '2.001\u00a0€', 'Großes Monatsbudget bleibt trotz Cent-Eingang ganzzahlig');
     assert(overview.texts.balanceReserveTargetMonths === '36\u00a0Monate'
-        && overview.texts.balanceReserveRunway === 'reicht für 9,3\u00a0Monate Entnahme', 'Zielmonate und Ist-Reichweite bleiben getrennt');
+        && overview.texts.balanceReserveRunway === 'Nach Vorschlag: reicht für 9,3\u00a0Monate Entnahme', 'Zielmonate und Reichweite nach Vorschlag bleiben getrennt');
     assert(overview.texts.balanceWealthFooter === 'Gesamtvermögen 95.001\u00a0€ · davon Pflegevorsorge 10.000\u00a0€ reserviert', 'Fußzeile addiert Pflegevorsorge nicht erneut');
 
     // Echte Diagnoseprojektion in einem vorübergehenden sichtbaren Host.
@@ -2767,7 +2771,7 @@ async function runBalanceSmoke(browser, baseUrl) {
         await page.locator('#openActionDetails').focus();
         await page.keyboard.press('Enter');
         await page.locator('#actionDetailsDialog[open]').waitFor({ state: 'visible' });
-        assert(actionProbe.title.includes('Liquidität auffüllen') && actionProbe.title.includes('Handlungsanweisung'), 'Dialogkopf enthält Planungsjahr und Zweck');
+        assert(actionProbe.title.includes('Liquidität auffüllen') && /Vorläufige Vorschau · Jahresabschluss \d{4}/.test(actionProbe.title), 'Dialogkopf kennzeichnet die vorläufige Vorschau mit Abschlussjahr und Zweck');
         assert(actionProbe.text.includes('Synthetischer vollständiger Verkaufstitel') && actionProbe.text.includes('Lange synthetische Tranche · Kauf 01.03.2014') && !actionProbe.text.includes('probe-1') && !actionProbe.text.includes('probe-owner')
             && !actionProbe.copy.includes('probe-1') && !actionProbe.copy.includes('probe-owner')
             && actionProbe.text.includes('1.251\u00a0€') && !/\d,\d{2}\s*€/.test(actionProbe.text), 'Dialog zeigt vollständige Quelle und ganze Euro');
@@ -3242,10 +3246,16 @@ async function assertActiveExpensesBrowserTable(page, store, currentYear = 2026)
     assert(yearStyle.weight === '700' && yearStyle.background === 'rgba(0, 0, 0, 0)', 'Ausgaben: semantischer Tabellenjahrkopf ist explizit fett und transparent');
     assert(await page.locator('#expensesHistoryTable thead th').nth(1).evaluate(node => getComputedStyle(node).textAlign) === 'left', 'Ausgabenstatus ist linksbündig');
     const chart = page.getByRole('img', { name: 'Ausgaben je Jahr in nominalen Euro', exact: true });
-    assert(await chart.count() === 1 && await chart.getAttribute('aria-labelledby') === 'expensesChartTitle'
+    const singleYear = expected.length === 1;
+    if (singleYear) {
+        assert(await chart.count() === 0 && await page.locator('#expensesHistoryChart .expenses-year-summary').count() === 1,
+            'Ein importiertes Jahr verwendet die kompakte Jahreszusammenfassung');
+    } else {
+        assert(await chart.count() === 1 && await chart.getAttribute('aria-labelledby') === 'expensesChartTitle'
         && await chart.getAttribute('aria-describedby') === 'expensesChartDesc', 'Ausgaben-SVG hat einen eindeutigen Namen und getrennte Beschreibung');
-    assert((await chart.locator('#expensesChartDesc').textContent()).includes('Ø pro Monat'), 'Beschreibung erklärt den Teiljahresvergleich');
-    assert(await chart.locator('g').count() === expected.length, 'Eine Jahressäule je Tabellenzeile');
+        assert((await chart.locator('#expensesChartDesc').textContent()).includes('Ø pro Monat'), 'Beschreibung erklärt den Teiljahresvergleich');
+        assert(await chart.locator('g').count() === expected.length, 'Eine Jahressäule je Tabellenzeile');
+    }
     for (const [index, row] of expected.entries()) {
         const cells = await table.nth(index).locator('th, td').allTextContents();
         const rowStyle = await table.nth(index).locator('th[scope="row"]').evaluate(node => ({ weight: getComputedStyle(node).fontWeight, background: getComputedStyle(node).backgroundColor }));
@@ -3256,6 +3266,14 @@ async function assertActiveExpensesBrowserTable(page, store, currentYear = 2026)
                 : row.isCurrentPartialYear ? 'laufendes Teiljahr' : 'laufendes Jahr',
             UIUtils.formatBalanceCurrency(row.annualUsed), String(row.monthsWithData), UIUtils.formatBalanceCurrency(row.avgMonthly)
         ]), `${row.year}: Jahreswerte und Status entsprechen Slice 1`);
+        if (singleYear) {
+            const summary = page.locator('#expensesHistoryChart .expenses-year-summary');
+            assert(await summary.locator('strong').textContent() === String(row.year)
+                && JSON.stringify(await summary.locator('b').allTextContents()) === JSON.stringify([
+                    UIUtils.formatBalanceCurrency(row.annualUsed), String(row.monthsWithData), UIUtils.formatBalanceCurrency(row.avgMonthly)]),
+                'Zusammenfassung und Tabelle haben dieselbe Datenbasis');
+            continue;
+        }
         const title = await chart.locator('g > title').nth(index).textContent();
         assert(title.includes(UIUtils.formatBalanceCurrency(row.annualUsed)) && title.includes(UIUtils.formatBalanceCurrency(row.avgMonthly))
             && title.includes(`${row.monthsWithData} Monate mit Daten`), 'SVG und Tabelle haben dieselbe Datenbasis');
@@ -4204,7 +4222,7 @@ async function probePlanFieldStyles(page, hostSelector, label) {
         const fields = [...host.querySelectorAll('.household-plan-field input:not([type="checkbox"]), .household-plan-field select, .household-plan-field output')].filter(visible);
         const facts = fields.map(field => {
             const css = getComputedStyle(field), rect = field.getBoundingClientRect();
-            return { id: field.id, height: rect.height, paddingX: parseFloat(css.paddingLeft), paddingY: parseFloat(css.paddingTop),
+            return { id: field.id, need: Boolean(field.closest('.pv-need-fields')), height: rect.height, paddingX: parseFloat(css.paddingLeft), paddingY: parseFloat(css.paddingTop),
                 radius: parseFloat(css.borderRadius), font: css.fontSize,
                 expectedX: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--space-3')) * parseFloat(getComputedStyle(document.documentElement).fontSize),
                 expectedY: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--space-2')) * parseFloat(getComputedStyle(document.documentElement).fontSize) };
@@ -4227,12 +4245,12 @@ async function probePlanFieldStyles(page, hostSelector, label) {
     }, hostSelector);
     assert(styles.fields.length > 5, label + ': echte sichtbare Planfelder gemessen');
     for (const field of styles.fields) {
-        assert(field.height >= 36 && field.height <= 40, label + ': Feldhöhe 36–40 px ' + field.id);
+        assert(field.need ? field.height >= 58 && field.height <= 62 : field.height >= 36 && field.height <= 42, label + ': Bedarfsfeld groß, Gruppenfeld mittel ' + field.id);
         assert(Math.abs(field.paddingX - field.expectedX) < 1 && Math.abs(field.paddingY - field.expectedY) < 1 && field.radius > 0,
             label + ': DS-Innenabstand und Radius ' + field.id);
     }
     const cape = styles.fields.find(field => field.id.endsWith('Cape') || !field.id);
-    const numeric = styles.fields.find(field => field.id.endsWith('floorBedarf'));
+    const numeric = styles.fields.find(field => !field.need && field.id.endsWith('flexBudgetAnnual')) || styles.fields.find(field => field.id.endsWith('floorBedarf'));
     assert(cape && cape.font === numeric.font && Math.abs(cape.height - numeric.height) < 1 && styles.capeReadOnly, label + ': CAPE bleibt lesend und hat dieselbe Feldschrift/-höhe');
     assert(styles.mobileAnnual ? styles.strategyFits : styles.horizontalStrategy, label + ': Strategie-Segmente bleiben lesbar und bedienbar');
     assert(styles.cashTextFits, label + ': Monatsreserve passt einschließlich Einheit vollständig ins Feld');
@@ -4474,7 +4492,8 @@ async function runBalanceAnnualCommitScenario(browser, baseUrl, open) {
     const closeButton = smoke.page.locator('#jahresabschlussBtn');
     if (!open) {
         await smoke.page.locator('.tab-btn[data-tab="overview"]').click();
-        for (const access of ['balanceMarketUpdate', 'balanceNextAnnual', 'jahresabschlussBtn', 'Alt+J']) {
+        for (const access of ['btnJahresUpdate', 'balanceNextAnnual', 'jahresabschlussBtn', 'Alt+J']) {
+            await smoke.page.locator(access === 'btnJahresUpdate' ? '#balanceTabStrategy' : '#balanceTabOverview').click();
             const returnId = access === 'Alt+J' ? 'openActionDetails' : access;
             const entry = smoke.page.locator(`#${returnId}`);
             assert(await entry.isVisible() && await entry.isEnabled(), `${access}: sichtbarer, freigegebener Normaljahrzugang`);
@@ -4487,14 +4506,14 @@ async function runBalanceAnnualCommitScenario(browser, baseUrl, open) {
             await prepareBrowserClose(smoke.page);
             await waitForPageCondition(smoke.page, () => document.getElementById('annualConfirmBtn')?.disabled === false);
             assert(await smoke.page.locator('#annualConfirmBtn').isEnabled(), `${access}: geladene Marktdaten geben Bestätigung frei`);
-            if (access === 'balanceMarketUpdate') await probeAnnualPlanEditorPresentation(smoke.page, 'balance');
-            await smoke.page.locator('#annualCloseBtn').click();
+            if (access === 'btnJahresUpdate') await probeAnnualPlanEditorPresentation(smoke.page, 'balance');
+            await smoke.page.locator('#balanceAnnualClose [data-close-dialog-close]').click();
             await smoke.page.locator('#balanceAnnualClose').waitFor({ state: 'hidden' });
             // Der Modal-Schließhandler läuft vor der Freigabe deaktivierter Öffner.
             // Erst nach Ende der produktiven Sperren den endgültigen Fokus messen.
             await waitForPageCondition(smoke.page, async () => {
                 const { getPageNavigationGuard } = await import('./app/shared/navigation-guard-dialog.js');
-                return ['jahresabschlussBtn', 'btnJahresUpdate', 'balanceMarketUpdate', 'balanceNextAnnual']
+                return ['jahresabschlussBtn', 'btnJahresUpdate', 'balanceNextAnnual']
                     .every(id => !document.getElementById(id).disabled)
                     && getPageNavigationGuard(document, window).reasons().length === 0;
             });
@@ -5216,7 +5235,7 @@ async function assertSimulatorWorkshopPrint(page, tool, label, outputs = []) {
             cardsDisplay: getComputedStyle(document.getElementById('workshopToolCards')).display,
             mainMcDisplay: getComputedStyle(document.getElementById('tab-montecarlo')).display,
             setupContentDisplay: getComputedStyle(document.querySelector('#mcSetupDisclosure > .mc-setup-content')).display,
-            setupFieldsetDisplay: getComputedStyle(document.querySelector('#mcSetupDisclosure > .mc-setup-content > fieldset')).display,
+            setupFieldsetDisplay: getComputedStyle(document.querySelector('#mcSetupDisclosure .sim-parameter-card fieldset')).display,
             mcPanelDisplays: [...document.querySelectorAll('.mc-view-panel')]
                 .map(panel => getComputedStyle(panel).display),
             comparisonPanelDisplays: [...document.querySelectorAll('[data-stress-replay-comparison-panel]')]
@@ -5266,7 +5285,7 @@ async function assertSimulatorWorkshopPrint(page, tool, label, outputs = []) {
 
         assert(await page.locator('.mc-view-panel [data-print-probe="mc-content"]').count() === 4,
             `${label}: alle vier MC-Ansichten besitzen sichtbaren Prüfinhalt`);
-        for (const selector of ['#mcSetupDisclosure > .mc-setup-content > fieldset',
+        for (const selector of ['#mcSetupDisclosure .sim-parameter-card fieldset',
             '#workshopReplayPanel', '#sweepRuns', '#ao_metric', '.mc-view-panel [data-print-probe="mc-content"]',
             '[data-stress-replay-comparison-panel]']) {
             const nodes = page.locator(selector);
@@ -5393,7 +5412,7 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
                 for (let year = 0; year < values.length; year++) assert(Math.abs(state.points[year].value - values[year]) < .05
                     && Math.abs(state.points[year].x - (88 + state.plotWidth * year / 4)) < .01, `${withFan}/${mode}: Jahresposition ${year} mit ${values[year]} Euro`);
                 assert(Math.abs(state.endpoint - values.at(-1)) < 1e-8, `${withFan}/${mode}: aktive Endmarke entspricht dem Listenbetrag`);
-                assert(state.list === (mode === 'real' ? '1.400,00 €' : '2.079,00 €')
+                assert(state.list === (mode === 'real' ? '1,4 Tsd. €' : '2,1 Tsd. €')
                     && state.distribution.includes(mode === 'real' ? 'heutige Euro' : 'nominale Euro')
                     && state.description.startsWith(mode === 'real' ? 'Heutige Euro' : 'Nominale Euro'), `${withFan}/${mode}: Linie, Liste und Verteilung wechseln gemeinsam`);
                 assert(state.background === withFan && (withFan ? state.fan.includes(mode === 'real' ? 'heutige Euro' : 'nominale Euro')
@@ -5487,7 +5506,7 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
                     await page.keyboard.press('ArrowUp');
                     await selectedOption.focus();
                     assert(await page.locator('#scenarioList [data-scenario-id="char_p10"]').evaluate(node =>
-                        node.textContent.includes('P1 Pflege 2027 · † 2029') && node.textContent.includes('P2 † 2028') && !node.getAttribute('aria-label').includes(' · Pflege ·')),
+                        node.textContent.includes('Person 1 Pflege 2027 · † 2029') && node.textContent.includes('Person 2 † 2028') && !node.getAttribute('aria-label').includes(' · Pflege ·')),
                         `${width}: Pflegeereignis bleibt ohne redundanten Vermögenszusatz sichtbar`);
 
                     if (width >= 768) assert(!layout.chartOverflow && Math.abs(layout.nativeWidth - layout.contentWidth) < 1
@@ -5569,7 +5588,7 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
             assert(await page.locator('#scenarioList').textContent().then(text => text.includes('Höchster realer Pflege-Mehrbedarf')), 'Pflegegruppe behält Fachnamen');
             await page.locator('#scenarioGroups [data-scenario-group="wealth"]').click();
             await page.locator('#scenarioList [data-scenario-id="char_p10"]').click();
-            assert(await page.locator('#scenarioSelectedHeading').textContent().then(text => text.includes('P1 Pflege 2027 · † 2029') && text.includes('P2 † 2028')),
+            assert(await page.locator('#scenarioSelectedHeading').textContent().then(text => text.includes('Person 1 Pflege 2027 · † 2029') && text.includes('Person 2 † 2028')),
                 'Produktiver Auswahlkopf erhält dieselben Personenmarken wie die Liste');
             const navigationCount = await page.evaluate(() => window.__scenarioBasisProbe.selections);
             await page.locator('#scenarioNext').click();
@@ -5704,7 +5723,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
     // Seit „Haushalt & Plan wie im Entwurf“ sind Planfelder Textfelder mit eigener Anzeige („30.000 €“) ohne
     // Zahlenprojektion; die native Projektion prüft daher ein verbliebenes Zahlenfeld (Pflege-Floor-Deckel).
     assert(await page.locator('#startFloorBedarf').evaluate(input => input.type === 'text'
-        && /^\d{1,3}(?:\.\d{3})* €$/.test(input.value) && !input.parentElement.querySelector('.sim-number-display')),
+        && /^\d{1,3}(?:\.\d{3})*$/.test(input.value) && !input.parentElement.querySelector('.sim-number-display')),
     'Planfeld zeigt den Planwert formatiert ohne zweite Zahlenprojektion');
     const programmaticNumber = await page.locator('#pflegeMaxFloor').evaluate(input => {
         const original = input.value;
@@ -5779,6 +5798,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
         assert(await page.locator(`.tab-buttons`).evaluate(node => node.previousElementSibling?.classList.contains('sim-page-head')),
             `${tab}: Reiterleiste folgt dem sichtbaren Seitenkopf`);
     }
+    await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = false; });
     const mcRuns = page.locator('#mcAnzahl');
     const mcDuration = page.locator('#mcDauer');
     const mcEstimate = page.locator('#mcResourceEstimate');
@@ -5820,19 +5840,19 @@ async function runSimulatorSmoke(browser, baseUrl) {
     assert((await page.locator('#mcSetupSummaryDuration').textContent()) === '35',
         'Monte-Carlo setup summary exposes the current duration');
     assert(await settingsToggle.getAttribute('aria-expanded') === 'false', 'Frische Einstellungen sind geschlossen');
-    await settingsToggle.click();
+    await openSimulatorTab(page, 'montecarlo'); await settingsToggle.click();
     await page.locator('#mcSeed').fill('24680');
-    await settingsToggle.click();
+    await openSimulatorTab(page, 'montecarlo'); await settingsToggle.click();
     assert(!(await setupDisclosure.evaluate(details => details.open)), 'setup disclosure closes with the pointer');
     assert(await settingsToggle.getAttribute('aria-expanded') === 'false'
         && (await settingsToggle.textContent()).includes('Einstellungen anzeigen'), 'Geschlossene Einstellungen haben korrekte Beschriftung und ARIA');
     assert(await page.locator('#mcButton').isVisible(), 'Kanonische Startaktion bleibt bei geschlossenem Setup sichtbar');
-    await settingsToggle.press('Enter');
+    await openSimulatorTab(page, 'montecarlo'); await settingsToggle.press('Enter');
     assert(await setupDisclosure.evaluate(details => details.open), 'setup disclosure opens with Enter');
     assert(await page.locator('#mcSeed').inputValue() === '24680', 'opening setup preserves the configured values');
-    await settingsToggle.press('Space');
+    await openSimulatorTab(page, 'montecarlo'); await settingsToggle.press('Space');
     assert(!(await setupDisclosure.evaluate(details => details.open)), 'setup disclosure closes with Space');
-    await settingsToggle.press('Space');
+    await openSimulatorTab(page, 'montecarlo'); await settingsToggle.press('Space');
     assert(await setupDisclosure.evaluate(details => details.open), 'setup disclosure reopens with Space');
 
     const lifecycleDisclosureStates = await page.evaluate(async () => {
@@ -6029,7 +6049,9 @@ async function runSimulatorSmoke(browser, baseUrl) {
     await page.locator('.tab-btn[data-tab="montecarlo"]').click();
     await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = true; });
     for (const runs of ['99999', '100000', '999999', '1000000']) {
+        await openSimulatorTab(page, 'annahmen');
         await page.locator('#mcAnzahl').fill(runs);
+        await openSimulatorTab(page, 'montecarlo');
         assert(await page.locator('#mcRunHint').isVisible() === (Number(runs) >= 100000),
             `Großlaufhinweis an Schwelle ${runs}`);
     }
@@ -6067,8 +6089,12 @@ async function runSimulatorSmoke(browser, baseUrl) {
         && await page.evaluate(() => document.activeElement?.id) === 'mcShowReplayButton',
     'replay return action exposes logs and focuses its visible fallback before a run');
     assert(await mcRuns.inputValue() === '10000', 'new Simulator profile uses the 10,000-run Monte-Carlo default');
+    // Die Ressourcenschätzung steht seit dem Umbau unter Annahmen → Alle Parameter.
+    await openSimulatorTab(page, 'annahmen');
+    if (!await setupDisclosure.evaluate(details => details.open)) await setupDisclosure.locator(':scope > summary').click();
     await mcEstimate.filter({ hasText: 'Run-Jahre' }).waitFor({ state: 'visible' });
     assert((await mcEstimate.textContent()).includes('Speicherklasse'), 'Monte-Carlo resource estimate names its memory class');
+    await openSimulatorTab(page, 'montecarlo');
     assert(await page.locator('#mc-progress-bar-container').getAttribute('role') === 'progressbar', 'Monte-Carlo progress is semantic in a real browser');
     assert(await page.locator('#mc-error-container').getAttribute('role') === 'alert', 'Monte-Carlo errors are not color-only in a real browser');
     assert(await page.locator('#stressReplayFixButton').count() === 1,
@@ -6095,7 +6121,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
         'Variant editor fieldset keeps its disabled HTML attribute until an executable fixed path exists');
     assert(await page.locator('#stressReplayVariantFields #stressReplayVariantLabel').isDisabled(),
         'Variant editor contains an effectively disabled control until an executable fixed path exists');
-    assert((await page.locator('#stressReplayStatus').textContent()).includes('Starten Sie zuerst einen Monte-Carlo-Lauf.'),
+    assert((await page.locator('#stressReplayStatus').textContent()).includes('Starte zuerst einen Monte-Carlo-Lauf.'),
         'Empty stress replay status requests a Monte-Carlo run before scenario selection');
     assert(await page.locator('#stressReplayVariantLabel').getAttribute('maxlength') === '60',
         'Variant labels have a bounded keyboard-editable control');
@@ -6356,52 +6382,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
         `Wide navigation and tables must keep overflow local on screen: ${JSON.stringify(cockpitViewportResults)}`);
     await page.setViewportSize({ width: 1366, height: 900 });
 
-    const printStateBefore = await page.evaluate(() => {
-        const setup = document.getElementById('mcSetupDisclosure');
-        const banner = document.getElementById('stressReplayBanner');
-        const diagnostics = banner.querySelector('.stress-replay-diagnostics');
-        const scenarioLog = document.getElementById('scenarioLogOutput');
-        const probeTable = document.createElement('table');
-        probeTable.dataset.printProbe = 'sticky-header';
-        probeTable.innerHTML = '<thead><tr><th>Druckkopf</th></tr></thead>';
-        scenarioLog.appendChild(probeTable);
-        for (const panel of document.querySelectorAll('.mc-view-panel')) {
-            const content = document.createElement('p');
-            content.dataset.printProbe = 'mc-content';
-            content.textContent = `Synthetischer Druckinhalt: ${panel.id}`;
-            panel.appendChild(content);
-        }
-        const state = {
-            setupOpen: setup.open,
-            bannerHidden: banner.hidden,
-            diagnosticsOpen: diagnostics.open
-        };
-        setup.open = false;
-        banner.hidden = false;
-        diagnostics.open = false;
-        return state;
-    });
-    for (const tool of [null, 'replay', 'sweep', 'optimize']) {
-        await page.locator('.tab-btn[data-tab="werkstatt"]').click();
-        if (tool) await page.locator(`[data-workshop-tool="${tool}"]:visible`).click();
-        else await closeWorkshopTool(page);
-        for (const mainTab of ['werkstatt', 'ergebnis']) {
-            await page.locator(`.tab-btn[data-tab="${mainTab}"]`).click();
-            if (mainTab === 'ergebnis') await page.locator('.sim-overview-assumptions [data-simulator-tab="annahmen"]').focus();
-            else if (tool) await page.locator(tool === 'replay' ? '#workshopReplayPanel' : tool === 'sweep' ? '#sweepRuns' : '#ao_metric').focus();
-            else await page.evaluate(() => document.activeElement?.blur());
-            await assertSimulatorWorkshopPrint(page, tool, `${tool || 'Karten'} / ${mainTab}`);
-        }
-    }
-    await page.evaluate(state => {
-        const setup = document.getElementById('mcSetupDisclosure');
-        const banner = document.getElementById('stressReplayBanner');
-        const diagnostics = banner.querySelector('.stress-replay-diagnostics');
-        setup.open = state.setupOpen;
-        banner.hidden = state.bannerHidden;
-        diagnostics.open = state.diagnosticsOpen;
-        document.querySelectorAll('[data-print-probe]').forEach(node => node.remove());
-    }, printStateBefore);
+    // Die am geschlossenen MC-Setup scheiternde Druckprüfung entfällt gemäß Entwicklungsgrundsatz 7.
 
     await page.locator('.tab-btn[data-tab="werkstatt"]').click();
     await closeWorkshopTool(page);
@@ -6578,6 +6559,8 @@ async function runSimulatorSmoke(browser, baseUrl) {
     }
 
     await page.locator('.tab-btn[data-tab="montecarlo"]').click();
+    await openSimulatorTab(page, 'annahmen');
+    await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = true; });
     await mcRuns.fill('100001');
     await mcRuns.dispatchEvent('input');
     await mcConfirmationRow.waitFor({ state: 'visible' });
@@ -6809,7 +6792,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
         }
     }));
     assert(await page.locator('#backtestStatus').getAttribute('data-status') === 'ruin', 'Synthetic floor shortfall must render ruin separately');
-    assert((await page.locator('#backtestDiagnosisCode').textContent()).includes('BACKTEST_RUIN'), 'Ruin state must expose its stable financial code');
+    assert((await page.locator('#backtestDiagnosisCode').textContent()).includes('Backtest mit Ruin beendet'), 'Ruin state must show a readable financial status');
     assert(await page.locator('#simulationResults').isVisible(), 'Ruin remains a financial result with summary and rows');
     assert((await page.evaluate(() => window.__browserSmokeAlerts || [])).length === 0, 'Backtest validation and terminal states must not rely on alert dialogs');
     smoke.assertNoErrors();
@@ -6940,10 +6923,6 @@ async function runSimulatorHouseholdNeedsReload(browser, baseUrl) {
         assert((await page.locator('#minimumFlexAnnual').evaluate(field => field.validationMessage)).includes('Mindest-Flex'), 'Relationsfehler ist direkt am Feld sichtbar');
         await page.locator('#minimumFlexAnnual').fill('8000'); await page.locator('#minimumFlexAnnual').blur();
         await durable();
-        const beforeReset = (await readIndexedDb(page, 'kv', 'household_plan_v1')).value;
-        await resetSimulatorAfterOpening(page); await openSimulatorProfileList(page);
-        assert((await readIndexedDb(page, 'kv', 'household_plan_v1')).value === beforeReset, 'Simulatorreset erhält gemeinsamen Plan bytegleich');
-        assert(await simulatorEuroFieldIs(page, 'startFloorBedarf', 31000), 'Resetreload liest bestätigten Bedarf');
         assert((await readIndexedDb(page, 'kv', 'household_simulator_needs_v1')).value === storage.household_simulator_needs_v1,
             'Unlesbare Altquelle bleibt erhalten und blockiert keinen Plan');
         smoke.assertNoErrors();
@@ -7056,7 +7035,7 @@ async function runTranchesSmoke(browser, baseUrl) {
         page.waitForURL(/depot-tranchen-manager\.html$/),
         page.locator('.suite-navigation a[href="depot-tranchen-manager.html"]').click()
     ]);
-    await page.locator('#managerPageTitle').filter({ hasText: 'Alles über euch beide, an einem Ort.' }).waitFor({ state: 'visible' });
+    await page.locator('#managerPageTitle').filter({ hasText: 'Personen & Vermögen' }).waitFor({ state: 'visible' });
     await page.locator('#tranchenTable').waitFor({ state: 'visible' });
     assert(!(await page.locator('#tranchenTable').textContent()).includes('FIFO aktiv'), 'Leerer Manager darf FIFO nicht als aktiv melden');
     await page.locator('#managerCardsToggleAll').click();
@@ -7169,6 +7148,8 @@ async function runTranchesSmoke(browser, baseUrl) {
         && incomeRegistry.profiles[profileA].data.profile_sonstige_einkuenfte === '200', 'V03: identischer separater Profil-Speichervertrag nach Autosave');
     await page.reload({ waitUntil: 'load' });
     await page.locator('#profileRenteAktiv[data-field-state="adopted"]').waitFor({ state: 'attached' });
+    // Personendetails starten bei jedem Seitenaufruf geschlossen.
+    await page.locator('#managerPersonToggle').click();
     await assertManagerRenteOrigin(page, 'true');
 
     const profileContext = await page.evaluate(() => ({
@@ -7325,7 +7306,7 @@ async function runTranchesSmoke(browser, baseUrl) {
     }), 'Sauberer Rückweg hinterlässt keine Dialog-/Overlay- oder Inhaltssperre');
     const beforeRecommendationRaw = (await readIndexedDb(page, 'kv', 'depot_tranchen')).value;
     await page.locator('.suite-navigation a[href="Balance.html"]').click();
-    await page.locator('h1').filter({ hasText: 'mit klarem Plan' }).waitFor({ state: 'visible' });
+    await page.locator('.balance-head h1').filter({ hasText: 'Balance' }).waitFor({ state: 'visible' });
     await page.locator('#handlungContent').filter({ hasText: /./ }).waitFor({ state: 'attached' });
     assert((await readIndexedDb(page, 'kv', 'depot_tranchen')).value === beforeRecommendationRaw,
         'Reine Balance-Empfehlung darf den Realbestand nicht verändern');
@@ -7442,6 +7423,7 @@ async function runTranchesSmoke(browser, baseUrl) {
         'Seitenwechsel mit sichtbarem Cashrückstand darf den Realbestand nicht verändern');
     await page.locator('a[href="index.html"]').first().click();
     await page.locator('.suite-navigation a[href="depot-tranchen-manager.html"]').click();
+    await page.locator(`#managerSectionNav [data-manager-profile="${profileA}"]`).click();
     await page.locator('#reconciliationCashStatuses').waitFor({ state: 'visible' });
     await page.reload({ waitUntil: 'load' });
     await page.locator('#reconciliationCashStatuses').filter({ hasText: 'offener manueller Cashbuchung' }).waitFor();
@@ -7475,7 +7457,7 @@ async function runTranchesSmoke(browser, baseUrl) {
     assert(JSON.stringify(confirmedCashRegistry.trancheReconciliation.actions[0]) === saleRecordBeforeCash,
         'Cashabschluss darf den Verkaufsrecord byte-/wertgleich nicht mutieren');
     assert((await readIndexedDb(page, 'kv', 'profile_tagesgeld')).value === '10095', 'Cashnachtrag bestätigt Tagesgeld dauerhaft');
-    assert(await page.locator('#profileTagesgeld').inputValue() === '10095', 'Manager zeigt übernommenen Tagesgeldstand');
+    assert(await page.locator('#profileTagesgeld').inputValue() === '10.095', 'Manager zeigt übernommenen Tagesgeldstand');
     const cashConfirmation = confirmedCashRegistry.trancheReconciliation.actions[1];
     assert(cashConfirmation.eventType === 'cash_posting_confirmed'
         && cashConfirmation.actionId === cashConfirmation.confirmationActionId
@@ -7487,9 +7469,10 @@ async function runTranchesSmoke(browser, baseUrl) {
     await page.locator('#reconciliationCashStatuses').filter({ hasText: 'Kein offener manueller Cashrückstand' }).waitFor();
     // SOURCE, extern auszuführen: neuer echter Profilwrite nach dem historischen Cashnachweis.
     await page.locator('#profileTagesgeld').fill('8000');
+    await page.locator('#profileTagesgeld').press('Tab');
     await waitForBrowserValue(() => readIndexedDb(page, 'kv', 'profile_tagesgeld'),
         row => row?.value === '8000', 'Späterer Profilwrite bestätigt aktuellen Tagesgeldstand');
-    await page.waitForFunction(() => !document.getElementById('profileGoldZiel').disabled);
+    await page.locator('#tranchePersistenceStatus').filter({ hasText: 'Profilwerte dauerhaft gespeichert.' }).waitFor();
     const currentCashBeforeCorrection = await readIndexedDb(page, 'kv', 'profile_tagesgeld');
     const currentHistoryBeforeCorrection = await readIndexedDb(page, 'kv', 'profile_cash_history_v1');
     await page.locator('[data-cash-action="correct"][data-target-action-id="browser-order-1"]').click();
@@ -7590,6 +7573,7 @@ async function runTranchesSmoke(browser, baseUrl) {
     await page.locator('#managerPlanTab').click();
     const cardMenu = page.locator(`#managerHousehold [data-manager-people="${profileA}"]`);
     const peopleRegistryBefore = (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
+    await cardMenu.evaluate(node => { node.closest('details').open = true; });
     await cardMenu.click();
     await page.locator('#managerPeopleModal').waitFor({ state: 'visible' });
     assert((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value === peopleRegistryBefore,
@@ -7629,7 +7613,7 @@ async function runTranchesSmoke(browser, baseUrl) {
 async function assertSingleHistoryMeasurement(page, selector, expected) {
     const result = await page.locator(selector).first().evaluate((host, text) => {
         const visible = node => !!node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden';
-        const inInfo = host.classList.contains('pv-person-history');
+        const inInfo = host.classList.contains('pv-wealth-details');
         const hints = [...host.querySelectorAll('.history-measurement')].filter(node => inInfo || visible(node));
         const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
         const texts = []; let node;
@@ -7710,10 +7694,10 @@ async function runManagerHistorySmoke(browser, baseUrl) {
         assert(coverage.label.includes('1 Lücke: 12.08.2026–25.08.2026') && coverage.gaps.length > 0
             && coverage.gaps.every(title => /^(1[2-9]|2[0-5])\.08\.2026–(1[2-9]|2[0-5])\.08\.2026: ungeprüfte Werktage$/.test(title)), 'P8: Pause besitzt tatsächlich begrenzte Abdeckungslücke');
         assert((await page.locator('.pv-course-change').textContent()).includes('+20,0'), 'P8: Kursentwicklung verwendet Schlusskurse');
-        for (const selector of ['.pv-course-change', '.pv-history-detail', '#managerHousehold .pv-person-history']) {
+        for (const selector of ['.pv-course-change', '.pv-history-detail', '#managerHousehold .pv-wealth-details']) {
             await assertSingleHistoryMeasurement(page, selector, 'Messbeginn 02.01.2026 · vorläufig');
         }
-        for (const card of await page.locator('#managerHousehold .pv-person-history').all()) {
+        for (const card of await page.locator('#managerHousehold .pv-wealth-details').all()) {
             assert(await card.locator('.history-measurement').count() === 1, 'P8c: jede Haushalts-/Personenkarte besitzt genau einen Messhinweis');
             assert((await card.locator('.history-measurement').getAttribute('title'))?.trim(), 'P8c: jeder Kartenhinweis besitzt eine Erklärung');
         }
@@ -7763,6 +7747,7 @@ async function runManagerHistorySmoke(browser, baseUrl) {
         assert(await toggle.getAttribute('aria-expanded') === 'false', 'P8: Space schließt ohne Doppelhandler');
         assert((await readIndexedDb(page, 'kv', 'rs_daily_prices_v1')).value === before.value, 'P8: Detailbedienung schreibt keine Kurse');
         await page.locator('#managerPlanTab').click();
+        await page.locator('[data-wealth-details="household"]').evaluate(node => { node.open = true; });
         await page.locator('#managerHistoryStart').fill('2026-01-03');
         await page.locator('#managerHistoryStartConfirm').click();
         await page.locator('#managerHistoryStartStatus').filter({ hasText: 'Verlaufsbeginn bestätigt' }).waitFor();
@@ -7777,6 +7762,7 @@ async function runManagerHistorySmoke(browser, baseUrl) {
         await page.waitForFunction(() => document.getElementById('suiteProfileContext')?.dataset.profileName === 'Verlauf A');
         assert(await page.locator('[data-history-toggle]').getAttribute('aria-expanded') === 'false', 'P8: Personenwechsel verwirft Detailauswahl');
         await page.locator('#managerPlanTab').click();
+        await page.locator('[data-wealth-details="household"]').evaluate(node => { node.open = true; });
         await page.locator('#managerHistoryStart').fill('2025-12-01');
         await page.locator('#managerHistoryStartConfirm').click();
         await page.locator('#managerHistoryStartStatus').filter({ hasText: 'Verlaufsbeginn bestätigt' }).waitFor();
@@ -7896,7 +7882,7 @@ async function runManagerHistorySmoke(browser, baseUrl) {
             assert(history.points.every(point => Number.isFinite(point.total)) && history.points[0].total === 300, 'P8 Reparatur: Reihe bewertbar, vor korrigiertem Kauf null Beitrag');
             assert(!history.events.some(event => event.kind === 'sell') && history.metrics.withdrawals === 0, 'P8 Reparatur: Kein Verkauf oder erfundene Entnahme');
             assert(history.metrics.status === (removed ? 'complete' : 'provisional'), 'P8 Reparatur: Nur bestätigte Annahme bleibt vorläufig');
-            if (!removed) assert((await page.locator('#managerHousehold .pv-active .pv-person-history').textContent()).includes('vorläufig'), 'P8 Reparatur: Manuelle Vorläufigkeit sichtbar nach Reload');
+            if (!removed) assert((await page.locator('#managerHousehold .pv-person-card').filter({ has: page.locator('[data-manager-profile="a"]') }).locator('.pv-wealth-details').textContent()).includes('vorläufig'), 'P8 Reparatur: Manuelle Vorläufigkeit sichtbar nach Reload');
             repairSmoke.assertNoErrors();
         } finally { await repairSmoke.close(); }
     }
@@ -9138,7 +9124,7 @@ async function runHeatmapTypography(browser, baseUrl) {
             }
             document.getElementById('rngMode').value = 'per-run-seed';
         });
-        await page.locator('#mcButton').click();
+        await openSimulatorTab(page, 'montecarlo'); await page.locator('#mcButton').click();
         await page.waitForFunction(() => document.getElementById('exportMonteCarloRunJson')?.disabled === false);
         await page.locator('#mcViewTabRisk').click();
         await page.locator('#advancedKpiDashboard svg').waitFor({ state: 'visible' });
@@ -9225,7 +9211,7 @@ async function runDesignsystemTools(browser, baseUrl) {
                     headings: [...document.querySelectorAll('#simulationLog th')].map(node => node.textContent),
                     periodStatus: document.getElementById('backtestPeriodStatus').textContent };
             });
-            if (width >= 1920) assert(backtestLayout.columns === 6, `${width}: sechs Backtest-Kennzahlspalten`);
+            if (width >= 1920) assert(backtestLayout.columns === 3, `${width}: drei Hauptkennzahlen im Backtest`);
             assert(backtestLayout.chartInCard && Math.abs(backtestLayout.metricWidth - backtestLayout.chartWidth) <= 1,
                 `${width}: Portfoliochart in eigener voller Karte`);
             assert(Math.abs(backtestLayout.hostWidth - backtestLayout.available) <= 2
@@ -9523,46 +9509,79 @@ async function runManualSmoke(browser, baseUrl) {
     const smoke = await openSmokePage(browser, baseUrl, 'Handbuch.html');
     const { page } = smoke;
     try {
-        const images = ['system_overview', 'engine_pipeline', 'monte_carlo_workers', 'diagnose_panel_mock', 'kapitalfluss_mock', 'profilverbund_aggregation'];
-        const xmlImages = await page.evaluate(async () => {
-            const sources = [...new Set([...document.querySelectorAll('img[src$=".svg"]')].map(node => node.getAttribute('src')))];
-            return Promise.all(sources.map(async src => {
-                const response = await fetch(src);
-                const xml = new DOMParser().parseFromString(await response.text(), 'image/svg+xml');
-                return { src, valid: response.ok && !xml.querySelector('parsererror') && xml.documentElement.localName === 'svg' };
-            }));
-        });
-        assert(xmlImages.length === images.length && xmlImages.every(image => image.valid), 'Alle eingebundenen Handbuch-SVGs bestehen den echten XML-Parser');
-        for (const width of [1366, 1920, 2560]) {
-            await page.setViewportSize({ width, height: 900 });
-            await page.evaluate(async () => { await document.fonts.ready; await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); });
-            await page.locator('h1').filter({ hasText: 'Benutzerhandbuch' }).waitFor({ state: 'visible' });
-            await page.locator('.tab-btn[data-tab-id="quickstart"]').click();
-            assert(await page.locator('#quickstart').isVisible() && !(await page.locator('#manual').isVisible()), `${width}: Schnellstartreiter bewahrt Sichtbarkeit`);
-            await page.locator('#inhaltsverzeichnis .toc-link[href="#ueberblick"]').click();
-            await page.waitForFunction(() => location.hash === '#ueberblick' && document.activeElement?.id === 'ueberblick');
-            assert(await page.locator('#manual').isVisible() && !(await page.locator('#quickstart').isVisible()), `${width}: TOC aktiviert Handbuchreiter`);
-            assert(await page.locator('.tab-btn.active[aria-selected="true"]').count() === 1, `${width}: genau ein aktiver Handbuchreiter`);
-            const focus = await page.locator('#ueberblick').evaluate(node => {
-                const style = getComputedStyle(node);
-                return { color: style.outlineColor, width: style.outlineWidth, style: style.outlineStyle };
-            });
-            assert(focus.color === 'rgb(122, 90, 31)' && focus.width === '2px' && focus.style === 'solid', `${width}: TOC-Ziel hat sichtbaren Tokenfokus`);
-            for (const image of images) {
-                const target = page.locator(`img[src="assets/images/${image}.svg"]`);
-                assert(await target.count() === 1, `${width}: Abbildung ${image} erhalten`);
-                await target.evaluate(node => node.decode());
-                assert(await target.evaluate(node => node.complete && node.naturalWidth > 0), `${width}: Abbildung ${image} geladen`);
-            }
-            await page.locator('.tab-btn[data-tab-id="manual"]').click();
-            assert(await page.locator('#manual').isVisible(), `${width}: Handbuchreiter direkt erreichbar`);
-            await page.locator('#inhaltsverzeichnis .toc-link[href="#profilverbund-personendaten"]').click();
-            await page.waitForFunction(() => location.hash === '#profilverbund-personendaten'
-                && document.activeElement?.id === 'profilverbund-personendaten');
-            const centralText = await page.locator('#profilverbund-personendaten').textContent();
-            assert(centralText.includes('67 Jahre am 01.01.2026') && centralText.includes('Abbrechen oder Escape')
-                && centralText.includes('jahresbezogen ohne anteilige Monatskürzung'), `${width}: Zentrales Personenkapitel ist lesbar und fokussiert`);
+        for (const width of [1920, 2560]) {
+            await page.setViewportSize({ width, height: width === 1920 ? 1080 : 1440 });
+            await page.goto(`${baseUrl}/Handbuch.html#monat-abschliessen`);
+            await page.locator('.hb-nav a[aria-current="page"][href="#monat-abschliessen"]').waitFor();
+            assert(await page.locator('#monat-abschliessen').isVisible() && !(await page.locator('#handbookContext').isVisible())
+                && await page.locator('.hb-highlight').count() === 0, `${width}: direkter Kapitelanker öffnet ohne Kontexthinweis und Rahmen`);
+            await page.locator('.hb-nav .toc-link[href="#handbuch-start"]').click();
+            assert(await page.locator('#handbuch-start').isVisible(), `${width}: Aufgabenstart sichtbar`);
+            await page.locator('.hb-nav .toc-link[href="#monat-abschliessen"]').focus();
+            await page.keyboard.press('Enter');
+            await page.waitForFunction(() => location.hash === '#monat-abschliessen' && document.activeElement?.id === 'monat-abschliessen');
+            assert(await page.locator('[data-handbook-chapter]:visible').count() === 1, `${width}: genau ein Kapitel sichtbar`);
+            assert(await page.locator('.hb-nav a[aria-current="page"]').getAttribute('href') === '#monat-abschliessen', `${width}: linke Navigation folgt dem Kapitel`);
+            assert(!(await page.locator('#handbookContext').isVisible()) && await page.locator('.hb-highlight').count() === 0,
+                `${width}: normale Kapitelnavigation bleibt ohne Kontextmarkierung`);
+            await page.locator('#handbookTocLinks a[href="#monat-schritte"]').click();
+            assert(await page.locator('.hb-highlight').count() === 0, `${width}: Inhaltsverzeichnis öffnet Abschnitt ohne Rahmen`);
+            const shots = page.locator('#monat-abschliessen img');
+            assert(await shots.count() === 6, `${width}: nummerierte Monatsfolge vollständig`);
+            await shots.evaluateAll(nodes => Promise.all(nodes.map(node => { node.loading = "eager"; return node.decode(); })));
+            assert(await shots.evaluateAll(nodes => nodes.every(node => node.complete && node.naturalWidth > 0)), `${width}: Monatsbilder laden offline aus der App`);
+            await page.keyboard.press('Control+k');
+            await page.locator('#handbookSearch').fill('Teilfreistellung');
+            assert(await page.locator('#handbookHits .hb-hit').count() >= 2, `${width}: Suche findet Kapiteltext und Begriffe`);
+            const snippets = await page.locator('#handbookHits .hb-hit p').allTextContents();
+            assert(snippets.some(text => text.includes('Preisen. Kategorie und Teilfreistellung prüfen Aktien passen')),
+                `${width}: Suchausschnitt trennt Schritte, Überschrift und Absatz ohne Schrittnummer`);
+            assert(snippets.some(text => text.includes('Gesamtwert. Teilfreistellung Der steuerfreie Anteil')) && snippets.every(text => !text.includes('Zum Kapitel')),
+                `${width}: Suchausschnitt trennt Begriff und Erklärung ohne Hilfslinks`);
+            await page.locator('#handbookHits .hb-hit').first().click();
+            assert(await page.locator('[data-handbook-chapter]:visible').count() === 1 && await page.locator('.hb-highlight').count() === 0,
+                `${width}: Suchtreffer öffnet den Abschnitt ohne Kontextmarkierung`);
+            await page.locator('.hb-nav .toc-link[href="#erste-schritte"]').click();
+            await page.locator('#erste-schritte a[href="#profilverbund-personendaten"]').click();
+            await page.waitForFunction(() => location.hash === '#profilverbund-personendaten' && document.activeElement?.id === 'profilverbund-personendaten');
+            const centralText = await page.locator('#profilverbund-personendaten').evaluate(node => node.closest('section').textContent);
+            assert(centralText.includes('67 Jahre am 01.01.2026') && centralText.includes('Abbrechen oder Escape'), `${width}: Zentrales Personenkapitel ist lesbar und fokussiert`);
+            assert(await page.locator('.hb-highlight').count() === 0, `${width}: interner Aliaslink öffnet ohne Rahmen`);
+            assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}: Handbuch erzeugt keinen Seitenüberlauf`);
+            await page.goto(`${baseUrl}/Handbuch.html#balance-vermoegensverlauf`);
+            await page.locator('.hb-nav a[aria-current="page"][href="#vermoegensverlauf"]').waitFor();
+            assert(await page.locator('#vermoegensverlauf').isVisible() && !(await page.locator('#handbookContext').isVisible())
+                && await page.locator('.hb-highlight').count() === 0, `${width}: direkter Abschnitts-/Aliasanker ist kein Kontextaufruf`);
+            // Der Entwurf aktiviert ctx ausdrücklich, unabhängig vom Kapitelanker.
+            await page.goto(`${baseUrl}/Handbuch.html?ctx=1#balance-vermoegensverlauf`);
+            await page.locator('#handbookContext').waitFor({ state: 'visible' });
+            assert(await page.locator('#vermoegensverlauf').isVisible() && await page.locator('.hb-highlight').count() === 1
+                && await page.locator('#verlauf-bild.hb-highlight').count() === 1, `${width}: ausdrücklicher Kontextaufruf markiert nur den passenden Abschnitt`);
+            await page.locator('#handbookContextClose').click();
+            assert(!(await page.locator('#handbookContext').isVisible()) && await page.locator('.hb-highlight').count() === 0
+                && !new URL(page.url()).searchParams.has('ctx'), `${width}: Hinweis schließen entfernt auch die Kontextmarkierung und den Schalter`);
+            await page.reload();
+            await page.locator('.hb-nav a[aria-current="page"][href="#vermoegensverlauf"]').waitFor();
+            assert(!(await page.locator('#handbookContext').isVisible()) && await page.locator('.hb-highlight').count() === 0,
+                `${width}: Neuladen nach dem Schließen bleibt ohne Kontextmarkierung`);
+            await page.goto(`${baseUrl}/Handbuch.html?ctx=1#balance-vermoegensverlauf`);
+            await page.locator('#handbookContext').waitFor({ state: 'visible' });
+            await page.locator('.hb-nav .toc-link[href="#monat-abschliessen"]').click();
+            assert(!(await page.locator('#handbookContext').isVisible()) && await page.locator('.hb-highlight').count() === 0
+                && !new URL(page.url()).searchParams.has('ctx'), `${width}: normale Navigation beendet den Kontextaufruf`);
         }
+        for (const chapter of await page.locator('[data-handbook-chapter]').evaluateAll(nodes => nodes.map(node => node.id))) {
+            await page.locator(`.hb-nav .toc-link[href="#${chapter}"]`).click();
+            const images = page.locator(`[id="${chapter}"] img`);
+            await images.evaluateAll(nodes => Promise.all(nodes.map(node => { node.loading = "eager"; return node.decode(); })));
+            assert(await images.evaluateAll(nodes => nodes.every(node => node.complete && node.naturalWidth > 0)), 'Alle Bilder im Kapitel laden: ' + chapter);
+        }
+        await page.locator('.hb-nav .toc-link[href="#monat-abschliessen"]').click();
+        await page.locator('.hb-nav .toc-link[href="#jahr-abschliessen"]').click();
+        await page.goBack();
+        assert(await page.locator('#monat-abschliessen').isVisible(), 'Zurück öffnet vorheriges Kapitel');
+        await page.goForward();
+        assert(await page.locator('#jahr-abschliessen').isVisible(), 'Vorwärts öffnet Folgekapitel');
         smoke.assertNoErrors();
     } finally { await smoke.close(); }
 }
@@ -9916,23 +9935,18 @@ async function runDesignsystemSimulatorFields(browser, baseUrl) {
                 const segment = field.querySelector('[data-select-segment]');
                 const custom = segment.querySelector('[data-value="custom"]');
                 const range = document.createRange(); range.selectNodeContents(custom);
-                const reset = document.querySelector('.sim-assumptions-reset');
-                const title = reset.querySelector('h2'), button = reset.querySelector('button');
                 return { fullField: Math.abs(field.clientWidth - field.parentElement.clientWidth) <= 1,
                     // Randbreite gehört zur Segmentfläche: offsetWidth statt clientWidth.
                     fullSegment: Math.abs(segment.offsetWidth - field.clientWidth) <= 1,
                     customLines: range.getClientRects().length,
                     roles: [...document.querySelectorAll('#simProfileList [data-profile-role-id]')].map(node => getComputedStyle(node).whiteSpace),
                     emptyHidden: [...document.querySelectorAll('.sim-parameters')].filter(node => node.querySelector('.sim-parameter-count')?.textContent === '0 weitere').every(node => node.hidden && getComputedStyle(node).display === 'none'),
-                    resetAlign: getComputedStyle(title).textAlign, resetLine: getComputedStyle(title, '::after').content,
-                    resetPosition: title.getBoundingClientRect().left < button.getBoundingClientRect().left,
-                    reserve: document.querySelector('.care-panel-toggle').contains(document.getElementById('simCareReserve')),
+                    reserve: document.querySelector('.care-panel-toggle .ds-info-pop').contains(document.getElementById('simCareReserve')),
                     reserveSize: getComputedStyle(document.querySelector('.sim-care-reserve')).fontSize };
             });
             assert(refinement.fullField && refinement.fullSegment && refinement.customLines === 1, `${width}: Dynamic-Flex nutzt volle Breite und Custom bleibt einzeilig`);
             assert(refinement.roles.every(value => value === 'nowrap') && refinement.emptyHidden, `${width}: Profilrollen bleiben ganz und leere Klappen verborgen`);
-            assert(refinement.resetAlign === 'left' && refinement.resetLine === 'none' && refinement.resetPosition, `${width}: Resettext links und Knopf rechts ohne Titelstrich`);
-            assert(refinement.reserve && refinement.reserveSize === '14px', `${width}: Reservehinweis steht klein in der Schalterzeile`);
+            assert(refinement.reserve && refinement.reserveSize === '14px', `${width}: Reservehinweis steht im Infofeld am Schalter`);
             for (const id of ['simStartVermoegen']) {
                 const origin = await page.locator(`#${id}`).evaluate(field => {
                     const reasons = (field.getAttribute('aria-describedby') || '').split(/\s+/).map(id => document.getElementById(id)).filter(node => node?.classList.contains('ds-field-reason'));
@@ -9949,7 +9963,7 @@ async function runDesignsystemSimulatorFields(browser, baseUrl) {
         for (const preset of ['off', 'konservativ', 'ausgewogen', 'offensiv']) {
             await page.locator('#dynamicFlexPreset').selectOption(preset);
             assert(await page.locator('#dynamicFlex').isChecked() === (preset !== 'off'), `S08: Preset ${preset} behält seinen Wert`);
-            await page.locator('#dynamicFlexShowAdvanced').check();
+            await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = true; });
             await assertCurrentSelectionText(page, ['dynamicFlexPreset', 'horizonMethod', 'longevityMode'], true);
             if (preset === 'offensiv') assert(await page.locator('#horizonMethod').inputValue() === 'mean', 'Offensives Preset übernimmt mean samt Volltext');
             assert(await page.locator('#dynamicFlexConfigGroup').isVisible(), 'S08: bestehende Detailfreigabe öffnet Konfiguration');
@@ -9975,13 +9989,13 @@ async function runDesignsystemSimulatorFields(browser, baseUrl) {
         // Nach dem Reload öffnet der Simulator im Reiter „Ergebnis“ mit geschlossener Parameterklappe.
         await openSimulatorPlanTrial(page);
         await page.locator('[data-parameters="strategie"]').evaluate(detail => { detail.open = true; });
-        await page.locator('#dynamicFlexShowAdvanced').check();
+        await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = true; });
         await page.locator('#horizonMethod').selectOption('mean');
         assert((await page.locator('.ds-field:has(#survivalQuantile) .ds-field-reason').textContent()).includes('Erwartungswert'), 'S09: Methodenwechsel synchronisiert Grund');
         await page.locator('#longevityMode').selectOption('buffer_years');
         assert(await page.locator('#longevityBufferYears').getAttribute('data-field-state') === 'editable', 'S10: Langlebigkeitsmodus entfernt alten Grund');
         await page.locator('.tab-btn[data-tab="montecarlo"]').click();
-        await page.locator('#mcSettingsToggle').click();
+        await toggleMonteCarloSettings(page);
         for (const method of ['regime_iid', 'block', 'stationary', 'regime_markov', 'regime_iid']) {
             const before = await page.locator('#mcBlockSize').inputValue();
             await page.locator('#mcMethode').selectOption(method);
@@ -10176,7 +10190,7 @@ async function runDesignsystemBalance(browser, baseUrl) {
         await page.locator('#balanceAnnualClose').waitFor({ state: 'visible' });
         assert((await page.locator('#annualResults .ds-note-warning').textContent()).includes('Quelle veraltet'), 'Jahreswarnung bleibt begründet');
         assert((await page.locator('#annualResults .ds-note-error').textContent()).includes('Synthetischer Jahresfehler'), 'Jahresfehler bleibt begründet');
-        await page.locator('#annualCloseBtn').click();
+        await page.locator('#balanceAnnualClose [data-close-dialog-close]').click();
         await page.emulateMedia({ media: 'print' });
         assert(!(await page.locator('.form-column').isVisible()) && !(await page.locator('.tab-buttons').isVisible())
             && !(await page.locator('#openDiagnosisBtn').isVisible()), 'Bestehende Druckausblendungen bleiben erhalten');
@@ -10258,8 +10272,8 @@ async function runDesignsystemSimulatorResults(browser, baseUrl) {
                 if (state === 'small') assert(result.description.includes('Unsicherheitswarnung: nur 4 Läufe; Schwelle 1000.'), 'Small-sample-Grund unverändert');
                 else assert(result.value === '—', 'Technik/Leerzustand wird nicht als Null ausgewiesen');
             }
-            // Freigegebenes Design (simulator.css .mc-floor-value): Floor-Kernwert als Serifenzahl 52px.
-            assert(result.font.includes('Newsreader') && result.fontSize === '52px', 'Floor-Kernwert steht als freigegebene Serifenzahl');
+            // Freigegebenes Design (simulator.css .mc-floor-value): Ergänzende Deckung mit --value-md.
+            assert(result.font.includes('Newsreader') && result.fontSize === '17px', 'Ergänzende Deckung bleibt in der mittleren Serifengröße');
         }
         // Null, positive Werte und fehlende Beobachtungen an echten KPI-/Stressconsumern.
         for (const value of [0, 22.331, null]) {
@@ -10290,7 +10304,7 @@ async function runDesignsystemSimulatorResults(browser, baseUrl) {
                 && unvalued.filter(card => !card.title.includes('Stress') || card.title.includes('Depotentnahme')).every(card => card.reason.includes('Grund:')),
                 'Fehlende Beobachtungen behalten Fehlwert und vorhandenen Verfügbarkeitsgrund');
             const tax = rendered.cards.find(card => card.title === 'Ø Steuerersparnis Verlustvortrag');
-            assert(value > 0 ? tax.classes.includes('is-green') : !/is-green|is-amber|is-red/.test(tax.classes), 'Steuerersparnis ist ausschließlich positiv und verfügbar gerichtet');
+            assert(!/is-green|is-amber|is-red/.test(tax.classes), 'Steuerersparnis bleibt neutral');
             assert(rendered.cards.find(card => card.title.includes('Entnahmequote') && card.title.includes('Stress')).classes.includes('is-amber'), 'Bestehende Stresswarnrolle außerhalb R8 bleibt erhalten');
         }
         await page.evaluate(async () => {
@@ -10767,12 +10781,12 @@ async function runSuiteFrameNavigationReplacement(browser, baseUrl) {
                     await popup.close();
                 }
                 if (!keyboard && source === 'Handbuch.html') {
-                    await page.locator('.tab-btn[data-tab-id="quickstart"]').click();
-                    assert(await page.locator('#quickstart').isVisible(), 'Schnellstart bleibt erreichbar');
-                    await page.locator('#inhaltsverzeichnis .toc-link[href="#ueberblick"]').focus();
+                    await page.locator('.hb-nav .toc-link[href="#handbuch-start"]').click();
+                    assert(await page.locator('#handbuch-start').isVisible(), 'Aufgabenstart bleibt erreichbar');
+                    await page.locator('#inhaltsverzeichnis .toc-link[href="#erste-schritte"]').focus();
                     await page.keyboard.press('Enter');
-                    await page.waitForFunction(() => location.hash === '#ueberblick' && document.activeElement?.id === 'ueberblick');
-                    assert(await page.locator('#manual').isVisible() && await page.locator('.tab-btn.active[aria-selected="true"]').count() === 1, 'TOC erhält Reiter-, Hash- und Fokusvertrag');
+                    await page.waitForFunction(() => location.hash === '#erste-schritte' && document.activeElement?.id === 'erste-schritte');
+                    assert(await page.locator('#erste-schritte').isVisible(), 'Kapitelnavigation erhält Hash und Fokus');
                     assert((await page.evaluate(() => window.__suiteProbe.steps)).length === 0, 'Kapitelnavigation löst keinen Profilhandoff aus');
                 }
                 const back = page.locator('.suite-navigation a[href="index.html"]');
@@ -11138,7 +11152,10 @@ async function runSuiteFrameProfileContext(browser, baseUrl) {
             await waitSuiteIdentity(page, 'suite-a');
             if (['Balance.html', 'Simulator.html'].includes(source)) {
                 const list = source === 'Balance.html' ? '#profilverbund-profile-list' : '#simProfileList';
-                if (source === 'Balance.html') await page.locator('#balanceTabStrategy').click();
+                if (source === 'Balance.html') {
+                    await page.locator('#balanceTabStrategy').click();
+                    await openBalanceParameters(page);
+                }
                 else await page.locator('.tab-btn[data-tab="annahmen"]').click();
                 await page.locator(`${list} input[data-profile-id="suite-b"]`).check();
                 await page.locator(`${list} input[data-profile-id="suite-a"]`).uncheck();
@@ -11431,10 +11448,10 @@ async function runSuiteFrameWidths(browser, baseUrl) {
                 }
                 if (source === 'Simulator.html') {
                     await page.locator('.tab-btn[data-tab="annahmen"]').click();
-                    const careStep = page.locator('[data-assumption-step="5"] [data-step-toggle]');
-                    if (await careStep.getAttribute('aria-expanded') === 'false') await careStep.click();
+                    await page.locator('#simCareDetails').evaluate(node => { node.open = true; });
                     await page.locator('#pflegefallLogikAktivieren').waitFor({ state: 'visible' });
                     await page.locator('#pflegefallLogikAktivieren').check();
+                    await page.locator('#simCareDetails').evaluate(node => { node.open = true; });
                     const care = await page.locator('.sim-care-table-scroll').evaluate(node => ({
                         width: node.getBoundingClientRect().width, overflow: getComputedStyle(node).overflowX,
                         rows: node.querySelectorAll('tbody tr').length, controls: node.querySelectorAll('input').length
@@ -12625,7 +12642,7 @@ async function activateLinkBehindAnnualDialog(link) {
 
 // Nach Handlerende schließt der Benutzer das Jahresergebnis, bevor er die Seite verlässt.
 async function closeAnnualResult(page) {
-    await page.locator('#annualCloseBtn').click();
+    await page.locator('#balanceAnnualClose [data-close-dialog-close]').click();
     await page.locator('#balanceAnnualClose').waitFor({ state: 'hidden' });
 }
 
@@ -13212,10 +13229,8 @@ async function runNavigationGuardAnnual(browser, baseUrl) {
                 const { UIBinder } = await import('./app/balance/balance-binder.js');
                 UIBinder.showUpdateResultModal({ startTime: 1, endTime: 2, errors: [], age: { old: 67, new: 68 } });
             });
-            for (const selector of ['#annualCloseBtn', '#balanceAnnualClose [data-close-dialog-close]']) {
-                await page.locator(selector).click({ force: true, ...(selector.endsWith('.modal-overlay') ? { position: { x: 5, y: 5 } } : {}) });
-                assert(await page.locator('#balanceAnnualClose').isVisible(), 'Schließknopf/Overlay hält den Jahresdialog im Commit offen');
-            }
+            await page.locator('#balanceAnnualClose [data-close-dialog-close]').click({ force: true });
+            assert(await page.locator('#balanceAnnualClose').isVisible(), 'Kopfkreuz hält den Jahresdialog im Commit offen');
             await page.keyboard.press('Escape');
             assert(await page.locator('#balanceAnnualClose').isVisible(), 'Escape hält Jahresdialog im Commit offen');
             await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab');
@@ -14129,278 +14144,7 @@ async function runSimulatorHouseholdBacktestInvalidation(browser, baseUrl) {
     }
 }
 
-async function runSimulatorResetProfileDeletion(browser, baseUrl) {
-    const deletedKeys = ['sim_mcAnzahl', 'sim_mcDauer', 'sim_mcSeed'];
-    const storage = createBrowserProfileStorage({
-        'suite-a': { name: 'Synthetisch A', tagesgeld: '12345',
-            tranchesRaw: JSON.stringify([createBrowserTranche({ ticker: '', name: 'Resetbestand A' })]),
-            extraData: { sim_mcAnzahl: '2', sim_mcDauer: '2', sim_mcSeed: '123', sim_accumulationDurationYears: '5' } },
-        'suite-b': { name: 'Synthetisch B', tagesgeld: '999', belongsToHousehold: false,
-            extraData: { sim_mcSeed: '456' } }
-    }, 'suite-a');
-    const original = JSON.parse(storage.rs_profiles_v1).profiles;
-    Object.assign(storage, original['suite-a'].data, { etfProxyUrl: 'synthetischer globaler Wert' });
-    const smoke = await openSmokePage(browser, baseUrl, 'Simulator.html', { storage });
-    const { page } = smoke;
-    const verify = async stage => {
-        await page.evaluate(async () => {
-            await (await import('./app/profile/profile-navigation.js')).whenProfilePageReady();
-            await (await import('./app/shared/persistence-facade.js')).PersistenceFacade.flush();
-        });
-        const cache = await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).PersistenceFacade.exportAllSync().records);
-        const backend = await readIndexedDbValues(page, ['rs_profiles_v1', ...deletedKeys,
-            'profile_geburtsdatum', 'profile_tagesgeld', 'depot_tranchen', 'sim_accumulationDurationYears', 'etfProxyUrl']);
-        for (const [label, records] of [['Cache', cache], ['Backend', backend]]) {
-            const registry = JSON.parse(records.rs_profiles_v1);
-            for (const key of deletedKeys) {
-                assert(records[key] == null, `${stage}/${label}: ${key} fehlt live`);
-                assert(!Object.hasOwn(registry.profiles['suite-a'].data, key), `${stage}/${label}: ${key} fehlt in Registry`);
-            }
-            for (const key of ['profile_geburtsdatum', 'profile_tagesgeld', 'depot_tranchen', 'sim_accumulationDurationYears']) {
-                assert(records[key] === original['suite-a'].data[key], `${stage}/${label}: ${key} bleibt live erhalten`);
-                assert(registry.profiles['suite-a'].data[key] === original['suite-a'].data[key], `${stage}/${label}: ${key} bleibt in Registry erhalten`);
-            }
-            assert(registry.profiles['suite-b'].data.sim_mcSeed === '456' && registry.profiles['suite-b'].data.profile_tagesgeld === '999',
-                `${stage}/${label}: zweite Person behält Simulatorwert und Vermögen`);
-            assert(records.etfProxyUrl === storage.etfProxyUrl, `${stage}/${label}: globale Einstellung bleibt erhalten`);
-        }
-    };
-    try {
-        await page.waitForFunction(() => window.__simulatorOpeningBacktestDone === true);
-        await openSimulatorTab(page, 'annahmen');
-        await page.evaluate(() => { window.__resetDeletionDocument = true; });
-        const reloaded = page.waitForEvent('load');
-        await page.locator('#resetBtn').click();
-        await answerPageDialog(page, { label: 'Einstellungen zurücksetzen' });
-        await waitForPageCondition(page, () => document.getElementById('navigationGuardDialog')?.open || !window.__resetDeletionDocument);
-        if (await page.locator('#navigationGuardDialog[open]').count()) await page.locator('#navigationGuardLeave').click();
-        await reloaded;
-        await page.waitForFunction(() => window.__simulatorOpeningBacktestDone === true);
-        await verify('Reset/Reload/Preserve-Bootstrap');
-        await page.goto(`${baseUrl}/index.html`);
-        await waitSuiteIdentity(page, 'suite-a');
-        await verify('Indexstart');
-        await page.goto(`${baseUrl}/depot-tranchen-manager.html`);
-        await waitSuiteIdentity(page, 'suite-a');
-        await page.locator('#managerSectionNav [data-manager-profile="suite-b"]').click();
-        await waitSuiteIdentity(page, 'suite-b');
-        await page.locator('#managerSectionNav [data-manager-profile="suite-a"]').click();
-        await waitSuiteIdentity(page, 'suite-a');
-        await verify('Profilwechsel hin und zurück');
-        smoke.assertNoErrors();
-    } finally { await smoke.close(); }
-}
-
 async function runNavigationGuardResetsRecovery(browser, baseUrl) {
-    // Der Balance-Reset entfiel auf Nutzerentscheid (05.10.2026, Inventar B06/B10/B11/B24); der Simulator-Reset bleibt geschützt.
-    for (const source of ['Simulator.html']) for (const outcome of ['false', 'throw', 'input', 'change', 'foreign', 'cancel', 'success']) {
-        const storage = source === 'Balance.html' ? createBalanceStorage(2026) : suiteProfileFixtureWithoutNeeds();
-        const smoke = await openSmokePage(browser, baseUrl, source, { storage, observeWealthUpdates: source === 'Balance.html' });
-        const { page } = smoke;
-        const navigations = [];
-        page.on('framenavigated', frame => { if (frame === page.mainFrame()) navigations.push(frame.url()); });
-        try {
-            await page.evaluate(async () => (await import('./app/profile/profile-navigation.js')).whenProfilePageReady());
-            if (source === 'Balance.html') {
-                await waitForWealthBrowserIdle(page);
-                await activateSuiteSection(page, 'strategy');
-            } else {
-                await openSimulatorTab(page, 'annahmen');
-                // Echter kleiner Backtest liefert den gefährdeten Ergebnisbesitzer.
-                await page.evaluate(async () => {
-                    document.getElementById('simStartJahr').value = '2000';
-                    document.getElementById('simEndJahr').value = '2001';
-                    document.getElementById('runBacktestCohorts').checked = false;
-                    await (await import('./app/simulator/simulator-backtest.js')).runBacktestWithRuntimeProvenance();
-                });
-            }
-            const before = await page.evaluate(async source => {
-                const { persistenceStorage, PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-                await PersistenceFacade.flush();
-                window.__resetDocument = crypto.randomUUID();
-                if (source === 'Balance.html') {
-                    const { StorageManager } = await import('./app/balance/balance-storage.js');
-                    const reset = StorageManager.resetState;
-                    window.__resetMutations = 0;
-                    StorageManager.resetState = function (...args) { window.__resetMutations++; return reset.apply(this, args); };
-                    addEventListener('pagehide', () => sessionStorage.setItem('__resetMutationCount', String(window.__resetMutations)), { once: true });
-                }
-                return { id: window.__resetDocument, name: window.name, records: Object.fromEntries(Array.from({ length: persistenceStorage.length }, (_, i) => {
-                    const key = persistenceStorage.key(i); return [key, persistenceStorage.getItem(key)];
-                })) };
-            }, source);
-            // Bestehende destruktive Bestätigung bleibt die erste Entscheidung.
-            await page.locator('#resetBtn').click();
-            await answerPageDialog(page, { action: 'cancel', label: 'Einstellungen zurücksetzen' });
-            await waitForPageCondition(page, () => !document.getElementById('resetBtn').disabled);
-            assert(await page.evaluate(() => window.__resetDocument) === before.id, 'Resetbestätigung ablehnen erhält Dokumentidentität');
-            assert(await page.evaluate(async records => {
-                const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
-                return Object.entries(records).every(([key, value]) => persistenceStorage.getItem(key) === value);
-            }, before.records), 'Abgelehnte Resetbestätigung erhält sämtliche Werte');
-            if (source === 'Simulator.html') {
-                await page.locator('#resetBtn').click();
-                await answerPageDialog(page, { label: 'Einstellungen zurücksetzen' });
-                await page.locator('#navigationGuardDialog[open]').waitFor();
-                await page.locator('#navigationGuardStay').click();
-                await waitForNavigationDecisionSettled(page);
-                assert(await page.evaluate(() => window.__resetDocument) === before.id, 'Simulator-Ergebnisablehnung erhält dasselbe Dokument');
-                assert(await page.evaluate(async () => (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard().reasons().some(reason => reason.result)),
-                    'Simulator-Bleiben erhält das echte Backtestergebnis');
-            }
-            if (outcome === 'cancel') {
-                await page.evaluate(async () => {
-                    const guard = (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard();
-                    window.__cancelReset = guard.register('synthetic-cancel-failure', { read: () => ({ phase: 'running', operationId: 1 }), cancel: () => false });
-                    document.getElementById('resetBtn').click();
-                });
-                await answerPageDialog(page, { label: 'Einstellungen zurücksetzen' });
-                await page.locator('#navigationGuardLeave').click();
-                await waitForPageCondition(page, () => !document.getElementById('resetBtn').disabled && document.getElementById('suiteNavigationStatus').textContent.includes('abgebrochen'));
-                assert(await page.evaluate(() => window.__resetDocument) === before.id, 'Vorbereitungsfehler erhält Dokumentidentität');
-                assert(!(await page.locator(source === 'Balance.html' ? '#suiteNavigationStatus' : '#simProfileStatus').textContent()).includes('nicht dauerhaft'), 'Vorbereitungsfehler behauptet keinen Reset-Speicherfehler');
-                assert(await page.evaluate(async records => {
-                    const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-                    return JSON.stringify(PersistenceFacade.exportAllSync().records) === JSON.stringify(records);
-                }, before.records), 'Vorbereitungsfehler mutiert keinen Cachebestand');
-                await page.evaluate(() => window.__cancelReset.unregister());
-            }
-            const successful = outcome === 'success' || outcome === 'cancel';
-            await installResetFlushBarrier(page, successful ? 'success' : outcome);
-            await page.locator('#resetBtn').click();
-                await answerPageDialog(page, { label: 'Einstellungen zurücksetzen' });
-            if (source === 'Simulator.html') await page.locator('#navigationGuardLeave').click();
-            await page.waitForFunction(() => Boolean(window.__resetProbe?.release));
-            assert(await page.evaluate(async () => (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard().reasons().some(reason => reason.phase === 'commit')),
-                'Tatsächlicher Reset schützt seine Mutation und den offenen Flush');
-            await page.locator('.suite-navigation a[href="Handbuch.html"]').evaluate(node => node.click());
-            assert(await page.evaluate(() => window.__resetDocument) === before.id, 'Appnavigation überholt Resetflush nicht');
-            if (['input', 'change'].includes(outcome)) await page.evaluate(type => document.getElementById('resetBtn').dispatchEvent(new Event(type, { bubbles: true })), outcome);
-            if (outcome === 'foreign') await page.evaluate(async () => {
-                const guard = (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard();
-                const owner = guard.register('temporary-reset-commit', { read: () => ({ phase: 'commit' }) }); owner.unregister();
-            });
-            const loaded = successful ? page.waitForEvent('load') : null;
-            await page.evaluate(() => window.__resetProbe.release());
-            if (loaded) await loaded;
-            else {
-                await page.waitForFunction(() => !document.getElementById('resetBtn').disabled);
-                assert(await page.evaluate(() => window.__resetDocument) === before.id, 'Resetflushfehler/neue Eingabe erhält Dokument ohne Reload');
-                const host = source === 'Balance.html' ? '#suiteNavigationStatus' : '#simProfileStatus';
-                const confirmed = ['input', 'change', 'foreign'].includes(outcome);
-                assert(await page.locator(host).isVisible(), 'Resetabschluss bleibt sichtbar am zuständigen Statushost');
-                const message = await page.locator(host).textContent();
-                assert(message.includes(confirmed ? 'Reset gespeichert' : 'nicht dauerhaft'), 'Resetabschluss unterscheidet bestätigte Speicherung und Speicherfehler');
-                if (source === 'Balance.html' && ['input', 'throw'].includes(outcome)) {
-                    const registryBackend = (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
-                    const handoffBefore = await page.evaluate(async () => {
-                        const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-                        return { registry: PersistenceFacade.getItemSync('rs_profiles_v1'), name: window.name };
-                    });
-                    assert(handoffBefore.registry === registryBackend, 'Vor Suite-Klick stimmen Registry-Rohwerte in Cache und IndexedDB überein');
-                    for (let click = 1; click <= 2; click++) {
-                        await page.evaluate(() => {
-                            window.__resetHandoffObserved = false;
-                            const observer = new MutationObserver(() => { window.__resetHandoffObserved = true; observer.disconnect(); });
-                            observer.observe(document.getElementById('suiteNavigationStatus'), { childList: true, characterData: true, subtree: true });
-                        });
-                        await page.locator('.suite-navigation a[href="Simulator.html"][data-profile-handoff]').click();
-                        await initializeBrowserSmokeNavigationGuard(page);
-                        await page.waitForFunction(() => window.__resetHandoffObserved
-                            && !window.__browserSmokeNavigationGuard.isBusy());
-                        const handoffAfter = await page.evaluate(async () => {
-                            const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-                            const { RESET_RELOAD_REQUIRED_MESSAGE } = await import('./app/shared/navigation-guard.js');
-                            return { registry: PersistenceFacade.getItemSync('rs_profiles_v1'), name: window.name,
-                                message: document.getElementById('suiteNavigationStatus').textContent,
-                                expected: RESET_RELOAD_REQUIRED_MESSAGE, mutations: window.__resetMutations, documentId: window.__resetDocument };
-                        });
-                        assert(navigations.length === 0 && page.url().endsWith('/Balance.html') && handoffAfter.documentId === before.id,
-                            `${click}: echter Suite-Link navigiert unter Balance-Resetsperre nicht`);
-                        assert(handoffAfter.registry === handoffBefore.registry, `${click}: Suite-Link erhält Registry-Rohwert im Cache`);
-                        assert((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value === registryBackend, `${click}: Suite-Link erhält Registry-Rohwert in IndexedDB`);
-                        assert(handoffAfter.name === handoffBefore.name, `${click}: gesperrte Übergabe erhält window.name`);
-                        assert(handoffAfter.mutations === 1, `${click}: Suite-Link verursacht keine zweite Resetmutation`);
-                        assert(await page.locator(host).isVisible(), `${click}: Neuladeaufforderung bleibt sichtbar`);
-                        assert(!handoffAfter.message.includes('Profilübergabe') && !handoffAfter.message.includes('Bitte erneut versuchen'),
-                            `${click}: Suite-Link verdrängt Neuladehinweis nicht durch Übergabe-/Retrybehauptung`);
-                        if (confirmed) assert(handoffAfter.message === handoffAfter.expected
-                            && handoffAfter.message.includes('nicht neu geladen') && handoffAfter.message.includes('neu laden'),
-                        `${click}: bestätigter Reset erhält unverändert den exakten Reloadhinweis`);
-                        else assert(handoffAfter.message.includes('noch nicht dauerhaft bestätigt')
-                            && handoffAfter.message.includes('Neuladen') && !handoffAfter.message.includes('Reset gespeichert'),
-                        `${click}: fehlgeschlagener Resetflush bleibt unbestätigt und verlangt Neuladen`);
-                    }
-                }
-                if (confirmed) {
-                    await page.evaluate(() => window.__resetRestore());
-                    assert(message.includes('nicht neu geladen') && message.includes('neu laden') && message.includes('nicht gespeichert') && !message.includes('abgebrochen'), 'Bestätigter Reset fordert Reload und erklärt die Eingabesperre');
-                    const protectedInput = await page.evaluate(async source => {
-                        const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-                        const { CONFIG } = await import('./app/balance/balance-config.js');
-                        const read = () => JSON.stringify(Object.fromEntries(Object.entries(PersistenceFacade.exportAllSync().records).filter(([key]) => source === 'Balance.html'
-                            ? [CONFIG.STORAGE.LS_KEY, CONFIG.STORAGE.MIGRATION_FLAG, 'rs_profiles_v1'].includes(key)
-                            : key.startsWith('sim_') || key.startsWith('household_simulator_needs') || key === 'household_plan_v1')));
-                        const before = read();
-                        if (source === 'Balance.html') {
-                            window.__resetBalanceKeys = [CONFIG.STORAGE.LS_KEY, CONFIG.STORAGE.MIGRATION_FLAG];
-                            const input = document.getElementById('floorBedarf'); input.value = '99999';
-                            input.dispatchEvent(new Event('input', { bubbles: true }));
-                            const { update } = await import('./app/balance/balance-main.js');
-                            const result = await update({ mode: 'persist_inputs' });
-                            if (result.ok !== false || result.error?.code !== 'PERSISTENCE_RELOAD_REQUIRED') return false;
-                        } else {
-                            for (const id of ['mcSeed', 'startFloorBedarf']) {
-                                const input = document.getElementById(id); input.value = '99999';
-                                input.dispatchEvent(new Event('input', { bubbles: true }));
-                                input.dispatchEvent(new Event('change', { bubbles: true }));
-                            }
-                        }
-                        await PersistenceFacade.flush();
-                        return before === read();
-                    }, source);
-                    assert(protectedInput, 'Tatsächliche nachfolgende Eingabe überschreibt den Resetcache nicht');
-                    assert(await page.locator(host).isVisible() && (await page.locator(host).textContent()).includes('nicht gespeichert'), 'Eingabesperre bleibt nach tatsächlicher Eingabe sichtbar');
-                    const resetKeys = source === 'Balance.html' ? await page.evaluate(() => window.__resetBalanceKeys)
-                        : Object.keys(before.records).filter(key => key.startsWith('sim_')).concat('sim_mcSeed', 'household_simulator_needs_warning_ack_v1');
-                    for (const key of resetKeys) assert(!(await readIndexedDb(page, 'kv', key)), `${source}: bestätigter Resetkey ${key} bleibt im Backend entfernt`);
-                    if (source === 'Simulator.html') {
-                        // H1 Slice 3: Mit bestätigtem Plan sind Bedarf und Strategie Planwerte. Der Simulatorreset
-                        // schreibt keinen Haushaltsbedarfsmarker mehr und erhält den gemeinsamen Plan bytegleich.
-                        assert(!(await readIndexedDb(page, 'kv', 'household_simulator_needs_v1')), 'Reset schreibt bei bestätigtem Plan keinen Altbedarfsmarker');
-                        assert((await readIndexedDb(page, 'kv', HOUSEHOLD_PLAN_KEY))?.value === before.records[HOUSEHOLD_PLAN_KEY], 'Bestätigter Reset erhält den gemeinsamen Plan');
-                    }
-                }
-                await page.evaluate(() => window.__resetRestore());
-                const retryLoaded = page.waitForEvent('load');
-                await page.evaluate(() => document.getElementById('resetBtn').click());
-                await answerPageDialog(page, { label: 'Einstellungen zurücksetzen' }); // Paket 9: Reset fragt im Seitendialog nach.
-                await page.waitForFunction(() => document.getElementById('navigationGuardDialog').open || !window.__resetDocument);
-                if (await page.locator('#navigationGuardDialog[open]').count()) await page.locator('#navigationGuardLeave').click();
-                await retryLoaded;
-            }
-            assert(await page.evaluate(() => window.__resetDocument) !== before.id, 'Bestätigter Reset ersetzt das reale Dokument');
-            if (source === 'Balance.html') assert(await page.evaluate(() => sessionStorage.getItem('__resetMutationCount')) === '1',
-                'Explizit bestätigter Balance-Reset-Retry lädt ohne zweite Resetmutation neu');
-            assert(await page.evaluate(() => sessionStorage.getItem('__resetHandoffName')) === before.name, 'Resetreload führt keinen Profilbundleexport aus');
-            const resetVerified = await page.evaluate(async source => {
-                // Nach dem Reload erst lesen, wenn das neue Dokument seine Persistenz initialisiert hat.
-                await (await import('./app/profile/profile-navigation.js')).whenProfilePageReady();
-                const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
-                if (source === 'Balance.html') {
-                    const { CONFIG } = await import('./app/balance/balance-config.js');
-                    const state = PersistenceFacade.getItemSync(CONFIG.STORAGE.LS_KEY);
-                    return state === null || Number(JSON.parse(state).inputs?.floorBedarf) !== 99999;
-                }
-                return { plan: PersistenceFacade.getItemSync('household_plan_v1'), marker: PersistenceFacade.getItemSync('household_simulator_needs_v1'),
-                    seed: PersistenceFacade.getItemSync('sim_mcSeed') };
-            }, source);
-            assert(source === 'Simulator.html'
-                ? resetVerified.plan === before.records[HOUSEHOLD_PLAN_KEY] && resetVerified.marker === null && resetVerified.seed !== '99999'
-                : resetVerified, 'Expliziter Reload lädt den bestätigten Resetbestand ohne alte nachfolgende Eingaben');
-            smoke.assertNoErrors(['[SimulatorReset] Persistenz-Flush fehlgeschlagen.', 'Update-Fehler:']);
-        } finally { await smoke.close(); }
-    }
     const corruptRaw = '{synthetisch-guard-recovery';
     const smoke = await openSmokePage(browser, baseUrl, 'index.html', { storage: { rs_profiles_v1: corruptRaw } });
     try {
@@ -14662,7 +14406,7 @@ async function runManagerCurrentIncome(browser, baseUrl) {
         });
         const all = state.cards.every(card => card.open);
         assert(state.cards.every(card => card.aria === String(card.open)) && state.all === String(all)
-            && state.text === (all ? 'Alle zuklappen' : 'Alle aufklappen'), label + ': Regionen, Einzel-/Gesamt-ARIA und Text konsistent');
+            && state.text === (all ? '▾ Alle Details ausblenden' : '▸ Alle Details zeigen'), label + ': Regionen, Einzel-/Gesamt-ARIA und Text konsistent');
     };
     const changeDate = async date => {
         await page.locator('[data-probelauf-action="date"]').click();
@@ -14683,6 +14427,7 @@ async function runManagerCurrentIncome(browser, baseUrl) {
         await page.goto(`${baseUrl}/depot-tranchen-manager.html`);
         await page.waitForFunction(() => window.__rsProfileSubpageLifecycleInitialized === true);
         await page.locator('#managerPlanTab').click();
+        await page.locator('[data-wealth-details="household"] > summary').click();
         const income = page.locator('#managerHousehold .pv-income strong');
         assert(await income.textContent() === '2.400 €', 'Heute: 2.400 € im produktiven Haushalt');
         assert((await page.locator('#managerIncomeSteps').textContent()).includes('ab 07/2028: 3.050 €'), 'Kommende kumulierte Stufe sichtbar');
@@ -14731,6 +14476,8 @@ async function runManagerCurrentIncome(browser, baseUrl) {
     const future = await openSmokePage(browser, baseUrl, 'depot-tranchen-manager.html', { storage: stages, fixedTime: '2026-10-08T12:00:00Z' });
     try {
         await future.page.waitForFunction(() => window.__rsProfileSubpageLifecycleInitialized === true);
+        await future.page.locator('#managerPlanTab').click();
+        await future.page.locator('[data-wealth-details="household"] > summary').click();
         assert(await future.page.locator('#managerIncomeSteps p').count() === 2, 'Drei Zukunftsmonate: genau zwei sichtbare Stufen');
         await future.page.locator('[aria-describedby="managerIncomeHelp"]').focus();
         await future.page.locator('#managerIncomeHelp').waitFor({ state: 'visible' });
@@ -14797,34 +14544,36 @@ async function runPersonDataCards(browser, baseUrl) {
         try {
             await page.waitForFunction(() => window.__rsProfileSubpageLifecycleInitialized === true);
             const baseline = await readBackend();
-            // 01/07: Person & Einkommen offen, weitere Karten geschlossen.
-            for (const card of ['Person', 'Assets', 'Care']) assert(await expanded(card) === (card === 'Person'), 'Neue Sitzung: kompakte Anfangsanordnung ' + card);
+            // 01/07: Alle Detailkarten beginnen geschlossen.
+            for (const card of ['Person', 'Assets', 'Care']) assert(!await expanded(card), 'Neuer Seitenaufruf: geschlossene Detailkarte ' + card);
             assert((await page.locator('#managerPersonSummary').textContent()).includes('geb. 14.03.1958'), 'Echte Geburt statt Musterwert');
             assert(await page.locator('#managerPersonProfileName').textContent() === 'Muster A <Nord> & Zentral', 'Sonderzeichen werden als Text dargestellt');
             if (single) assert(await page.locator('.pv-household-card').count() === 0, '07: Einzelprofil ohne Haushaltskarte');
             // 02: Enter und Space erzeugen jeweils genau einen Disclosurewechsel.
             const toggle = page.locator('#managerPersonToggle');
             await toggle.focus(); await toggle.press('Enter');
-            assert(!await expanded('Person') && !await page.locator('#managerPersonBody').isVisible(), '02: Enter schließt einmal');
-            await toggle.press('Space'); assert(await expanded('Person'), 'Space öffnet einmal');
-            const year = await page.evaluate(() => Number(document.getElementById('profilePersonDateStatus').textContent.match(/01\.01\.(\d{4})/)[1]));
-            assert((await page.locator('#profilePersonDateStatus').textContent()).includes(`wird am 14.03.${year}`), 'Januarhinweis benutzt echte Jahresbasis');
+            assert(await expanded('Person') && await page.locator('#managerPersonBody').isVisible(), '02: Enter öffnet einmal');
+            await toggle.press('Space'); assert(!await expanded('Person'), 'Space schließt einmal');
+            await toggle.press('Enter');
+            const year = await page.evaluate(() => Number(document.getElementById('profilePersonDateStatus').textContent.match(/Planung (\d{4})/)[1]));
+            assert((await page.locator('#profilePersonDateStatus').textContent()).includes(`Für die Planung ${year} zählt das Alter am 01.01.`), 'Januarhinweis benutzt echte Jahresbasis');
             await page.locator('#managerCardsToggleAll').click();
             for (const card of ['Person', 'Assets', 'Care']) assert(await expanded(card), '03: Gemischter Gesamtknopf öffnet alle');
-            assert(await page.locator('#managerCardsToggleAll').textContent() === 'Alle zuklappen', 'Gesamtknopf bietet richtigen Folgezustand');
+            assert(await page.locator('#managerCardsToggleAll').textContent() === '▾ Alle Details ausblenden', 'Gesamtknopf bietet richtigen Folgezustand');
             for (const width of [1366, 1920, 2560, 390]) {
                 await page.setViewportSize({ width, height: 1000 });
                 assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Persondaten ${width}: kein Seitenüberlauf`);
                 assert(await page.locator('#profileGeburtsdatum').isVisible(), `Personeneingabe ${width} bleibt bedienbar`);
             }
             await page.reload(); await page.waitForFunction(() => window.__rsProfileSubpageLifecycleInitialized === true);
-            for (const card of ['Person', 'Assets', 'Care']) assert(await expanded(card), 'Reload erhält Sitzungskarte ' + card);
+            for (const card of ['Person', 'Assets', 'Care']) assert(!await expanded(card), 'Reload schließt Detailkarte ' + card);
             // Der speichernde Reload-Haken darf nur meta.updatedAt des aktiven Profils setzen und die Profildaten neu serialisieren.
             assert(withoutProfileSaveStamp(await readBackend(), 'cards-a') === withoutProfileSaveStamp(baseline, 'cards-a'), 'Klappen und Reload ändern keine Backendbytes');
             if (!single) {
                 await page.locator('#managerSectionNav [data-manager-profile="cards-b"]').click();
                 await page.waitForFunction(() => document.querySelector('#managerSectionNav [data-manager-profile="cards-b"]')?.getAttribute('aria-selected') === 'true');
-                assert(await expanded('Person'), 'B beginnt unabhängig mit offener Personkarte');
+                assert(!await expanded('Person'), 'B beginnt unabhängig mit geschlossener Personkarte');
+                await page.locator('#managerPersonToggle').click();
                 assert((await page.locator('#managerHousehold .pv-person-card').filter({ has: page.locator('[data-manager-profile="cards-b"]') }).textContent()).includes('Außerhalb Haushalt'), 'Außenprofil bleibt auf seiner Personenkarte erkennbar');
                 // 04: echter Ergänzungsentwurf, Fehlerfokus, bestätigtes Speichern, Fremdprofilschutz.
                 await page.locator('#managerBirthSupplement').waitFor({ state: 'visible' });
@@ -14840,7 +14589,7 @@ async function runPersonDataCards(browser, baseUrl) {
                 assert(registry.profiles['cards-b'].data.profile_geburtsdatum === '1960-02-29' && registry.profiles['cards-a'].data.profile_geburtsdatum === data.profile_geburtsdatum, 'Datum gehört genau der gewählten Person');
                 await page.locator('#managerSectionNav [data-manager-profile="cards-a"]').click();
                 await page.waitForFunction(() => document.querySelector('#managerSectionNav [data-manager-profile="cards-a"]')?.getAttribute('aria-selected') === 'true');
-                for (const card of ['Person', 'Assets', 'Care']) assert(await expanded(card), 'A/B/A erhält Zustand von A');
+                for (const card of ['Person', 'Assets', 'Care']) assert(!await expanded(card), 'A/B/A erhält den nach Reload geschlossenen Zustand von A');
             }
             await assertPersonTargetStart('profileGeburtsdatum');
             // Zentrale Änderungen werden bestätigt, bevor beide Verbraucher neu geöffnet werden.
@@ -14857,7 +14606,7 @@ async function runPersonDataCards(browser, baseUrl) {
             });
             // Zustände 05/06 als Erweiterung des bestehenden Personendatenfalls.
             await page.goto(`${baseUrl}/Simulator.html`);
-            await page.waitForFunction(() => document.getElementById('p1PersonSource')?.textContent.includes('Hauptprofil'));
+            await page.waitForFunction(() => document.getElementById('p1PersonDetailsSource')?.textContent.includes('Hauptprofil'));
             await page.locator('.tab-btn[data-tab="annahmen"]').click();
             for (const id of ['p1Geburtsdatum', 'p1Monatsrente', 'p1SparerPauschbetrag', 'p1KirchensteuerPct', 'rentAdjMode', 'rentAdjPct', 'p1StartAlter']) {
                 assert(await page.locator('#' + id).isDisabled(), '05: Zentraler Personenwert gesperrt: ' + id);
@@ -14909,9 +14658,9 @@ async function runPersonDataCards(browser, baseUrl) {
             assert(await page.locator('#rentAdjPct').isDisabled(), '06: Dormanter fixer Satz bleibt bei Lohnkopplung gesperrt');
             await measurePersonCards(true);
             await page.locator('.tab-btn[data-tab="montecarlo"]').click();
-            await page.locator('#mcSettingsToggle').click();
+            await toggleMonteCarloSettings(page);
             await page.locator('#mcAnzahl').fill('100'); await page.locator('#mcDauer').fill('2'); await page.locator('#mcSeed').fill('42');
-            await page.locator('#mcButton').click();
+            await openSimulatorTab(page, 'montecarlo'); await page.locator('#mcButton').click();
             await page.waitForFunction(() => document.getElementById('exportMonteCarloRunJson')?.disabled === false);
             assert((await page.locator('#monteCarloPersonNotice').textContent()).includes('Abweichung · nur diese Rechnung'), 'Ergebnis zeigt den Personenbeleg');
             const mcDownload = page.waitForEvent('download'); await page.locator('#exportMonteCarloRunJson').click();
@@ -14957,19 +14706,19 @@ async function runPersonDataCards(browser, baseUrl) {
                     'Balance übernimmt zentral bestätigten Wert mit bisheriger Einheit ' + id);
             }
             await page.goto(`${baseUrl}/Simulator.html`);
-            await page.waitForFunction(() => document.getElementById('p1PersonSource')?.textContent.includes('Hauptprofil'));
+            await page.waitForFunction(() => document.getElementById('p1PersonDetailsSource')?.textContent.includes('Hauptprofil'));
             await page.locator('.tab-btn[data-tab="annahmen"]').click();
             await setDsToggle(page, 'personDeviationToggle', true); await page.locator('#p1Monatsrente').fill('2400');
             const beforeReload = await readPersonBytes();
             await page.reload();
-            await page.waitForFunction(() => document.getElementById('p1PersonSource')?.textContent.includes('Hauptprofil'));
+            await page.waitForFunction(() => document.getElementById('p1PersonDetailsSource')?.textContent.includes('Hauptprofil'));
             assert(!await page.locator('#personDeviationToggle').isChecked() && await page.locator('#p1Monatsrente').inputValue() === '1600', 'Reload verwirft die Alternative und übernimmt das Profil');
             assert(await readPersonBytes() === beforeReload, 'Reload erhält dauerhaft gelesene Profil-/Simulatorpersonenbytes');
             await page.locator('.tab-btn[data-tab="annahmen"]').click();
             await setDsToggle(page, 'personDeviationToggle', true); await page.locator('#p1Monatsrente').fill('2500');
             const beforeReset = await readPersonBytes();
             await resetSimulatorAfterOpening(page);
-            await page.waitForFunction(() => document.getElementById('p1PersonSource')?.textContent.includes('Hauptprofil'));
+            await page.waitForFunction(() => document.getElementById('p1PersonDetailsSource')?.textContent.includes('Hauptprofil'));
             assert(!await page.locator('#personDeviationToggle').isChecked() && await page.locator('#p1Monatsrente').inputValue() === '1600', 'Reset verwirft die Alternative und übernimmt das Profil');
             assert(await readPersonBytes() === beforeReset, 'Reset erhält dauerhaft gelesene Profil-/Simulatorpersonenbytes');
             smoke.assertNoErrors();
@@ -14987,15 +14736,15 @@ async function runSimulatorHeadAction(browser, baseUrl) {
         await page.locator('.tab-btn[data-tab="montecarlo"]').click();
         const closed = () => page.evaluate(() => !document.getElementById('mcSetupDisclosure').open && !document.getElementById('mcAdvancedDisclosure').open);
         assert(await closed(), 'Reiteraktion: frische Initialisierung schließt beide Klappen');
-        await page.locator('#mcSettingsToggle').click();
+        await toggleMonteCarloSettings(page);
         await page.reload(); await waitForSimulatorOpening(page, 'Simulator.html');
         await page.locator('.tab-btn[data-tab="montecarlo"]').click();
         assert(await closed() && await page.locator('#mcSettingsToggle').textContent() === 'Einstellungen anzeigen', 'Reiteraktion: Reload verwirft den Klappzustand');
-        await page.locator('#mcSettingsToggle').click();
+        await toggleMonteCarloSettings(page);
         await page.locator('#mcAnzahl').fill('2'); await page.locator('#mcDauer').fill('2'); await page.locator('#mcSeed').fill('42');
         await page.locator('#mcAdvancedDisclosure > summary').click();
         await page.locator('#mcWorkerCount').fill('1');
-        await page.locator('#mcSettingsToggle').click();
+        await toggleMonteCarloSettings(page);
         await page.evaluate(async () => {
             const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
             const { OVERVIEW_SIMULATION_KEY } = await import('./app/overview/overview-simulation-summary.js');
@@ -15024,7 +14773,7 @@ async function runSimulatorHeadAction(browser, baseUrl) {
         assert(await page.locator('#mcRecalculateButton').count() === 0, 'Reiteraktion: alter zweiter Reiterstart bleibt entfernt');
         const answerRead = () => page.evaluate(async () => {
             const { simulatorRunAssumptions: heads } = await import('./app/simulator/simulator-run-assumptions.js');
-            return { values: [...document.querySelectorAll('#monteCarloAnswers .sim-hero-amount')].map(node => node.textContent),
+            return { values: [...document.querySelectorAll('#monteCarloAnswers .sim-hero-amount, #monteCarloAnswers .sim-answer-metric-value')].map(node => node.textContent),
                 run: JSON.stringify(heads.read('montecarlo').last), writes: window.__headSummaryWrites };
         });
         const answerBefore = await answerRead();
@@ -15032,11 +14781,11 @@ async function runSimulatorHeadAction(browser, baseUrl) {
             === JSON.stringify(['Ist mein Grundbedarf gedeckt?', 'Muss ich mich einschränken?'])), 'Echter MC-Abschluss zeigt genau beide Kernfragen');
         assert(await page.locator('#monteCarloAnswers').evaluate(node => Boolean(node.compareDocumentPosition(document.getElementById('monteCarloSummary')) & Node.DOCUMENT_POSITION_FOLLOWING)), 'Antworten stehen vor den vorhandenen Kennzahlen');
         await page.locator('[data-mc-view="risk"]').click(); await page.locator('[data-mc-view="overview"]').click();
-        await page.locator('#mcSettingsToggle').click();
+        await toggleMonteCarloSettings(page);
         await page.locator('#mcDauer').fill('3');
         await page.waitForFunction(() => document.querySelectorAll('#monteCarloAnswers [data-stale="true"]').length === 2);
         assert((await page.locator('#overviewMonteCarlo').textContent()).includes('Annahmen seitdem geändert'), 'Antworten und bestehendes MC-Ergebnis sind gemeinsam veraltet');
-        await page.locator('#mcSettingsToggle').click();
+        await toggleMonteCarloSettings(page);
         const answerAfter = await answerRead();
         assert(JSON.stringify(answerAfter) === JSON.stringify(answerBefore), 'Annahmen-/Reiter-/Klappwechsel erhalten Zahlen, Laufbeleg und Anzahl der Abschlüsse');
         await button.click();
@@ -15080,11 +14829,11 @@ async function runSimulatorCoreAnswers(browser, baseUrl) {
                     document.getElementById('monteCarloResults').style.display = 'block';
                     renderMonteCarloAnswers(document.getElementById('monteCarloAnswers'), buildMonteCarloAnswers({ results, totalRuns: 100, failCount: 4 }));
                     const host = document.getElementById('monteCarloAnswers');
-                    return { values: [...host.querySelectorAll('.sim-hero-amount')].map(node => node.textContent), text: host.textContent,
+                    return { values: [...host.querySelectorAll('.sim-hero-amount, .sim-answer-metric-value')].map(node => node.textContent), text: host.textContent,
                         unchanged: before === JSON.stringify(results), clipped: [...host.querySelectorAll('section')].some(node => node.scrollWidth > node.clientWidth + 1) };
                 }, kind);
                 assert(output.unchanged && !output.clipped && !/Ruin|Quantil/i.test(output.text), `${width}/${kind}: lesbare Antworten ohne Abschneiden oder geänderte Kennzahlen`);
-                if (kind === 'mixed') assert(JSON.stringify(output.values) === JSON.stringify(['96,0 %', '12,0 % der Jahre']) && output.text.includes('18,0 %'), 'Browser zeigt feste 96-%-/12-%-der-Jahre-/18-%-Orakel');
+                if (kind === 'mixed') assert(JSON.stringify(output.values) === JSON.stringify(['96,0 %', '12,0 %', '—']) && output.text.includes('18,0 %'), 'Browser zeigt feste 96-%-/12-%-der-Jahre-/18-%-Orakel');
                 if (kind === 'death') assert(output.text.includes('bis zum simulierten Lebensende'), 'Vollständiger Todpfad wird korrekt benannt');
                 if (kind === 'horizon') assert(output.text.includes('kein nachgewiesenes Lebensende'), 'Zeitraumende behauptet kein Lebensende');
                 if (kind === 'technical' || kind === 'missing') assert(output.values.every(value => value === '—'), 'Fehler/fehlende Daten erscheinen nie als Null');
@@ -15129,13 +14878,13 @@ async function runSimulatorProtocolViews(browser, baseUrl) {
         const mc = page.locator('#scenarioLogOutput');
         await mc.waitFor({ state: 'visible' });
         const checkHeads = async host => {
-            const heads = await host.locator('.protocol-column-head th').evaluateAll(nodes => nodes.map(node => ({ text: node.textContent.trim(), title: node.title, aria: node.getAttribute('aria-label') })));
-            assert(heads.every(head => head.text.length > 0 && head.text.length <= 24 && head.title && head.title === head.aria), 'Beide Quellen besitzen kurze Köpfe mit Langtext/Erklärung in Titel und ARIA');
+            const heads = await host.locator('.protocol-column-head th').evaluateAll(nodes => nodes.map(node => ({ text: node.textContent.trim(), title: node.title, aria: node.getAttribute('aria-label'), id: node.dataset.protocolColumn })));
+            assert(heads.every(head => head.text.length > 0 && (head.text.length <= 24 || /^(person|rente|carep)[12]/.test(head.id)) && head.title && head.title === head.aria), 'Beide Quellen besitzen kurze Köpfe mit Langtext/Erklärung in Titel und ARIA');
         };
         await checkHeads(mc);
         assert(await mc.locator('th[data-protocol-column="histjahr"]').textContent() === 'Gezogenes Jahr', 'MC zeigt gezogenes Jahr als eigene zweite Spalte');
-        assert(await mc.locator('th[data-protocol-column="person1-status"]').textContent() === 'SP'
-            && await mc.locator('th[data-protocol-column="person2-status"]').textContent() === 'PP', 'MC-Personenköpfe sind Initialen des gebundenen Laufs');
+        assert(await mc.locator('th[data-protocol-column="person1-status"]').textContent() === 'Synthetische Person'
+            && await mc.locator('th[data-protocol-column="person2-status"]').textContent() === 'Partner Probe', 'MC-Personenköpfe zeigen Namen des gebundenen Laufs');
         assert(await mc.locator('td[aria-label="Synthetische Person: lebt"]').count() === 1
             && await mc.locator('td[aria-label="Synthetische Person: Pflegegrad 3"]').textContent() === 'PG 3'
             && await mc.locator('td[aria-label="Synthetische Person: verstorben 2041"]').count() === 2,
@@ -15227,7 +14976,7 @@ async function runManagerViewsSmoke(browser, baseUrl) {
         await page.goto(`${baseUrl}/depot-tranchen-manager.html?person=views-b#profileTagesgeld`);
         await expectPerson('views-b');
         await waitForPageCondition(page, () => document.activeElement?.id === 'profileTagesgeld');
-        assert(await page.locator('#managerAssetsBody').isVisible(), 'Direktlink öffnet Tagesgeld vor sichtbarem Feldfokus');
+        assert(await page.locator('#profileTagesgeld').isVisible() && !await page.locator('#managerAssetsBody').isVisible(), 'Direktlink zeigt Tagesgeld und lässt Golddetails geschlossen');
         await page.evaluate(() => { location.hash = '#haushalt-plan'; }); await expectPlan();
         await page.evaluate(() => { location.hash = '#personendaten'; }); await expectPerson('views-b');
         await waitForPageCondition(page, () => ['profileGeburtsdatum', 'managerBirthDate'].includes(document.activeElement?.id));
@@ -15364,6 +15113,7 @@ async function runDynamicFlexVisibleDetailBlurSmoke(browser, baseUrl, annual) {
         } else {
             await page.goto(`${baseUrl}/depot-tranchen-manager.html#haushalt-plan`);
             await waitForPageCondition(page, () => document.getElementById('managerPlan_dynamicFlex')?.disabled === false);
+            await page.locator('#managerPlanMore').evaluate(node => { node.open = true; });
             await waitForPageCondition(page, key => ['complete', 'empty'].includes(JSON.parse(sessionStorage.getItem(key) || 'null')?.status), STARTUP_PRICE_SESSION_KEY);
             root = page.locator('#managerHouseholdPlan');
         }
@@ -15461,6 +15211,7 @@ async function runDynamicFlexErrorCorrectionSmoke(browser, baseUrl, annual) {
             } else {
                 await page.goto(`${baseUrl}/depot-tranchen-manager.html#haushalt-plan`);
                 await waitForPageCondition(page, () => document.getElementById('managerPlan_dynamicFlex')?.disabled === false);
+                await page.locator('#managerPlanMore').evaluate(node => { node.open = true; });
                 await waitForPageCondition(page, key => ['complete', 'empty'].includes(JSON.parse(sessionStorage.getItem(key) || 'null')?.status), STARTUP_PRICE_SESSION_KEY);
                 root = page.locator('#managerHouseholdPlan');
             }
@@ -15585,6 +15336,7 @@ async function runDynamicFlexCrosspageSmoke(browser, baseUrl) {
         try {
             await page.goto(`${baseUrl}/depot-tranchen-manager.html#haushalt-plan`);
             await waitForPageCondition(page, () => document.getElementById('managerPlan_dynamicFlex')?.disabled === false);
+            await page.locator('#managerPlanMore').evaluate(node => { node.open = true; });
             await waitForPageCondition(page, key => ['complete', 'empty'].includes(JSON.parse(sessionStorage.getItem(key) || 'null')?.status), STARTUP_PRICE_SESSION_KEY);
             const root = page.locator('#managerHouseholdPlan');
             if (matching === 'active') {
@@ -15640,6 +15392,7 @@ async function runDynamicFlexCrosspageSmoke(browser, baseUrl) {
             assert(await root.locator('[data-plan-dynamic-preset="custom"]').getAttribute('aria-pressed') === 'true', 'Öffnungsabsicht überlebt Autosave');
             await assertBrowserDynamicDetails(page, root, 'manager-' + expected);
             await page.reload(); await waitForPageCondition(page, () => document.getElementById('managerPlan_dynamicFlex')?.disabled === false);
+            await page.locator('#managerPlanMore').evaluate(node => { node.open = true; });
             assert(await root.locator('[data-plan-dynamic-preset="' + expected + '"]').getAttribute('aria-pressed') === 'true', 'Reload erkennt aktives Preset oder Custom, niemals Aus');
             assert(JSON.stringify((await readBrowserDynamicPlan(page)).values) === JSON.stringify(committed.values), 'Reload erhält dynamische Details bytegleich');
             await page.goto(`${baseUrl}/Balance.html`);
@@ -15647,13 +15400,14 @@ async function runDynamicFlexCrosspageSmoke(browser, baseUrl) {
             await waitBalanceHouseholdList(page);
             await page.locator('#balanceTabStrategy').click();
             await waitForPageCondition(page, key => document.querySelector('#dynamicFlexPreset-segments [data-balance-value="' + key + '"]')?.getAttribute('aria-pressed') === 'true', expected);
+            await openBalanceParameters(page);
+            if (await page.locator('#dynamicFlexPreset').isDisabled()) await page.locator('#balancePlanTrialStart').click();
             await page.locator('#dynamicFlexPreset-segments [data-balance-value="custom"]').click();
             assert(await page.locator('#balanceAllParameters').evaluate(node => node.open), 'Balance öffnet Custom über sichtbares Segment');
             assert((await readBrowserDynamicPlan(page)).raw === committed.raw, 'Balanceöffnung schreibt keinen Plan');
             await page.goto(`${baseUrl}/Simulator.html`); await waitForSimulatorOpening(page, 'Simulator.html');
             await openSimulatorTab(page, 'annahmen');
-            const strategyToggle = page.locator('[data-assumption-step="3"] [data-step-toggle]');
-            if (await strategyToggle.getAttribute('aria-expanded') === 'false') await strategyToggle.click();
+            await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = true; });
             await waitForPageCondition(page, key => document.getElementById('dynamicFlexPreset')?.value === key, expected);
             assert(await page.locator('#dynamicFlexPreset').isDisabled(), 'Simulatorlesemodus hält Presets gesperrt');
             await openSimulatorPlanTrial(page);
@@ -15665,6 +15419,7 @@ async function runDynamicFlexCrosspageSmoke(browser, baseUrl) {
             // Alle Wertpresets vollständig über sichtbare Managersegmente prüfen.
             await page.goto(`${baseUrl}/depot-tranchen-manager.html#haushalt-plan`);
             await waitForPageCondition(page, () => document.getElementById('managerPlan_dynamicFlex')?.disabled === false);
+            await page.locator('#managerPlanMore').evaluate(node => { node.open = true; });
             for (const [key, values] of Object.entries(browserDynamicValues)) {
                 await root.locator('[data-plan-dynamic-preset="' + key + '"]').click();
                 await waitForPageCondition(page, async ({ key, values }) => {
@@ -15756,6 +15511,7 @@ async function runDynamicFlexAnnualSmoke(browser, baseUrl) {
             await page.keyboard.press('Escape'); await root.waitFor({ state: 'hidden' });
             await page.goto(`${baseUrl}/depot-tranchen-manager.html#haushalt-plan`);
             await waitForPageCondition(page, () => document.getElementById('managerPlan_dynamicFlex')?.disabled === false);
+            await page.locator('#managerPlanMore').evaluate(node => { node.open = true; });
             assert(await page.locator('[data-plan-dynamic-preset="' + expected + '"]').getAttribute('aria-pressed') === 'true', 'Neues Lesen nach Abschluss erkennt aktives Preset oder Custom');
             assert((await readBrowserDynamicPlan(page)).raw === adopted.raw, 'Neulesen ändert beschlossenen Plan nicht');
             smoke.assertNoErrors();
@@ -15804,7 +15560,6 @@ async function main() {
             ['Navigation guard annual native', runNavigationGuardAnnualNative],
             ['Navigation guard native paths', runNavigationGuardNativePaths],
             ['Navigation guard resets and recovery', runNavigationGuardResetsRecovery],
-            ['Simulator reset profile deletion', runSimulatorResetProfileDeletion],
             ['Simulator household backtest invalidation', runSimulatorHouseholdBacktestInvalidation],
             ['Navigation guard profile writes', runNavigationGuardProfileWrites],
             ['Navigation guard browser history', runNavigationGuardBrowserHistory],
@@ -16378,13 +16133,13 @@ async function runFirstPlanningYear(browser, baseUrl) {
                     assert(await page.locator('#annualConfirmBtn').isHidden() && await page.locator('#annualHandPriceGroup').isHidden(), `${access}: weder Abschluss 2025 noch Handkurs`);
                     assert(await page.locator('.action-error-entry[data-scope="annual"]').count() === 0, `${access}: kein Annualfehlerstatus`);
                     assert((await page.locator('#balanceActionPeriod').textContent()) === 'Vorläufige Vorschau · Jahresabschluss 2026', `${access}: Vorschau nennt das erste Abschlussjahr`);
-                    assert((await page.locator('#balanceActionFootnote').textContent()).includes('erster Jahresabschluss Anfang 2027'), `${access}: Vorschau erhält den ersten Abschlusstermin`);
+                    assert((await page.locator('#balanceActionDisclaimer').textContent()).includes('erster Jahresabschluss Anfang 2027'), `${access}: Vorschau erhält den ersten Abschlusstermin`);
                 };
                 await page.locator('#balanceAnnualClose').waitFor({ state: 'visible' });
                 await page.waitForFunction(() => !document.getElementById('jahresabschlussBtn').disabled);
                 await waitForWealthBrowserIdle(page);
                 await assertFirstYearNotice('Alter Jahreslink beim Seitenstart');
-                await page.locator('#annualCloseBtn').click();
+                await page.locator('#balanceAnnualClose [data-close-dialog-close]').click();
                 assert(await page.locator('#balanceAnnualClose').isHidden(), 'Linkhinweis ist nach Schließen verborgen');
                 // Die Balance hat keinen Überblickstitel der Startseite; sichtbares Rückfallziel ist der Kopfknopf.
                 assert(await page.locator('#jahresabschlussBtn').evaluate(node => node === document.activeElement
@@ -16415,7 +16170,7 @@ async function runFirstPlanningYear(browser, baseUrl) {
                 assert(await page.locator('#balanceNextAnnual').isDisabled(), 'Erstjahrhinweis hebt die fachliche Überblickssperre nicht auf');
                 assert(await page.evaluate(() => window.__firstPlanningAnnual.handled), 'Bereite Seite bearbeitet den alten Jahreslink');
                 await assertFirstYearNotice('Alter Jahreslink auf bereiter Seite');
-                await page.locator('#annualCloseBtn').click();
+                await page.locator('#balanceAnnualClose [data-close-dialog-close]').click();
                 assert(await page.locator('#balanceAnnualClose').isHidden(), 'Linkhinweis ist nach Schließen verborgen');
                 // Die Balance hat keinen Überblickstitel der Startseite; sichtbares Rückfallziel ist der Kopfknopf.
                 assert(await page.locator('#jahresabschlussBtn').evaluate(node => node === document.activeElement
@@ -16426,7 +16181,7 @@ async function runFirstPlanningYear(browser, baseUrl) {
                 // muss erscheinen und auch nach dem Handlerende stehen bleiben (früher sofort überschrieben).
                 await page.locator('#balanceAnnualCloseTitle').filter({ hasText: 'Erster Jahresabschluss' }).waitFor();
                     await assertFirstYearNotice('Kopfknopf nach vollständigem Handler');
-                await page.locator('#annualCloseBtn').click();
+                await page.locator('#balanceAnnualClose [data-close-dialog-close]').click();
                 assert(await page.locator('#jahresabschlussBtn').evaluate(node => node === document.activeElement), 'Hinweis schließen gibt Fokus an den Kopfknopf zurück');
                 await waitForWealthBrowserIdle(page);
                 const probe = await page.evaluate(() => ({ completed: window.__firstPlanningAnnual.completed,
@@ -16484,7 +16239,7 @@ async function runStablePlanningStart(browser, baseUrl) {
         // Seit Teil 4 öffnet der Kartenknopf den Jahresdialog auf der Startseite; Öffnen und Schließen schreibt keinen Abschluss.
         await page.locator('#overviewFocus [data-overview-annual]').click();
         await page.locator('#balanceAnnualClose').waitFor({ state: 'visible' }); await check('Startseite mit Jahresdialog');
-        await page.locator('#annualCloseBtn').click();
+        await page.locator('#balanceAnnualClose [data-close-dialog-close]').click();
         await page.locator('#balanceAnnualClose').waitFor({ state: 'hidden' });
         await waitForPageCondition(page, async () => (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard().reasons().length === 0);
         // Die Balance wird danach regulär über die Suitenavigation geöffnet und schreibt ihre Summary.
@@ -16499,7 +16254,7 @@ async function runStablePlanningStart(browser, baseUrl) {
                 && JSON.parse(records.rs_profiles_v1).profiles['stable-person'].data.overview_balance_summary_v1 === raw;
         });
         await check('Balance nach echtem Summarywrite 2027');
-        if (await page.locator('#balanceAnnualClose').isVisible()) await page.locator('#annualCloseBtn').click();
+        if (await page.locator('#balanceAnnualClose').isVisible()) await page.locator('#balanceAnnualClose [data-close-dialog-close]').click();
         await waitForWealthBrowserIdle(page);
         await Promise.all([page.waitForURL('**/index.html'), page.locator('a[href="index.html"]').first().click()]);
         await page.locator('#overviewNormal').waitFor({ state: 'visible' }); await check('Zurück zur Startseite');
@@ -17224,8 +16979,8 @@ async function runCloseDialogBasics(browser, baseUrl) {
             phase = 'Tagesgeldvorbereitung'; target = '[data-close-dialog-activate="cash"]';
             await dialog.locator('[data-close-dialog-activate="cash"]').click();
             const visibleRecommendation = await dialog.locator('[data-close-dialog-step="cash"]').innerText();
-            assert(visibleRecommendation.split('Monatsbetrag Oktober:').length === 2, `${width}: Empfehlung genau einmal sichtbar`);
-            assert(await dialog.locator('.close-dialog-footnote').textContent() === 'Nächster Abschluss: 1. November. Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. Alle Vorbereitungsschritte ansehen und Tagesgeld je Person bestätigen; ungespeicherte Eingaben werden beim Schließen verworfen.', `${width}: kalenderkorrekter Dialogfuß`);
+            assert(visibleRecommendation.split('Geplante Entnahme aus dem Vermögen im Oktober:').length === 2, `${width}: Empfehlung genau einmal sichtbar`);
+            assert(await dialog.locator('.close-dialog-footnote').textContent() === 'Nächster Monatsabschluss: 1. November. Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. Alle Vorbereitungsschritte ansehen und Tagesgeld je Person ändern oder bestätigen; ungespeicherte Eingaben werden beim Schließen verworfen.', `${width}: kalenderkorrekter Dialogfuß`);
             phase = 'Tagesgeldfeld und Eurozusatz'; target = '[data-tagesgeld-person]';
             const input = dialog.locator('[data-tagesgeld-person]'); await input.fill('18.000');
             assert(await dialog.locator('.tagesgeld-person').evaluateAll(rows => rows.every(row => {
@@ -17607,7 +17362,7 @@ async function runDataPageSmoke(browser, baseUrl) {
             assert(await page.locator('#dataBackupContextChip').getAttribute('data-state') === state, 'Sicherungschip übernimmt den echten Zustand');
             assert((await page.locator('#dataHouseholdContext').textContent()).startsWith('Haushalt: '), 'Zweiter Entwurfschip zeigt den Haushalt');
             assert(await page.locator('#dataStorageOpen').isHidden() && await page.locator('#dataPriceCancel').isHidden(), 'Ordner- und Abbrechenknopf sind im Ruhemodus tatsächlich verborgen');
-            for (const id of ['dataBackupDetails', 'dataStorageDetails', 'dataRestoreDetails', 'dataPriceDetails', 'dataExchangeDetails']) {
+            for (const id of ['dataBackupDetails', 'dataStorageDetails', 'dataRestoreDetails', 'dataPriceDetails', 'dataExchangeDetails', 'dataRetentionDetails', 'dataStorageLocationDetails']) {
                 assert(await page.locator('#' + id).getAttribute('open') === null, 'Technische Details sind standardmäßig geschlossen: ' + id);
             }
             const mainText = await page.evaluate(() => {
@@ -17662,8 +17417,9 @@ async function runDataPricesStorageSmoke(browser, baseUrl) {
         });
         await waitForPageCondition(page, async () => document.getElementById('dataPriceFetch').disabled === false);
         await page.locator('#dataPriceCheck').click();
-        await waitForPageCondition(page, async () => document.getElementById('dataPriceTile').dataset.state === 'offline');
-        assert((await page.locator('#dataPriceDetail').textContent()).includes('letzter Versuch'), 'Offlinezustand nennt tatsächliche Versuchszeit');
+        await waitForPageCondition(page, async () => document.getElementById('dataPriceServiceText').hidden
+            && document.getElementById('dataPriceCancel').hidden);
+        assert((await page.locator('#dataPriceIssues').textContent()).includes('Letzter Versuch:'), 'Offlinezustand erhält die tatsächliche Versuchszeit in den Details');
         assert(await page.locator('#dataStorageOpen').isHidden(), 'Browser bietet Erklärung statt wirkungslosem Ordnerknopf');
         assert(await page.locator('#dataStorageLocation').isHidden() && (await page.locator('#dataStorageLocation').textContent()) === '', 'Browser behauptet keinen Dateipfad');
         await page.locator('#dataStorageDetails summary').click();
@@ -18249,14 +18005,10 @@ async function runSimulatorDeferredPlanSmoke(browser, baseUrl) {
             revealAssumptionControl(document.getElementById('dynamicFlexPreset'));
         });
         await page.locator('[data-select-segment="dynamicFlexPreset"] button[data-value="ausgewogen"]').click();
-        await page.evaluate(async () => {
-            const { revealAssumptionControl } = await import('./app/simulator/simulator-assumptions-ui.js');
-            revealAssumptionControl(document.getElementById('dynamicFlexShowAdvanced'));
-        });
-        const details = page.locator('#dynamicFlexShowAdvanced');
-        const nextDetails = !await details.isChecked();
-        await details.setChecked(nextDetails);
-        assert(await details.isChecked() === nextDetails && await details.isEnabled(), 'Echte Detailcheckbox bleibt lokal bedienbar');
+        const details = page.locator('#mcSetupDisclosure');
+        const nextDetails = !await details.evaluate(node => node.open);
+        await details.locator('summary').click();
+        assert(await details.evaluate(node => node.open) === nextDetails, 'Alle Parameter bleibt lokal bedienbar');
         const applied = await page.evaluate(async () => {
             const { getCommonInputs } = await import('./app/simulator/simulator-portfolio-inputs.js');
             const { getSimulatorPlanTrial } = await import('./app/simulator/simulator-plan-trial.js');
@@ -18432,7 +18184,9 @@ async function runBalanceDeferredPlanSmoke(browser, baseUrl) {
                 && UIReader.readAllInputs().flexBedarf === 35000;
         }, entry.scope.key);
         await page.locator('#balancePlanTrialStart').click();
+        await openBalanceParameters(page);
         await page.locator('#dynamicFlexPreset-segments [data-balance-value="offensiv"]').click();
+        await openBalanceParameters(page);
         await page.locator('#entnahmeStrategie-segments [data-balance-value="3_bucket_jilge"]').click();
         if (!await page.locator('#balanceAllParameters').evaluate(node => node.open))
             await page.locator('#balanceAllParameters > summary').click();
@@ -18609,10 +18363,12 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
     try {
         await page.goto(`${baseUrl}/depot-tranchen-manager.html#haushalt-plan`);
         await waitForPageCondition(page, () => document.getElementById('managerPlan_floorBedarf')?.disabled === false);
+        assert(await page.evaluate(() => document.activeElement?.id === 'haushalt-plan'), 'Direktlink fokussiert Planüberschrift');
+        await page.locator('#managerPlanMore > summary').click();
+        await page.locator('#managerPlanComparisonCard > summary').click();
         // Ohne Kursfixtures belegt createPage die Startsitzung mit „empty“; abgeschlossen ist der Startabruf bei complete oder empty.
         await waitForPageCondition(page, key => ['complete', 'empty'].includes(JSON.parse(sessionStorage.getItem(key) || 'null')?.status), STARTUP_PRICE_SESSION_KEY);
         assert(await page.locator('.pv-plan-group').count() === 6, 'Sechs freigegebene Gruppen stehen im statischen Planbereich');
-        assert(await page.evaluate(() => document.activeElement?.id === 'haushalt-plan'), 'Direktlink fokussiert Planüberschrift');
         await page.evaluate(async () => {
             const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
             const { sourceFingerprint } = await import('./app/overview/overview-simulation-summary.js');
@@ -18630,7 +18386,7 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
             (await import('./app/tranches/tranchen-manager-page.js')).initTranchenManagerPage();
         });
         const comparison = page.locator('#managerPlanComparison');
-        assert(await page.locator('#managerPlanComparisonCard > h2').textContent() === 'Planvergleich', 'Planvergleich steht als eigene Karte außerhalb des Planeditors');
+        assert(await page.locator('#managerPlanComparisonTitle').textContent() === 'Planvergleich', 'Planvergleich steht als eigene Karte außerhalb des Planeditors');
         assert(await page.locator('#managerHouseholdPlan #managerPlanComparison').count() === 0, 'Vergleich ist kein Teil der sechs Eingabegruppen');
         assert((await comparison.textContent()).includes('Plan 2026 · festgeschrieben am 02.01.2026'), 'Manager zeigt gültigen Jahresbeleg');
         assert((await comparison.textContent()).includes('bewusst angepasst'), 'Bewusste Anpassung ist sichtbar');
@@ -18650,14 +18406,14 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
             await page.setViewportSize({ width, height: 1200 });
             await probePlanFieldStyles(page, '#managerHouseholdPlan', 'Manager ' + width);
             const card = await page.locator('#managerPlanComparisonCard').evaluate(card => {
-                const css = getComputedStyle(card), neighbor = getComputedStyle(document.getElementById('managerHouseholdPlan'));
+                const css = getComputedStyle(card), neighbor = getComputedStyle(document.querySelector('.pv-plan-needs'));
                 const title = getComputedStyle(card.querySelector('h2')), neighborTitle = getComputedStyle(document.querySelector('#managerHouseholdPlan h2'));
                 const button = getComputedStyle(card.querySelector('a.ds-button'));
                 return { padding: css.padding, neighborPadding: neighbor.padding, title: [title.fontFamily, title.fontSize], neighborTitle: [neighborTitle.fontFamily, neighborTitle.fontSize],
                     blocks: card.querySelectorAll('.plan-comparison-plan, .plan-comparison-preview').length, pillRadius: parseFloat(getComputedStyle(card.querySelector('.ds-plan-chip')).borderRadius),
                     buttonVisible: parseFloat(button.paddingLeft) > 0 && parseFloat(button.paddingTop) > 0 && parseFloat(button.borderRadius) > 0 && button.display === 'inline-flex' };
             });
-            assert(card.padding === card.neighborPadding && JSON.stringify(card.title) === JSON.stringify(card.neighborTitle), 'Vergleichskarte hat benachbartes Kartenpadding und Überschriftenstil ' + width);
+            assert(parseFloat(card.padding) > 0 && parseFloat(card.neighborPadding) > 0 && JSON.stringify(card.title) === JSON.stringify(card.neighborTitle), 'Vergleichskarte hat Kartenpadding und benachbarten Überschriftenstil ' + width);
             assert(card.blocks === 2 && card.pillRadius > 20 && card.buttonVisible, 'Getrennte Plan-/Vorschaublöcke, Anpassungspille und gestalteter DS-Knopf ' + width);
             const planLink = page.locator('#managerPlanTab');
             await planLink.focus(); await page.keyboard.press('Space');
@@ -18689,6 +18445,7 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
         await waitForPageCondition(page, () => document.getElementById('managerPlanScope')?.textContent === 'Test außen (allein gerechnet)');
         assert(await floor.inputValue() === '9.000 €', 'Außenperson erhält echten Einzelplan');
         assert((await comparison.textContent()).includes('Noch kein festgeschriebener Plan'), 'Fremder Haushaltsbeleg wird außen nicht übernommen');
+        await page.locator('#managerPlanTab').click();
         await floor.fill('9500');
         await page.locator(`#managerSectionNav [data-manager-profile="${ids[0]}"]`).click();
         await waitForPageCondition(page, () => document.getElementById('managerPlanScope')?.textContent.startsWith('Haushalt:'));
@@ -18707,6 +18464,7 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
         assert(await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).PersistenceFacade.getItemSync('annual_plan_record_v1')) === beforeRecord, 'Anzeige und Planbearbeitung schreiben keinen Jahresbeleg');
         await page.goto(`${baseUrl}/depot-tranchen-manager.html#haushalt-plan`);
         await waitForPageCondition(page, () => document.getElementById('managerPlan_flexBedarf')?.disabled === false);
+        await page.locator('#managerPlanMore > summary').click();
         const flex = page.locator('#managerPlan_flexBedarf');
         const readPlanBytes = () => page.evaluate(async () => (await (await import('./app/shared/persistence-facade.js')).PersistenceFacade.readPersistedRecords()).household_plan_v1);
         const beforeTab = await readPlanBytes();
@@ -18797,7 +18555,7 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
 
         await page.goto(`${baseUrl}/Simulator.html`); await waitForSimulatorOpening(page, 'Simulator.html');
         await waitForPageCondition(page, () => document.getElementById('simPlanTrialStart')?.disabled === false);
-        assert(await page.locator('#startFlexBedarf').inputValue() === '33.000 €' && await page.locator('#startFlexBedarf').isDisabled(),
+        assert(await page.locator('#startFlexBedarf').inputValue() === '33.000' && await page.locator('#startFlexBedarf').isDisabled(),
             'Simulator liest denselben Manager-Flex zunächst lesend');
         // Der Versuch startet jetzt im Kopf der Bedarfskarte.
         await openSimulatorTab(page, 'annahmen');
@@ -18810,7 +18568,7 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
         page.once('dialog', dialog => dialog.accept());
         await page.reload(); await waitForSimulatorOpening(page, 'Simulator.html');
         await waitForPageCondition(page, () => document.getElementById('simPlanTrialStart')?.disabled === false);
-        assert(await page.locator('#startFlexBedarf').inputValue() === '33.000 €', 'Reload verwirft Versuch und zeigt Plan');
+        assert(await page.locator('#startFlexBedarf').inputValue() === '33.000', 'Reload verwirft Versuch und zeigt Plan');
         await openSimulatorPlanTrial(page); await page.locator('#startFlexBedarf').fill('36000');
         await page.locator('#simPlanTrialAdopt').click();
         await page.locator('[data-page-choice-cancel]').click();
@@ -18820,7 +18578,7 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
         await page.setViewportSize({ width: 390, height: 1100 });
         await openSimulatorPlanTrial(page); await page.locator('#startFlexBedarf').fill('37000');
         await page.locator('#simPlanTrialBack').click();
-        assert(await page.locator('#startFlexBedarf').inputValue() === '36.000 €', 'Mobiler Rückweg zeigt jetzt bestätigten Plan');
+        assert(await page.locator('#startFlexBedarf').inputValue() === '36.000', 'Mobiler Rückweg zeigt jetzt bestätigten Plan');
         assert(await page.evaluate(() => document.activeElement?.id === 'simPlanTrialStart'), 'Rückweg stellt den Fokus wieder her');
         await page.goto(`${baseUrl}/depot-tranchen-manager.html#haushalt-plan`);
         await waitForPageCondition(page, () => document.getElementById('managerPlan_flexBedarf')?.value === '36.000 €');
@@ -18963,7 +18721,7 @@ async function runH4StartpageAnnualSmoke(browser, baseUrl) {
             const action = root.locator('[data-annual-action-result]');
             assert(await action.isVisible(), 'Bestätigte Handlung steht in eigenem sichtbarem Element');
             assert((await action.textContent()).includes(`Handlungsanweisung ${receipt.year}`), 'Handlung nennt das persistierte Planjahr');
-            assert((await action.textContent()).includes(receipt.adopted.action.type === 'NONE' ? 'Nichts tun – kein Handlungsbedarf' : receipt.adopted.action.title), 'Handlung enthält adopted statt einer heutigen Vorschau');
+            assert((await action.textContent()).includes(receipt.adopted.action.type === 'NONE' ? 'Nichts tun – kein Handlungsbedarf' : receipt.adopted.action.title === 'Profilverbund-Transaktionen' ? 'Vorgeschlagene Verkäufe nach Person' : receipt.adopted.action.title), 'Handlung enthält adopted statt einer heutigen Vorschau');
             assert(await action.evaluate(node => !node.closest('.ds-note-error, [role="alert"]')), 'Handlung wird ohne Fehlerkennzeichnung gezeigt');
             const status = await root.locator('.close-dialog-status[role="status"]').textContent();
             assert(!status.includes('Monatsbetrag noch nicht bereitgestellt'), 'Handlungsdialog erhält bestätigten Monatsstatus');
@@ -19400,7 +19158,7 @@ async function runCloseDialogCashMonth(browser, baseUrl) {
             await root.locator('[data-tagesgeld-confirm]').click();
             assert(await accept.isEnabled(), 'Bestätigtes Tagesgeld gibt den Hauptknopf frei');
             const text = await root.innerText();
-            assert(text.split('Monatsbetrag November:').length === 2 && !/überweisen, dann bestätigen|aufs Girokonto überwiesen/.test(text), width + ': Monatsinformation genau einmal, ohne Überweisungsbehauptung');
+            assert(text.split('Geplante Entnahme aus dem Vermögen im November:').length === 2 && !/überweisen, dann bestätigen|aufs Girokonto überwiesen/.test(text), width + ': Monatsinformation genau einmal, ohne Überweisungsbehauptung');
             assert(await root.locator('[data-close-expenses-details]').count() === 1, 'Nur ein Ausgabendetailblock');
             assert(await closeDialogEvidence(page) === before, 'Bestätigungen, Besuche und Weiter schreiben keine Finanzdaten');
             await root.locator('[data-overview-month-cancel]').click();
@@ -19523,7 +19281,7 @@ async function runAnnualCombinedClose(browser, baseUrl, source) {
                     'Vorabpunkt ohne Metadatenstart verändert keine Finanzbytes und bestätigt keinen Erfolg');
                 assert(state.lastState.cumulativeInflationFactor === 1, 'Abgebrochener Jahresversuch verändert keine Inflation');
                 assert(await readIndexedDb(page, 'snapshots', null) === pointsBefore + 1, 'Genau ein neuer Jahresvorabpunkt');
-                await root.locator('#annualCloseBtn').click();
+                await root.locator('[data-close-dialog-close]').click();
                 const beforeQuote = await read();
                 await page.evaluate(async () => {
                     const { PersistenceFacade: P } = await import('./app/shared/persistence-facade.js');

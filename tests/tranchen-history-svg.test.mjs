@@ -89,6 +89,11 @@ const bytes = JSON.stringify(history), svg = renderWealthHistorySvg(history, { t
 assert(svg.includes('role="img"') && svg.includes('<desc id=') && svg.includes('&lt;Titel&gt;'), 'Zugänglicher, escapeter SVGtitel');
 assert(!svg.includes('<script>') && svg.includes('&lt;script&gt;'), 'Ereignisnamen als Text');
 assert(svg.includes('history-total-area') && svg.includes('history-total'), 'Fläche und Gesamtlinie');
+const eventGroup = svg.match(/<g class="history-event history-buy">(.*?)<\/g>/)[1];
+const eventPoint = eventGroup.match(/<circle cx="([^"]+)" cy="([^"]+)"/);
+const connector = eventGroup.match(/<line class="history-event-connector" x1="([^"]+)" x2="([^"]+)" y1="([^"]+)" y2="([^"]+)"/);
+assert(connector && connector[1] === eventPoint[1] && connector[2] === eventPoint[1] && Number(connector[4]) === Number(eventPoint[2]) - 6,
+    'Kaufbeschriftung hat eine Verbindungslinie zum gezeichneten Punkt');
 assertEqual((svg.match(/data-history-gap=/g) || []).length, 2, 'Nur konkrete offene Intervalle schraffiert');
 const id = svg.match(/pattern id="([^"]+)/)[1];
 assert(!renderWealthHistorySvg(history).includes(id), 'Mehrere SVGs besitzen eindeutige IDs');
@@ -205,7 +210,7 @@ for (const fixture of scaleCases.filter(f => f.values.length && f.values.some(Nu
         assert(rendered.includes('<g clip-path="url(#') && rendered.includes('height="340"'), 'Absolute Polygone werden ausschließlich am Plotrand geclippt');
         if (fixture.floor > 0) {
             assert(!rendered.includes('class="history-area '), 'Ausschnitt erzeugt keine Anlagenflächen');
-            assert(rendered.includes('Zusammensetzung siehe Legende') && !rendered.includes('abgeschnitten'), 'ARIA erklärt den neuen Ausschnittvertrag');
+            assert(rendered.includes('Achse beginnt bei') && rendered.includes('Gesamtfläche und Gesamtwert.') && !rendered.includes('Zusammensetzung siehe Legende'), 'ARIA erklärt den Achsenausschnitt ohne unsichtbare Anlagefarben zu versprechen');
         }
     }
 }

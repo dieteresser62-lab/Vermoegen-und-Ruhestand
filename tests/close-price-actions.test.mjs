@@ -92,7 +92,7 @@ for (const change of ['abort', 'profile', 'date', 'scope']) for (const previous 
     assert(!overviewPriceLabel(model).includes('Kurse werden aktualisiert'), label + ': Keine liegengebliebene Fortschrittsbeschriftung');
     assert(!overviewPricesDone(model), label + ': Veralteter Auftrag bestätigt keine Kurse');
     const row = doc.querySelector('[data-close-dialog-step="prices"]');
-    assert(row.dataset.state !== 'done' && row.querySelector('.close-dialog-step-symbol').textContent !== '✓', label + ': Dialog zeigt keinen falschen Haken');
+    assert(row.dataset.visited === 'true' && row.querySelector('.close-dialog-step-pill').textContent === 'angesehen', label + ': Fortschritt bestätigt nur den angesehenen Kursschritt');
     assert(!dialogElements(handle.root).some(node => node.textContent.includes('Kurse werden aktualisiert')), label + ': Dialog verwirft Fortschrittsanzeige');
     assertEqual(published, 0, label + ': Veralteter Bericht überschreibt keinen Sitzungsstand');
     assertEqual(guard.reasons().length, 0, label + ': Auftrag gibt Guard frei');

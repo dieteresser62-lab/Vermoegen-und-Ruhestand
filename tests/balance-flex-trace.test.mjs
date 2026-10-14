@@ -86,6 +86,7 @@ try {
     const renderer = new SummaryRenderer({ outputs });
     const button = outputs.balanceBudgetWhy, region = outputs.balanceBudgetTrace;
     renderer.renderPlanCards(hot);
+    assert(region.children.some(node => node.textContent.includes('Einschränkung liegt erst vor') && node.textContent.includes('Rentenbeitrag')), 'Warum-Treppe unterscheidet Wunsch-Kürzung und Mindest-Flex-Einschränkung');
     assert(!button.hidden && region.hidden && button.getAttribute('aria-expanded') === 'false', 'Jedes Ergebnis beginnt mit geschlossener Warum-Treppe');
     for (let i = 0; i < 3; i++) {
         button.click(); assert(!region.hidden && button.getAttribute('aria-expanded') === 'true', 'Warum lässt sich wiederholt öffnen');
@@ -96,7 +97,8 @@ try {
     button.click(); assert(!region.hidden, 'Idempotente Bindung toggelt nach Neurendern genau einmal');
     assert(region.children.some(row => row.className.includes('positive') && row.children[2].textContent.startsWith('+')), 'Anhebungen zeigen Pluswerte in EUR/Monat');
     renderer.renderPlanCards(hot); renderer.renderMarktstatus(hot.market);
-    assert(outputs.balanceBudgetChips.children.some(n => n.textContent === 'Grund: Flex-Anteil'), 'Budgetchip nennt belegten Kürzungsgrund');
+    assert(!outputs.balanceBudgetChips.children.some(n => /^(Grund:|Flex-Rate|Liquidität)/.test(n.textContent)), 'Monatsbudget wiederholt keine Diagnosechips');
+    assert(region.children.some(n => n.children?.[0]?.textContent === 'Begrenzung nach Flex-Anteil'), 'Belegter Kürzungsgrund bleibt über Warum erreichbar');
     assert(!outputs.balanceBudgetChips.children.some(n => n.textContent === hot.market.szenarioText), 'Marktphase steht außerhalb der Budgetchips');
     assertEqual(outputs.marktstatusText.children[0].children[0].textContent, hot.market.szenarioText || '', 'Marktphase bleibt in der Marktkarte');
     renderer.renderPlanCards(full);

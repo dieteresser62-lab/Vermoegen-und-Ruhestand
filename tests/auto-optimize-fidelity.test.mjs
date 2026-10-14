@@ -525,7 +525,7 @@ console.log('Test 5: every interactive parameter has a deterministic causal witn
 console.log('Test 6: UI copy states horizon and MC-assumption limits');
 {
     const simulatorHtml = fs.readFileSync(new URL('../Simulator.html', import.meta.url), 'utf8');
-    assert(simulatorHtml.includes('Nicht anwendbar bei Survival-Quantile'),
+    assert(simulatorHtml.includes('Bei aktuarischer Methode nur zur Ansicht.'),
         'normal simulator UI should visibly mark direct horizon inapplicable in actuarial modes');
     assert(/id="horizonYears"[^>]*\sreadonly(?:\s|>)/.test(simulatorHtml),
         'normal simulator UI should make the inapplicable direct field read-only');
@@ -636,7 +636,7 @@ console.log('Test 7: registry domains and range preflight match canonical input 
 console.log('Test 8: Slice-15 model matrix and backlog links remain complete');
 {
     const architectureText = fs.readFileSync(
-        new URL('../docs/reference/ARCHITEKTUR_UND_FACHKONZEPT.md', import.meta.url),
+        new URL('../docs/reference/FACHKONZEPT.md', import.meta.url),
         'utf8'
     );
     const matrixRows = architectureText
@@ -665,14 +665,14 @@ console.log('Test 8: Slice-15 model matrix and backlog links remain complete');
     assert(ms09Cells[4].startsWith('entfaellt'),
         'missing cost/FX/asset models should not claim a positive technical-test status');
 
-    const backlogUrl = new URL('../docs/internal/archive/FORSCHUNGSVALIDIERUNGS_BACKLOG.md', import.meta.url);
+    const backlogUrl = new URL('../docs/reference/WISSENSCHAFTLICHER_RAHMEN.md', import.meta.url);
     const backlogText = fs.readFileSync(backlogUrl, 'utf8');
     const localTargets = Array.from(backlogText.matchAll(/\]\(([^)]+\.md(?:#[^)]+)?)\)/g), match => match[1]);
-    assert(localTargets.length >= 5, 'research backlog should expose its normative and operational local links');
+    assert(localTargets.length >= 5, 'research reference should expose its normative and operational local links');
     for (const localTarget of localTargets) {
         const resolved = new URL(localTarget, backlogUrl);
         resolved.hash = '';
-        assert(fs.existsSync(resolved), `research backlog link should resolve: ${localTarget}`);
+        assert(fs.existsSync(resolved), `research reference link should resolve: ${localTarget}`);
     }
 }
 

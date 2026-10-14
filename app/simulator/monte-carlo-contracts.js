@@ -376,6 +376,9 @@ function projectMonteCarloKpis(aggregated = {}) {
         taxPaidNominalEur: cloneContractValue(aggregated.taxOutcomes || {}, '$.result.kpis.taxPaidNominalEur'),
         simulatedLifetimeYears: cloneContractValue(aggregated.kpiLebensdauer || {}, '$.result.kpis.simulatedLifetimeYears'),
         cutYearSharePct: cloneContractValue(aggregated.cutYearSharePct || {}, '$.result.kpis.cutYearSharePct'),
+        ...(aggregated.minimumFlexRestriction ? {
+            minimumFlexRestriction: cloneContractValue(aggregated.minimumFlexRestriction, '$.result.kpis.minimumFlexRestriction')
+        } : {}),
         maximumFlexCutPct: cloneContractValue(aggregated.kpiMaxKuerzung || {}, '$.result.kpis.maximumFlexCutPct'),
         depotExhaustionRatePct: aggregated.depotErschoepfungsQuote ?? null,
         depotExhaustionAgeYears: cloneContractValue(aggregated.alterBeiErschoepfung || {}, '$.result.kpis.depotExhaustionAgeYears'),

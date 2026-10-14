@@ -206,7 +206,9 @@ for (const exchangeText of ['', 'Vorhandene Austauschmeldung']) {
         assert(button && !button.closest('[data-restore-preview]'), 'Löschknopf wird nicht als Vorschauknopf verwechselt');
         const nestedTarget = ui.createElement('span'); button.appendChild(nestedTarget);
         for (const handler of handlers) await handler({ target: nestedTarget });
-        for (let i = 0; i < 1000 && controller.busy; i++) await new Promise(resolve => setImmediate(resolve));
+        // Echte SHA-/Archivarbeit kann im parallelen Gesamtlauf länger dauern.
+        const deletionDeadline = Date.now() + 5000;
+        while (controller.busy && Date.now() < deletionDeadline) await new Promise(resolve => setTimeout(resolve, 5));
         await new Promise(resolve => setImmediate(resolve));
         assert(!controller.busy, mode + ': Löschoperation beendet');
         if (navigationTask) { const attempt = await navigationTask; assert(attempt, 'Navigation beendet die vorbereitete Löschoperation'); guard.end(attempt); }
@@ -250,4 +252,36 @@ for (const exchangeText of ['', 'Vorhandene Austauschmeldung']) {
         assertEqual(JSON.stringify(live), originalLive, mode + ': fachliche Livewerte bleiben bytegleich');
         resetPersistenceForTests();
     }
+}
+
+{
+const flexScope = { kind: 'single', ids: ['a'], key: JSON.stringify(['single', ['a']]) };
+const flexCommon = { scope: flexScope, completedAt: '2026-10-12T12:00:00Z', priceBasis: 'nominal',
+    fingerprintVersion: 2, sourceFingerprint: 'a'.repeat(64), runFingerprint: 'b'.repeat(64), deviationApplied: false };
+const flexOld = { ...flexCommon, kind: 'backtest', statement: 'completed',
+    metrics: { startYear: 2000, endYear: 2002, failureYear: null, endWealthReal: 100 } };
+const flexNew = { ...flexCommon, kind: 'montecarlo', statement: 'Floor gedeckt bis Laufende',
+    metrics: { runs: 2, covered: 2, successPct: 100, median: 10, p5: 1,
+        minimumFlexStartNominalEur: 30000, minimumFlexYearSharePct: 100 / 6,
+        minimumFlexAffectedRunSharePct: 50, flexPaidMedianNominalEur: 32500,
+        flexDesiredMedianNominalEur: 45000, flexPaidMinimumNominalEur: 29000 } };
+const flexRecord = JSON.stringify({ version: 1, entries: {
+    [JSON.stringify([flexScope.key, 'backtest'])]: flexOld, [JSON.stringify([flexScope.key, 'montecarlo'])]: flexNew } });
+const flexLegacyRecord = JSON.stringify({ version: 1, entries: { [JSON.stringify([flexScope.key, 'backtest'])]: flexOld } });
+    const { buildFullPersistenceBackup, importFullPersistenceBackup } = await import('../app/shared/persistence-backup.js');
+    const live = { rs_current_profile: 'a', rs_active_profile: 'a', overview_simulation_summary_v1: flexRecord,
+        rs_profiles_v1: JSON.stringify({ version: 1, profiles: { a: { meta: { name: 'Synthetisch' }, data: { overview_simulation_summary_v1: flexRecord } } } }) };
+    const archive = new Map();
+    resetPersistenceForTests({ name: 'results-exchange', loadAll: async () => ({ ...live }),
+        saveBatch: async batch => { batch.deletes.forEach(key => delete live[key]); batch.upserts.forEach(([key, value]) => live[key] = value); },
+        writeSnapshot: async item => archive.set(item.id, item), readSnapshot: async id => archive.get(id), listSnapshots: async () => [...archive.values()] });
+    await p.init({ installLifecycleHooks: false, installTauriCloseHook: false });
+    const backup = buildFullPersistenceBackup();
+    p.setItemSync('overview_simulation_summary_v1', flexLegacyRecord); await p.flush();
+    const exchange = createDataExchangeController({ guard: createNavigationGuard() });
+    const result = await exchange.run(async operation => {
+        operation.check(); return importFullPersistenceBackup(backup, { navigationOperation: operation });
+    });
+    assertEqual(result.ok, true, 'Datenaustausch importiert Alt-/Neu-Ergebnisbestand mit bestehendem Lebenszyklus');
+    assertEqual(live.overview_simulation_summary_v1, flexRecord, 'Datenaustausch erhält Ergebnisbelege bytegleich');
 }

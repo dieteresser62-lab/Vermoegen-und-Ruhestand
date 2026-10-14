@@ -87,6 +87,10 @@ for (const [samplePath, expected] of [
     ['README.md', false],
     ['data/historical/x.csv', false],
     ['docs/guide.html', false],
+    ['docs/ui/monatsabschluss/01-faellig.png', true],
+    ['docs/ui/manifest.json', false],
+    ['docs/ui/README.md', false],
+    ['CHANGELOG.md', true],
     ['tools/yahoo-proxy.cjs', false],
     ['application/x.js', false]
 ]) {

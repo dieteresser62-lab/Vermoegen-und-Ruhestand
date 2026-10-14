@@ -45,9 +45,9 @@ const ids = [...markup.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
 assertEqual(ids.length, new Set(ids).size, 'Alle Bestandscontrols und Ergebnis-Hosts besitzen eindeutige IDs');
 const controls = {
     ergebnis: ['overviewBacktest', 'overviewMonteCarlo', 'overviewCrises', 'overviewRunHeads'],
-    annahmen: ['simProfileList', 'startFloorBedarf', 'minimumFlexAnnual', 'pflegePanel', 'resetBtn'],
+    annahmen: ['simProfileList', 'startFloorBedarf', 'minimumFlexAnnual', 'pflegePanel', 'mcSetupDisclosure'],
     backtesting: ['simStartJahr', 'simEndJahr', 'btButton', 'simulationSummary', 'simulationLog', 'exportBacktestJson', 'parity-smoketest-card'],
-    montecarlo: [ 'mcButton', 'mcCancelButton', 'mcSetupDisclosure', 'mcViewTabLogs'],
+    montecarlo: [ 'mcButton', 'mcCancelButton', 'mcViewTabLogs'],
     werkstatt: ['workshopReplayPanel', 'stressReplayWorkspace', 'mcReplayVariantBadge', 'sweepButton', 'sweepResults', 'ao_run_btn', 'ao_result', 'ao_apply_btn']
 };
 for (let i = 0; i < owners.length; i++) {
@@ -59,7 +59,7 @@ for (let i = 0; i < owners.length; i++) {
 assert(markup.includes('data-workshop-panel="optimize" tabindex="-1" hidden'), 'Auto-Optimize liegt in eigener initial verborgener Werkstattfläche');
 const assumptionSource = fs.readFileSync(path.join(root, 'app/simulator/simulator-assumptions-ui.js'), 'utf8');
 assert(assumptionSource.includes('input:not([type="hidden"]):not([type="checkbox"]), select') && assumptionSource.includes("host.addEventListener('input'") && assumptionSource.includes("host.addEventListener('change'"), 'Bestehende Füllindikatorbindung folgt den echten Annahmenfeldern');
-assertEqual((markup.match(/data-assumption-step="[1-5]"/g) || []).length, 5, 'Genau fünf unabhängig klappbare Annahmenschritte');
+assertEqual((markup.match(/data-assumption-step="[1-5]"/g) || []).length, 5, 'Fünf bestehende Annahmenbereiche bleiben zugeordnet');
 assert(!markup.slice(markup.indexOf('id="tab-annahmen"'), markup.indexOf('id="tab-backtesting"')).includes('class="form-group"'), 'Annahmen verwenden Bausteinfelder');
 assert(!html.includes('#tab-rahmendaten'), 'Kein Inlinebinder verweist auf die entfernte Besitzfläche');
 const workshop = markup.slice(markup.indexOf('id="tab-werkstatt"'));

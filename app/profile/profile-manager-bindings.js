@@ -15,7 +15,7 @@ export function validateProfileName(name) {
 /** Gemeinsamer Defaultschutz und ausdrückliche Löschbestätigung. */
 export async function confirmProfileDeletion(profileId, ask, options = {}) {
     if (profileId === 'default' && listProfiles().length <= 1) {
-        throw new Error('Das Default-Profil kannst Du erst löschen, wenn ein weiteres Profil existiert.');
+        throw new Error('Das Standard-Profil kannst Du erst löschen, wenn ein weiteres Profil existiert.');
     }
     const name = getProfileMeta(profileId)?.name || profileId;
     const registry = persistenceStorage.getItem(PROFILE_STORAGE_KEYS.registry);

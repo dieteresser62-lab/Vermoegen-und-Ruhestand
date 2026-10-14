@@ -448,14 +448,14 @@ try {
             await P.init({ installLifecycleHooks: false, installTauriCloseHook: false });
             const { doc } = createDialogFixture(); globalThis.document = doc; globalThis.window = { document: doc };
             const outputs = {};
-            for (const id of ['balanceNextAnnualLabel', 'balanceNextAnnual', 'balanceActionFootnote', 'balanceBudgetChips']) {
+            for (const id of ['balanceNextAnnualLabel', 'balanceNextAnnual', 'balanceActionFootnote', 'balanceActionDisclaimer', 'balanceBudgetChips']) {
                 outputs[id] = doc.createElement(id === 'balanceNextAnnual' ? 'button' : 'div'); outputs[id].id = id; doc.body.append(outputs[id]);
             }
             const startpage = projectOverviewFromRecords({ registry, activeId: records.rs_current_profile, liveData: records, now: new Date(2026, 0, 2, 12) });
             new SummaryRenderer({ outputs, controls: { jahresabschlussBtn: { disabled: false } } }, { loadState: () => JSON.parse(records[CONFIG.STORAGE.LS_KEY]) }).renderContext();
             assertEqual(startpage.occasion.annualState, 'not_applicable', 'Erstjahrstatus auf Startseite: ' + single);
             assertEqual(outputs.balanceNextAnnualLabel.textContent, 'Erster Jahresabschluss', 'Balance bietet im Erstjahr keinen Abschluss 2025: ' + single);
-            assert(outputs.balanceNextAnnual.disabled && outputs.balanceActionFootnote.textContent.includes('Anfang 2027'), 'Folgeknopf bleibt schreibfrei mit erstem Termin: ' + single);
+            assert(outputs.balanceNextAnnual.disabled && outputs.balanceNextAnnual.hidden && outputs.balanceActionDisclaimer.textContent.includes('Anfang 2027'), 'Folgeknopf bleibt schreibfrei mit erstem Termin: ' + single);
             assertEqual(JSON.stringify(Object.fromEntries(backend)), JSON.stringify(records), 'Statusvergleich verändert keine Finanzrecords: ' + single);
         }
     } finally {

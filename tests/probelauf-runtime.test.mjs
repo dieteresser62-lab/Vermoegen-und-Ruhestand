@@ -10,7 +10,8 @@ for (const protocol of ['http:', 'https:', 'file:']) {
         }
     }
 }
-for (const identifier of [CANDIDATE_IDENTIFIER, 'com.dieter.ruhestandsapp', 'fremd', undefined]) {
+// Auch die alte App und ihre früheren Kandidaten bleiben erkannte Tauri-Laufzeiten.
+for (const identifier of [CANDIDATE_IDENTIFIER, 'de.vermoegen-ruhestand.entwicklung', 'de.vermoegen-ruhestand.suite', 'com.dieter.ruhestandsapp', 'com.dieter.ruhestandsapp.kandidat', 'fremd', undefined]) {
     const actual = await resolveProbelaufRuntime({ win: { location: { href: 'tauri://localhost/index.html' }, __TAURI__: { app: { getIdentifier: async () => identifier } } } });
     assertEqual(actual.kind, 'tauri', 'Tauri erkannt'); capabilities(actual, String(identifier));
 }

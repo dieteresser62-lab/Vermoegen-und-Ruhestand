@@ -6,6 +6,50 @@ import { formatCurrency, calculateTotals, renderSummary, SummaryRenderer } from 
 import { initUIRenderer, UIRenderer } from '../app/balance/balance-renderer.js';
 import { bindHouseholdPlanField, readBoundHouseholdPlanField, householdPlanFieldSpec } from '../app/shared/household-plan-fields.js';
 
+// Die erledigte Ansicht und ein neuer Jahresschritt werden aus echten Belegen projiziert.
+{
+    const { createMusterHaushaltRecords } = await import('../app/demo/muster-haushalt.js');
+    const { createPresentationTestDocument } = await import('./designsystem-source-contract.mjs');
+    const { setAppTestDate, getAppTestDate } = await import('../app/shared/app-clock.js');
+    const previous = { doc: globalThis.document, win: globalThis.window, date: getAppTestDate() };
+    const records = new Map(Object.entries(createMusterHaushaltRecords('2026-10-13')));
+    const doc = createPresentationTestDocument();
+    const outputs = Object.fromEntries(['balanceNextSteps', 'balanceNextStatus', 'balanceNextAnnual', 'balanceNextAnnualLabel', 'marktstatusText', 'liquiditaetBalken', 'balkenContainer']
+        .map(key => [key, doc.createElement('div')]));
+    const card = doc.createElement('section');
+    outputs.balanceNextSteps.closest = () => card;
+    outputs.liquiditaetBalken.classList = { add: value => { outputs.liquiditaetBalken.className += ` ${value}`; } };
+    try {
+        globalThis.document = doc; globalThis.window = {};
+        setAppTestDate('2026-10-13');
+        resetPersistenceForTests({ getItemSync: key => records.get(key) ?? null, setItemSync: (key,value) => records.set(key,value), keysSync: () => [...records.keys()] });
+        const before = JSON.stringify([...records]);
+        const renderer = new SummaryRenderer({ outputs });
+        renderer.renderContext({});
+        assert(card.hidden && !outputs.balanceNextStatus.hidden, 'Ohne offenen Schritt steht nur die kompakte Statuszeile');
+        assert(outputs.balanceNextStatus.textContent.includes('Alles erledigt') && outputs.balanceNextStatus.textContent.includes('Anfang 2027'), 'Erledigter Zustand nennt den nächsten Jahresabschluss');
+        assert(outputs.balanceNextAnnual.hidden && outputs.balanceNextAnnual.disabled, 'Erledigtes Jahr zeigt keinen Startknopf');
+        setAppTestDate('2027-01-02');
+        renderer.renderContext({});
+        assert(!card.hidden && outputs.balanceNextStatus.hidden, 'Fälliger Abschluss zeigt wieder die Schrittkarte');
+        assert(!outputs.balanceNextAnnual.hidden && !outputs.balanceNextAnnual.disabled, 'Fälliges Jahr hat den bisherigen aktiven Jahreszugang');
+        assertEqual(outputs.balanceNextAnnualLabel.textContent, 'Jahresabschluss 2026 starten', 'Startzugang nennt das fällige Jahr');
+        assertEqual(JSON.stringify([...records]), before, 'Zustandsanzeige schreibt keine Finanz- oder Abschlussdaten');
+
+        renderer.renderOverview({ input: {}, liquiditaet: { deckungVorher: 73.1, deckungNachher: 100 } });
+        assertEqual(outputs.liquiditaetBalken.style.width, '73.1%', 'Reservebalken verwendet die aktuelle Deckung vor dem Vorschlag');
+        assert(outputs.liquiditaetBalken.className.includes('bar-warn'), 'Aktuelle Unterdeckung zeigt keinen grünen Zielstatus');
+        renderer.renderLiquidityBar(undefined);
+        assertEqual(outputs.liquiditaetBalken.style.width, '0%', 'Fehlende Deckung entfernt einen alten Balken');
+        for (const market of [{ sKey: 'peak_hot', szenarioText: 'Markt heiß gelaufen' }, { szenarioText: 'Markt heiß gelaufen' }]) {
+            renderer.renderMarktstatus(market);
+            assert(outputs.marktstatusText.children[0].className.includes('status-amber'), 'Heiße Marktphase verwendet die Warnfarbe');
+        }
+    } finally {
+        globalThis.document = previous.doc; globalThis.window = previous.win; setAppTestDate(previous.date); resetPersistenceRuntimeForTests();
+    }
+}
+
 console.log('--- Balance Renderer Summary Tests ---');
 
 // Produktiver Kopf-Host ohne den früheren balanceScopeText-Ausgabehost.
@@ -149,7 +193,7 @@ console.log('--- Balance Renderer Summary Tests ---');
         ]) assertEqual(rowValue(outputs.balanceNeedRows, label), expected, `${label}: benachbarte Bedarfszeile zeigt ganze Euro`);
         assertEqual(outputs.balanceFreeLiquidity.textContent, '9.000\u00a0€', 'Operative Liquidität zeigt ganze Euro');
         assertEqual(outputs.balanceReserveTargetMonths.textContent, '36\u00a0Monate', 'Zielmonate stammen vom Runwayparameter, nicht vom Istwert');
-        assertEqual(outputs.balanceReserveRunway.textContent, 'reicht für 9,3\u00a0Monate Entnahme', 'Ist-Reichweite bleibt vom Ziel getrennt');
+        assertEqual(outputs.balanceReserveRunway.textContent, 'Nach Vorschlag: reicht für 9,3\u00a0Monate Entnahme', 'Ist-Reichweite bleibt vom Ziel getrennt');
         assertEqual(outputs.balanceWealthFooter.textContent, 'Gesamtvermögen 95.001\u00a0€ · davon Pflegevorsorge 10.000\u00a0€ reserviert', 'Gesamtwert wird geliefert und Pflegevorsorge nicht doppelt addiert');
         assertEqual(outputs.balanceNeedRows.children[2].children[1].children[1].className, 'balance-unit', 'Monatliche Bedarfssumme hat eine kleine Einheit');
         assertEqual(rowValue(outputs.balanceReserveRows, 'Gold-Bestand'), '301\u00a0€', 'Gold-Bestand zeigt ganze Euro');
@@ -165,7 +209,7 @@ console.log('--- Balance Renderer Summary Tests ---');
         renderer.renderOverview({ input: {}, depotwertGesamt: 0, neuerBedarf: 0, minGold: 0, zielLiquiditaet: 0,
             runway: { months: Infinity }, vpw: { gesamtwert: 0 }, healthBucketDiagnostics: { lockedAmount: 0 } });
         for (const key of Object.keys(details)) assertEqual(outputs[key].textContent, '0\u00a0€', `${key}: echte Null bleibt sichtbar`);
-        assertEqual(outputs.balanceReserveRunway.textContent, 'reicht für ∞\u00a0Monate Entnahme', 'Unendliche Ist-Reichweite wird nicht auf Zielmonate begrenzt');
+        assertEqual(outputs.balanceReserveRunway.textContent, 'Nach Vorschlag: reicht für ∞\u00a0Monate Entnahme', 'Unendliche Ist-Reichweite wird nicht auf Zielmonate begrenzt');
         assertEqual(outputs.balanceWealthFooter.textContent, 'Gesamtvermögen 0\u00a0€ · davon Pflegevorsorge 0\u00a0€ reserviert', 'Echte Null bleibt auch bei deaktivierter Pflegevorsorge sichtbar');
         new SummaryRenderer({}, { loadState: () => ({ inputs: {} }) }).renderOverview();
         assert(true, 'Vollständiger Überblick toleriert fehlende Ausgabehosts und Eingabewerte');
@@ -202,14 +246,14 @@ console.log('--- Balance Renderer Summary Tests ---');
             .find(node => node.className === 'balance-need-meta')?.textContent;
 
         UIRenderer.render(ui);
-        assertEqual(marketNote(), 'Flex gekürzt', 'Produktiver Gesamtrender zeigt die aktuelle positive Kürzung am Marktchip');
+        assertEqual(marketNote(), undefined, 'Marktkarte wiederholt die Budgetkürzung nicht');
         assert(inflationNote()?.includes('Bedarfe noch nicht angepasst'), 'Inflationszusatz liest den älteren Anpassungsstand über den produktiv konstruierten Renderer');
         assert(stateReads > 0, 'Produktive Renderer-Konstruktion reicht den StorageManager an den SummaryRenderer weiter');
 
         const uncut = { ...ui, spending: { monatlicheEntnahme: 1500, details: { flexRate: 100 } } };
         adjustedAge = 2027;
         UIRenderer.render(uncut);
-        assertEqual(marketNote(), 'keine Kürzung', 'Folgerendern ohne Kürzung ersetzt den vorherigen Marktchipzusatz');
+        assertEqual(marketNote(), undefined, 'Auch Vollfinanzierung steht nur beim Monatsbudget');
         assert(inflationNote()?.includes('Bedarfe bereits angepasst'), 'Folgerendern liest den aktuellen Anpassungsstand statt eines alten oder fehlenden Storagewerts');
 
         const missingComparison = { ...ui, input: { ...ui.input, flexBedarf: undefined } };
@@ -219,11 +263,12 @@ console.log('--- Balance Renderer Summary Tests ---');
         assertEqual(marketNote(), undefined, 'Fehlende Entnahme erzeugt ebenfalls keinen Kürzungszusatz');
 
         UIRenderer.render({ ...ui, balanceAlarmActive: true });
-        assertEqual(marketNote(), 'Alarm aktiv · Flex gekürzt', 'Aktiver Alarm ergänzt die aktuelle Kürzung im selben Gesamtrender');
+        assertEqual(marketNote(), undefined, 'Aktiver Alarm wiederholt die Budgetkürzung nicht am Marktchip');
+        assertEqual(outputs.balanceMarketAlarm.hidden, false, 'Aktiver Alarm bleibt im bestehenden Hinweisband sichtbar');
         UIRenderer.render({ ...missingComparison, balanceAlarmActive: true });
-        assertEqual(marketNote(), 'Alarm aktiv', 'Alarm bleibt auch ohne Kürzungsvergleich als belegter Zusatz sichtbar');
+        assertEqual(marketNote(), undefined, 'Alarmband genügt auch ohne Kürzungsvergleich');
         UIRenderer.render(uncut);
-        assertEqual(marketNote(), 'keine Kürzung', 'Folgerendern entfernt einen aufgehobenen Alarm aus dem Marktchipzusatz');
+        assertEqual(outputs.balanceMarketAlarm.hidden, true, 'Folgerendern entfernt einen aufgehobenen Alarm aus dem Hinweisband');
 
         UIRenderer.render({ ...ui, input: { ...ui.input, inflation: undefined } });
         assertEqual(inflationNote(), undefined, 'Fehlende Inflationswerte entfernen die Inflationszeile samt Anpassungszusatz');
@@ -279,7 +324,7 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
         assert(outputs.marktstatusText.children[0].className.includes('status-red'), 'Bestehender Marktstatus bleibt kritisch');
         assertEqual(outputs.marktstatusText.children[0].title, 'Synthetischer Marktgrund', 'Marktgrund bleibt am Phasenchip lesbar vorhanden');
         assertEqual(outputs.marktstatusText.children.length, 1, 'Kein zusätzliches Infosymbol am Phasenchip');
-        for (const key of ['balanceMonthlyBudget', 'balanceAnnualBudget', 'balanceMonthlyIncome', 'balanceBudgetCut', 'balanceBudgetCutLegend', 'balanceBudgetCutAmount', 'balanceActionCoverage', 'balanceActionFootnote', 'balanceNextAnnualLabel', 'balanceNeedProfiles', 'balanceBudgetChips', 'balanceNeedRows', 'balanceReserveRows', 'balanceFreeLiquidity', 'balanceMarketFacts', 'balanceMarketScale', 'balancePlanningYear', 'balanceScope', 'balanceNextSteps', 'balanceAnnualRecovery']) {
+        for (const key of ['balanceMonthlyBudget', 'balanceAnnualBudget', 'balanceMonthlyIncome', 'balanceBudgetCut', 'balanceBudgetCutLegend', 'balanceBudgetCutAmount', 'balanceActionCoverage', 'balanceActionFootnote', 'balanceActionDisclaimer', 'balanceNextAnnualLabel', 'balanceNeedProfiles', 'balanceBudgetChips', 'balanceNeedRows', 'balanceReserveRows', 'balanceFreeLiquidity', 'balanceMarketFacts', 'balanceMarketScale', 'balancePlanningYear', 'balanceScope', 'balanceNextSteps', 'balanceAnnualRecovery']) {
             outputs[key] = doc.createElement('div');
         }
         let metadata;
@@ -291,7 +336,7 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
         plan.renderPlanCards(ui);
         assertEqual(outputs.balanceMonthlyBudget.textContent, UIUtils.formatBalanceCurrency(2000), 'Monatsbudget addiert feste Einkünfte und finanzierte Entnahme');
         assertEqual(outputs.balanceBudgetCut.textContent, `Der flexible Bedarf ist auf 60,0\u00a0% gekürzt: ${UIUtils.formatBalanceCurrency(500)} weniger im Monat, als du planst.`, 'Kürzung aus tatsächlichem Monatsbudget und Bedarf');
-        assert(outputs.balanceBudgetChips.children[0].textContent.includes('60'), 'Flex-Rate kommt aus dem gelieferten spending.details-Vertrag');
+        assert(!outputs.balanceBudgetChips.children.some(node => node.textContent.startsWith('Flex-Rate')), 'Der Kürzungssatz nennt die gelieferte Flex-Rate ohne zusätzlichen Chip');
         assert(!outputs.balanceBudgetCutLegend.hidden, 'Positive Kürzung besitzt eine dritte Legende');
         assertEqual(outputs.balanceBudgetCutAmount.textContent, `−${UIUtils.formatBalanceCurrency(500)}`, 'Legende nennt Kürzung mit Minuszeichen');
         plan.renderPlanCards({ ...ui, spending: { monatlicheEntnahme: 1500, details: { flexRate: 100 } } });
@@ -439,14 +484,14 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
                 const detailOutputs = { handlungsanweisung: doc.createElement('div'), actionDetailsTitle: doc.createElement('h2') };
                 // Echte Fassade, auch wenn die Detailansicht keine Budgetkarte besitzt.
                 initUIRenderer({ outputs: { ...detailOutputs, balanceActionPeriod: outputs.balanceActionPeriod,
-                    balanceActionFootnote: outputs.balanceActionFootnote } }, { loadState: () => ({ annualPeriodMetadata: metadata }) });
+                    balanceActionFootnote: outputs.balanceActionFootnote, balanceActionDisclaimer: outputs.balanceActionDisclaimer } }, { loadState: () => ({ annualPeriodMetadata: metadata }) });
                 UIRenderer.render({ ...ui, input, action: { type: 'NONE', title: 'Kein Handel nötig' } });
                 const label = `Vorläufige Vorschau · Jahresabschluss ${expectedYear}`;
                 assertEqual(outputs.balanceActionPeriod.textContent, label, 'Periodenchip nennt das nächste Abschlussjahr');
-                assert(outputs.balanceActionFootnote.textContent.includes(`Gehandelt wird erst nach dem Jahresabschluss ${expectedYear}.`), 'Fußtext verwendet dasselbe Abschlussjahr');
+                assert(outputs.balanceActionFootnote.textContent === `Festgeschrieben erst im Jahresabschluss ${expectedYear}`, 'Fußtext verwendet dasselbe Abschlussjahr');
                 assert(detailOutputs.actionDetailsTitle.textContent.startsWith(label), 'Dialogtitel übernimmt das Abschlussjahr der Karte');
                 const copy = UIRenderer.getActionCopyText();
-                assert(copy.startsWith(label) && copy.includes(outputs.balanceActionFootnote.textContent), 'Kopie übernimmt Label und Hinweis derselben Herkunftsprojektion');
+                assert(copy.startsWith(label) && copy.includes(outputs.balanceActionDisclaimer.textContent), 'Kopie übernimmt Label und Hinweis derselben Herkunftsprojektion');
             };
             metadata = { schemaVersion: 1, lastCommittedPeriod: null, pendingCommit: null };
             seedPeriod(); plan.renderContext(input);
@@ -456,10 +501,10 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
             assert(outputs.balanceActionFootnote.textContent.includes(`Jahresabschluss ${targetYear}`), 'Offenes Vorjahr ist der nächste Jahresabschluss');
             checkPreview(targetYear);
             metadata = { schemaVersion: 99, lastCommittedPeriod: null, pendingCommit: null }; seedPeriod(); plan.renderContext(input);
-            assert(outputs.balanceActionFootnote.textContent.includes('heute Jahresabschluss') && outputs.balanceNextAnnualLabel.textContent === 'Jahresstatus klären', 'Ungültige Metadaten zeigen erreichbare Jahresklärung statt Abschlussfreigabe');
+            assert(outputs.balanceActionDisclaimer.textContent.includes('heute Jahresabschluss') && outputs.balanceNextAnnualLabel.textContent === 'Jahresstatus klären', 'Ungültige Metadaten zeigen erreichbare Jahresklärung statt Abschlussfreigabe');
             metadata = { schemaVersion: 1, lastCommittedPeriod: `calendar-year:${targetYear}`, pendingCommit: null };
             seedPeriod(); plan.renderContext(input);
-            assert(outputs.balanceNextAnnual.disabled && outputs.balanceActionFootnote.textContent.includes('heute Jahresabschluss'), 'Abgeschlossene Periode erhält bisherigen Sperrvertrag und passenden Fußtext');
+            assert(outputs.balanceNextAnnual.disabled && outputs.balanceActionDisclaimer.textContent.includes('heute Jahresabschluss'), 'Abgeschlossene Periode erhält bisherigen Sperrvertrag und passenden Fußtext');
             checkPreview(targetYear + 1);
             const { setAppTestDate } = await import('../app/shared/app-clock.js');
             const { createManualWealthHistoryEntry } = await import('../types/wealth-history-contract.js');
@@ -475,7 +520,7 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
                 outputs.balanceBudgetChips.replaceChildren(); // Eigener Erstjahrfall, ohne die vorigen Zustandsfixtures.
                 outputs.balanceActionPeriod = doc.createElement('span');
                 plan.renderContext(input);
-                assert(outputs.balanceActionFootnote.textContent.includes('Jahresabschluss 2026') && outputs.balanceActionFootnote.textContent.includes('Anfang 2027'), 'Erstjahrvorschau nennt Abschlussjahr und ersten Termin getrennt');
+                assert(outputs.balanceActionFootnote.textContent.includes('Jahresabschluss 2026') && outputs.balanceActionDisclaimer.textContent.includes('Anfang 2027'), 'Erstjahrvorschau nennt Abschlussjahr und ersten Termin getrennt');
                 assertEqual(outputs.balanceActionPeriod.textContent, 'Vorläufige Vorschau · Jahresabschluss 2026', 'Handlung bleibt auch im Erstjahr vorläufig');
                 checkPreview(2026);
                 assert(!outputs.balanceNextSteps.children.some(node => ['annual', 'monthly'].includes(node.getAttribute('data-next-step'))), 'Kein Abschluss-/Bereitstellungsschritt für 2025');

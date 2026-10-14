@@ -23,7 +23,7 @@ const view = projectHouseholdPlanComparison({ year: 2026, scope: f.scope, storag
 const options = { comparison: view, year: 2026, scope: overviewScope('household', ['z', 'a']),
     occasion: { closingYear: 2025, annualState: 'done' } };
 const origin = projectBalanceActionOrigin(options);
-assertEqual(origin.label, 'Handlungsanweisung 2026 · verbindlich aus dem Jahresabschluss vom 02.01.2026', 'Jahr und Abschlussdatum stammen aus dem Beleg');
+assertEqual(origin.label, 'Handlungsanweisung 2026 · festgeschrieben im Jahresabschluss vom 02.01.2026', 'Jahr und Abschlussdatum stammen aus dem Beleg');
 assertEqual(JSON.stringify(origin.confirmed.action), JSON.stringify(adopted.action), 'Jahresaktion ist exakt adopted.action, ohne heutige Ableitung');
 assertEqual(origin.previewYear, 2026, 'Oktobervorschau nennt das nächste Abschlussjahr statt des Folgeplanjahrs');
 assertEqual(projectBalanceActionOrigin({ ...options, occasion: { closingYear: 2025, annualState: 'open' } }).previewYear, 2025,
@@ -37,7 +37,8 @@ for (const id of ['overviewPlanComparison', 'overviewPlanStatus', 'overviewTitle
 const renderer = new SummaryRenderer({ outputs: { balanceAnnualAction: host } });
 const texts = () => dialogElements(host).map(node => node.textContent).join(' ').replaceAll('\u00a0', ' ');
 renderer.renderAnnualAction(origin);
-assert(texts().includes('1.234,00 € brutto · 1.000,00 € netto · 234,00 € Steuer') && texts().includes('Gold: 600,00 €') && texts().includes('Tagesgeld: 400,00 €'), 'Jahresblock zeigt unveränderte Quellen, Verwendungen und Steuer');
+assert(texts().includes('1.234,00 € brutto · 234,00 € Steuer') && texts().includes('1.000,00 €') && texts().includes('Gold: 600,00 €') && texts().includes('Tagesgeld: 400,00 €'), 'Jahresblock zeigt unveränderte Quellen, Verwendungen und Steuer');
+assert(!host.querySelector('[data-annual-action-details]').open && host.querySelector('[data-annual-action-sales]'), 'Gemeinsamer Jahresblock zeigt Nettoerlös offen und Brutto/Steuer in Details');
 assert(!texts().includes('Heutige materielle Vorschau') && texts().includes('Beschlossener Verkauf'), 'Jahresblock ersetzt den Beschluss nicht durch Vorschau oder recommended');
 renderer.renderAnnualAction(origin);
 assertEqual(host.querySelectorAll('[data-annual-action-result]').length, 1, 'Wiederholtes Rendern erzeugt genau einen Jahresblock');
@@ -49,7 +50,7 @@ for (const now of [new Date('2026-01-15T12:00:00Z'), f.now]) {
     const model = projectOverview({ registry: f.registry, activeId: 'z', liveData: f.records, now });
     renderOverview(doc, model);
     const overviewHtml = doc.getElementById('overviewPlanComparison').innerHTML;
-    assert(overviewHtml.includes('verbindlich aus dem Jahresabschluss vom 02.01.2026') && overviewHtml.includes('Vorläufige Vorschau · Jahresabschluss 2026'), 'Startseite zeigt Beschlussdatum und vorläufige Vorschau mit nächstem Jahresabschluss');
+    assert(overviewHtml.includes('festgeschrieben im Jahresabschluss vom 02.01.2026') && overviewHtml.includes('Vorläufige Vorschau · Jahresabschluss 2026'), 'Startseite zeigt Beschlussdatum und vorläufige Vorschau mit nächstem Jahresabschluss');
     assert(model.actionOrigin.confirmed && model.actionOrigin.confirmed.action.steuer === 234, 'Januar und Oktober zeigen den gespeicherten Jahresbeschluss');
     assert(!model.nextSteps.some(step => ['action', 'plan'].includes(step.id)), 'Materieller Beschluss und materielle Vorschau erzeugen keine offenen Schritte');
     if (now.getMonth() === 9) assertEqual(model.previewSummary.action.verb, 'Aktien verkaufen', 'Die heutige Vorschau bleibt unabhängig verfügbar');
@@ -59,7 +60,7 @@ for (const change of [{ year: 2027 }, { scope: planScope('single', ['out']) },
     const missing = projectBalanceActionOrigin({ ...options, ...change });
     renderer.renderAnnualAction(missing);
     assert(!missing.confirmed && !host.querySelector('[data-annual-action-result]'), 'Falsches Jahr, Fremdprofil und fehlender/ungültiger Beleg leeren den Jahresblock');
-    assert(!texts().includes('1.234') && !texts().includes('verbindlich aus'), 'Kein Fremdbeschluss und keine falsche Verbindlichkeit bleiben stehen');
+    assert(!texts().includes('1.234') && !texts().includes('festgeschrieben im'), 'Kein Fremdbeschluss und keine falsche Verbindlichkeit bleiben stehen');
     if (change.comparison?.recordStatus === 'invalid') assert(host.querySelector('[role="alert"]'), 'Beschädigter Beleg bleibt als Datenproblem sichtbar');
 }
 const single = planScope('household', ['a']);

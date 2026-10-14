@@ -1,5 +1,6 @@
 // Präsentation auf den bestehenden Controls; keine eigenen Parameter oder Defaults.
 import { refreshDynamicFlexControls } from './simulator-main-dynamic-flex.js';
+import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 
 const bindings = new WeakSet();
 const segmentGroups = new WeakMap();
@@ -76,6 +77,22 @@ function refreshFieldOrigins(doc) {
 }
 
 export function refreshAssumptionFillStatus(doc = globalThis.document) {
+    const goldActive = doc?.getElementById?.('goldAllokationAktiv')?.value === 'true';
+    const goldOff = doc?.getElementById?.('simGoldOff');
+    const goldFrame = doc?.getElementById?.('simGoldBandFrame');
+    if (goldOff) goldOff.hidden = goldActive;
+    if (goldFrame) goldFrame.dataset.goldActive = String(goldActive);
+    const careSummary = doc?.getElementById?.('simCareSummary');
+    if (careSummary) {
+        const active = doc.getElementById('pflegefallLogikAktivieren')?.checked;
+        const model = doc.getElementById('pflegeModellTyp')?.value === 'akut' ? 'akut' : 'chronisch';
+        const amount = Number(doc.getElementById('pflegeMaxFloor')?.value);
+        const drift = Number(doc.getElementById('pflegeKostenDrift')?.value);
+        const number = value => Number.isFinite(value) ? value.toLocaleString('de-DE') : '—';
+        const text = active ? `${model} · bis ${number(amount)} € pro Jahr · Kostenanstieg Inflation + ${number(drift)} %`
+            : 'Pflegefälle werden nicht gerechnet.';
+        if (careSummary.textContent !== text) careSummary.textContent = text;
+    }
     // Detail-Partnerfelder vor der Zählung an den bestehenden Host angleichen.
     const partnerHost = doc?.getElementById?.('sectionRente2');
     if (partnerHost) doc.querySelectorAll?.('.sim-partner-detail').forEach(group => {
@@ -136,6 +153,8 @@ export function refreshAssumptionSegments(doc = globalThis.document) {
         const buttons = [...group.querySelectorAll('button[data-value]')];
         if (!buttons.length) return;
         segmentGroups.set(select, group);
+        const state = select.dataset.fieldState || 'editable';
+        if (group.dataset.fieldState !== state) group.dataset.fieldState = state;
         select.classList.add('sim-segment-source');
         select.setAttribute('tabindex', '-1');
         select.setAttribute('aria-hidden', 'true');
@@ -172,6 +191,11 @@ export function initializeAssumptionsUI(doc = globalThis.document) {
     const host = doc?.getElementById('tab-annahmen');
     if (!host || bindings.has(doc)) return;
     bindings.add(doc);
+    if (doc.addEventListener) bindInfoPopovers({
+        querySelectorAll: selector => host.querySelectorAll(selector),
+        addEventListener: (...args) => doc.addEventListener(...args),
+        get activeElement() { return doc.activeElement; }
+    });
     host.addEventListener('click', event => {
         const label = event.target.closest('label[for]');
         const labelledControl = label && doc.getElementById(label.getAttribute('for'));
@@ -194,7 +218,7 @@ export function initializeAssumptionsUI(doc = globalThis.document) {
             }
         }
     });
-    // Öffnet nur die vorhandene Detailansicht, ohne fachliche Aktivierungen/Sperren.
+    // Die gemeinsame Klappe zeigt auch die bisherige Dynamik-Detailansicht.
     host.querySelector('[data-parameters="strategie"]')?.addEventListener('toggle', () => {
         refreshDynamicFlexControls();
         refreshAssumptionFillStatus(doc);

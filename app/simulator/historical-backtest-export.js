@@ -398,6 +398,7 @@ function buildCanonicalExportResult(result, cohortInventory, request) {
             ? result.historicalYearRecords
             : []),
         rows,
+        ...(Object.hasOwn(result, 'minimumFlexRestriction') ? { minimumFlexRestriction: toJsonValue(result.minimumFlexRestriction) } : {}),
         metrics: toJsonValue(result.metrics || null),
         summary: toJsonValue(result.summary || null),
         cohortInventory: safeCohortInventory
@@ -416,6 +417,7 @@ export function createHistoricalBacktestRunIdentity(result, { cohortInventory = 
         historicalYearRecords: toJsonValue(Array.isArray(result.historicalYearRecords)
             ? result.historicalYearRecords
             : []),
+        ...(Object.hasOwn(result, 'minimumFlexRestriction') ? { minimumFlexRestriction: toJsonValue(result.minimumFlexRestriction) } : {}),
         metrics: toJsonValue(result.metrics || null),
         cohortInventory: cohortInventory == null ? null : toJsonValue(cohortInventory)
     };
@@ -559,7 +561,9 @@ export const HISTORICAL_BACKTEST_CSV_COLUMNS = deepFreeze([
     { id: 'portfolio_total_end_nominal_eur', read: ({ entry }) => finiteOrNull(entry?.row?.portfolio_total_end) },
     { id: 'tax_total_nominal_eur', read: ({ entry }) => finiteOrNull(entry?.row?.steuern_gesamt) },
     { id: 'loss_carry_end_nominal_eur', read: ({ entry }) => finiteOrNull(entry?.row?.lossCarryEnd) },
-    { id: 'floor_shortfall_nominal_eur', read: ({ entry }) => finiteOrNull(entry?.row?.floor_shortfall_nominal) }
+    { id: 'floor_shortfall_nominal_eur', read: ({ entry }) => finiteOrNull(entry?.row?.floor_shortfall_nominal) },
+    { id: 'flex_household_desired_nominal_eur', read: ({ entry }) => finiteOrNull(entry?.row?.flex_wunsch_haushalt_nominal) },
+    { id: 'flex_below_minimum', read: ({ entry }) => typeof entry?.row?.flex_unter_mindestflex === 'boolean' ? entry.row.flex_unter_mindestflex : null }
 ]);
 
 function escapeCsvCell(value) {

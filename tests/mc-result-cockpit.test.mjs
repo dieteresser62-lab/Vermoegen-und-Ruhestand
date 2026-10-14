@@ -1,5 +1,6 @@
 import { bindScenarioLogView, disposeScenarioLogView } from '../app/simulator/scenario-log-view.js';
 import fs from 'node:fs';
+import { tokenizeHTML } from './funktionsinventar-contract.mjs';
 import {
     activateMonteCarloResultView,
     activateStressReplayComparisonView,
@@ -189,8 +190,13 @@ console.log('Test 4: Simulator DOM keeps cockpit contracts and ordering');
         assertEqual((html.match(new RegExp(`id="${id}"`, 'g')) || []).length, 1, `${id} remains unique`);
     }
     assert(!/<details id="mcSetupDisclosure"[^>]* open>/.test(html), 'Einstellungen starten geschlossen');
-    const setup = html.match(/<details id="mcSetupDisclosure"[\s\S]*?<\/details>/)?.[0] || '';
-    assertEqual((setup.match(/<fieldset/g) || []).length, 4, 'setup disclosure contains the four parameter fieldsets');
+    const tree = tokenizeHTML(html);
+    const setupHost = tree.elements.find(node => node.attrs.id === 'mcSetupDisclosure');
+    const insideSetup = node => { for (let parent = node.parent; parent; parent = parent.parent) if (parent === setupHost) return true; return false; };
+    const setup = html.slice(html.indexOf('<details id="mcSetupDisclosure"'), html.indexOf('data-assumption-step="4"'));
+    assertEqual(tree.elements.filter(node => node.tag === 'fieldset' && insideSetup(node)).length, 3, 'Alle Parameter enthält Datengewichtung und beide Stressgruppen');
+    assert(tree.elements.some(node => node.attrs.id === 'mcAnzahl' && insideSetup(node))
+        && tree.elements.some(node => node.attrs.id === 'mcDauer' && insideSetup(node)), 'Anzahl und Zeitraum stehen im gemeinsamen Parameterbereich');
     assert(!setup.includes('id="mcButton"') && !html.includes('id="mcRecalculateButton"') && !html.includes('id="overviewRunMonteCarlo"'), 'Einzige Startaktion liegt im Seitenkopf');
     assert(!setup.includes('max-height'), 'setup disclosure has no fixed clipping height');
     assert(html.indexOf('id="monteCarloResults"') < html.indexOf('id="stressReplayWorkspace"'), 'results precede replay deep-dive');

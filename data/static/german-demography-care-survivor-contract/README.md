@@ -1,36 +1,37 @@
-# German demography, care and survivor contract
+# Deutscher Demografie-, Pflege- und Hinterbliebenenvertrag
 
-This directory pins the official source files used to reconstruct the
-demography and care observations for Slice 07.
+Die festgeschriebenen amtlichen Quelldateien liefern die Grundlage für die
+Rekonstruktion der Demografie- und Pflegebeobachtungen.
 
-## Originals
+## Originaldateien
 
 - `destatis-period-life-table-2023-2025.xlsx`
-  - Destatis period life table 2023/2025, Germany, male and female annual
-    death probabilities (`qx`).
+  - Destatis period life table 2023/2025, Deutschland; jährliche
+    Sterbewahrscheinlichkeiten (`qx`) für Männer und Frauen.
   - SHA-256:
     `fbc46083d581e5978c679600875164bcc5af0565a9eb33c57bf33d44ca87aadc`
 - `destatis-care-statistics-2023.xlsx`
-  - Destatis care statistics at year-end 2023, including observed care
-    prevalence by age and sex and observed stock counts by care grade.
+  - Destatis care statistics zum Jahresende 2023; beobachtete Pflegeprävalenz
+    nach Alter und Geschlecht sowie Bestandszahlen nach Pflegegrad.
   - SHA-256:
     `a8088d8e95964c5ffade848b9f303d000dc499519512f66f92ee6b8d60aa4280`
 
-The source files are reconstructed into
-`app/simulator/german-demography-care-survivor-contract.js` by
-`npm run build:german-demography-data`. The build fails closed when a source
-hash, table identity, period, sex, age or marker value differs.
+`npm run build:german-demography-data` rekonstruiert aus den Quelldateien
+`app/simulator/german-demography-care-survivor-contract.js`. Der Build bricht
+ab, wenn Quellenhash, Tabellenidentität, Periode, Geschlecht, Alter oder ein
+Markierungswert abweichen.
 
-## Semantic boundary
+## Fachliche Grenzen
 
-- The mortality source is a **period** life table. It is not a cohort forecast
-  and contains no assumed future mortality improvement.
-- Destatis care percentages are observed prevalence at a reporting date. They
-  are retained for validation only and are never transformed into annual care
-  entry or progression probabilities.
-- Care entry, progression and duration are separate model assumptions.
-- The survivor percentage is a simplified user-controlled cash-flow model. It
-  is not a statutory entitlement calculator.
+- Die Sterblichkeitsquelle ist eine Periodensterbetafel. Sie prognostiziert
+  keine Kohorte und enthält keine angenommene künftige Verbesserung der
+  Sterblichkeit.
+- Destatis-Pflegequoten sind beobachtete Prävalenzen zu einem Stichtag. Sie
+  bleiben ausschließlich für die Validierung erhalten und werden nie in
+  jährliche Eintritts- oder Fortschrittswahrscheinlichkeiten umgerechnet.
+- Pflegeeintritt, Fortschreiten und Dauer sind separate Modellannahmen.
+- Der Hinterbliebenenprozentsatz ist ein vereinfachtes, vom Nutzer gesteuertes
+  Zahlungsstrommodell. Er berechnet keinen gesetzlichen Anspruch.
 
-See `LICENSE.md` for source reuse terms and
-`docs/reference/DATA_SOURCES.md` for the complete contract description.
+Die Bedingungen zur Quellenweiterverwendung stehen in `LICENSE.md`.
+Den vollständigen Vertrag beschreibt `docs/reference/DATA_SOURCES.md`.

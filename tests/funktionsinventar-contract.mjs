@@ -1007,7 +1007,7 @@ export function validateInventory(inventory, { reviewed = false } = {}) {
             refPath(anchor.source, where + '.manualAnchors.external.source');
             if (typeof anchor.hash !== 'string' || (anchor.hash && !/^#[\w-]+$/.test(anchor.hash))) fail(where, 'ungültiger Handbuchhash');
             text(anchor.entryId, where + '.manualAnchors.external.entryId');
-            choice(anchor.tab, ['manual', 'quickstart'], where + '.manualAnchors.external.tab');
+            choice(anchor.tab, ['manual', 'quickstart', 'start'], where + '.manualAnchors.external.tab');
             text(anchor.focus, where + '.manualAnchors.external.focus');
             text(anchor.opening, where + '.manualAnchors.external.opening');
         }
@@ -1180,6 +1180,7 @@ export function validateSources(inventory, files, options = {}) {
     if (!result.ok) return result;
     inventory = occurrencePages(resolveInventory(inventory));
     const errors = [];
+    const requireInternalAudit = options.requireInternalAudit ?? fs.existsSync(path.join(root, 'docs/internal'));
     const get = (file, at) => {
         if (!isRepositoryPath(file)) { errors.push(`${at} | ungültiger Pfad: ${file}`); return null; }
         const content = files instanceof Map ? files.get(file) : Object.hasOwn(files, file) ? files[file] : undefined;
@@ -1202,7 +1203,10 @@ export function validateSources(inventory, files, options = {}) {
             for (const dynamic of entry.selectors.dynamic) {
                 errors.push(...validateAnchorEvidence(dynamic, files, { id: entry.id, page: page.path }).errors);
             }
-            for (const ref of [...entry.codeRefs, ...entry.auditEvidence, ...entry.storage.filter(s => s.writer).map(s => s.writer)]) get(ref.path, at);
+            for (const ref of [...entry.codeRefs, ...entry.storage.filter(s => s.writer).map(s => s.writer)]) get(ref.path, at);
+            for (const ref of entry.auditEvidence) {
+                if (requireInternalAudit || !ref.path.startsWith('docs/internal/archive/')) get(ref.path, at);
+            }
             for (const ref of entry.codeRefs.filter(ref => ref.initModule)) get(ref.initModule, at);
             for (const ref of entry.codeRefs) {
                 if (ref.binding === 'delegated') errors.push(...validateDelegation(ref, page, tree, entry.id).errors);
@@ -1242,7 +1246,7 @@ export function validateSources(inventory, files, options = {}) {
             const entry = page.entries.find(entry => entry.id === anchor.entryId);
             if (!entry || (anchor.hash && !entry.selectors.static.includes(anchor.hash))) errors.push(`${at} | Zielkennung fehlt`);
             if (source !== null && !source.includes('Handbuch.html' + anchor.hash)) errors.push(`${at} | externer Linkbeleg fehlt`);
-            if (!['manual', 'quickstart'].includes(anchor.tab)) errors.push(`${at} | Tabzuordnung fehlt`);
+            if (!['manual', 'quickstart', 'start'].includes(anchor.tab)) errors.push(`${at} | Tabzuordnung fehlt`);
             if (!nonempty(anchor.focus)) errors.push(`${at} | Fokusbeschreibung fehlt`);
         }
     }

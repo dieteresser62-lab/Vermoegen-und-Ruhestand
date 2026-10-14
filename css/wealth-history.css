@@ -19,6 +19,8 @@
 .history-event { font-size: 13px; }
 .history-buy { fill: var(--good); }
 .history-sell { fill: var(--bad); }
+.history-event-connector { stroke: var(--good); stroke-width: 1; stroke-opacity: .5; vector-effect: non-scaling-stroke; }
+.history-sell .history-event-connector { stroke: var(--bad); }
 .history-purchase-line { stroke: var(--accent); stroke-dasharray: 6 4; }
 .history-sparkline { width: 100%; height: auto; display: block; }
 .history-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4); }

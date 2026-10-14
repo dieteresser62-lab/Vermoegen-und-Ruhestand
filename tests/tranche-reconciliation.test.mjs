@@ -1,4 +1,5 @@
 import { PersistenceFacade as P, persistenceStorage as live } from '../app/shared/persistence-facade.js';
+import { localHistoryDate } from '../app/tranches/tranchen-history-store.js';
 import {
     commitCashPostingConfirmation,
     commitCashPostingCorrection,
@@ -552,6 +553,7 @@ console.log('Test 11: cash commits persist without lot mutation and exact retry 
         expectedTranchesRaw: storage.getItem('depot_tranchen')
     }, createCommitOptions(storage, controls));
     const lotsAfterSale = storage.getItem('depot_tranchen');
+    const saleBytes = JSON.stringify(readReconciliationHistory(storage.getItem('rs_profiles_v1'))[0]);
     const confirmationRequest = {
         profileId: PROFILE_ID,
         targetActionId: createAction().actionId,
@@ -568,6 +570,7 @@ console.log('Test 11: cash commits persist without lot mutation and exact retry 
     assertEqual(storage.getItem('profile_tagesgeld'), '15000', 'Bestätigter absoluter Stand wird als Tagesgeld übernommen');
     assertEqual(JSON.parse(storage.getItem('profile_cash_history_v1')).entries.length, 1, 'Cashstand und Audit erzeugen gemeinsam einen Beleg');
     assertEqual(storage.getItem('depot_tranchen'), lotsAfterSale, 'Cashabschluss mutiert keine Lots');
+    const confirmedAuditBytes = JSON.stringify(JSON.parse(storage.getItem('rs_profiles_v1')).trancheReconciliation.actions);
 
     const correctionPreview = previewCashPostingCorrection({
         profileId: PROFILE_ID,
@@ -585,6 +588,13 @@ console.log('Test 11: cash commits persist without lot mutation and exact retry 
     assertEqual(corrected.status, 'applied', 'Cashkorrektur wird als drittes Event persistiert');
     assertEqual(corrected.cashRecordsChanged, true, 'Korrektur mit neuem Stand meldet Cashänderung');
     assertEqual(storage.getItem('profile_tagesgeld'), '14990', 'Korrektur aktualisiert denselben Tagesgeldstand');
+    assertEqual(JSON.stringify(JSON.parse(storage.getItem('profile_cash_history_v1')).entries), JSON.stringify([{ date: localHistoryDate(), value: 14990 }]),
+        'Verkaufsbestätigung und Korrektur am selben Tag ergeben nur den letzten Verlaufseintrag');
+    const auditAfterCorrection = JSON.parse(storage.getItem('rs_profiles_v1')).trancheReconciliation.actions;
+    assertEqual(JSON.stringify(auditAfterCorrection.slice(0, 2)), confirmedAuditBytes, 'Verkauf und erster Cashbeleg bleiben trotz ersetztem Tageseintrag bytegleich');
+    assertEqual(JSON.stringify(readReconciliationHistory(storage.getItem('rs_profiles_v1'))[0]), saleBytes, 'Verkaufsbeleg bleibt unverändert');
+    assertEqual(auditAfterCorrection[1].cashBalanceAfterPostingEur, 15000, 'Erster Cashbeleg behält seinen bestätigten Betrag');
+    assertEqual(auditAfterCorrection[2].cashBalanceAfterPostingEur, 14990, 'Korrektur hängt ihren eigenen bestätigten Betrag an');
     const historyBeforeDuplicate = storage.getItem('profile_cash_history_v1');
     await commitCashPostingConfirmation(confirmationRequest, createCommitOptions(storage, controls));
     assertEqual(storage.getItem('profile_tagesgeld'), '14990', 'Altes Duplikat setzt neueren Tagesgeldstand nicht zurück');

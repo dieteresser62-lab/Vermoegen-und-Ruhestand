@@ -81,10 +81,10 @@ try {
     const answerHost = new MockElement('div', documentRef);
     const answers = buildMonteCarloAnswers({ results: { cutYearSharePct: { p50: 12, thresholdPct: 10, sampleSize: 100 }, kpiMaxKuerzung: { p50: 18 } }, totalRuns: 100, failCount: 4 });
     renderMonteCarloAnswers(answerHost, answers, true);
-    assertEqual((answerHost.innerHTML.match(/<h2>/g) || []).length, 2, 'Antwortrenderer erzeugt genau zwei Fragen');
+    assertEqual((answerHost.innerHTML.match(/<h2(?:\s[^>]*)?>/g) || []).length, 2, 'Antwortrenderer erzeugt genau zwei Fragen');
     assertEqual((answerHost.innerHTML.match(/Annahmen seitdem geändert/g) || []).length, 2, 'Beide Antwortzeilen tragen denselben Veraltetstatus');
     assert(answerHost.innerHTML.includes('sim-hero-amount') && answerHost.innerHTML.includes('96,0 %')
-        && answerHost.innerHTML.includes('12,0 % der Jahre') && answerHost.innerHTML.includes('18,0 %'), 'Einstiegsstil zeigt alle drei bestehenden Kennzahlen');
+        && answerHost.innerHTML.includes('12,0 %') && answerHost.innerHTML.includes('18,0 %'), 'Einstiegsstil zeigt alle drei bestehenden Kennzahlen');
     renderMonteCarloAnswers(answerHost, answers);
     assert(!answerHost.innerHTML.includes('Annahmen seitdem geändert'), 'Frischer Abschluss entfernt Veraltetstatus');
     renderMonteCarloAnswers(answerHost, [{ question: '<script>', value: '<img>', text: '<svg>', note: '&' }]);
@@ -168,7 +168,7 @@ try {
         assert(target.innerHTML.includes(`class="mc-floor-value">${cards[0].displayValue}</div>`), 'Floorwert steht separat und unverändert im neuen Kartenkörper');
         assert(target.innerHTML.includes(cards[0].intervalText), 'Wilson-Intervall steht separat im sichtbaren Kartenkörper');
         for (const outcome of cards[1].outcomes) assert(target.innerHTML.includes(`${outcome.label} ${outcome.count}`), 'Alle vier Endzustände behalten ihre Anzahl einschließlich Null');
-        assertEqual((target.innerHTML.match(/summary-item ds-card/g) || []).length, 4, 'Endvermögenskarte besitzt alle vier Exaktwertkacheln');
+        assertEqual((target.innerHTML.match(/summary-item(?: kpi-card)? ds-card/g) || []).length, 4, 'Endvermögenskarte erhält Hauptwert und drei ergänzende Exaktwerte');
         assert(target.innerHTML.includes('0,00 €') && target.innerHTML.includes('Keine Beobachtungen'), 'Nullvermögen bleibt von fehlenden Kennzahlen und deren Gründen unterscheidbar');
         assert(!target.innerHTML.includes('all_dead') && !target.innerHTML.includes('horizon_exhausted') && !target.innerHTML.includes('no_observations'), 'Redaktionelle Floor-/Statusdarstellung verwendet verständliche Gründe');
         assertEqual(JSON.stringify(cards), before, 'Summaryrenderer verändert keine Deskriptoren');
@@ -185,7 +185,23 @@ try {
         assertEqual(JSON.stringify(raw), before, 'Pflegegruppierung und Rundungsanzeige verändern keine Reserve-Rohdaten');
     }
     const styles = fs.readFileSync(new URL('../simulator.css', import.meta.url), 'utf8');
-    assert(/\.mc-floor-value\s*\{[^}]*52px[^}]*var\(--font-serif\)/s.test(styles), 'Floorwert besitzt die verlangte 52-px-Serifdarstellung');
+    {
+        const inputs = { pflegefallLogikAktivieren: true, partner: { aktiv: true } };
+        const results = { extraKPI: { pflege: { p1: { entryRatePct: 0, entryAgeP50: null, careYearsP50: 0, realCostEurP50: 0 }, p2: {} } } };
+        const metrics = buildCareMetrics(results, inputs), before = JSON.stringify(metrics);
+        const people = { persons: [{ name: 'Max <Mustermann>' }, { name: 'Erika Mustermann' }] };
+        const box = new MockElement('div', documentRef), region = new MockElement('div', documentRef);
+        renderCareSection(box, region, metrics, people);
+        assert(box.innerHTML.includes('Max &lt;Mustermann&gt;') && box.innerHTML.includes('Erika Mustermann'), 'Pflegevergleich nennt beide berechneten Personen und maskiert Namen');
+        assertEqual((box.innerHTML.match(/<th scope="row">/g) || []).length, 4, 'Pflegevergleich erhält die vier gemeinsamen Kennzahlen');
+        assert(box.innerHTML.includes('0,0') && box.innerHTML.includes('<strong>—</strong>'), 'Beobachtete Null und fehlende Pflegebeobachtung bleiben unterscheidbar');
+        assert(!/\bP1\b|\bP2\b|Person 1|Person 2/.test(box.innerHTML), 'Pflegekennzahlen und Erklärungen verwenden die Namen des Laufs');
+        assertEqual(JSON.stringify(metrics), before, 'Namensanzeige und Pflegevergleich verändern keine Kennzahlen');
+        const single = buildCareMetrics(results, { pflegefallLogikAktivieren: true });
+        renderCareSection(box, region, single, { persons: [people.persons[0]] });
+        assert(!box.innerHTML.includes('Erika Mustermann') && !box.innerHTML.includes('Person 2'), 'Einpersonenlauf zeigt nur seine berechnete Person');
+    }
+    assert(/\.mc-floor-value\s*\{[^}]*var\(--value-md\)[^}]*var\(--font-serif\)/s.test(styles), 'Die zweite Deckungsanzeige verwendet die mittlere Wertgröße');
     assert(/@media screen\s*\{[^}]*\.kpi-description[^}]*\.summary-description[^}]*display: none/s.test(styles), 'Erklärungen bleiben am Bildschirm hinter Info-Symbolen');
     assert(/\.mc-more-metrics::details-content\s*\{[^}]*display: contents !important; content-visibility: visible !important/s.test(styles), 'Druck zeigt Details auch bei geschlossener Kennzahlenklappe');
     assert(styles.includes('#tab-montecarlo .kpi-description, #tab-montecarlo .summary-description { display: block !important; }'), 'Druck zeigt vollständige kanonische Erklärungen');
@@ -224,7 +240,7 @@ try {
             { title: 'Care details', kpis: [card('Care', 'danger')] }
         ]
     });
-    assert(dashboard.innerHTML.includes('Wichtigste Kennzahlen') && dashboard.innerHTML.includes('Risk details') && dashboard.innerHTML.includes('Care details'), 'Dashboard should render primary and detail sections');
+    assert(dashboard.innerHTML.includes('Entnahmen') && dashboard.innerHTML.includes('Risk details') && dashboard.innerHTML.includes('Care details'), 'Dashboard should render primary and detail sections');
     assert(dashboard.innerHTML.includes('kpi-grid-pair') && dashboard.innerHTML.includes('Nominal drawdown') && dashboard.innerHTML.includes('Real drawdown'), 'Dashboard should render nominal and real drawdowns in a dedicated pair grid');
     assert(dashboard.innerHTML.includes('reporting-reference-note') && dashboard.innerHTML.includes('keine Alarm- oder Guardrail-Schwelle'), 'Berichtsreferenz bleibt mit unveränderter Bedeutung als Zeile innerhalb der geschlossenen Kennzahlenklappe');
     const disclosure = dashboard.innerHTML.match(/<details class="mc-more-metrics[^>]*>([\s\S]*?)<\/details>/)[1];

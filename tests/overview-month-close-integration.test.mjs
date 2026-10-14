@@ -1,5 +1,6 @@
 import { prepareCloseFixture } from './close-dialog.test.mjs?fixture';
 import { liveCashData } from '../app/profile/profile-cash-update.js';
+import { loadProfileAssetValues, saveProfileAssetValues } from '../app/profile/profile-asset-values.js';
 import { projectOverview } from '../app/overview/overview-model.js';
 import { bindOverviewMonthClose } from '../app/overview/overview-main.js';
 import { overviewScope, storeOverviewSummary, readOverviewSummary, readMonthProvision, OVERVIEW_MONTH_KEY, OVERVIEW_SUMMARY_KEY } from '../app/overview/overview-storage.js';
@@ -169,6 +170,30 @@ async function assertCompetingActionsBlocked(f, label) {
     try { await SnapshotArchive.createSnapshot({ id: 'foreign', records: {} }, { guard: f.guard }); } catch (error) { writeError = error; }
     assertEqual(writeError?.code, 'NAVIGATION_WRITE_BUSY', label + ': fremder Writer gesperrt');
     assertEqual(JSON.stringify(Object.fromEntries(f.backend)), before, label + ': keine fremden dauerhaften Writes');
+}
+
+{
+    const f = await fixture(); let job;
+    try {
+        setAppTestDate('2026-10-08');
+        saveProfileAssetValues({ ...loadProfileAssetValues(storage), tagesgeld: 150 }, storage, { recordCashChange: true });
+        await P.flush(); f.refresh();
+        job = f.click(0);
+        f.fields()[0].value = '90'; f.fields()[1].value = '80';
+        await f.accept(); await f.done(); await bounded(job);
+        const records = await P.readPersistedRecords();
+        assertEqual(JSON.stringify(JSON.parse(records.profile_cash_history_v1).entries), '[{"date":"2026-10-08","value":90}]',
+            'Monatsabschluss nach Handänderung am selben Tag ergibt genau einen Eintrag am Testdatum');
+        const monthEvidence = records[OVERVIEW_MONTH_KEY];
+        const registry = JSON.parse(records.rs_profiles_v1);
+        const otherMonthEvidence = registry.profiles.b.data[OVERVIEW_MONTH_KEY];
+        saveProfileAssetValues({ ...loadProfileAssetValues(storage), tagesgeld: 100 }, storage, { recordCashChange: true });
+        await P.flush();
+        assertEqual(JSON.parse(storage.getItem('profile_cash_history_v1')).entries.length, 0, 'Handänderung zurück zur Basis entfernt auch den Abschlusstag aus der Cashhistorie');
+        assertEqual(storage.getItem(OVERVIEW_MONTH_KEY), monthEvidence, 'Monatsabschlussbeleg bleibt beim Entfernen des Cash-Tageseintrags bytegleich');
+        assertEqual(JSON.parse(storage.getItem('rs_profiles_v1')).profiles.b.data[OVERVIEW_MONTH_KEY], otherMonthEvidence,
+            'Abschlussbeleg der zweiten Person bleibt bytegleich');
+    } finally { await f.close(job); }
 }
 
 // Derselbe Produktnachweis wird vor und nach der Reparatur für beide Knöpfe ausgeführt.

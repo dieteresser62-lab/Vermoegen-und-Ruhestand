@@ -8,6 +8,7 @@ import { persistenceStorage } from './persistence-facade.js';
 import { createManualAnnualQuote } from './annual-marketdata.js';
 import { appNow } from './app-clock.js';
 import { bindHouseholdPlanDynamicFlex } from './household-plan-dynamic-flex.js';
+import { formatAnnualNeed } from '../balance/balance-annual-preview.js';
 
 /** Rechnet ausschließlich in privatem Speicher, mit Engine auf Abruf. */
 export async function evaluateAnnualPlanPreview({ targetYear, marketData, adoptedPlanPatch, storage = persistenceStorage,
@@ -70,16 +71,25 @@ export function createAnnualPlanDraft({ evaluate, notify = () => {} } = {}) {
 
 export { HOUSEHOLD_PLAN_FIELDS as ANNUAL_PLAN_FIELDS } from './household-plan-fields.js';
 
-export function createAnnualPlanEditor({ doc, listen, evaluate, onState = () => {} } = {}) {
+export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, onState = () => {} } = {}) {
     const root = doc.createElement('section'); root.dataset.annualPlanEditor = ''; root.className = 'annual-plan-editor';
     const create = (tag, text = '', className = '') => { const node = doc.createElement(tag); node.textContent = text; node.className = className; return node; };
+    const summary = create('dl', '', 'annual-plan-summary'); summary.dataset.annualPlanSummary = '';
+    const summaryCells = new Map();
+    for (const [key, label] of [['monthlyBudget', 'Monatsbudget'], ['pension', 'Davon Renten im Jahresdurchschnitt'],
+        ['income', 'Davon sonstige Einkünfte'], ['monthlyWithdrawal', 'Geplante Entnahme aus dem Vermögen']]) {
+        const row = create('div'), term = create('dt', label), value = create('dd', '—');
+        row.append(term, value); summary.append(row); summaryCells.set(key, { row, term, value });
+    }
+    summary.hidden = !getPreview;
+    const changes = create('section'); changes.dataset.annualPlanChanges = ''; changes.hidden = !getPreview;
     const comparison = create('div', '', 'annual-plan-comparison ds-table-box');
     const table = create('table', '', 'ds-table'); table.setAttribute('aria-label', 'Empfehlung der App und Dein Plan');
     const head = create('thead'), headRow = create('tr'), adoptedTitle = create('th', 'Dein Plan');
     const badge = doc.createElement('span'); badge.textContent = 'angepasst'; badge.className = 'ds-badge'; badge.dataset.annualPlanAdjusted = ''; badge.hidden = true; adoptedTitle.append(badge);
     headRow.append(create('th', ''), create('th', 'Empfehlung der App'), adoptedTitle); head.append(headRow);
     const body = create('tbody'), recommendedCells = [], adoptedCells = [];
-    for (const label of ['Monatsbetrag', 'Monatsbudget']) {
+    for (const label of ['Vermögensentnahme / Monat', 'Monatsbudget']) {
         const row = create('tr'), title = create('th', label); title.setAttribute('scope', 'row');
         const recommendation = create('td', '—'), adopted = create('td', '—');
         recommendation.dataset.annualRecommendation = ''; adopted.dataset.annualAdopted = '';
@@ -117,6 +127,25 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, onState = () => 
         for (const [index, key] of ['monthlyWithdrawal', 'monthlyBudget'].entries()) {
             adoptedCells[index].textContent = state.valid ? money(state.result.adopted[key]) : '—';
             if (state.valid) recommendedCells[index].textContent = money(state.result.recommended[key]);
+        }
+        if (getPreview) {
+            const preview = getPreview(), adopted = state.valid ? state.result.adopted : null;
+            summaryCells.get('monthlyBudget').term.textContent = `Monatsbudget ${preview.planningYear}`;
+            for (const key of ['monthlyBudget', 'monthlyWithdrawal']) summaryCells.get(key).value.textContent = adopted ? money(adopted[key]) : '—';
+            const people = preview.people || [];
+            const pension = people.length && people.every(person => !person.error && Number.isFinite(person.budgetPensionMonthly))
+                ? people.reduce((sum, person) => sum + person.budgetPensionMonthly, 0) : null;
+            const income = people.reduce((sum, person) => sum + (person.sonstigeEinkuenfte || 0), 0);
+            summaryCells.get('pension').value.textContent = adopted && pension !== null ? money(pension) : '—';
+            summaryCells.get('income').row.hidden = !(income > 0);
+            summaryCells.get('income').value.textContent = adopted ? money(income) : '—';
+            Array.from(changes.children).forEach(child => child.remove());
+            changes.append(create('h4', `Änderungen gegenüber ${preview.targetYear}`));
+            for (const need of preview.needs.filter(need => ['floorBedarf', 'flexBedarf'].includes(need.id))) {
+                const after = adopted?.snapshot?.plan?.[need.id];
+                changes.append(create('p', `${need.id === 'floorBedarf' ? 'Grundbedarf' : 'Flex-Bedarf'} jährlich: ${adopted
+                    ? formatAnnualNeed({ ...need, after: Number.isFinite(after) ? after : need.after }, { ...preview, adjustedFields: state.result.adjustedFields || [] }) : '—'}`));
+            }
         }
         onState(state);
     } });
@@ -176,7 +205,7 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, onState = () => 
     listen(toggle, 'click', () => { panel.hidden = !panel.hidden; toggle.setAttribute('aria-expanded', String(!panel.hidden)); });
     listen(discard, 'click', () => { void draft.discard(); projectFields(draft.read().values); dynamic.reset(); });
     const actions = create('div', '', 'annual-plan-actions'); actions.append(status, toggle);
-    root.append(comparison, actions, panel);
+    root.append(summary, comparison, changes, actions, panel);
     return { root, read: draft.read, accept: draft.accept, dispose() { draft.dispose(); dynamic.dispose(); for (const binding of bindings.values()) binding.dispose(); },
         setBase(values) {
             initialized = true;

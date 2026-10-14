@@ -106,7 +106,7 @@ export function getMarketDataProvenanceViewModel(meta) {
     if (!meta || typeof meta !== 'object' || Array.isArray(meta)) {
         return {
             available: false,
-            text: 'Keine persistierte Marktdaten-Provenienz.',
+            text: 'Für diese Werte sind Quelle und Stand noch nicht bestätigt. Im Jahresabschluss kannst du die Marktdaten laden und prüfen.',
             schemaVersion: null,
             periodId: null,
             asOf: null,
@@ -634,7 +634,7 @@ export const UIReader = {
         if (!output) return getMarketDataProvenanceViewModel(meta);
         const view = getMarketDataProvenanceViewModel(meta);
         output.textContent = view.available ? `${view.instrument} · ${view.asOf} · ${view.source}`
-            : 'Herkunft der Marktdaten unbekannt – mit dem Jahres-Update aktualisieren';
+            : 'Quelle und Stand noch nicht bestätigt · im Jahresabschluss prüfen';
         output.title = view.text;
         const explanation = output.ownerDocument?.getElementById('marketDataProvenanceDetail');
         if (explanation) explanation.textContent = view.text;
