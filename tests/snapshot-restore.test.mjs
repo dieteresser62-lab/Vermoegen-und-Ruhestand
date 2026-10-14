@@ -6,16 +6,16 @@ import { createNavigationGuard } from '../app/shared/navigation-guard.js';
 
 const state = CONFIG.STORAGE.LS_KEY;
 const base = () => ({ [state]: '{"inputs":{},"marker":"B ä"}', rs_profiles_v1: JSON.stringify({ version: 1, profiles: {
-    a: { meta: { name: 'Person A' }, data: { profile_tagesgeld: '11' } },
-    b: { meta: { name: 'Person B' }, data: { profile_tagesgeld: '22' } } } }),
-    rs_current_profile: 'a', rs_active_profile: 'a', profile_tagesgeld: '111', balance_expenses_2026: 'new',
+    a: { meta: { name: 'Person A' }, data: { profile_tagesgeld: '11', profile_tagesgeld_confirmed_date: '2026-11-14' } },
+    b: { meta: { name: 'Person B' }, data: { profile_tagesgeld: '22', profile_tagesgeld_confirmed_date: '2026-10-14' } } } }),
+    rs_current_profile: 'a', rs_active_profile: 'a', profile_tagesgeld: '111', profile_tagesgeld_confirmed_date: '2026-11-14', balance_expenses_2026: 'new',
     rs_daily_prices_v1: 'bytes: daily', rs_wealth_history_start_v1: 'bytes: start', featureFlags: 'bytes: flags',
     ui_panel_state: 'bytes: panel', overview_last_full_backup_v1: 'bytes: backup', rs_data_backup_summary_v1: 'bytes: summary' });
 function target(mode = 'standard', id = 'a') {
     return buildSnapshot({ id: 'target', activeProfileId: id, createdAt: '2026-01-01T12:00:00Z',
         kind: mode === 'full-import' ? 'full-backup-import-recovery' : mode === 'snapshot-full' ? 'person-data-migration-recovery' : 'manual',
         records: { [state]: '{"inputs":{},"marker":"A"}', rs_profiles_v1: JSON.stringify({ version: 1, profiles: { [id]: { meta: { name: 'Vorher' }, data: {} } } }),
-            rs_current_profile: id, rs_active_profile: id, profile_tagesgeld: '9', rs_daily_prices_v1: 'old daily',
+            rs_current_profile: id, rs_active_profile: id, profile_tagesgeld: '9', profile_tagesgeld_confirmed_date: '2026-01-01', rs_daily_prices_v1: 'old daily',
             rs_wealth_history_start_v1: 'old start', featureFlags: 'old flags' },
         ...(mode !== 'standard' ? { restoreScope: { profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback' } } : {}) });
 }
@@ -44,6 +44,7 @@ for (const mode of ['standard', 'full-import', 'snapshot-full']) {
     assertEqual(preview.mode, mode, `${mode}: tatsächlicher Umfang erkannt`);
     const result = await executeSnapshotRestore(preview, { guard: f.guard, reload: () => true });
     assertEqual(result.status, 'restored', `${mode}: Restore bestätigt`);
+    assertEqual(f.records.profile_tagesgeld_confirmed_date, '2026-01-01', `${mode}: Tagesgeldbestätigung wird wiederhergestellt`);
     assertEqual(f.snapshots.size, 2, `${mode}: genau ein neuer Rückkehrpunkt`);
     assertEqual(f.calls.filter(call => call === 'snapshot').length, 1, `${mode}: genau ein Recoverywrite`);
     assert(f.calls.indexOf('snapshot') < f.calls.indexOf('target'), `${mode}: Recovery vor Zielwrite`);

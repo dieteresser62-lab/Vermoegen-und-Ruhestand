@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { renderProtocolTable, renderProtocolSummary, protocolYearPresentation } from '../app/simulator/protocol-renderer.js';
 import { getProtocolColumns } from '../app/simulator/protocol-columns.js';
+import { projectScenarioLogV2, serializeScenarioLogCsvV2 } from '../app/simulator/monte-carlo-export.js';
 import { renderWorstRunLog, displayMonteCarloResults, persistDetailLevel, WORST_LOG_DETAIL_KEY, BACKTEST_LOG_DETAIL_KEY, loadDetailLevel } from '../app/simulator/simulator-results.js';
 import { persistenceStorage } from '../app/shared/persistence-facade.js';
 import { initStressReplayUI, publishStressReplayMonteCarloContext, selectStressReplayScenario } from '../app/simulator/stress-replay-ui.js';
@@ -10,6 +11,20 @@ const rows = [{ jahr: 2, histJahr: danger, Regime: danger, aktionUndGrund: dange
     Person1Alive: 0, Person2Alive: 1, CareP1_Active: 1, CareP1_Grade: 2,
     flex_haushalt_kuerzung_pct: 20, jahresentnahme_real: 0, portfolio_total_end: 0 }];
 const before = JSON.stringify(rows);
+for (const [code, label] of Object.entries({ REC_BÄR: 'Erholung im Bärenmarkt', HEISS: 'Markt heiß gelaufen',
+    ATH: 'Stabiler Höchststand', ERHOLUNG: 'Bestätigte Erholung', KORREKTUR: 'Junge Korrektur', BÄR: 'Tiefer Bär', SEITWÄRTS: 'Lange Seitwärtsbewegung' })) {
+    const row = { jahr: 1, recordType: 'financial_year', financiallyEvaluable: true, aktionUndGrund: `${code} (Kein Handlungsbedarf)`,
+        portfolio_total_end: 100000, entscheidung: { jahresEntnahme: 12000 } };
+    const bytes = JSON.stringify(row);
+    for (const source of ['mc', 'backtest']) {
+        const entry = source === 'mc' ? row : { jahr: 2026, row };
+        assert(renderProtocolTable([entry], { source }).includes(`${label} · kein Handlungsbedarf`), `${source}: ${code} erscheint als deutscher Klartext`);
+    }
+    assert(serializeScenarioLogCsvV2(projectScenarioLogV2([row])).includes(`${code} (Kein Handlungsbedarf)`), 'CSV erhält das ursprüngliche Handlungskürzel');
+    assertEqual(JSON.stringify(row), bytes, 'Protokollübersetzung erhält die Rohzeile');
+}
+assert(renderProtocolTable([{ jahr: 1, aktionUndGrund: 'SEITWÄRTS (S) (Kein Handlungsbedarf)' }], { source: 'mc' })
+    .includes('Lange Seitwärtsbewegung (Stagflation) · kein Handlungsbedarf'), 'Auch der gekürzte Stagflationszusatz wird ausgeschrieben');
 const options = { source: 'mc', startYear: 2026, inputs: { startAlter: 62, partner: { aktiv: true, startAlter: 57 } } };
 const html = renderProtocolTable(rows, { ...options, caption: danger, caRThreshold: 100 });
 for (const forbidden of ['<img', '<CaR!', 'title="<', 'aria-label="<']) assert(!html.includes(forbidden), `Gefährlicher Datentext erzeugt kein Markup: ${forbidden}`);

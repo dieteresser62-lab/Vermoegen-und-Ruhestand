@@ -6,7 +6,7 @@ import { requestPageConfirmation } from './page-dialog.js';
 import { OVERVIEW_SIMULATION_KEY, assertSimulationRecord } from '../overview/overview-simulation-summary.js';
 import { PERSON_VALUE_KEYS, validatePersonValues } from '../profile/profile-person-data.js';
 import { PROFILE_CASH_HISTORY_KEY, PROFILE_WEALTH_LOTS_KEY, assertCashHistory, assertWealthLots } from '../profile/profile-wealth-history.js';
-import { WEALTH_HISTORY_START_KEY, DAILY_PRICES_KEY, assertHistoryStart, assertDailyPrices, requireHistoryRecord } from '../tranches/tranchen-history-store.js';
+import { WEALTH_HISTORY_START_KEY, DAILY_PRICES_KEY, assertHistoryStart, assertDailyPrices, requireHistoryRecord, historyDay } from '../tranches/tranchen-history-store.js';
 import { OVERVIEW_BACKUP_KEY } from '../overview/overview-storage.js';
 import { persistenceStorage } from './persistence-facade.js';
 
@@ -19,6 +19,7 @@ import { PROBELAUF_STATE_KEY, isAllowedPersistenceImportKey, isSnapshotTechnical
 import { getAppTestDate } from './app-clock.js';
 import {
     PROFILE_HEALTH_BUCKET_KEY,
+    PROFILE_CASH_CONFIRMED_DATE_KEY,
     PROFILE_LOAD_STATUS,
     PROFILE_STORAGE_KEYS,
     PROFILE_TRANCHES_KEY,
@@ -189,6 +190,7 @@ function validateStoredTranches(data, path) {
 }
 
 function validateProfileScalarValues(data, path) {
+    if (hasOwn(data, PROFILE_CASH_CONFIRMED_DATE_KEY)) historyDay(data[PROFILE_CASH_CONFIRMED_DATE_KEY]);
     if (data[PERSON_VALUE_KEYS.personSchemaVersion] !== undefined) {
         if (data[PERSON_VALUE_KEYS.personSchemaVersion] !== '1') throw new Error(`${path}: unbekannte Personenversion.`);
         validatePersonValues(Object.fromEntries(Object.entries(PERSON_VALUE_KEYS).map(([field, key]) => [field, data[key]])));

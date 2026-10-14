@@ -1,10 +1,11 @@
 import { createManualAnnualValue, validateAnnualPreparationValue } from './annual-marketdata.js';
 import { bindClosePriceActions } from './close-price-actions.js';
-import { createCloseDialog, createCloseResult, advanceCloseImport, closeReadinessText, projectCloseMonthModel } from '../shared/close-dialog.js';
+import { createCloseDialog, createCloseTiles, advanceCloseImport, closeReadinessText, projectCloseMonthModel } from '../shared/close-dialog.js';
+import { createInfoPopover } from './designsystem-info-popover.js';
 import { createTagesgeldFields, parseMonthlyCashInput } from '../shared/tagesgeld-fields.js';
-import { projectOverviewMonthSteps, createOverviewStepContent, projectConfirmedMonthResult, preserveCloseDetails } from '../overview/overview-month-confirmation.js';
+import { projectOverviewMonthSteps, createOverviewStepContent, projectConfirmedMonthResult, preserveCloseDetails, nextCloseText } from '../overview/overview-month-confirmation.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
-import { createAnnualActionResult, createAnnualPlanResult, createAnnualExpenseStatus, projectAnnualCloseResult } from './annual-close-result.js';
+import { createAnnualActionResult, createAnnualPlanResult, createAnnualExpenseStatus, createAnnualCombinedResult, projectAnnualCloseResult } from './annual-close-result.js';
 import { projectAnnualPreview, formatAnnualNeed } from '../balance/balance-annual-preview.js';
 import { createAnnualPlanEditor } from './annual-plan-editor.js';
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
@@ -148,7 +149,7 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
         accepted = false;
         let values = {}, errors = {}, loading = true, planLoading = Boolean(evaluatePlan), planRevision = 0, planEditor = null, planMarket = null, importActive = false;
         const cash = people.length ? createTagesgeldFields({ doc: doc(), people, prefix: 'annualTagesgeld', monthly: true, closePresentation: true, requireConfirmation: true,
-            title: '', explanation: 'Jahresendstand je Haushaltsperson. Der Cashbeleg trägt weiterhin den heutigen Bestätigungstag.' }) : null;
+            title: '', asOfLabel: `Jahresendstand am 31.12.${targetYear}`, explanation: 'Jahresendstand je Haushaltsperson. Der Cashbeleg trägt weiterhin den heutigen Bestätigungstag. Tagesgeldentwurf – wird erst mit dem Jahresabschluss gespeichert.' }) : null;
         // Referenzen aus dem erzeugten Block behalten, auch wenn Dialogupdates ihn umhängen.
         const cashErrors = cash?.inputs.map(input => cash.root.querySelector(`#${input.id}-error`)) || [];
         const initial = cash?.inputs.map(input => input.value) || [];
@@ -162,7 +163,6 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
         marketBody = node('div'); marketBody.append(node('p', 'Marktdaten werden automatisch vorbereitet …'), makeHandPrice());
         const fetchRetry = button('Fehlende Marktdaten erneut abrufen', 'annualMarketRetryBtn'); fetchRetry.id = 'annualMarketRetryBtn'; marketBody.append(fetchRetry);
         previewBody = node('div'); previewBody.append(previewContent(projectPreview({ targetYear })));
-        const cashHint = node('p', 'Tagesgeldentwurf – wird erst mit dem Jahresabschluss gespeichert.'); cashBody.append(cashHint);
         const manualFields = {};
         for (const [type, label] of [['inflation', `Inflation ${targetYear} von Hand (%)`], ['cape', 'US Shiller CAPE von Hand']]) {
             const group = node('section'); group.className = 'ds-field';
@@ -184,8 +184,7 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
                 input.setAttribute('aria-invalid', String(Boolean(error))); cashErrors[index].textContent = error;
             }
             if (!cash) missing ||= { id: 'cash', text: 'Tagesgeld aller Personen fehlt.' };
-            cashHint.textContent = cash?.ready ? 'Eingetragen – wird erst mit dem Jahresabschluss gespeichert.' : 'Tagesgeld ändern oder ‚Stand stimmt‘ bestätigen.';
-            if (cashValid && !cash?.ready) missing ||= { id: 'cash', text: 'Tagesgeld ändern oder ‚Stand stimmt‘ bestätigen.' };
+            if (cashValid && !cash?.ready) missing ||= { id: 'cash', text: `Tagesgeld ${cash.openPeople.join(', ')} bestätigen oder ändern` };
             effectiveMarket = {};
             for (const type of Object.keys(labels)) {
                 const input = type === 'etf' ? handPrice : manualFields[type].input;
@@ -212,7 +211,7 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
             if (planLoading) missing ||= { id: 'preview', text: 'Planprüfung wird noch berechnet oder konnte nicht abgeschlossen werden.' };
             if (planEditor && !planEditor.read().valid) missing ||= { id: 'preview', text: 'Bitte die markierten Planwerte prüfen.' };
             const unseen = current.firstUnvisited();
-            if (unseen) missing = { id: unseen.id, text: closeReadinessText({ unseen }) };
+            if (unseen) missing = { id: unseen.id, text: unseen.title };
             if (latestModel.recovery) missing = { id: 'market', text: 'Wiederherstellung erforderlich.' };
             if (importActive || current.busy || isCommitActive()) missing = { id: 'expenses', text: importActive ? 'Ausgabenimport läuft – bitte warten.' : 'Speichervorgang läuft – bitte warten.' };
         };
@@ -224,8 +223,8 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
             const budget = steps.find(step => step.id === 'budget');
             budget.content.append(createAnnualExpenseStatus({ doc: doc(), model: next, targetYear }));
             if (!next.annual?.complete) budget.result += ` · Jahr ${targetYear} noch unvollständig`;
-            return [...steps, { id: 'cash', title: `Tagesgeld am 31.12.${targetYear}`, continueLabel: 'Weiter zum Tagesgeld', content: cashBody, contentOwnResult: true, state: cash?.ready ? 'entered' : 'open', result: cash?.ready ? 'Eingetragen – wird erst mit dem Jahresabschluss gespeichert.' : 'Einmaliger Jahresendstand je Person' },
-                { id: 'market', title: 'Marktdaten automatisch holen', continueLabel: 'Weiter zu den Marktdaten', content: marketBody, progressByVisit: true, prepared: true, preparing: loading, done: !loading && Object.keys(effectiveMarket).length === 3, result: !loading && Object.keys(effectiveMarket).length === 3 ? 'Vollständig vorbereitet · noch nicht gespeichert' : 'Pflichtwerte ergänzen' },
+            return [...steps, { id: 'cash', title: `Tagesgeld am 31.12.${targetYear}`, continueLabel: 'Weiter zum Tagesgeld', content: cashBody, contentOwnResult: true, state: cash?.ready ? 'done' : 'open', done: Boolean(cash?.ready), statusLabel: cash?.ready ? 'erledigt' : `${cash?.openPeople.length ?? people.length} offen`, result: cash?.ready ? 'Je Person bestätigt oder geändert' : 'Je Person bestätigen oder ändern' },
+                { id: 'market', title: 'Marktdaten automatisch holen', continueLabel: 'Weiter zu den Marktdaten', content: marketBody, contentOwnResult: true, progressByVisit: true, prepared: true, preparing: loading, done: !loading && Object.keys(effectiveMarket).length === 3, result: !loading && Object.keys(effectiveMarket).length === 3 ? 'Vollständig vorbereitet · noch nicht gespeichert' : 'Pflichtwerte ergänzen' },
                 { id: 'preview', title: `Plan ${targetYear + 1} prüfen`, continueLabel: `Weiter zum Plan ${targetYear + 1}`, content: previewBody, progressByVisit: true, prepared: true, preparing: loading || planLoading, done: !loading && Object.keys(effectiveMarket).length === 3 && !planLoading && (!planEditor || planEditor.read().valid), result: 'Planwerte ansehen und bei Bedarf bewusst anpassen.' }];
         };
         const pending = new Promise(resolve => { endPreparation = resolve; });
@@ -236,10 +235,7 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
                 return await onClose?.() !== false;
             } });
         if (!current) { endPreparation = null; return Promise.resolve(null); }
-        const conditions = node('details'); conditions.dataset.annualCloseConditions = '';
-        conditions.append(node('summary', 'Abschlussbedingungen'),
-            node('p', 'Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. Alle sechs Vorbereitungsschritte ansehen und Tagesgeld aller Personen bestätigen; gültige Jahrespflichtdaten sind erforderlich. Ein Wiederherstellungspunkt wird vor dem Speichern erstellt.'));
-        current.content.append(conditions);
+        current.setFootnote(nextCloseText(model), 'Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. Alle sechs Vorbereitungsschritte ansehen und Tagesgeld aller Personen ändern oder bestätigen; gültige Jahrespflichtdaten sind erforderlich. Ein Wiederherstellungspunkt wird vor dem Speichern erstellt. Ungespeicherte Eingaben werden beim Schließen verworfen.');
         const backupNote = node('section'); backupNote.className = 'close-dialog-backup annual-close-backup';
         const backupButton = button('Jetzt sichern'); backupButton.dataset.overviewBackup = '';
         backupNote.append(node('p', 'Vollsicherung vor dem Jahresabschluss empfohlen.'), backupButton);
@@ -308,12 +304,31 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
         } };
         bindClosePriceActions(current, { actions: priceActions, getModel: getPreparationModel, update, signal, after: sync });
         const renderMarket = () => {
-            const report = node('div');
-            for (const [type, label] of [['inflation', 'Inflation'], ['etf', 'ETF-Schlusskurs'], ['cape', 'US Shiller CAPE']]) {
+            const report = node('div'); report.dataset.annualMarketReport = '';
+            const source = value => value?.source || value?.sourceLabel || value?.capeSource || 'Quelle fehlt';
+            const date = value => /^\d{4}-\d{2}-\d{2}$/.test(value || '') ? value.split('-').reverse().join('.') : value || 'Stand unbekannt';
+            const sources = [...new Set(Object.values(effectiveMarket).map(source))];
+            const provenance = node('p', `Stand 31.12.${targetYear} · ${sources.length === 1 ? sources[0].replace(' · ', ', ') : sources.length ? 'verschiedene Quellen' : 'Quelle noch offen'} · gespeichert mit dem Abschluss`);
+            provenance.className = 'annual-market-provenance'; provenance.dataset.annualMarketProvenance = '';
+            const full = Object.keys(effectiveMarket).length === 3;
+            const marketStatus = node('p', full ? 'Vollständig vorbereitet · noch nicht gespeichert' : 'Pflichtwerte ergänzen · noch nicht gespeichert');
+            marketStatus.className = 'annual-market-status'; marketStatus.dataset.annualMarketStatus = '';
+            const sourceDetails = Object.entries(effectiveMarket).map(([type, value]) => `${labels[type]}: ${source(value)} · ${date(value.dataAsOf || value.asOf || value.capeAsOf)}`).join('; ');
+            provenance.append(createInfoPopover(doc(), 'Woher kommen die Marktdaten?', `Die Werte werden erst mit dem Jahresabschluss gespeichert. ${sourceDetails || 'Quellen noch offen.'}`));
+            // Der Jahresdienst übernimmt den ETF-Kurs seit jeher auf ganze Euro gerundet.
+            const items = [];
+            for (const [type, label] of [['inflation', `Inflation ${targetYear}`], ['etf', 'ETF-Schlusskurs'], ['cape', 'CAPE (Shiller)']]) {
                 const result = effectiveMarket[type];
-                report.append(node('p', result ? `${label}: ${type === 'etf' ? money(result.price) : formatDisplayNumber(result.rate ?? result.capeRatio, { fractionDigits: 2 })}${type === 'inflation' ? ' %' : ''} · ${result.source || result.sourceLabel || result.capeSource} · ${result.dataAsOf || result.asOf || result.capeAsOf || 'Stand unbekannt'}`
-                    : `${label}: ${errors[type] || 'Noch nicht verfügbar oder ungültig'}`));
+                const manual = result && /manuell/i.test(source(result));
+                const stale = result?.capeFetchStatus === 'warn_stale_source';
+                const asOf = result?.dataAsOf || result?.asOf || result?.capeAsOf;
+                const period = type === 'inflation' ? `für das Jahr ${result?.year ?? targetYear}` : asOf ? `am ${date(asOf)}` : 'Stichtag unbekannt';
+                items.push({ label, value: result ? type === 'etf' ? money(Math.round(result.price)) : formatDisplayNumber(result.rate ?? result.capeRatio, { fractionDigits: 2 }) + (type === 'inflation' ? ' %' : '') : 'Fehlt',
+                    detail: !result ? 'Von Hand ergänzen' : manual ? `Manuell · ${period}` : stale ? `Quelle veraltet · ${period}` : period,
+                    info: !result ? errors[type] || 'Noch nicht verfügbar oder ungültig. Bitte einen Wert von Hand ergänzen.'
+                        : manual || stale || sources.length > 1 ? `${source(result)} · ${date(asOf)}${stale ? ' · Quelle veraltet' : ''}${type === 'etf' ? ' · Der Schlusskurs wird für den Abschluss auf ganze Euro gerundet.' : ''}` : null });
             }
+            report.append(provenance, createCloseTiles({ doc: doc(), items }), marketStatus);
             // Entwurfsfelder behalten ihre Identität und Werte.
             replace(marketBody, report); marketBody.append(handGroup, ...Object.values(manualFields).map(field => field.group), fetchRetry);
         };
@@ -364,29 +379,22 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
         annual.append(node('h4', 'Protokoll'));
         for (const [key, label] of [['inflation', 'Inflation'], ['etf', 'ETF-Schlusskurs'], ['cape', 'US Shiller CAPE']]) {
             const value = results[key];
-            if (value) annual.append(node('p', `${label}${key === 'inflation' ? ` ${value.year ?? results.targetYear}` : ''}: ${key === 'etf' ? money(value.price) : formatDisplayNumber(value.rate ?? value.capeRatio, { fractionDigits: 2 })} · ${value.source || value.sourceLabel || value.capeSource || 'Quelle fehlt'}`));
+            if (value) annual.append(node('p', `${label}${key === 'inflation' ? ` ${value.year ?? results.targetYear}` : ''}: ${key === 'etf' ? money(value.price) : formatDisplayNumber(value.rate ?? value.capeRatio, { fractionDigits: 2 })}${key === 'inflation' ? ' %' : ''} · ${value.source || value.sourceLabel || value.capeSource || 'Quelle fehlt'}`));
         }
     };
-    const actionContent = results => results.actionResult ? createAnnualActionResult({ doc: doc(), result: results.actionResult }) : null;
+    const actionContent = results => results.actionResult ? createAnnualActionResult({ doc: doc(), result: results.actionResult, compact: true }) : null;
     const showMonthPhase = results => {
         const current = handle, session = results.monthSession, model = session.model;
         monthResults = results; monthReceipt = session.result || monthReceipt;
+        const data = projectConfirmedMonthResult(model, session.request.cash);
         hidePreparationBackup(); current.setBusy(false); current.setMessage('');
         const actionResult = results.actionResult || projectAnnualCloseResult({ ...results, model });
-        const action = createAnnualActionResult({ doc: doc(), result: actionResult });
-        const annual = node('section'); annual.id = 'annualResults';
-        annual.append(createAnnualPlanResult({ doc: doc(), result: actionResult }),
-            node('p', `Monatsbudget Plan ${model.summary.year}: ${money(model.summary.monthlyBudget)}`),
-            createAnnualExpenseStatus({ doc: doc(), model, targetYear: results.targetYear }));
+        const action = createAnnualActionResult({ doc: doc(), result: actionResult, compact: true });
+        const peoplePreview = projectPreview({ targetYear: results.targetYear, confirmed: true });
+        const annual = createAnnualPlanResult({ doc: doc(), result: actionResult, model, peoplePreview }); annual.id = 'annualResults';
         const receiptDetails = node('details'); receiptDetails.dataset.annualReceiptDetails = '';
         receiptDetails.append(node('summary', 'Zum Abschlussbeleg'),
-            node('p', 'Jahr und Monat haben getrennte Wiederherstellungspunkte. Der Monatsbetrag stammt aus dem bestätigten Plan. Die Anzeige bestätigt keine ausgeführte Überweisung.'));
-        const peoplePreview = projectPreview({ targetYear: results.targetYear, confirmed: true });
-        for (const person of peoplePreview.people) {
-            annual.append(node('h4', person.name));
-            if (person.error) annual.append(node('p', person.error));
-            else annual.append(node('p', `${person.startAlter} Jahre am 01.01.${model.summary.year} · Rente: ${money(person.renteMonatlich)} monatlich · ${person.monateImJahr} Bezugsmonate · ${money(person.renteImJahr)} im Planungsjahr.`));
-        }
+            node('p', `${monthReceipt ? 'Wiederherstellungspunkte für Jahr und Monat angelegt. ' : ''}Jahr und Monat haben getrennte Wiederherstellungspunkte. ${data.withdrawalDetail}. Die Anzeige bestätigt keine ausgeführte Überweisung.`));
         if (results.showProtocol) {
             showProtocol(annual, results);
             annual.append(node('p', `Jahr: ${session.annualSnapshotId || 'siehe Sicherungsverwaltung'} · Monat: ${monthReceipt?.monthSnapshotId || 'noch offen'}`));
@@ -394,14 +402,10 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
         let body;
         if (monthReceipt) {
             current.root.dataset.annualMonthResult = 'confirmed';
-            const data = projectConfirmedMonthResult(model, session.request.cash);
-            body = createCloseResult({ doc: doc(), ...data, planYear: model.summary.year, actionSection: action, yearSection: annual,
-                successText: `${data.month} und ${results.targetYear} abgeschlossen.${actionResult.action ? ` Handlungsanweisung ${actionResult.year} festgeschrieben.` : ''}` });
-            body.dataset.annualCombinedResult = 'C';
-            body.append(node('h3', 'Wiederherstellungspunkte'), node('p', 'Wiederherstellungspunkte für Jahr und Monat angelegt.'));
+            body = createAnnualCombinedResult({ doc: doc(), result: actionResult, data, annual, action, targetYear: results.targetYear });
             current.setTitle(`${data.month} und Jahr ${results.targetYear} abgeschlossen`);
             current.setSubtitle(`${session.request.cash.people.map(person => person.name).join(' + ')} · gespeichert am ${model.now.toLocaleDateString('de-DE')}`);
-            current.setStatus(''); closeButton.hidden = true; confirmButton.textContent = 'Fertig';
+            current.setStatus(nextCloseText(model)); closeButton.hidden = true; confirmButton.textContent = 'Fertig';
         } else {
             body = node('section'); body.className = 'close-dialog-result';
             const error = node('h3', monthFailureText(results, model));

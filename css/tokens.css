@@ -41,6 +41,7 @@
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
     --text-sm: .875rem;
     --text-base: 1rem;
+    --text-dense: 14px;
     --text-lg: 1.25rem;
     --text-title: 2rem;
     --value-lg: 30px;

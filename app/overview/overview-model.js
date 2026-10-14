@@ -214,8 +214,10 @@ export function projectOverview({ registry, activeId, liveData = {}, now = appNo
 /** Lokale Kalendertage: DST und Uhrzeit ändern die 35-Tage-Grenze nicht. */
 export function projectCashFreshness(people, today) {
     const day = date => Date.UTC(...date.split('-').map((part, index) => Number(part) - (index === 1 ? 1 : 0))) / 86400000;
-    return people.filter(person => !person.error && person.value !== null && person.lastDate
-        && day(today) - day(person.lastDate) > 35).map(person => ({ id: person.id, name: person.name, date: person.lastDate }));
+    const latest = person => [person.lastDate, person.confirmedDate].filter(Boolean).sort().at(-1);
+    return people.filter(person => !person.error && person.value !== null && latest(person)
+        && day(today) - day(latest(person)) > 35).map(person => ({ id: person.id, name: person.name, date: person.lastDate,
+            ...(person.confirmedDate ? { confirmedDate: person.confirmedDate } : {}) }));
 }
 
 /** Jahresdialog: tatsächlicher Vormonat und getrennte Auswertung des Abschlussjahres. */

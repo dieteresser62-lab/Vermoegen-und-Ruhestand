@@ -186,8 +186,8 @@ try {
         const footer = root.querySelector('[data-close-dialog-footer]');
         const backup = root.querySelector('[data-overview-backup]');
         const backupStatus = root.querySelector('[data-annual-backup-status]');
-        assert(footer.children.indexOf(backup.parent) < footer.children.indexOf(elements.get('modalCloseBtn'))
-            && footer.children.indexOf(backupStatus) < footer.children.indexOf(elements.get('annualConfirmBtn')),
+        assert(footer.children.indexOf(backup.parent) < footer.children.indexOf(root.querySelector('.close-dialog-foot-row'))
+            && footer.children.indexOf(backupStatus) < footer.children.indexOf(root.querySelector('.close-dialog-foot-row')),
             'Sicherungshinweis und Exportstatus stehen innerhalb der Fußleiste vor den Abschlussaktionen');
         assert(backup.className.includes('ds-button-secondary') && !backup.parent.hidden && backupStatus.hidden,
             'Empfohlene Sicherung bleibt sekundär und Exportstatus zunächst verborgen');
@@ -198,9 +198,9 @@ try {
         assert(!cashStep.querySelector('h3') && cashStep.querySelector('.close-dialog-step-summary').hidden,
             'Offener Jahresschritt enthält keine Zwischenüberschrift oder vorgeschaltete Zusammenfassung');
         const cashFields = cashStep.querySelector('.tagesgeld-fields');
-        assertEqual(cashFields.children[0].className, 'tagesgeld-person', 'Jahresfelder beginnen unmittelbar mit der Person');
-        assertEqual(cashFields.children.at(-2).tag, 'p', 'Erklärung folgt den Jahresfeldern vor der ausdrücklichen Bestätigung');
-        assertEqual(cashFields.children.at(-1).textContent, 'Stand stimmt', 'Vorbelegter Jahresendstand besitzt eine ausdrückliche Bestätigung');
+        assertEqual(cashFields.children[0].className, 'tagesgeld-provenance', 'Jahresfelder beginnen mit der gemeinsamen Herkunft');
+        assert(cashFields.querySelector('.ds-info-pop').textContent.includes('heutigen Bestätigungstag'), 'Cashbeleg und Bestätigungstag bleiben im Info-Popover erreichbar');
+        assertEqual(cashFields.querySelector('[data-tagesgeld-confirm]').textContent, 'Stand stimmt', 'Vorbelegter Jahresendstand besitzt eine ausdrückliche Bestätigung');
         assert(elements.get('annualConfirmBtn').disabled, 'Vorbelegter Jahresendstand gibt den Jahresabschluss nicht frei');
         const cashInput = root.querySelector('[data-tagesgeld-person]'); cashInput.value = '18.000,125';
         binding.update({ occasion: { previousYear: 2026, previousMonth: 12 } });

@@ -102,4 +102,7 @@ const rendered = householdPlanComparisonHtml(view);
 assert(rendered.includes('class="plan-comparison-plan"') && rendered.includes('class="plan-comparison-preview"'), 'Plan und heutige Vorschau haben getrennte Darstellungsblöcke');
 assert(rendered.includes('class="ds-plan-chip">bewusst angepasst') && rendered.includes('data-preview-status="current"'), 'Pille und Aktualitätsstatus bleiben im gemeinsamen Renderer sichtbar');
 assert(rendered.includes('scope="col"') && rendered.includes('scope="row"'), 'Vergleich behält semantische Tabellenköpfe');
+assert(rendered.includes('class="ds-info-pop"') && rendered.includes('Daraus entsteht keine neue Handlungsaufgabe.'), 'Unveränderte Vorschauerklärung bleibt im Infofenster erreichbar');
+assert(rendered.includes('<details class="plan-comparison-amounts"><summary>Einzelbeträge</summary>') && !rendered.includes('<details open'), 'Einzelbeträge starten geschlossen');
+assert(rendered.includes('Steuer gesamt: 0') && !rendered.includes('<small>'), 'Einzelbeträge bleiben erhalten und stehen nicht mehr als kleine offene Zeile');
 }

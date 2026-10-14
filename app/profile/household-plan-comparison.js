@@ -3,6 +3,7 @@ import { planScope } from './household-plan.js';
 import { summarizeBalanceAction, describeBalanceActionSummary } from '../balance/balance-action-summary.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { escapeHtml } from '../shared/security-utils.js';
+import { infoPopoverHtml } from '../shared/designsystem-info-popover.js';
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 }) : '—';
 const number = value => formatDisplayNumber(value, { fractionDigits: 1 });
@@ -24,8 +25,10 @@ function actionView(action, full = false) {
     const comparable = JSON.stringify([summary.verb, summary.amount ?? null, summary.amountUnit || '€', summary.note || '']);
     const sources = full ? (action.quellen || []).map(source => `${actionNames[source.kind] || source.kind}${source.source ? ' (' + source.source + ')' : ''}: ${money(source.brutto)} brutto, ${money(source.netto)} netto, ${money(source.steuer)} Steuer`) : [];
     const uses = full ? Object.entries(action.verwendungen || {}).map(([key, value]) => `${actionNames[key] || key}: ${money(value)}`) : [];
-    return { text, comparable, detail: [full ? action.title : null, summary.note, ...sources, ...uses,
-        full && Number.isFinite(action.steuer) ? `Steuer gesamt: ${money(action.steuer)}` : null].filter(Boolean).join(' · ') };
+    const explanation = [full ? action.title : null, summary.note].filter(Boolean).join(' · ');
+    const amounts = [...sources, ...uses,
+        full && Number.isFinite(action.steuer) ? `Steuer gesamt: ${money(action.steuer)}` : null].filter(Boolean);
+    return { text, comparable, explanation, amounts, detail: [explanation, ...amounts].filter(Boolean).join(' · ') };
 }
 const delta = (plan, preview, percent = false) => {
     if (!Number.isFinite(plan) || !Number.isFinite(preview)) return '—';
@@ -52,6 +55,7 @@ export function projectHouseholdPlanComparison({ year, scope, storage, preview =
         { label: 'Monatsbetrag', plan: money(adopted?.monthlyWithdrawal), preview: money(today?.monthlyWithdrawal), delta: delta(adopted?.monthlyWithdrawal, today?.monthlyWithdrawal) },
         { label: 'Monatsbudget', plan: money(adopted?.monthlyBudget), preview: money(today?.monthlyBudget), delta: delta(adopted?.monthlyBudget, today?.monthlyBudget) },
         { label: 'Handlungsanweisung', plan: a.text, preview: b.text, planDetail: a.detail, previewDetail: b.detail,
+            planExplanation: a.explanation, previewExplanation: b.explanation, planAmounts: a.amounts,
             delta: a.comparable && b.comparable ? a.comparable === b.comparable ? 'unverändert' : 'geändert' : '—' },
         { label: 'Liquidität (Rechenergebnis nachher)', plan: Number.isFinite(adopted?.liquidityAfter) ? number(adopted.liquidityAfter) + ' %' : '—',
             preview: Number.isFinite(today?.liquidityAfter) ? number(today.liquidityAfter) + ' %' : '—', delta: delta(adopted?.liquidityAfter, today?.liquidityAfter, true) }
@@ -72,6 +76,9 @@ export function projectHouseholdPlanComparison({ year, scope, storage, preview =
 /** Gemeinsame, escaped Darstellung in beiden lesenden Oberflächen. */
 export function householdPlanComparisonHtml(view) {
     const e = escapeHtml;
+    const actionCell = (row, side) => `${e(row[side])}${row[`${side}Explanation`]
+        ? ` ${infoPopoverHtml('Erläuterung zur Handlungsanweisung', row[`${side}Explanation`])}` : ''}${row[`${side}Amounts`]?.length
+        ? `<details class="plan-comparison-amounts"><summary>Einzelbeträge</summary><p>${row[`${side}Amounts`].map(e).join(' · ')}</p></details>` : ''}`;
     return `<div class="plan-comparison" data-plan-record-status="${e(view.recordStatus)}">
         <div class="plan-comparison-plan">
             <h3 class="plan-comparison-label">${e(view.planLabel)}${view.adjusted ? ' <span class="ds-plan-chip">bewusst angepasst</span>' : ''}</h3>
@@ -79,9 +86,9 @@ export function householdPlanComparisonHtml(view) {
         </div>
         <div class="plan-comparison-preview" data-preview-status="${e(view.previewStatus)}">
             <h3 class="plan-comparison-label">${e(view.previewLabel)}</h3><p class="ds-source">${e(view.previewNotice)}</p>
-            <p class="plan-comparison-note">So sähe es aus, wenn heute Jahresabschluss wäre. Daraus entsteht keine neue Handlungsaufgabe.</p>
+            <p class="plan-comparison-note ds-explanation">Vorschau für einen Jahresabschluss heute ${infoPopoverHtml('Erläuterung zur Vorschau', 'So sähe es aus, wenn heute Jahresabschluss wäre. Daraus entsteht keine neue Handlungsaufgabe.')}</p>
         </div>
         <div class="plan-comparison-table"><table class="ds-table"><thead><tr><th scope="col">Wert</th><th scope="col">Beschlossener Plan</th><th scope="col">Vorschau heute</th><th scope="col">Δ</th></tr></thead><tbody>
-        ${view.rows.map(row => `<tr><th scope="row">${e(row.label)}</th><td>${e(row.plan)}${row.planDetail ? `<small>${e(row.planDetail)}</small>` : ''}</td><td>${e(row.preview)}${row.previewDetail ? `<small>${e(row.previewDetail)}</small>` : ''}</td><td>${e(row.delta)}</td></tr>`).join('')}
+        ${view.rows.map(row => `<tr><th scope="row">${e(row.label)}</th><td>${row.label === 'Handlungsanweisung' ? actionCell(row, 'plan') : e(row.plan)}</td><td>${row.label === 'Handlungsanweisung' ? actionCell(row, 'preview') : e(row.preview)}</td><td>${e(row.delta)}</td></tr>`).join('')}
         </tbody></table></div></div>`;
 }

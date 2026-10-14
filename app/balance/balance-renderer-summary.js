@@ -30,6 +30,7 @@ import { BALANCE_PRESENTATION_OUTPUT_IDS } from './balance-config.js';
 import { deriveCompletedCalendarYear } from './balance-annual-period.js';
 import { getMarketDataProvenanceViewModel } from './balance-reader.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
+import { createDiagnosisInfo } from './balance-diagnosis-guardrails.js';
 
 export function formatCurrency(value) {
     return UIUtils.formatCurrency(value);
@@ -118,7 +119,9 @@ export class SummaryRenderer {
         const heading = doc.createElement('h4'); heading.textContent = 'Warum gekürzt?';
         host.appendChild(heading);
         const explanation = doc.createElement('p'); explanation.className = 'ds-hint balance-flex-explanation';
-        explanation.textContent = 'Die Treppe erklärt die Kürzung gegenüber dem Wunsch. Eine Einschränkung liegt erst vor, wenn der tatsächlich bezahlte Haushalts-Flex unter dem angewandten positiven Mindest-Flex liegt. Der Jahresvergleich im Simulator berücksichtigt auch den Rentenbeitrag.';
+        explanation.textContent = 'Die Treppe zeigt den Flex-Anteil der Vermögensentnahme pro Monat. ';
+        explanation.appendChild(createDiagnosisInfo('Vermögensentnahme und Haushalts-Flex',
+            'Der Grundbedarf nach Renten bleibt außerhalb der Treppe. Der finanzierte Haushalts-Flex umfasst zusätzlich den Rentenanteil über dem Grundbedarf. Eine Einschränkung liegt erst vor, wenn der tatsächlich bezahlte Haushalts-Flex einschließlich Rentenbeitrag unter dem angewandten positiven Mindest-Flex liegt.'));
         host.appendChild(explanation);
         for (const row of projection.rows) {
             const node = doc.createElement('div'); node.className = `balance-flex-row balance-flex-${row.kind}`;
@@ -162,7 +165,7 @@ export class SummaryRenderer {
             });
         };
         const projection = projectBalanceFlexTrace(ui);
-        const { income, withdrawal, budget, grossNeed, cut } = projection;
+        const { income, withdrawal, budget, grossNeed, cut, householdFlex, financedHouseholdFlex, householdFlexRate } = projection;
         set('balanceMonthlyBudget', budget === null ? '—' : currency(budget));
         if (budget !== null) {
             const unit = document.createElement('span'); unit.className = 'balance-unit'; unit.textContent = '€';
@@ -170,8 +173,11 @@ export class SummaryRenderer {
         }
         set('balanceAnnualBudget', budget === null ? 'Noch keine gültige Berechnung.' : `${currency(budget * 12)} im Jahr${grossNeed === null ? '' : ` · Bedarf: ${currency(grossNeed)} / Monat`}`);
         set('balanceMonthlyIncome', finite(income) ? currency(income) : '—');
-        set('balanceBudgetCut', cut > 0 && finite(spending.details?.flexRate)
-            ? `Der flexible Bedarf ist auf ${formatDisplayNumber(spending.details.flexRate, { unit: 'percent' })} gekürzt: ${currency(cut)} weniger im Monat, als du planst.` : cut === 0 ? 'Dein flexibler Bedarf ist voll finanziert.' : '');
+        set('balanceBudgetCut', cut > 0
+            ? finite(householdFlexRate)
+                ? `Dein Haushalts-Flex ist zu ${formatDisplayNumber(householdFlexRate, { unit: 'percent' })} finanziert: ${currency(cut)} weniger im Monat, als du planst.`
+                : `Dein Monatsbudget liegt ${currency(cut)} unter dem Gesamtbedarf.`
+            : cut === 0 ? 'Dein Haushalts-Flex ist voll finanziert.' : '');
         outputs.balanceBudgetCut?.setAttribute('data-financed', String(cut === 0));
         this.renderBudgetTrace(projection);
         if (outputs.balanceBudgetCutLegend) {
@@ -207,8 +213,6 @@ export class SummaryRenderer {
                 }
             }
         }
-        const financedFlex = finite(withdrawal) && finite(input.floorBedarf) && finite(income)
-            ? Math.max(0, withdrawal - Math.max(0, input.floorBedarf / 12 - income)) : null;
         const state = this.storageManager?.loadState?.();
         const adjustedAge = state?.needsAdjustedForInflationYear || 0;
         const inflationYear = input.referenceYear ?? personReferenceYear(state?.annualPeriodMetadata);
@@ -218,8 +222,9 @@ export class SummaryRenderer {
         const annualInflation = readBalanceInflationSource({ scope: readBalanceHouseholdPlan().scope });
         rows('balanceNeedRows', [
             [householdPlanFieldSpec('floorBedarf').label, finite(input.floorBedarf) ? currency(input.floorBedarf / 12) : null, '€ / Monat'],
-            [householdPlanFieldSpec('flexBedarf').label, ui.vpw?.enabled && finite(ui.neuerBedarf) && finite(input.floorBedarf) && finite(income) ? currency(Math.max(0, ui.neuerBedarf / 12 - Math.max(0, input.floorBedarf / 12 - income))) : finite(input.flexBedarf) ? currency(input.flexBedarf / 12) : null,
-                '€ / Monat', financedFlex === null ? null : `davon finanziert ${currency(financedFlex)}`],
+            [householdPlanFieldSpec('flexBedarf').label, householdFlex === null ? null : currency(householdFlex), '€ / Monat'],
+            ['Finanzierter Haushalts-Flex', financedHouseholdFlex === null ? null : currency(financedHouseholdFlex),
+                '€ / Monat', 'einschließlich Rentenanteil'],
             ['Bedarf gesamt', grossNeed === null ? null : currency(grossNeed), '€ / Monat'],
             [`Inflation · ${annualInflation.year ?? 'Jahr nicht belegt'}`,  finite(input.inflation) ? formatDisplayNumber(input.inflation, { unit: 'percent' }) : null, null, [annualInflation.source, inflationNote].filter(Boolean).join(' · ')]
         ]);
@@ -234,7 +239,7 @@ export class SummaryRenderer {
         setPresentation('balanceFreeLiquidity', currency(freeLiquidity));
         setPresentation('balanceReserveCoverage', `Betragsziel aktuell zu ${formatDisplayNumber(ui.liquiditaet?.deckungVorher, { unit: 'percent' })} gedeckt`);
         setPresentation('balanceReserveTargetMonths', formatDisplayNumber(finite(input.liquidityRunwayYears) ? input.liquidityRunwayYears * 12 : null, { unit: 'months', fractionDigits: 0 }));
-        setPresentation('balanceReserveRunway', `Nach Vorschlag: reicht für ${formatDisplayNumber(ui.runway?.months, { unit: 'months', allowInfinity: true })} Entnahme`);
+        setPresentation('balanceReserveRunway', `Nach Vorschlag: reicht für ${formatDisplayNumber(ui.runway?.months, { unit: 'months', allowInfinity: true })} Vermögensentnahme`);
         rows('balanceReserveRows', [
             ['Gold-Bestand', finite(input.goldWert) ? currency(input.goldWert) : null]
         ]);
@@ -286,6 +291,35 @@ export class SummaryRenderer {
         }
     }
 
+    renderBudgetOrigin(model, ui) {
+        const year = appNow().getFullYear();
+        const comparison = model.planComparison;
+        const plan = comparison?.recordStatus === 'valid' && comparison.year === year
+            && comparison.confirmedAction?.year === year && model.summary?.status === 'fest'
+            && model.summary.year === year ? model.summary : null;
+        const preview = projectBalanceFlexTrace(ui);
+        const date = appNow().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        for (const [previewKey, planKey, field, amount] of [
+            ['balanceBudgetPreview', 'balanceBudgetPlan', 'monthlyBudget', preview.budget],
+            ['balanceWithdrawalPreview', 'balanceWithdrawalPlan', 'monthlyWithdrawal', preview.withdrawal]
+        ]) {
+            const label = this.getPresentationOutput(previewKey);
+            if (label) { label.hidden = !plan; label.textContent = plan ? `Vorschau heute · ${date}` : ''; }
+            const host = this.getPresentationOutput(planKey);
+            if (!host) continue;
+            host.replaceChildren(); host.hidden = !plan;
+            if (!plan) continue;
+            const doc = host.ownerDocument || globalThis.document;
+            const origin = doc.createElement('span'); origin.className = 'ds-source'; origin.textContent = comparison.planLabel;
+            const value = doc.createElement('strong'); value.textContent = UIUtils.formatBalanceCurrency(plan[field]);
+            const delta = doc.createElement('span'); delta.className = 'ds-source';
+            const diff = Number.isFinite(amount) && Number.isFinite(plan[field]) ? amount - plan[field] : null;
+            delta.textContent = diff === null ? 'Differenz nicht verfügbar'
+                : `Differenz ${diff < 0 ? '−' : diff > 0 ? '+' : ''}${UIUtils.formatBalanceCurrency(Math.abs(diff))}`;
+            host.append(origin, value, delta);
+        }
+    }
+
     renderContext(input = {}, ui = {}) {
         const outputs = this.dom?.outputs || {};
         const set = (key, text) => { if (outputs[key]) outputs[key].textContent = text; };
@@ -296,6 +330,7 @@ export class SummaryRenderer {
         const liveData = Object.fromEntries(Array.from({ length: persistenceStorage.length }, (_, i) => persistenceStorage.key(i)).map(key => [key, persistenceStorage.getItem(key)]));
         const model = projectOverviewWithAnnualArchive({ registry: loadProfileRegistry().value, activeId: persistenceStorage.getItem('rs_current_profile'), liveData,
             balanceSingleFallback: true, recovery: Boolean(globalThis.window?.__profileRecoveryBlocker) }, { onChange: () => this.renderContext(input, ui) });
+        this.renderBudgetOrigin(model, ui);
         const annualState = model.occasion?.annualState;
         const notApplicable = annualState === 'not_applicable';
         set('balancePlanningYear', String(targetYear + 1));
@@ -434,7 +469,7 @@ export class SummaryRenderer {
             return;
         }
 
-        // Vergleichskennzahlen: vorhandene Werte und ausdrücklich fehlende Nachherwerte.
+        // Vergleichskennzahlen aus derselben finanzierten Entnahmebasis.
         const createItem = (label, before, after, unit, formatter) => {
             const item = document.createElement('div');
             item.className = 'summary-item ds-metric ds-kpi';
@@ -479,12 +514,24 @@ export class SummaryRenderer {
 
         const formatDeckung = value => formatDisplayNumber(value, { unit: 'percent' });
         fragment.appendChild(createItem('Liquiditätsdeckung', ui.liquiditaet?.deckungVorher, ui.liquiditaet?.deckungNachher, '', formatDeckung));
-        const runwayKpi = createItem('Runway (Gesamtbedarf)', ui.runway?.months, null, '',
-            value => value === null ? '—' : formatDisplayNumber(value, { unit: 'months', allowInfinity: true }));
+        const withdrawal = ui.spending?.monatlicheEntnahme;
+        const beforeRunway = Number.isFinite(liqVorher) && liqVorher >= 0 && Number.isFinite(withdrawal) && withdrawal >= 0
+            ? withdrawal > 0 ? liqVorher / withdrawal : Infinity : null;
+        // Engine core liefert ui.runway.months nach dem Transaktionsvorschlag,
+        // vor Auszahlung, geteilt durch die final finanzierte Monatsentnahme.
+        const afterRunway = ui.runway?.months;
+        const runwayKpi = createItem('Reichweite Vermögensentnahme', beforeRunway, afterRunway, '',
+            value => Number.isFinite(value) || value === Infinity
+                ? formatDisplayNumber(value, { unit: 'months', allowInfinity: true }) : '—');
         runwayKpi.className = `summary-item ds-metric ds-kpi summary-kpi status-${ui.runway?.status || 'info'}`;
-        const missingRunway = document.createElement('small');
-        missingRunway.className = 'ds-help'; missingRunway.textContent = 'Nachher-Runway nicht verfügbar; die Berechnung liefert nur den Istwert.';
-        runwayKpi.appendChild(missingRunway);
+        runwayKpi.children[0].appendChild(createDiagnosisInfo('Berechnung der Reichweite vor und nach dem Vorschlag',
+            'Vorher: freie Liquidität ÷ finanzierte monatliche Vermögensentnahme. Nachher: von der Berechnung gelieferte Liquidität nach dem Vorschlag ÷ dieselbe Monatsentnahme. Beide Werte gelten vor Auszahlung. Bei Entnahme 0 ist die Reichweite unbegrenzt.'));
+        const knownRunway = value => Number.isFinite(value) || value === Infinity;
+        const missing = [knownRunway(beforeRunway) ? null : 'Vorher nicht verfügbar', knownRunway(afterRunway) ? null : 'Nachher nicht verfügbar'].filter(Boolean);
+        if (missing.length) {
+            const note = document.createElement('small'); note.className = 'ds-help'; note.textContent = missing.join(' · ');
+            runwayKpi.appendChild(note);
+        }
         fragment.appendChild(runwayKpi);
         fragment.appendChild(createItem('Reichweite Netto-Floor', reichweite.floorVorher,
             liqNachher !== null && liqNachher >= 0 ? inflatedBedarf.floor > 0 ? liqNachher / inflatedBedarf.floor : Infinity : null, '',

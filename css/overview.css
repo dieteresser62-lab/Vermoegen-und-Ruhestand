@@ -14,7 +14,7 @@
 .overview-focus-top > div { min-width: 0; flex: 1; }
 .overview-focus-icon { width: 52px; height: 52px; border-radius: 16px; background: var(--accent); color: var(--surface); display: flex; align-items: center; justify-content: center; flex: none; }
 .overview-focus h2 { margin-top: 6px; }
-.overview-focus #overviewFocusTitle { font-size: var(--balance-verb); line-height: 1.08; letter-spacing: -.01em; }
+.overview-focus #overviewFocusTitle { font-size: var(--balance-h1); line-height: 1.08; letter-spacing: -.01em; }
 .overview-focus-top .ds-badge { background: var(--accent-soft); color: var(--accent); }
 .is-annual .overview-focus-top .ds-badge { background: var(--warn-soft); color: var(--warn); }
 .overview-step.is-done .ds-badge { background: var(--good-soft); color: var(--good); }
@@ -26,14 +26,14 @@
 .overview-step-symbol.is-warning { background: var(--warn-soft); color: var(--warn); }
 .overview-step-title { font-weight: 600; font-size: var(--balance-body); line-height: 1.3; }
 .is-done .overview-step-title { color: var(--text-muted); font-weight: 500; }
-.overview-step-detail { color: var(--text-muted); font-size: var(--balance-help); overflow-wrap: anywhere; }
+.overview-step-detail { color: var(--text-muted); font-size: var(--text-base); overflow-wrap: anywhere; }
 .overview-focus-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 16px; }
 .overview-card-heading { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
 .overview-page h2 { font-family: var(--font-serif); font-size: var(--balance-kpi); font-weight: 500; margin: 0; }
 .overview-page h3 { font-family: var(--font-serif); font-size: var(--balance-kpi); font-weight: 500; margin: 0; }
 .overview-page p { margin: 0; }
 .overview-hero-number { font-family: var(--font-serif); font-size: var(--balance-budget); line-height: .95; font-weight: 500; letter-spacing: -.02em; font-variant-numeric: tabular-nums lining-nums; }
-.overview-muted { color: var(--text-muted); font-size: var(--balance-help); }
+.overview-muted { color: var(--text-muted); font-size: var(--text-base); }
 .overview-allocation { display: flex; height: 12px; border-radius: 999px; background: var(--surface-sunken); overflow: hidden; }
 .overview-allocation span { display: block; height: 100%; }
 .overview-allocation-aktien_alt { background: var(--accent); }
@@ -43,12 +43,12 @@
 .overview-allocation-cash { background: var(--border-strong); }
 .overview-allocation-gold { background: color-mix(in srgb, var(--accent-line) 48%, var(--accent-soft)); }
 .overview-allocation-anleihe { background: var(--chart-5); }
-.overview-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: var(--balance-help); color: var(--text-muted); }
+.overview-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: var(--text-base); color: var(--text-muted); }
 .overview-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; }
 .overview-people { border-top: 1px solid var(--border); }
 .overview-person { display: grid; grid-template-columns: 36px minmax(0,1fr) auto; gap: 12px; padding: 12px 0; align-items: center; border-bottom: 1px dashed var(--border); }
 .overview-person > div { min-width: 0; overflow-wrap: anywhere; }
-.overview-person small { display: block; color: var(--text-muted); font-size: var(--balance-help); }
+.overview-person small { display: block; color: var(--text-muted); font-size: var(--text-base); }
 .overview-avatar { background: var(--text-main); color: var(--surface); display: flex; justify-content: center; align-items: center; border-radius: 10px; width: 32px; height: 32px; }
 .overview-actions, .recovery-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .overview-details { padding: 20px 28px; }
@@ -73,10 +73,12 @@
 .overview-budget-line { position: absolute; width: 100%; border-top: 1px solid var(--accent); z-index: 1; }
 .overview-budget-line[data-budget-status="provisional"] { border-top-style: dashed; }
 .overview-month-state { color: var(--text-muted); overflow-wrap: anywhere; }
-.overview-year-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 22px; border-top: 1px solid var(--border); padding-top: 20px; }
+.overview-year-metrics { display: grid; grid-template-columns: repeat(4,minmax(max-content,1fr)); gap: 22px; border-top: 1px solid var(--border); padding-top: 20px; }
 .overview-year-metric { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.overview-year-metric > span, .overview-year-metric small { color: var(--text-muted); font-size: var(--balance-help); }
-.overview-year-metric strong { font-family: var(--font-serif); font-size: var(--balance-kpi); font-weight: 500; line-height: 1.12; }
+.overview-year-metric-label { display: flex; align-items: center; gap: var(--space-2); color: var(--text-muted); font-size: var(--text-base); }
+.overview-year-metric-label > span:first-child { white-space: nowrap; }
+.overview-year-metric .ds-info-pop { top: auto; bottom: calc(100% + var(--space-2)); }
+.overview-year-metric strong { margin-top: auto; font-family: var(--font-serif); font-size: var(--value-md); font-weight: 500; line-height: 1.12; white-space: nowrap; }
 .overview-welcome { display: grid; grid-template-columns: minmax(0,7fr) minmax(0,5fr); gap: 24px; }
 .overview-welcome-card { padding: 28px; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
 .overview-welcome-option { display: flex; flex-direction: column; align-items: start; gap: 8px; border: 1px solid var(--border); border-radius: 16px; padding: 22px; background: var(--surface); text-decoration: none; text-align: left; color: var(--text-main); font: inherit; cursor: pointer; }
@@ -146,7 +148,7 @@
 .overview-metric-source [data-probelauf-price-info] .ds-info-pop { top: auto; bottom: calc(100% + var(--space-2)); }
 .overview-metrics .overview-card-link { align-self: start; margin-top: auto; }
 .overview-plan-state { flex-wrap: wrap; gap: var(--space-2); }
-.overview-plan-state > .overview-muted { font-size: var(--value-md); }
+.overview-plan-state > .overview-muted { font-size: var(--text-base); }
 .overview-year, .overview-asset-details { grid-column: auto; grid-row: auto; }
 .overview-asset-details { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 @container suite-content (max-width: 70rem) {
@@ -186,7 +188,7 @@
 
 .overview-close-steps { display: grid; }
 .overview-close-step { display: grid; grid-template-columns: 20px minmax(10rem, 1fr) minmax(0, 2fr); gap: var(--space-3); padding: var(--space-2) 0; align-items: baseline; border-top: 1px solid var(--border); min-width: 0; }
-.overview-close-step b { font-size: var(--balance-help); font-weight: 500; overflow-wrap: anywhere; }
+.overview-close-step b { font-size: var(--text-base); font-weight: 500; overflow-wrap: anywhere; }
 .overview-close-step[data-state="done"] > :first-child { color: var(--good); }
 .overview-completed summary { cursor: pointer; color: var(--text-muted); font-size: var(--balance-help); padding-block: var(--space-2); }
 .overview-completed summary:hover { color: var(--text-main); }
@@ -206,4 +208,9 @@
 .overview-cash-warning .overview-card-link { text-decoration: underline; text-underline-offset: var(--space-1); }
 
 .overview-plan .plan-comparison { margin-block: 0; }
-.overview-plan .plan-comparison-table { font-size: var(--balance-help); }
+.overview-plan .plan-comparison-table { font-size: var(--text-base); }
+
+/* Kopfpillen und Bezugszeilen verwenden die Textstufe; Diagrammbeschriftung bleibt dicht. */
+.overview-pill, #overviewDate, .overview-plan .ds-source { font-size: var(--text-base); }
+.overview-year-metric:last-child strong { font-family: var(--font-sans); }
+.overview-history .history-legend, .overview-history .history-note, .overview-history .history-measurement, .overview-history .history-metric small, .overview-history .history-periods button { font-size: var(--text-base); }

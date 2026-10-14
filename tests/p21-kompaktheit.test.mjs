@@ -88,6 +88,7 @@ function overviewDocument(html) {
     const descendants = node => node.children.flatMap(child => [child, ...descendants(child)]);
     doc.getElementById = id => descendants(doc.body).find(node => node.id === id) || null;
     doc.querySelectorAll = () => [];
+    doc.addEventListener = (...args) => doc.body.addEventListener(...args);
     function mount(html, parent) {
         const tree = tokenizeHTML(html);
         const add = (entry, target) => {

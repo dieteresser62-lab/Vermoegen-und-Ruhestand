@@ -66,7 +66,7 @@ export function buildGuardrails(guardrailData = []) {
         const card = document.createElement('div');
         card.className = `guardrail-card status-${g.status} ${g.status === 'ok' ? 'guardrail-ok' : ''} ${g.cardTriggered === true ? 'guardrail-triggered' : ''}`;
         const name = document.createElement('strong');
-        name.textContent = displayDiagnosisText(g.name);
+        name.textContent = displayDiagnosisText(g.name.startsWith('Runway') ? `${g.name} · nach Vorschlag` : g.name);
         if (g.name === 'Inflations-Cap') {
             name.className = 'guardrail-head';
             name.appendChild(createDiagnosisInfo(`Erläuterung: ${g.name}`,

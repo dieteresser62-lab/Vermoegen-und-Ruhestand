@@ -79,10 +79,10 @@ export function buildDiagnosisChips(d) {
         ? `${formatMonths(runwayMonate)} / ${formatMonths(runwayTargetMonate)}`
         : `${formatMonths(runwayMonate)}`;
     const runwayChipTitle = (typeof runwayTargetMonate === 'number' && isFinite(runwayTargetMonate))
-        ? `Aktuelle Runway vs. Ziel (${formatDisplayMonths(runwayTargetMonate, { fractionDigits: 0, invalid: 'n/a', suffix: 'Monate' })}).
+        ? `Reichweite der finanzierten Vermögensentnahme nach dem Vorschlag, vor Auszahlung, vs. Ziel (${formatDisplayMonths(runwayTargetMonate, { fractionDigits: 0, invalid: 'n/a', suffix: 'Monate' })}).
 Quelle: ${runwaySourceInfo.description}
 ${runwaySmoothingInfo.explanation}`
-        : `Aktuelle Runway basierend auf verfügbaren Barmitteln.
+        : `Reichweite der finanzierten Vermögensentnahme nach dem Vorschlag, vor Auszahlung.
 Quelle: ${runwaySourceInfo.description}`;
 
     const fragment = document.createDocumentFragment();
@@ -99,7 +99,7 @@ Quelle: ${runwaySourceInfo.description}`;
         createChip(qStatus, 'Entnahmequote', formatDisplayPercentRatio(entnahmequoteDepot, { fractionDigits: 1, invalid: 'n/a' }), 'Entnahmequote = Jährliche Entnahme / Depotwert'),
         createChip(ddStatus, 'Realer Drawdown', formatDisplayPercentRatio(-realerDepotDrawdown, { fractionDigits: 1, invalid: 'n/a' }), 'Realer Drawdown des Gesamtvermögens seit dem inflationsbereinigten Höchststand'),
         createChip(liquidityStatus, 'Liquidität', liquidityChipValue, liquidityChipTitle),
-        createChip(rStatus, 'Runway', `${runwayChipValue} Mon.`, runwayChipTitle)
+        createChip(rStatus, 'Runway · nach Vorschlag', `${runwayChipValue} Mon.`, runwayChipTitle)
     );
 
     if (runwaySourceInfo?.label) {

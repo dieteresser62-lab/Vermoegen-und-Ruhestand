@@ -22,17 +22,17 @@ for (const type of ['NONE', 'TRANSACTION']) {
     const before = JSON.stringify({ model, displayPreview });
     const result = projectAnnualCloseResult({ targetYear: 2026, confirmed: true, model, displayPreview });
     const { doc } = createDialogFixture();
-    const actionSection = createAnnualActionResult({ doc, result }), yearSection = createAnnualPlanResult({ doc, result });
+    const actionSection = createAnnualActionResult({ doc, result, compact: true }), yearSection = createAnnualPlanResult({ doc, result });
     const body = createCloseResult({ doc, month: 'Dezember', nextMonth: 'Januar', expenses: '100 €', budgetComparison: 'im Budget',
-        people: [{ name: 'A', value: '100 €' }, { name: 'B', value: '200 €' }], cashTotal: '300 €', withdrawal: '1.500 €', planYear: 2027, actionSection, yearSection });
+        people: [{ name: 'A', value: '100 €' }, { name: 'B', value: '200 €' }], cashTotal: '300 €', withdrawal: '1.500 €', withdrawalDetail: 'Monatsinformation aus dem festgeschriebenen Plan 2027', actionSection, yearSection });
     assertEqual(body.children[1], actionSection, 'Handlungsanweisung folgt unmittelbar auf Alles gespeichert');
     assertEqual(body.children[2], yearSection, 'Verbindlicher Planstand folgt vor MONAT');
     const texts = dialogElements(body).map(node => clean(node.textContent || ''));
     assert(texts.includes('Handlungsanweisung 2027 · festgeschrieben'), 'Bestätigtes Folgejahr steht in der Überschrift');
-    assert(texts.includes('Die Umsetzung (Verkäufe, Umbuchungen) entscheidest du.'), 'Freiwillige Umsetzung steht direkt bei der Handlungsanweisung');
+    assert(texts.includes('Die Umsetzung entscheidest du.'), 'Freiwillige Umsetzung steht direkt bei der Handlungsanweisung');
     assert(texts.some(text => text.includes('30.000,00 € → 30.750,00 € (+2,5 % Inflation 2026)')), 'Sichere Vorheraufnahme zeigt tatsächliche Inflation');
     assertEqual(texts.join(' ').split('Monatsbetrag Januar').length - 1, 1, 'Januarbetrag erscheint genau einmal');
-    assert(texts.includes('Monatsinformation aus dem bestätigten Plan 2027'), 'Monatsbetrag nennt Plan J+1');
+    assert(texts.includes('Monatsinformation aus dem festgeschriebenen Plan 2027'), 'Monatsbetrag nennt Plan J+1');
     assert(texts.includes('Steuer gesamt: ' + (type === 'NONE' ? '0,00 €' : '200,00 €')), 'Steuerinformation kommt aus dem Beleg');
     if (type === 'NONE') assert(texts.includes('Nichts tun – kein Handlungsbedarf'), 'NONE hat eine klare Kernaussage');
     else assert(texts.includes('Vorgeschlagene Verkäufe nach Person') && texts.includes('Käufe / Verwendung') && texts.some(text => text.includes('Aktien (Neubestand)')) && texts.some(text => text.includes('Gold:')), 'Transaktion gliedert Anlageklassen, Quellen und Verwendung');
@@ -62,7 +62,7 @@ for (const type of ['NONE', 'TRANSACTION']) {
                 { kind: 'liquiditaet', sourceProfileName: 'Max Mustermann', brutto: 50, netto: 50, steuer: 0 }
             ], verwendungen: { liquiditaet: 1550 } } };
     const before = JSON.stringify(result);
-    const section = createAnnualActionResult({ doc, result });
+    const section = createAnnualActionResult({ doc, result, compact: true });
     const table = section.querySelector('[data-annual-action-sales]');
     const rows = table.querySelector('tbody').children;
     const rowText = row => row.children.map(node => clean(node.textContent)).join(' | ');
@@ -74,6 +74,26 @@ for (const type of ['NONE', 'TRANSACTION']) {
     assert(dialogElements(details).some(node => clean(node.textContent) === 'Steuer gesamt: 300,00 €'), 'Gesamtssteuer steht ebenfalls in den Details');
     assert(!dialogElements(section).some(node => node.textContent.includes('Profilverbund-Transaktionen')), 'Technische Transaktionsbezeichnung entfällt in der Anzeige');
     assertEqual(JSON.stringify(result), before, 'Verkaufsanzeige erhält alle bestätigten Belegwerte');
+}
+{
+    const recommended = { monthlyWithdrawal: 1500, monthlyBudget: 5000, liquidityBefore: 70, liquidityAfter: 80, flexRate: 100, marketPhase: 'Test', action: { type: 'NONE', title: 'Kein Handlungsbedarf', steuer: 0 },
+        snapshot: { plan: { ...structuredClone(PLAN_DEFAULTS), floorBedarf: 30750, flexBedarf: 24600 }, inflation: 2.5, ageByPerson: { a: 68, b: 65 } } };
+    const adopted = structuredClone(recommended); adopted.snapshot.plan.floorBedarf = 32000; adopted.monthlyBudget = 5100;
+    const record = buildAnnualPlanRecord(null, { targetYear: 2026, scope, committedAt: '2027-01-02T12:00:00Z', recommended, adopted, adjustedFields: ['floorBedarf'] });
+    const storage = { getItem: key => key === ANNUAL_PLAN_RECORD_KEY ? record.raw : null, setItem() { throw new Error('Kein Write erlaubt'); } };
+    const model = { scope, summary: { monthlyBudget: 5100 }, annual: { year: 2026, total: 60467.5, budget: 5000, complete: true },
+        planComparison: projectHouseholdPlanComparison({ year: 2027, scope, storage }) };
+    const before = JSON.stringify({ model, record });
+    const result = projectAnnualCloseResult({ targetYear: 2026, confirmed: true, model, displayPreview, storage });
+    const { doc } = createDialogFixture();
+    const section = createAnnualPlanResult({ doc, result, model });
+    const details = section.querySelector('[data-annual-plan-derivation]');
+    const text = node => dialogElements(node).map(el => clean(el.textContent || '')).join(' ');
+    assert(!details.open && text(details).includes('Empfehlung 30.750 € → beschlossen 32.000 €'), 'Geschlossene Herleitung zeigt Empfehlung und beschlossenen Bedarf aus dem passenden Beleg');
+    assert(text(section.querySelector('.annual-result-plan-source')).includes('im Abschluss bewusst angepasst'), 'Bewusste Anpassung steht direkt unter der Leitzahl');
+    assert(text(section).includes('467,50 € darüber') && text(section).includes('0,8 %') && text(section).includes('56.600,00 € im Jahr'), 'Zwei Kacheln verwenden Jahresvergleich und beschlossenen Bedarf');
+    assertEqual(section.querySelectorAll('.annual-result-monthly-budget').length, 1, 'Nur das Monatsbudget ist Leitzahl');
+    assertEqual(JSON.stringify({ model, record }), before, 'Beleganzeige schreibt und verändert keine Quelldaten');
 }
 const options = { inflation: { rate: 2.5 }, targetYear: 2026 };
 assertEqual(clean(formatAnnualNeed({ id: 'floorBedarf', before: 30000, after: 31000 }, { ...options, adjustedFields: ['floorBedarf'] })), '30.000,00 € → 31.000,00 € (von dir angepasst)', 'Bewusste Anpassung wird nicht als Inflation ausgegeben');

@@ -165,13 +165,25 @@ try {
         const cards = buildSummaryData({ results: { outcomeInventory: inventory, finalOutcomes: { p50: 0 } }, totalRuns: counts.requestedRuns, failCount: counts.ruin });
         const before = JSON.stringify(cards), target = new MockElement('div', documentRef);
         renderSummary(target, cards);
-        assert(target.innerHTML.includes(`class="mc-floor-value">${cards[0].displayValue}</div>`), 'Floorwert steht separat und unverändert im neuen Kartenkörper');
+        assert(!target.innerHTML.includes('class="mc-floor-value"') && !target.innerHTML.includes('class="sim-answer-count"'), 'Sekundäre Zeile wiederholt weder Deckungsquote noch Laufzahl der Kernantwort');
         assert(target.innerHTML.includes(cards[0].intervalText), 'Wilson-Intervall steht separat im sichtbaren Kartenkörper');
         for (const outcome of cards[1].outcomes) assert(target.innerHTML.includes(`${outcome.label} ${outcome.count}`), 'Alle vier Endzustände behalten ihre Anzahl einschließlich Null');
         assertEqual((target.innerHTML.match(/summary-item(?: kpi-card)? ds-card/g) || []).length, 4, 'Endvermögenskarte erhält Hauptwert und drei ergänzende Exaktwerte');
         assert(target.innerHTML.includes('0,00 €') && target.innerHTML.includes('Keine Beobachtungen'), 'Nullvermögen bleibt von fehlenden Kennzahlen und deren Gründen unterscheidbar');
         assert(!target.innerHTML.includes('all_dead') && !target.innerHTML.includes('horizon_exhausted') && !target.innerHTML.includes('no_observations'), 'Redaktionelle Floor-/Statusdarstellung verwendet verständliche Gründe');
         assertEqual(JSON.stringify(cards), before, 'Summaryrenderer verändert keine Deskriptoren');
+    }
+    {
+        const raw = { finalOutcomes: { p50: 3900982.099, p50_successful: 3929287.359, p10: 1000335.459, p90: 16120322.279, successfulCount: 9949 },
+            taxOutcomes: { p50: 77286.831 }, cutYearSharePct: { p50: 0 } };
+        const before = JSON.stringify(raw), box = new MockElement('div', documentRef);
+        renderSummary(box, buildSummaryData({ results: raw, totalRuns: 10000, failCount: 51 }));
+        assert(box.innerHTML.includes('title="3.900.982,09 €">3,9 Mio. €')
+            && box.innerHTML.includes('Genauer Wert: 3.900.982,09 €'), 'Gerundete Hauptsumme hält den genauen Betrag im Tooltip und im Informationsfeld');
+        assert(box.innerHTML.includes('title="1.000.335,45 € / 16.120.322,27 €">1 Mio. € / 16,1 Mio. €'), 'Sekundäre Perzentile sind gerundet und behalten beide genauen Werte');
+        renderKpiDashboard(box, buildKpiDashboard(raw, {}));
+        assert(!box.innerHTML.includes('mehr als 10 % unter Wunsch-Flex'), 'Entnahmezeilen wiederholen die Einschränkungsantwort nicht');
+        assertEqual(JSON.stringify(raw), before, 'Rundung und Entfernen von Duplikaten erhalten alle Rohwerte');
     }
     {
         const raw = { extraKPI: { healthBucket: { usedRatePct: 50, depletedRatePct: 0, usedMedian: 12345.678,

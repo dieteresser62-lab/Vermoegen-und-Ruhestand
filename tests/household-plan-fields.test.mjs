@@ -1,6 +1,43 @@
 import { HOUSEHOLD_PLAN_FIELDS, HOUSEHOLD_PLAN_CARDS, HOUSEHOLD_PLAN_DISPLAY_FIELDS, projectHouseholdPlanFieldLabels, bindHouseholdPlanField, parseHouseholdPlanNumber, formatHouseholdPlanValue, readHouseholdPlanField } from '../app/shared/household-plan-fields.js';
 import { PLAN_DEFAULTS } from '../app/profile/household-plan.js';
+import { householdPlanSummary, resetHouseholdPlanParameterDetails, projectHouseholdPlanParameters } from '../app/shared/household-plan-presentation.js';
 import { createDialogFixture } from './close-dialog.test.mjs?fixture';
+
+const summaryValues = { ...structuredClone(PLAN_DEFAULTS), flexBudgetAnnual: 7283, liquidityRunwayYears: 5,
+    dynamicFlex: false, cape: { value: 32 } };
+assertEqual(householdPlanSummary(summaryValues), 'Flex-Budget 7.283 €/Jahr · Reserven 5,0 Jahre · Strategie Standard · Dynamik Aus · CAPE 32,0',
+    'Gemeinsame Kopfzusammenfassung enthält die tatsächlichen Werte');
+assertEqual(householdPlanSummary(null), 'Planbereich noch nicht bestätigt', 'Unbestätigter Plan erfindet keine Zusammenfassungswerte');
+const detailFields = { dynamicFlexPreset: { value: 'custom' }, dynamicFlexShowAdvanced: { checked: true } };
+const beforeSummaryReset = JSON.stringify(summaryValues);
+resetHouseholdPlanParameterDetails({ getElementById: id => detailFields[id] }, summaryValues);
+assertEqual(detailFields.dynamicFlexPreset.value, 'off', 'Zurück zum Plan verwirft die lokale Detailauswahl');
+assert(!detailFields.dynamicFlexShowAdvanced.checked && JSON.stringify(summaryValues) === beforeSummaryReset,
+    'Detailrückkehr verändert keine Planwerte');
+
+{
+    const { doc } = createDialogFixture();
+    const root = doc.createElement('section'), flex = doc.createElement('input'), field = doc.createElement('input');
+    flex.id = 'dynamicFlex'; flex.checked = false;
+    field.value = '30'; field.disabled = true; field.setAttribute('aria-describedby', 'off-reason method-reason');
+    const off = doc.createElement('span'), method = doc.createElement('span');
+    off.id = 'off-reason'; off.className = method.className = 'ds-field-reason';
+    off.textContent = 'Dynamic Flex ist ausgeschaltet.';
+    method.id = 'method-reason'; method.textContent = 'Nicht anwendbar bei aktuarischer Horizontmethode.';
+    root.append(flex, field, off, method); doc.body.append(root);
+    projectHouseholdPlanParameters(doc, root, {}, summaryValues);
+    assertEqual(off.dataset.planBundledReason, 'true', 'Identischer Ausschaltgrund wird beim Sammelhinweis gebündelt');
+    assertEqual(method.dataset.planBundledReason, 'false', 'Abweichender Methodengrund bleibt am Feld');
+    assertEqual(field.getAttribute('aria-describedby'), 'off-reason method-reason', 'Beschreibungsziele bleiben erhalten');
+    assertEqual(field.value, '30', 'Bündelung verändert keinen Wert');
+    assert(field.disabled, 'Bündelung gibt gesperrte Felder nicht frei');
+    flex.checked = true;
+    projectHouseholdPlanParameters(doc, root, {}, summaryValues);
+    assertEqual(off.dataset.planBundledReason, 'false', 'Aktivierung nimmt die Ausschaltbündelung zurück');
+    flex.checked = false; off.textContent = 'Go-Go ist ausgeschaltet.';
+    projectHouseholdPlanParameters(doc, root, {}, summaryValues);
+    assertEqual(off.dataset.planBundledReason, 'false', 'Ein neuer abweichender Feldgrund wird nicht weiter gebündelt');
+}
 
 for (const [path, text, expected] of [
     ['floorBedarf', '30.000 €', 30000], ['floorBedarf', '30.000,25 €', 30000.25],
@@ -277,7 +314,8 @@ import { createSelectionDocument, addField, simulatorSelectOptions } from './des
     const doc = createSelectionDocument();
     for (const [id, path] of Object.entries(SIMULATOR_PLAN_FIELD_MAP)) {
         const spec = HOUSEHOLD_PLAN_FIELDS.find(spec => spec.path === path) || HOUSEHOLD_PLAN_DISPLAY_FIELDS[path];
-        const label = markup.match(new RegExp('<label for="' + id + '">([^<]*)</label>'));
+        // Der führende Labeltext bleibt maßgeblich, auch mit anschließendem ⓘ.
+        const label = markup.match(new RegExp('<label for="' + id + '">([^<]*)'));
         assert(label?.[1].trim() === spec.label, id + ': Simulatorname entspricht dem führenden Feldsatz');
         if (spec.options) {
             const field = addField(doc, id, spec.options[0][0], simulatorSelectOptions(id));
@@ -315,6 +353,6 @@ import { managerPlanFieldId } from '../app/tranches/tranchen-manager-household-p
             assertEqual(label.textContent, spec.label, `${spec.path}/${page}/${id}: Projektion verwendet denselben führenden Namen`);
         }
     }
-    assertEqual(simulatorOnlyMissing.sort().join(), 'householdWithdrawalMode,minCashBufferMonths',
-        'Tabelle weist die zwei ausschließlich in Manager und Balance vorhandenen Planwerte ausdrücklich aus');
+    assertEqual(simulatorOnlyMissing.sort().join(), 'householdWithdrawalMode',
+        'Nur die Haushaltsverteilung bleibt auf Manager und Balance beschränkt');
 }

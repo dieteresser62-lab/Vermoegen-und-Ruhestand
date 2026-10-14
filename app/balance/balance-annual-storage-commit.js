@@ -90,7 +90,7 @@ export function prepareAnnualCommitRecords(draft, { engineApi, adoptedPlanPatch,
     adapter.setItem('rs_profiles_v1', JSON.stringify(registry));
     const members = Object.keys(registry.profiles).filter(id => registry.profiles[id].meta.belongsToHousehold !== false);
     const cashUpdate = cash ? prepareHouseholdCash({ storage: adapter, registry, activeId: draft.profileId,
-        ids: members.length ? members : [draft.profileId], checkMembership: members.length > 0, cash, date: localHistoryDate(date) }) : null;
+        ids: members.length ? members : [draft.profileId], checkMembership: members.length > 0, cash, date: localHistoryDate(date), recordConfirmation: true }) : null;
     const nextRegistry = cashUpdate?.registry || registry;
     for (const [key, raw] of Object.entries(cashUpdate?.records || {})) adapter.setItem(key, raw);
     const state = stripBalancePersonInputs({ ...manager.loadState(), annualPeriodMetadata: completed.metadata });

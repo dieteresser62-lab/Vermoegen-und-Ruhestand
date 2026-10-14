@@ -513,7 +513,8 @@ function historicalStatusProjection(doc, region) {
     const parts = [...region.innerHTML.matchAll(/class="backtest-notice-value">([^<]*)<\/span>/g)].map(match => summaryText(match[1]));
     if (!parts.length) return summaryText(region.innerHTML);
     assertEqual(parts.length, 3, 'Status erhält Titel, vollständige Ursache und nächsten Schritt');
-    const code = doc.getElementById('backtestDiagnosisCode').textContent
+    // Der historische Vergleich projiziert die frühere Statuszeile, die im UI entfällt.
+    const code = ({ completed: 'Backtest fertig', ruin: 'Backtest mit Ruin beendet', running: 'Backtest läuft', idle: 'Backtest bereit' })[region.dataset?.status]
         || region.innerHTML.match(/Code:\s*([A-Za-z0-9_.-]+)/)?.[0];
     assert(Boolean(code), 'Historische Statusprojektion liest den sichtbaren Diagnosecode');
     const action = parts[2].replace('Prüfen Sie Kennzahlen, Warnhinweise, Jahresprotokoll und Rohdatenexport gemeinsam.',

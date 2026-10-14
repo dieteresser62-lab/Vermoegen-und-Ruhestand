@@ -1,15 +1,31 @@
+import { createInfoPopover } from '../shared/designsystem-info-popover.js';
 import { bindClosePriceActions } from '../shared/close-price-actions.js';
 import { quoteIssueReason } from '../tranches/tranchen-startup-prices.js';
 import { createTagesgeldFields, parseMonthlyCashInput } from '../shared/tagesgeld-fields.js';
-import { createCloseDialog, createCloseResult, dialogElements, closeImportProgress, advanceCloseImport, closeReadinessText } from '../shared/close-dialog.js';
+import { createCloseDialog, createCloseResult, dialogElements, closeImportProgress, advanceCloseImport, closeReadinessText, createCloseTiles } from '../shared/close-dialog.js';
 import { overviewPricesDone, overviewPriceLabel } from './overview-model.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { appendExampleExpensesIcon, exampleExpensesLabel } from '../shared/designsystem-icons.js';
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 2 }) : '—';
 const monthName = (year, month) => new Date(year, month - 1, 1).toLocaleDateString('de-DE', { month: 'long' });
-const nextCloseText = model => model.now
+export const nextCloseText = model => model.now
     ? `Nächster Monatsabschluss: ${new Date(model.now.getFullYear(), model.now.getMonth() + 1, 1).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })}.` : '';
+
+const monthCloseRules = 'Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. Alle Vorbereitungsschritte ansehen und Tagesgeld je Person ändern oder bestätigen; ungespeicherte Eingaben werden beim Schließen verworfen.';
+
+/** Jahresbeleg wie auf Übersicht und Ausgaben; ein Vorschauwert belegt keinen Plan. */
+function withdrawalSource(model) {
+    const year = model.summary?.year ?? model.now?.getFullYear() ?? model.year ?? '—';
+    const next = model.now?.toLocaleDateString('de-DE', { month: 'long' }) || 'Folgemonat';
+    const comparison = model.planComparison;
+    const fixed = comparison?.year === year && comparison?.recordStatus === 'valid';
+    const source = fixed ? `festgeschriebener Plan ${year}`
+        : comparison?.recordStatus === 'invalid' ? `Jahresplan ${year} nicht sicher lesbar`
+            : `noch kein festgeschriebener Jahresplan ${year}`;
+    return { fixed, source, detail: fixed ? `Monatsinformation aus dem festgeschriebenen Plan ${year}`
+        : `Vorläufige Entnahme für ${next} · ${source}` };
+}
 
 /** Addiert bestätigte Dezimalwerte ohne binäre Additionsfehler, auch bei Exponentialdarstellung. */
 export function cashTotalMoney(values) {
@@ -32,8 +48,9 @@ export function projectOverviewMonthSteps(model = {}) {
     const expenses = model.expenses || {}, summary = model.summary;
     const previous = monthName(model.occasion?.previousYear, model.occasion?.previousMonth);
     const next = model.now?.toLocaleDateString('de-DE', { month: 'long' }) || 'Folgemonat';
-    const amountText = summary ? `Geplante Entnahme aus dem Vermögen im ${next}: ${money(summary.monthlyWithdrawal)} · Plan ${summary.year ?? model.now?.getFullYear() ?? '—'}`
-        : 'Noch kein passender Plan und kein bestätigter Monatsbetrag.';
+    const source = withdrawalSource(model);
+    const amountText = summary ? `${source.fixed ? 'Geplante' : 'Vorläufige'} Entnahme aus dem Vermögen im ${next}: ${money(summary.monthlyWithdrawal)} · ${source.source}`
+        : 'Noch kein passender Jahresplan und keine vorläufige Entnahme verfügbar.';
     const budgetStatus = model.expenseBudgetSource?.status || (Number.isFinite(model.expenseBudget) ? 'provisional' : 'missing');
     const budgetDone = Boolean(['adopted', 'provisional'].includes(budgetStatus) && expenses.complete
         && Number.isFinite(expenses.spent) && Number.isFinite(model.expenseBudget) && model.expenseBudget >= 0);
@@ -53,11 +70,18 @@ export function projectOverviewMonthSteps(model = {}) {
                 : budgetStatus === 'invalid' ? 'Budgetquelle nicht sicher lesbar oder widersprüchlich. Bitte prüfen.' : budgetDone ? difference === 0 ? `genau im Budget (${money(model.expenseBudget)})` : `${money(Math.abs(difference))} ${difference > 0 ? 'über' : 'unter'} Budget${percentage}`
                 : 'Für den Vergleich fehlen vollständige Ausgaben oder ein passendes Budget.' },
         { id: 'cash', chip: 'Tagesgeld & Monatsbetrag', title: 'Tagesgeld prüfen', continueLabel: 'Weiter zum Tagesgeld', done: false,
-            amountText,
+            amountText, closeAmountText: summary ? `Entnahme im ${next}: ${money(summary.monthlyWithdrawal)} · ${source.fixed ? 'laut Plan ' + (model.summary?.year ?? model.now?.getFullYear()) : 'vorläufig'}` : amountText,
             result: summary ? `${amountText}. Tagesgeld ändern oder ‚Stand stimmt‘ bestätigen.` : amountText }
     ];
     const current = steps.find(step => !step.done && step.state !== 'not_applicable')?.id;
     return steps.map(step => ({ ...step, prepared: step.id !== 'cash', state: step.done ? 'done' : step.state === 'not_applicable' ? 'not_applicable' : step.id === current ? 'current' : 'open' }));
+}
+
+function budgetSourceLabel(model) {
+    const source = model.expenseBudgetSource;
+    const status = source?.status || (Number.isFinite(model.expenseBudget) ? 'provisional' : 'missing');
+    return status === 'adopted' ? `laut Plan ${source?.year ?? model.expenses?.year ?? model.occasion?.previousYear}`
+        : status === 'provisional' ? 'vorläufig' : status === 'invalid' ? 'Quelle nicht sicher lesbar' : 'kein passendes Budget';
 }
 
 /** Anzeigeprojektion des angenommenen Monatsauftrags; keine Livequellen und keine Writes. */
@@ -67,8 +91,12 @@ export function projectConfirmedMonthResult(model, cash = {}) {
         nextMonth: model.now?.toLocaleDateString('de-DE', { month: 'long' }) || 'Folgemonat',
         expenses: steps[1].result, budgetComparison: steps[2].result, budgetTone: steps[2].resultTone,
         people: (cash.people || []).map(person => ({ name: person.name,
-            value: Number.isFinite(cash.values?.[person.id]) ? new Intl.NumberFormat('de-DE', { maximumFractionDigits: 20 }).format(cash.values[person.id]) + ' €' : '—' })),
-        cashTotal: cashTotalMoney(Object.values(cash.values || {})), withdrawal: money(model.summary?.monthlyWithdrawal) };
+            value: Number.isFinite(cash.values?.[person.id]) ? new Intl.NumberFormat('de-DE', { maximumFractionDigits: 20 }).format(cash.values[person.id]) + ' €' : '—',
+            status: cash.values?.[person.id] !== person.value ? 'geändert' : 'bestätigt' })),
+        expensesAmount: money(model.expenses?.spent), budgetAmount: money(model.expenseBudget), budgetSource: budgetSourceLabel(model),
+        withdrawalFixed: withdrawalSource(model).fixed,
+        cashTotal: cashTotalMoney(Object.values(cash.values || {})), withdrawal: money(model.summary?.monthlyWithdrawal),
+        withdrawalDetail: withdrawalSource(model).detail };
 }
 
 /** Lokale Monatsansicht: ausschließlich bereits gelesene Ausgabenrecords. */
@@ -94,7 +122,7 @@ export function createOverviewStepContent({ doc, model, step, status, wealthStat
     const body = node('div');
     const result = node('p', step.result);
     if (step.resultTone === 'warning') result.className = 'close-dialog-result-warning';
-    body.append(result);
+    if (step.id !== 'budget') body.append(result);
     if (step.id === 'prices') {
         const refresh = button('Kurse aktualisieren'); refresh.dataset.closePricesRefresh = ''; body.append(refresh);
         const details = node('details'); details.dataset.closePricesDetails = ''; details.append(node('summary', 'Details ansehen'));
@@ -156,10 +184,17 @@ export function createOverviewStepContent({ doc, model, step, status, wealthStat
     }
     if (step.id === 'budget') {
         const progress = closeImportProgress(model);
-        body.append(node('p', !progress.complete && Number.isFinite(model.expenses?.partialSpent)
-            ? `Ausgaben bisher: ${money(model.expenses.partialSpent)} (${progress.missing.join(', ')} ${progress.missing.length === 1 ? 'fehlt' : 'fehlen'})`
-            : `Ausgaben: ${money(model.expenses?.spent)}`));
-        if (Number.isFinite(model.expenseBudget)) body.append(node('p', `Monatsbudget: ${money(model.expenseBudget)}`));
+        const comparable = step.done, difference = comparable ? model.expenses.spent - model.expenseBudget : null;
+        const percent = comparable && model.expenseBudget > 0 ? `${formatDisplayNumber(Math.abs(difference) / model.expenseBudget * 100, { fractionDigits: 1 })} %` : '';
+        body.append(createCloseTiles({ doc, items: [
+            { label: `Ausgaben ${monthName(model.occasion?.previousYear, model.occasion?.previousMonth)}`,
+                value: money(model.expenses?.complete ? model.expenses.spent : model.expenses?.partialSpent),
+                detail: model.expenses?.complete ? 'vollständig' : `unvollständig${progress.missing.length ? ' · ' + progress.missing.join(', ') + ' fehlt' : ''}` },
+            { label: 'Monatsbudget', value: money(model.expenseBudget), detail: budgetSourceLabel(model) },
+            { label: 'Abweichung', value: comparable ? `${difference > 0 ? '+' : difference < 0 ? '−' : ''}${money(Math.abs(difference))}` : '—',
+                detail: comparable ? difference === 0 ? 'genau im Budget' : `${percent}${percent ? ' ' : ''}${difference > 0 ? 'über' : 'unter'} Budget` : step.result,
+                tone: step.resultTone }
+        ] }));
         if (!model.expenses?.complete && step.state !== 'not_applicable') {
             const missing = (model.members || []).filter(p => !model.expenses?.rows?.some(r => r.id === p.id && r.present));
             body.append(node('p', `Import fehlt: ${missing.map(p => p.name).join(', ')}`));
@@ -195,8 +230,8 @@ export function requestOverviewMonthConfirmation({ doc = document, signal, retur
         const accept = node('button'); accept.type = 'button'; accept.className = 'ds-button ds-button-primary'; accept.dataset.overviewMonthAccept = '';
         const cancel = node('button', 'Schließen'); cancel.type = 'button'; cancel.className = 'ds-button ds-button-secondary'; cancel.dataset.overviewMonthCancel = '';
         const cash = people.length ? createTagesgeldFields({ doc, people, prefix: 'overviewTagesgeld', monthly: true, closePresentation: true, requireConfirmation: true,
-            asOfLabel: model.now ? `Kontostand heute (${model.now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })})` : 'Kontostand heute',
-            explanation: 'Tagesgeldentwurf – wird erst mit dem Monatsabschluss gespeichert.', title: '' }) : null;
+            asOfLabel: model.now ? `Kontostand heute, ${model.now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}` : 'Kontostand heute',
+            explanation: 'Tagesgeldentwurf – wird erst mit dem Monatsabschluss gespeichert. Der Cashbeleg trägt den heutigen Bestätigungstag, nicht den letzten Tag des abgeschlossenen Monats. Fließt in den Vermögensverlauf ein.', title: '' }) : null;
         const cashReady = () => !cash || cash.ready;
         const initial = cash?.inputs.map(input => input.value) || [];
         const dirty = () => cash?.inputs.some((input, index) => {
@@ -221,16 +256,20 @@ export function requestOverviewMonthConfirmation({ doc = document, signal, retur
             if (step.id === 'cash') {
                 // Cashquelle und Entwurf werden niemals durch einen Importrefresh neu gekoppelt.
                 if (!contents.has('cash')) {
-                    const recommendation = node('p', step.amountText); recommendation.className = 'close-dialog-recommendation';
-                    body.append(recommendation); if (cash) body.append(cash.root);
+                    const recommendation = node('p', step.closeAmountText); recommendation.className = 'close-dialog-recommendation';
+                    if (cash) body.append(cash.root); body.append(recommendation);
                     if (!nextModel.summary) body.append(link('Balance.html', 'Plan rechnen'));
                     contents.set('cash', body);
                 }
-                contents.get('cash').children[0].textContent = step.amountText;
+                const recommendation = contents.get('cash').querySelector('.close-dialog-recommendation');
+                Array.from(recommendation.children || []).forEach(child => child.remove());
+                recommendation.textContent = step.closeAmountText;
+                if (nextModel.summary) recommendation.append(createInfoPopover(doc, 'Herkunft der Entnahme', withdrawalSource(nextModel).detail));
             }
-            return { ...step, progressByVisit: step.id !== 'cash', ...(step.id === 'cash' ? { state: !cash ? 'not_applicable' : cash.ready ? 'entered' : 'open',
+            return { ...step, progressByVisit: step.id !== 'cash', ...(step.id === 'cash' ? { state: !cash ? 'not_applicable' : cash.ready ? 'done' : 'open', done: Boolean(cash?.ready),
+                statusLabel: !cash ? 'entfällt' : cash.ready ? 'erledigt' : `${cash.openPeople.length} offen`,
                 // Die Monatsinformation steht ausschließlich im sichtbaren Tagesgeldinhalt.
-                result: !cash ? 'Entfällt: Keine Tagesgeldpersonen vorhanden.' : cash.ready ? 'Eingetragen – noch nicht gespeichert.' : 'Tagesgeld noch nicht bestätigt.',
+                result: !cash ? 'Entfällt: Keine Tagesgeldpersonen vorhanden.' : cash.ready ? 'Je Person bestätigt oder geändert' : 'Je Person bestätigen oder ändern',
                 onNext: () => cash?.focusConfirmation() ?? true } : {}),
                 contentOwnResult: true, content: step.id === 'cash' ? contents.get('cash') : body };
         });
@@ -240,7 +279,7 @@ export function requestOverviewMonthConfirmation({ doc = document, signal, retur
             accept.disabled = !isReady();
             const unseen = handle?.firstUnvisited();
             const text = closeReadinessText({ unseen, action: accept.textContent,
-                problem: !cashReady() ? 'Tagesgeld ändern oder ‚Stand stimmt‘ bestätigen.'
+                problem: !cashReady() ? `Tagesgeld ${cash.openPeople.join(', ')} bestätigen oder ändern`
                     : !currentModel.summary ? 'Ein passender Plan fehlt.' : currentModel.recovery ? 'Wiederherstellung erforderlich.'
                     : importActive ? 'Ausgabenimport läuft – bitte warten.' : handle?.busy || isCommitActive() ? 'Speichervorgang läuft – bitte warten.' : '' });
             handle?.setStatus(text);
@@ -256,7 +295,7 @@ export function requestOverviewMonthConfirmation({ doc = document, signal, retur
             advanceCloseImport(handle, previousModel, nextModel);
             syncReady();
             handle?.setProgressNames((nextModel.members || []).map(person => person.name).join(' + '));
-            handle?.setFootnote(`${nextCloseText(nextModel)} Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. ${cash ? 'Alle Vorbereitungsschritte ansehen und Tagesgeld je Person ändern oder bestätigen; ungespeicherte Eingaben werden beim Schließen verworfen.' : 'Alle Vorbereitungsschritte ansehen.'}`.trim());
+            handle?.setFootnote(nextCloseText(nextModel), cash ? monthCloseRules : 'Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. Alle Vorbereitungsschritte ansehen.');
         };
         handle = createCloseDialog({ doc, id: 'overviewMonthConfirmation', title: `${monthName(model.occasion?.previousYear, model.occasion?.previousMonth)} abschließen`,
             actions: [cancel, accept], steps: project(model), signal, returnFocus,
@@ -290,9 +329,9 @@ export function requestOverviewMonthConfirmation({ doc = document, signal, retur
                 if (ok && !signal?.aborted) {
                     completed = true; handle.root.dataset.monthResult = 'confirmed'; onDirty(false);
                     const data = projectConfirmedMonthResult(savedModel, accepted.cash);
-                    const result = createCloseResult({ doc, ...data, withdrawalLabel: `Geplante Entnahme aus dem Vermögen im ${data.nextMonth}`, planYear: savedModel.summary?.year }); result.dataset.overviewMonthResult = '';
-                    handle.setResult(result); handle.setStatus(`${data.month} abgeschlossen ✓`);
-                    handle.setFootnote(nextCloseText(savedModel));
+                    const result = createCloseResult({ doc, ...data, withdrawalLabel: `Entnahme ${data.nextMonth}` }); result.dataset.overviewMonthResult = '';
+                    handle.setResult(result); handle.setStatus(nextCloseText(savedModel));
+                    handle.setFootnote('');
                     handle.setTitle(`${data.month} abgeschlossen`);
                     handle.setSubtitle(`${(accepted.cash?.people || savedModel.members || []).map(person => person.name).join(' + ')} · gespeichert am ${savedModel.now?.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) || '—'}`);
                     cancel.hidden = true; accept.textContent = 'Fertig'; delete accept.dataset.overviewMonthRetry; accept.dataset.overviewMonthDone = '';

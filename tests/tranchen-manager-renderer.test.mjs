@@ -1,3 +1,4 @@
+import { documentDouble } from './helpers/page-dialog-dom.mjs';
 "use strict";
 
 import {
@@ -218,7 +219,8 @@ console.log('Test: Gruppen, Steuermarker, Kursdatum und unveränderte Reihenfolg
 console.log('Personenkarten: Einzelprofil, unvollständiger Haushalt und sichere Datenprojektion');
 {
     const hosts = Object.fromEntries(['managerHousehold', 'managerPageTitle', 'managerSectionNav'].map(id => [id, { innerHTML: '', textContent: '' }]));
-    const doc = { getElementById: id => hosts[id] };
+    const doc = { getElementById: id => hosts[id], createElement: documentDouble().doc.createElement };
+    if (hosts.profilePersonDateStatus) hosts.profilePersonDateStatus = documentDouble().doc.createElement('p');
     const profile = { id: 'p"<', name: 'Lina <Nord>', active: true, belongs: true, valid: true,
         householdRole: 'Hauptprofil im Haushalt', assets: 150.75, cost: 50.25, gain: 50.5, count: 1,
         income: 15.75, currentIncome: { status: 'im Monat', missing: false }, incomeSteps: [], allocation: { aktien_neu: 100.75, cash: 50 }, values: { alter: 68, renteMonatlich: 10.5, sonstigeEinkuenfte: 5.25, tagesgeld: 50, healthBucket: { enabled: false } } };
@@ -310,7 +312,8 @@ console.log('Personendaten: echte Kernwerte, Datumshinweise und sichere Textknot
     const { describePersonDates } = await import('../app/profile/profile-person-data.js');
     const ids = ['managerPersonProfileName', 'managerPersonSummary', 'managerAssetsSummary', 'managerCareSummary', 'profilePersonDateStatus', 'managerPensionStatus', 'profileAlter', 'managerBirthSupplement', 'managerBirthSuggestion', 'managerBirthDate', 'managerBirthError'];
     const hosts = Object.fromEntries(ids.map(id => [id, { textContent: '', value: '', dataset: {}, hidden: false }]));
-    const doc = { getElementById: id => hosts[id] };
+    const doc = { getElementById: id => hosts[id], createElement: documentDouble().doc.createElement };
+    if (hosts.profilePersonDateStatus) hosts.profilePersonDateStatus = documentDouble().doc.createElement('p');
     const data = { profile_geburtsdatum: '1958-03-14', profile_rentenbeginn: '2023-04-01' };
     const values = { renteMonatlich: 1500, kirchensteuerPct: 8, tagesgeld: 61000, goldAktiv: true, goldZiel: 7.5, healthBucket: { enabled: true, initialAmount: 40000, triggerMinGrade: 3 } };
     const now = new Date(2026, 9, 9, 12);
@@ -377,7 +380,8 @@ console.log('Personendaten: echte Kernwerte, Datumshinweise und sichere Textknot
         const raw = JSON.stringify(registry);
         const projection = projectManagerProfiles(registry, 'a');
         const hosts = Object.fromEntries(['managerHousehold', 'managerPageTitle', 'managerSectionNav', 'managerPersonSummary', 'profilePersonDateStatus', 'profileAlter'].map(id => [id, { innerHTML: '', textContent: '', value: '', dataset: {} }]));
-        const doc = { getElementById: id => hosts[id] };
+        const doc = { getElementById: id => hosts[id], createElement: documentDouble().doc.createElement };
+    if (hosts.profilePersonDateStatus) hosts.profilePersonDateStatus = documentDouble().doc.createElement('p');
         const before = JSON.stringify(projection);
         renderManagerProfiles(doc, projection);
         assert(hosts.managerHousehold.innerHTML.includes('geb. 02.06.1962 · 64 Jahre') && hosts.managerHousehold.innerHTML.includes('geb. 28.06.1965 · 61 Jahre'), 'Karten zeigen heutige Alter 64/61');
@@ -389,7 +393,9 @@ console.log('Personendaten: echte Kernwerte, Datumshinweise und sichere Textknot
             assert(hosts.managerPersonSummary.textContent.includes(`${today} Jahre`), 'Geschlossene Zusammenfassung zeigt heutiges Alter');
             assertEqual(person.values.alter, january, 'values.alter bleibt Planungswert');
             assertEqual(hosts.profileAlter.value, january, 'Verborgenes profileAlter bleibt Planungswert');
-            assert(hosts.profilePersonDateStatus.textContent.includes(`Planung 2026 zählt das Alter am 01.01.: ${january} Jahre`) && hosts.profilePersonDateStatus.textContent.includes(`Planung 2027: ${january + 1}`), 'Detail erklärt Januarregel und Folgeplanung');
+            assertEqual(hosts.profilePersonDateStatus.textContent, `Planalter 2026: ${january} Jahre`, 'Kurze Zeile zeigt Januaralter');
+            const explanation = hosts.profilePersonDateStatus.children.at(-1).children[1].textContent;
+            assert(explanation.includes(`Planung 2026 zählt das Alter am 01.01.: ${january} Jahre`) && explanation.includes(`Planung 2027: ${january + 1}`), 'Infofenster erhält Januarregel und Folgeplanung');
         }
         assertEqual(JSON.stringify(projection), before, 'Rendering lässt alle Eingangsobjekte unverändert');
         assertEqual(JSON.stringify(registry), raw, 'Projektion und Rendering erhalten sämtliche Speicherrohwerte');

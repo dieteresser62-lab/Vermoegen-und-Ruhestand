@@ -1,6 +1,6 @@
 import { assertPlanValues, PLAN_FIELD_PATHS } from '../profile/household-plan.js';
 import { getPlanField, setPlanField } from '../profile/household-plan-migration.js';
-import { HOUSEHOLD_PLAN_FIELDS, HOUSEHOLD_PLAN_GROUPS, assertHouseholdPlanInputValues, bindHouseholdPlanField, readHouseholdPlanField, projectHouseholdPlanBindings, hasHouseholdPlanDynamicErrors, hasHouseholdPlanDynamicCorrections } from './household-plan-fields.js';
+import { HOUSEHOLD_PLAN_FIELDS, HOUSEHOLD_PLAN_GROUPS, createHouseholdPlanHint, assertHouseholdPlanInputValues, bindHouseholdPlanField, readHouseholdPlanField, projectHouseholdPlanBindings, hasHouseholdPlanDynamicErrors, hasHouseholdPlanDynamicCorrections } from './household-plan-fields.js';
 import { computeAnnualPlanUpdate } from '../balance/balance-annual-storage.js';
 import { evaluateAnnualDraft } from '../balance/balance-annual-storage-commit.js';
 import { annualEngineLoader } from './annual-engine-loader.js';
@@ -152,7 +152,7 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, onSt
     for (const spec of HOUSEHOLD_PLAN_FIELDS) {
         const row = create('div', '', 'household-plan-field ds-field');
         const label = create('label', spec.label);
-        if (spec.hint) label.append(create('small', spec.hint));
+        if (spec.hint) label.append(createHouseholdPlanHint(doc, spec));
         const field = create(spec.options ? 'select' : 'input');
         field.id = 'annualPlan_' + spec.path.replaceAll('.', '_'); label.setAttribute('for', field.id);
         field.dataset.annualPlanField = spec.path;

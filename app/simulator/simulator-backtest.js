@@ -32,7 +32,6 @@ import { beginOverviewRun, completeOverviewRun, failOverviewRun, readOverviewAss
 import { resolveDynamicFlexRunnerHorizon } from './dynamic-flex-runner-horizon.js';
 import { createHistoricalBacktestContractProvider } from './historical-backtest-contract.js';
 import { runHistoricalBacktest } from './historical-backtest-runner.js';
-import { runHistoricalBacktestCohorts } from './historical-backtest-cohorts.js';
 import {
     captureHistoricalBacktestEngineProvenance,
     createHistoricalBacktestDownload
@@ -45,12 +44,10 @@ import {
     buildAccessibleBacktestTableHtml,
     configureHistoricalBacktestControls,
     createBacktestUiStatus,
-    createImmutableCohortInventory,
     describeHistoricalBacktestResult,
     escapeBacktestHtml,
     focusBacktestElement,
-    renderHistoricalBacktestCohorts,
-    renderHistoricalBacktestNotices,
+    renderHistoricalBacktestContext,
     renderHistoricalBacktestStatus,
     renderHistoricalBacktestValidation,
     validateHistoricalBacktestPeriod
@@ -151,8 +148,6 @@ function renderBacktestSummary(result) {
         ? formatPercentValue(healthBucket.realCoveragePct, { fractionDigits: 0, invalid: '—' })
         : '—';
 
-    const caption = document.getElementById('backtestResultPeriod');
-    if (caption) caption.textContent = `${result.request?.startYear ?? '—'}–${result.request?.endYear ?? '—'} · ${result.completedYears ?? 0} von ${result.requestedYears ?? 0} Jahren ausgewertet`;
     const restriction = projectMinimumFlexDisplay(result, { backtest: true });
     const restrictionValue = restriction.legacy
         ? `${metrics.flex_reduction_years_gte_10_pct ?? '—'} von ${result.completedYears ?? '—'} Jahren`
@@ -186,7 +181,7 @@ function renderBacktestSummary(result) {
 
 function setBacktestResultsVisible(visible) {
     const results = document.getElementById('simulationResults');
-    if (results) results.style.display = visible ? 'block' : 'none';
+    if (results) results.style.display = visible ? 'contents' : 'none';
 }
 
 function setBacktestExportEnabled(enabled) {
@@ -203,23 +198,15 @@ function clearBacktestResultProjection() {
     if (summary) summary.innerHTML = '';
     if (log) { log.innerHTML = ''; log.textContent = 'Keine Daten'; }
     if (chart) { disposeThreeBucketPortfolioChart(chart); chart.innerHTML = ''; chart.style.display = 'none'; }
-    for (const id of ['backtestProtocolSummary', 'backtestResultPeriod']) {
+    for (const id of ['backtestProtocolSummary', 'backtestResultPeriod', 'backtestResultInfoPop']) {
         const element = document.getElementById(id);
         if (element) {
             element.innerHTML = '';
             if (element.dataset) delete element.dataset.personProfileIds;
         }
     }
-    renderHistoricalBacktestCohorts(document, null, null);
     setBacktestResultsVisible(false);
     setBacktestExportEnabled(false);
-}
-
-function clearBacktestNotices() {
-    const section = document.getElementById('backtestNotices');
-    const list = document.getElementById('backtestNoticeList');
-    if (section) section.hidden = true;
-    if (list) list.innerHTML = '';
 }
 
 /** Der wirksame Haushaltswechsel entzieht allen Detailprojektionen ihre Quelle. */
@@ -229,7 +216,6 @@ export function invalidateBacktestForHousehold() {
     window.globalBacktestData = null;
     invalidatedHouseholds.add(document);
     clearBacktestResultProjection();
-    clearBacktestNotices();
     renderInvalidatedBacktestStatus('idle');
     backtestNavigationRegistration()?.notify();
 }
@@ -284,17 +270,12 @@ function executeBacktest(options = {}) {
     const button = document.getElementById('btButton');
     try {
         if (button) button.disabled = true;
-        clearBacktestNotices();
         const dependencies = options && typeof options === 'object' ? options : {};
         const historicalDataProvider = dependencies.historicalDataProvider || HISTORICAL_BACKTEST_PROVIDER;
-        const cohortCheckbox = document.getElementById('runBacktestCohorts');
-        const cohortHorizonInput = document.getElementById('backtestCohortHorizon');
         const validation = validateHistoricalBacktestPeriod({
             startRaw: document.getElementById('simStartJahr')?.value,
             endRaw: document.getElementById('simEndJahr')?.value,
-            bounds: historicalDataProvider.bounds,
-            cohortsEnabled: dependencies.cohortsEnabled ?? Boolean(cohortCheckbox?.checked),
-            cohortHorizonRaw: cohortHorizonInput?.value
+            bounds: historicalDataProvider.bounds
         });
         renderHistoricalBacktestValidation(document, validation, { focus: dependencies.focus !== false });
         if (!validation.valid) {
@@ -342,25 +323,6 @@ function executeBacktest(options = {}) {
             )
         });
 
-        let cohortInventory = null;
-        if (validation.cohortsEnabled && ['completed', 'ruin'].includes(backtestResult.outcome?.kind)) {
-            const runCohorts = dependencies.runCohorts || runHistoricalBacktestCohorts;
-            const cohortResult = runCohorts({
-                inputs,
-                range: { startYear: validation.startYear, endYear: validation.endYear },
-                cohortHorizonYears: validation.cohortHorizonYears,
-                historicalDataProvider,
-                simulateYear: dependencies.simulateYear || simulateOneYear,
-                initializePortfolio: dependencies.initializePortfolio || initializePortfolio,
-                computeAdjustmentPct: dependencies.computeAdjustmentPct || computeAdjPctForYear,
-                resolveHorizon: dependencies.resolveHorizon || resolveDynamicFlexRunnerHorizon,
-                totalPortfolio: dependencies.totalPortfolio || portfolioTotal,
-                breakOnRuin: dependencies.breakOnRuin ?? BREAK_ON_RUIN,
-                runSinglePath
-            });
-            cohortInventory = createImmutableCohortInventory(cohortResult.inventory);
-        }
-
         if (!isCurrent()) return null;
         // UI, Summary, Tabelle und Export teilen exakt diese immutable Runner-Instanz.
         window.globalBacktestData = Object.freeze({
@@ -375,25 +337,19 @@ function executeBacktest(options = {}) {
             requestedYears: backtestResult.requestedYears,
             completedYears: backtestResult.completedYears,
             breakOnRuin: backtestResult.breakOnRuin,
-            ...(cohortInventory ? {
-                cohortInventory,
-                cohortHorizonYears: validation.cohortHorizonYears
-            } : {}),
             decumulationMode: inputs?.decumulation?.mode || STRATEGY_OPTIONS.STANDARD,
             goldAktiv: inputs?.goldAktiv,
             minimumFlexProfiles: Array.isArray(inputs?.minimumFlexProfiles)
                 ? inputs.minimumFlexProfiles.map(entry => ({ ...entry }))
                 : []
         });
-        renderHistoricalBacktestStatus(document, describeHistoricalBacktestResult(backtestResult), { focus: dependencies.focus !== false });
-        renderHistoricalBacktestNotices(document, backtestResult, cohortInventory);
 
         if (['completed', 'ruin'].includes(backtestResult.outcome?.kind)) {
             invalidatedHouseholds.delete(document);
             setBacktestResultsVisible(true);
             setBacktestExportEnabled(true);
             renderBacktestSummary(backtestResult);
-            renderHistoricalBacktestCohorts(document, cohortInventory, validation.cohortHorizonYears);
+            renderHistoricalBacktestContext(document, backtestResult);
             renderBacktestLog();
             completeOverviewRun('backtest', overviewToken, backtestResult);
             if (generation === backtestGeneration && simulatorRunAssumptions.read('backtest').last?.metadata === overviewToken.metadata) {
@@ -405,6 +361,7 @@ function executeBacktest(options = {}) {
             clearBacktestResultProjection();
             failOverviewRun('backtest', backtestResult.outcome?.kind === 'incomplete' ? 'missing' : 'technical_error');
         }
+        renderHistoricalBacktestStatus(document, describeHistoricalBacktestResult(backtestResult), { focus: dependencies.focus !== false });
         return backtestResult;
     } catch (error) {
         window.globalBacktestData = null;
@@ -542,8 +499,7 @@ export function exportBacktestLogData(format = 'json') {
 
     try {
         const download = createHistoricalBacktestDownload(backtestData.result, format, {
-            personDataContext: backtestData.personDataContext,
-            cohortInventory: backtestData.cohortInventory
+            personDataContext: backtestData.personDataContext
         });
         triggerDownload(download.filename, download.content, download.mimeType);
     } catch (error) {
@@ -618,19 +574,9 @@ export function initializeBacktestUI() {
         void runBacktestWithRuntimeProvenance();
     });
 
-    const cohortCheckbox = document.getElementById('runBacktestCohorts');
-    const cohortHorizonInput = document.getElementById('backtestCohortHorizon');
-    const syncCohortControl = () => {
-        if (cohortHorizonInput) cohortHorizonInput.disabled = !cohortCheckbox?.checked;
-        if (!cohortCheckbox?.checked) clearBacktestFieldError('backtestCohortHorizon', 'backtestCohortHorizonError');
-    };
-    bindBacktestEventOnce(cohortCheckbox, 'change', 'CohortToggle', syncCohortControl);
-    syncCohortControl();
-
     for (const [fieldId, errorId] of [
         ['simStartJahr', 'simStartJahrError'],
-        ['simEndJahr', 'simEndJahrError'],
-        ['backtestCohortHorizon', 'backtestCohortHorizonError']
+        ['simEndJahr', 'simEndJahrError']
     ]) {
         const field = document.getElementById(fieldId);
         bindBacktestEventOnce(field, 'input', `Clear${fieldId}`, () => clearBacktestFieldError(fieldId, errorId));

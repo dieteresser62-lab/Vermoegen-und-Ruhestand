@@ -12,6 +12,7 @@ import { cashDateDisplay } from '../shared/tagesgeld-fields.js';
 import { EXAMPLE_EXPENSES_ICON_HTML, exampleExpensesLabel } from '../shared/designsystem-icons.js';
 import { getAppTestDate } from '../shared/app-clock.js';
 import { renderProbelaufPriceInfo } from '../shared/probelauf-price-ui.js';
+import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 }) : '—';
 const allocationNames = { aktien: 'Aktien', anleihe: 'Anleihen', geldmarkt: 'Geldmarkt', gold: 'Gold', cash: 'Tagesgeld' };
@@ -124,6 +125,7 @@ export function renderOverview(doc, model) {
     if (comparisonHost) {
         const origin = model.actionOrigin || projectBalanceActionOrigin({ comparison: planView, year: model.now.getFullYear(), scope: model.scope });
         comparisonHost.innerHTML = householdPlanComparisonHtml(planView) + actionOriginHtml(origin);
+        bindInfoPopovers(doc, { root: comparisonHost });
     }
     const rows = doc.getElementById('overviewPlanRows'); if (rows) rows.hidden = true;
     const empty = doc.getElementById('overviewPlanEmpty');
@@ -163,8 +165,10 @@ function renderYearMonth(month, year, maximum, budget, budgetStatus) {
         <span class="ds-sr-only">${escapeHtml(detail)}</span></div>`;
 }
 
-function renderYearMetric(label, value, detail) {
-    return `<div class="overview-year-metric"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(detail)}</small></div>`;
+function renderYearMetric(label, value, detail, infoId) {
+    return `<div class="overview-year-metric"><span class="overview-year-metric-label"><span>${escapeHtml(label)}</span><span class="ds-info">
+        <button type="button" class="ds-info-button" aria-label="Details zu ${escapeHtml(label)}" aria-controls="${infoId}" aria-describedby="${infoId}" aria-expanded="false">ⓘ</button>
+        <span class="ds-info-pop" id="${infoId}" role="tooltip">${escapeHtml(detail)}</span></span></span><strong>${escapeHtml(value)}</strong></div>`;
 }
 
 /** Gespeicherte Monatswerte und vier Kennzahlen; keine Engine- oder Storageaufrufe. */
@@ -184,8 +188,12 @@ export function renderOverviewYear(doc, model) {
         return;
     }
     set('overviewYearTitle', `${annual.year}${annual.retrospective ? ' im Rückblick' : ' bisher'}`);
+    const yearStart = !annual.retrospective && annual.lastMonth === 0;
+    const firstMonth = calendarMonth(annual.year, annual.lastMonth + 1);
     const partial = annual.complete ? 'Alle abgeschlossenen Monate vollständig.' : 'Für einige Monate fehlen noch Ausgaben. Fehlende Imports bedeuten nicht, dass nichts ausgegeben wurde.';
-    set('overviewYearNote', `${annual.retrospective ? 'Ausgaben je Monat' : 'Ausgaben bis einschließlich Vormonat'} · ${partial}`);
+    set('overviewYearNote', yearStart
+        ? `${annual.year} hat begonnen. Die erste Monatsauswertung kommt nach dem ${firstMonth}abschluss (ab ${displayDate(new Date(annual.year, annual.lastMonth + 1, 1))}).`
+        : `${annual.retrospective ? 'Ausgaben je Monat' : 'Ausgaben bis einschließlich Vormonat'} · ${partial}`);
     set('overviewYearStand', annual.budget === null ? `Noch kein Budget für ${annual.year} – erscheint nach der ersten Balance-Rechnung.` : '');
     const yearHint = doc.getElementById('overviewYearStand'); if (yearHint) yearHint.hidden = annual.budget !== null;
     const provisional = annual.budgetStatus !== 'adopted';
@@ -204,11 +212,13 @@ export function renderOverviewYear(doc, model) {
     if (budgetLabel && annual.budget !== null) budgetLabel.style.top = `calc(150px * ${1 - annual.budget / maximum})`;
     if (chart) chart.innerHTML = annual.months.map(month => renderYearMonth(month, annual.year, maximum, annual.budget, budgetStatus)).join('');
     const comparison = annual.comparison;
-    const wealthValue = Number.isFinite(comparison?.delta) ? money(comparison.delta) : '';
+    const wealthValue = money(comparison?.delta);
     const wealthDetail = wealthComparisonBasis(comparison, annual.year, annual.retrospective)
         + (Number.isFinite(comparison?.percent) ? ' · ' + formatDisplayNumber(comparison.percent, { unit: 'percent', fractionDigits: 1 }) : '');
     const expensePeriod = annual.lastMonth ? `01.01.${annual.year} bis ${displayDate(new Date(annual.year, annual.lastMonth, 0))}` : `Noch kein abgeschlossener Monat ${annual.year}`;
-    const sumDetail = annual.budgetPercent === null ? 'noch ohne Budget' : `${Math.round(annual.budgetPercent)} % des ${annual.retrospective ? 'Jahresbudgets' : 'Budgets bis Vormonat'}`;
+    const sumDetail = annual.budget === null ? 'noch ohne Budget' : annual.budgetPercent === null
+        ? `${budgetName} ${money(annual.budget)}`
+        : `${Math.round(annual.budgetPercent)} % des ${annual.retrospective ? 'Jahresbudgets' : 'Budgets bis Vormonat'}`;
     const highest = annual.highest ? `Höchster: ${calendarMonth(annual.year, annual.highest.month)} · ${money(annual.highest.spent)}` : 'Kein importierter Monat';
     const rows = annual.retrospective ? [
         ['Ausgaben', money(annual.total), `${expensePeriod} · ${sumDetail}${annual.complete ? '' : ' · unvollständig'}`],
@@ -216,12 +226,15 @@ export function renderOverviewYear(doc, model) {
         ['Monate über Budget', annual.overBudgetCount === null ? '—' : `${annual.overBudgetCount} von ${annual.lastMonth}${annual.complete ? '' : ' · unvollständig'}`, `${expensePeriod} · ${highest}${annual.budget === null ? ' · noch ohne Budget' : ''}`],
         ['Verkäufe', Number.isFinite(annual.sales?.count) ? String(annual.sales.count) : '—', `Im Jahr ${annual.year} · ` + (Number.isFinite(annual.sales?.net) ? `${money(annual.sales.net)} netto ins Tagesgeld${annual.sales.unconfirmed ? ' · ' + annual.sales.unconfirmed + ' unbestätigt' : ''}` : 'Verkaufsnachweise nicht verfügbar')]
     ] : [
-        ['Ausgaben bis Vormonat', money(annual.total), `${expensePeriod} · ${annual.complete ? sumDetail : 'Es fehlen noch Ausgaben · ' + sumDetail}`],
-        ['Hochrechnung', money(annual.forecast), `Für ${annual.year} · ` + (annual.forecast === null ? 'Noch nicht genug vollständige Monate' : `aus ${expensePeriod}${annual.forecastIncomplete ? ' · unvollständig' : ''}`)],
+        ['Ausgaben bis Vormonat', money(annual.total), `${expensePeriod} · ${annual.complete || yearStart ? sumDetail : 'Es fehlen noch Ausgaben · ' + sumDetail}`],
+        ['Hochrechnung', money(annual.forecast), `Für ${annual.year} · ` + (yearStart ? `Nach dem ${firstMonth}abschluss` : annual.forecast === null ? 'Noch nicht genug vollständige Monate' : `aus ${expensePeriod}${annual.forecastIncomplete ? ' · unvollständig' : ''}`)],
         ['Vermögen', wealthValue, wealthDetail],
         ['Jahresabschluss', `Januar ${annual.year + 1}`, `für ${annual.year} · in ${annual.weeksToJanuary} Wochen`]
     ];
-    if (metrics) metrics.innerHTML = rows.map(row => renderYearMetric(...row)).join('');
+    if (metrics) {
+        metrics.innerHTML = rows.map((row, index) => renderYearMetric(...row, `overviewYearMetricInfo${index + 1}`)).join('');
+        bindInfoPopovers(doc);
+    }
 }
 
 const calendarMonth = (year, month) => new Date(year, month - 1, 1).toLocaleDateString('de-DE', { month: 'long' });
@@ -322,7 +335,7 @@ export function renderOverviewFocus(doc, model) {
     if (open.length && lead && !annual) lead.innerHTML = (play && !firstYear ? '' : escapeHtml(lead.textContent) + ' ') + open.map(step => `<a href="${escapeHtml(expensesDestination(step.href))}" data-profile-handoff data-next-step="${escapeHtml(step.id)}">${escapeHtml(step.title)}</a>`).join(' · ');
     const next = new Date(model.now.getFullYear(), model.now.getMonth() + 1, 1).toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
     const warnings = (occasion.kind === 'monthly' ? [] : model.cashWarnings || []).map(person =>
-        `<p class="overview-cash-warning" data-tagesgeld-warning="${escapeHtml(person.id)}">${escapeHtml(person.name)}: Tagesgeld zuletzt am ${escapeHtml(cashDateDisplay(person.date))} aktualisiert · <a class="overview-card-link" href="depot-tranchen-manager.html?person=${encodeURIComponent(person.id)}#profileTagesgeld" data-profile-handoff>Tagesgeld prüfen</a></p>`).join('');
+        `<p class="overview-cash-warning" data-tagesgeld-warning="${escapeHtml(person.id)}">${escapeHtml(person.name)}: Tagesgeld ${person.date ? `zuletzt am ${escapeHtml(cashDateDisplay(person.date))} aktualisiert` : 'noch ohne datierte Wertänderung'}${person.confirmedDate ? ` · bestätigt am ${escapeHtml(cashDateDisplay(person.confirmedDate))}` : ''} · <a class="overview-card-link" href="depot-tranchen-manager.html?person=${encodeURIComponent(person.id)}#profileTagesgeld" data-profile-handoff>Tagesgeld prüfen</a></p>`).join('');
     if (play) {
         host.className = 'overview-reminders';
         host.removeAttribute('aria-labelledby');

@@ -163,6 +163,8 @@ console.log('Test 4b: strategy reader exposes only the canonical runway input');
 {
     const canonical = readStrategyInputs(createDocumentMock({ liquidityRunwayYears: '6.5' }));
     assertEqual(canonical.liquidityRunwayYears, 6.5, 'Canonical runway years should be read without unit conversion');
+    assertEqual(readStrategyInputs(createDocumentMock({ minCashBufferMonths: '6' })).minCashBufferMonths, 6,
+        'Mindest-Liquidität wird in Monaten aus dem Formular gelesen');
     assert(!Object.hasOwn(canonical, 'runwayMinMonths'), 'Reader should not emit legacy runway minimum');
     assert(!Object.hasOwn(canonical, 'runwayTargetMonths'), 'Reader should not emit legacy runway target');
     assert(!Object.hasOwn(canonical, 'targetEq'), 'Reader should not emit the removed equity target');
@@ -175,6 +177,7 @@ console.log('Test 4b: strategy reader exposes only the canonical runway input');
 
     const defaults = readStrategyInputs(createDocumentMock());
     assertEqual(defaults.liquidityRunwayYears, 5, 'Missing strategy runway should use the five-year default');
+    assertEqual(defaults.minCashBufferMonths, 2, 'Ohne Mindest-Liquidität bleiben zwei Monate Standard');
 }
 console.log('✓ canonical runway reader OK');
 

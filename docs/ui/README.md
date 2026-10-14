@@ -27,12 +27,12 @@ Nach dem Lauf siehst du dir einige PNGs und beide Abläufe an. Prüfe den Zustan
 - [verlauf-erika.png](verlauf-erika.png): Erikas Vermögen ist einzeln sichtbar.
 - [ausgaben.png](ausgaben.png): Ausgaben zeigt Monats- und Jahreswerte.
 - [balance-ueberblick.png](balance-ueberblick.png): Überblick trennt Beschluss und Vorschau.
-- [balance-bedarf-strategie.png](balance-bedarf-strategie.png): Bedarf & Strategie zeigt die drei Bedarfswerte; Alle Parameter ist zugeklappt.
+- [balance-bedarf-strategie.png](balance-bedarf-strategie.png): Bedarf & Strategie zeigt die Bedarfswerte; Alle Parameter fasst die Planwerte zusammen und ist zugeklappt.
 - [balance-diagnose.png](balance-diagnose.png): Diagnose erklärt die Empfehlung.
 - [simulator-ergebnis.png](simulator-ergebnis.png): Ergebnis zeigt Backtest und MC.
-- [simulator-annahmen.png](simulator-annahmen.png): Annahmen zeigt Bedarf, Personen und Pflege mit geschlossenen Detailbereichen.
-- [simulator-backtest.png](simulator-backtest.png): Backtest zeigt das Jahresprotokoll.
-- [monte-carlo-einstellungen.png](monte-carlo-einstellungen.png): Laufzahl, Methode und Seed stehen unter Alle Parameter.
+- [simulator-annahmen.png](simulator-annahmen.png): Annahmen zeigt Bedarf, Personen und Pflege; Alle Parameter fasst dieselben Planwerte wie Haushalt & Plan zusammen.
+- [simulator-backtest.png](simulator-backtest.png): Backtest zeigt Zeitraum links neben Kennzahlen und Einordnung im ⓘ.
+- [monte-carlo-einstellungen.png](monte-carlo-einstellungen.png): Simulation, Zeitraum & Daten und Stresstest stehen in Einstellungen; Erweitert zeigt die technischen Optionen.
 - [monte-carlo-ueberblick.png](monte-carlo-ueberblick.png): Überblick zeigt den Musterlauf.
 - [monte-carlo-risiko-verteilung.png](monte-carlo-risiko-verteilung.png): Die Verteilung macht die Streuung sichtbar.
 - [monte-carlo-pflege.png](monte-carlo-pflege.png): Pflege zeigt das Modellrisiko.
@@ -50,9 +50,9 @@ Nach dem Lauf siehst du dir einige PNGs und beide Abläufe an. Prüfe den Zustan
 - [01-faellig.png](monatsabschluss/01-faellig.png): Die Übersicht bietet den Oktoberabschluss an.
 - [02-kurse.png](monatsabschluss/02-kurse.png): Kurse prüfen zeigt die vorhandenen Kursstände.
 - [03-ausgaben.png](monatsabschluss/03-ausgaben.png): Ausgaben Oktober zeigt den Importstand.
-- [04-budget.png](monatsabschluss/04-budget.png): Der Vergleich zeigt Oktoberausgaben und Budget.
-- [05-tagesgeld.png](monatsabschluss/05-tagesgeld.png): Tagesgeld zeigt Stände und Novemberbetrag.
-- [06-ergebnis.png](monatsabschluss/06-ergebnis.png): Das Ergebnis zeigt den Oktoberabschluss.
+- [04-budget.png](monatsabschluss/04-budget.png): Drei Kacheln zeigen Ausgaben, Monatsbudget und Abweichung.
+- [05-tagesgeld.png](monatsabschluss/05-tagesgeld.png): Tagesgeld zeigt Lesewerte und die Bestätigung je Person.
+- [06-ergebnis.png](monatsabschluss/06-ergebnis.png): Drei Kacheln zeigen den Oktoberabschluss; Herleitung anzeigen ist zugeklappt.
 
 ## Jahr abschließen
 
@@ -61,6 +61,6 @@ Nach dem Lauf siehst du dir einige PNGs und beide Abläufe an. Prüfe den Zustan
 - [03-ausgaben.png](jahresabschluss/03-ausgaben.png): Ausgaben Dezember zeigt den Importstand.
 - [04-budget.png](jahresabschluss/04-budget.png): Der Vergleich zeigt Dezemberausgaben und Jahreswerte.
 - [05-tagesgeld.png](jahresabschluss/05-tagesgeld.png): Tagesgeld zeigt bestätigte Jahresendstände.
-- [06-marktdaten.png](jahresabschluss/06-marktdaten.png): Marktdaten zeigt Inflation, ETF-Kurs und CAPE.
+- [06-marktdaten.png](jahresabschluss/06-marktdaten.png): Drei Kacheln zeigen Inflation, ETF-Schlusskurs und CAPE mit gemeinsamer Herkunft.
 - [07-plan.png](jahresabschluss/07-plan.png): Plan 2027 zeigt Werte und bewusste Anpassung.
-- [08-ergebnis.png](jahresabschluss/08-ergebnis.png): Das Ergebnis zeigt Plan und Handlungsanweisung.
+- [08-ergebnis.png](jahresabschluss/08-ergebnis.png): Das Ergebnis zeigt die Handlungsanweisung, das Monatsbudget und geschlossene Herleitungen.

@@ -578,7 +578,7 @@ async function runSimulatorUiOrchestrationTests() {
         monteCarloUiModule.initMonteCarloMethodControls();
         monteCarloUiModule.initMonteCarloStartYearControls();
         assertEqual(blockSizeInput.disabled, true, 'Regime-Methoden deaktivieren Blocklaengenfeld');
-        assertEqual(blockSizeLabel.textContent, 'Blockgröße (Jahre)', 'Regime-Methoden behalten neutrales Blockgroessenlabel');
+        assertEqual(blockSizeLabel.textContent, 'Blockgröße', 'Regime-Methoden behalten neutrales Blockgroessenlabel');
         assertEqual(filterRow.style.display, 'block', 'FILTER zeigt das Startjahrfeld');
         assertEqual(halfLifeRow.style.display, 'none', 'FILTER blendet die Recency-Halbwertszeit aus');
         assertEqual(filterValue.textContent, '1970', 'FILTER-Ausgabewert wird synchronisiert');
@@ -592,7 +592,7 @@ async function runSimulatorUiOrchestrationTests() {
         methodSelect.value = 'stationary';
         methodSelect.dispatchEvent({ type: 'change' });
         assertEqual(blockSizeInput.disabled, false, 'Stationary Bootstrap aktiviert Blocklaengenfeld');
-        assertEqual(blockSizeLabel.textContent, 'Erwartete Blocklänge (Jahre)', 'Stationary Bootstrap zeigt erwartete Blocklaenge');
+        assertEqual(blockSizeLabel.textContent, 'Erwartete Blocklänge', 'Stationary Bootstrap zeigt erwartete Blocklaenge');
         assert(blockSizeInput.title.includes('1-30'), 'Stationary Tooltip nennt erlaubten Parameterbereich');
 
         methodSelect.dispatchEvent({ type: 'change' });
@@ -667,11 +667,8 @@ async function runSimulatorUiOrchestrationTests() {
         const startYear = registerElement(documentRef, 'simStartJahr', { value: '2000' });
         const endYear = registerElement(documentRef, 'simEndJahr', { value: '2025' });
         const datasetHint = registerElement(documentRef, 'backtestDatasetHint', { tagName: 'p' });
-        const cohortToggle = registerElement(documentRef, 'runBacktestCohorts', { type: 'checkbox' });
-        const cohortHorizon = registerElement(documentRef, 'backtestCohortHorizon', { value: '10' });
         registerElement(documentRef, 'simStartJahrError', { tagName: 'p' });
         registerElement(documentRef, 'simEndJahrError', { tagName: 'p' });
-        registerElement(documentRef, 'backtestCohortHorizonError', { tagName: 'p' });
         registerElement(documentRef, 'toggle-backtest-detail', { type: 'checkbox' });
         registerElement(documentRef, 'exportBacktestJson', { tagName: 'button' });
         registerElement(documentRef, 'exportBacktestCsv', { tagName: 'button' });
@@ -681,10 +678,8 @@ async function runSimulatorUiOrchestrationTests() {
 
         assert(Number.isInteger(Number(startYear.min)) && Number(startYear.min) <= 2000, 'Backtest start input receives provider minimum');
         assertEqual(endYear.max, '2025', 'Backtest end input receives provider maximum');
-        assert(datasetHint.textContent.includes('Datensatz') && datasetHint.textContent.includes('2025'), 'Backtest dataset hint is visible');
+        assert(datasetHint.textContent.includes('Daten') && datasetHint.textContent.includes('2025'), 'Backtest dataset hint is visible');
         assertEqual(startButton.listeners.click.length, 1, 'Backtest start button has exactly one module click handler');
-        assertEqual(cohortToggle.listeners.change.length, 1, 'Cohort toggle has exactly one module change handler');
-        assertEqual(cohortHorizon.disabled, true, 'Cohort horizon remains disabled until explicitly selected');
     }
 
     console.log('Test 10: missing profile selection fails closed while migration remains pending');

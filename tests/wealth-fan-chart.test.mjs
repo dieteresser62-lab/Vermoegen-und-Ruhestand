@@ -10,6 +10,7 @@ const real = renderWealthFanChart(fan, { startYear: 2026, startAge: 65 });
 const nominal = renderWealthFanChart(fan, { mode: 'nominal' });
 assert(real.includes('heutige Euro') && nominal.includes('nominale Euro'), 'Maßstabbeschriftung folgt Daten');
 assert(real.includes('P5–P95') && real.includes('P25–P75') && real.includes('Median'), 'Beide Bänder und Median');
+assert(real.includes('Feste Klassen <span class="ds-info">') && real.includes('genau 5 % bleiben sichtbar.'), 'Kurze Klassenzeile erhält die vollständige Erklärung im Infofenster');
 assert(real.includes('2029 · 68'), 'Horizont mit Kalenderjahr und Alter');
 assert(real.includes('davon 1 ruiniert'), 'Lebens-/Ruinleiste');
 assert(real.includes('wealth-fan-start'), 'Startreferenz');

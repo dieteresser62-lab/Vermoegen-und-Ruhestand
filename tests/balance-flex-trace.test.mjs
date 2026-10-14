@@ -45,6 +45,8 @@ function checkChain(ui) {
 
 const hot = planner();
 const curve = checkChain(hot);
+assertEqual(curve.rows[0].label, 'Geplante Vermögensentnahme (Flex-Anteil)', 'Ungedeckter Floor bleibt außerhalb der benannten Flex-Entnahmetreppe');
+assertEqual(curve.rows.at(-1).label, 'Finanzierte Vermögensentnahme (Flex-Anteil)', 'Finanzierter Treppenwert ist kein Haushalts-Flex');
 assertEqual(curve.reason, 'Flex-Anteil', 'Heißer Markt mit S-Kurve nennt Flex-Anteil statt Bär oder CAPE');
 assert(curve.rows.some(r => r.label === 'Begrenzung nach Flex-Anteil'), 'Kurze Entwurfsbezeichnung wird übernommen');
 const bear = planner(p => { p.market = { sKey: 'bear_deep', abstandVomAthProzent: 35 }; p.input.minimumFlexAnnual = 30_000; });
@@ -60,6 +62,8 @@ for (const input of [base, { ...base, dynamicFlex: true }]) {
     const result = EngineAPI.simulateSingleYear(input, null, { includeFlexTrace: true });
     const ui = { ...result.ui, input };
     const view = checkChain(ui);
+    near(view.financedHouseholdFlex, view.budget - input.floorBedarf / 12, 'Finanzierter Haushalts-Flex enthält den Rentenüberschuss');
+    near(view.financedHouseholdFlex - view.withdrawal, input.renteMonatlich - input.floorBedarf / 12, 'Rentenanteil und Vermögensentnahme bleiben getrennte Größen');
     if (!input.dynamicFlex) near(view.rows[0].value, (input.flexBedarf - (input.renteMonatlich * 12 - input.floorBedarf)) / 12,
         'Haushaltsrente oberhalb Floor wird genau einmal vom Flex abgezogen');
     else {
@@ -67,6 +71,11 @@ for (const input of [base, { ...base, dynamicFlex: true }]) {
         near(view.grossNeed, ui.neuerBedarf / 12 + input.renteMonatlich, 'Dynamic Flex nutzt gelieferten Haushaltsbedarf');
     }
 }
+
+const review = projectBalanceFlexTrace({ input: { renteAktiv: true, renteMonatlich: 3100, floorBedarf: 30750, flexBedarf: 30000 },
+    spending: { monatlicheEntnahme: 1850, details: { flexRate: 94.3 } } });
+near(review.financedHouseholdFlex, 2387.5, 'Review: 4.950 Euro Budget finanzieren 2.387,50 Euro Haushalts-Flex');
+near(review.householdFlexRate, 95.5, 'Review: Haushaltsquote bezieht sich auf 2.500 Euro Wunsch-Flex einschließlich Rentenanteil');
 
 const full = planner(p => { p.gesamtwert = 11_000_000; p.inflatedBedarf = { floor: 24_000, flex: 12_000 };
     p.input.floorBedarf = 24_000; p.input.flexBedarf = 12_000; });
@@ -86,7 +95,7 @@ try {
     const renderer = new SummaryRenderer({ outputs });
     const button = outputs.balanceBudgetWhy, region = outputs.balanceBudgetTrace;
     renderer.renderPlanCards(hot);
-    assert(region.children.some(node => node.textContent.includes('Einschränkung liegt erst vor') && node.textContent.includes('Rentenbeitrag')), 'Warum-Treppe unterscheidet Wunsch-Kürzung und Mindest-Flex-Einschränkung');
+    assert(region.children.some(node => node.children?.[0]?.children?.[1]?.textContent.includes('Einschränkung liegt erst vor') && node.children[0].children[1].textContent.includes('Rentenbeitrag')), 'Warum-Treppe unterscheidet Wunsch-Kürzung und Mindest-Flex-Einschränkung');
     assert(!button.hidden && region.hidden && button.getAttribute('aria-expanded') === 'false', 'Jedes Ergebnis beginnt mit geschlossener Warum-Treppe');
     for (let i = 0; i < 3; i++) {
         button.click(); assert(!region.hidden && button.getAttribute('aria-expanded') === 'true', 'Warum lässt sich wiederholt öffnen');
@@ -102,13 +111,13 @@ try {
     assert(!outputs.balanceBudgetChips.children.some(n => n.textContent === hot.market.szenarioText), 'Marktphase steht außerhalb der Budgetchips');
     assertEqual(outputs.marktstatusText.children[0].children[0].textContent, hot.market.szenarioText || '', 'Marktphase bleibt in der Marktkarte');
     renderer.renderPlanCards(full);
-    assertEqual(outputs.balanceBudgetCut.textContent, 'Dein flexibler Bedarf ist voll finanziert.', 'Vollfinanzierung erscheint nur bei gültigem ungekürztem Budget');
+    assertEqual(outputs.balanceBudgetCut.textContent, 'Dein Haushalts-Flex ist voll finanziert.', 'Vollfinanzierung erscheint nur bei gültigem ungekürztem Budget');
     assertEqual(outputs.balanceBudgetCut.getAttribute('data-financed'), 'true', 'Vollfinanzierung erhält den positiven Farbzustand');
     assert(button.hidden && region.hidden && !region.children.length, 'Ohne Kürzung fehlen Warum-Knopf und Treppe');
     renderer.renderPlanCards({});
     assertEqual(outputs.balanceBudgetCut.textContent, '', 'Ungültiger Bedarf behauptet keine Vollfinanzierung');
     renderer.renderPlanCards({ ...hot, spending: { ...hot.spending, flexTrace: undefined } });
-    assert(button.hidden && !region.children.length && outputs.balanceBudgetCut.textContent.includes('gekürzt'), 'Altwerte behalten Kürzungszahl ohne erfundene Treppe');
+    assert(button.hidden && !region.children.length && outputs.balanceBudgetCut.textContent.includes('weniger im Monat'), 'Altwerte behalten Kürzungszahl ohne erfundene Treppe');
     assertEqual(writes, 0, 'Öffnen, Schließen und Ergebnisrender schreiben keinen Speicher');
 } finally { globalThis.document = previousDocument; resetPersistenceRuntimeForTests(); }
 const source = fs.readFileSync(new URL('../app/balance/balance-main.js', import.meta.url), 'utf8');

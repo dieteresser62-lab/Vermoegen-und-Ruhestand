@@ -47,8 +47,8 @@
 .wealth-scroll { contain: inline-size; max-width: 100%; overflow-x: auto; }
 .wealth-scroll:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 .wealth-scroll svg { display: block; min-width: 640px; max-width: none; }
-.wealth-scroll svg text { fill: var(--primary-text); font-size: 13px; }
-.wealth-scroll table { font-variant-numeric: tabular-nums; border-collapse: collapse; width: 100%; font-size: var(--balance-help); }
+.wealth-scroll svg text { fill: var(--primary-text); font-size: var(--text-dense); }
+.wealth-scroll table { font-variant-numeric: tabular-nums; border-collapse: collapse; width: 100%; font-size: var(--text-base); }
 .wealth-scroll caption { text-align: left; margin-bottom: 8px; }
 .wealth-scroll th, .wealth-scroll td { text-align: right; padding: var(--plan-table-padding-block) var(--plan-table-padding-inline); border-bottom: 1px solid var(--border-color); white-space: nowrap; }
 .wealth-scroll th:first-child, .wealth-scroll td:nth-child(2) { text-align: left; }
@@ -853,7 +853,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
 #diag-decision-tree { list-style: none; padding: 0; margin: 0; }
 #diag-decision-tree li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); align-items: baseline; overflow-wrap: anywhere; }
 #diag-decision-tree li:last-child { border-bottom: none; }
-#diag-decision-tree .impact { color: var(--text-muted); margin-top: 6px; display: block; font-size: var(--balance-help); }
+#diag-decision-tree .impact { color: var(--text-muted); margin-top: 6px; display: block; font-size: var(--text-base); }
 .ds-decision-body { min-width: 0; }
 #diag-guardrails { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .diag-transaction { display: flex; flex-direction: column; gap: 16px; }
@@ -861,9 +861,9 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
 .guardrail-card.status-warn { background: var(--surface); border-color: var(--border); }
 .guardrail-card.status-danger { background: var(--surface); border-color: var(--border); }
 .guardrail-card strong { display: block; color: var(--text-muted); margin-bottom: 8px; }
-.guardrail-card .value { font: 400 26px/1.2 var(--font-serif); font-variant-numeric: tabular-nums; }
+.guardrail-card .value { font: 400 var(--value-md)/1.2 var(--font-serif); font-variant-numeric: tabular-nums; }
 #diag-guardrails .value { margin-bottom: 8px; }
-.guardrail-card .threshold { font-size: var(--balance-help); color: var(--text-muted); margin-top: 6px; }
+.guardrail-card .threshold { font-size: var(--text-base); color: var(--text-muted); margin-top: 6px; }
 .guardrail-card .ds-info { display: flex; justify-content: flex-end; margin-top: 8px; }
 .guardrail-card .ds-info-pop { width: min(320px, 100%); box-sizing: border-box; }
 .guardrail-card > .ds-plan-chip { display: inline-flex; margin-top: 8px; }
@@ -879,7 +879,7 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
 .key-param-card { border-bottom: 1px solid var(--border); padding: 14px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 6px 16px; min-width: 0; overflow-wrap: anywhere; }
 .key-param-card .label { color: var(--text-muted); }
 .key-param-card .value { font-weight: 600; color: var(--text-main); text-align: right; font-variant-numeric: tabular-nums; }
-.key-param-card .meta { grid-column: 1 / -1; font-size: var(--balance-help); color: var(--text-muted); }
+.key-param-card .meta { grid-column: 1 / -1; font-size: var(--text-base); color: var(--text-muted); }
 .key-param-card[data-trend="up"] .value { color: var(--good); }
 .key-param-card[data-trend="down"] .value { color: var(--bad); }
 .key-param-card[data-trend="neutral"] .value { color: var(--text-main); }
@@ -1212,7 +1212,11 @@ html[data-suite-page="balance"] .balance-page .balance-head > .ds-page-actions {
 .balance-overview > .ov-after { grid-column: 1 / -1; }
 .balance-overview h3 { font: 500 var(--balance-h3)/1.25 var(--font-serif); margin: 0; }
 .balance-overview .ov-hero h3, .balance-overview .ov-act h3 { font: 400 var(--balance-help)/1.5 var(--font-sans); color: var(--text-muted); }
-.balance-hero-num { font: 500 var(--balance-budget)/.95 var(--font-serif); letter-spacing: -.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.balance-hero-num { font: 500 var(--value-xl)/1.2 var(--font-serif); letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.balance-budget-values { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--space-3) var(--space-4); }
+.balance-plan-reference { display: flex; flex-direction: column; gap: 3px; }
+.balance-plan-reference strong { font: 500 var(--value-md)/1.2 var(--font-serif); }
+.balance-budget-values [hidden], .balance-budget-parts [hidden] { display: none; }
 .balance-hero-sub { color: var(--text-muted); font-size: var(--balance-body); }
 .balance-bar { display: flex; height: 16px; background: var(--surface-sunken); border-radius: 999px; overflow: hidden; }
 .budget-part-0 { background: var(--text-main); }
@@ -1220,7 +1224,7 @@ html[data-suite-page="balance"] .balance-page .balance-head > .ds-page-actions {
 .budget-part-2 { background: repeating-linear-gradient(45deg, var(--bad-soft), var(--bad-soft) 6px, var(--surface) 6px, var(--surface) 12px); }
 .balance-budget-parts { display: flex; flex-wrap: wrap; gap: var(--space-4); }
 .balance-budget-parts > div { display: flex; flex-direction: column; gap: 6px; }
-.balance-budget-parts strong { font: 500 var(--balance-kpi)/1.2 var(--font-serif); }
+.balance-budget-parts strong { font: 500 var(--value-md)/1.2 var(--font-serif); }
 .balance-budget-parts .entnahme-subtext { font: 400 var(--balance-help)/1.5 var(--font-sans); }
 .balance-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .balance-budget-notes { display: grid; gap: 4px; }
@@ -1231,7 +1235,7 @@ html[data-suite-page="balance"] .balance-page .balance-head > .ds-page-actions {
 .balance-action-main > div { min-width: 0; }
 .balance-action-icon { width: var(--balance-icon); height: var(--balance-icon); border-radius: 22px; flex: 0 0 auto; background: var(--accent); color: var(--surface); display: flex; align-items: center; justify-content: center; }
 .balance-action-icon svg { width: 28px; height: 28px; }
-.balance-action-verb { font: 500 var(--balance-verb)/1.02 var(--font-serif); letter-spacing: -.015em; overflow-wrap: anywhere; }
+.balance-action-verb { font: 500 var(--balance-h1)/1.02 var(--font-serif); letter-spacing: -.015em; overflow-wrap: anywhere; }
 .balance-action-amount { font: 500 var(--value-md)/1.3 var(--font-serif); color: var(--text-main); margin-top: 10px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 #balanceActionNote { margin: 14px 0 0; line-height: 1.5; color: var(--text-main); font-size: var(--balance-body); }
 .balance-action-foot { margin-top: auto; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-top: 1px solid var(--border); padding-top: 16px; font-size: var(--balance-help); color: var(--text-muted); }
@@ -1265,21 +1269,17 @@ html[data-suite-page="balance"] .balance-page .balance-head > .ds-page-actions {
     .balance-overview > .ov-need { grid-column: span 4; order: 5; }
     .balance-overview > .ov-res { grid-column: span 4; order: 6; }
     .balance-overview > .ov-after { order: 7; }
-    .balance-hero-num { font-size: var(--balance-budget-wide); }
-    .balance-action-verb { font-size: var(--balance-verb-wide); }
 }
 @container balance-page (max-width: 1180px) {
     .balance-overview > .ds-plan-card { grid-column: 1 / -1; }
     .balance-wrap { padding: var(--space-2) var(--space-4) 60px; }
     .balance-head h1 { font-size: var(--balance-h2); }
-    .balance-hero-num { font-size: var(--balance-budget); }
-    .balance-action-verb { font-size: var(--balance-verb); }
 }
 
 
 .ov-after .mini-summary { text-align: left; }
 
-.ov-after .summary-item .value, .ov-after .summary-kpi .value { font: 500 var(--balance-kpi)/1.2 var(--font-serif); }
+.ov-after .summary-item .value, .ov-after .summary-kpi .value { font: 500 var(--value-md)/1.2 var(--font-serif); }
 .ov-mkt .status-indicator { font-size: var(--balance-body); padding: 7px 15px; }
 @container balance-page (max-width: 1180px) {
     .ov-after .mini-summary { grid-template-columns: minmax(0, 1fr); }
@@ -1318,18 +1318,17 @@ html[data-suite-page="balance"] .balance-page .balance-head > .ds-page-actions {
 .balance-strategy-adopt .ds-source { font-size: var(--balance-help); }
 .balance-strategy-grid .ds-segment { width: 100%; box-sizing: border-box; }
 .balance-inflation-note:empty { display: none; }
-.balance-inflation-note { color: var(--good); font-size: var(--balance-help); }
+.balance-inflation-note { color: var(--good); font-size: var(--text-base); }
 .balance-inflation-note .btn { margin: 0; }
 .balance-parameter-head, .balance-need-footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
 .balance-parameter-head { margin-top: var(--space-4); }
-.balance-parameter-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: var(--plan-grid-gap); margin-top: var(--space-4); }
-.balance-parameter-column { display: flex; flex-direction: column; gap: var(--plan-grid-gap); min-width: 0; }
-.balance-parameter-card .ds-field-grid { grid-template-columns: minmax(0, 1fr); }
-.balance-parameter-card :is(.ds-input, .ds-select, .ds-segment > button) { font: 500 var(--value-md)/1.3 var(--font-serif); }
-.balance-parameter-card .balance-market-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.balance-parameter-stack { display: grid; gap: .875rem; min-width: 0; }
+.household-plan-more #kirchensteuerSatz { text-align: right; text-align-last: right; }
+.household-plan-more #kirchensteuerSatz:disabled { appearance: none; border-style: dashed; background: transparent; opacity: 1; }
+.household-plan-more .ds-unit-frame:has(> #sparerPauschbetrag:disabled) { border-style: dashed; background: transparent; }
 .balance-tile-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-3); }
 .balance-value-tile { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface-sunken); }
-.balance-value-tile .ds-help { font-size: var(--text-sm); }
+.balance-value-tile .ds-help { font-size: var(--text-base); }
 #balanceGoldBandFrame[data-gold-active="false"]:has([data-plan-trial-readonly="true"]) { display: none; }
 .balance-backup-card #snapshotList { list-style: none; padding: 0; margin: 0; font-size: var(--balance-help); }
 .balance-backup-card #snapshotList:empty { display: none; }
@@ -1338,6 +1337,7 @@ html[data-suite-page="balance"] .balance-page .balance-head > .ds-page-actions {
 .balance-backup-card .snapshot-status { margin: 0; }
 #tab-strategy [hidden] { display: none; }
 #tab-strategy input:disabled { color: var(--text-main); background: var(--surface-sunken); opacity: 1; }
+#tab-strategy #sparerPauschbetrag:disabled { background: transparent; }
 #updateResultModal [hidden] { display: none; }
 @container balance-form (max-width: 70rem) {
     .balance-strategy-grid, .balance-parameter-grid { grid-template-columns: minmax(0, 1fr); }
@@ -1392,20 +1392,39 @@ html[data-suite-page="balance"] .suite-content { font-size: var(--balance-body);
 .balance-page small, #updateResultModal .modal-result-detail,
 #updateResultModal .modal-duration { font-size: var(--balance-help); }
 .balance-page .wealth-history p { font-size: var(--balance-help); }
-.balance-page .balance-budget-parts strong { font-size: var(--balance-mid); }
-.balance-page .balance-unit { font-size: var(--balance-unit); }
+.balance-page .balance-budget-parts strong { font-size: var(--value-md); }
+.balance-page .balance-unit { font: 400 var(--text-base)/1.5 var(--font-sans); }
+.balance-page .balance-budget-values .ds-source,
+.balance-page .balance-budget-parts .ds-source,
+.balance-page .balance-budget-parts .entnahme-subtext,
+.balance-page .balance-plan-reference .ds-source,
+.balance-page #balanceBudgetChips .ds-help,
+.balance-page #balanceActionPeriod, .balance-page #balanceActionFootnote,
+.balance-page #balanceNextStatus, .balance-page #balanceWealthFooter,
+.balance-page #balanceInflationSource, .balance-page #balancePersonSPBSource,
+.balance-page #balanceReserveCoverage, .balance-page #balanceReserveRunway,
+.balance-page .balance-reserve-target, .balance-page #balanceReserveTargetMonths,
+.balance-page .balance-market-fields label,
+.balance-page .balance-need-meta,
+.balance-page .diag-chip,
+.balance-page .health-bucket-item small, .balance-page .health-bucket-policy,
+.balance-action-dialog .balance-action-transfer,
+.balance-action-dialog #handlungContent .ds-source,
+.balance-action-dialog #actionPurposeContent .ds-source { font-size: var(--text-base); }
+html[data-suite-page="balance"] #balancePlanningYearPill { font-size: var(--text-base); }
+.balance-page .ds-decision-number { font: 400 var(--text-base) var(--font-sans); }
 .balance-page .balance-provenance, .balance-action-transfer {
     font-size: var(--balance-help); color: var(--text-muted); margin: 0;
 }
 .balance-action-transfer:empty { display: none; }
 
 
-.balance-page .health-bucket-item strong { font-size: var(--balance-mid); }
-.balance-page .health-bucket-item .label, .balance-page .health-bucket-item small,
-.balance-page .health-bucket-policy { font-size: var(--balance-help); }
-.balance-page .ds-metric-primary { font-size: var(--balance-big); }
-.balance-page .ds-metric-value { font-size: var(--balance-mid); }
-.balance-page .expenses-card-value { font-size: var(--balance-kpi); }
+.balance-page .health-bucket-item strong { font: 500 var(--value-md)/1.2 var(--font-serif); }
+.balance-page .health-bucket-item .label { font-size: var(--balance-help); }
+.balance-page .health-bucket-item small,
+.balance-page .health-bucket-policy { font-size: var(--text-base); }
+.balance-page .ds-metric-primary, .balance-page .ds-metric-value { font: 500 var(--value-md)/1.2 var(--font-serif); }
+.balance-page .expenses-card-value { font-size: var(--value-md); }
 
 html[data-suite-page="balance"] #navigationGuardDialog { font-size: var(--balance-body); }
 html[data-suite-page="balance"] #navigationGuardDialog h2 { font-size: var(--balance-h2); }
@@ -1439,7 +1458,7 @@ html[data-suite-page="balance"] #navigationGuardDialog h2 { font-size: var(--bal
 .balance-step .ds-help { display: block; font-size: var(--balance-help); }
 
 .balance-reserve-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-#balanceFreeLiquidity { font: 500 var(--balance-big)/1.2 var(--font-serif); }
+#balanceFreeLiquidity { font: 500 var(--value-md)/1.2 var(--font-serif); }
 .balance-reserve-target strong { font: inherit; }
 .ov-res .compact-progress { margin: 0; }
 .balance-need-total strong { font: 600 var(--balance-body)/1.5 var(--font-sans); }
@@ -1471,7 +1490,7 @@ html[data-suite-page="balance"] #navigationGuardDialog h2 { font-size: var(--bal
 .balance-page .balance-flex-trace { margin: 16px 0; padding: 6px 18px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
 .balance-page .balance-flex-trace[hidden], .balance-page .balance-why-button[hidden] { display: none; }
 .balance-flex-trace h4 { margin: 10px 0; font: 500 var(--balance-mid)/1.3 var(--font-serif); }
-.balance-flex-row { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.6fr) 104px; gap: 16px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); font: 400 var(--balance-help)/1.4 var(--font-sans); }
+.balance-flex-row { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.6fr) 104px; gap: 16px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); font: 400 var(--text-base)/1.4 var(--font-sans); }
 .balance-flex-row strong { font-weight: 600; }
 .balance-flex-amount { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .balance-flex-track { position: relative; height: 18px; border-radius: 6px; background: var(--surface-sunken); }
@@ -1483,7 +1502,8 @@ html[data-suite-page="balance"] #navigationGuardDialog h2 { font-size: var(--bal
 .balance-flex-positive .balance-flex-amount { color: var(--good); }
 .balance-flex-total { border-top: 2px solid var(--text-main); }
 .balance-page .ov-need .balance-row { border-bottom-style: dashed; }
-.balance-page .ov-need .balance-unit, .balance-need-meta { font: 400 var(--balance-help)/1.5 var(--font-sans); color: var(--text-muted); }
+.balance-page .ov-need .balance-unit { font: 400 var(--balance-help)/1.5 var(--font-sans); color: var(--text-muted); }
+.balance-need-meta { font: 400 var(--text-base)/1.5 var(--font-sans); color: var(--text-muted); }
 .balance-need-meta { display: block; }
 .balance-page .ov-mkt .status-indicator { border: 0; padding: 7px 15px; border-radius: 999px; }
 .balance-page .ov-mkt .status-green { background: var(--good-soft); color: var(--good); }
@@ -1533,7 +1553,7 @@ html[data-suite-page="balance"] #navigationGuardDialog h2 { font-size: var(--bal
 .balance-action-dialog-head { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; }
 .balance-action-dialog-head h2 { flex: 1; margin: 18px 0 4px; }
 .balance-action-dialog-amount { text-align: right; }
-#actionDetailsAmount { font: 500 var(--balance-big)/1.2 var(--font-serif); font-variant-numeric: tabular-nums; }
+#actionDetailsAmount { font: 500 var(--value-md)/1.2 var(--font-serif); font-variant-numeric: tabular-nums; }
 .balance-action-close { border: 0; background: transparent; color: var(--text-main); width: 40px; height: 40px; }
 .balance-action-detail-title { margin: 0; font: 400 var(--balance-help)/1.5 var(--font-sans); color: var(--text-muted); }
 .balance-action-table-scroll { margin: 0; }
@@ -1545,14 +1565,14 @@ html[data-suite-page="balance"] #navigationGuardDialog h2 { font-size: var(--bal
 .balance-action-use-row .balance-action-number { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 .balance-action-table caption { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .balance-action-table .balance-action-profile { min-width: 8ch; white-space: nowrap; overflow-wrap: normal; }
-.balance-action-engine-version { font-size: 12px; }
+.balance-action-engine-version { font-size: var(--text-base); }
 .balance-action-table :is(th, td) { overflow-wrap: anywhere; vertical-align: top; }
 .balance-action-table .balance-action-number { text-align: right; white-space: nowrap; }
 .balance-action-table .balance-action-total { font-weight: 600; }
 .balance-action-note { display: flex; gap: 12px; margin: 18px 0; background: var(--accent-soft); border-color: var(--accent-line); }
 .balance-action-note > span, .balance-action-note a { color: var(--accent); }
 .balance-action-dialog-primary { justify-content: flex-start; }
-.balance-action-dialog #print-footer { display: block; margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); font-size: var(--balance-help); color: var(--text-muted); }
+.balance-action-dialog #print-footer { display: block; margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); font-size: var(--text-base); color: var(--text-muted); }
 .ov-mkt .status-indicator.status-green { background: color-mix(in srgb, var(--good) 25%, var(--surface)); }
 .ov-mkt .status-indicator.status-amber { background: color-mix(in srgb, var(--warn) 30%, var(--surface)); }
 .ov-mkt .status-indicator.status-red { background: color-mix(in srgb, var(--bad) 30%, var(--surface)); }

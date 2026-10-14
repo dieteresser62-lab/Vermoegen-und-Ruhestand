@@ -142,8 +142,8 @@ export async function runSweepSelfTest() {
         const statusText = allTestsPassed ? '✓ Alle Tests bestanden' : '✗ Einige Tests fehlgeschlagen';
 
         let html = `<div style="padding: 15px; background-color: ${allTestsPassed ? 'var(--good-soft)' : 'var(--bad-soft)'}; border-radius: 4px; border: 1px solid ${statusColor};">`;
-        html += `<strong style="color: ${statusColor}; font-size: 1.1rem;">${statusText}</strong><br><br>`;
-        html += `<div style="font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.6;">`;
+        html += `<strong style="color: ${statusColor}; font-size: var(--balance-h3);">${statusText}</strong><br><br>`;
+        html += `<div style="font-family: var(--font-mono); font-size: var(--text-dense); line-height: 1.6;">`;
         html += logMessages.join('<br>');
         html += `</div></div>`;
 

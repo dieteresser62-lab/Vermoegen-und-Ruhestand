@@ -135,14 +135,12 @@ try {
         assert(getSimulatorPlanTrial(doc).read().confirmed && doc.getElementById('startFloorBedarf').disabled,
             'Echter Ergebnis-Ausgangslauf startet mit bestätigtem Plan und produktiver Formularsperre');
         for (const id of ['simulationSummary', 'simulationLog', 'simulationResults', 'portfolioCompositionChart',
-            'backtestProtocolSummary', 'backtestResultPeriod', 'backtestStatus', 'backtestPeriodStatus', 'backtestDiagnosisCode',
-            'backtestCohortSummary', 'backtestNotices', 'backtestNoticeList', 'exportBacktestJson', 'exportBacktestCsv',
-            'toggle-backtest-detail', 'runBacktestCohorts', 'backtestCohortHorizon', 'overviewRunHeads', 'overviewCrises']) addField(doc, id);
+            'backtestProtocolSummary', 'backtestResultPeriod', 'backtestStatus', 'backtestPeriodStatus', 'backtestResultInfoPop', 'exportBacktestJson', 'exportBacktestCsv',
+            'toggle-backtest-detail', 'overviewRunHeads', 'overviewCrises']) addField(doc, id);
         doc.createElementNS = (_ns, tag) => doc.createElement(tag);
         window.EngineAPI = EngineAPI;
         addField(doc, 'mcDauer', '30');
         doc.getElementById('simEndJahr').value = '2002';
-        doc.getElementById('backtestCohortHorizon').value = '2';
         const provenance = { schemaVersion: 'RuntimeBuildProvenanceV1', sourceCommit: 'a'.repeat(40), sourceTreeStatus: 'clean', provider: 'synthetic_fixture' };
         let summaryGuard;
         const options = { engineApi: EngineAPI, focus: false,
@@ -150,19 +148,19 @@ try {
             beginSimulationSummary: () => ({}), completeSimulationSummary: (_context, _result, _options, dependencies) => {
                 summaryGuard = dependencies.isCurrent; return Promise.resolve(true);
             } };
-        const oldResult = runBacktest({ ...options, cohortsEnabled: true });
+        const oldResult = runBacktest(options);
         assertEqual(oldResult?.outcome.kind, 'completed', 'Echter Zweipersonenlauf ist fertig');
         assertEqual(window.globalBacktestData.personDataContext.persons.map(p => p.profileId).join(','), 'a,b', 'Echter Altbestand gehört zu zwei Profilen');
         assert(doc.getElementById('simulationSummary').innerHTML.includes('Vollständig') && doc.getElementById('simulationLog').innerHTML.includes('<table')
-            && doc.getElementById('portfolioCompositionChart').children.length > 0 && !doc.getElementById('backtestCohortSummary').hidden,
-        'Echter Altbestand besitzt Summary, Tabelle, Chart und Cohortbeleg');
+            && doc.getElementById('portfolioCompositionChart').children.length > 0,
+        'Echter Altbestand besitzt Summary, Tabelle, Chart');
         const oldSummaryGuard = summaryGuard;
         let release, replacementCalls = 0;
         const gate = new Promise(resolve => { release = resolve; });
         realReplacement = () => { replacementCalls++; return runBacktestWithRuntimeProvenance({ ...options, automatic: true, beforeRun: () => gate }); };
         const assertDiscarded = label => {
             assertEqual(window.globalBacktestData, null, label + ': kanonisches Altresultat ist verworfen');
-            for (const id of ['simulationSummary', 'backtestProtocolSummary', 'backtestResultPeriod', 'backtestCohortSummary'])
+            for (const id of ['simulationSummary', 'backtestProtocolSummary', 'backtestResultPeriod', 'backtestResultInfoPop'])
                 assertEqual(doc.getElementById(id).innerHTML, '', label + ': ' + id + ' ist leer');
             assert(!doc.getElementById('simulationLog').innerHTML.includes('<table'), label + ': keine alte Jahrestabelle');
             assertEqual(doc.getElementById('portfolioCompositionChart').children.length, 0, label + ': kein alter Chart');

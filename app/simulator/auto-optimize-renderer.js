@@ -180,7 +180,7 @@ export function renderAutoOptimizeResult({ resultEl, result, objective }) {
         paramCardsHtml += `
             <div class="ds-card ds-metric sim-champion-param">
                 <div style="font-size: var(--balance-help); color: var(--text-muted); margin-bottom: 5px;">${label}</div>
-                <div style="font-size: var(--balance-kpi); font-weight: 600; color: var(--secondary-color);">
+                <div style="font: 400 var(--text-base)/1.3 var(--font-sans); color: var(--secondary-color);">
                     ${displayValue}${unit ? '\u00a0' + unit : ''}
                 </div>
             </div>

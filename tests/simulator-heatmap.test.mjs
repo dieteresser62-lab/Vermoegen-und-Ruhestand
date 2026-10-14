@@ -158,4 +158,4 @@ for (const width of [980, 1180]) {
 }
 const { HEATMAP_V4_STYLE } = await import('../app/simulator/simulator-heatmap.js');
 assert(!/paint-order|stroke-width: 3px|label-bg/.test(HEATMAP_V4_STYLE), 'Öffentlicher Styleexport enthält keinen Halo und keine Labelplatte');
-assert(HEATMAP_V4_STYLE.includes('font-size: 13px') && HEATMAP_V4_STYLE.includes('font-variant-numeric: tabular-nums'), 'Ticks und Zellen: 13 Pixel und tabellarische Ziffern');
+assert(HEATMAP_V4_STYLE.includes('font-size: var(--text-dense)') && HEATMAP_V4_STYLE.includes('font-variant-numeric: tabular-nums'), 'Ticks und Zellen: dichte 14-Pixel-Schrift und tabellarische Ziffern');

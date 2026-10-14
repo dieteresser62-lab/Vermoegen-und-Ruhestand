@@ -1,3 +1,4 @@
+import { documentDouble } from './helpers/page-dialog-dom.mjs';
 import fs from 'node:fs';
 import { createProfileSyncHandlers } from '../app/balance/balance-main-profile-sync.js';
 import { UIReader, initUIReader } from '../app/balance/balance-reader.js';
@@ -27,8 +28,9 @@ try {
         const backend = { name: 'balance-person-readback', async open() {}, async loadAll() { return { ...records }; }, async saveBatch({ deletes, upserts }) { writes.push(...upserts); deletes.forEach(k => delete records[k]); upserts.forEach(([k,v]) => records[k] = v); } };
         PersistenceFacade.resetPersistenceForTests(backend); await PersistenceFacade.init({ installLifecycleHooks: false });
         const listeners = {};
-        const source = { textContent: '' };
+        const source = documentDouble().doc.createElement('p');
         const doc = { getElementById: id => id === 'balancePersonSPBSource' ? source : null, addEventListener(type, fn) { (listeners[type] ||= []).push(fn); }, contains: () => true };
+        source.ownerDocument = doc; doc.createElement = documentDouble().doc.createElement;
         const link = { isConnected: true, dataset: { profileHandoffExport: 'false' }, hasAttribute: k => k === 'data-profile-handoff', getAttribute: k => k === 'href' ? 'depot-tranchen-manager.html#personendaten' : null };
         const spb = { id: 'sparerPauschbetrag', value: '', dataset: {}, ownerDocument: doc };
         const dom = { inputs: { sparerPauschbetrag: spb }, controls: {}, outputs: {}, containers: {} };
@@ -38,7 +40,8 @@ try {
         assert(syncProfileDerivedInputs(), 'Produktive Einzel-/Haushaltssynchronisierung erfolgreich');
         assertEqual(spb.value, household ? '1.500' : '0', 'Haushaltsaggregation und expliziter SPB 0 erhalten');
         assert(spb.disabled && spb.readOnly && spb.dataset.noPersist === 'true', 'SPB ausschließlich Anzeige');
-        assert(source.textContent.includes(household ? 'Haushaltsprofilen' : 'aktiven Profil'), 'Echte Herkunft statt statischer Profilangabe');
+        assertEqual(source.textContent, 'Summe aus den Profilen', 'Kurze Herkunftszeile bleibt sichtbar');
+        assert(source.children[0].children[1].textContent.includes(household ? 'Haushaltsprofilen' : 'aktiven Profil'), 'Unveränderte Herkunft steht im Infofenster');
         const baseline = await backend.loadAll();
         initUIReader(dom);
         const update = () => StorageManager.saveState({ inputs: UIReader.readAllInputs() });

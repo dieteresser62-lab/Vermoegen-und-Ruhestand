@@ -3,6 +3,7 @@
 import { formatDisplayFixed, formatDisplayScalar } from '../shared/designsystem-number-format.js';
 import { formatChartEuro } from './results-formatting.js';
 import { formatCurrency } from './simulator-formatting.js';
+import { infoPopoverHtml } from '../shared/designsystem-info-popover.js';
 
 import { heatmapColor, readChartTokens, heatmapLabelColor, CHART_LABEL } from '../shared/designsystem-chart-colors.js';
 import {
@@ -31,7 +32,7 @@ export const HEATMAP_V4_STYLE = `
         background: var(--surface);
         fill: var(--text-main);
         font-family: var(--font-sans);
-        font-size: 13px;
+        font-size: var(--text-dense);
         font-variant-numeric: tabular-nums;
         user-select: none;
     }
@@ -44,7 +45,7 @@ export const HEATMAP_V4_STYLE = `
     .heatmap-v4-svg .cell-label-text {
         text-anchor: middle;
         dominant-baseline: middle;
-        font-size: 13px;
+        font-size: var(--text-dense);
         font-variant-numeric: tabular-nums;
         font-weight: 600;
         pointer-events: none;
@@ -52,7 +53,7 @@ export const HEATMAP_V4_STYLE = `
     .heatmap-v4-svg .cell-dot { pointer-events: none; }
     .heatmap-v4-svg .critical-line { stroke: var(--bad); stroke-width: 1.5; stroke-dasharray: 4, 3; }
     .heatmap-v4-svg .critical-overlay { fill: var(--bad); fill-opacity: 0.12; pointer-events: none; }
-    .heatmap-v4-svg .legend-text { font-size: 13px; fill: var(--text-main); }
+    .heatmap-v4-svg .legend-text { font-size: var(--text-dense); fill: var(--text-main); }
 </style>
 `;
 
@@ -290,7 +291,7 @@ export function renderHeatmapSVG(heatInput, bins, totalRuns, extraKPI = {}, opti
     return `
     <div id="heatmap-container" style="text-align:center;">
         <h4 class="chart-title">Verteilung der realisierten Entnahmequote in den ersten 10 Jahren</h4>
-        <p class="reporting-reference-note">Die Überlagerung zeigt den bin-basierten Anteil mit realisierter Entnahmequote ≥ 4,5 %. Die 4,5 % sind nur eine Berichtsreferenz und keine Alarm- oder Guardrail-Schwelle.</p>
+        <p class="reporting-reference-note ds-explanation">Berichtsreferenz ${infoPopoverHtml('Erläuterung zur Berichtsreferenz', 'Die Überlagerung zeigt den bin-basierten Anteil mit realisierter Entnahmequote ≥ 4,5 %. Die 4,5 % sind nur eine Berichtsreferenz und keine Alarm- oder Guardrail-Schwelle.')}</p>
         <p class="heatmap-subtitle ds-note">Anteil Läufe: realisierte Entnahmequote ≥ 4,5 % (bin-basiert)</p>
         <p class="ds-scroll-hint">Grafik bei Bedarf horizontal scrollen.</p>
         <div class="ds-chart-scroll" role="region" tabindex="0" aria-label="Heatmap horizontal scrollbar">

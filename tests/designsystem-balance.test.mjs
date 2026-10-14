@@ -222,8 +222,8 @@ assertEqual(finalDeclarations('.profilverbund-header-group')['flex-wrap'], 'wrap
         await settle();
         assertEqual(native(), before, 'Ausprojektion erhält Custom, Detailwerte und sämtliche nativen Sperren');
         assertEqual(fields.dynamicFlexPreset.value, 'custom', 'Nativer Customwert bleibt bestehen');
-        assertEqual(preset.buttons[0].getAttribute('aria-pressed'), 'true', 'Nur Aus wird im oberen Segment aktiv projiziert');
-        assertEqual(preset.buttons[1].getAttribute('aria-pressed'), 'false', 'Custom ist bei ausgeschaltetem Dynamic Flex visuell inaktiv');
+        assertEqual(preset.buttons[0].getAttribute('aria-pressed'), 'false', 'Aus ersetzt die ausdrückliche Customauswahl nicht');
+        assertEqual(preset.buttons[1].getAttribute('aria-pressed'), 'true', 'Benutzerdefiniert bleibt auch bei ausgeschaltetem Dynamic Flex ausgewählt');
         assertEqual(preset.host.getAttribute('aria-describedby'), 'balanceDynamicFlexOff', 'Ausprojektion am oberen Segment beschreibt den tatsächlichen Ausschaltzustand');
         assertEqual(fields.horizonMethod.getAttribute('aria-describedby'), 'existing-help balanceDynamicFlexOff', 'Gemeinsames Ziel erhält fremden Feldhinweis');
         assertEqual(goGo.host.getAttribute('aria-describedby'), 'balanceDynamicFlexOff', 'Sichtbares gesperrtes Segment verweist auf denselben Kartenhinweis');
@@ -241,14 +241,15 @@ assertEqual(finalDeclarations('.profilverbund-header-group')['flex-wrap'], 'wrap
         setFieldState(fields.horizonMethod, 'error', 'Synthetischer Validierungsfehler');
         fields.dynamicFlex.checked = false; binding.refresh(); await settle();
         assert(fields.horizonMethod.getAttribute('aria-describedby').split(' ').some(id => doc.getElementById(id)?.textContent === 'Synthetischer Validierungsfehler'), 'Anderer Fehler bleibt bei Aus unverändert beschrieben');
+        refreshDynamicFlexControls(); // Native Sperren gehören dem Feldbesitzer, nicht der Parameterklappe.
         const detailValues = Object.values(fields).map(field => field.value).join('|');
         parameters.open = false; parameters.events.get('toggle')(); await settle();
-        assert(!fields.dynamicFlexShowAdvanced.checked, 'Schließen benutzt den vorhandenen Detailmoduspfad');
+        assert(fields.dynamicFlexShowAdvanced.checked, 'Schließen von Alle Parameter erhält die lokale Detailauswahl');
         parameters.open = true; parameters.events.get('toggle')(); await settle();
         assertEqual(Object.values(fields).map(field => field.value).join('|'), detailValues, 'Schließen und Öffnen schreibt keine Finanzwerte');
         assertEqual(fields.dynamicFlexPreset.value, 'custom', 'Ansichtswechsel schreibt kein Off-Preset');
         assert(fields.horizonMethod.disabled && fields.horizonMethod.getAttribute('aria-describedby').includes('balanceDynamicFlexOff'), 'Toggle bündelt den Ausschaltgrund nach Aktualisierung der nativen Sperre');
-        assert(views > 0 && fields.dynamicFlexShowAdvanced.checked, 'Alle Parameter öffnet den bestehenden technischen Detailanschluss');
+        assert(views === 0 && fields.dynamicFlexShowAdvanced.checked, 'Alle Parameter verändert die lokale Detailauswahl nicht');
         assertEqual(financialEvents, 0, 'Ansichtswechsel sendet kein finanziell persistierendes Formularereignis');
         // Äußerer Feldbesitzer liest versteckte Details vor dem ersten Setter:
         // synchron darf ihn der Adapter nicht mit einem inneren Lauf überholen.
@@ -257,18 +258,18 @@ assertEqual(finalDeclarations('.profilverbund-header-group')['flex-wrap'], 'wrap
         refreshDynamicFlexControls();
         assert(!fields.dynamicFlexShowAdvanced.checked, 'Äußerer Feldbesitzer wird vollständig beendet');
         await settle();
-        assert(parameters.open && fields.dynamicFlexShowAdvanced.checked && !fields.dynamicFlex.checked,
-            'Offene Klappe synchronisiert erst nach dem äußeren Feldbesitzerdurchlauf');
+        assert(parameters.open && !fields.dynamicFlexShowAdvanced.checked && !fields.dynamicFlex.checked,
+            'Offene Klappe erhält die vom Preset geschlossenen Dynamikdetails');
         assert(fields.horizonMethod.disabled, 'Aus bleibt nativ gesperrt');
-        assert(!preset.reason.textContent.includes('ausgeblendet'), 'Keine veraltete Detailbegründung überschreibt den Endzustand');
-        assertEqual(fields.horizonMethod.getAttribute('aria-describedby'), 'existing-help balanceDynamicFlexOff', 'Endzustand bündelt ausschließlich den Ausgrund');
+        assert(preset.reason.textContent.includes('ausgeblendet'), 'Voreinstellung beschreibt die ausgeblendeten Details');
+        assert(fields.horizonMethod.getAttribute('aria-describedby').split(' ').some(id => doc.getElementById(id)?.textContent.includes('ausgeblendet')), 'Endzustand nennt die ausgeblendeten Details');
         fields.dynamicFlex.checked = true;
         fields.dynamicFlexPreset.value = 'custom';
         fields.horizonMethod.value = 'survival_quantile';
         refreshDynamicFlexControls(); await settle();
         for (const open of [false, true]) {
             parameters.open = open; parameters.events.get('toggle')(); await settle();
-            assertEqual(fields.dynamicFlexShowAdvanced.checked, open, 'Klappenwechsel folgt auch bei Custom dem sichtbaren Zustand');
+            assertEqual(fields.dynamicFlexShowAdvanced.checked, false, 'Klappenwechsel verändert auch bei Custom keine technische Detailfreigabe');
         }
         assert(!fields.horizonMethod.disabled, 'An/Custom bleibt nach erneutem Öffnen bearbeitbar');
         assertEqual(fields.horizonYears.getAttribute('data-field-state'), 'inactive', 'Aktuarischer Horizont erhält den bestehenden Nichtanwendbarkeitsvertrag');
@@ -298,8 +299,8 @@ assertEqual(finalDeclarations('.profilverbund-header-group')['flex-wrap'], 'wrap
             const eventsBefore = financialEvents, focusBefore = focuses;
             preset.buttons[1].click(); await settle(); await settle();
             assert(parameters.open && fields.dynamicFlexShowAdvanced.checked, `Custom öffnet nach Abgleich, presetgleich=${identical}`);
-            assertEqual(fields.dynamicFlexPreset.value, identical ? 'konservativ' : 'custom', 'Echte Preseterkennung bleibt maßgeblich');
-            assertEqual(preset.buttons[identical ? 2 : 1].getAttribute('aria-pressed'), 'true', 'Segmentprojektion folgt dem erkannten nativen Preset');
+            assertEqual(fields.dynamicFlexPreset.value, 'custom', 'Ausdrückliche Detailauswahl bleibt auch bei passenden Presetwerten erhalten');
+            assertEqual(preset.buttons[1].getAttribute('aria-pressed'), 'true', 'Segmentprojektion folgt der ausdrücklichen Detailauswahl');
             assertEqual(JSON.stringify(Object.values(fields).filter(field => !['dynamicFlexPreset', 'dynamicFlexShowAdvanced'].includes(field.id))
                 .map(field => [field.id, field.value, field.checked])), JSON.stringify(valuesBefore), 'Custom schreibt keine Detailwerte');
             assertEqual(financialEvents, eventsBefore + 1, 'Custom sendet genau ein bestehendes change');
@@ -340,7 +341,7 @@ for (const [property, expected] of [['position', 'absolute'], ['width', '1px'], 
     assertEqual(captionStyle[property], expected, `Tabellencaption bleibt zugänglich ohne sichtbare Fläche: ${property}`);
 }
 assert(!captionStyle.display && !captionStyle.visibility, 'Caption wird nicht aus dem Zugänglichkeitsbaum entfernt');
-assertEqual(finalDeclarations('.guardrail-card .value').font, '400 26px/1.2 var(--font-serif)', 'Leitplankenwerte sind Serif regular 26 px');
+assertEqual(finalDeclarations('.guardrail-card .value').font, '400 var(--value-md)/1.2 var(--font-serif)', 'Leitplankenwerte verwenden die mittlere Wertstufe');
 // B7: Ausgaben-CSS wird auf Ausgaben.html geladen; alte Balance-Regeln
 // beweisen dort weder Monatsgeometrie noch die semantischen Jahresköpfe.
 const expensesCss = fs.readFileSync(new URL('../css/expenses.css', import.meta.url), 'utf8');

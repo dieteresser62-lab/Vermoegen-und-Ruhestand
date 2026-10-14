@@ -114,7 +114,7 @@ export function formatMonteCarloResourceEstimate(estimate) {
         : estimate.loadLevel === 'erhoeht'
             ? 'erhöhte Last'
             : 'normale Last';
-    return `${formatInteger(estimate.runYears)} Run-Jahre · Speicherklasse ${estimate.memoryClass} (ca. ${memoryMiB} MiB Ergebnisdaten) · ${loadLabel}.`;
+    return `${formatInteger(estimate.runYears)} Laufjahre · Speicherklasse ${estimate.memoryClass} (ca. ${memoryMiB.replace('.', ',')} MiB) · ${loadLabel}.`;
 }
 
 export function updateMonteCarloResourceEstimate(parameters, { documentRef = globalThis.document } = {}) {
@@ -660,14 +660,14 @@ export function initMonteCarloMethodControls() {
         blockSizeElement.disabled = !usesBlockLength;
 
         if (method === STATIONARY_BOOTSTRAP_METHOD) {
-            if (blockSizeLabel) blockSizeLabel.textContent = 'Erwartete Blocklänge (Jahre)';
+            if (blockSizeLabel) blockSizeLabel.textContent = 'Erwartete Blocklänge';
             blockSizeElement.title = stationaryTitle;
         } else {
-            if (blockSizeLabel) blockSizeLabel.textContent = 'Blockgröße (Jahre)';
+            if (blockSizeLabel) blockSizeLabel.textContent = 'Blockgröße';
             blockSizeElement.title = method === 'block' ? fixedBlockTitle : disabledTitle;
         }
         if (blockSizeElement.ownerDocument && blockSizeElement.parentNode) {
-            setFieldState(blockSizeElement, usesBlockLength ? 'editable' : 'inactive', blockSizeElement.title);
+            setFieldState(blockSizeElement, usesBlockLength ? 'editable' : 'inactive', usesBlockLength ? 'Historische Jahresblöcke.' : 'Nur bei Bootstrap.');
         }
     };
 

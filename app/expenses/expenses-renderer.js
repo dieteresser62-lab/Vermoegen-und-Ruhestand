@@ -15,13 +15,21 @@ export function renderExpensesPage(doc, view, { corrupt = false, occasion = null
     put('expensesContext', `Berechnet für: ${view.personId ? '' : 'Haushalt · '}${view.selected.map(person => person.name).join(' + ')}`);
     put('expensesBudgetSource', view.budget.status === 'adopted' ? `Budget aus dem Plan ${view.year}` : view.budget.status === 'provisional' ? `Budget ${view.year} · vorläufig` : `Budget ${view.year} nicht verfügbar`);
     const available = !corrupt;
+    const missing = (view.missingMonths || []).map(month => EXPENSE_MONTHS[month - 1]);
+    const missingNote = missing.length ? `${missing.join(', ')} noch nicht erfasst` : '';
+    const finalBalance = view.pastYear && view.completeMonths === 12 && view.annualBudget !== null;
+    put('expensesRemainingLabel', view.pastYear ? finalBalance
+        ? view.stats.annualRemaining === 0 ? 'Budget eingehalten' : `Budget ${view.stats.annualRemaining > 0 ? 'unterschritten' : 'überschritten'} um`
+        : 'Vorläufige Budgetdifferenz' : 'Restbudget');
     put('expensesAnnualBudget', available ? euro(view.annualBudget) : '—');
     put('expensesSpent', available && view.hasData ? euro(view.stats.annualUsed) : '—');
-    put('expensesRemaining', available && view.annualBudget !== null ? euro(view.stats.annualRemaining) : '—');
+    put('expensesRemaining', available && view.annualBudget !== null ? euro(finalBalance ? Math.abs(view.stats.annualRemaining) : view.stats.annualRemaining) : '—');
     put('expensesForecast', available && view.stats.monthsWithData ? euro(view.stats.annualForecast) : '—');
     put('expensesBudgetNote', view.budget.monthly !== null ? `${euro(view.budget.monthly)} im Monat` : view.budget.status === 'invalid' ? 'Budgetbeleg nicht lesbar. Bitte Sicherung prüfen.' : 'Kein passendes Budget. In Balance planen.');
     put('expensesSpentNote', available ? `${view.completeMonths} von 12 Monaten vollständig erfasst` : 'Daten nicht lesbar');
-    put('expensesRemainingNote', available ? `für ${12 - view.completeMonths} Monate · Budget minus bestätigte Ausgaben` : 'Daten nicht lesbar');
+    put('expensesRemainingNote', available ? view.pastYear
+        ? finalBalance ? 'Jahressaldo · alle 12 Monate vollständig erfasst' : missingNote || 'Budget minus bestätigte Ausgaben'
+        : `für ${view.remainingCalendarMonths} ${view.remainingCalendarMonths === 1 ? 'Monat' : 'Monate'}${missingNote ? ` · ${missingNote}` : ''} · Budget minus bestätigte Ausgaben` : 'Daten nicht lesbar');
     const difference = view.stats.annualForecast - view.annualBudget;
     put('expensesForecastNote', available && view.stats.monthsWithData ? `${view.stats.monthsWithData >= 2 ? 'Median' : 'Durchschnitt'} aus ${view.stats.monthsWithData} positiven Ausgabenmonaten${view.annualBudget !== null ? ` · ${euro(Math.abs(difference))} ${difference > 0 ? 'über' : 'unter'} Budget` : ''}` : 'Noch keine Hochrechnung');
     doc.getElementById('expensesRemaining')?.classList.toggle('expense-positive', available && view.annualBudget !== null && view.stats.annualRemaining >= 0);

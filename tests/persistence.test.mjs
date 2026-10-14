@@ -847,11 +847,11 @@ try {
         const cashB = JSON.stringify({ version: 1, baselineValue: 500, entries: [{ date: '2026-01-02', value: 400 }] });
         const state = JSON.stringify({ inputs: {}, lastState: null });
         const registry = { version: 1, profiles: {
-            a: { meta: { id: 'a', name: 'A' }, data: { depot_tranchen: '[]', profile_cash_history_v1: cashA,
+            a: { meta: { id: 'a', name: 'A' }, data: { depot_tranchen: '[]', profile_cash_history_v1: cashA, profile_tagesgeld_confirmed_date: '2026-10-14',
                 profile_wealth_history_lots_v1: lots, [CONFIG.STORAGE.LS_KEY]: state } },
-            b: { meta: { id: 'b', name: 'B' }, data: { depot_tranchen: JSON.stringify([lot]), profile_cash_history_v1: cashB, [CONFIG.STORAGE.LS_KEY]: state } }
+            b: { meta: { id: 'b', name: 'B' }, data: { depot_tranchen: JSON.stringify([lot]), profile_cash_history_v1: cashB, profile_tagesgeld_confirmed_date: '2026-11-14', [CONFIG.STORAGE.LS_KEY]: state } }
         } };
-        const records = { depot_tranchen: '[]', profile_cash_history_v1: cashA, profile_wealth_history_lots_v1: lots,
+        const records = { depot_tranchen: '[]', profile_cash_history_v1: cashA, profile_tagesgeld_confirmed_date: '2026-10-14', profile_wealth_history_lots_v1: lots,
             rs_wealth_history_start_v1: JSON.stringify({ version: 1, startDate: '2020-01-01' }),
             rs_daily_prices_v1: JSON.stringify({ version: 1, symbols: { 'TEST.DE': { currency: 'EUR', days: [historyDay('2026-01-02')], closes: [123.456789],
                 queried: [[historyDay('2026-01-01'), historyDay('2026-01-09')]], failures: 3, lastError: 'HISTORY_HTTP_404' } } }),
@@ -864,12 +864,13 @@ try {
         for (const [key, raw] of Object.entries(records)) assertEqual(getItemSync(key), raw, 'Rundreise erhält alte und neue Records bytegleich: ' + key);
         assertEqual(switchProfile('b'), true, 'Zweites Profil lädt nach Vollbackup');
         assertEqual(getItemSync('profile_cash_history_v1'), cashB, 'Zweites Profil erhält eigene Cashhistorie');
+        assertEqual(getItemSync('profile_tagesgeld_confirmed_date'), '2026-11-14', 'Vollbackup und Profilwechsel erhalten das Bestätigungsdatum je Person');
         assertEqual(getItemSync('profile_wealth_history_lots_v1'), null, 'Stammdatenkopie des ersten Profils gelangt nicht in zweites');
         assertEqual(getItemSync('rs_daily_prices_v1'), records.rs_daily_prices_v1, 'Globale Kurs-/Abdeckungs-/Fehlerbytes bleiben beim Wechsel erhalten');
         assertEqual(getItemSync('rs_wealth_history_start_v1'), records.rs_wealth_history_start_v1, 'Globaler Beginn bleibt beim Wechsel erhalten');
         assertEqual(switchProfile('a'), true, 'Rückwechsel erhält Totalverkaufsprovenienz'); await flush();
         const before = JSON.stringify(exportAllSync().records), batches = destination.batches.length, snapshots = destination.snapshots.size;
-        for (const key of ['rs_wealth_history_start_v1', 'rs_daily_prices_v1', 'profile_cash_history_v1', 'profile_wealth_history_lots_v1']) {
+        for (const key of ['rs_wealth_history_start_v1', 'rs_daily_prices_v1', 'profile_cash_history_v1', 'profile_wealth_history_lots_v1', 'profile_tagesgeld_confirmed_date']) {
             for (const target of key.startsWith('profile_') ? ['live', 'inactive'] : ['live']) {
                 const invalid = structuredClone(backup.records);
                 if (target === 'live') invalid[key] = '{}';

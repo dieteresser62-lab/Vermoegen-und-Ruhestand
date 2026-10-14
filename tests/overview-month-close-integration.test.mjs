@@ -381,8 +381,9 @@ for (const outcome of ['cancel', 'escape', 'save']) {
         const fields = f.fields();
         assertEqual(fields.map(field => field.dataset.tagesgeldPerson).join(','), 'a,b', 'Monatsdialog verwendet die produktiv projizierten Personen');
         assertEqual(Number(fields[0].value.replace(',', '.')), 120.125, 'Monatsdialog zeigt den aktiven Livewert');
-        assertEqual(f.doc.getElementById(fields[0].id + '-hint').textContent, 'zuletzt bestätigt am 01.10.2026: 120,125 €', 'Monatsdialog zeigt Kurzdatum mit Schlusspunkt und ungerundeten Livebetrag');
-        assertEqual(f.doc.getElementById(fields[1].id + '-hint').textContent, 'Noch kein datierter Tagesgeld-Stand', 'Monatsdialog erfindet keinen fehlenden Beleg für B');
+        assertEqual(f.doc.getElementById(fields[0].id + '-hint').textContent, 'noch nicht bestätigt', 'Monatsdialog beginnt mit unbestätigtem Lesewert');
+        assert(f.doc.querySelector('.tagesgeld-provenance').querySelector('.ds-info-pop').textContent.includes('Stand vom 01.10.2026'), 'Info-Popover erhält den datierten Livebeleg');
+        assert(f.doc.querySelector('.tagesgeld-provenance').querySelector('.ds-info-pop').textContent.includes('Noch kein datierter Tagesgeld-Stand'), 'Monatsdialog erfindet keinen fehlenden Beleg für B');
         fields[0].value = '90,125'; fields[1].value = '80.25';
         await f.accept(); await f.done(); await bounded(job);
         assertEqual(f.status, 'September abgeschlossen ✓', 'Projizierte Livebelege passieren die echte Staleprüfung und den Store');

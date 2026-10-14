@@ -265,7 +265,10 @@ for (const displayWidth of [1100, 1450]) {
     const raw = JSON.stringify(crowded);
     for (const width of [300, 520, 760, 1100, 1600]) {
         const html = draw(crowded, width), rects = boxes(html);
-        assertEqual(rects.length, crowded.length, 'Dichte Randmarken: keine Kennung entfällt');
+        assert(rects.length > 0 && rects.length <= crowded.length, 'Dichte Randmarken: nur im vorhandenen Rand platzierbare Beschriftungen');
+        if (width >= 1100) assertEqual(rects.length, crowded.length, 'Bei ausreichendem Platz bleiben alle Randmarken erhalten');
+        if (width === 300) assert(rects.length < crowded.length, 'Bei Platzmangel entfallen Beschriftungen statt die Schrift zu verkleinern');
+        for (const path of crowded) assert(html.includes(`data-scenario-id="${path.id}" class="scenario-line`), 'Jeder Originalpfad bleibt auch ohne Randbeschriftung auswählbar');
         for (const [index, box] of rects.entries()) {
             assert([box.x, box.y, box.w, box.h].every(Number.isFinite), 'Randmarkenkoordinaten sind endlich');
             assert(box.x >= 8 && box.x + box.w <= width - 8 + 1e-8 && box.y >= 8 && box.y + box.h <= 86, 'Vollständige Randmarkenfläche liegt innerhalb des oberen SVG-Rands');
@@ -273,7 +276,7 @@ for (const displayWidth of [1100, 1450]) {
                 || box.y + box.h <= other.y || other.y + other.h <= box.y, 'Paarweise zweidimensionale Trefferrechtecke kollidieren nicht');
         }
         assertEqual(JSON.stringify(boxes(draw([...crowded].reverse(), width))), JSON.stringify(rects), 'Markenlayout ist unabhängig von der Eingangsreihenfolge stabil');
-        if (width >= 760) assert(rects.every(box => box.button.includes('font-size:11px')), 'Dichte Marken behalten bei regulärer Chartbreite lesbare native Schrift');
+        assert(rects.every(box => box.button.includes('font-size:14px')), 'Randmarken bleiben bei jeder Breite mindestens 14 px groß');
     }
     assert(!/NaN|Infinity/.test(draw([make('extreme', [[1, -1e308], [2, 1e308]])])), 'Extreme endliche Werte ergeben einen stabilen interpolierten Austritt');
     assertEqual(JSON.stringify(crowded), raw, 'Randmarkenlayout verändert keine Quellzeile');

@@ -1,9 +1,9 @@
 import { loadProfileAssetValues, saveProfileAssetValues } from './profile-asset-values.js';
 import { appendCashHistory, assertCashHistory, PROFILE_CASH_HISTORY_KEY } from './profile-wealth-history.js';
-import { requireHistoryRecord, localHistoryDate } from '../tranches/tranchen-history-store.js';
+import { requireHistoryRecord, localHistoryDate, historyDay } from '../tranches/tranchen-history-store.js';
 import { canonicalDecimalInput } from '../tranches/tranchen-manager-decimal-input.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
-import { PROFILE_SCOPED_FIXED_KEYS } from './profile-state.js';
+import { PROFILE_SCOPED_FIXED_KEYS, PROFILE_CASH_CONFIRMED_DATE_KEY } from './profile-state.js';
 import { CONFIG } from '../balance/balance-config.js';
 
 export const CASH_KEYS = Object.freeze(['profile_tagesgeld', PROFILE_CASH_HISTORY_KEY]);
@@ -18,14 +18,17 @@ export function parseCashInput(raw) {
 export function readCashPerson(id, name, data) {
     const cashRaw = data.profile_tagesgeld ?? null;
     const historyRaw = data[PROFILE_CASH_HISTORY_KEY] ?? null;
+    const confirmationRaw = data[PROFILE_CASH_CONFIRMED_DATE_KEY] ?? null;
     try {
         const value = cashRaw === null ? null : parseCashInput(cashRaw);
         const history = requireHistoryRecord(historyRaw, assertCashHistory);
+        if (confirmationRaw !== null) historyDay(confirmationRaw);
         if (history && (value === null || (history.entries.at(-1)?.value ?? history.baselineValue) !== value)) {
             throw new Error('Tagesgeldhistorie und aktueller Betrag widersprechen sich.');
         }
-        return { id, name, cashRaw, historyRaw, value, lastDate: history?.entries.at(-1)?.date ?? null, error: null };
-    } catch (error) { return { id, name, cashRaw, historyRaw, value: null, lastDate: null, error: error.message }; }
+        return { id, name, cashRaw, historyRaw, confirmationRaw, value, lastDate: history?.entries.at(-1)?.date ?? null,
+            confirmedDate: confirmationRaw, error: null };
+    } catch (error) { return { id, name, cashRaw, historyRaw, confirmationRaw, value: null, lastDate: null, confirmedDate: null, error: error.message }; }
 }
 
 export function liveCashData(storage = persistenceStorage) {
@@ -63,7 +66,7 @@ export function prepareCashRecords(data, raw, date = localHistoryDate()) {
 
 /** Entwurf mit Rohbelegen; Mitgliedschaft und Werte werden unmittelbar vor Commit geprüft. */
 export function prepareHouseholdCash({ storage = persistenceStorage, activeId, ids, cash, registry,
-    date = localHistoryDate(), checkMembership = true }) {
+    date = localHistoryDate(), checkMembership = true, recordConfirmation = false }) {
     if (!cash || !Array.isArray(cash.people) || !cash.values || !Array.isArray(ids)
         || JSON.stringify([...ids].sort()) !== JSON.stringify(cash.people.map(person => person.id).sort())) {
         throw new Error('Die Tagesgeldfelder passen nicht mehr zum Haushalt.');
@@ -83,12 +86,15 @@ export function prepareHouseholdCash({ storage = persistenceStorage, activeId, i
         const profile = registry.profiles[source.id];
         if (!profile) throw new Error('Die Haushaltsperson ist nicht mehr vorhanden.');
         const data = source.id === activeId ? live : profile.data;
-        if ((data.profile_tagesgeld ?? null) !== source.cashRaw || (data[PROFILE_CASH_HISTORY_KEY] ?? null) !== source.historyRaw) {
+        if ((data.profile_tagesgeld ?? null) !== source.cashRaw || (data[PROFILE_CASH_HISTORY_KEY] ?? null) !== source.historyRaw
+            || (data[PROFILE_CASH_CONFIRMED_DATE_KEY] ?? null) !== (source.confirmationRaw ?? null)) {
             throw new Error('Der Tagesgeld-Stand wurde seit der Rückfrage verändert.');
         }
         const changes = prepareCashRecords(data, cash.values[source.id], date);
+        // Die Abschlussbestätigung datiert die Prüfung, ohne den Wertverlauf zu ergänzen.
+        if (recordConfirmation && data[PROFILE_CASH_CONFIRMED_DATE_KEY] !== date) changes[PROFILE_CASH_CONFIRMED_DATE_KEY] = date;
         total += parseCashInput(cash.values[source.id]);
-        if (source.id === activeId) for (const key of CASH_KEYS) {
+        if (source.id === activeId) for (const key of [...CASH_KEYS, PROFILE_CASH_CONFIRMED_DATE_KEY]) {
             if (data[key] === undefined || data[key] === null) delete nextRegistry.profiles[source.id].data[key];
             else nextRegistry.profiles[source.id].data[key] = data[key];
         }

@@ -1,7 +1,7 @@
 "use strict";
 
 import { formatCurrencySafe, formatNumberWithUnit, formatPercentage, sanitizeDescription } from './results-formatting.js';
-import { formatWholeEuro, formatCoveragePercentage, formatCoveredRuns } from './results-formatting.js';
+import { formatWholeEuro, formatChartEuro, formatCoveragePercentage, formatCoveredRuns } from './results-formatting.js';
 import { STRESS_PRESETS } from './simulator-data.js';
 
 /**
@@ -24,6 +24,7 @@ export const WITHDRAWAL_RATE_REPORTING_REFERENCE_NOTICE = 'Die Auswertung bei 4,
 export const LEGACY_FLEX_RESTRICTION_LABEL = 'mehr als 10 % unter Wunsch-Flex';
 const amount = value => Number.isFinite(value) && value >= 0;
 const share = value => Number.isFinite(value) && value >= 0 && value <= 100;
+const summaryEuro = value => Math.abs(value) >= 1e6 ? formatChartEuro(value) : formatWholeEuro(value);
 export function hasTechnicalFinancialError(result) {
     return result?.outcomeInventory?.technical_error > 0 || result?.batchStatus === 'technical_error'
         || result?.financialMetricsValid === false || (result?.outcome && !['completed', 'ruin'].includes(result.outcome.kind));
@@ -201,21 +202,23 @@ export function buildSummaryData({ results, totalRuns, failCount }) {
         {
             title: 'Median (alle)',
             value: finalP50Available ? formatConservativeCurrency(finalOutcomes.p50, 'benefit') : '—',
+            displayValue: finalP50Available ? summaryEuro(finalOutcomes.p50) : '—',
             statusLine: finalP50Available ? '' : unavailableStatus(finalOutcomes, 'no_observations'),
-            description: 'Typisches Endvermögen über alle finanziell auswertbaren Läufe. Centgenaue Anzeige ohne Tausenderstufen; zusätzliche Nachkommastellen werden als Nutzenwert konservativ abgerundet.',
+            description: 'Typisches Endvermögen über alle finanziell auswertbaren Läufe.',
             tone: 'default',
             layout: 'exact-risk'
         },
         {
             title: 'Median (erfolgreiche)',
             value: successfulP50Available ? formatConservativeCurrency(finalOutcomes.p50_successful, 'benefit') : '—',
+            displayValue: successfulP50Available ? summaryEuro(finalOutcomes.p50_successful) : '—',
             statusLine: successfulP50Available
                 ? ''
                 : unavailableStatus({
                     missingness: finalOutcomes.successfulMissingness,
                     sampleSize: finalOutcomes.successfulCount
                 }, 'no_observations'),
-            description: 'Median des Endvermögens aller erfolgreichen Läufe. Centgenaue Anzeige ohne Tausenderstufen; zusätzliche Nachkommastellen werden als Nutzenwert konservativ abgerundet.',
+            description: 'Median des Endvermögens aller erfolgreichen Läufe.',
             tone: 'default',
             layout: 'exact-risk'
         },
@@ -224,10 +227,12 @@ export function buildSummaryData({ results, totalRuns, failCount }) {
             value: finalP10Available && finalP90Available
                 ? `${formatConservativeCurrency(finalOutcomes.p10, 'benefit')} / ${formatConservativeCurrency(finalOutcomes.p90, 'benefit')}`
                 : '—',
+            displayValue: finalP10Available && finalP90Available
+                ? `${summaryEuro(finalOutcomes.p10)} / ${summaryEuro(finalOutcomes.p90)}` : '—',
             statusLine: finalP10Available && finalP90Available
                 ? ''
                 : unavailableStatus(finalOutcomes, 'no_observations'),
-            description: 'Spannweite der Endvermögen zwischen konservativem P10 und optimistischem P90. Beide Nutzenwerte werden centgenau ohne Tausenderstufen angezeigt; zusätzliche Nachkommastellen werden konservativ abgerundet.',
+            description: 'Spannweite der Endvermögen zwischen konservativem P10 und optimistischem P90.',
             tone: 'default',
             layout: 'exact-risk',
             decisionCritical: true
@@ -235,8 +240,9 @@ export function buildSummaryData({ results, totalRuns, failCount }) {
         {
             title: 'Median Steuern',
             value: taxAvailable ? formatConservativeCurrency(taxOutcomes.p50, 'cost') : '—',
+            displayValue: taxAvailable ? summaryEuro(taxOutcomes.p50) : '—',
             statusLine: taxAvailable ? '' : unavailableStatus(taxOutcomes, 'no_observations'),
-            description: 'Centgenauer Median der kumulierten nominalen Steuerzahlungen. Zusätzliche Nachkommastellen werden als Kostenwert konservativ aufgerundet.',
+            description: 'Median der kumulierten nominalen Steuerzahlungen.',
             tone: 'default',
             layout: 'exact-risk',
             decisionCritical: true
@@ -270,7 +276,7 @@ export function buildKpiDashboard(results, inputs = {}) {
         },
         (() => {
             const restriction = projectMinimumFlexDisplay(results);
-            return { title: restriction.title, value: restriction.legacy
+            return { title: restriction.title, displayRole: 'restriction', value: restriction.legacy
                 ? restriction.technical ? '—' : formatPercentage(results?.cutYearSharePct?.p50) : restriction.value,
                 description: restriction.legacy ? 'Anteil der Entnahmejahre mit Flex-Kürzung ab 10 %.'
                     : `${restriction.text} ${restriction.note}`,

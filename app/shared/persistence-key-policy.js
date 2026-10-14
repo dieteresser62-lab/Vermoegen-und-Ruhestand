@@ -26,6 +26,7 @@ const PROFILE_VALUE_KEYS = Object.freeze({
 const PROFILE_SCOPED_FIXED_KEYS = [
     'depot_tranchen',
     'profile_cash_history_v1',
+    'profile_tagesgeld_confirmed_date',
     'profile_wealth_history_lots_v1',
     'overview_balance_summary_v1',
     'overview_month_provision_v1',

@@ -193,10 +193,10 @@ console.log('Test 4: Simulator DOM keeps cockpit contracts and ordering');
     const tree = tokenizeHTML(html);
     const setupHost = tree.elements.find(node => node.attrs.id === 'mcSetupDisclosure');
     const insideSetup = node => { for (let parent = node.parent; parent; parent = parent.parent) if (parent === setupHost) return true; return false; };
-    const setup = html.slice(html.indexOf('<details id="mcSetupDisclosure"'), html.indexOf('data-assumption-step="4"'));
-    assertEqual(tree.elements.filter(node => node.tag === 'fieldset' && insideSetup(node)).length, 3, 'Alle Parameter enthält Datengewichtung und beide Stressgruppen');
+    const setup = html.slice(html.indexOf('<details id="mcSetupDisclosure"'), html.indexOf('<div id="mcRunHead"'));
+    assertEqual(tree.elements.filter(node => node.tag === 'fieldset' && insideSetup(node)).length, 4, 'Monte-Carlo-Einstellungen enthalten Simulation, Zeitraum & Daten, Stresstest und Extremereignisse');
     assert(tree.elements.some(node => node.attrs.id === 'mcAnzahl' && insideSetup(node))
-        && tree.elements.some(node => node.attrs.id === 'mcDauer' && insideSetup(node)), 'Anzahl und Zeitraum stehen im gemeinsamen Parameterbereich');
+        && tree.elements.some(node => node.attrs.id === 'mcDauer' && insideSetup(node)), 'Anzahl und Zeitraum stehen im Monte-Carlo-Parameterbereich');
     assert(!setup.includes('id="mcButton"') && !html.includes('id="mcRecalculateButton"') && !html.includes('id="overviewRunMonteCarlo"'), 'Einzige Startaktion liegt im Seitenkopf');
     assert(!setup.includes('max-height'), 'setup disclosure has no fixed clipping height');
     assert(html.indexOf('id="monteCarloResults"') < html.indexOf('id="stressReplayWorkspace"'), 'results precede replay deep-dive');

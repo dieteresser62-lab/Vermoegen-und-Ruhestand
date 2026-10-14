@@ -442,7 +442,7 @@ class MockDocument {
             'Sweep-Laufzahl muss ganzzahlig sein');
         documentRef.getElementById('sweepRuns').value = '500';
         initMonteCarloResourceControls();
-        assert(estimate.textContent.includes('Run-Jahre'), 'UI shows run-years before execution');
+        assert(estimate.textContent.includes('Laufjahre'), 'UI shows run-years before execution');
         assert(estimate.textContent.includes('Speicherklasse'), 'UI shows a memory class before execution');
         assertEqual(confirmationRow.hidden, false, 'large-run confirmation becomes visible above 100,000 runs');
 

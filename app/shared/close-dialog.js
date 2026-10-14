@@ -1,3 +1,5 @@
+import { bindInfoPopovers, createInfoPopover } from './designsystem-info-popover.js';
+
 /** Schreibfreie Abschlusskomponente. Fachzustand und Speicherbesitz bleiben beim Aufrufer. */
 const active = new WeakMap();
 export function dialogElements(root) {
@@ -59,11 +61,14 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
         const description = element('p', 'close-dialog-subtitle', subtitle); description.id = `${id}Subtitle`;
         header.append(overline, heading, cross, description);
         const content = element('div', 'close-dialog-content'); content.dataset.closeDialogContent = '';
-        const status = element('p', 'close-dialog-status'); status.setAttribute('role', 'status');
+        const status = element('p', 'close-dialog-status'); status.dataset.closeDialogStatus = ''; status.setAttribute('role', 'status');
         const message = element('section', 'ds-note'); message.hidden = true; message.dataset.closeDialogMessage = '';
         const footer = element('footer', 'close-dialog-foot'); footer.dataset.closeDialogFooter = '';
         const note = element('small', 'close-dialog-footnote', footnote); note.hidden = !footnote;
-        footer.append(message, status, ...actions, note); dialog.append(header, content, footer);
+        const actionRow = element('div', 'close-dialog-foot-row');
+        const buttons = element('div', 'close-dialog-actions'); buttons.append(...actions);
+        actionRow.append(status, buttons); footer.append(message, actionRow, note); dialog.append(header, content, footer);
+        const bindInfo = () => bindInfoPopovers(doc, { root: dialog, listen });
         const activate = id => { if (busy || !rows.has(id) || rows.get(id).step.locked) return; current = id; visited.add(id); renderStates(); onVisit(id); rows.get(id).root.scrollIntoView?.({ block: 'nearest' }); rows.get(id).button.focus?.(); };
         const nextRow = row => row.step.nextAction ? null : [...rows.values()].find(candidate => candidate.index > row.index && !candidate.step.locked && !candidate.step.awaitingYear);
         const focusAction = () => {
@@ -74,7 +79,7 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
             for (const [id, row] of rows) {
                 const neutral = ['not_applicable', 'skipped', 'entered'].includes(row.step.state);
                 const done = row.step.progressByVisit ? visited.has(id) : row.step.done;
-                const label = row.step.progressByVisit ? (done ? 'angesehen' : 'offen') : row.step.preparing ? 'wird vorbereitet …' : row.step.prepared && row.step.done ? (visited.has(id) ? 'geprüft' : 'bereit') : row.step.done ? 'erledigt' : row.step.state === 'entered' ? 'eingetragen' : row.step.state === 'not_applicable' ? 'entfällt' : row.step.state === 'skipped' ? 'übersprungen' : 'offen';
+                const label = row.step.statusLabel || (row.step.progressByVisit ? (done ? 'angesehen' : 'offen') : row.step.preparing ? 'wird vorbereitet …' : row.step.prepared && row.step.done ? (visited.has(id) ? 'geprüft' : 'bereit') : row.step.done ? 'erledigt' : row.step.state === 'entered' ? 'eingetragen' : row.step.state === 'not_applicable' ? 'entfällt' : row.step.state === 'skipped' ? 'übersprungen' : 'offen');
                 const state = done ? 'done' : neutral ? row.step.state : id === current ? 'current' : 'open';
                 row.root.dataset.state = state;
                 row.root.dataset.visited = String(visited.has(id));
@@ -132,7 +137,7 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
                 row.body.append(row.next);
                 if (row.summary) { row.summary.textContent = step.result || ''; row.summary.hidden = !step.result || Boolean(step.contentOwnResult); }
             });
-            renderStates(); content.scrollTop = scroll;
+            renderStates(); bindInfo(); content.scrollTop = scroll;
             if (oldFocus && dialogElements(dialog).includes(oldFocus)) {
                 let hidden = false;
                 for (let parent = oldFocus; parent && parent !== dialog; parent = parent.parentElement || parent.parent) hidden ||= Boolean(parent.hidden);
@@ -147,9 +152,9 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
             setResult(node) {
                 stepRemovers.splice(0).forEach(remove => remove());
                 Array.from(content.children || []).forEach(child => child.remove()); rows.clear();
-                content.append(node); content.scrollTop = 0;
+                content.append(node); content.scrollTop = 0; bindInfo();
             },
-            setStatus(text) { status.textContent = text; },
+            setStatus(text) { status.textContent = text; status.hidden = !text; },
             setMessage(text, { kind = 'error', action } = {}) {
                 if (ended) return;
                 const revision = ++messageRevision;
@@ -178,7 +183,12 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
             setSubtitle(text) { description.textContent = text; },
             setTitle(text) { heading.textContent = text; },
             setProgressNames(text) { progressNames = text; renderStates(); },
-            setFootnote(text) { note.textContent = text; note.hidden = !text; },
+            setFootnote(text, explanation = '') {
+                Array.from(note.children || []).forEach(child => child.remove());
+                note.textContent = text; note.hidden = !text;
+                if (text && explanation) note.append(createInfoPopover(doc, 'Regeln zum Abschluss', explanation));
+                bindInfo();
+            },
             setBusy(value) {
                 if (ended) return;
                 busy = value; dialog.setAttribute('aria-busy', String(value));
@@ -200,7 +210,7 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
         listen(dialog, 'cancel', event => { event.preventDefault(); void requestClose(); });
         listen(dialog, 'close', () => { if (!busy) close(false); });
         listen(dialog, 'keydown', event => {
-            if (!topmost()) return;
+            if (event.defaultPrevented || !topmost()) return;
             if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation?.(); void requestClose(); }
             if (event.key !== 'Tab') return;
             const focusable = dialogElements(dialog).filter(node => {
@@ -222,7 +232,8 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
 
 /** Gemeinsames Ergebnis C: ausschließlich bestätigte, bereits formatierte Belegdaten. */
 export function createCloseResult({ doc = document, month, nextMonth, expenses, budgetComparison,
-    people = [], cashTotal, withdrawal, withdrawalLabel, planYear, budgetTone, actionSection, yearSection, successText } = {}) {
+    people = [], cashTotal, withdrawal, withdrawalLabel, withdrawalDetail, budgetTone, actionSection, yearSection, successText,
+    expensesAmount, budgetAmount, budgetSource, withdrawalFixed = false } = {}) {
     const node = (tag, text, className = '') => {
         const element = doc.createElement(tag); element.className = className;
         if (text !== undefined) element.textContent = text;
@@ -231,11 +242,19 @@ export function createCloseResult({ doc = document, month, nextMonth, expenses, 
     const root = node('section', undefined, 'close-dialog-result');
     const banner = node('div', undefined, 'close-dialog-success'); banner.setAttribute('role', 'status');
     const check = node('span', '✓', 'close-dialog-success-symbol'); check.setAttribute('aria-hidden', 'true');
-    banner.append(check, node('strong', 'Alles gespeichert'), node('span', successText || `${month} ist abgeschlossen.`));
+    const success = node('span'); success.append(node('strong', 'Alles gespeichert.'), node('span', ' ' + (successText || `${month} ist abgeschlossen.`)));
+    banner.append(check, success);
     root.append(banner);
     if (actionSection) root.append(actionSection);
     if (yearSection) root.append(yearSection);
-    root.append(node('h3', 'MONAT', 'close-dialog-result-heading'));
+    if (actionSection || yearSection) root.append(node('h3', 'MONAT', 'close-dialog-result-heading'));
+    else {
+        root.append(createCloseTiles({ doc, items: [
+            { label: `Ausgaben ${month}`, value: expensesAmount, detail: budgetComparison?.split(' · ')[0], detailTone: budgetTone },
+            { label: 'Tagesgeld gesamt', value: cashTotal, detail: people.length ? `${people.map(person => person.name).join(' und ')} bestätigt` : 'Keine Tagesgeldpersonen' },
+            { label: `Entnahme ${nextMonth}`, value: withdrawal, detail: withdrawalFixed ? 'laut Jahresplan' : 'vorläufig', info: withdrawalDetail }
+        ] }));
+    }
     const facts = node('dl', undefined, 'close-dialog-facts'); facts.dataset.closeDialogResultMonth = '';
     const fact = (label, value, detail, tone) => {
         const term = node('dt', label), description = node('dd', value);
@@ -243,10 +262,15 @@ export function createCloseResult({ doc = document, month, nextMonth, expenses, 
         facts.append(term, description);
     };
     fact(`Ausgaben ${month}`, expenses, budgetComparison, budgetTone);
-    for (const person of people) fact(`Tagesgeld ${person.name}`, person.value);
+    if (!actionSection && !yearSection) fact('Monatsbudget', budgetAmount, budgetSource);
+    for (const person of people) fact(`Tagesgeld ${person.name}`, person.value, !actionSection && !yearSection ? person.status : '');
     fact('Tagesgeld gesamt', `Cashsumme: ${cashTotal}`);
-    fact(withdrawalLabel || `Monatsbetrag ${nextMonth}`, withdrawal, planYear ? `Monatsinformation aus dem bestätigten Plan ${planYear}` : 'Monatsinformation aus dem bestätigten Plan');
-    root.append(facts);
+    fact(withdrawalLabel || `Monatsbetrag ${nextMonth}`, withdrawal, withdrawalDetail || 'Planquelle nicht verfügbar.');
+    if (actionSection || yearSection) root.append(facts);
+    else {
+        const details = node('details', undefined, 'close-dialog-derivation'); details.dataset.closeDialogDerivation = '';
+        details.append(node('summary', 'Herleitung anzeigen'), facts); root.append(details);
+    }
     return root;
 }
 
@@ -270,6 +294,22 @@ export function advanceCloseImport(handle, before, after) {
     if (closeImportProgress(after).complete) handle.activate('budget');
 }
 export function closeReadinessText({ unseen, problem, action }) {
-    return unseen ? `Bitte zuerst den Schritt ‚${unseen.title}‘ ansehen.`
-        : problem || `Alles bereit – jetzt ‚${action}‘.`;
+    return unseen ? `Noch offen: ${unseen.title}`
+        : problem ? `Noch offen: ${problem}` : `Alles bereit – jetzt ‚${action}‘`;
+}
+
+/** Drei Kennzahlen im vorhandenen KPI-Baustein, mit den Zahlenstufen des Designsystems. */
+export function createCloseTiles({ doc, items }) {
+    const strip = doc.createElement('div'); strip.className = 'ds-kpi-strip close-dialog-tiles';
+    for (const item of items) {
+        const tile = doc.createElement('div'); tile.className = 'ds-kpi close-dialog-tile';
+        tile.dataset.tone = item.tone || '';
+        const label = doc.createElement('span'); label.className = 'close-dialog-tile-label'; label.textContent = item.label;
+        const value = doc.createElement('strong'); value.className = 'ds-readonly-value'; value.textContent = item.value ?? '—';
+        const detail = doc.createElement('span'); detail.className = 'close-dialog-tile-detail'; detail.textContent = item.detail || '';
+        if (item.detailTone === 'warning') detail.className += ' close-dialog-result-warning';
+        if (item.info) detail.append(createInfoPopover(doc, `Mehr zu ${item.label}`, item.info));
+        tile.append(label, value, detail); strip.append(tile);
+    }
+    return strip;
 }

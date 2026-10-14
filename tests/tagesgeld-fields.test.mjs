@@ -35,6 +35,8 @@ assert(failed, 'Beschädigte Quelle blockiert auch plausible Eingabe');
 const monthly = createTagesgeldFields({ doc, people, monthly: true });
 assertEqual(monthly.root.children[2].children[2].textContent, 'zuletzt bestätigt am 02.09.2026: 100,125 €', 'Monatshinweis nennt vollständigen bestätigten Quellstand');
 assertEqual(monthly.root.children[2].children[4].textContent, '€', 'Monatsfeld besitzt sichtbaren Eurozusatz');
+const reconfirmed = createTagesgeldFields({ doc, people: [{ ...people[0], confirmedDate: '2026-11-14' }], monthly: true });
+assertEqual(reconfirmed.root.children[2].children[2].textContent, 'zuletzt bestätigt am 14.11.2026: 100,125 €', 'Neuere Bestätigung erscheint am unveränderten Betrag');
 for (const [raw, expected] of [['18.000', 18000], ['18000', 18000], ['1.000,50', 1000.5], ['18.000,125', 18000.125], ['0', 0], ['100.1255', 100.1255]]) {
     monthly.inputs[0].value = raw;
     assertEqual(monthly.read().values.a, expected, 'Monatsmodus erhält präzisen Betrag: ' + raw);

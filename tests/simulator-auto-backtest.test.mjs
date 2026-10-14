@@ -90,7 +90,7 @@ for (const stage of ['persistenceReady', 'profileReady', 'initializationReady'])
     gate.resolve(); await opened;
     assertEqual(events.filter(event => Array.isArray(event) && event[0] === 'run').length, 1, `${stage}: genau ein Öffnungslauf`);
     const run = events.find(event => Array.isArray(event) && event[0] === 'run')[1];
-    assert(run.cohortsEnabled === false && run.focus === false, 'Automatischer Pfad führt keine Cohorts aus und stiehlt keinen Fokus');
+    assert(run.focus === false, 'Automatischer Pfad stiehlt keinen Fokus');
     assert(events.indexOf('paint') < events.findIndex(event => Array.isArray(event) && event[0] === 'run'), 'Gezeichneter Frame liegt vor synchronem Runner');
 }
 for (const [label, overrides, expected] of [

@@ -94,14 +94,12 @@ export function syncDynamicFlexPresetSelection() {
     if (!presetSelect) return;
     const current = getCurrentDynamicFlexValues();
     const detected = detectDynamicFlexPreset(current);
-    // Balance besitzt zusätzlich eine lokale Parameterklappe. Ihr bestehender
-    // nativer Customwert bezeichnet hier die offene Detailansicht, während die
-    // sichtbare Presetprojektion weiterhin das gemeinsam erkannte Aus zeigt.
-    const keepBalanceDetails = detected === 'off' && presetSelect.value === 'custom'
-        && document.getElementById('balanceAllParameters')?.open === true
+    // Benutzerdefiniert bezeichnet auch eine ausdrückliche lokale Detailabsicht.
+    // Passende Werte dürfen diese Ansicht nicht während der Bearbeitung schließen.
+    const keepDetails = presetSelect.value === 'custom'
         && document.getElementById('dynamicFlexShowAdvanced')?.checked === true;
-    presetSelect.value = keepBalanceDetails ? 'custom' : detected;
-    if (detected === 'off' && !keepBalanceDetails) {
+    presetSelect.value = keepDetails ? 'custom' : detected;
+    if (detected === 'off' && !keepDetails) {
         const showAdvancedToggle = document.getElementById('dynamicFlexShowAdvanced');
         if (showAdvancedToggle) {
             showAdvancedToggle.checked = false;
@@ -113,8 +111,7 @@ export function refreshDynamicFlexControls() {
     if (!globalThis.document) return;
     const presetValue = document.getElementById('dynamicFlexPreset')?.value || 'custom';
     const showAdvanced = document.getElementById('dynamicFlexShowAdvanced')?.checked === true;
-    const showDetails = showAdvanced || presetValue === 'custom'
-        || document.querySelector?.('#tab-annahmen [data-parameters="strategie"]')?.open === true;
+    const showDetails = showAdvanced || presetValue === 'custom';
     const dynamicFlexEnabled = document.getElementById('dynamicFlex')?.checked === true;
     const longevityMode = normalizeLongevityMode(document.getElementById('longevityMode')?.value || LONGEVITY_DEFAULTS.mode);
     const goGoActive = document.getElementById('goGoActive')?.checked === true;
@@ -128,6 +125,8 @@ export function refreshDynamicFlexControls() {
     if (configContainer) {
         configContainer.style.display = showDetails ? 'grid' : 'none';
     }
+    const hint = document.querySelector?.('.household-plan-more [data-plan-dynamic-hint]');
+    if (hint) hint.hidden = showDetails;
 
     const detailsReason = !showDetails ? 'Detailmodus ist ausgeblendet; die Voreinstellung gilt.' : '';
     const flexReason = detailsReason || (!dynamicFlexEnabled ? 'Dynamic Flex ist ausgeschaltet.' : '');
@@ -219,6 +218,7 @@ export function initDynamicFlexControls(options = {}) {
             if (presetSelect.value !== 'custom') {
                 applyDynamicFlexPreset(presetSelect.value);
             }
+            if (showAdvancedToggle) showAdvancedToggle.checked = presetSelect.value === 'custom';
             if (presetSelect.value === 'off') {
                 const showAdvancedToggle = document.getElementById('dynamicFlexShowAdvanced');
                 if (showAdvancedToggle) {

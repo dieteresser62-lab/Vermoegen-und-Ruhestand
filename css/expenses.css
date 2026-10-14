@@ -1,12 +1,13 @@
-.expenses-page { max-width: 1440px; margin: 0 auto; padding: var(--space-2) var(--space-4) 56px; display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; color: var(--text-main); font: 15px/1.5 var(--font-sans); }
+/* 20 px mehr Inhaltsbreite halten die Monatsmatrix auch mit 16 px ohne Scrollen. */
+.expenses-page { max-width: 1460px; margin: 0 auto; padding: var(--space-2) var(--space-4) 56px; display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; color: var(--text-main); font: var(--text-base)/1.5 var(--font-sans); }
 .expenses-page h1, .expenses-page h2 { font-family: var(--font-serif); font-weight: 600; margin: 0; text-wrap: balance; }
-.expenses-page h1 { font-weight: 500; font-size: 1.9rem; }
-.expenses-page h2 { font-size: 1.35rem; margin-bottom: 12px; }
+.expenses-page h1 { font-weight: 500; font-size: var(--balance-h1); }
+.expenses-page h2 { font-size: var(--balance-h2); margin-bottom: 12px; }
 .expenses-page p { margin: 0; }
-.expenses-eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: .72rem; font-weight: 600; color: var(--accent); }
+.expenses-eyebrow { text-transform: uppercase; letter-spacing: .08em; font-size: var(--text-dense); font-weight: 600; color: var(--accent); }
 .expenses-lead, .expenses-note { color: var(--text-muted); }
 .expenses-toolbar, .expenses-segments { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.expenses-chip { font-size: .8rem; border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; background: var(--surface); color: var(--text-main); }
+.expenses-chip { font-size: var(--text-base); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; background: var(--surface); color: var(--text-main); }
 .expenses-toolbar { justify-content: flex-start; gap: 16px; }
 #expensesStatus:empty { display: none; }
 .expenses-toolbar > div:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -19,8 +20,8 @@
 .expenses-kpis { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
 .expenses-kpis > div { padding: 14px 16px; border-left: 1px solid var(--border); min-width: 0; }
 .expenses-kpis > div:first-child { border-left: 0; }
-.expenses-kpis span, .expenses-kpis small { display: block; color: var(--text-muted); font-size: .8rem; }
-.expenses-kpis b { display: block; font: 600 1.45rem var(--font-serif); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.expenses-kpis span, .expenses-kpis small { display: block; color: var(--text-muted); font-size: var(--text-base); }
+.expenses-kpis b { display: block; font: 600 var(--value-md) var(--font-serif); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .expense-negative { color: var(--bad); }
 .expense-positive { color: var(--good); }
 .expenses-grid { display: grid; grid-template-columns: minmax(0,1.6fr) minmax(0,1fr); gap: 16px; align-items: start; }
@@ -28,10 +29,10 @@
 .expenses-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .expenses-card-head h2 { margin-bottom: 0; }
 .expenses-table-region { overflow-x: auto; min-width: 0; max-width: 100%; }
-.expenses-page table { border-collapse: collapse; width: 100%; font-size: .86rem; font-variant-numeric: tabular-nums; }
+.expenses-page table { border-collapse: collapse; width: 100%; font-size: var(--text-base); font-variant-numeric: tabular-nums; }
 .expenses-page th, .expenses-page td { padding: 7px 10px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
 .expenses-page th:first-child, .expenses-page td:first-child { text-align: left; }
-.expenses-page caption { font-size: .76rem; text-align: left; color: var(--text-muted); padding-block: 8px; }
+.expenses-page caption { font-size: var(--text-dense); text-align: left; color: var(--text-muted); padding-block: 8px; }
 .expenses-page .expenses-table .profile-head { text-align: left; }
 .expenses-table .profile-head + .profile-head, .expenses-table .profile-cell + .profile-cell, .expenses-table .total-head, .expenses-table .total-cell { border-left: 1px solid var(--border); }
 .profile-cell-inner { display: grid; grid-template-columns: 12ch auto; justify-content: start; align-items: center; gap: 10px; }
@@ -40,8 +41,8 @@
 .expense-actions .ds-icon-button { min-height: 28px; min-width: 28px; padding: 4px; border-color: transparent; background: transparent; color: var(--text-muted); }
 .expense-actions .ds-icon-button:hover:not(:disabled), .expense-actions .ds-icon-button:focus-visible { color: var(--accent); background: var(--accent-soft); }
 .expenses-page .btn-hidden { display: none; }
-.expenses-note { font-size: .8rem; margin-top: 8px !important; }
-.expense-category { display: grid; grid-template-columns: minmax(0,1fr) minmax(20px,1fr) minmax(0,18ch); align-items: center; gap: 10px; font-size: .86rem; margin-bottom: 8px; }
+.expenses-note { font-size: var(--text-dense); margin-top: 8px !important; }
+.expense-category { display: grid; grid-template-columns: minmax(0,1fr) minmax(20px,1fr) minmax(0,18ch); align-items: center; gap: 10px; font-size: var(--text-base); margin-bottom: 8px; }
 .expense-category-value { text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .expense-category > span:first-child { overflow-wrap: anywhere; }
 .expense-category-track { height: 10px; border-radius: 5px; background: var(--surface-sunken); overflow: hidden; }
@@ -49,7 +50,7 @@
 .expenses-detail-dialog { max-width: min(680px,90vw); max-height: 85vh; overflow: auto; }
 .expenses-detail-dialog::backdrop { background: var(--backdrop); }
 .expenses-page [hidden] { display: none; }
-.expenses-page svg text { fill: var(--text-muted); font-family: var(--font-sans); }
+.expenses-page svg text { fill: var(--text-muted); font-family: var(--font-sans); font-size: var(--text-dense); }
 .expenses-page svg .expenses-chart-bar { fill: var(--accent); }
 @media (max-width: 1100px) { .expenses-grid { grid-template-columns: minmax(0,1fr); } }
 @media (max-width: 900px) { .expenses-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); } .expenses-kpis > div:nth-child(odd) { border-left: 0; } .expenses-page { padding-inline: 0; } }

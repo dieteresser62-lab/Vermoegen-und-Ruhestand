@@ -11,6 +11,7 @@ import { readBalancePersonStatus, showPersonDataStatus, projectParticipatingPers
 
 import { UIReader } from './balance-reader.js';
 import { UIUtils } from './balance-utils.js';
+import { bindInfoPopovers, createInfoPopover } from '../shared/designsystem-info-popover.js';
 import { loadProfilverbundProfiles, buildProfilverbundAssetSummary } from '../profile/profilverbund-balance.js';
 import { readProfileOverridesFromStorage, parseProfileOverridesFromData } from '../profile/profile-state.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
@@ -214,8 +215,13 @@ export function createProfileSyncHandlers({ dom, PROFILE_VALUE_KEYS }) {
         if (dom.inputs.sparerPauschbetrag) { dom.inputs.sparerPauschbetrag.value = UIUtils.formatNumber(spb); dom.inputs.sparerPauschbetrag.disabled = true; dom.inputs.sparerPauschbetrag.readOnly = true;
             dom.inputs.sparerPauschbetrag.dataset.noPersist = 'true';
             const source = dom.inputs.sparerPauschbetrag.ownerDocument?.getElementById('balancePersonSPBSource');
-            if (source) source.textContent = profilverbundProfiles.length > 0
-                ? 'Aus Haushaltsprofilen · Summe der persönlichen Sparer-Pauschbeträge.' : 'Aus dem aktiven Profil · Personen & Vermögen.'; }
+            if (source) {
+                const explanation = profilverbundProfiles.length > 0
+                    ? 'Aus Haushaltsprofilen · Summe der persönlichen Sparer-Pauschbeträge.' : 'Aus dem aktiven Profil · Personen & Vermögen.';
+                source.textContent = 'Summe aus den Profilen';
+                source.append(createInfoPopover(source.ownerDocument, 'Herkunft des Sparer-Pauschbetrags', explanation));
+                bindInfoPopovers(source.ownerDocument, { root: source });
+            } }
 
         if (UIReader.applySideEffectsFromInputs) {
             UIReader.applySideEffectsFromInputs();

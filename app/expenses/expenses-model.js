@@ -59,6 +59,9 @@ export function projectExpenses({ store, year, people, personId = null, budget =
     const due = { year: previous.getFullYear(), month: previous.getMonth() + 1, missing: [] };
     if (!firstPlanningYear || due.year >= firstPlanningYear) due.missing = people.filter(person => !hasExpenseImport(store?.years?.[due.year]?.months?.[due.month]?.profiles?.[person.id]));
     return { year, personId, selected, ids, months, categories, stats, annualBudget, budget, hasData, dueMonth, due,
+        pastYear: year < now.getFullYear(),
+        remainingCalendarMonths: year < now.getFullYear() ? 0 : year > now.getFullYear() ? 12 : 12 - now.getMonth(),
+        missingMonths: months.filter(month => month.due && !month.complete).map(month => month.month),
         completeMonths: months.filter(month => month.complete).length,
         scope: overviewScope(personId || people.length === 1 ? 'single' : 'household', ids) };
 }

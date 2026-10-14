@@ -69,9 +69,8 @@ export async function prepareCloseFixture(doc) {
     for (const row of elements().filter(node => node.dataset?.closeDialogStep)) {
         if (row.dataset.visited !== 'true' && row.dataset.locked !== 'true') await dialogElements(row).find(node => node.dataset?.closeDialogActivate)?.fire('click');
     }
-    const cash = elements().find(node => node.dataset?.closeDialogStep === 'cash');
-    const pill = cash && dialogElements(cash).find(node => node.className === 'close-dialog-step-pill');
-    if (pill?.textContent !== 'eingetragen') await elements().find(node => Object.hasOwn(node.dataset || {}, 'tagesgeldConfirm'))?.fire('click');
+    for (const node of elements().filter(node => Object.hasOwn(node.dataset || {}, 'tagesgeldApply') && !node.hidden)) await node.fire('click');
+    for (const node of elements().filter(node => Object.hasOwn(node.dataset || {}, 'tagesgeldConfirm') && !node.hidden)) await node.fire('click');
 }
 
 // Fixtureimporte führen keine fremden Assertions vor deren eigenem Suiteeintrag aus.

@@ -210,7 +210,7 @@ assertEqual(find('#chkPartnerAktiv[hidden][disabled][data-no-persist="true"]').l
     'Partnerstatus bleibt ein gesperrter, unsichtbarer und nicht persistierter Profilwertträger');
 assertEqual(find('[data-assumption-step="4"] #personDeviationToggle[data-no-persist="true"]').length, 1,
     'Die dokumentlokale Personenabweichung bleibt über einen eigenen Schalter erreichbar');
-for (const id of ['pflegefallLogikAktivieren', 'personDeviationToggle', 'runBacktestCohorts', 'toggle-backtest-detail', 'toggle-log-detail']) {
+for (const id of ['pflegefallLogikAktivieren', 'personDeviationToggle', 'toggle-backtest-detail', 'toggle-log-detail']) {
     const checkbox = find(`#${id}`)[0];
     assert(checkbox.parent.attrs.class.includes('ds-toggle'), `${id}: bestehende Checkbox bleibt im nativen Label`);
     const siblings = tree.elements.filter(node => node.parent === checkbox.parent);
@@ -291,9 +291,19 @@ const needCard = tree.elements.find(item => item.attrs['aria-labelledby'] === 's
 assertEqual(tree.elements.filter(item => item.tag === 'input' && inside(item, needCard)).map(item => item.attrs.id).join(','),
     'startFloorBedarf,startFlexBedarf,minimumFlexAnnual', 'Bedarf enthält genau dieselben drei Planfelder wie Balance');
 assert(['startFloorBedarf', 'startFlexBedarf', 'minimumFlexAnnual'].every(id => visible(byId(id))), 'Bedarf ist offen sichtbar');
-for (const id of ['mcSetupDisclosure', 'simPersonDetails', 'simCareDetails']) assert(!('open' in byId(id).attrs), id + ': bei jedem Seitenaufruf geschlossen');
-for (const id of ['marketCapeRatio', 'flexBudgetAnnual', 'liquidityRunwayYears', 'dynamicFlexPreset', 'rebalancingBand', 'mcAnzahl', 'mcDauer', 'stressPreset'])
-    assert(inside(byId(id), byId('mcSetupDisclosure')) && !visible(byId(id)), id + ': nur hinter Alle Parameter');
-assertEqual(find('.sim-parameter-card h3[data-plan-group-label]').map(item => item.attrs['data-plan-group-label']).join(','), '1,4,2,5,3', 'Gemeinsame Gruppen folgen dem Spaltenaufbau von Balance');
+for (const id of ['simPlanParameters', 'mcSetupDisclosure', 'simPersonDetails', 'simCareDetails']) assert(!('open' in byId(id).attrs), id + ': bei jedem Seitenaufruf geschlossen');
+for (const id of ['marketCapeRatio', 'flexBudgetAnnual', 'liquidityRunwayYears', 'dynamicFlexPreset', 'rebalancingBand'])
+    assert(inside(byId(id), byId('simPlanParameters')) && !visible(byId(id)), id + ': nur hinter Alle Parameter');
+assert(inside(byId('mcSetupDisclosure'), byId('tab-montecarlo')), 'Monte-Carlo-Einstellungen liegen im Monte-Carlo-Reiter');
+for (const id of ['mcAnzahl', 'mcDauer', 'stressPreset']) {
+    assert(inside(byId(id), byId('mcSetupDisclosure')), id + ': hinter Monte-Carlo-Einstellungen');
+    assert(!inside(byId(id), byId('simPlanParameters')) && !inside(byId(id), byId('tab-annahmen')), id + ': weder unter Alle Parameter noch in Annahmen');
+}
+assertEqual(find('.sim-parameter-card h3[data-plan-group-label]').map(item => item.attrs['data-plan-group-label']).join(','), '1,2,3,4,5', 'Gemeinsame Gruppen folgen dem Raster von Haushalt & Plan');
+const withdrawal = find('.sim-parameter-card').find(item => inside(byId('entnahmeStrategie'), item));
+for (const id of ['bondTargetFactor', 'drawdownTrigger', 'bondRefillThreshold'])
+    assert(inside(byId(id), withdrawal), id + ': in derselben Entnahmekarte wie im Plan');
+assert(!byId('profilverbund-withdrawal-mode') && !byId('householdWithdrawalMode'), 'Simulator zeigt keine Verteilung im Haushalt');
+assert(inside(byId('minCashBufferMonths'), byId('simPlanParameters')), 'Mindest-Liquidität liegt bei den Planparametern');
 assert(visible(byId('p1PersonValues')) && visible(byId('pflegefallLogikAktivieren')) && visible(byId('simCareSummary')), 'Personenübersicht, Pflegeschalter und Zusammenfassung sind sichtbar');
 assert(!visible(byId('sharedPensionValues')) && !visible(byId('pflegeModellTyp')) && !visible(byId('widowPensionMode')), 'Rentenanpassung, Modell- und Pflegeannahmen liegen hinter den Details');

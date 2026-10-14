@@ -167,7 +167,9 @@ try {
         assertEqual(inputs.horizonMethod.value, 'mean', 'Produktiver Balance-Presetlistener übernimmt die Horizontmethode ohne Rückprojektion');
         assertEqual(Number(inputs.horizonYears.value), 25, 'Produktiver Balance-Presetlistener übernimmt den Horizont');
         assertEqual(Number(inputs.flexBedarf.value), 36000, 'Balance-Presetlistener erhält vorherige Bedarfsänderung');
-        assert(!inputs.dynamicFlex.disabled && !inputs.entnahmeStrategie.disabled && !inputs.bondTargetFactor.disabled, 'Balance-Preset erzeugt keine Versuchssperre');
+        assert(inputs.dynamicFlex.disabled && !inputs.entnahmeStrategie.disabled && !inputs.bondTargetFactor.disabled, 'Voreinstellung blendet nur Dynamikdetails aus; Strategie bleibt bearbeitbar');
+        inputs.dynamicFlexPreset.value = 'custom'; inputs.dynamicFlexPreset.dispatchEvent({ type: 'change' });
+        assert(!inputs.dynamicFlex.disabled, 'Benutzerdefiniert gibt die bestehenden Dynamikdetails frei');
         stageBalancePlanPatch({ scope, patch: UIReader.readHouseholdPlanPatch() });
         await P.flush();
         const saved = readBalanceHouseholdPlan().entry.values;

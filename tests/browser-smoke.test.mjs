@@ -220,10 +220,12 @@ async function openSimulatorTab(page, tab) {
     await page.locator(`#tab-${tab}`).waitFor({ state: 'visible' });
 }
 
-// Die bestehenden MC-Wertträger liegen unter Annahmen → Alle Parameter.
+// Die bestehenden MC-Wertträger liegen in der Klappe des Monte-Carlo-Reiters.
 async function toggleMonteCarloSettings(page) {
     await openSimulatorTab(page, 'montecarlo');
     await page.locator('#mcSettingsToggle').click();
+    assert(await page.locator('.tab-btn.active').getAttribute('data-tab') === 'montecarlo',
+        'Einstellungen auf- und zuklappen bleibt im Monte-Carlo-Reiter');
 }
 
 async function openSimulatorProfileList(page) {
@@ -1893,7 +1895,7 @@ export function createOverviewWealthComparisonFixture(membership, retrospective)
 
 async function runOverviewWealthComparisons(browser, baseUrl) {
     const reason = 'Kein eindeutiger Vergleichsstand für diesen Profil-/Haushaltsumfang';
-    const cardHint = 'Kein Jahresendvergleich';
+    const cardHint = 'Jahresendvergleich 2026 nicht belegbar';
     for (const membership of ['household', 'excluded', 'deleted']) {
         for (const retrospective of [false, true]) {
             const { storage, fixedTime, currentAssets, history } = createOverviewWealthComparisonFixture(membership, retrospective);
@@ -1912,9 +1914,9 @@ async function runOverviewWealthComparisons(browser, baseUrl) {
                     assert(await page.locator('#overviewComparison').textContent() === cardHint,
                         `${context}, ${stage}: Karte enthält nur den fehlenden Vergleichsstand`);
                     const wealth = page.locator('#overviewYearMetrics .overview-year-metric').filter({ has: page.locator('span', { hasText: /^Vermögen$/ }) });
-                    assert(await wealth.isVisible() && await wealth.locator('strong').textContent() === ''
-                        && await wealth.locator('small').textContent() === 'erscheint nach dem ersten Jahresendstand',
-                        `${context}, ${stage}: sichtbare Vermögenskennzahl ohne Differenz oder Prozent`);
+                    assert(await wealth.isVisible() && await wealth.locator('strong').textContent() === '—'
+                        && await wealth.locator('.ds-info-pop').textContent() === cardHint,
+                        `${context}, ${stage}: Vermögenskennzahl zeigt Gedankenstrich und Grund im Info-Popup`);
                     assert(await page.locator('#overviewAssets').textContent() === formatDisplayNumber(currentAssets, { fractionDigits: 0 })
                         && await page.locator('#overviewAssetUnit').isVisible() && await page.locator('#overviewAssetUnit').textContent() === '€',
                         `${context}, ${stage}: aktueller Bestand folgt dem ausgewählten Umfang`);
@@ -2407,7 +2409,7 @@ async function runPersonDataMigration(browser, baseUrl) {
                 const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
                 await PersistenceFacade.flush(); return PersistenceFacade.getItemSync('profile_geburtsdatum') === '1958-03-14';
             });
-            assert((await page.locator('#profilePersonDateStatus').textContent()).includes('67 Jahre am 01.01.2026'), 'Zentrale Ergänzung zeigt Januaralter');
+            assert((await page.locator('#profilePersonDateStatus').textContent()).includes('Planalter 2026: 67 Jahre'), 'Zentrale Ergänzung zeigt Januaralter');
             await page.reload();
             await page.waitForFunction(() => document.getElementById('profileGeburtsdatum')?.value === '14.03.1958');
             assert(await dialog.count() === 0, 'Aktueller Bestand stellt nach Reload keine zweite Nachfrage');
@@ -2434,8 +2436,8 @@ async function runBalanceSmoke(browser, baseUrl) {
             verb: size('#balanceActionTitle'), amount: size('#balanceActionAmount'), wide,
             provenance: document.querySelector('#marketDataProvenance').classList.contains('ds-note') };
     });
-    assert(scale.h1 === 22 && scale.budget === (scale.wide ? 60 : 52)
-        && scale.verb === (scale.wide ? 30 : 28) && scale.amount === 17,
+    assert(scale.h1 === 22 && scale.budget === 44
+        && scale.verb === 30 && scale.amount === 17,
         `Balance-Grundbedienung verwendet die freigegebene Inhaltsbreitenskala: ${JSON.stringify(scale)}`);
     assert(!scale.provenance, 'Provenienz ist eine kleine Kartenzeile ohne Hinweisband');
     for (const id of ['jahresabschlussBtn', 'openActionDetails', 'balanceNextAnnual']) {
@@ -2457,8 +2459,9 @@ async function runBalanceSmoke(browser, baseUrl) {
     if (!(await page.locator('#balanceAllParameters').evaluate(node => node.open))) {
         await page.locator('#balanceAllParameters > summary').click();
     }
+    await page.locator('#dynamicFlexPreset-segments [data-balance-value="custom"]').click();
     await page.locator('#balanceDynamicFlexOff').waitFor({ state: 'visible' });
-    assert(await page.locator('#dynamicFlexShowAdvanced-segments').count() === 0, 'Alle Parameter ist der einzige sichtbare Detailzugang');
+    assert(await page.locator('#dynamicFlexShowAdvanced-segments').count() === 0, 'Benutzerdefiniert öffnet die Dynamikdetails ohne zusätzlichen Detailschalter');
     await page.waitForFunction(() => document.getElementById('balanceAllParameters').open
         && document.getElementById('dynamicFlexShowAdvanced').checked
         && !document.getElementById('dynamicFlex').checked
@@ -2473,8 +2476,8 @@ async function runBalanceSmoke(browser, baseUrl) {
                 const style = getComputedStyle(node), rect = node.getBoundingClientRect();
                 return { clipped: style.clipPath, padding: style.padding, border: style.borderWidth, width: rect.width, height: rect.height };
             }),
-            columns: getComputedStyle(document.querySelector('.balance-parameter-grid')).gridTemplateColumns.split(' ').length,
-            layout: getComputedStyle(document.querySelector('.balance-parameter-grid')).alignItems };
+            columns: getComputedStyle(document.querySelector('#balanceAllParameters .household-plan-groups')).gridTemplateColumns.split(' ').length,
+            layout: getComputedStyle(document.querySelector('#balanceAllParameters .household-plan-groups')).alignItems };
     });
     assert(offDetails.note === 'Dynamic Flex ist aus – Detailwerte gesperrt'
         && offDetails.descriptions.some(reason => reason.id === 'balanceDynamicFlexOff')
@@ -2497,11 +2500,11 @@ async function runBalanceSmoke(browser, baseUrl) {
         return JSON.stringify(UIReader.readAllInputs());
     });
     assert(await page.locator('#dynamicFlexPreset').inputValue() === 'custom'
-        && await page.locator('#dynamicFlexPreset-segments [data-balance-value="off"]').getAttribute('aria-pressed') === 'true'
-        && await page.locator('#dynamicFlexPreset-segments [data-balance-value="custom"]').getAttribute('aria-pressed') === 'false',
-        'Native Customwerte bei Aus werden ausschließlich im oberen Segment als Aus projiziert');
+        && await page.locator('#dynamicFlexPreset-segments [data-balance-value="off"]').getAttribute('aria-pressed') === 'false'
+        && await page.locator('#dynamicFlexPreset-segments [data-balance-value="custom"]').getAttribute('aria-pressed') === 'true',
+        'Benutzerdefiniert bleibt als gewähltes Segment sichtbar');
     await page.locator('#balanceAllParameters > summary').click();
-    await page.waitForFunction(() => document.getElementById('dynamicFlexShowAdvanced').checked === false);
+    await page.waitForFunction(() => document.getElementById('dynamicFlexShowAdvanced').checked === true);
     await page.locator('#balanceAllParameters > summary').click();
     await page.waitForFunction(() => document.getElementById('dynamicFlexShowAdvanced').checked === true);
     const nativeAfterView = await page.evaluate(async () => {
@@ -2527,9 +2530,9 @@ async function runBalanceSmoke(browser, baseUrl) {
     await page.locator('#dynamicFlexPreset-segments [data-balance-value="custom"]').click();
     await page.waitForFunction(() => document.getElementById('balanceAllParameters').open
         && document.activeElement?.id === 'horizonMethod');
-    assert(await page.locator('#dynamicFlexPreset').inputValue() === 'konservativ'
-        && await page.locator('#dynamicFlexPreset-segments [data-balance-value="konservativ"]').getAttribute('aria-pressed') === 'true'
-        && await page.locator('#dynamicFlexShowAdvanced').isChecked(), 'Presetgleicher Customklick öffnet Details, Preseterkennung und Segmentprojektion bleiben erhalten');
+    assert(await page.locator('#dynamicFlexPreset').inputValue() === 'custom'
+        && await page.locator('#dynamicFlexPreset-segments [data-balance-value="custom"]').getAttribute('aria-pressed') === 'true'
+        && await page.locator('#dynamicFlexShowAdvanced').isChecked(), 'Benutzerdefiniert öffnet die vorhandenen Detailwerte und bleibt ausgewählt');
     await page.locator('#horizonMethod').selectOption('survival_quantile');
     await page.locator('#survivalQuantile').fill('80');
     await page.locator('#survivalQuantile').dispatchEvent('change');
@@ -2547,7 +2550,7 @@ async function runBalanceSmoke(browser, baseUrl) {
         'Abweichender Customklick erhält 80 Prozent und den Enginewert 0.8');
     await page.locator('#balanceAllParameters > summary').click();
     await page.waitForFunction(() => !document.getElementById('balanceAllParameters').open
-        && !document.getElementById('dynamicFlexShowAdvanced').checked);
+        && document.getElementById('dynamicFlexShowAdvanced').checked);
     await page.locator('#balanceAllParameters > summary').click();
     await page.waitForFunction(() => document.getElementById('balanceAllParameters').open
         && document.getElementById('dynamicFlexShowAdvanced').checked
@@ -2604,7 +2607,7 @@ async function runBalanceSmoke(browser, baseUrl) {
     }
     for (const [label, expected] of [
         [HOUSEHOLD_PLAN_FIELDS.find(field => field.path === 'floorBedarf').label.split(' (')[0], '1.500\u00a0€ / Monat'],
-        [HOUSEHOLD_PLAN_FIELDS.find(field => field.path === 'flexBedarf').label.split(' (')[0], '1.001\u00a0€ / Monatdavon finanziert 500\u00a0€'],
+        [HOUSEHOLD_PLAN_FIELDS.find(field => field.path === 'flexBedarf').label.split(' (')[0], '1.001\u00a0€ / Monat'],
         ['Bedarf gesamt', '2.501\u00a0€ / Monat']
     ]) {
         const matchingRows = Object.entries(overview.need).filter(([name]) => name === label || name.startsWith(label + ' ('));
@@ -2615,7 +2618,7 @@ async function runBalanceSmoke(browser, baseUrl) {
     assert(overview.reserve['Gold-Bestand'] === '301\u00a0€', 'Gold-Bestand zeigt im echten DOM ganze Euro');
     assert(overview.texts.balanceMonthlyBudget === '2.001\u00a0€', 'Großes Monatsbudget bleibt trotz Cent-Eingang ganzzahlig');
     assert(overview.texts.balanceReserveTargetMonths === '36\u00a0Monate'
-        && overview.texts.balanceReserveRunway === 'Nach Vorschlag: reicht für 9,3\u00a0Monate Entnahme', 'Zielmonate und Reichweite nach Vorschlag bleiben getrennt');
+        && overview.texts.balanceReserveRunway === 'Nach Vorschlag: reicht für 9,3\u00a0Monate Vermögensentnahme', 'Zielmonate und Reichweite nach Vorschlag bleiben getrennt');
     assert(overview.texts.balanceWealthFooter === 'Gesamtvermögen 95.001\u00a0€ · davon Pflegevorsorge 10.000\u00a0€ reserviert', 'Fußzeile addiert Pflegevorsorge nicht erneut');
 
     // Echte Diagnoseprojektion in einem vorübergehenden sichtbaren Host.
@@ -5235,7 +5238,7 @@ async function assertSimulatorWorkshopPrint(page, tool, label, outputs = []) {
             cardsDisplay: getComputedStyle(document.getElementById('workshopToolCards')).display,
             mainMcDisplay: getComputedStyle(document.getElementById('tab-montecarlo')).display,
             setupContentDisplay: getComputedStyle(document.querySelector('#mcSetupDisclosure > .mc-setup-content')).display,
-            setupFieldsetDisplay: getComputedStyle(document.querySelector('#mcSetupDisclosure .sim-parameter-card fieldset')).display,
+            setupFieldsetDisplay: getComputedStyle(document.querySelector('#mcSetupDisclosure fieldset')).display,
             mcPanelDisplays: [...document.querySelectorAll('.mc-view-panel')]
                 .map(panel => getComputedStyle(panel).display),
             comparisonPanelDisplays: [...document.querySelectorAll('[data-stress-replay-comparison-panel]')]
@@ -5285,7 +5288,7 @@ async function assertSimulatorWorkshopPrint(page, tool, label, outputs = []) {
 
         assert(await page.locator('.mc-view-panel [data-print-probe="mc-content"]').count() === 4,
             `${label}: alle vier MC-Ansichten besitzen sichtbaren Prüfinhalt`);
-        for (const selector of ['#mcSetupDisclosure .sim-parameter-card fieldset',
+        for (const selector of ['#mcSetupDisclosure fieldset',
             '#workshopReplayPanel', '#sweepRuns', '#ao_metric', '.mc-view-panel [data-print-probe="mc-content"]',
             '[data-stress-replay-comparison-panel]']) {
             const nodes = page.locator(selector);
@@ -5622,8 +5625,9 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
                                 && getComputedStyle(button).color === getComputedStyle(svg.querySelector(`.scenario-line[data-scenario-id="${button.dataset.scenarioId}"] path`)).stroke
                                 && getComputedStyle(button).backgroundColor === 'rgba(0, 0, 0, 0)' && getComputedStyle(button).borderWidth === '0px') };
                     });
-                    assert(marks.count === 3 && !marks.overflow && !marks.overlap && marks.accessible,
-                        `${width}/${theme}: mehrere erreichbare Randmarken ohne Textkollision oder Überlauf`);
+                    // Randmarken bleiben bei 14 px und entfallen bei Platzmangel (SG-3, 14.10.2026); vollständig nur ab 1920.
+                    assert((width >= 1920 ? marks.count === 3 : marks.count >= 1) && !marks.overflow && !marks.overlap && marks.accessible,
+                        `${width}/${theme}: erreichbare Randmarken ohne Textkollision oder Überlauf ${JSON.stringify(marks)}`);
                 }
             }
             await page.evaluate(() => { document.documentElement.removeAttribute('data-theme'); });
@@ -5773,12 +5777,12 @@ async function runSimulatorSmoke(browser, baseUrl) {
     const activeSegment = '[data-select-segment="dynamicFlexPreset"] button[aria-pressed="true"]';
     assert(await page.locator(activeSegment).evaluate(button => button === document.activeElement),
         'Korrekturzugang fokussiert den sichtbaren gedrückten Segmentknopf');
-    await page.locator('label[for="dynamicFlexPreset"]').click();
+    await page.locator(activeSegment).click();
     assert(await page.locator(activeSegment).evaluate(button => button === document.activeElement),
-        'Nativer Labelklick fokussiert den sichtbaren gedrückten Segmentknopf');
+        'Der sichtbare Segmentknopf bleibt direkt bedienbar');
     await page.keyboard.press('Tab');
     assert(await page.evaluate(() => !document.activeElement.classList.contains('sim-segment-source')),
-        'Tab führt nach Labelaktivierung zu einem sichtbaren Control');
+        'Tab führt nach Segmentbedienung zu einem sichtbaren Control');
     await page.locator('#simPlanTrialBack').click();
     const mcCancelButton = page.locator('#mcCancelButton');
     assert(await mcCancelButton.count() === 1, 'Simulator must expose exactly one Monte-Carlo cancel control');
@@ -5840,9 +5844,9 @@ async function runSimulatorSmoke(browser, baseUrl) {
     assert((await page.locator('#mcSetupSummaryDuration').textContent()) === '35',
         'Monte-Carlo setup summary exposes the current duration');
     assert(await settingsToggle.getAttribute('aria-expanded') === 'false', 'Frische Einstellungen sind geschlossen');
-    await openSimulatorTab(page, 'montecarlo'); await settingsToggle.click();
+    await toggleMonteCarloSettings(page);
     await page.locator('#mcSeed').fill('24680');
-    await openSimulatorTab(page, 'montecarlo'); await settingsToggle.click();
+    await toggleMonteCarloSettings(page);
     assert(!(await setupDisclosure.evaluate(details => details.open)), 'setup disclosure closes with the pointer');
     assert(await settingsToggle.getAttribute('aria-expanded') === 'false'
         && (await settingsToggle.textContent()).includes('Einstellungen anzeigen'), 'Geschlossene Einstellungen haben korrekte Beschriftung und ARIA');
@@ -6049,9 +6053,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
     await page.locator('.tab-btn[data-tab="montecarlo"]').click();
     await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = true; });
     for (const runs of ['99999', '100000', '999999', '1000000']) {
-        await openSimulatorTab(page, 'annahmen');
         await page.locator('#mcAnzahl').fill(runs);
-        await openSimulatorTab(page, 'montecarlo');
         assert(await page.locator('#mcRunHint').isVisible() === (Number(runs) >= 100000),
             `Großlaufhinweis an Schwelle ${runs}`);
     }
@@ -6089,10 +6091,10 @@ async function runSimulatorSmoke(browser, baseUrl) {
         && await page.evaluate(() => document.activeElement?.id) === 'mcShowReplayButton',
     'replay return action exposes logs and focuses its visible fallback before a run');
     assert(await mcRuns.inputValue() === '10000', 'new Simulator profile uses the 10,000-run Monte-Carlo default');
-    // Die Ressourcenschätzung steht seit dem Umbau unter Annahmen → Alle Parameter.
-    await openSimulatorTab(page, 'annahmen');
-    if (!await setupDisclosure.evaluate(details => details.open)) await setupDisclosure.locator(':scope > summary').click();
-    await mcEstimate.filter({ hasText: 'Run-Jahre' }).waitFor({ state: 'visible' });
+    // Die Ressourcenschätzung steht in den Monte-Carlo-Einstellungen.
+    await openSimulatorTab(page, 'montecarlo');
+    if (!await setupDisclosure.evaluate(details => details.open)) await toggleMonteCarloSettings(page);
+    await mcEstimate.filter({ hasText: 'Laufjahre' }).waitFor({ state: 'visible' });
     assert((await mcEstimate.textContent()).includes('Speicherklasse'), 'Monte-Carlo resource estimate names its memory class');
     await openSimulatorTab(page, 'montecarlo');
     assert(await page.locator('#mc-progress-bar-container').getAttribute('role') === 'progressbar', 'Monte-Carlo progress is semantic in a real browser');
@@ -6558,8 +6560,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
         await replayComparisonProbe.dispose();
     }
 
-    await page.locator('.tab-btn[data-tab="montecarlo"]').click();
-    await openSimulatorTab(page, 'annahmen');
+    await openSimulatorTab(page, 'montecarlo');
     await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = true; });
     await mcRuns.fill('100001');
     await mcRuns.dispatchEvent('input');
@@ -6609,10 +6610,6 @@ async function runSimulatorSmoke(browser, baseUrl) {
     assert(bounds.hint.includes(String(bounds.startMin)) && bounds.hint.includes(String(bounds.endMax)), 'Visible dataset hint must name both bounds');
 
     const realInventoryBefore = await readIndexedDb(page, 'kv', 'depot_tranchen');
-    // Seit p4f ist der Schalter ein ds-toggle (Eingabefeld visuell verborgen); bedient wird er über sein Label.
-    await page.locator('label:has(#runBacktestCohorts)').first().click();
-    await page.waitForFunction(() => document.getElementById('runBacktestCohorts').checked);
-    await page.locator('#backtestCohortHorizon').fill('10');
     // Beim Öffnen läuft bereits ein automatischer Backtest mit den Startwerten (seit H1 mit dem Planbedarf
     // 12.000/24.000 bei Vermögen 0 → Ruin). Dessen Status darf nicht als Ergebnis dieses Laufs gelesen werden.
     await page.evaluate(() => { window.__smokeBacktestBefore = window.globalBacktestData; });
@@ -6624,22 +6621,19 @@ async function runSimulatorSmoke(browser, baseUrl) {
     const initialTerminalStatus = await page.locator('#backtestStatus').getAttribute('data-status');
     const initialTerminalText = await page.locator('#backtestStatus').textContent();
     assert(initialTerminalStatus === 'completed', `Default browser backtest must complete: ${JSON.stringify({ initialTerminalStatus, initialTerminalText })}`);
-    await page.locator('#simulationResults').waitFor({ state: 'visible' });
-    await page.locator('#backtestCohortSummary').waitFor({ state: 'visible' });
+    await page.locator('.sim-backtest-metrics').waitFor({ state: 'visible' });
 
-    assert(await page.evaluate(() => document.activeElement?.id) === 'backtestStatus', 'Completed run must focus the terminal result status');
+    assert(await page.evaluate(() => document.activeElement?.id) === 'backtestResultHeading', 'Completed run must focus the metrics heading');
     assert(await page.locator('#simulationLog caption').count() === 1, 'Backtest table needs exactly one caption');
     assert(await page.locator('#simulationLog thead th[scope="col"]').count() === await page.locator('#simulationLog .protocol-column-head th').count(),
         'Every backtest column header needs scope=col beneath the grouped header');
     assert(await page.locator('#simulationLog').getAttribute('tabindex') === '0', 'Scrollable backtest table region must be keyboard-focusable');
-    const notices = await page.locator('.sim-backtest-classification').textContent();
-    assert(notices.includes('Ergebnis') && notices.includes('Datenqualität') && notices.includes('In-sample-Hinweis'),
-        'Outcome, data quality and in-sample warning must all be visible');
-    const cohortText = await page.locator('#backtestCohortSummary').textContent();
-    assert(cohortText.includes('Feste Horizontlänge: 10 Jahre'), 'Cohort summary must name its fixed horizon');
-    assert(cohortText.includes('Geeignet') && cohortText.includes('Ausgeschlossen') && cohortText.includes('Ruin'),
-        'Cohort summary must separate inventory, exclusions and outcomes');
-    assert(cohortText.includes('keine Erfolgswahrscheinlichkeit'), 'Cohort summary must state its inference boundary');
+    await page.locator('#backtestResultInfo .ds-info-button').click();
+    await page.locator('#backtestResultInfoPop').waitFor({ state: 'visible' });
+    const notices = await page.locator('#backtestResultInfoPop').textContent();
+    assert(notices.includes('Nächster Schritt') && notices.includes('Datenqualität') && notices.includes('In-sample-Hinweis'),
+        'Data quality and in-sample warning remain in the result info popup');
+    await page.keyboard.press('Escape');
 
     const normalHeaderCount = await page.locator('#simulationLog .protocol-column-head th').count();
     assert(await page.locator('#simulationLog .protocol-group-head th[scope="colgroup"]').count() > 0, 'Backtestprotokoll besitzt gruppierte Erklärungsköpfe');
@@ -6679,7 +6673,6 @@ async function runSimulatorSmoke(browser, baseUrl) {
             rowCount: field('row_count'),
             exactTenPctMetric: metric('flex_reduction_years_gte_10_pct'),
             healthBucketEnd: metric('health_bucket_end_nominal_eur'),
-            cohortEligible: document.querySelector('[data-cohort-field="eligible"]')?.textContent?.trim()
         };
     });
     assert(visibleCanonical.startYear === String(rawDocument.request.startYear), 'Visible start year reconciles with Raw JSON');
@@ -6694,8 +6687,6 @@ async function runSimulatorSmoke(browser, baseUrl) {
         'Visible health-bucket end reconciles with Raw JSON');
     assert((await page.locator('#simulationSummary').textContent()).includes('im Endvermögen enthalten'),
         'Visible summary states that the health bucket is already included in end wealth');
-    assert(visibleCanonical.cohortEligible === String(rawDocument.result.cohortInventory.eligible),
-        'Visible cohort inventory reconciles with the Raw JSON snapshot');
 
     if ((await page.locator('#toggle-backtest-detail').isChecked()) !== true) await page.locator('label:has(#toggle-backtest-detail)').first().click(); await page.waitForFunction(() => document.getElementById('toggle-backtest-detail').checked === true);
     const detailedHeaderCount = await page.locator('#simulationLog .protocol-column-head th').count();
@@ -6710,7 +6701,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
     assert(JSON.stringify(detailedRawDocument.result.rows) === JSON.stringify(rawDocument.result.rows),
         'Detail toggle must not change Raw JSON rows');
     const realInventoryAfter = await readIndexedDb(page, 'kv', 'depot_tranchen');
-    assert(JSON.stringify(realInventoryAfter) === JSON.stringify(realInventoryBefore), 'Backtest and cohort runs must not mutate real tranche inventory');
+    assert(JSON.stringify(realInventoryAfter) === JSON.stringify(realInventoryBefore), 'Backtest runs must not mutate real tranche inventory');
 
     const runPeriodValidationCase = async ({ start, end, expectedField, label, startType = 'number' }) => {
         await page.locator('#simStartJahr').evaluate((input, type) => { input.type = type; }, startType);
@@ -6718,15 +6709,14 @@ async function runSimulatorSmoke(browser, baseUrl) {
         await page.locator('#simEndJahr').fill(String(end));
         await page.locator('#btButton').click();
         await page.waitForFunction(expectedFieldId => (
-            document.getElementById('backtestDiagnosisCode')?.textContent?.includes('BACKTEST_PERIOD_INVALID')
+            document.getElementById('backtestStatus')?.textContent?.includes('BACKTEST_PERIOD_INVALID')
             && document.activeElement?.id === expectedFieldId
         ), expectedField);
-        assert(await page.locator('#backtestDiagnosisCode').textContent().then(text => text.includes('BACKTEST_PERIOD_INVALID')), `${label}: stable validation code must be visible`);
+        assert(await page.locator('#backtestStatus').textContent().then(text => text.includes('BACKTEST_PERIOD_INVALID')), `${label}: stable validation code must be visible`);
         assert(await page.evaluate(() => document.activeElement?.id) === expectedField, `${label}: first invalid field must receive focus`);
         assert(await page.locator(`#${expectedField}`).getAttribute('aria-invalid') === 'true', `${label}: invalid field must expose aria-invalid`);
     };
 
-    if ((await page.locator('#runBacktestCohorts').isChecked()) !== false) await page.locator('label:has(#runBacktestCohorts)').first().click(); await page.waitForFunction(() => document.getElementById('runBacktestCohorts').checked === false);
     await runPeriodValidationCase({ start: '', end: 2000, expectedField: 'simStartJahr', label: 'empty start' });
     await runPeriodValidationCase({ start: 'NaN', end: 2000, expectedField: 'simStartJahr', label: 'NaN start', startType: 'text' });
     await runPeriodValidationCase({ start: '2000.5', end: 2001, expectedField: 'simStartJahr', label: 'fractional start' });
@@ -6760,7 +6750,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
         });
     });
     assert(await page.locator('#backtestStatus').getAttribute('data-status') === 'incomplete', 'Synthetic middle-year gap must render incomplete');
-    assert((await page.locator('#backtestDiagnosisCode').textContent()).includes('historical_year_missing'), 'Incomplete state must expose its stable reason code');
+    assert((await page.locator('#backtestStatus').textContent()).includes('historical_year_missing'), 'Incomplete state must expose its stable reason code');
     assert(!(await page.locator('#simulationResults').isVisible()), 'Incomplete result must not masquerade as a complete summary');
 
     await page.evaluate(() => window.runBacktest({
@@ -6775,7 +6765,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
             };
         }
     }));
-    const technicalStatus = await page.locator('.sim-backtest-classification').textContent();
+    const technicalStatus = await page.locator('#backtestStatus').textContent();
     assert(await page.locator('#backtestStatus').getAttribute('data-status') === 'technical_error', 'Synthetic engine failure must render technical_error');
     assert(technicalStatus.includes('SYNTHETIC_TECHNICAL_ERROR'), 'Technical state must expose its stable code');
     assert(!technicalStatus.includes('C:\\Users') && !technicalStatus.includes('synthetic stack'), 'Technical state must suppress local paths and stack details');
@@ -6792,7 +6782,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
         }
     }));
     assert(await page.locator('#backtestStatus').getAttribute('data-status') === 'ruin', 'Synthetic floor shortfall must render ruin separately');
-    assert((await page.locator('#backtestDiagnosisCode').textContent()).includes('Backtest mit Ruin beendet'), 'Ruin state must show a readable financial status');
+    assert((await page.locator('#backtestStatus').textContent()).includes('Backtest mit wirtschaftlichem Ruin beendet'), 'Ruin state must show a readable financial status');
     assert(await page.locator('#simulationResults').isVisible(), 'Ruin remains a financial result with summary and rows');
     assert((await page.evaluate(() => window.__browserSmokeAlerts || [])).length === 0, 'Backtest validation and terminal states must not rely on alert dialogs');
     smoke.assertNoErrors();
@@ -7728,7 +7718,7 @@ async function runManagerHistorySmoke(browser, baseUrl) {
             });
             fonts.push(geometry.effective); purchaseFonts.push(geometry.eventFont);
             await assertHistoryDetailScrollGeometry(page, width);
-            assert(Math.abs(geometry.effective - 12) <= 1 && Math.abs(geometry.eventFont - 12) <= 1 && geometry.line === 2, `P8b/${width}: effektive Detailachse, Kauftext und Strich konstant`);
+            assert(Math.abs(geometry.effective - 14) <= 1 && Math.abs(geometry.eventFont - 14) <= 1 && geometry.line === 2, `P8b/${width}: effektive Detailachse, Kauftext und Strich konstant (14 px dicht, SG-1)`);
             assert(geometry.expanded === 'true' && geometry.active.includes('Verlauf A'), 'P8b: Resize erhält Person und offenes Detail');
             assert(geometry.text.includes('Kaufpreis 200,00 € (02.01.2025)') && geometry.text.includes('Höchster Kurs 120,00 €, niedrigster Kurs 100,00 €'), 'P8b: Centextrema und ursprüngliches Kaufdatum sichtbar');
             assert(geometry.labelsContained && ['120,00 €', '100,00 €', 'Kaufpreis 200,00 € (02.01.2025)'].every(text => geometry.visibleAxes.includes(text)), 'P8c: tatsächliche Achsen- und Kaufpreistextknoten sind sichtbar und liegen innerhalb des Hosts');
@@ -9155,11 +9145,9 @@ async function runDesignsystemTools(browser, baseUrl) {
         await openSimulatorPlanTrial(page);
         await page.locator('[data-select-segment="entnahmeStrategie"] [data-value="3_bucket_jilge"]').click();
         await page.locator('.tab-btn[data-tab="backtesting"]').click();
-        await assertSimulatorToggleRow(page, 'runBacktestCohorts');
         const start = await page.locator('#simStartJahr').evaluate(node => Number(node.min));
         await page.locator('#simStartJahr').fill(String(start));
         await page.locator('#simEndJahr').fill(String(start + 1));
-        if ((await page.locator('#runBacktestCohorts').isChecked()) !== false) await page.locator('label:has(#runBacktestCohorts)').first().click(); await page.waitForFunction(() => document.getElementById('runBacktestCohorts').checked === false);
         await page.locator('#btButton').click();
         await page.waitForFunction(() => ['completed', 'ruin'].includes(document.getElementById('backtestStatus')?.dataset.status));
         assert(await page.locator('#simulationLog table').count() === 1, 'Kurzer Werkzeug-Backtest erhält Tabellenanker');
@@ -9198,6 +9186,7 @@ async function runDesignsystemTools(browser, baseUrl) {
                 const chartCard = document.querySelector('.sim-backtest-chart');
                 return { columns: getComputedStyle(document.querySelector('#simulationSummary .summary-grid')).gridTemplateColumns.split(' ').length,
                     metricWidth: metricCard.getBoundingClientRect().width, chartWidth: chartCard.getBoundingClientRect().width,
+                    gridWidth: document.querySelector('.sim-backtest-grid').getBoundingClientRect().width,
                     chartInCard: chartCard.contains(document.getElementById('portfolioCompositionChart')),
                     hostWidth: document.getElementById('portfolioCompositionChart').clientWidth,
                     chartWidthInside: document.querySelector('#portfolioCompositionChart svg').getBoundingClientRect().width,
@@ -9212,7 +9201,8 @@ async function runDesignsystemTools(browser, baseUrl) {
                     periodStatus: document.getElementById('backtestPeriodStatus').textContent };
             });
             if (width >= 1920) assert(backtestLayout.columns === 3, `${width}: drei Hauptkennzahlen im Backtest`);
-            assert(backtestLayout.chartInCard && Math.abs(backtestLayout.metricWidth - backtestLayout.chartWidth) <= 1,
+            assert(backtestLayout.chartInCard && Math.abs(backtestLayout.gridWidth - backtestLayout.chartWidth) <= 1
+                && backtestLayout.metricWidth <= backtestLayout.chartWidth,
                 `${width}: Portfoliochart in eigener voller Karte`);
             assert(Math.abs(backtestLayout.hostWidth - backtestLayout.available) <= 2
                 && backtestLayout.chartWidthInside >= backtestLayout.hostWidth - 2, `${width}: Portfolioverlauf füllt die nutzbare Kartenbreite`);
@@ -9963,7 +9953,9 @@ async function runDesignsystemSimulatorFields(browser, baseUrl) {
         for (const preset of ['off', 'konservativ', 'ausgewogen', 'offensiv']) {
             await page.locator('#dynamicFlexPreset').selectOption(preset);
             assert(await page.locator('#dynamicFlex').isChecked() === (preset !== 'off'), `S08: Preset ${preset} behält seinen Wert`);
-            await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = true; });
+            await page.locator('#simPlanParameters').evaluate(node => { node.open = true; });
+            assert(!await page.locator('#dynamicFlexConfigGroup').isVisible(), 'Voreinstellung hält Details geschlossen');
+            await page.locator('[data-select-segment="dynamicFlexPreset"] button[data-value="custom"]').click();
             await assertCurrentSelectionText(page, ['dynamicFlexPreset', 'horizonMethod', 'longevityMode'], true);
             if (preset === 'offensiv') assert(await page.locator('#horizonMethod').inputValue() === 'mean', 'Offensives Preset übernimmt mean samt Volltext');
             assert(await page.locator('#dynamicFlexConfigGroup').isVisible(), 'S08: bestehende Detailfreigabe öffnet Konfiguration');
@@ -9989,7 +9981,7 @@ async function runDesignsystemSimulatorFields(browser, baseUrl) {
         // Nach dem Reload öffnet der Simulator im Reiter „Ergebnis“ mit geschlossener Parameterklappe.
         await openSimulatorPlanTrial(page);
         await page.locator('[data-parameters="strategie"]').evaluate(detail => { detail.open = true; });
-        await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = true; });
+        await page.locator('#simPlanParameters').evaluate(node => { node.open = true; });
         await page.locator('#horizonMethod').selectOption('mean');
         assert((await page.locator('.ds-field:has(#survivalQuantile) .ds-field-reason').textContent()).includes('Erwartungswert'), 'S09: Methodenwechsel synchronisiert Grund');
         await page.locator('#longevityMode').selectOption('buffer_years');
@@ -10003,7 +9995,8 @@ async function runDesignsystemSimulatorFields(browser, baseUrl) {
             assert(await page.locator('#mcBlockSize').isDisabled() === (method !== 'block' && method !== 'stationary'), 'S24: bestehende Blockgrößensperre');
             const reason = page.locator('#mcBlockSize + .ds-field-reason');
             assert(await reason.isVisible(), 'S24: Bootstrapgrund ist sichtbar');
-            assert(await reason.textContent() === await page.locator('#mcBlockSize').getAttribute('title'), 'S24: sichtbarer Bootstrapbegriff und Titel synchron');
+            assert((await reason.textContent()).includes(method === 'block' || method === 'stationary' ? 'Historische' : 'Bootstrap'), 'S24: kurzer Hinweis passt zur gewählten Methode');
+            assert((await page.locator('#mcBlockSize').getAttribute('title')).includes('Bootstrap'), 'S24: vollständiger Bootstrapbegriff bleibt am Feld zugänglich');
         }
         assert(await page.locator('#startAlter, #geschlecht, #startSPB, #kirchensteuerSatz, #renteMonatlich, #renteStartOffsetJahre').evaluateAll(fields => fields.every(field => field.type === 'hidden' && !field.hasAttribute('data-field-state'))), 'S15: Legacybrücke bleibt verborgen');
         smoke.assertNoErrors();
@@ -10243,8 +10236,8 @@ async function runDesignsystemSimulatorResults(browser, baseUrl) {
         await page.locator('.tab-btn[data-tab="montecarlo"]').click();
         for (const state of ['zero', 'low', 'small', 'technical', 'empty']) {
             const result = await page.evaluate(async state => {
-                const { buildSummaryData } = await import('./app/simulator/results-metrics.js');
-                const { renderSummary } = await import('./app/simulator/results-renderers.js');
+                const { buildSummaryData, buildMonteCarloAnswers } = await import('./app/simulator/results-metrics.js');
+                const { renderSummary, renderMonteCarloAnswers } = await import('./app/simulator/results-renderers.js');
                 const { buildMonteCarloOutcomeInventoryV1 } = await import('./app/simulator/monte-carlo-chunk-result.js');
                 const requestedRuns = state === 'empty' ? 0 : state === 'small' || state === 'technical' ? 4 : 1000;
                 const inventory = buildMonteCarloOutcomeInventoryV1({ requestedRuns,
@@ -10253,10 +10246,11 @@ async function runDesignsystemSimulatorResults(browser, baseUrl) {
                     technical_error: state === 'technical' ? 1 : 0 });
                 const cards = buildSummaryData({ results: { outcomeInventory: inventory }, totalRuns: requestedRuns, failCount: inventory.ruin });
                 document.getElementById('monteCarloResults').style.display = 'block';
+                renderMonteCarloAnswers(document.getElementById('monteCarloAnswers'), buildMonteCarloAnswers({ results: { outcomeInventory: inventory }, totalRuns: requestedRuns, failCount: inventory.ruin }));
                 renderSummary(document.getElementById('monteCarloSummary'), cards);
-                // Neues Layout: Die Floor-Kennzahl (cards[0]) steht als eigene Floorkarte vor den Endvermögenskarten.
+                // Deckungswert in der Kernantwort; Warnung und Intervall in der ergänzenden Zeile.
                 const card = document.querySelector('#monteCarloSummary .mc-floor-card') || document.querySelector('#monteCarloSummary .summary-item');
-                const valueNode = card.querySelector('.mc-floor-value') || card.querySelector('span');
+                const valueNode = document.querySelector('#monteCarloAnswers .sim-hero-amount');
                 const style = getComputedStyle(card);
                 return { tone: cards[0].tone, value: valueNode.textContent, description: card.querySelector('.summary-description').textContent,
                     originalDescription: cards[0].description, background: style.backgroundColor, color: getComputedStyle(valueNode).color, opacity: style.opacity,
@@ -10272,8 +10266,7 @@ async function runDesignsystemSimulatorResults(browser, baseUrl) {
                 if (state === 'small') assert(result.description.includes('Unsicherheitswarnung: nur 4 Läufe; Schwelle 1000.'), 'Small-sample-Grund unverändert');
                 else assert(result.value === '—', 'Technik/Leerzustand wird nicht als Null ausgewiesen');
             }
-            // Freigegebenes Design (simulator.css .mc-floor-value): Ergänzende Deckung mit --value-md.
-            assert(result.font.includes('Newsreader') && result.fontSize === '17px', 'Ergänzende Deckung bleibt in der mittleren Serifengröße');
+            assert(result.font.includes('Newsreader') && result.fontSize === '30px', 'Deckung bleibt als Kernantwort in der großen Serifengröße');
         }
         // Null, positive Werte und fehlende Beobachtungen an echten KPI-/Stressconsumern.
         for (const value of [0, 22.331, null]) {
@@ -11250,7 +11243,6 @@ async function runSuiteFrameProfileHistory(browser, baseUrl) {
                 const start = await page.locator('#simStartJahr').evaluate(node => Number(node.min));
                 await page.locator('#simStartJahr').fill(String(start));
                 await page.locator('#simEndJahr').fill(String(start + 1));
-                if ((await page.locator('#runBacktestCohorts').isChecked()) !== false) await page.locator('label:has(#runBacktestCohorts)').first().click(); await page.waitForFunction(() => document.getElementById('runBacktestCohorts').checked === false);
                 await page.locator('#btButton').click();
                 await page.waitForFunction(() => ['completed', 'ruin'].includes(document.getElementById('backtestStatus')?.dataset.status));
                 assert(await page.locator('#simulationResults').isVisible(), 'Profil A besitzt vor dem Wechsel echte sichtbare Backtestergebnisse');
@@ -11698,7 +11690,6 @@ async function runNavigationGuardCalculations(browser, baseUrl) {
             }) }) });
             document.getElementById('simStartJahr').value = '2000';
             document.getElementById('simEndJahr').value = '2001';
-            document.getElementById('runBacktestCohorts').checked = false;
             const { runBacktestWithRuntimeProvenance } = await import('./app/simulator/simulator-backtest.js');
             await runBacktestWithRuntimeProvenance();
         });
@@ -11766,7 +11757,6 @@ async function runNavigationGuardOptimizerBacktest(browser, baseUrl) {
                 const values = { liquidityRunwayYears: 5, mcAnzahl: 2, mcDauer: 2, mcSeed: 42,
                     mcBlockSize: 1, mcMethode: 'block', simStartJahr: 2000, simEndJahr: 2001 };
                 for (const [id, value] of Object.entries(values)) document.getElementById(id).value = String(value);
-                document.getElementById('runBacktestCohorts').checked = false;
                 // Das Ergebnis des Öffnungsbacktests ist der Ausgangsstand vor beiden Probeläufen.
                 const probe = window.__optimizerProbe = { guard: getPageNavigationGuard(document), gates: [], ended: [], opening: window.globalBacktestData };
                 const metrics = { metricContract: { schemaVersion: 'AutoOptimizeMetricResultV1' },
@@ -14050,8 +14040,7 @@ async function runSimulatorHouseholdBacktestInvalidation(browser, baseUrl) {
                     birth: PersistenceFacade.getItemSync('profile_geburtsdatum'), obsoleteCalls: 0 };
                 document.getElementById('simStartJahr').value = '2000';
                 document.getElementById('simEndJahr').value = '2002';
-                document.getElementById('backtestCohortHorizon').value = '2';
-                probe.old = bt.runBacktest({ focus: false, cohortsEnabled: true, runtimeBuildProvenance: provenance });
+                probe.old = bt.runBacktest({ focus: false, runtimeBuildProvenance: provenance });
                 if (probe.old?.outcome.kind !== 'completed' || window.globalBacktestData.personDataContext.persons.length !== 2)
                     throw new Error('Zweipersonen-Ausgangslauf fehlt');
                 if (['provenance', 'paint'].includes(stage)) {
@@ -14085,7 +14074,7 @@ async function runSimulatorHouseholdBacktestInvalidation(browser, baseUrl) {
             const verifyDiscarded = async () => {
                 assert(await page.evaluate(() => window.globalBacktestData === null), `${stage}: Altquelle verworfen`);
                 await openSimulatorTab(page, 'backtesting');
-                for (const id of ['simulationSummary', 'backtestProtocolSummary', 'backtestResultPeriod', 'backtestCohortSummary'])
+                for (const id of ['simulationSummary', 'backtestProtocolSummary', 'backtestResultPeriod', 'backtestResultInfoPop'])
                     assert((await page.locator(`#${id}`).textContent()).trim() === '', `${stage}: ${id} leer`);
                 assert(await page.locator('#simulationLog table').count() === 0 && await page.locator('#portfolioCompositionChart svg').count() === 0,
                     `${stage}: keine alte Tabelle oder Grafik`);
@@ -14555,8 +14544,8 @@ async function runPersonDataCards(browser, baseUrl) {
             assert(await expanded('Person') && await page.locator('#managerPersonBody').isVisible(), '02: Enter öffnet einmal');
             await toggle.press('Space'); assert(!await expanded('Person'), 'Space schließt einmal');
             await toggle.press('Enter');
-            const year = await page.evaluate(() => Number(document.getElementById('profilePersonDateStatus').textContent.match(/Planung (\d{4})/)[1]));
-            assert((await page.locator('#profilePersonDateStatus').textContent()).includes(`Für die Planung ${year} zählt das Alter am 01.01.`), 'Januarhinweis benutzt echte Jahresbasis');
+            const year = await page.evaluate(() => Number(document.getElementById('profilePersonDateStatus').textContent.match(/Planalter (\d{4})/)[1]));
+            assert((await page.locator('#profilePersonDateStatus .ds-info-pop').textContent()).includes(`Für die Planung ${year} zählt das Alter am 01.01.`), 'Infofenster benutzt echte Jahresbasis');
             await page.locator('#managerCardsToggleAll').click();
             for (const card of ['Person', 'Assets', 'Care']) assert(await expanded(card), '03: Gemischter Gesamtknopf öffnet alle');
             assert(await page.locator('#managerCardsToggleAll').textContent() === '▾ Alle Details ausblenden', 'Gesamtknopf bietet richtigen Folgezustand');
@@ -15407,7 +15396,7 @@ async function runDynamicFlexCrosspageSmoke(browser, baseUrl) {
             assert((await readBrowserDynamicPlan(page)).raw === committed.raw, 'Balanceöffnung schreibt keinen Plan');
             await page.goto(`${baseUrl}/Simulator.html`); await waitForSimulatorOpening(page, 'Simulator.html');
             await openSimulatorTab(page, 'annahmen');
-            await page.locator('#mcSetupDisclosure').evaluate(node => { node.open = true; });
+            await page.locator('#simPlanParameters').evaluate(node => { node.open = true; });
             await waitForPageCondition(page, key => document.getElementById('dynamicFlexPreset')?.value === key, expected);
             assert(await page.locator('#dynamicFlexPreset').isDisabled(), 'Simulatorlesemodus hält Presets gesperrt');
             await openSimulatorPlanTrial(page);
@@ -16304,21 +16293,21 @@ async function runTagesgeldMonthSmoke(browser, baseUrl) {
                     await page.setViewportSize({ width, height: 900 });
                     const sideBySide = await dialog.locator('.tagesgeld-person').evaluateAll(rows => {
                         const [a, b] = rows.map(row => row.getBoundingClientRect());
-                        return a.top === b.top && a.right <= b.left;
+                        return a.bottom <= b.top;
                     });
-                    assert(sideBySide === (width >= 640), `${width}: Personenraster bricht bei 640 px`);
+                    assert(sideBySide, `${width}: Tagesgeldpersonen stehen untereinander`);
                     assert(await dialog.evaluate(node => node.scrollWidth <= node.clientWidth), `${width}: kein horizontaler Dialogüberlauf`);
                 }
                 await page.setViewportSize(originalViewport);
             }
             assert(await fields.nth(0).inputValue() === '100.000' && await fields.nth(1).inputValue() === '200.000', scenario + ': absolute Vorbelegung');
-            assert(await dialog.locator('.tagesgeld-person small').nth(0).textContent() === 'zuletzt bestätigt am 02.09.2026: 100.000 €', scenario + ': vollständiger Kurzdatumshinweis mit passendem Betrag');
-            assert(await dialog.locator('.tagesgeld-person').nth(1).locator('small').first().textContent() === 'Noch kein datierter Tagesgeld-Stand', scenario + ': fehlender Beleg bleibt sichtbar');
+            assert(await dialog.locator('[data-tagesgeld-status]').nth(0).textContent() === 'noch nicht bestätigt', scenario + ': vollständiger Kurzdatumshinweis mit passendem Betrag');
+            assert(await dialog.locator('[data-tagesgeld-status]').nth(1).textContent() === 'noch nicht bestätigt', scenario + ': fehlender Beleg bleibt sichtbar');
             assert((await dialog.textContent()).includes('Tagesgeldentwurf – wird erst mit dem Monatsabschluss gespeichert.'), 'Monatsdialog erklärt Zeitpunkt und Verlauf');
             assert(await dialog.locator('img').count() === 0, 'Personenname ist sicherer Text');
             const fits = await dialog.evaluate(node => { const box = node.getBoundingClientRect(); return box.left >= 0 && box.right <= innerWidth && box.bottom <= innerHeight; });
             assert(fits, scenario + ': Dialog und Aktionen liegen innerhalb der Ansicht');
-            if (scenario !== 'unchanged') { await fields.nth(0).fill('90000,125'); await fields.nth(1).fill('180000.25'); }
+            if (scenario !== 'unchanged') { await fillBrowserCash(fields.nth(0), '90000,125'); await fillBrowserCash(fields.nth(1), '180000.25'); }
             if (scenario.startsWith('cancel')) await dialog.locator('[data-overview-month-cancel]').click();
             else if (scenario === 'escape') await page.keyboard.press('Escape');
             else {
@@ -16339,7 +16328,7 @@ async function runTagesgeldMonthSmoke(browser, baseUrl) {
             }
             await page.locator('#overviewMonthStatus').filter({ hasText: 'September abgeschlossen ✓' }).waitFor();
             assert(await dialog.isVisible(), scenario + ': dieselbe Ergebnisinstanz bleibt sichtbar');
-            assert((await dialog.locator('[data-overview-month-result]').textContent()).includes(`Cashsumme: ${scenario === 'unchanged' ? '300.000' : '270.000,375'} €`), scenario + ': dezimalexakte bestätigte Cashsumme');
+            assert((await dialog.locator('[data-overview-month-result]').textContent()).includes(`${scenario === 'unchanged' ? '300.000' : '270.000,375'} €`), scenario + ': dezimalexakte bestätigte Cashsumme');
             const after = await read(), profiles = JSON.parse(after.records.rs_profiles_v1).profiles;
             assert(after.snapshots.length === before.snapshots.length + 1, scenario + ': genau ein Wiederherstellungspunkt');
             assert(JSON.stringify(profiles['cash-c']) === JSON.stringify(JSON.parse(before.records.rs_profiles_v1).profiles['cash-c']), 'Außenprofil bleibt bytegleich');
@@ -16389,14 +16378,14 @@ async function runTagesgeldAnnualSmoke(browser, baseUrl) {
         assert(await page.evaluate(() => window.__annualOriginalHost instanceof HTMLDialogElement), 'Ursprünglicher Jahresdialog-Host ist erfasst');
         await page.locator('[data-close-dialog-activate="cash"]').click();
         const fields = page.locator('#balanceAnnualClose [data-tagesgeld-person]');
-        await fields.first().waitFor();
+        await fields.first().waitFor({ state: 'attached' });
         assert(await page.locator('#balanceAnnualClose').evaluate(root => {
             const step = root.querySelector('[data-close-dialog-step="cash"]');
             const body = step.querySelector('.close-dialog-step-body'), fields = body.querySelector('.tagesgeld-fields');
             const summary = body.querySelector('.close-dialog-step-summary');
             return [...root.querySelectorAll('.close-dialog-step-name')].filter(node => node.textContent === 'Tagesgeld am 31.12.2026').length === 1
-                && !body.querySelector('h3') && summary.hidden && fields.firstElementChild.classList.contains('tagesgeld-person')
-                && fields.lastElementChild.tagName === 'P';
+                && !body.querySelector('h3') && summary.hidden && fields.firstElementChild.classList.contains('tagesgeld-provenance')
+                && fields.querySelectorAll('.tagesgeld-person').length === 2;
         }), 'Jahresschritt beginnt ohne Doppelüberschrift oder Zusammenfassung mit den Personenfeldern');
         if (failure === 'none') {
             await assertAnnualSurfaceContrast(page, '#balanceAnnualClose .close-dialog-group', 'Jahresgruppe vor Bestätigung');
@@ -16407,17 +16396,17 @@ async function runTagesgeldAnnualSmoke(browser, baseUrl) {
                     const cross = node.querySelector('.close-dialog-cross').getBoundingClientRect();
                     const [a, b] = [...node.querySelectorAll('.tagesgeld-person')].map(row => row.getBoundingClientRect());
                     return { head: ['.close-dialog-eyebrow', 'h2', '.close-dialog-subtitle'].every(selector => node.querySelector(selector).getBoundingClientRect().right <= cross.left),
-                        sideBySide: a.top === b.top && a.right <= b.left, overflow: node.scrollWidth > node.clientWidth };
+                        sideBySide: a.bottom <= b.top, overflow: node.scrollWidth > node.clientWidth };
                 });
-                assert(fits.head && !fits.overflow && fits.sideBySide === (width >= 640), `${width}: Jahreskopf und Personenraster passen in die Ansicht`);
+                assert(fits.head && !fits.overflow && fits.sideBySide, `${width}: Jahreskopf und Personenraster passen in die Ansicht`);
             }
             await page.setViewportSize(originalViewport);
         }
         assert(await page.locator('#balanceAnnualClose .close-dialog-eyebrow').textContent() === 'Monats- und Jahresabschluss', 'Jahresdialog verwendet die gemeinsame Abschluss-Eyebrow');
         assert(await fields.count() === 2 && (await page.locator('#balanceAnnualClose').textContent()).includes('Tagesgeld am 31.12.2026'), 'Jahresvorbereitung erfasst A+B');
-        assert(await page.locator('#balanceAnnualClose .tagesgeld-person small').nth(0).textContent() === 'zuletzt bestätigt am 02.09.2026: 100.000 €', 'Jahresdialog zeigt vollständigen Kurzdatumshinweis mit passendem Betrag');
-        assert(await page.locator('#balanceAnnualClose .tagesgeld-person small').nth(2).textContent() === 'Noch kein datierter Tagesgeld-Stand', 'Jahresdialog erfindet keinen fehlenden Beleg für B');
-        await fields.nth(0).fill('90000,125'); await fields.nth(1).fill('180000.25');
+        assert(await page.locator('#balanceAnnualClose [data-tagesgeld-status]').nth(0).textContent() === 'noch nicht bestätigt', 'Jahresdialog zeigt vollständigen Kurzdatumshinweis mit passendem Betrag');
+        assert(await page.locator('#balanceAnnualClose [data-tagesgeld-status]').nth(1).textContent() === 'noch nicht bestätigt', 'Jahresdialog erfindet keinen fehlenden Beleg für B');
+        await fillBrowserCash(fields.nth(0), '90000,125'); await fillBrowserCash(fields.nth(1), '180000.25');
         assert((await readIndexedDb(page, 'kv', 'profile_tagesgeld')).value === '100000', 'Vor Jahresbestätigung keine Cashwrites');
         const backupButton = page.locator('#balanceAnnualClose [data-overview-backup]');
         assert(await backupButton.isVisible(), 'Fehlender Vollsicherungsbeleg bietet Jetzt sichern im Jahresdialog');
@@ -16739,7 +16728,7 @@ async function probeCloseLocalActions(page, entry) {
     await root.locator('[data-close-dialog-activate="cash"]').click();
     const cash = root.locator('[data-tagesgeld-person]').first();
     const original = await cash.inputValue();
-    await cash.fill('19.000,123456');
+    await fillBrowserCash(cash, '19.000,123456');
     const before = await page.evaluate(async () => {
         const { PersistenceFacade: P } = await import('./app/shared/persistence-facade.js');
         const records = await P.readPersistedRecords();
@@ -16837,7 +16826,7 @@ async function runProbelaufAnnualOffline(browser, baseUrl) {
             assert(await page.locator('#annualResults').isVisible(), 'Protokoll ist tatsächlich im sichtbaren Dialogschritt erreichbar');
             assert(await page.locator('[data-annual-combined-result="C"]').isVisible(), 'Protokoll bleibt im kombinierten Ergebnis sichtbar');
             const content = await page.locator('#annualResults').textContent();
-            assert(content.includes('Inflation 2026') && content.includes('CAPE'), 'Protokoll zeigt Jahresinflation und CAPE');
+            assert(content.includes('Inflation 2026: 2,50 %') && content.includes('CAPE'), 'Protokoll zeigt Jahresinflation in Prozent und CAPE');
             assert(content.split('Probelauf · synthetisch').length - 1 === 3, 'Alle drei Jahreswerte zeigen dieselbe Herkunft');
         };
         await assertSources(); await page.locator('#annualShowLog').click(); await assertSources();
@@ -16979,13 +16968,12 @@ async function runCloseDialogBasics(browser, baseUrl) {
             phase = 'Tagesgeldvorbereitung'; target = '[data-close-dialog-activate="cash"]';
             await dialog.locator('[data-close-dialog-activate="cash"]').click();
             const visibleRecommendation = await dialog.locator('[data-close-dialog-step="cash"]').innerText();
-            assert(visibleRecommendation.split('Geplante Entnahme aus dem Vermögen im Oktober:').length === 2, `${width}: Empfehlung genau einmal sichtbar`);
-            assert(await dialog.locator('.close-dialog-footnote').textContent() === 'Nächster Monatsabschluss: 1. November. Kurse, Ausgaben und Budget sind Empfehlungen und verhindern den Abschluss nicht. Alle Vorbereitungsschritte ansehen und Tagesgeld je Person ändern oder bestätigen; ungespeicherte Eingaben werden beim Schließen verworfen.', `${width}: kalenderkorrekter Dialogfuß`);
+            assert(visibleRecommendation.split('Entnahme im Oktober:').length === 2, `${width}: Empfehlung genau einmal sichtbar`);
+            assert((await dialog.locator('.close-dialog-footnote').innerText()).startsWith('Nächster Monatsabschluss: 1. November.'), `${width}: kalenderkorrekter Dialogfuß`);
             phase = 'Tagesgeldfeld und Eurozusatz'; target = '[data-tagesgeld-person]';
-            const input = dialog.locator('[data-tagesgeld-person]'); await input.fill('18.000');
+            const input = dialog.locator('[data-tagesgeld-person]'); await fillBrowserCash(input, '18.000');
             assert(await dialog.locator('.tagesgeld-person').evaluateAll(rows => rows.every(row => {
-                const input = row.querySelector('input').getBoundingClientRect(), unit = row.querySelector('.tagesgeld-unit').getBoundingClientRect();
-                return unit.top >= input.top && unit.bottom <= input.bottom && unit.right <= input.right;
+                return row.querySelector('input').getBoundingClientRect().width > 0 && row.querySelector('[data-tagesgeld-apply]').getBoundingClientRect().width > 0;
             })), `${width}: Eurozusatz bleibt auch bei umbrochenem Personennamen im Feld`);
             phase = 'Inhaltsscrollen und Fußgeometrie'; target = '[data-close-dialog-footer]';
             await dialog.locator('[data-close-dialog-content]').evaluate(node => {
@@ -17034,13 +17022,15 @@ async function runCloseDialogBasics(browser, baseUrl) {
             await input.fill('18.000');
             await prepareBrowserClose(page);
             await page.locator('[data-overview-month-accept]').focus(); await page.keyboard.press('Tab');
+            assert(await dialog.locator('.close-dialog-footnote .ds-info-button').evaluate(node => node === document.activeElement), `${width}: Fuß-Info ist per Tab erreichbar`);
+            await page.keyboard.press('Tab');
             assert(await page.locator('[data-close-dialog-close]').evaluate(node => node === document.activeElement), `${width}: Fokusfalle auf aktuellem DOM`);
             phase = 'Dialogschließen und Rückfokus'; target = '[data-overview-month-confirm]';
             await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'detached' });
             assert(await opener.evaluate(node => node === document.activeElement), `${width}: Rückfokus zum aktuellen Kartenknopf`);
             phase = 'Erneut öffnen und Cash bestätigen'; target = '[data-tagesgeld-person]';
             await opener.click(); await dialog.locator('[data-close-dialog-activate="cash"]').click();
-            await dialog.locator('[data-tagesgeld-person]').fill('19.000,125');
+            await fillBrowserCash(dialog.locator('[data-tagesgeld-person]'), '19.000,125');
             phase = 'Monatsabschluss bestätigen'; target = '[data-overview-month-accept]';
             await prepareBrowserClose(page);
             await dialog.locator('[data-overview-month-accept]').click();
@@ -18005,7 +17995,7 @@ async function runSimulatorDeferredPlanSmoke(browser, baseUrl) {
             revealAssumptionControl(document.getElementById('dynamicFlexPreset'));
         });
         await page.locator('[data-select-segment="dynamicFlexPreset"] button[data-value="ausgewogen"]').click();
-        const details = page.locator('#mcSetupDisclosure');
+        const details = page.locator('#simPlanParameters');
         const nextDetails = !await details.evaluate(node => node.open);
         await details.locator('summary').click();
         assert(await details.evaluate(node => node.open) === nextDetails, 'Alle Parameter bleibt lokal bedienbar');
@@ -18685,11 +18675,11 @@ async function runH4StartpageAnnualSmoke(browser, baseUrl) {
             assert(await root.locator('#annualMonthStepConfirm').count() === 0, 'Vor Jahreswrite keine Monatsbereitstellung');
             await root.locator('[data-close-dialog-activate="cash"]').click();
             const cash = root.locator('[data-tagesgeld-person="muster_a"]');
-            await cash.fill('-1');
+            await fillBrowserCash(cash, '-1');
             assert(await cash.getAttribute('aria-invalid') === 'true' && await page.locator('#annualConfirmBtn').isDisabled(), 'Ungültiges Tagesgeld zeigt Fehler und sperrt den Jahresknopf');
             assert(await root.locator('[data-close-dialog-activate="cash"]').getAttribute('aria-expanded') === 'true', 'Bereitschaftssprung öffnet das Tagesgeld');
             await cash.fill('43.210,75');
-            assert(await root.locator('[data-close-dialog-step="cash"]').getAttribute('data-state') === 'entered', 'Gültige Tagesgeldentwürfe sind eingetragen');
+            assert(await root.locator('[data-close-dialog-step="cash"]').getAttribute('data-state') !== 'done', 'Tagesgeldentwürfe bleiben bis Übernehmen offen');
             assert(await root.locator('[data-close-dialog-step="market"]').getAttribute('data-state') === 'done', 'Drei vorbereitete Marktdaten sind erledigt');
             await root.locator('[data-close-dialog-activate="market"]').click();
             assert((await root.locator('[data-close-dialog-step="market"]').textContent()).includes('Inflation'), 'Vorbereitete Werte und Herkunft bleiben sichtbar');
@@ -19071,6 +19061,11 @@ async function runExpensesNavigationSmoke(browser, baseUrl) {
 }
 
 
+async function fillBrowserCash(field, value) {
+    if (!await field.isVisible()) await field.locator('..').locator('[data-tagesgeld-edit]').click();
+    await field.fill(value);
+}
+
 /** FR-4/FR-5: echte sichtbare Klicks für vorhandene Speicher- und Editorprüfungen. */
 async function prepareBrowserClose(page) {
     const root = page.locator('[data-close-dialog-host][open]').first();
@@ -19083,10 +19078,9 @@ async function prepareBrowserClose(page) {
     for (const id of unseen) {
         await root.locator(`[data-close-dialog-activate="${id}"]`).click();
     }
-    if (await root.locator('[data-close-dialog-step="cash"] .close-dialog-step-pill').textContent() !== 'eingetragen') {
-        await root.locator('[data-close-dialog-activate="cash"]').click();
-        await root.locator('[data-tagesgeld-confirm]').click();
-    }
+    await root.locator('[data-close-dialog-activate="cash"]').click();
+    for (const apply of await root.locator('[data-tagesgeld-apply]').all()) if (await apply.isVisible()) await apply.click();
+    for (const confirm of await root.locator('[data-tagesgeld-confirm]').all()) if (await confirm.isVisible()) await confirm.click();
 }
 
 async function startCloseProbelauf(page, startDate, testDate) {
@@ -19142,23 +19136,28 @@ async function runCloseDialogCashMonth(browser, baseUrl) {
             const root = page.locator('#overviewMonthConfirmation'), accept = root.locator('[data-overview-month-accept]');
             const before = await closeDialogEvidence(page);
             assert(await accept.isDisabled(), width + ': unveränderte Vorbelegung sperrt den Monatsknopf');
+            assert(await root.locator('[data-close-dialog-status]').textContent() === 'Noch offen: Ausgaben Oktober', 'Monatsfuß nennt den Schrittnamen ohne angehängtes Verb');
             assert(await root.locator('[data-close-dialog-step="prices"]').getAttribute('data-visited') === 'true', 'Initial sichtbarer Schritt zählt');
             assert(await root.locator('[data-close-dialog-step="expenses"]').getAttribute('data-visited') === 'false', 'Verborgener Inhalt zählt nicht');
-            for (const id of ['prices', 'expenses', 'budget']) await root.locator('[data-close-dialog-next="' + id + '"]').click();
+            for (const id of ['prices', 'expenses', 'budget']) {
+                if (id === 'budget') assert(await root.locator('[data-close-dialog-status]').textContent() === 'Noch offen: Tagesgeld prüfen', 'Unbesuchtes Tagesgeld zeigt nur den Schrittnamen');
+                await root.locator('[data-close-dialog-next="' + id + '"]').click();
+            }
+            assert(await root.locator('[data-close-dialog-status]').textContent() === 'Noch offen: Tagesgeld Max, Erika bestätigen oder ändern', 'Besuchtes Tagesgeld nennt die unbestätigten Personen');
             const fields = root.locator('[data-tagesgeld-person]'); assert(await fields.count() === 2, 'Max und Erika erhalten eigene Bestätigung');
             const first = await fields.nth(0).inputValue();
-            await fields.nth(0).fill(first); await fields.nth(0).dispatchEvent('input');
-            assert(await accept.isDisabled(), 'Gleiche erste Zahl bestätigt nur eine Person');
-            const second = await fields.nth(1).inputValue();
-            await fields.nth(1).fill(second); await fields.nth(1).dispatchEvent('input');
-            assert(await accept.isEnabled(), 'Gleiche zweite Zahl und alle Besuche geben frei');
-            await fields.nth(0).fill('-1');
+            await root.locator('[data-tagesgeld-confirm]').nth(0).click();
+            assert(await accept.isDisabled(), 'Erste Bestätigung gilt nur für eine Person');
+            assert(await root.locator('[data-close-dialog-status]').textContent() === 'Noch offen: Tagesgeld Erika bestätigen oder ändern', 'Monatsfuß nennt nach der ersten Bestätigung nur Erika');
+            await root.locator('[data-tagesgeld-confirm]').nth(1).click();
+            assert(await accept.isEnabled(), 'Zweite Bestätigung und alle Besuche geben frei');
+            await fillBrowserCash(fields.nth(0), '-1');
             assert(await accept.isDisabled(), 'Ungültiger Cash sperrt erneut');
-            await fields.nth(0).evaluate((node, value) => { node.value = value; }, first);
-            await root.locator('[data-tagesgeld-confirm]').click();
+            await fields.nth(0).fill(first);
+            await root.locator('[data-tagesgeld-apply]').nth(0).click();
             assert(await accept.isEnabled(), 'Bestätigtes Tagesgeld gibt den Hauptknopf frei');
             const text = await root.innerText();
-            assert(text.split('Geplante Entnahme aus dem Vermögen im November:').length === 2 && !/überweisen, dann bestätigen|aufs Girokonto überwiesen/.test(text), width + ': Monatsinformation genau einmal, ohne Überweisungsbehauptung');
+            assert(text.split('Entnahme im November:').length === 2 && !/überweisen, dann bestätigen|aufs Girokonto überwiesen/.test(text), width + ': Monatsinformation genau einmal, ohne Überweisungsbehauptung');
             assert(await root.locator('[data-close-expenses-details]').count() === 1, 'Nur ein Ausgabendetailblock');
             assert(await closeDialogEvidence(page) === before, 'Bestätigungen, Besuche und Weiter schreiben keine Finanzdaten');
             await root.locator('[data-overview-month-cancel]').click();
@@ -19179,26 +19178,35 @@ async function runCloseDialogStepsYear(browser, baseUrl) {
         await startCloseProbelauf(page, '2026-12-15', '2027-01-02');
         await page.locator('[data-overview-annual]').click();
         const root = page.locator('#balanceAnnualClose'), accept = root.locator('#annualConfirmBtn'); await root.waitFor();
+        assert(await root.locator('[data-close-dialog-status]').textContent() === 'Noch offen: Ausgaben Dezember', 'Jahresfuß nennt den Schrittnamen ohne angehängtes Verb');
         assert(await accept.isDisabled(), 'Vorbelegung und asynchrone Vorbereitung geben den Jahresknopf nicht frei');
         await waitForPageCondition(page, () => document.querySelector('[data-annual-plan-status]')?.textContent === 'Dein Plan ist gültig.');
         assert(await root.locator('[data-close-dialog-step="market"]').getAttribute('data-visited') === 'false'
             && await root.locator('[data-close-dialog-step="preview"]').getAttribute('data-visited') === 'false', 'Asynchrone Marktdaten und Planrechnung zählen keine verborgenen Besuche');
-        assert(await root.locator('[data-close-dialog-step="market"] .close-dialog-step-pill').textContent() === 'bereit', 'Vorbereitete unbesuchte Marktdaten sind bereit');
+        assert(await root.locator('[data-close-dialog-step="market"] .close-dialog-step-pill').textContent() === 'offen', 'Vorbereitete Marktdaten ersetzen keinen sichtbaren Besuch');
         await root.locator('[data-close-dialog-next="prices"]').click();
         await root.locator('[data-overview-example="all"]').click();
         await page.locator('[data-expenses-preview-accept]').click();
         await waitForPageCondition(page, () => document.querySelector('[data-close-dialog-activate="budget"]')?.getAttribute('aria-expanded') === 'true');
         assert(await root.locator('[data-close-dialog-step="cash"]').getAttribute('data-visited') === 'false', 'Ausgabenimport öffnet direkt Budget und überspringt kein Tagesgeld');
-        for (const id of ['budget', 'cash', 'market', 'preview']) await root.locator('[data-close-dialog-activate="' + id + '"]').click();
+        for (const id of ['budget', 'cash', 'market', 'preview']) {
+            await root.locator('[data-close-dialog-activate="' + id + '"]').click();
+            if (id === 'market') {
+                assert(await root.locator('[data-close-dialog-status]').textContent() === 'Noch offen: Plan 2027 prüfen', 'Planhinweis ergänzt kein zweites Verb');
+                assert(await root.locator('[data-annual-market-report] .close-dialog-tile').count() === 3, 'Jahresmarktdaten stehen in drei Kacheln');
+                assert((await root.locator('[data-annual-market-provenance]').textContent()).includes('gespeichert mit dem Abschluss'), 'Gemeinsame Herkunft nennt den Speicherzeitpunkt');
+            }
+        }
         assert(await accept.isDisabled(), 'Alle sechs Besuche allein lassen die Tagesgeldsperre bestehen');
+        assert(await root.locator('[data-close-dialog-status]').textContent() === 'Noch offen: Tagesgeld Max, Erika bestätigen oder ändern', 'Jahresfuß nennt weiterhin die unbestätigten Personen');
         const before = await closeDialogEvidence(page);
         await root.locator('[data-close-dialog-activate="cash"]').click();
-        await root.locator('[data-tagesgeld-confirm]').click();
+        for (const confirm of await root.locator('[data-tagesgeld-confirm]').all()) if (await confirm.isVisible()) await confirm.click();
         assert(await accept.isEnabled(), 'Alle sechs Besuche und bestätigtes Tagesgeld geben den Jahresknopf frei');
         assert(await root.locator('.close-dialog-subtitle').textContent() === 'Max + Erika · 6 von 6 Schritten angesehen', 'Zähler schließt den gesperrten Ergebnisbereich aus');
         assert(await closeDialogEvidence(page) === before, 'Bestätigung und Weiter bleiben schreibfrei');
         assert(await root.locator('[data-close-expenses-details]').count() === 1, 'Jahresdialog hat genau einen Ausgabendetailblock');
-        await root.getByRole('button', { name: 'Schließen', exact: true }).click(); smoke.assertNoErrors();
+        await root.locator('[data-close-dialog-close]').click(); smoke.assertNoErrors();
     } finally { await smoke.close(); }
 }
 

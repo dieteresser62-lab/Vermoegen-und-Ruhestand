@@ -36,7 +36,7 @@ async function storeMonthWithCash(request, { storage, flush, now, guard, navigat
         // matchesMonthContext hat den Einzelprofil-Fallback bereits geprüft;
         // der gemeinsame Cashwriter prüft weiter Profil und sämtliche Rohwerte.
         const prepared = prepareHouseholdCash({ storage, registry, activeId: expectedProfileId, ids: scope.ids,
-            checkMembership: scope.kind === 'household', cash, date: localHistoryDate(date) });
+            checkMembership: scope.kind === 'household', cash, date: localHistoryDate(date), recordConfirmation: true });
         const record = { month, scope, completedAt: date.toISOString() };
         for (const id of scope.ids) {
             const data = prepared.registry.profiles[id].data;

@@ -1,11 +1,9 @@
 import {
     buildAccessibleBacktestTableHtml,
     configureHistoricalBacktestControls,
-    createImmutableCohortInventory,
     describeHistoricalBacktestResult,
-    renderHistoricalBacktestCohorts,
     renderHistoricalBacktestStatus,
-    renderHistoricalBacktestNotices,
+    renderHistoricalBacktestContext,
     renderHistoricalBacktestValidation,
     summarizeHistoricalBacktestDataQuality,
     validateHistoricalBacktestPeriod
@@ -68,13 +66,14 @@ class MockDocument {
 const documentRef = new MockDocument([
     'simStartJahr',
     'simEndJahr',
-    'backtestCohortHorizon',
     'simStartJahrError',
     'simEndJahrError',
-    'backtestCohortHorizonError',
     'backtestDatasetHint',
     'backtestStatus',
-    'backtestCohortSummary'
+    'backtestResultHeading',
+    'backtestDatasetInfoPop',
+    'backtestResultPeriod',
+    'backtestResultInfoPop'
 ]);
 
 const provider = {
@@ -89,8 +88,7 @@ console.log('Test 1: dataset bounds are projected into controls and visible guid
     assertEqual(bounds.startYear, 1951, 'Configured bounds expose the provider start year');
     assertEqual(documentRef.getElementById('simStartJahr').min, '1951', 'Start input receives dynamic minimum');
     assertEqual(documentRef.getElementById('simEndJahr').max, '2025', 'End input receives dynamic maximum');
-    assertEqual(documentRef.getElementById('backtestCohortHorizon').max, '75', 'Cohort horizon uses the complete provider span');
-    assert(documentRef.getElementById('backtestDatasetHint').textContent.includes('synthetic-browser-contract'), 'Visible hint names the dataset');
+    assert(documentRef.getElementById('backtestDatasetInfoPop').textContent.includes('synthetic-browser-contract'), 'Info popup names the dataset');
     assert(documentRef.getElementById('backtestDatasetHint').textContent.includes('1951–2025'), 'Visible hint names the inclusive bounds');
 }
 
@@ -113,20 +111,14 @@ console.log('Test 2: empty, NaN, fractional, reversed and out-of-bounds periods 
     assert(singleYear.valid, 'Inclusive one-year period remains valid');
 }
 
-console.log('Test 3: cohort horizon validation and focus are deterministic');
+console.log('Test 3: field validation focuses the first invalid period field');
 {
-    const invalid = validateHistoricalBacktestPeriod({
-        startRaw: '2000',
-        endRaw: '2025',
-        bounds: provider.bounds,
-        cohortsEnabled: true,
-        cohortHorizonRaw: '7.5'
-    });
+    const invalid = validateHistoricalBacktestPeriod({ startRaw: '2001', endRaw: '2000', bounds: provider.bounds });
     renderHistoricalBacktestValidation(documentRef, invalid);
-    assertEqual(invalid.firstErrorFieldId, 'backtestCohortHorizon', 'Fractional cohort horizon maps to its own field');
-    assertEqual(documentRef.getElementById('backtestCohortHorizon').getAttribute('aria-invalid'), 'true', 'Invalid cohort field exposes aria-invalid');
-    assertEqual(documentRef.getElementById('backtestCohortHorizon').focusCalls, 1, 'First invalid cohort field receives focus');
-    assert(!documentRef.getElementById('backtestCohortHorizonError').hidden, 'Inline cohort error is visible');
+    assertEqual(invalid.firstErrorFieldId, 'simEndJahr', 'Reversed period maps to the end year');
+    assertEqual(documentRef.getElementById('simEndJahr').getAttribute('aria-invalid'), 'true', 'Invalid period field exposes aria-invalid');
+    assertEqual(documentRef.getElementById('simEndJahr').focusCalls, 1, 'First invalid period field receives focus');
+    assert(!documentRef.getElementById('simEndJahrError').hidden, 'Inline period error is visible');
 }
 
 console.log('Test 4: technical status exposes a stable code without stack or local path');
@@ -241,36 +233,14 @@ console.log('Test 7: trade cells keep plain text, sign semantics and whitelisted
     } finally { globalThis.window = savedWindow; }
 }
 
-console.log('Test 8: zero-eligible cohort inventory renders without division artifacts and is immutable');
-{
-    const inventory = createImmutableCohortInventory({
-        candidate: 3,
-        eligible: 0,
-        completed: 0,
-        ruin: 0,
-        incomplete: 0,
-        technicalError: 0,
-        cancelled: 0,
-        excluded: 3,
-        exclusionReasons: { insufficient_horizon: 3 },
-        ratesPct: { completed: null, ruin: null, incomplete: null, technicalError: null, cancelled: null }
-    });
-    renderHistoricalBacktestCohorts(documentRef, inventory, 100);
-    const html = documentRef.getElementById('backtestCohortSummary').innerHTML;
-    assert(Object.isFrozen(inventory) && Object.isFrozen(inventory.ratesPct), 'UI/export cohort snapshot is deeply immutable');
-    assert(html.includes('100 Jahre') && html.includes('insufficient_horizon: 3'), 'Cohort UI shows fixed horizon and exclusions');
-    assert(html.includes('keine Erfolgswahrscheinlichkeit'), 'Cohort UI states the inference boundary');
-    assert(!html.includes('NaN') && !html.includes('Infinity'), 'Zero eligible cohorts never render NaN or Infinity');
-}
-
 console.log('Simulator Backtest UI contract tests passed');
 
 // Vollständiges DOM und reduzierte Hosts durchlaufen dieselben Statuswechsel.
 for (const shape of ['vollständig', 'ohne dataset', 'ohne optionale Hosts', 'ohne Statusregion']) {
-    const doc = new MockDocument(['backtestStatus', 'backtestPeriodStatus', 'backtestDiagnosisCode']);
+    const doc = new MockDocument(['backtestStatus', 'backtestPeriodStatus', 'backtestResultHeading']);
     if (shape === 'ohne dataset') for (const el of doc.elements.values()) delete el.dataset;
     if (shape === 'ohne optionale Hosts') {
-        doc.elements.delete('backtestPeriodStatus'); doc.elements.delete('backtestDiagnosisCode');
+        doc.elements.delete('backtestPeriodStatus');
     }
     if (shape === 'ohne Statusregion') doc.elements.delete('backtestStatus');
     for (const [kind, label, live] of [['completed', 'Vollständig', 'polite'], ['ruin', 'Ruin', 'assertive'],
@@ -287,25 +257,34 @@ for (const shape of ['vollständig', 'ohne dataset', 'ohne optionale Hosts', 'oh
         if (chip) {
             assertEqual(chip.textContent, label, `${shape}: kein veralteter Chiptext`);
             assertEqual(chip.getAttribute('data-status'), kind, `${shape}: Chip ohne dataset unterstützt`);
-        } else assert(region.innerHTML.includes(['completed', 'ruin'].includes(kind) ? 'Backtest ' : 'Code:'), 'Fehlender Codehost erhält lesbaren Status oder Fehlercode');
+        } else assert(region.innerHTML.includes(['completed', 'ruin'].includes(kind) ? 'Backtest ' : 'Code:'), 'Status enthält lesbares Ergebnis oder Fehlercode');
     }
 }
 {
-    const doc = new MockDocument(['backtestStatus', 'backtestDiagnosisCode']);
+    const doc = new MockDocument(['backtestStatus', 'backtestResultHeading']);
     const presentation = describeHistoricalBacktestResult({ outcome: { kind: 'completed' }, completedYears: 26, requestedYears: 26 });
-    renderHistoricalBacktestStatus(doc, presentation);
+    renderHistoricalBacktestStatus(doc, presentation, { focus: true });
     assertEqual(presentation.code, 'BACKTEST_COMPLETED', 'Interner Abschlusscode bleibt unverändert');
-    assertEqual(doc.getElementById('backtestDiagnosisCode').textContent, 'Backtest fertig', 'Abschluss nennt verständlichen Status');
+    assert(doc.getElementById('backtestStatus').hidden, 'Erfolgreicher Abschluss braucht keinen doppelten Statusblock');
+    assert(doc.getElementById('backtestResultHeading').focusCalls === 1, 'Erfolgreicher Abschluss fokussiert den Kennzahlenkopf');
     assert(!doc.getElementById('backtestStatus').innerHTML.includes('BACKTEST_COMPLETED') && presentation.action.startsWith('Prüfe '), 'Abschluss zeigt persönliche Ansprache ohne technischen Abschlusscode');
 }
 {
-    const doc = new MockDocument(['backtestNotices', 'backtestNoticeList']);
-    renderHistoricalBacktestNotices(doc, { outcome: { kind: 'completed' }, warnings: [{ code: 'SYNTHETIC_WARNING' }],
+    const doc = new MockDocument(['backtestResultPeriod', 'backtestResultInfoPop']);
+    renderHistoricalBacktestContext(doc, { outcome: { kind: 'completed' }, warnings: [{ code: 'SYNTHETIC_WARNING' }],
         historicalYearRecords: [{ realized: { a: { qualityStatus: 'present' }, b: { qualityStatus: 'estimated' },
             c: { qualityStatus: 'missing' }, d: { qualityStatus: 'fallback_zero' } } }] });
-    const html = doc.getElementById('backtestNoticeList').innerHTML;
-    for (const text of ['gemessen: 1', 'geschätzt: 1', 'fehlend: 1', 'Ersatzwert Null: 1', '1 Hinweise', 'SYNTHETIC_WARNING'])
+    const html = doc.getElementById('backtestResultInfoPop').innerHTML;
+    for (const text of ['gemessen: 1', 'geschätzt: 1', 'fehlend: 1', 'Ersatzwert Null: 1', 'Datenlücken', 'SYNTHETIC_WARNING'])
         assert(html.includes(text), `Warnhinweise erhalten ${text}`);
+    assert(doc.getElementById('backtestResultPeriod').textContent.endsWith('· 2 Hinweise'), 'Ein Rechenhinweis und Datenlücken bleiben im Kopf sichtbar');
+    renderHistoricalBacktestContext(doc, { outcome: { kind: 'completed' }, request: { startYear: 2000, endYear: 2001 },
+        completedYears: 2, requestedYears: 2, warnings: [], historicalYearRecords: [
+            { realized: { a: { qualityStatus: 'present' } } }, { realized: { a: { qualityStatus: 'estimated' } } }
+        ] });
+    assertEqual(doc.getElementById('backtestResultPeriod').textContent, '2000–2001 · 2 von 2 Jahren ausgewertet', 'Geschätzte Daten allein erzeugen keine Warnung im Kopf');
+    assert(doc.getElementById('backtestResultInfoPop').innerHTML.includes('1 Jahr nur mit gemessenen Werten, 1 Jahr mit geschätzten Werten'), 'Info zählt Jahre statt Beobachtungen als Jahre auszugeben');
+
 }
 
 {
@@ -454,7 +433,7 @@ console.log('Test 9: reale Provenienzvorbereitung ist abwartbar kündigbar');
         let releaseFrame, recovery = false;
         const frame = new Promise(resolve => { releaseFrame = resolve; });
         const automatic = runBacktestWithRuntimeProvenance({ ...dependencies, automatic: true,
-            engineApi: EngineAPI, cohortsEnabled: false, focus: false,
+            engineApi: EngineAPI, focus: false,
             isBlocked: () => recovery, beforeRun: () => frame, loadRuntimeBuildProvenance: async () => null });
         for (let i = 0; i < 6; i++) await Promise.resolve();
         assertEqual(calculations, 3, 'Realer automatischer Backtest wartet den gezeichneten Frame vor dem synchronen Runner ab');
@@ -464,27 +443,22 @@ console.log('Test 9: reale Provenienzvorbereitung ist abwartbar kündigbar');
         assert(await runBacktestWithRuntimeProvenance({ ...dependencies, automatic: true, engineApi: {},
             beforeRun: async () => {}, loadRuntimeBuildProvenance: async () => null }) === null && calculations === 3,
         'Fehlende Engine nach Vorbereitung verhindert den automatischen Runner');
-        const cohortControl = new MockElement('runBacktestCohorts'); cohortControl.checked = true;
-        doc.elements.set('runBacktestCohorts', cohortControl);
-        let cohortRuns = 0;
-        const withoutCohorts = await runBacktestWithRuntimeProvenance({ ...dependencies, automatic: true, engineApi: EngineAPI,
-            cohortsEnabled: false, focus: false, beforeRun: async () => {}, loadRuntimeBuildProvenance: async () => null,
-            runCohorts: () => { cohortRuns++; throw new Error('AUTOMATIC_COHORT_MUST_NOT_RUN'); } });
-        assert(withoutCohorts === oldResult && calculations === 4 && cohortRuns === 0,
-            'Automatischer Adapter führt trotz manueller Cohortauswahl nur den Einzelpfad aus');
-        assert(cohortControl.checked, 'Automatischer Adapter verändert die manuelle Cohortauswahl nicht');
+        const automaticResult = await runBacktestWithRuntimeProvenance({ ...dependencies, automatic: true, engineApi: EngineAPI,
+            focus: false, beforeRun: async () => {}, loadRuntimeBuildProvenance: async () => null });
+        assert(automaticResult === oldResult && calculations === 4,
+            'Automatischer Adapter führt den Einzelpfad aus');
         for (const opening of [true, false]) for (const kind of ['completed', 'ruin']) {
             const expected = Object.freeze({ ...oldResult, outcome: { kind } });
             let published = null;
             const actual = await runBacktestWithRuntimeProvenance({ ...dependencies, automatic: true, opening,
-                engineApi: EngineAPI, cohortsEnabled: false, loadRuntimeBuildProvenance: async () => null,
+                engineApi: EngineAPI, loadRuntimeBuildProvenance: async () => null,
                 runSinglePath: () => {
                     assert(guard.reasons().some(reason => reason.phase === 'running'), 'Automatische Rechnung bleibt abbrechgeschützt');
                     return expected;
                 }, beginSimulationSummary: () => ({}), completeSimulationSummary: (_context, result) => { published = result; } });
             assert(actual === expected && window.globalBacktestData.result === expected && published === expected,
                 'Automatisches Ergebnis bleibt für Anzeige, Export und Übersichtpublikation verfügbar');
-            assert(doc.getElementById('simulationResults').style.display === 'block'
+            assert(doc.getElementById('simulationResults').style.display === 'contents'
                 && !doc.getElementById('exportBacktestJson').disabled && !doc.getElementById('exportBacktestCsv').disabled,
                 'Automatisches Ergebnis hält Anzeige und Export bedienbar');
             assert(!guard.reasons().some(reason => reason.owner === 'simulator-backtest' && reason.result),
@@ -497,7 +471,7 @@ console.log('Test 9: reale Provenienzvorbereitung ist abwartbar kündigbar');
         assert(await guard.prepare({ decide: async () => false }) === null && nativeListeners.has('beforeunload'),
             'Unübernommene Eingaben bleiben auch neben automatischem Ergebnis geschützt');
         dirty.unregister();
-        runBacktest({ ...dependencies, cohortsEnabled: false });
+        runBacktest({ ...dependencies });
         assert(guard.reasons().some(reason => reason.result) && nativeListeners.has('beforeunload'),
             'Explizites Folgeergebnis erhält seine eigene geschützte Herkunft');
 
@@ -505,7 +479,7 @@ console.log('Test 9: reale Provenienzvorbereitung ist abwartbar kündigbar');
         // R-01: derselbe Renderfehler wird auch vor dem async try/finally ausgelöst.
         const originalWarn = console.warn;
         const renderWarnings = [];
-        const isolatedDependencies = { ...dependencies, cohortsEnabled: false };
+        const isolatedDependencies = { ...dependencies };
         doc.elements.set('overviewBacktest', new MockElement('overviewBacktest'));
         doc.elements.set('backtestStatus', new MockElement('backtestStatus'));
         doc.createElement = () => { throw new Error('SYNTHETIC_OVERVIEW_RENDER_FAILURE'); };
@@ -569,7 +543,7 @@ console.log('Test 9: reale Provenienzvorbereitung ist abwartbar kündigbar');
     const saved = { document: global.document, window: global.window, localStorage: global.localStorage };
     const doc = new MockDocument(['p1StartAlter', 'simStartJahr', 'simEndJahr', 'liquidityRunwayYears', 'simulationSummary',
         'simulationLog', 'simulationResults', 'backtestResultPeriod', 'backtestStatus', 'backtestPeriodStatus',
-        'backtestDiagnosisCode', 'navigationGuardDialog', 'navigationGuardTitle', 'navigationGuardDescription',
+        'backtestResultHeading', 'navigationGuardDialog', 'navigationGuardTitle', 'navigationGuardDescription',
         'navigationGuardStay', 'navigationGuardLeave']);
     for (const el of doc.elements.values()) el.style = {};
     doc.getElementById('p1StartAlter').value = '67';

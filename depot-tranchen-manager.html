@@ -51,7 +51,7 @@
         .hint {
             color: var(--text-muted);
             margin-bottom: 20px;
-            font-size: 12px;
+            font-size: var(--text-dense);
         }
 
         .persistence-panel {
@@ -113,7 +113,7 @@
             border-radius: 6px;
             background: var(--surface-sunken);
             color: var(--text-main);
-            font: 12px/1.4 var(--font-mono);
+            font: var(--text-dense)/1.4 var(--font-sans);
             user-select: text;
         }
 
@@ -133,7 +133,7 @@
         }
 
         .api-key label {
-            font-size: 12px;
+            font-size: var(--text-dense);
             color: var(--text-muted);
             font-weight: 600;
         }
@@ -144,12 +144,12 @@
             border: 1px solid var(--border-strong);
             border-radius: 6px;
             min-width: 260px;
-            font-size: 12px;
+            font-size: var(--text-base);
         }
 
         .api-key small {
             color: var(--text-muted);
-            font-size: 12px;
+            font-size: var(--text-dense);
         }
 
         button {
@@ -249,7 +249,7 @@
 
         .profile-values small {
             color: var(--text-muted);
-            font-size: 12px;
+            font-size: var(--text-dense);
         }
 
         .reconciliation-panel {
@@ -376,7 +376,7 @@
         }
 
         .stat-label {
-            font-size: 12px;
+            font-size: var(--text-dense);
             color: var(--text-muted);
             margin-bottom: 5px;
         }
@@ -449,7 +449,7 @@
             display: inline-block;
             padding: 4px 8px;
             border-radius: 4px;
-            font-size: 11px;
+            font-size: var(--text-dense);
             font-weight: 600;
         }
 
@@ -583,7 +583,7 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: var(--text-dense);
         }
 
         .delete-btn:hover {
@@ -596,7 +596,7 @@
 
         .icon-action {
             padding: 6px 10px;
-            font-size: 12px;
+            font-size: var(--text-dense);
             margin-right: 5px;
         }
 
@@ -617,8 +617,8 @@
             padding: 15px;
             border-radius: 6px;
             overflow-x: auto;
-            font-family: var(--font-mono);
-            font-size: 12px;
+            font-family: var(--font-sans);
+            font-size: var(--text-dense);
             margin-top: 10px;
         }
 
@@ -748,8 +748,8 @@
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_minimumFlexAnnual">Mindest-Flex<small>Untergrenze der Kürzung</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_minimumFlexAnnual" data-manager-plan-field="minimumFlexAnnual" disabled data-money-input></div>
             </div>
             </section>
-            <details id="managerPlanMore" class="ds-card pv-plan-more">
-                <summary><span><strong id="managerPlanMoreTitle">Weitere Planwerte</strong><span id="managerPlanMoreSummary" class="pv-summary-values">Planbereich wird geprüft …</span></span><span class="pv-disclosure-action"><span>▸ zeigen</span><span>▾ ausblenden</span></span></summary>
+            <details id="managerPlanMore" class="ds-card pv-plan-more household-plan-more">
+                <summary class="household-plan-summary-toggle"><span><strong id="managerPlanMoreTitle">Weitere Planwerte</strong><span id="managerPlanMoreSummary" class="pv-summary-values household-plan-summary">Planbereich wird geprüft …</span></span><span class="pv-disclosure-action household-plan-disclosure-action"><span>▸ zeigen</span><span>▾ ausblenden</span></span></summary>
             <div class="pv-plan-groups household-plan-groups">
                 <section class="pv-plan-group household-plan-group"><h3>Flex-Budget <small>Puffer für Kürzungsjahre</small></h3>
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBudgetAnnual">Budget pro Jahr</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBudgetAnnual" data-manager-plan-field="flexBudgetAnnual" disabled data-money-input></div>
@@ -757,7 +757,7 @@
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_flexBudgetRecharge">Wiederauffüllen pro Jahr</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_flexBudgetRecharge" data-manager-plan-field="flexBudgetRecharge" disabled data-money-input></div>
                     <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div></section>
                 <section class="pv-plan-group household-plan-group"><h3>Reserven <small></small></h3>
-                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_liquidityRunwayYears">Liquiditäts-Reichweite<small>Tagesgeld + Geldmarkt in Jahren Entnahme</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_liquidityRunwayYears" data-manager-plan-field="liquidityRunwayYears" disabled></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_liquidityRunwayYears">Liquiditäts-Reichweite<small class="ds-explanation">Tagesgeld + Geldmarkt <span class="ds-info"><button type="button" class="ds-info-button ds-button" aria-label="Erläuterung zur Liquiditäts-Reichweite" aria-describedby="managerRunwayInfo" aria-controls="managerRunwayInfo" aria-expanded="false">i</button><span id="managerRunwayInfo" class="ds-info-pop" role="tooltip">Gemessen in Jahren der geplanten Entnahme.</span></span></small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_liquidityRunwayYears" data-manager-plan-field="liquidityRunwayYears" disabled></div>
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_minCashBufferMonths">Mindest-Liquidität<small>eiserne Reserve</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_minCashBufferMonths" data-manager-plan-field="minCashBufferMonths" disabled></div>
                     <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div></section>
                 <section class="pv-plan-group household-plan-group"><h3>Entnahme &amp; Umschichten <small></small></h3>
@@ -767,7 +767,7 @@
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_decumulation_bondRefillThreshold">Anleihen-Auffüllschwelle<small>leer: automatisch</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_decumulation_bondRefillThreshold" data-manager-plan-field="decumulation.bondRefillThreshold" disabled></div>
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_maxSkimPctOfEq">Max. Abschöpfen<small>vom Aktienwert in guten Jahren</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_maxSkimPctOfEq" data-manager-plan-field="maxSkimPctOfEq" disabled></div>
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_maxBearRefillPctOfEq">Max. Auffüllen im Bärenmarkt</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_maxBearRefillPctOfEq" data-manager-plan-field="maxBearRefillPctOfEq" disabled></div>
-                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_householdWithdrawalMode">Verteilung im Haushalt<small>wer entnimmt zuerst · nacheinander: Reichweite zuerst</small></label><select class="ds-select" id="managerPlan_householdWithdrawalMode" data-manager-plan-field="householdWithdrawalMode" disabled><option value="tax_optimized">Steueroptimiert</option><option value="proportional">Anteilig</option><option value="runway_first">Reichweite zuerst</option></select></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_householdWithdrawalMode">Verteilung im Haushalt<small class="ds-explanation">wer entnimmt zuerst <span class="ds-info"><button type="button" class="ds-info-button ds-button" aria-label="Erläuterung zur Verteilung im Haushalt" aria-describedby="managerWithdrawalModeInfo" aria-controls="managerWithdrawalModeInfo" aria-expanded="false">i</button><span id="managerWithdrawalModeInfo" class="ds-info-pop" role="tooltip">wer entnimmt zuerst · nacheinander: Reichweite zuerst</span></span></small></label><select class="ds-select" id="managerPlan_householdWithdrawalMode" data-manager-plan-field="householdWithdrawalMode" disabled><option value="tax_optimized">Steueroptimiert</option><option value="proportional">Anteilig</option><option value="runway_first">Reichweite zuerst</option></select></div>
                     <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div></section>
                 <section class="pv-plan-group household-plan-group"><h3>Dynamik <small>nur mit CAPE</small></h3><p class="pv-plan-note household-plan-note">Der Horizont wird aus der Lebenserwartung ermittelt.</p>
                     <div data-plan-dynamic-presets-host></div>
@@ -830,7 +830,7 @@
 </div></section>
 
 <section class="ds-card pv-profile-card pv-person-disclosure"><button id="managerPersonToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerPersonBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span><span><strong>Person, Rente &amp; Steuern</strong><span id="managerPersonSummary" class="ds-help"></span></span><span id="managerPersonAction" class="pv-disclosure-action">▸ zeigen</span></button><div id="managerPersonBody" class="pv-card-body" role="region" aria-labelledby="managerPersonToggle" hidden><div id="managerBirthSupplement" class="ds-note ds-note-warning pv-birth-supplement" hidden><div><strong>Geburtsdatum einmal ergänzen</strong><p id="managerBirthSuggestion"></p></div><label for="managerBirthDate">Vollständiges Geburtsdatum (TT.MM.JJJJ)</label><input id="managerBirthDate" type="text" class="ds-input" placeholder="TT.MM.JJJJ" aria-describedby="managerBirthSuggestion managerBirthError"><button id="managerBirthApply" type="button" class="ds-button ds-button-primary">Übernehmen</button><p id="managerBirthError" role="status" aria-live="polite"></p></div><div class="pv-fields">
-<div class="pv-person-group"><h4>Person</h4><div class="form-group" data-person-field="profileGeburtsdatum"><label for="profileGeburtsdatum">Geburtsdatum</label><input id="profileGeburtsdatum" type="text" class="ds-input" placeholder="TT.MM.JJJJ" aria-describedby="profilePersonDateStatus"></div><p id="profilePersonDateStatus" class="ds-help"></p>
+<div class="pv-person-group"><h4>Person</h4><div class="form-group" data-person-field="profileGeburtsdatum"><label for="profileGeburtsdatum">Geburtsdatum</label><input id="profileGeburtsdatum" type="text" class="ds-input" placeholder="TT.MM.JJJJ" aria-describedby="profilePersonDateStatus"></div><p id="profilePersonDateStatus" class="ds-help ds-explanation"></p>
 <div class="form-group" data-person-field="profileGeschlecht"><label for="profileGeschlecht">Geschlecht</label><select id="profileGeschlecht" class="ds-select" aria-describedby="profileGenderStatus"><option value="m">Männlich</option><option value="w">Weiblich</option><option value="d">Divers</option></select><p id="profileGenderStatus" class="ds-help" role="status"></p><button type="button" id="profileGenderConfirm" class="ds-button ds-button-quiet ds-text-link">Auswahl bestätigen</button></div>
 </div><div class="pv-person-group"><h4>Rente</h4><div class="form-group" data-person-field="profileRentenbeginn"><label for="profileRentenbeginn">Rentenbeginn (Datum)</label><input id="profileRentenbeginn" aria-describedby="managerPensionStatus" type="text" class="ds-input" placeholder="TT.MM.JJJJ"><p id="managerPensionStatus" class="ds-help"></p></div>
 <div class="form-group" data-person-field="profileRentenanpassungArt"><label for="profileRentenanpassungArt">Rentenanpassung</label><select id="profileRentenanpassungArt" class="ds-select" hidden><option value="wage">Lohnentwicklung</option><option value="cpi">Inflation</option><option value="fix">Fester Satz (0 = keine)</option></select><div id="profilePensionSegments" class="pv-person-segments" role="group" aria-label="Rentenanpassung"></div></div>

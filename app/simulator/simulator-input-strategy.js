@@ -131,6 +131,7 @@ export function readStrategyInputs(doc = globalThis.document) {
     });
     return {
         liquidityRunwayYears: liquidityRunwayResolution.years,
+        minCashBufferMonths: readNumber('minCashBufferMonths', 2, doc),
         maxSkimPctOfEq: readNumber('maxSkimPctOfEq', 10, doc),
         maxBearRefillPctOfEq: readNumber('maxBearRefillPctOfEq', 5, doc)
     };

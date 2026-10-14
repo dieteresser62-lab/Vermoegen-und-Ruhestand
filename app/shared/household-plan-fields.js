@@ -1,4 +1,14 @@
 import { DYNAMIC_FLEX_OPTIONS } from './dynamic-flex-presets.js';
+import { createInfoPopover } from './designsystem-info-popover.js';
+
+export function createHouseholdPlanHint(doc, spec) {
+    const hint = doc.createElement('small'); hint.textContent = spec.hint;
+    if (spec.infoHint) {
+        hint.className = 'ds-explanation';
+        hint.append(createInfoPopover(doc, `Erläuterung zu ${spec.label}`, spec.infoHint));
+    }
+    return hint;
+}
 
 const getPlanField = (values, path) => path.split('.').reduce((value, key) => value?.[key], values);
 
@@ -75,7 +85,8 @@ export const HOUSEHOLD_PLAN_FIELDS = [
     {
         "path": "liquidityRunwayYears",
         "label": "Liquiditäts-Reichweite",
-        "hint": "Tagesgeld + Geldmarkt in Jahren Entnahme",
+        "hint": "Tagesgeld + Geldmarkt",
+        "infoHint": "Gemessen in Jahren der geplanten Entnahme.",
         "group": 2,
         "unit": "Jahre"
     },
@@ -155,7 +166,8 @@ export const HOUSEHOLD_PLAN_FIELDS = [
                 "Nacheinander"
             ]
         ],
-        "hint": "wer entnimmt zuerst · nacheinander: Reichweite zuerst",
+        "hint": "wer entnimmt zuerst",
+        "infoHint": "wer entnimmt zuerst · nacheinander: Reichweite zuerst",
         "group": 3,
         "segment": true
     },
@@ -289,13 +301,14 @@ export function projectHouseholdPlanFieldLabel({ doc, field, path } = {}) {
         else if (doc.createTextNode) label.insertBefore(doc.createTextNode(spec.label), label.firstChild);
     }
     const presentationLabel = doc?.getElementById?.(`${field.id}-label`);
-    if (presentationLabel) presentationLabel.textContent = spec.label;
+    if (presentationLabel?.firstChild?.nodeType === 3) presentationLabel.firstChild.textContent = spec.label;
+    else if (presentationLabel) presentationLabel.textContent = spec.label;
     const balanceSegment = doc?.querySelector?.(`[data-balance-control="${field.id}"]`);
     if (balanceSegment && spec.options) for (const button of balanceSegment.querySelectorAll('button[data-balance-value]')) {
         const text = spec.options.find(([value]) => String(value) === button.dataset.balanceValue)?.[1];
         if (text !== undefined) button.textContent = text;
     }
-    if (spec.hint) field.title = spec.hint;
+    if (spec.hint) field.title = spec.infoHint || spec.hint;
     if (spec.options && field.options) {
         for (const option of field.options) {
             const text = spec.options.find(([value]) => value === option.value)?.[1];

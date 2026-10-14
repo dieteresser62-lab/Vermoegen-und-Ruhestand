@@ -45,9 +45,9 @@ const ids = [...markup.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
 assertEqual(ids.length, new Set(ids).size, 'Alle Bestandscontrols und Ergebnis-Hosts besitzen eindeutige IDs');
 const controls = {
     ergebnis: ['overviewBacktest', 'overviewMonteCarlo', 'overviewCrises', 'overviewRunHeads'],
-    annahmen: ['simProfileList', 'startFloorBedarf', 'minimumFlexAnnual', 'pflegePanel', 'mcSetupDisclosure'],
+    annahmen: ['simProfileList', 'startFloorBedarf', 'minimumFlexAnnual', 'pflegePanel', 'simPlanParameters'],
     backtesting: ['simStartJahr', 'simEndJahr', 'btButton', 'simulationSummary', 'simulationLog', 'exportBacktestJson', 'parity-smoketest-card'],
-    montecarlo: [ 'mcButton', 'mcCancelButton', 'mcViewTabLogs'],
+    montecarlo: [ 'mcButton', 'mcCancelButton', 'mcViewTabLogs', 'mcSetupDisclosure', 'mcAdvancedDisclosure', 'mcAnzahl', 'mcDauer', 'stressPreset'],
     werkstatt: ['workshopReplayPanel', 'stressReplayWorkspace', 'mcReplayVariantBadge', 'sweepButton', 'sweepResults', 'ao_run_btn', 'ao_result', 'ao_apply_btn']
 };
 for (let i = 0; i < owners.length; i++) {

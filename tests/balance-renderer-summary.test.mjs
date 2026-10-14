@@ -188,12 +188,12 @@ console.log('--- Balance Renderer Summary Tests ---');
         };
         for (const [label, expected] of [
             [householdPlanFieldSpec('floorBedarf').label, '1.500\u00a0€ / Monat'],
-            [householdPlanFieldSpec('flexBedarf').label, '1.001\u00a0€ / Monatdavon finanziert 500\u00a0€'],
+            [householdPlanFieldSpec('flexBedarf').label, '1.001\u00a0€ / Monat'],
             ['Bedarf gesamt', '2.501\u00a0€ / Monat']
         ]) assertEqual(rowValue(outputs.balanceNeedRows, label), expected, `${label}: benachbarte Bedarfszeile zeigt ganze Euro`);
         assertEqual(outputs.balanceFreeLiquidity.textContent, '9.000\u00a0€', 'Operative Liquidität zeigt ganze Euro');
         assertEqual(outputs.balanceReserveTargetMonths.textContent, '36\u00a0Monate', 'Zielmonate stammen vom Runwayparameter, nicht vom Istwert');
-        assertEqual(outputs.balanceReserveRunway.textContent, 'Nach Vorschlag: reicht für 9,3\u00a0Monate Entnahme', 'Ist-Reichweite bleibt vom Ziel getrennt');
+        assertEqual(outputs.balanceReserveRunway.textContent, 'Nach Vorschlag: reicht für 9,3\u00a0Monate Vermögensentnahme', 'Ist-Reichweite bleibt vom Ziel getrennt');
         assertEqual(outputs.balanceWealthFooter.textContent, 'Gesamtvermögen 95.001\u00a0€ · davon Pflegevorsorge 10.000\u00a0€ reserviert', 'Gesamtwert wird geliefert und Pflegevorsorge nicht doppelt addiert');
         assertEqual(outputs.balanceNeedRows.children[2].children[1].children[1].className, 'balance-unit', 'Monatliche Bedarfssumme hat eine kleine Einheit');
         assertEqual(rowValue(outputs.balanceReserveRows, 'Gold-Bestand'), '301\u00a0€', 'Gold-Bestand zeigt ganze Euro');
@@ -209,7 +209,7 @@ console.log('--- Balance Renderer Summary Tests ---');
         renderer.renderOverview({ input: {}, depotwertGesamt: 0, neuerBedarf: 0, minGold: 0, zielLiquiditaet: 0,
             runway: { months: Infinity }, vpw: { gesamtwert: 0 }, healthBucketDiagnostics: { lockedAmount: 0 } });
         for (const key of Object.keys(details)) assertEqual(outputs[key].textContent, '0\u00a0€', `${key}: echte Null bleibt sichtbar`);
-        assertEqual(outputs.balanceReserveRunway.textContent, 'Nach Vorschlag: reicht für ∞\u00a0Monate Entnahme', 'Unendliche Ist-Reichweite wird nicht auf Zielmonate begrenzt');
+        assertEqual(outputs.balanceReserveRunway.textContent, 'Nach Vorschlag: reicht für ∞\u00a0Monate Vermögensentnahme', 'Unendliche Ist-Reichweite wird nicht auf Zielmonate begrenzt');
         assertEqual(outputs.balanceWealthFooter.textContent, 'Gesamtvermögen 0\u00a0€ · davon Pflegevorsorge 0\u00a0€ reserviert', 'Echte Null bleibt auch bei deaktivierter Pflegevorsorge sichtbar');
         new SummaryRenderer({}, { loadState: () => ({ inputs: {} }) }).renderOverview();
         assert(true, 'Vollständiger Überblick toleriert fehlende Ausgabehosts und Eingabewerte');
@@ -308,7 +308,7 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
         const summaryItems = outputs.miniSummary.children[0].children;
         assert(summaryItems[1].className.includes('summary-kpi') && summaryItems[1].className.includes('ds-metric')
             && summaryItems[1].className.includes('status-warn'), 'KPI-Anker und bestehende Runwaywarnung bleiben mit additiver Rolle erhalten');
-        assertEqual(summaryItems[1].children[1].textContent, '4,0\u00a0Monate → ', 'Runwayeinheit und Wert bleiben erhalten');
+        assertEqual(summaryItems[1].children[1].textContent, '— → ', 'Fehlender Vorherwert bleibt fehlend; gelieferte Runway steht nachher');
         assert(summaryItems[0].className.includes('summary-item') && summaryItems[0].className.includes('ds-metric'), 'Vorher-/Nachher-Anker bleiben erhalten');
         outputs.healthBucketSummary = doc.createElement('div');
         renderer.renderHealthBucket({ enabled: true, lockedAmount: 100.25, targetInflationAdjusted: 200.75,
@@ -335,12 +335,12 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
             liquiditaet: { deckungVorher: 50 }, healthBucketDiagnostics: { operativeLiquidity: 9000 } };
         plan.renderPlanCards(ui);
         assertEqual(outputs.balanceMonthlyBudget.textContent, UIUtils.formatBalanceCurrency(2000), 'Monatsbudget addiert feste Einkünfte und finanzierte Entnahme');
-        assertEqual(outputs.balanceBudgetCut.textContent, `Der flexible Bedarf ist auf 60,0\u00a0% gekürzt: ${UIUtils.formatBalanceCurrency(500)} weniger im Monat, als du planst.`, 'Kürzung aus tatsächlichem Monatsbudget und Bedarf');
+        assertEqual(outputs.balanceBudgetCut.textContent, `Dein Haushalts-Flex ist zu 50,0\u00a0% finanziert: ${UIUtils.formatBalanceCurrency(500)} weniger im Monat, als du planst.`, 'Kürzung aus tatsächlichem Monatsbudget und Bedarf');
         assert(!outputs.balanceBudgetChips.children.some(node => node.textContent.startsWith('Flex-Rate')), 'Der Kürzungssatz nennt die gelieferte Flex-Rate ohne zusätzlichen Chip');
         assert(!outputs.balanceBudgetCutLegend.hidden, 'Positive Kürzung besitzt eine dritte Legende');
         assertEqual(outputs.balanceBudgetCutAmount.textContent, `−${UIUtils.formatBalanceCurrency(500)}`, 'Legende nennt Kürzung mit Minuszeichen');
         plan.renderPlanCards({ ...ui, spending: { monatlicheEntnahme: 1500, details: { flexRate: 100 } } });
-        assert(outputs.balanceBudgetCutLegend.hidden && outputs.balanceBudgetCut.textContent === 'Dein flexibler Bedarf ist voll finanziert.', 'Ohne Kürzung verschwinden Legende und Kürzungssatz nach Neurendern');
+        assert(outputs.balanceBudgetCutLegend.hidden && outputs.balanceBudgetCut.textContent === 'Dein Haushalts-Flex ist voll finanziert.', 'Ohne Kürzung verschwinden Legende und Kürzungssatz nach Neurendern');
         plan.renderPlanCards({ input: {} });
         assert(outputs.balanceBudgetCutLegend.hidden && outputs.balanceBudgetCutAmount.textContent === '', 'Fehlende Werte erzeugen keine Nullkürzung');
         plan.renderPlanCards(ui);
@@ -461,7 +461,7 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
             const input = { ...ui.input, profilName: '<Profil A>', inflation: 2.1 };
             const raw = JSON.stringify(input);
             plan.renderPlanCards({ ...ui, input, liquiditaet: { deckungNachher: 99.25 } });
-            assertEqual(outputs.balanceNeedRows.children.length, 4, 'Vollständige Eingaben ergeben genau vier Bedarfszeilen');
+            assertEqual(outputs.balanceNeedRows.children.length, 5, 'Finanzierter Haushalts-Flex steht getrennt neben den bisherigen Bedarfszeilen');
             assertEqual(outputs.balanceNeedProfiles.children.length, 0, 'Ohne Profilbedarfswerte entsteht keine Vermögensersatzzeile');
             assert(outputs.balanceNeedProfiles.hidden, 'Profilbedarfshost bleibt ohne vorhandenen Bedarf verborgen');
             assertEqual(outputs.balanceActionCoverage.textContent, ' Danach 99,3\u00a0% des Ziels.', 'Erklärung nutzt die gelieferte Nachherdeckung');
@@ -662,4 +662,60 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
         if (previous.doc === undefined) delete globalThis.document; else globalThis.document = previous.doc;
         if (previous.win === undefined) delete globalThis.window; else globalThis.window = previous.win;
     }
+}
+
+// Jahresbeleg und heutige Beträge am selben Ausgabehost; fehlende Reichweitenseiten bleiben getrennt.
+{
+    const { completedComparisonFixture } = await import('./household-plan-comparison.test.mjs?fixture');
+    const { createPresentationTestDocument } = await import('./designsystem-source-contract.mjs');
+    const { setAppTestDate, getAppTestDate } = await import('../app/shared/app-clock.js');
+    const previous = { document: globalThis.document, date: getAppTestDate() };
+    const doc = createPresentationTestDocument();
+    const outputs = Object.fromEntries(['balanceBudgetPreview', 'balanceBudgetPlan', 'balanceWithdrawalPreview', 'balanceWithdrawalPlan', 'miniSummary']
+        .map(key => [key, doc.createElement('div')]));
+    const fixture = completedComparisonFixture();
+    const record = JSON.parse(fixture.records.annual_plan_record_v1);
+    const adopted = Object.values(record.entries)[0].adopted;
+    adopted.monthlyBudget = 5000; adopted.monthlyWithdrawal = 1900;
+    fixture.records.annual_plan_record_v1 = JSON.stringify(record);
+    try {
+        globalThis.document = doc; setAppTestDate('2026-10-09');
+        const model = projectOverview({ registry: fixture.registry, activeId: 'z', liveData: fixture.records, now: fixture.now });
+        const renderer = new SummaryRenderer({ outputs });
+        const ui = { input: { renteAktiv: true, renteMonatlich: 3100, floorBedarf: 30750, flexBedarf: 30000 }, spending: { monatlicheEntnahme: 1850 } };
+        const before = JSON.stringify({ model, ui });
+        renderer.renderBudgetOrigin(model, ui);
+        assertEqual(outputs.balanceBudgetPreview.textContent, 'Vorschau heute · 09.10.2026', 'Vorschau und fachliches Datum stehen direkt beim Monatsbudget');
+        assertEqual(outputs.balanceBudgetPlan.children[0].textContent, 'Plan 2026 · festgeschrieben am 02.01.2026', 'Beschlussdatum stammt aus dem echten Planbeleg');
+        for (const [key, amount] of [['balanceBudgetPlan', '5.000\u00a0€'], ['balanceWithdrawalPlan', '1.900\u00a0€']]) {
+            assertEqual(outputs[key].children[1].textContent, amount, 'Gültiger Planbetrag bleibt neben der heutigen Rechnung');
+            assertEqual(outputs[key].children[2].textContent, 'Differenz −50\u00a0€', 'Beide Vorschauwerte vergleichen sich mit ihrem passenden Planbetrag');
+        }
+        assertEqual(JSON.stringify({ model, ui }), before, 'Planvergleich verändert weder Vorschau noch festgeschriebenen Beleg');
+        renderer.renderBudgetOrigin({ ...model, summary: { ...model.summary, year: 2025 } }, ui);
+        assert(outputs.balanceBudgetPlan.hidden && outputs.balanceWithdrawalPlan.hidden && outputs.balanceBudgetPreview.hidden,
+            'Fremdes Planjahr hinterlässt keinen gültigen Vergleich');
+        renderer.renderBudgetOrigin({ ...model, planComparison: { recordStatus: 'invalid' } }, ui);
+        assert(!outputs.balanceBudgetPlan.children.length && !outputs.balanceWithdrawalPlan.children.length, 'Beschädigter Beleg hinterlässt keine früheren Planbeträge');
+
+        const runwayUi = { input: { floorBedarf: 30000, flexBedarf: 30000, renteAktiv: true, renteMonatlich: 2300, tagesgeld: 90000, geldmarktEtf: 0 },
+            spending: { monatlicheEntnahme: 2400 }, runway: { months: 159388 / 2400, status: 'ok' } };
+        renderer.renderMiniSummary(runwayUi);
+        let item = outputs.miniSummary.children[0].children[1];
+        assertEqual(item.children[1].textContent, '37,5\u00a0Monate → ', 'Freie Liquidität vor dem Vorschlag verwendet dieselbe Monatsentnahme');
+        assertEqual(item.children[1].children[0].textContent, '66,4\u00a0Monate', 'Gelieferte Runway bleibt ausschließlich nach dem Vorschlag');
+        assert(item.children[0].children[0].children[1].textContent.includes('freie Liquidität ÷ finanzierte monatliche Vermögensentnahme'), 'Formel bleibt im Infofeld zugänglich');
+        renderer.renderMiniSummary({ ...runwayUi, spending: {} });
+        item = outputs.miniSummary.children[0].children[1];
+        assertEqual(item.children[1].textContent, '— → ', 'Fehlende Monatsbasis erzeugt keinen Vorherwert');
+        assertEqual(item.children[1].children[0].textContent, '66,4\u00a0Monate', 'Fehlender Vorherwert benennt den Nachherwert nicht um');
+        assertEqual(item.children[2].textContent, 'Vorher nicht verfügbar', 'Fehlende Seite wird ausdrücklich genannt');
+        renderer.renderMiniSummary({ ...runwayUi, runway: {} });
+        item = outputs.miniSummary.children[0].children[1];
+        assertEqual(item.children[1].children[0].textContent, '—', 'Fehlender Nachherwert wird nicht aus dem Vorherwert erfunden');
+        assertEqual(item.children[2].textContent, 'Nachher nicht verfügbar', 'Auch die andere fehlende Seite bleibt benannt');
+        renderer.renderMiniSummary({ ...runwayUi, spending: { monatlicheEntnahme: 0 }, runway: { months: Infinity } });
+        item = outputs.miniSummary.children[0].children[1];
+        assertEqual(item.children[1].textContent, '∞\u00a0Monate → ', 'Entnahme null behält die vorhandene unendliche Reichweite');
+    } finally { globalThis.document = previous.document; setAppTestDate(previous.date); }
 }

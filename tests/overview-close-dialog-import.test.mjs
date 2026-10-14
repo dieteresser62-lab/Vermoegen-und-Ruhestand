@@ -376,7 +376,8 @@ for (const annual of [false, true]) {
         assert(f.doc.getElementById('overviewExampleExpensesStatus').textContent.includes('Es fehlt noch: ' + f.model.members.find(p => p.id === 'muster_b').name), 'Importstatus nennt die fehlende Person');
         const bytes = JSON.stringify(Object.fromEntries(f.backend));
         await root.querySelector('[data-close-dialog-activate="budget"]').fire('click');
-        assert(dialogElements(root.querySelector('[data-close-dialog-step="budget"]')).some(node => node.textContent?.includes('Ausgaben bisher: 120,50')), 'Budget zeigt den vorhandenen Teilbetrag');
+        assert(dialogElements(root.querySelector('[data-close-dialog-step="budget"]')).some(node => node.textContent?.includes('120,50'))
+            && dialogElements(root.querySelector('[data-close-dialog-step="budget"]')).some(node => node.textContent?.includes('unvollständig')), 'Budgetkachel zeigt Teilbetrag und unvollständig');
         assertEqual(JSON.stringify(Object.fromEntries(f.backend)), bytes, 'Teilbetrag und Besuche schreiben keine Finanzdaten');
         f.imports.syncButtons(); assert(accept().disabled, 'Teilimport gibt den Hauptknopf nicht eigenständig frei');
         await f.csv({ id: 'muster_b' });

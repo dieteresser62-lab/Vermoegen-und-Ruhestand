@@ -26,7 +26,18 @@ export function projectBalanceFlexTrace(ui = {}) {
             ? (input.floorBedarf + input.flexBedarf) / 12 : null;
     const valid = budget !== null && grossNeed !== null && income >= 0 && withdrawal >= 0 && grossNeed >= 0;
     const cut = valid ? Math.max(0, grossNeed - budget) : null;
-    const result = { income, withdrawal, budget, grossNeed, cut, rows: [], reason: null };
+    // Haushalts-Flex umfasst auch den Rentenüberschuss über den Grundbedarf.
+    // Der Engine-Trace enthält dagegen nur den aus Vermögen finanzierten Flex.
+    const householdFlex = grossNeed !== null && finite(input.floorBedarf)
+        ? Math.max(0, grossNeed - input.floorBedarf / 12) : null;
+    const financedHouseholdFlex = valid && finite(input.floorBedarf)
+        ? Math.max(0, budget - input.floorBedarf / 12) : null;
+    const householdFlexRate = householdFlex > 0 && financedHouseholdFlex !== null
+        ? financedHouseholdFlex / householdFlex * 100 : null;
+    const netFloor = finite(input.floorBedarf) && finite(income)
+        ? Math.max(0, input.floorBedarf / 12 - income) : null;
+    const result = { income, withdrawal, budget, grossNeed, cut, householdFlex,
+        financedHouseholdFlex, householdFlexRate, netFloor, rows: [], reason: null };
     const trace = spending.flexTrace;
     if (!valid || !Array.isArray(trace) || !trace.length) return result;
     const start = trace[0].monatsbetragVorher;
@@ -41,13 +52,13 @@ export function projectBalanceFlexTrace(ui = {}) {
         previous = entry.monatsbetragNachher;
     }
     // Die Engine hat Rente und Dynamic Flex bereits in die Netto-Basis eingerechnet.
-    const netFloor = finite(input.floorBedarf) ? Math.max(0, input.floorBedarf / 12 - income) : null;
     if (netFloor === null || !near(end, Math.max(0, withdrawal - netFloor))
         || cut > 0 && !near(start - end, cut)) return result;
     const applied = trace.filter(entry => entry.gegriffen);
     const scale = Math.max(start, end, ...applied.flatMap(e => [e.monatsbetragVorher, e.monatsbetragNachher]), 1);
     const total = (label, value, kind) => ({ label, value, kind, left: 0, width: value / scale * 100 });
-    result.rows = [total('Geplant (flexibel)', start, 'start'), ...applied.map(entry => ({
+    const share = netFloor > 0 ? ' (Flex-Anteil)' : '';
+    result.rows = [total(`Geplante Vermögensentnahme${share}`, start, 'start'), ...applied.map(entry => ({
         label: entry.schritt === 'quantization'
             ? finite(entry.kennzahlen?.stufeEurMonat) && entry.kennzahlen.stufeEurMonat > 0
                 ? `Rundung auf volle ${entry.kennzahlen.stufeEurMonat} €` : 'Rundung'
@@ -55,7 +66,7 @@ export function projectBalanceFlexTrace(ui = {}) {
         value: entry.monatswirkungEur, kind: entry.monatswirkungEur < 0 ? 'negative' : 'positive',
         left: Math.min(entry.monatsbetragVorher, entry.monatsbetragNachher) / scale * 100,
         width: Math.abs(entry.monatswirkungEur) / scale * 100
-    })), total('Finanziert', end, 'total')];
+    })), total(`Finanzierte Vermögensentnahme${share}`, end, 'total')];
     const cuts = applied.filter(entry => entry.monatswirkungEur < 0);
     const structural = cuts.filter(entry => !['internal_smoothing', 'annual_change_limit', 'final_smoothing', 'quantization', 'safety_cap'].includes(entry.schritt));
     const safety = cuts.find(entry => entry.schritt === 'safety_cap');

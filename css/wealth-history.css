@@ -1,6 +1,6 @@
 /* Gemeinsame lokale Verlaufsdarstellung; Farben ausschließlich über Tokens. */
 .wealth-history-svg { display: block; width: 100%; height: auto; font-family: var(--font-sans); overflow: visible; }
-.history-axis { fill: var(--text-muted); font-size: 12px; }
+.history-axis { fill: var(--text-muted); font-size: var(--text-dense); }
 .history-grid { stroke: var(--border); stroke-width: 1; }
 .history-axis-break { fill: none; stroke: var(--text-muted); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .history-year-line { stroke: var(--border-strong); stroke-dasharray: 4 5; }
@@ -14,9 +14,9 @@
 .history-cash { fill: var(--history-cash); background: var(--history-cash); }
 .history-total { fill: none; stroke: var(--history-total); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .history-total-point { fill: var(--history-total); }
-.history-end-value { fill: var(--text-main); font-weight: 600; font-size: 15px; }
+.history-end-value { fill: var(--text-main); font-weight: 600; font-size: var(--text-dense); }
 .history-hatch { fill: none; stroke: var(--text-muted); stroke-opacity: .55; stroke-width: 1; }
-.history-event { font-size: 13px; }
+.history-event { font-size: var(--text-dense); }
 .history-buy { fill: var(--good); }
 .history-sell { fill: var(--bad); }
 .history-event-connector { stroke: var(--good); stroke-width: 1; stroke-opacity: .5; vector-effect: non-scaling-stroke; }
@@ -54,12 +54,12 @@
 .history-positive, .pv-history-change.history-positive { color: var(--good); }
 .history-negative, .pv-history-change.history-negative { color: var(--bad); }
 .history-neutral, .pv-history-change.history-neutral { color: var(--text-muted); }
-.history-course-svg .history-event { font-size: 12px; }
+.history-course-svg .history-event { font-size: var(--text-dense); }
 
 .history-total-area { fill: var(--history-aktien_alt); fill-opacity: .16; }
 .wealth-history-svg:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: var(--radius-md); }
 .history-day-guide { stroke: var(--text-main); stroke-width: 1; stroke-dasharray: 3 3; pointer-events: none; }
 .history-day-field { pointer-events: none; }
-.history-day-content { box-sizing: border-box; width: 100%; height: 100%; padding: 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-main); font: 13px/24px var(--font-sans); overflow: hidden; overflow-wrap: anywhere; }
+.history-day-content { box-sizing: border-box; width: 100%; height: 100%; padding: 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-main); font: var(--text-dense)/24px var(--font-sans); overflow: hidden; overflow-wrap: anywhere; }
 .history-day-content > div:first-child { font-weight: 600; }
 .history-day-status { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

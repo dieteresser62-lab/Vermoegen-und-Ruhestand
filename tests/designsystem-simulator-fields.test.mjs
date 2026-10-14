@@ -205,7 +205,7 @@ try {
         detail.open = open; detail.dispatchEvent({ type: 'toggle' });
         assertEqual(inputSnapshot(), valuesBefore, 'Detailklappe verändert keine Eingabewerte');
         assertEqual(JSON.stringify([...store]), storedBefore, 'Detailklappe schreibt keine Speicherwerte');
-        assertEqual(f.field('dynamicFlexConfigGroup').style.display, open ? 'grid' : 'none', 'Alle Parameter zeigen erreicht Dynamic-Flex-Details');
+        assertEqual(f.field('dynamicFlexConfigGroup').style.display, 'none', 'Alle Parameter verändert die Dynamik-Detailsicht nicht');
     }
     host.dispatchEvent({ type: 'click', target: steps[0].button });
     assert(steps[0].body.hidden && !steps[1].body.hidden, 'Schritte sind unabhängig einklappbar');
@@ -329,7 +329,8 @@ try {
         assertEqual(b.field('mcBlockSize').disabled, method !== 'block' && method !== 'stationary', 'S24: bisherige Blockgrößensperre');
         assertEqual(state(b.field('mcBlockSize')), method !== 'block' && method !== 'stationary' ? 'inactive' : 'editable', 'S24: Zustand nach Bootstrapwechsel');
         assertEqual(b.field('mcBlockSize').value, '7', 'S24: Blockgröße unverändert');
-        assertEqual(reason(b.field('mcBlockSize')).trim(), b.field('mcBlockSize').title, 'S24: sichtbarer Begriff und Titel synchron');
+        assertEqual(reason(b.field('mcBlockSize')).trim(), method === 'block' || method === 'stationary' ? 'Historische Jahresblöcke.' : 'Nur bei Bootstrap.', 'S24: kurzer Hinweis passt zum Bootstrapzustand');
+        assert(b.field('mcBlockSize').title.includes('Bootstrap'), 'S24: vollständige Begriffserklärung bleibt am Feld');
     }
     const busy = fixture({ mcButton: '', mcCancelButton: '', 'mc-progress-bar-container': '', 'mc-progress-bar': '', mcRunStatus: '' });
     const ui = createMonteCarloUI(); ui.beginRun();

@@ -46,6 +46,7 @@ try {
     await prepareCloseFixture(doc);
     assert(!doc.getElementById('annualConfirmBtn').disabled, 'Sechs besuchte Vorbereitungsschritte und bestätigtes Tagesgeld geben Jahresstart frei');
     const cash = root.querySelector('[data-tagesgeld-person]'); cash.value = '19.000'; await cash.fire('input');
+    await root.querySelector('[data-tagesgeld-apply]').fire('click');
     assert(guard.reasons().some(reason => reason.dirty), 'Cashentwurf meldet nur Dirty-Lease');
     await doc.getElementById('annualConfirmBtn').fire('click');
     assertEqual(await coordinator.prepare(options), null, 'Doppelklick erzeugt keinen zweiten Vorbereitungsauftrag');

@@ -29,12 +29,12 @@ const captions = [
     'Erikas Vermögen ist einzeln sichtbar.',
     'Ausgaben zeigt Monats- und Jahreswerte.',
     'Überblick trennt Beschluss und Vorschau.',
-    'Bedarf & Strategie zeigt die drei Bedarfswerte; Alle Parameter ist zugeklappt.',
+    'Bedarf & Strategie zeigt die Bedarfswerte; Alle Parameter fasst die Planwerte zusammen und ist zugeklappt.',
     'Diagnose erklärt die Empfehlung.',
     'Ergebnis zeigt Backtest und MC.',
-    'Annahmen zeigt Bedarf, Personen und Pflege mit geschlossenen Detailbereichen.',
-    'Backtest zeigt das Jahresprotokoll.',
-    'Laufzahl, Methode und Seed stehen unter Alle Parameter.',
+    'Annahmen zeigt Bedarf, Personen und Pflege; Alle Parameter fasst dieselben Planwerte wie Haushalt & Plan zusammen.',
+    'Backtest zeigt Zeitraum links neben Kennzahlen und Einordnung im ⓘ.',
+    'Simulation, Zeitraum & Daten und Stresstest stehen in Einstellungen; Erweitert zeigt die technischen Optionen.',
     'Überblick zeigt den Musterlauf.',
     'Die Verteilung macht die Streuung sichtbar.',
     'Pflege zeigt das Modellrisiko.',
@@ -49,17 +49,17 @@ const captions = [
     'Die Übersicht bietet den Oktoberabschluss an.',
     'Kurse prüfen zeigt die vorhandenen Kursstände.',
     'Ausgaben Oktober zeigt den Importstand.',
-    'Der Vergleich zeigt Oktoberausgaben und Budget.',
-    'Tagesgeld zeigt Stände und Novemberbetrag.',
-    'Das Ergebnis zeigt den Oktoberabschluss.',
+    'Drei Kacheln zeigen Ausgaben, Monatsbudget und Abweichung.',
+    'Tagesgeld zeigt Lesewerte und die Bestätigung je Person.',
+    'Drei Kacheln zeigen den Oktoberabschluss; Herleitung anzeigen ist zugeklappt.',
     'Die Übersicht bietet den Jahresabschluss an.',
     'Kurse prüfen zeigt die vorhandenen Kursstände.',
     'Ausgaben Dezember zeigt den Importstand.',
     'Der Vergleich zeigt Dezemberausgaben und Jahreswerte.',
     'Tagesgeld zeigt bestätigte Jahresendstände.',
-    'Marktdaten zeigt Inflation, ETF-Kurs und CAPE.',
+    'Drei Kacheln zeigen Inflation, ETF-Schlusskurs und CAPE mit gemeinsamer Herkunft.',
     'Plan 2027 zeigt Werte und bewusste Anpassung.',
-    'Das Ergebnis zeigt Plan und Handlungsanweisung.'
+    'Das Ergebnis zeigt die Handlungsanweisung, das Monatsbudget und geschlossene Herleitungen.'
 ];
 
 // Verlustfrei: nur den vorhandenen PNG-Datenstrom mit zlib Level 9 neu packen.
@@ -304,6 +304,7 @@ async function main() {
             await capture(masks, 'uebersicht', 'Übersicht', maskDate);
             await goto(masks, 'depot-tranchen-manager.html');
             await page.locator('#managerPlanTab').click();
+            await page.locator('#managerPlanMore').evaluate(details => { details.open = false; });
             await capture(masks, 'personen-haushalt-plan', 'Haushalt & Plan', maskDate);
             for (const [name, id] of [['max', 'muster_a'], ['erika', 'muster_b']]) {
                 await page.locator(`#managerSectionNav [data-manager-profile="${id}"]`).click();
@@ -322,6 +323,7 @@ async function main() {
             await goto(masks, 'Balance.html');
             for (const [name, value] of [['ueberblick', 'overview'], ['bedarf-strategie', 'strategy'], ['diagnose', 'diagnosis']]) {
                 await tab(page, value);
+                if (value === 'strategy') await page.locator('#balanceAllParameters').evaluate(details => { details.open = false; });
                 await capture(masks, `balance-${name}`, `Balance ${name}${value === 'strategy' ? ' · Alle Parameter geschlossen' : ''}`, maskDate,
                     'masken', value === 'strategy' ? '#tab-strategy' : '#suiteMain', value === 'strategy');
             }
@@ -334,9 +336,10 @@ async function main() {
             await page.locator('#mcSettingsToggle').click();
             await page.locator('#mcAnzahl').fill('10000'); await page.locator('#mcSeed').fill(String(seed));
             await page.locator('#mcSeed').blur();
-            await capture(masks, 'monte-carlo-einstellungen', 'Annahmen · Alle Parameter geöffnet · Monte-Carlo Einstellungen · 10.000 Läufe · Seed 12345', maskDate,
-                'masken', '.sim-parameter-card:has(#mcAnzahl)', true);
-            await page.locator('#mcSetupDisclosure > summary').click();
+            await page.locator('#mcAdvancedDisclosure > summary').click();
+            await capture(masks, 'monte-carlo-einstellungen', 'Monte-Carlo · Einstellungen und Erweitert geöffnet · 10.000 Läufe · Seed 12345', maskDate,
+                'masken', '#mcSetupDisclosure', true);
+            await page.locator('#mcSettingsToggle').click();
             await tab(page, 'montecarlo');
             current = 'Monte-Carlo · 10.000 Läufe mit Seed 12345 rechnen'; console.log(current);
             await page.locator('#mcButton').click();
@@ -358,7 +361,12 @@ async function main() {
             }
             for (const [name, value] of [['ergebnis', 'ergebnis'], ['annahmen', 'annahmen'], ['backtest', 'backtesting']]) {
                 await tab(page, value);
-                await capture(masks, `simulator-${name}`, `Simulator ${name} nach Backtest und Monte-Carlo${value === 'annahmen' ? ' · Alle Parameter, Personen- und Pflegedetails geschlossen' : ''}`, maskDate,
+                if (value === 'annahmen') await page.locator('#simPlanParameters').evaluate(details => { details.open = false; });
+                if (value === 'backtesting') {
+                    await page.locator('#backtestResultInfo .ds-info-button').click();
+                    await page.locator('#backtestResultInfoPop').waitFor({ state: 'visible' });
+                }
+                await capture(masks, `simulator-${name}`, `Simulator ${name} nach Backtest und Monte-Carlo${value === 'annahmen' ? ' · Alle Parameter, Personen- und Pflegedetails geschlossen' : value === 'backtesting' ? ' · Einordnung im ⓘ geöffnet' : ''}`, maskDate,
                     'masken', value === 'annahmen' ? '#tab-annahmen' : '#suiteMain', value === 'annahmen' ? '.sim-need-card' : false);
             }
             await tab(page, 'werkstatt');
@@ -395,7 +403,7 @@ async function main() {
                     if (steps[i] === 'expenses') await importExample(page, dialog);
                     if (steps[i] === 'cash') {
                         if (await dialog.locator('[data-tagesgeld-person]').count() !== 2) throw new Error('Tagesgeld muss Max und Erika zeigen.');
-                        await dialog.locator('[data-tagesgeld-confirm]').click();
+                        for (const confirm of await dialog.locator('[data-tagesgeld-confirm]').all()) if (await confirm.isVisible()) await confirm.click();
                     }
                     // Der Haken bestätigt den Besuch; vorhandene DOM-Texte melden die fertigen Daten.
                     if (steps[i] === 'market' || steps[i] === 'preview') await poll(page, ({ selector, id }) => {
@@ -403,13 +411,18 @@ async function main() {
                         if (step?.dataset.state !== 'done'
                             || step.querySelector('[data-close-dialog-activate]')?.getAttribute('aria-expanded') !== 'true') return false;
                         return id === 'market'
-                            ? step.querySelector('.close-dialog-step-summary')?.textContent === 'Vollständig vorbereitet · noch nicht gespeichert'
+                            ? step.querySelector('[data-annual-market-status]')?.textContent === 'Vollständig vorbereitet · noch nicht gespeichert'
                             : step.querySelector('[data-annual-plan-status]')?.textContent === 'Dein Plan ist gültig.';
                     }, { selector, id: steps[i] }, steps[i] === 'market' ? 'Vollständige Marktdaten' : 'Gerechnete Planvorschau');
                     if (steps[i] === 'preview') {
                         await dialog.locator('[data-annual-plan-toggle]').click();
                         await dialog.locator('[data-annual-plan-editor]').evaluate(element => element.scrollIntoView({ block: 'start' }));
                     }
+                    const expectedStatus = steps[i] === 'budget'
+                        ? `Noch offen: ${annual ? 'Tagesgeld am 31.12.2026' : 'Tagesgeld prüfen'}`
+                        : steps[i] === 'market' ? 'Noch offen: Plan 2027 prüfen' : null;
+                    if (expectedStatus && await dialog.locator('[data-close-dialog-status]').textContent() !== expectedStatus)
+                        throw new Error(`Fuß-Status vor der Aufnahme muss „${expectedStatus}“ lauten.`);
                     await capture(session, `${group}/${String(i + 2).padStart(2, '0')}-${names[i]}`, `${group} · ${steps[i]}`, date, group, selector);
                 }
                 current = `${group} · Abschluss bestätigen`;

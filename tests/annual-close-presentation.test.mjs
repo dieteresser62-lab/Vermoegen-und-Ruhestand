@@ -1,6 +1,7 @@
 import { createAnnualCloseDialog } from '../app/shared/annual-close-dialog.js';
 import { createAnnualExpenseStatus } from '../app/shared/annual-close-result.js';
 import { createManualAnnualValue } from '../app/shared/annual-marketdata.js';
+import { syntheticAnnualQuote } from '../app/shared/probelauf-prices.js';
 import { projectOverviewYear, projectAnnualClosePreparation } from '../app/overview/overview-model.js';
 import { dialogElements } from '../app/shared/close-dialog.js';
 import { PLAN_DEFAULTS } from '../app/profile/household-plan.js';
@@ -35,15 +36,26 @@ const ui = createAnnualCloseDialog({ document: doc, getModel: () => model, isCom
         adjustedFields: adoptedPlanPatch ? Object.keys(adoptedPlanPatch) : [] }) });
 const pending = ui.showAnnualPreparation({ targetYear: 2026, model,
     people: members.map(person => ({ ...person, value: 10000 })), onReady(handle) { binding = handle; } });
-binding.updateMarketData({ values: Object.fromEntries([['inflation', '2.5'], ['etf', '100'], ['cape', '28']]
-    .map(([type, value]) => [type, createManualAnnualValue(type, value, 2026)])), errors: {} });
+binding.updateMarketData({ values: {}, errors: { inflation: 'Inflationsabruf fehlgeschlagen', etf: 'Kursabruf fehlgeschlagen', cape: 'CAPE-Abruf fehlgeschlagen' } });
+const unavailable = doc.getElementById('balanceAnnualClose').querySelector('[data-annual-market-report]');
+assertEqual(unavailable.querySelectorAll('.close-dialog-tile').length, 3, 'Fehlende Abrufe behalten alle drei Kacheln');
+assertEqual(unavailable.querySelectorAll('.ds-readonly-value').filter(node => node.textContent === 'Fehlt').length, 3, 'Fehlende Werte werden knapp benannt');
+assert(!doc.getElementById('annualHandPriceGroup').hidden && !doc.getElementById('annualHandInflation').disabled && !doc.getElementById('annualHandCape').disabled, 'Fehlende Pflichtdaten lassen sich weiterhin von Hand ergänzen');
+const quote = syntheticAnnualQuote('VWCE.DE', 2026, '2027-01-02');
+binding.updateMarketData({ values: { ...Object.fromEntries([['inflation', '2.5'], ['cape', '28']]
+    .map(([type, value]) => [type, createManualAnnualValue(type, value, 2026)])), etf: quote }, errors: {} });
 for (let i = 0; i < 30; i++) await Promise.resolve();
 const root = doc.getElementById('balanceAnnualClose');
 const text = element => dialogElements(element).map(node => node.textContent || '').join(' ').replaceAll('\u00a0', ' ');
+const market = root.querySelector('[data-annual-market-report]');
+assert(text(market).includes('ETF-Schlusskurs') && text(market).includes('141,00 €'), 'Vorbereitung zeigt bereits den ganzzahligen Kurs des gespeicherten Abschlusses');
+assertEqual(market.querySelectorAll('.close-dialog-tile').length, 3, 'Marktdaten zeigen drei Kacheln');
+assert(text(market).includes('Manuell · für das Jahr 2026') && text(market).includes('am 31.12.2026'), 'Manuelle Herkunft und Datenzeitraum stehen knapp an den Werten');
+assert(text(market.querySelector('[data-annual-market-provenance]')).includes('gespeichert mit dem Abschluss'), 'Gemeinsame Herkunft erklärt den Speicherzeitpunkt');
 const footer = root.querySelector('[data-close-dialog-footer]');
-const conditions = root.querySelector('[data-annual-close-conditions]');
-assert(conditions.parent === binding.content && !conditions.open && text(conditions).includes('Alle sechs Vorbereitungsschritte ansehen'), 'Abschlussbedingungen sind im scrollbaren Inhalt erreichbar');
-assert(!text(footer).includes('Alle sechs Vorbereitungsschritte') && doc.getElementById('annualCloseBtn').hidden, 'Vorbereitungsfuß enthält keine ausführlichen Bedingungen oder doppelten Schließknopf');
+const conditions = footer.querySelector('.ds-info-pop');
+assert(conditions && text(conditions).includes('Alle sechs Vorbereitungsschritte ansehen'), 'Abschlussbedingungen liegen hinter dem Info-Knopf im Fuß');
+assert(doc.getElementById('annualCloseBtn').hidden, 'Vorbereitung hat weiterhin das Schließkreuz');
 const plan = root.querySelector('[data-annual-plan-editor]');
 const summary = plan.querySelector('[data-annual-plan-summary]');
 assertEqual(plan.children[0], summary, 'Monatsbudget und Aufteilung stehen vor dem Planvergleich');
@@ -71,19 +83,32 @@ await prepareCloseFixture(doc);
 assert(!doc.getElementById('annualConfirmBtn').disabled, 'Jahreslücken ändern die bestehenden Abschlussbedingungen nicht');
 await doc.getElementById('annualConfirmBtn').fire('click');
 const accepted = await pending;
+assertEqual(accepted.preparedMarketData.etf.price, quote.price, 'Kursanzeige erhält die Quellpräzision des vorbereiteten Marktdatenpakets');
 assertEqual(JSON.stringify({ store, model, preview }), before, 'Planprüfung, Anpassung und Freigabe erhalten alle Anzeigequellen');
 const savedModel = projectAnnualClosePreparation({ ...model, summary: { year: 2027, monthlyBudget: 5150, monthlyWithdrawal: 1950 },
+    planComparison: { year: 2027, recordStatus: 'valid' },
     annual: { year: 2027, complete: false, months: [] }, occasion: { ...model.occasion, kind: 'monthly', annualState: 'done' } }, { store, annualBudgetSummary });
 assertEqual(savedModel.annual.year, 2026, 'Monatsphase nach Jahreswrite behält den Rückblick auf das Abschlussjahr');
-ui.showUpdateResultModal({ targetYear: 2026, confirmed: true, actionResult: { year: 2027, targetYear: 2026, action: { type: 'NONE', steuer: 0 }, needs: [] },
+ui.showUpdateResultModal({ targetYear: 2026, confirmed: true, showProtocol: true,
+    inflation: { year: 2026, rate: 2.5, source: 'Probelauf · synthetisch' }, etf: { price: 141, source: 'Probelauf · synthetisch' }, cape: { capeRatio: 28.5, source: 'Probelauf · synthetisch' },
+    actionResult: { year: 2027, targetYear: 2026, action: { type: 'NONE', steuer: 0 }, needs: [] },
     monthSession: { model: savedModel, request: { cash: accepted.cash }, result: { monthSnapshotId: 'test' }, phase: 'done' } });
 const receipt = root.querySelector('[data-annual-expense-status]');
 assert(text(receipt).includes('Dezember vollständig') && text(receipt).includes('Jahr 2026 noch unvollständig') && text(receipt).includes('Juli (Erika Mustermann)'),
     'Abschlussbeleg bewahrt den getrennten Status und konkrete Jahreslücken');
 assert(!text(receipt).includes('Jahr 2027'), 'Neues Planjahr ersetzt nicht das Ausgabenjahr im Beleg');
-assert(text(root.querySelector('.close-dialog-success')).includes('Dezember und 2026 abgeschlossen. Handlungsanweisung 2027 festgeschrieben.'), 'Erfolgsblock bestätigt Dezember, Abschlussjahr und festgeschriebene Handlungsanweisung');
+assert(text(root).includes('Monatsinformation aus dem festgeschriebenen Plan 2027'), 'Jahreserfolg nennt die festgeschriebene Quelle des Januarbetrags');
+const protocolText = text(doc.getElementById('annualResults'));
+assert(protocolText.includes('Inflation 2026: 2,50 % · Probelauf · synthetisch'), 'Jahresprotokoll nennt die Inflation in Prozent');
+assert(protocolText.includes('ETF-Schlusskurs: 141,00 € · Probelauf · synthetisch'), 'ETF-Schlusskurs behält Euro als Einheit');
+assert(protocolText.includes('US Shiller CAPE: 28,50 · Probelauf · synthetisch'), 'CAPE bleibt ohne Einheit');
+assert(text(root.querySelector('.close-dialog-success')).includes('Dezember und 2026 sind abgeschlossen, Plan 2027 ist festgeschrieben.'), 'Erfolgsblock bestätigt Dezember, Abschlussjahr und festgeschriebenen Plan');
+const derivation = root.querySelector('[data-annual-plan-derivation]'), december = root.querySelector('[data-annual-december]');
+assert(!derivation.open && !december.open && !root.querySelector('[data-annual-action-details]').open, 'Herleitung, Dezember und Anweisungsdetails beginnen geschlossen');
+assert(derivation.querySelector('[data-annual-expense-status]') === receipt && text(derivation).includes('6 Bezugsmonate'), 'Renten und vollständiger Ausgabenstatus bleiben unter Herleitung erreichbar');
+assert(text(december.children[0]).includes('Tagesgeld Max Mustermann') && text(december.children[0]).includes('Budget'), 'Dezember-Zusammenfassung nennt Budgetvergleich und Tagesgeld je Person');
 assert(doc.getElementById('annualShowLog').parent !== footer && root.querySelector('[data-annual-receipt-details]').parent === binding.content.children[0], 'Protokoll und Belegerläuterung liegen im scrollbaren Inhalt');
-assert(root.querySelector('.close-dialog-footnote').hidden, 'Ergebnisfuß lässt die Belegerläuterung im Inhalt');
+assert(root.querySelector('.close-dialog-footnote').hidden && root.querySelector('[data-close-dialog-status]').textContent === 'Nächster Monatsabschluss: 1. Februar.', 'Ergebnisfuß nennt links den nächsten Termin; Belegerläuterung bleibt im Inhalt');
 await doc.getElementById('annualConfirmBtn').fire('click');
 const completeStore = structuredClone(store); completeStore.years[2026].months[7].profiles.b = { categories: {} };
 const completeYear = projectOverviewYear({ store: completeStore, scope, now, retrospective: true });

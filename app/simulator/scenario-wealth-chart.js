@@ -101,10 +101,12 @@ function renderScenarioOutliers(paths, { maximum, maxValue, x, width }) {
     // Kompakte Reihen im vorhandenen Rand, einschließlich der seitlichen
     // SVG-Ränder. Die konservative Breite umfasst auch den Innenabstand.
     const left = 8, right = width - 8, gap = 4;
-    let fontSize = 11, height;
+    const fontSize = 14;
+    // IBM Plex Sans hat bei 14 px eine Texthöhe von 18 px. Der Rahmen
+    // lässt oben und unten Luft, ohne das Band bis zur Plotkante zu vergrößern.
+    const height = 20;
     const place = () => {
-        height = fontSize + 3;
-        const rows = Array.from({ length: Math.floor(80 / (height + 2)) }, () => []);
+        const rows = Array.from({ length: Math.floor((86 - 8 + 2) / (height + 2)) }, () => []);
         for (const mark of marks) {
             mark.width = mark.text.length * 8 * fontSize / 11 + 8;
             const desiredLeft = mark.desired - mark.width / 2;
@@ -124,22 +126,23 @@ function renderScenarioOutliers(paths, { maximum, maxValue, x, width }) {
                 // Seitlich ausweichen, bevor eine weitere Reihe verwendet wird.
                 if (best) break;
             }
-            if (!best) return false;
+            if (!best) continue;
             mark.left = best.left;
             mark.top = 8 + best.row * (height + 2);
             rows[best.row].push(mark);
         }
         return true;
     };
-    // Extrem dichte, künstliche Batches in sehr schmalen Hosts verkleinern nur
-    // Annotationen, niemals Achse, Originalpfade oder den nativen SVG-Raum.
-    while (!place()) fontSize /= 1.1;
-    const guides = marks.map(mark => {
+    // Bei Platzmangel nur die Beschriftung weglassen. Die Originalpfade und
+    // ihre Auswahl in der Szenarioliste bleiben vollständig erhalten.
+    place();
+    const visibleMarks = marks.filter(mark => Number.isFinite(mark.left));
+    const guides = visibleMarks.map(mark => {
         const center = mark.left + mark.width / 2;
         return Math.abs(center - mark.desired) > 4 || mark.top > 8
             ? `<path d="M${mark.desired} 88 L${center} ${mark.top + height}" fill="none" stroke="${mark.path.color}" stroke-opacity=".35" pointer-events="none"/>` : '';
     }).join('');
-    return `<g class="scenario-outliers">${guides}${marks.map(mark => {
+    return `<g class="scenario-outliers">${guides}${visibleMarks.map(mark => {
         const { path, value, text } = mark;
         const name = `${path.scenario.label} · ${formatCurrency(value)}`;
         return `<foreignObject x="${mark.left}" y="${mark.top}" width="${mark.width}" height="${height}"><button xmlns="http://www.w3.org/1999/xhtml" type="button" class="ds-scenario-outlier" style="color:${path.color};font-size:${fontSize}px;line-height:${height}px" data-scenario-id="${escape(path.id)}" title="${escape(name)}" aria-label="${escape(name)}">${escape(text)}</button></foreignObject>`;

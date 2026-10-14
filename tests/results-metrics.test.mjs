@@ -124,7 +124,8 @@ const exactTaxSummary = buildSummaryData({
     failCount: 0
 });
 const exactTaxCard = exactTaxSummary.find(card => card.title === 'Median Steuern');
-assertEqual(exactTaxCard?.value, '12.345.678,90 €', 'Tax cost median should remain cent-exact on the visible card');
+assertEqual(exactTaxCard?.value, '12.345.678,90 €', 'Tax cost median remains cent-exact for its tooltip');
+assertEqual(exactTaxCard?.displayValue, '12,3 Mio. €', 'Large secondary amounts use the same rounding as diagram summaries');
 assert(exactTaxCard?.decisionCritical === true, 'Tax cost median should remain visible in simple mode');
 
 const conservativeSummary = buildSummaryData({
@@ -147,6 +148,8 @@ assertEqual(conservativeSummary.find(card => card.title === 'Median (alle)')?.va
 assertEqual(conservativeSummary.find(card => card.title === 'Median (erfolgreiche)')?.value, '212.500,00 €', 'Successful median should avoid optimistic coarse rounding');
 assertEqual(conservativeSummary.find(card => card.title === '10%/90% Perzentil')?.value, '55.000,00 € / 490.000,00 €', 'P10/P90 benefit values should remain cent-precise and never round upward');
 assertEqual(conservativeSummary.find(card => card.title === 'Median Steuern')?.value, '12,35 €', 'Tax cost should conservatively ceil fractions beyond a cent');
+assertEqual(conservativeSummary.find(card => card.title === 'Median (alle)')?.displayValue, '487.501 €', 'Secondary amounts below a million show whole euros');
+assertEqual(conservativeSummary.find(card => card.title === '10%/90% Perzentil')?.displayValue, '55.000 € / 490.000 €', 'Both percentiles use whole euros without changing exact values');
 
 const missingTaxCard = buildSummaryData({
     results: { taxOutcomes: { p50: '123.45', applicability: { applicable: false, reason: 'not_applicable' } } },

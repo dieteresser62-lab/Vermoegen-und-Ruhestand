@@ -293,8 +293,11 @@ try {
         assert(field.disabled && field.dataset.fieldState === 'adopted', `${id}: Planlesesperre bleibt nach allen Listenern erhalten`);
         assert(field.getAttribute('aria-describedby').split(' ').some(reason => doc.getElementById(reason)?.textContent === 'aus Haushalt & Plan'), `${id}: zugängliche Herkunft bleibt Plan`);
     }
+    assert(doc.getElementById('goGoMultiplier').dataset.planTrialInactive === 'true'
+        && doc.getElementById('survivalQuantile').dataset.planTrialInactive === 'true', 'Restaurierte Voreinstellung hält Dynamikdetails ausgeblendet');
+    details.checked = true; details.dispatchEvent({ type: 'change' });
     assert(doc.getElementById('goGoMultiplier').dataset.planTrialInactive === 'false'
-        && doc.getElementById('survivalQuantile').dataset.planTrialInactive === 'false', 'Fachliche Anwendbarkeit folgt der restaurierten Kombination trotz Planlesesperre');
+        && doc.getElementById('survivalQuantile').dataset.planTrialInactive === 'false', 'Explizite Detailfreigabe erhält die fachliche Anwendbarkeit und Planlesesperre');
     await unchangedBackend('Lesemodusereignisse erhalten alle Backendrohbytes nach Flush');
     const candidate = champion({ liquidityRunwayYears: 7, survivalQuantile: .93, goGoMultiplier: 1.3 });
     let applyCode;

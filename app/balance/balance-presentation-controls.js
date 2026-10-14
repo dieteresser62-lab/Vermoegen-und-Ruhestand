@@ -24,7 +24,7 @@ export function renderBalanceStrategyValues(doc, input, marketYear) {
     set('balanceAdopt-costs-detail', 'Teilfreistellung je Tranche');
     const frame = doc?.getElementById('balanceGoldBandFrame'), off = doc?.getElementById('balanceGoldOff');
     if (frame) frame.dataset.goldActive = String(input.goldAktiv === true);
-    if (off) off.hidden = input.goldAktiv === true;
+    if (off) off.hidden = input.goldAktiv === true || doc.getElementById('rebalancingBand')?.dataset.planTrialReadonly === 'false';
 }
 
 // Reiner DOM-Adapter. Werte und Sperren gehören weiterhin den nativen Controls;
@@ -192,9 +192,10 @@ export function bindBalancePresentationControls(root, { onParametersToggle = () 
             if (parameters && (revealCustom || lastPreset !== undefined && preset?.value === 'custom' && lastPreset !== 'custom') && !preset?.disabled && !parameters.open) parameters.open = true;
             lastPreset = preset?.value;
             const advanced = doc.getElementById('dynamicFlexShowAdvanced');
-            if (parameters && advanced && parameters.open !== advanced.checked) onParametersToggle(parameters.open);
+            if (advanced && revealCustom && !advanced.checked) onParametersToggle(true);
             const dynamicOff = detectDynamicFlexPreset({ dynamicFlex: doc.getElementById('dynamicFlex')?.checked }) === 'off';
-            if (dynamicOffNote && dynamicOffNote.hidden !== !dynamicOff) dynamicOffNote.hidden = !dynamicOff;
+            const offNoteHidden = !dynamicOff || doc.getElementById('dynamicFlexConfigGroup')?.style.display === 'none';
+            if (dynamicOffNote && dynamicOffNote.hidden !== offNoteHidden) dynamicOffNote.hidden = offNoteHidden;
             // Der gemeinsame Feldbesitzer darf seine eigenen Gründe weiter pflegen.
             // Nur identische Ausschaltziele ersetzen; andere Tokens bleiben erhalten.
             for (const control of dynamicCard?.querySelectorAll('input, select') || []) {
@@ -210,8 +211,7 @@ export function bindBalancePresentationControls(root, { onParametersToggle = () 
                 setDescription(control, [...ids.filter(id => !bundled.includes(id)), ...(bundled.length ? [dynamicOffNote.id] : [])]);
             }
             for (const { host, control, buttons, reason } of pairs) {
-                const value = control.id === 'dynamicFlexPreset' && dynamicOff ? 'off'
-                    : control.type === 'checkbox' ? String(control.checked) : control.value;
+                const value = control.type === 'checkbox' ? String(control.checked) : control.value;
                 for (const button of buttons) {
                     const pressed = String(button.dataset.balanceValue === value);
                     if (button.getAttribute('aria-pressed') !== pressed) button.setAttribute('aria-pressed', pressed);

@@ -1,11 +1,11 @@
 import { PROTOCOL_COLUMNS, protocolRowFlags, readProtocolValue, formatProtocolValue } from './protocol-columns.js';
 import { renderProtocolTable } from './protocol-renderer.js';
+import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 "use strict";
 
 const PERIOD_FIELDS = Object.freeze({
     simStartJahr: 'simStartJahrError',
-    simEndJahr: 'simEndJahrError',
-    backtestCohortHorizon: 'backtestCohortHorizonError'
+    simEndJahr: 'simEndJahrError'
 });
 
 const OUTCOME_LABELS = Object.freeze({
@@ -14,6 +14,8 @@ const OUTCOME_LABELS = Object.freeze({
     incomplete: 'unvollständige historische Daten',
     technical_error: 'technischer Fehler'
 });
+
+const infoBindings = new WeakSet();
 
 export function backtestRowState(entry) {
     const flags = protocolRowFlags(entry, 'backtest');
@@ -86,20 +88,24 @@ export function configureHistoricalBacktestControls(documentRef, provider) {
         input.step = '1';
     }
 
-    const horizonInput = documentRef?.getElementById('backtestCohortHorizon');
-    if (horizonInput) {
-        horizonInput.min = '1';
-        horizonInput.max = String(max - min + 1);
-        horizonInput.step = '1';
-    }
-
     const hint = documentRef?.getElementById('backtestDatasetHint');
-    if (hint) {
+    if (hint) hint.textContent = `Daten ${min}–${max}`;
+    const details = documentRef?.getElementById('backtestDatasetInfoPop');
+    if (details) {
         const datasetId = String(provider?.datasetId || 'historischer Datensatz');
         const revision = String(provider?.revision || 'unbekannt');
         const lookback = finiteInteger(bounds.lookbackYears);
-        hint.textContent = `Datensatz ${datasetId}, Revision ${revision}. Zulässiger Simulationszeitraum: ${min}–${max} (einschließlich)`
-            + (lookback && lookback > 0 ? `; ${lookback} Lookback-Jahre sind im Datenvertrag berücksichtigt.` : '.');
+        details.textContent = `Datensatz ${datasetId}, Revision ${revision}. Simulationszeitraum: ${min}–${max}, einschließlich Start- und Endjahr.`
+            + (lookback && lookback > 0 ? ` ${lookback} Vorjahre für die Startentscheidung (Lookback) sind im Datenvertrag berücksichtigt.` : '');
+    }
+    const host = documentRef?.getElementById('tab-backtesting');
+    if (host?.querySelectorAll && documentRef.addEventListener && !infoBindings.has(documentRef)) {
+        infoBindings.add(documentRef);
+        bindInfoPopovers({
+            querySelectorAll: selector => host.querySelectorAll(selector),
+            addEventListener: (...args) => documentRef.addEventListener(...args),
+            get activeElement() { return documentRef.activeElement; }
+        });
     }
 
     return Object.freeze({ startYear: min, endYear: max });
@@ -108,9 +114,7 @@ export function configureHistoricalBacktestControls(documentRef, provider) {
 export function validateHistoricalBacktestPeriod({
     startRaw,
     endRaw,
-    bounds,
-    cohortsEnabled = false,
-    cohortHorizonRaw = ''
+    bounds
 }) {
     const min = finiteInteger(bounds?.startYear);
     const max = finiteInteger(bounds?.endYear);
@@ -127,24 +131,11 @@ export function validateHistoricalBacktestPeriod({
         errors.simEndJahr = 'Endjahr darf nicht vor dem Startjahr liegen.';
     }
 
-    let cohortHorizonYears = null;
-    if (cohortsEnabled) {
-        const horizon = validateIntegerInput(cohortHorizonRaw, {
-            label: 'Cohort-Horizont',
-            min: 1,
-            max: max - min + 1
-        });
-        cohortHorizonYears = horizon.value;
-        if (horizon.error) errors.backtestCohortHorizon = horizon.error;
-    }
-
     const firstErrorFieldId = Object.keys(PERIOD_FIELDS).find(id => errors[id]) || null;
     return Object.freeze({
         valid: firstErrorFieldId === null,
         startYear: start.value,
         endYear: end.value,
-        cohortsEnabled: Boolean(cohortsEnabled),
-        cohortHorizonYears,
         errors: Object.freeze({ ...errors }),
         firstErrorFieldId
     });
@@ -224,15 +215,13 @@ export function renderHistoricalBacktestStatus(documentRef, presentation, { focu
     if (region.dataset) region.dataset.status = kind;
     region.className = `backtest-status ds-note backtest-status-${escapeBacktestHtml(kind)}`;
     setAttribute(region, 'aria-live', ['validation_error', 'technical_error', 'incomplete', 'ruin'].includes(kind) ? 'assertive' : 'polite');
-    region.hidden = false;
+    region.hidden = ['completed', 'idle'].includes(kind);
     region.innerHTML = `<div class="backtest-notice-row"><span>Ergebnis</span><span class="backtest-notice-value">${escapeBacktestHtml(presentation.title)}</span></div>`
         + `<div class="backtest-notice-row"><span>Ursache</span><span class="backtest-notice-value">${escapeBacktestHtml(presentation.cause)}</span></div>`
         + `<div class="backtest-notice-row"><span>Nächster Schritt</span><span class="backtest-notice-value">${escapeBacktestHtml(presentation.action)}</span></div>`;
-    const code = documentRef?.getElementById('backtestDiagnosisCode');
-    const statusLabel = ({ completed: 'Backtest fertig', running: 'Backtest läuft', idle: 'Backtest bereit', ruin: 'Backtest mit Ruin beendet' })[kind]
-        || `Code: ${presentation.code}`;
-    if (code) code.textContent = statusLabel;
-    else region.innerHTML += `<span class="backtest-status-code">${escapeBacktestHtml(statusLabel)}</span>`;
+    if (['validation_error', 'technical_error', 'incomplete'].includes(kind)) {
+        region.innerHTML += `<span class="backtest-status-code">Code: ${escapeBacktestHtml(presentation.code)}</span>`;
+    }
     const chip = documentRef?.getElementById('backtestPeriodStatus');
     if (chip) {
         chip.textContent = ({ idle: 'Bereit', running: 'Wird berechnet', completed: 'Vollständig', ruin: 'Ruin',
@@ -240,7 +229,7 @@ export function renderHistoricalBacktestStatus(documentRef, presentation, { focu
         setAttribute(chip, 'data-status', kind);
         if (chip.dataset) chip.dataset.status = kind;
     }
-    if (focus) focusElement(region);
+    if (focus) focusElement(region.hidden ? documentRef?.getElementById('backtestResultHeading') : region);
 }
 
 export function createBacktestUiStatus(kind, code, title, cause, action) {
@@ -275,80 +264,35 @@ export function summarizeHistoricalBacktestDataQuality(result) {
     });
 }
 
-export function renderHistoricalBacktestNotices(documentRef, result, cohortInventory = null) {
-    const section = documentRef?.getElementById('backtestNotices');
-    const list = documentRef?.getElementById('backtestNoticeList');
-    if (!section || !list || !result?.outcome) return;
+export function renderHistoricalBacktestContext(documentRef, result) {
+    if (!result?.outcome) return;
     const quality = summarizeHistoricalBacktestDataQuality(result);
-    const notices = [
-        ['Datenqualität', quality.label],
-        ['In-sample-Hinweis', 'Die Leitplanken der App wurden mit Kenntnis dieser Jahre gewählt. Der Backtest bestätigt den Plan, er beweist ihn nicht. Historische Einzelpfade und überlappende Rolling-Cohorts sind Diagnosen des vorhandenen Datensatzes, keine unabhängigen Versuche und keine Erfolgswahrscheinlichkeit.']
-    ];
     const warnings = Array.isArray(result.warnings) ? result.warnings : [];
-    notices.push(['Hinweise des Rechenlaufs', warnings.length ? `${warnings.length} Hinweise` : 'keine']);
-    for (const warning of warnings) notices.push(['Hinweis', `Code: ${stableCode(warning?.code, 'BACKTEST_WARNING')}`]);
-    if (cohortInventory) {
-        notices.push(['Rolling-Cohorts', 'Die Ergebnisanteile verwenden alle geeigneten, überlappenden Cohorts als Nenner; Ausschlüsse werden separat ausgewiesen.']);
+    const gaps = quality.counts.unresolved + quality.counts.missing + quality.counts.fallback_zero;
+    const hintCount = warnings.length + (gaps > 0 ? 1 : 0);
+    const caption = documentRef?.getElementById('backtestResultPeriod');
+    if (caption) caption.textContent = `${result.request?.startYear ?? '—'}–${result.request?.endYear ?? '—'} · ${result.completedYears ?? 0} von ${result.requestedYears ?? 0} Jahren ausgewertet`
+        + (hintCount ? ` · ${hintCount} ${hintCount === 1 ? 'Hinweis' : 'Hinweise'}` : '');
+    const details = documentRef?.getElementById('backtestResultInfoPop');
+    if (!details) return;
+    const yearCounts = { measured: 0, estimated: 0, gaps: 0 };
+    for (const record of result.historicalYearRecords || []) {
+        const statuses = ['realized', 'decisionAsOf'].flatMap(section =>
+            Object.values(record?.[section] || {}).map(observation => observation?.qualityStatus));
+        if (!statuses.length || statuses.some(status => !['present', 'estimated'].includes(status))) yearCounts.gaps++;
+        else if (statuses.includes('estimated')) yearCounts.estimated++;
+        else yearCounts.measured++;
     }
-    list.innerHTML = notices.map(([label, value]) => `<li class="backtest-notice-row"><span>${escapeBacktestHtml(label)}</span><span class="backtest-notice-value">${escapeBacktestHtml(value)}</span></li>`).join('');
-    section.hidden = false;
-}
-
-function clonePlainValue(value) {
-    if (value === null || typeof value !== 'object') return value;
-    if (Array.isArray(value)) return value.map(clonePlainValue);
-    return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, clonePlainValue(child)]));
-}
-
-function freezeDeep(value, seen = new WeakSet()) {
-    if (value === null || typeof value !== 'object' || seen.has(value)) return value;
-    seen.add(value);
-    for (const child of Object.values(value)) freezeDeep(child, seen);
-    return Object.freeze(value);
-}
-
-export function createImmutableCohortInventory(inventory) {
-    return inventory && typeof inventory === 'object' ? freezeDeep(clonePlainValue(inventory)) : null;
-}
-
-function formatRate(rate) {
-    return Number.isFinite(rate)
-        ? `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format(rate)} %`
-        : '—';
-}
-
-export function renderHistoricalBacktestCohorts(documentRef, inventory, horizonYears) {
-    const section = documentRef?.getElementById('backtestCohortSummary');
-    if (!section) return;
-    if (!inventory) {
-        section.hidden = true;
-        section.innerHTML = '';
-        return;
-    }
-    const exclusions = Object.entries(inventory.exclusionReasons || {});
-    const exclusionText = exclusions.length > 0
-        ? exclusions.map(([code, count]) => `${escapeBacktestHtml(code)}: ${escapeBacktestHtml(count)}`).join(', ')
-        : 'keine';
-    const outcomes = [
-        ['completed', 'Vollständig', inventory.completed, inventory.ratesPct?.completed],
-        ['ruin', 'Ruin', inventory.ruin, inventory.ratesPct?.ruin],
-        ['incomplete', 'Unvollständig', inventory.incomplete, inventory.ratesPct?.incomplete],
-        ['technical_error', 'Technischer Fehler', inventory.technicalError, inventory.ratesPct?.technicalError],
-        ['cancelled', 'Abgebrochen', inventory.cancelled, inventory.ratesPct?.cancelled]
+    const presentation = describeHistoricalBacktestResult(result);
+    const paragraphs = [
+        ['Datenqualität', `${yearCounts.measured} ${yearCounts.measured === 1 ? 'Jahr' : 'Jahre'} nur mit gemessenen Werten, ${yearCounts.estimated} ${yearCounts.estimated === 1 ? 'Jahr' : 'Jahre'} mit geschätzten Werten`
+            + (yearCounts.gaps ? `, ${yearCounts.gaps} ${yearCounts.gaps === 1 ? 'Jahr' : 'Jahre'} mit Datenlücken` : '') + `. ${quality.label}`],
+        ['In-sample-Hinweis', 'Die Leitplanken der App wurden mit Kenntnis dieser Jahre gewählt. Der historische Pfad ist keine unabhängige Prüfung und keine Erfolgswahrscheinlichkeit.'],
+        ['Nächster Schritt', presentation.action],
+        ['Hinweise des Rechenlaufs', warnings.length ? warnings.map(warning => `Code: ${stableCode(warning?.code, 'BACKTEST_WARNING')}`).join('. ') + '.' : 'Keine.']
     ];
-    section.hidden = false;
-    section.innerHTML = `
-        <h4>Rolling-Cohort-In-sample-Diagnose</h4>
-        <p>Feste Horizontlänge: <strong data-cohort-field="horizonYears">${escapeBacktestHtml(horizonYears)} Jahre</strong>. Überlappende Fenster; keine Erfolgswahrscheinlichkeit.</p>
-        <dl class="backtest-cohort-inventory ds-kpi-strip">
-            <div><dt>Kandidaten</dt><dd data-cohort-field="candidate">${escapeBacktestHtml(inventory.candidate)}</dd></div>
-            <div><dt>Geeignet</dt><dd data-cohort-field="eligible">${escapeBacktestHtml(inventory.eligible)}</dd></div>
-            <div><dt>Ausgeschlossen</dt><dd data-cohort-field="excluded">${escapeBacktestHtml(inventory.excluded)}</dd></div>
-        </dl>
-        <ul class="backtest-cohort-outcomes">
-            ${outcomes.map(([kind, label, count, rate]) => `<li data-cohort-outcome="${kind}"><strong>${label}:</strong> ${escapeBacktestHtml(count)} (${escapeBacktestHtml(formatRate(rate))})</li>`).join('')}
-        </ul>
-        <p><strong>Ausschlussgründe:</strong> ${exclusionText}</p>`;
+    if (gaps > 0) paragraphs.push(['Datenlücken', `${gaps} Beobachtungen sind ungeklärt, fehlen oder verwenden den Ersatzwert Null. Prüfe die Markierungen im Rohdatenexport.`]);
+    details.innerHTML = paragraphs.map(([label, value]) => `<p><strong>${escapeBacktestHtml(label)}:</strong> ${escapeBacktestHtml(value)}</p>`).join('');
 }
 
 export function buildAccessibleBacktestTableHtml(rows, columns, formatValue, context = {}) {

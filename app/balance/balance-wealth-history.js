@@ -186,7 +186,7 @@ export function createBalanceWealthHistoryService({
         if (!registry.profiles[context.current]) throw new Error('Das erfasste Profil existiert nicht mehr.');
         const members = Object.keys(registry.profiles).filter(id => registry.profiles[id].meta.belongsToHousehold !== false);
         const cashUpdate = cash ? prepareHouseholdCash({ storage, registry, activeId: context.current,
-            ids: members.length ? members : [context.current], checkMembership: members.length > 0, cash, date: localHistoryDate() }) : null;
+            ids: members.length ? members : [context.current], checkMembership: members.length > 0, cash, date: localHistoryDate(), recordConfirmation: true }) : null;
         if (cashUpdate && targetYear >= 2026) entry = createAnnualWealthHistoryEntry({ ...annualInput, tagesgeld: cashUpdate.total }, targetYear);
         const nextState = {
             ...state,

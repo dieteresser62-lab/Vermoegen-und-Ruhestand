@@ -7,6 +7,7 @@ import { createNavigationOperationLifecycle } from '../shared/navigation-guard.j
 import { requestPageChoice } from '../shared/page-choice-dialog.js';
 import { setFieldState } from '../shared/field-state.js';
 import { syncSelectionText } from '../shared/designsystem-selection-text.js';
+import { projectHouseholdPlanParameters, resetHouseholdPlanParameterDetails } from '../shared/household-plan-presentation.js';
 
 import { createPlanTrial as createSharedPlanTrial, registerPlanTrial, registeredPlanTrial } from '../shared/plan-trial.js';
 export { planTrialDifferences, planTrialPatch, planTrialContextFor, bindPlanTrialContext } from '../shared/plan-trial.js';
@@ -87,13 +88,14 @@ const bindings = new WeakMap();
 const boundFields = new WeakMap();
 export function renderSimulatorPlanTrial(doc = globalThis.document, { project = false } = {}) {
     const trial = getSimulatorPlanTrial(doc), state = trial.read();
+    if (project && !state.active && state.scope) resetHouseholdPlanParameterDetails(doc, trial.formValues());
     projectHouseholdPlanFieldLabels(doc, SIMULATOR_PLAN_FIELD_MAP);
     for (const heading of doc.querySelectorAll?.('[data-plan-card-label]') || [])
         heading.textContent = HOUSEHOLD_PLAN_CARDS[heading.dataset.planCardLabel];
     for (const hint of doc.querySelectorAll?.('[data-plan-field-hint]') || [])
         hint.textContent = householdPlanFieldSpec(hint.dataset.planFieldHint)?.hint || '';
     for (const heading of doc.querySelectorAll?.('[data-plan-group-label]') || [])
-        heading.textContent = HOUSEHOLD_PLAN_GROUPS[heading.dataset.planGroupLabel].label;
+        if (!heading.closest?.('.household-plan-more')) heading.textContent = HOUSEHOLD_PLAN_GROUPS[heading.dataset.planGroupLabel].label;
     const needSource = doc.getElementById('simNeedSource');
     if (needSource) needSource.textContent = state.scope ? 'aus Haushalt & Plan' : 'lokale Annahmen';
     const numeric = syncNumericBindings(doc, state);
@@ -145,6 +147,9 @@ export function renderSimulatorPlanTrial(doc = globalThis.document, { project = 
             else if (!field.disabled && field.dataset.fieldState === 'adopted') setFieldState(field, 'editable', '');
         }
     }
+    projectHouseholdPlanParameters(doc, doc.getElementById('simPlanParameters'), {
+        ...SIMULATOR_PLAN_FIELD_MAP, dynamicFlexPreset: 'dynamicFlexPreset', rebalancingBand: 'rebalancingBand'
+    }, trial.formValues());
     const band = doc.getElementById('simPlanTrialBand'), list = doc.getElementById('simPlanTrialDifferences');
     if (band) band.hidden = !state.active;
     if (list) { list.textContent = ''; for (const difference of state.differences) {

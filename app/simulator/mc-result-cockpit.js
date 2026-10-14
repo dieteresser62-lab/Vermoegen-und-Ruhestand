@@ -3,6 +3,7 @@
 import { focusSelectedScenario } from './scenario-log-view.js';
 import { openWorkshopReplay } from './simulator-workshop-ui.js';
 import { activateSimulatorTab } from './simulator-main-tabs.js';
+import { bindResultInfoPopups } from './results-renderers.js';
 
 const cockpitInstances = new WeakMap();
 const RESULT_VIEW_IDS = Object.freeze(['overview', 'risk', 'care', 'logs']);
@@ -153,6 +154,7 @@ export function initMonteCarloResultCockpit({
     if (!documentRef) return null;
     const existing = cockpitInstances.get(documentRef);
     if (existing) return existing;
+    bindResultInfoPopups(documentRef);
 
     const setupDisclosure = documentRef.getElementById?.('mcSetupDisclosure');
     const settingsToggle = documentRef.getElementById?.('mcSettingsToggle');
@@ -167,10 +169,6 @@ export function initMonteCarloResultCockpit({
     settingsToggle?.addEventListener?.('click', () => {
         setupDisclosure.open = !setupDisclosure.open;
         syncDisclosure();
-        if (setupDisclosure.open && setupDisclosure.classList?.contains('sim-all-parameters')) {
-            activateSimulatorTab('annahmen', { documentRef });
-            setupDisclosure.scrollIntoView?.({ block: 'start' });
-        }
     });
     setupDisclosure?.addEventListener?.('toggle', syncDisclosure);
     syncDisclosure();

@@ -43,7 +43,13 @@ function bindNumberSetters(input) {
 
 // Nur Anzeigeprojektion; der native Editor behält Wert, Validierung und Events.
 export function refreshAssumptionNumbers(doc = globalThis.document) {
+    doc?.querySelectorAll?.('#tab-annahmen input.sim-number-editor:not([type="number"]), #tab-annahmen .household-plan-more input.sim-number-editor').forEach(input => {
+        numberDisplays.get(input)?.remove();
+        numberDisplays.delete(input);
+        input.classList.remove('sim-number-editor', 'sim-number-projected');
+    });
     doc?.querySelectorAll?.('#tab-annahmen input[type="number"]').forEach(input => {
+        if (input.closest?.('.household-plan-more')) return;
         if (!input.parentNode || !input.ownerDocument) return;
         let display = numberDisplays.get(input);
         if (!display) {
@@ -60,6 +66,29 @@ export function refreshAssumptionNumbers(doc = globalThis.document) {
 }
 
 function refreshFieldOrigins(doc) {
+    for (const id of ['dynamicFlex', 'goGoActive']) {
+        const input = doc?.getElementById?.(id);
+        const display = doc?.getElementById?.(`${id}PlanDisplay`);
+        if (!input || !display) continue;
+        if (doc.querySelector?.(`[data-plan-toggle="${id}"]`)) {
+            display.hidden = true;
+            const toggle = input.closest?.('.ds-toggle');
+            if (toggle) toggle.hidden = true;
+            continue;
+        }
+        const hidden = input.dataset.planTrialReadonly !== 'true';
+        if (display.hidden !== hidden) display.hidden = hidden;
+        const text = input.checked ? 'Aktiv' : 'Aus';
+        if (display.textContent !== text) display.textContent = text;
+        const toggle = input.closest?.('.ds-toggle');
+        if (toggle && toggle.hidden !== !hidden) toggle.hidden = !hidden;
+    }
+    const dynamicOff = doc?.getElementById?.('simDynamicFlexOff');
+    if (dynamicOff) {
+        const hidden = doc.getElementById('dynamicFlex')?.checked === true
+            || doc.getElementById('dynamicFlexConfigGroup')?.style.display === 'none';
+        if (dynamicOff.hidden !== hidden) dynamicOff.hidden = hidden;
+    }
     doc?.querySelectorAll?.('#tab-annahmen .ds-field-reason').forEach(reason => {
         const frame = reason.parentElement;
         if (frame?.classList.contains('ds-unit-frame')) frame.parentNode.insertBefore(reason, frame.nextSibling);
@@ -80,7 +109,7 @@ export function refreshAssumptionFillStatus(doc = globalThis.document) {
     const goldActive = doc?.getElementById?.('goldAllokationAktiv')?.value === 'true';
     const goldOff = doc?.getElementById?.('simGoldOff');
     const goldFrame = doc?.getElementById?.('simGoldBandFrame');
-    if (goldOff) goldOff.hidden = goldActive;
+    if (goldOff) goldOff.hidden = goldActive || doc.getElementById('rebalancingBand')?.dataset.planTrialReadonly === 'false';
     if (goldFrame) goldFrame.dataset.goldActive = String(goldActive);
     const careSummary = doc?.getElementById?.('simCareSummary');
     if (careSummary) {

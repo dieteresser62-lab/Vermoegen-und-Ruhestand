@@ -388,7 +388,11 @@ export function readProtocolValue(column, entry, options = {}) {
 }
 
 export function translateProtocolText(value) {
-    return String(value ?? '').replaceAll('!!! RUIN !!!', 'Ruin').replaceAll('Notfall-Refill', 'Notfallauffüllung')
+    const scenarios = { HEISS: 'Markt heiß gelaufen', ATH: 'Stabiler Höchststand', ERHOLUNG: 'Bestätigte Erholung',
+        REC_BÄR: 'Erholung im Bärenmarkt', KORREKTUR: 'Junge Korrektur', BÄR: 'Tiefer Bär', SEITWÄRTS: 'Lange Seitwärtsbewegung' };
+    return String(value ?? '').replace(/\b(?:REC_BÄR|HEISS|ATH|ERHOLUNG|KORREKTUR|BÄR|SEITWÄRTS)(?![\p{L}\p{N}_])/gu, key => scenarios[key])
+        .replaceAll('(S)', '(Stagflation)').replaceAll(' (Kein Handlungsbedarf)', ' · kein Handlungsbedarf')
+        .replaceAll('!!! RUIN !!!', 'Ruin').replaceAll('Notfall-Refill', 'Notfallauffüllung')
         .replaceAll('MinRW-Refill', 'Mindestreichweite auffüllen').replaceAll('Puffer-Refill', 'Liquiditätspuffer auffüllen')
         .replaceAll('Reinvest', 'Wiederanlage').replaceAll('Rebal.(G+)', 'Gold kaufen')
         .replaceAll('Rebal.(G-)', 'Gold verkaufen').replaceAll('Rebal.(A+)', 'Aktien kaufen');

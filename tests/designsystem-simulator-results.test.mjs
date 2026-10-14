@@ -137,6 +137,19 @@ const displayBaseline = value => {
     for (const card of copy.summaryCards) {
         for (const key of ['displayRole', 'displayValue', 'intervalText', 'requestedRuns', 'outcomes', 'countText']) delete card[key];
     }
+    // LR-4 kürzt nur die Erklärung der gerundeten Anzeige; die genauen Werte bleiben hashrelevant.
+    const summaryDescriptions = {
+        'Median (alle)': ['Typisches Endvermögen über alle finanziell auswertbaren Läufe.', ' Centgenaue Anzeige ohne Tausenderstufen; zusätzliche Nachkommastellen werden als Nutzenwert konservativ abgerundet.'],
+        'Median (erfolgreiche)': ['Median des Endvermögens aller erfolgreichen Läufe.', ' Centgenaue Anzeige ohne Tausenderstufen; zusätzliche Nachkommastellen werden als Nutzenwert konservativ abgerundet.'],
+        '10%/90% Perzentil': ['Spannweite der Endvermögen zwischen konservativem P10 und optimistischem P90.', ' Beide Nutzenwerte werden centgenau ohne Tausenderstufen angezeigt; zusätzliche Nachkommastellen werden konservativ abgerundet.'],
+        'Median Steuern': ['Median der kumulierten nominalen Steuerzahlungen.', 'Centgenauer Median der kumulierten nominalen Steuerzahlungen. Zusätzliche Nachkommastellen werden als Kostenwert konservativ aufgerundet.']
+    };
+    for (const card of copy.summaryCards) {
+        const approved = summaryDescriptions[card.title];
+        if (!approved) continue;
+        assertEqual(card.description, approved[0], 'LR-4 ändert nur den Anzeigetext: ' + card.title);
+        card.description = card.title === 'Median Steuern' ? approved[1] : approved.join('');
+    }
     // SIM-1 ergänzt nur sichtbare Geldbasen; die vorhandenen Fachwerte bleiben im Digest.
     for (const [cards, title, expected] of [
         [copy.kpiDashboard.primary, 'Reale Depotentnahme P10', 'heutige Euro · unabhängig vom Euro-Schalter'],
@@ -160,6 +173,8 @@ const displayBaseline = value => {
     assertEqual(legacyFlexCard.tooltip, `Älteres Ergebnis: ältere Grundlage ohne Mindest-Flex-Messung. Medianer Anteil abgeschlossener Dekumulationsjahre mit mindestens 10 % Wunsch-Kürzung (einschließlich genau 10 %). Stichprobe: ${observedRuns} Läufe.`, 'Nur die freigegebene FR-6-Legacy-Erklärung wird im Altvergleich zurückgeführt');
     assertEqual(legacyFlexCard.layout, 'exact-risk', 'FR-6-Zentralwert erhält vollständige Exaktwertdarstellung');
     assertEqual(legacyFlexCard.decisionCritical, true, 'FR-6-Zentralwert bleibt im einfachen Modus sichtbar');
+    assertEqual(legacyFlexCard.displayRole, 'restriction', 'LR-4 kennzeichnet allein die doppelte Einschränkungszeile');
+    delete legacyFlexCard.displayRole;
     legacyFlexCard.title = 'Anteil Kürzungsjahre (≥ 10 %)';
     legacyFlexCard.description = `Medianer Anteil erfolgreich abgeschlossener Dekumulationsjahre mit Flex-Kürzung von mindestens 10 %; Nenner sind abgeschlossene Dekumulationsjahre mit endlicher Kürzungsentscheidung. Stichprobe: ${observedRuns} Läufe.`;
     delete legacyFlexCard.layout; delete legacyFlexCard.decisionCritical; delete legacyFlexCard.tooltip;
@@ -364,7 +379,7 @@ try {
         && css.includes('.scenario-list-item .scenario-value { text-align: right;'), 'Namen, Werte und umbrechende Personendetails besitzen eigene Rasterplätze');
     assert(css.includes('.scenario-list-item[data-scenario-group="care"] .scenario-swatch')
         && !css.includes('.scenario-list-group:nth-child'), 'Linienmuster folgen Gruppenkennungen statt Überschriftenpositionen');
-    assert(css.includes('.scenario-outliers { font: 11px') && css.includes('.ds-scenario-outlier:focus-visible'), 'Randmarken bleiben kompakt und fokussierbar');
+    assert(css.includes('.scenario-outliers { font: var(--text-dense)') && css.includes('.ds-scenario-outlier:focus-visible'), 'Randmarken verwenden die dichte 14-Pixel-Schrift und bleiben fokussierbar');
     assert(!css.includes('.scenario-sample-chips') && html.includes('id="scenarioGroups"') && html.includes('id="scenarioSelectionDisclosure"'), 'Eine responsive Auswahl ersetzt Chips und Dropdown');
     assert(css.includes('.scenario-list-item:focus-visible') && css.includes('.scenario-list-item[aria-selected="true"] { background: var(--accent-soft);'), 'Szenarioauswahl bleibt messinghell und besitzt sichtbaren Tastaturfokus');
     for (const [id, label] of [['toggle-log-detail', 'Detailliert'], ['toggle-care-details', 'Pflege-Spalten']]) {
@@ -435,7 +450,7 @@ try {
             const expected = { 'background-color': selected || state === 'active' ? 'var(--accent-soft)' : 'var(--surface)',
                 color: state === 'disabled' ? 'var(--text-muted)' : 'var(--text-main)',
                 width: '100%', padding: '8px',
-                margin: '0 0 4px', 'font-size': '13px' };
+                margin: '0 0 4px', 'font-size': 'var(--text-dense)' };
             for (const [key, value] of Object.entries(expected)) if (actual[key] !== value) errors.push(`${node.attrs['data-scenario-id']}/${state}/${key}`);
             if (actual.transform || actual['margin-top']) errors.push(`${state}: alter Knopfversatz`);
             if (state === 'focus-visible' && actual.outline !== '2px solid var(--accent)') errors.push('Fokus fehlt');
@@ -470,7 +485,7 @@ try {
     assert(segments.display === 'flex' && segments['flex-wrap'] === 'wrap' && !segments['grid-template-columns'], 'Gruppensegmente erlauben eine Zeile und natürlichen Umbruch statt eines 2×2-Rasters');
     assert(declarations('.scenario-group-count').color === 'var(--text-muted)', 'Gruppenanzahlen sind separat gedämpft');
     assert(declarations('.scenario-selected-bar').background === 'var(--accent-soft)' && declarations('.scenario-selected-bar').border === '1px solid var(--accent-line)', 'Auswahlkarte nutzt beige Theme-Tokens');
-    assert(declarations('.scenario-selected-title').font.includes('26px') && declarations('.scenario-selected-eyebrow')['text-transform'] === 'uppercase', 'Auswahlkopf trennt großen Originalnamen und Gruppeneyebrow');
+    assert(declarations('.scenario-selected-title').font.includes('var(--value-md)') && declarations('.scenario-selected-eyebrow')['text-transform'] === 'uppercase', 'Auswahlkopf verwendet 17 px für Namen und Betrag und trennt die Gruppeneyebrow');
     assert(declarations('.scenario-person-mark').display === 'inline-block' && declarations('.scenario-selected-meta, .scenario-selected-events')['flex-wrap'] === 'wrap', 'Personen- und Metadatenmarken bleiben kompakt und umbrechbar');
     const failed = { key: 'worst', label: 'Ruinprobe', failed: true, endVermoegen: 0, logDataRows: [{ jahr: 3, recordType: 'terminal_ruin' }] };
     const entries = buildScenarioEntries({ characteristic: [failed] });

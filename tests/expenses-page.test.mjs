@@ -257,6 +257,31 @@ try {
     assert(categoryRows.find(row => row.children[0].textContent === 'Null').textContent.endsWith(' · 0 %'), 'Echte Null bleibt 0 %');
     const refundText = categoryRows.find(row => row.children[0].textContent === 'Erstattung · Erstattung').textContent;
     assert(/[−-]20/.test(refundText), 'Erstattung behält Kennzeichnung und negatives Vorzeichen');
+    // Jahreswechsel mit einer Datenlücke: Kalenderzeit und Importpräsenz getrennt anzeigen.
+    const reviewStore = { years: { 2026: { months: Object.fromEntries(Array.from({ length: 12 }, (_, index) =>
+        [index + 1, { profiles: index === 10 ? {} : { a: { categories: { Ausgaben: -100 } } } }])) } } };
+    const reviewView = (now, store = reviewStore, monthly = 100) => projectExpenses({ store, year: 2026,
+        people: [{ id: 'a', name: 'Max Mustermann' }], now, budget: { monthly, status: 'adopted' } });
+    const showReview = view => { renderExpensesPage(doc, view); return ['Label', '', 'Note'].map(suffix =>
+        doc.getElementById(`expensesRemaining${suffix}`).textContent.replaceAll('\u00a0', ' ')); };
+    const past = reviewView(new Date(2027, 0, 2));
+    assertEqual(past.remainingCalendarMonths, 0, 'Vergangenes Jahr hat keine verbleibenden Kalendermonate');
+    assertEqual(showReview(past).join(' | '), 'Vorläufige Budgetdifferenz | 100 € | November noch nicht erfasst', 'Fehlender November bleibt eine vorläufige Differenz');
+    const december = reviewView(new Date(2026, 11, 2));
+    assertEqual(december.remainingCalendarMonths, 1, 'Im Dezember bleibt ein Kalendermonat trotz Novemberlücke');
+    assert(showReview(december)[2].startsWith('für 1 Monat · November noch nicht erfasst'), 'Laufendes Jahr zeigt Einzahl und Datenlücke getrennt');
+    const full = structuredClone(reviewStore); full.years[2026].months[11].profiles.a = { categories: {} };
+    for (const [monthly, label, value] of [[100, 'Budget unterschritten um', '100 €'], [50, 'Budget überschritten um', '500 €'], [0, 'Budget überschritten um', '1.100 €']]) {
+        const rendered = showReview(reviewView(new Date(2027, 0, 2), full, monthly));
+        assertEqual(rendered[0], label, 'Vollständiges vergangenes Jahr benennt den Jahressaldo');
+        assertEqual(rendered[1], value, 'Saldo zeigt den Betrag mit der Richtung im Titel');
+        assertEqual(rendered[2], 'Jahressaldo · alle 12 Monate vollständig erfasst', 'Nullimport gilt beim Jahressaldo als erfasst');
+    }
+    const equal = structuredClone(full); equal.years[2026].months[11].profiles.a = { categories: { Ausgaben: -100 } };
+    assertEqual(showReview(reviewView(new Date(2027, 0, 2), equal))[0], 'Budget eingehalten', 'Vollständiges Jahr mit identischem Budget zeigt keine Über- oder Unterschreitung');
+    const januaryView = projectExpenses({ store: reviewStore, year: 2027, people: [{ id: 'a', name: 'Max Mustermann' }],
+        now: new Date(2027, 0, 2), budget: { monthly: 100, status: 'adopted' } });
+    assertEqual(showReview(januaryView).join(' | '), 'Restbudget | 1.200 € | für 12 Monate · Budget minus bestätigte Ausgaben', 'Jahresstart zeigt zwölf Kalendermonate ohne falsche Importlücke');
     controller.refresh();
     controller.selectYear(2025);
     assertEqual(storage.getItem('balance_expenses_v1'), rawStore, 'Jahresfilter schreibt keine Records');

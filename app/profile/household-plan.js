@@ -52,13 +52,13 @@ export function readSimulatorHouseholdPlan(options = {}) {
 }
 export const SIMULATOR_PLAN_FIELD_MAP = Object.freeze({
     ...Object.fromEntries(PLAN_FIELDS.filter(key => !['floorBedarf', 'flexBedarf', 'decumulation', 'cape',
-        'minCashBufferMonths', 'householdWithdrawalMode'].includes(key)).map(key => [key, key])),
+        'householdWithdrawalMode'].includes(key)).map(key => [key, key])),
     startFloorBedarf: 'floorBedarf', startFlexBedarf: 'flexBedarf', marketCapeRatio: 'cape.value',
     entnahmeStrategie: 'decumulation.mode', bondTargetFactor: 'decumulation.bondTargetFactor',
     drawdownTrigger: 'decumulation.drawdownTrigger', bondRefillThreshold: 'decumulation.bondRefillThreshold'
 });
 export const SIMULATOR_LEGACY_PLAN_FIELDS = Object.freeze([...Object.keys(SIMULATOR_PLAN_FIELD_MAP),
-    'minCashBufferMonths', 'householdWithdrawalMode', 'runwayTargetMonths', 'runwayMinMonths']);
+    'householdWithdrawalMode', 'runwayTargetMonths', 'runwayMinMonths']);
 
 /** Nur vorhandene Formularfelder projizieren; unsichtbare Werte bleiben im Plan.
  * Zahlen werden validiert, niemals still begrenzt oder durch Defaults ersetzt.

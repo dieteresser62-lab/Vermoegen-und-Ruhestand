@@ -1,9 +1,13 @@
 import { appNow } from '../shared/app-clock.js';
 import { householdPlanComparisonHtml } from '../profile/household-plan-comparison.js';
+import { bindInfoPopovers, createInfoPopover } from '../shared/designsystem-info-popover.js';
 
 export function renderManagerPlanComparison(doc, view) {
     const host = doc.getElementById('managerPlanComparison');
-    if (host) host.innerHTML = householdPlanComparisonHtml(view);
+    if (host) {
+        host.innerHTML = householdPlanComparisonHtml(view);
+        bindInfoPopovers(doc, { root: host });
+    }
 }
 import { buildHistoryRecoveryHtml, buildPersonHistoryHtml, buildPersonHistoryDetailsHtml, projectTrancheHistory, buildTrancheHistorySummary, buildTrancheHistoryDetail, bindTrancheHistoryChart } from './tranchen-history-ui.js';
 // @ts-check
@@ -11,14 +15,12 @@ import { buildHistoryRecoveryHtml, buildPersonHistoryHtml, buildPersonHistoryDet
 import { formatDisplayNumber, formatDisplayDate } from '../shared/designsystem-number-format.js';
 import { escapeHtml } from '../shared/security-utils.js';
 import { STARTUP_PRICE_SESSION_KEY } from './tranchen-startup-prices.js';
-import { detectDynamicFlexPreset, DYNAMIC_FLEX_OPTIONS } from '../shared/dynamic-flex-presets.js';
+import { householdPlanSummary } from '../shared/household-plan-presentation.js';
 
 export function renderManagerPlanSummary(doc, values) {
     const host = doc.getElementById('managerPlanMoreSummary');
     if (!host) return;
-    if (!values) { host.textContent = 'Planbereich noch nicht bestätigt'; return; }
-    const preset = DYNAMIC_FLEX_OPTIONS.find(([key]) => key === detectDynamicFlexPreset(values))?.[1];
-    host.textContent = `Flex-Budget ${formatMoney(values.flexBudgetAnnual)} €/Jahr · Reserven ${formatDisplayNumber(values.liquidityRunwayYears)} Jahre · Strategie ${values.decumulation.mode === 'standard' ? 'Standard' : '3-Töpfe'} · Dynamik ${preset} · CAPE ${formatDisplayNumber(values.cape.value)}`;
+    host.textContent = householdPlanSummary(values);
 }
 
 export function buildManagerHistoryStartHtml(projection, single) {
@@ -506,7 +508,13 @@ export function renderManagerPersonData(doc, profile) {
     text('managerAssetsSummary', v.goldAktiv ? `Ziel ${pct(v.goldZiel)} % · Floor ${pct(v.goldFloor)} % · Band ± ${pct(v.goldBand)} % · ${v.goldSteuerfrei ? 'steuerfrei' : 'steuerpflichtig'}` : 'aus');
     text('managerCareSummary', health.enabled ? `aktiv · Ziel ${money(health.initialAmount)} · ab Pflegegrad ${health.triggerMinGrade}` : 'inaktiv · Ziel innerhalb der Liquidität');
     text('profileGenderStatus', v.genderAssumed ? 'bitte prüfen · Geschlecht bisher angenommen' : '');
-    text('profilePersonDateStatus', dates?.hint || 'Geburtsdatum einmal ergänzen');
+    const year = dates?.hint?.match(/^Für die Planung (\d{4}) zählt/)?.[1];
+    const dateStatus = doc.getElementById('profilePersonDateStatus');
+    if (dateStatus && year && Number.isFinite(dates.age)) {
+        dateStatus.textContent = `Planalter ${year}: ${dates.age} Jahre`;
+        dateStatus.append(createInfoPopover(doc, 'Wie wird das Planalter bestimmt?', dates.hint));
+        bindInfoPopovers(doc, { root: dateStatus });
+    } else text('profilePersonDateStatus', dates?.hint || 'Geburtsdatum einmal ergänzen');
     text('managerRenteHelp', '');
     const tax = doc.querySelector?.('[data-person-field="profileRenteSteuerquotePct"]');
     if (tax) tax.hidden = profile.householdRole !== 'Partnerprofil';

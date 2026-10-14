@@ -86,14 +86,15 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .pv-depot .stat-card { box-shadow: none; border-radius: 0; border: 0; border-inline-start: 1px solid var(--border); text-align: start; padding: 1rem; }
 .pv-depot .stat-card:first-of-type { border-inline-start: 0; }
 .pv-depot .stat-label { font-size: var(--text-base); }
-.pv-depot .stat-value { font-family: var(--font-serif); font-size: var(--balance-kpi); font-weight: 500; overflow-wrap: anywhere; }
+.pv-depot .stat-value { font-family: var(--font-serif); font-size: var(--value-md); font-weight: 500; overflow-wrap: anywhere; }
 .pv-depot .pv-quote-summary .stat-value { font-family: var(--font-sans); font-size: var(--balance-help); }
 .pv-depot-table { width: 100%; min-width: 75rem; }
-.pv-depot-table :is(th, td) { font-size: var(--balance-help); }
+/* Bei 1920 px passt das Depot mit 16 px nicht ohne waagerechtes Scrollen. */
+.pv-depot-table :is(th, td) { font-family: var(--font-sans); font-size: var(--text-dense); }
 .pv-depot-table td:nth-child(n+4):nth-child(-n+9), .pv-depot-table thead th:nth-child(n+4) { text-align: end; font-variant-numeric: tabular-nums; }
 .pv-depot-table .pv-depot-group :is(th, td) { position: static; background: var(--surface-sunken); font-weight: 600; }
 .pv-depot-table .pv-depot-group td { text-align: end; }
-.pv-depot-table .pv-group-count { font-size: var(--balance-help); color: var(--text-muted); font-weight: 400; }
+.pv-depot-table .pv-group-count { font-size: var(--text-dense); color: var(--text-muted); font-weight: 400; }
 .pv-depot-table small { display: block; color: var(--text-muted); font-size: var(--text-base); font-weight: 400; margin-top: 0.25rem; }
 .pv-tranche-name { min-width: 15rem; max-width: 24rem; overflow-wrap: anywhere; }
 .pv-depot-table .badge { font-size: var(--balance-help); }
@@ -124,7 +125,7 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
     .personen-vermoegen-page .pv-tranche-dialog { padding: 1rem; }
 }
 @container manager (min-width: 2300px) {
-    .pv-depot .stat-value { font-size: var(--balance-big); }
+    .pv-depot .stat-value { font-size: var(--value-md); }
     .pv-depot .pv-quote-summary .stat-value { font-size: var(--balance-body); }
 }
 
@@ -167,7 +168,7 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .personen-vermoegen-page .pv-depot .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); width: 100%; gap: 0; margin: 1rem 0; padding-block: 1rem; border: 0; border-radius: 0; overflow: visible; border-block: 1px solid var(--border); }
 .pv-depot .stats > .stat-card { border: 0; box-shadow: none; background: var(--surface); border-radius: 0; padding: 0.5rem 1rem; min-width: 0; text-align: start; }
 .pv-depot .stats > .stat-card + .stat-card { border-left: 1px solid var(--border); }
-.pv-depot .stats .stat-value { font-size: var(--balance-h3); line-height: 1.4; }
+.pv-depot .stats .stat-value { font-size: var(--value-md); line-height: 1.4; }
 .pv-depot .stats .pv-quote-summary .stat-value, .pv-depot .stats small { font-family: var(--font-sans); font-size: var(--text-base); }
 .pv-depot .pv-depot-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
 .pv-depot-header .pv-depot-count { margin: 0.5rem 0 0; color: var(--text-muted); font-size: var(--text-base); }
@@ -225,7 +226,7 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .personen-vermoegen-page .pv-card-summary { display: flex; width: 100%; align-items: center; gap: 1rem; text-align: start; padding: var(--space-3) var(--space-4); background: transparent; color: var(--text-main); border-radius: 0; box-shadow: none; transform: none; }
 .pv-card-summary > span:nth-child(2) { min-width: 0; flex: 1; overflow-wrap: anywhere; }
 .pv-card-summary strong { display: block; font: 500 var(--balance-h3) var(--font-serif); }
-.pv-card-summary .ds-help { display: block; margin-top: 0.375rem; font: 400 var(--value-md)/1.4 var(--font-sans); }
+.pv-card-summary .ds-help { display: block; margin-top: 0.375rem; font: 400 var(--text-base)/1.4 var(--font-sans); }
 .pv-disclosure-icon { color: var(--accent); font-size: var(--balance-h2); }
 .personen-vermoegen-page .ds-text-link { color: var(--accent); font-size: var(--text-base); text-decoration: none; }
 .personen-vermoegen-page .ds-text-link:hover { text-decoration: underline; }
@@ -291,28 +292,26 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .pv-section-nav [aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .pv-section-nav [role="tab"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
-/* Fünf Presetsegmente nutzen die ganze Gruppenspalte und brechen natürlich um. */
-.pv-household-plan [data-plan-dynamic-presets].ds-segment { display: flex; max-width: 100%; box-sizing: border-box; }
-.pv-household-plan [data-plan-dynamic-presets] > button { white-space: normal; }
+/* Tastaturbedienung der gemeinsamen Dynamiksegmente. */
 .pv-household-plan [data-plan-dynamic-presets] > button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pv-household-plan [data-plan-dynamic-details][hidden] { display: none; }
 
 .manager-wealth-history { margin-block: var(--space-4); gap: var(--space-2); }
-.manager-wealth-history h2 { margin: 0; font: 500 var(--value-lg) var(--font-serif); }
+.manager-wealth-history h2 { margin: 0; font: 500 var(--balance-h1) var(--font-serif); }
 .manager-wealth-chart { height: 420px; min-width: 0; }
 .manager-wealth-history .wealth-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
 .manager-wealth-history .wealth-total-value { font-weight: 700; }
 .manager-wealth-history .expenses-card-value { font-family: var(--font-serif); font-size: var(--value-lg); font-weight: 500; font-variant-numeric: tabular-nums; }
 .manager-wealth-history .expenses-card-sub { color: var(--text-muted); }
 .manager-wealth-basis { margin: 0; color: var(--text-muted); font-size: var(--text-sm); line-height: 1.4; }
-.manager-wealth-history .history-end-value { font-family: var(--font-serif); font-size: var(--value-md); font-weight: 500; }
-.manager-wealth-history .history-axis, .manager-wealth-history .history-event { font-size: var(--text-sm); }
+.manager-wealth-history .history-end-value { font-family: var(--font-sans); font-size: var(--text-dense); font-weight: 500; }
+.manager-wealth-history .history-axis, .manager-wealth-history .history-event { font-size: var(--text-dense); }
 .manager-wealth-history .history-legend { list-style: none; padding: 0; margin: var(--space-2) 0; }
-.manager-history-group-title { margin: 0; font: 500 var(--value-md)/1.4 var(--font-serif); }
+.manager-history-group-title { margin: 0; font: 500 var(--balance-h3)/1.4 var(--font-serif); }
 .manager-daily-history { display: grid; gap: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--border); }
 .manager-daily-history .wealth-metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .manager-daily-history .history-measurement { display: inline; }
-.manager-daily-allocation { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4); color: var(--text-muted); font-size: var(--text-sm); }
+.manager-daily-allocation { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4); color: var(--text-muted); font-size: var(--text-base); }
 .manager-daily-allocation b { font: 500 var(--value-md)/1.4 var(--font-serif); color: var(--text-main); font-variant-numeric: tabular-nums; }
 .manager-closure-key { color: var(--accent); }
 .manager-wealth-history .history-closure path { stroke: var(--accent); stroke-width: 2; }
@@ -349,16 +348,12 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .pv-person-glance .ds-unit-frame input { border: 0; min-width: 0; width: 100%; }
 .pv-person-glance .form-group > .ds-help { margin: var(--space-1) 0 0; }
 .pv-person-glance [data-field-state-reason] { font-size: var(--text-base); }
-.pv-plan-more > summary, .pv-plan-comparison-card > summary { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); cursor: pointer; list-style: none; }
-.pv-plan-more > summary::-webkit-details-marker, .pv-plan-comparison-card > summary::-webkit-details-marker { display: none; }
-.pv-plan-more > summary strong { font: 500 var(--balance-h2) var(--font-serif); }
-.pv-summary-values { display: block; margin-top: var(--space-2); font: 400 var(--value-md)/1.4 var(--font-sans); color: var(--text-muted); }
+.pv-plan-comparison-card > summary { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); cursor: pointer; list-style: none; }
+.pv-plan-comparison-card > summary::-webkit-details-marker { display: none; }
+.pv-summary-values { display: block; margin-top: var(--space-2); font: 400 var(--text-base)/1.4 var(--font-sans); color: var(--text-muted); }
 .pv-disclosure-action { color: var(--accent); font: 500 var(--text-base)/1.4 var(--font-sans); white-space: nowrap; }
 .pv-disclosure-action > span:last-child, details[open] > summary .pv-disclosure-action > span:first-child { display: none; }
 details[open] > summary .pv-disclosure-action > span:last-child { display: inline; }
-.pv-plan-more .household-plan-group { background: var(--surface-sunken); }
-.pv-plan-more .household-plan-field :is(input, select, output) { font: 500 var(--value-md)/1.3 var(--font-serif); }
-.pv-plan-more .household-plan-used { display: none; }
 .pv-plan-needs #managerPlanStatus { margin: var(--space-1) 0 var(--space-3); font-size: var(--text-base); }
 .pv-plan-needs .ds-actions:has(> [hidden]):not(:has(> :not([hidden]))) { display: none; }
 .pv-wealth-details > summary { color: var(--accent); cursor: pointer; list-style: none; padding-block: var(--space-2); }
@@ -395,3 +390,9 @@ details[open] > summary .pv-disclosure-action > span:last-child { display: inlin
 /* Geldfelder und kurze Begleittexte in allen Manageransichten. */
 .personen-vermoegen-page input[data-money-input] { text-align: right; font-variant-numeric: tabular-nums; }
 .pv-person-glance .ds-help, .pv-card-body .ds-help, .pv-household-plan .household-plan-field small, .pv-household-plan .household-plan-group h3 small, .manager-wealth-history .ds-help { font-size: var(--text-base); }
+
+.personen-vermoegen-page #probelaufBand button, .pv-profile-card .ds-button, .pv-household-plan .household-plan-field .ds-segment > button { font-size: var(--text-base); }
+.personen-vermoegen-page .form-group :is(input, select, textarea) { font-family: var(--font-sans); font-size: var(--text-base); }
+.pv-plan-more .household-plan-field output { font: 500 var(--value-md)/1.3 var(--font-serif); }
+.personen-vermoegen-page .pv-cash-evidence, .pv-history-sales, .pv-history-facts, .personen-vermoegen-page .history-coverage, .personen-vermoegen-page .history-measurement, .manager-wealth-basis, .manager-wealth-history .history-legend, .manager-wealth-history .history-periods button, .pv-profile-card .ds-field-reason { font-size: var(--text-base); }
+.personen-vermoegen-page .history-end-value { font-family: var(--font-sans); font-size: var(--text-dense); }

@@ -432,8 +432,8 @@ try {
             assert(confirm.disabled && !binding.firstUnvisited(), 'Sechs Besuche ohne Tagesgeldbestätigung reichen nicht aus');
             binding.activate('cash');
             const fields = binding.root.querySelectorAll('[data-tagesgeld-person]');
-            await fields[0].fire('input'); assert(confirm.disabled, 'Gleiche erste Jahreszahl bestätigt nur die betreffende Person');
-            await binding.root.querySelector('[data-tagesgeld-confirm]').fire('click');
+            await binding.root.querySelectorAll('[data-tagesgeld-confirm]')[0].fire('click'); assert(confirm.disabled, 'Erste Jahresbestätigung gilt nur für die betreffende Person');
+            await binding.root.querySelectorAll('[data-tagesgeld-confirm]')[1].fire('click');
             assert(!confirm.disabled && !binding.hasVisited('month'), 'Sechs Besuche plus Stand stimmt geben den Jahresknopf ohne Ergebnisbesuch frei');
             assertEqual(await storageEvidence(f), before, 'Jahresbesuche und persönliche Bestätigung bleiben schreibfrei');
             // Ein anderer Modellmonat deckt eine nur einmalige Beschriftung auf.
@@ -631,12 +631,20 @@ try {
         const root = f.doc.getElementById('balanceAnnualClose');
         const row = id => root.querySelector(`[data-close-dialog-step="${id}"]`);
         const cash = root.querySelectorAll('[data-tagesgeld-person]');
+        const readiness = root.querySelector('[data-close-dialog-status]');
+        assertEqual(readiness.textContent, 'Noch offen: Ausgaben Dezember', 'Jahresfuß nennt den Schrittnamen ohne angehängtes Verb');
+        for (const id of ['expenses', 'budget']) await row(id).children[0].fire('click');
+        assertEqual(readiness.textContent, 'Noch offen: Tagesgeld am 31.12.2026', 'Jahresendstand bekommt kein zusätzliches Verb');
         await row('cash').children[0].fire('click');
         assertEqual(row('cash').dataset.state, 'current', 'Vorbelegte Tagesgeldentwürfe bleiben unbestätigt');
+        assertEqual(readiness.textContent, 'Noch offen: Marktdaten automatisch holen', 'Marktdatenhinweis ergänzt kein zweites Verb');
+        await row('market').children[0].fire('click');
+        assertEqual(readiness.textContent, 'Noch offen: Plan 2027 prüfen', 'Planprüfung bekommt kein zusätzliches ansehen');
+        await row('preview').children[0].fire('click');
+        assertEqual(readiness.textContent, `Noch offen: Tagesgeld ${f.model.members.map(person => person.name).join(', ')} bestätigen oder ändern`, 'Nach allen Besuchen bleiben die unbestätigten Personen im Jahresfuß offen');
         await prepareCloseFixture(f.doc);
         await row('cash').children[0].fire('click');
         assert(dialogElements(row('cash')).some(node => node.textContent.includes('erst mit dem Jahresabschluss gespeichert')), 'Eingetragen ist kein Speicherbeleg');
-        const readiness = root.querySelectorAll('.close-dialog-status').find(node => node.getAttribute('role') === 'status');
         assert(cash.length >= 2, 'Pflichtprüfung umfasst mehrere Haushaltspersonen');
         for (const input of cash) {
             const original = input.value; input.value = '-1'; await input.fire('input');
@@ -690,8 +698,9 @@ try {
             const root = f.doc.getElementById('balanceAnnualClose');
             const market = root.querySelector('[data-close-dialog-step="market"]');
             assertEqual(market.dataset.state, 'done', 'Synthetische Vorableser erledigen den Marktdatenschritt');
-            assertEqual(dialogElements(market).filter(node => node.tag === 'p' && node.textContent.includes(SYNTHETIC_MARKET_SOURCE)).length,
-                3, 'Alle drei vorbereiteten Jahreswerte weisen synthetische Herkunft aus');
+            assertEqual(market.querySelectorAll('.close-dialog-tile').length, 3, 'Alle drei vorbereiteten Jahreswerte stehen in Kacheln');
+            assert(market.querySelector('[data-annual-market-provenance]').textContent.includes(SYNTHETIC_MARKET_SOURCE.replace(' · ', ', ')),
+                'Gemeinsame Herkunft weist alle vorbereiteten Jahreswerte als synthetisch aus');
             assertEqual(networkCalls, 0, 'Produktive Jahresvorbereitung startet im Probelauf keinen Netzzugriff');
             assertEqual(await storageEvidence(f), before, 'Synthetische Vorbereitung verändert keine Finanzrecords oder Snapshots');
             root.close(); await closing;
@@ -873,6 +882,7 @@ try {
         const cashField = f.doc.getElementById('balanceAnnualClose').querySelector('[data-tagesgeld-person]');
         const personId = cashField.getAttribute('data-tagesgeld-person'), confirmedCash = 43210.75;
         cashField.value = '43.210,75'; await cashField.fire('input');
+        await f.doc.getElementById('balanceAnnualClose').querySelector(`[data-tagesgeld-apply="${personId}"]`).fire('click');
         await f.doc.getElementById('annualConfirmBtn').fire('click');
         assertEqual((await closing).status, 'incomplete_recovery', 'Startseite zeigt unterbrochenes Jahresergebnis');
         assertEqual(f.model.occasion.annualState, 'recovery', 'Begonnener Teilfehler behält auch nach Archivnachlesung Recoveryvorrang');

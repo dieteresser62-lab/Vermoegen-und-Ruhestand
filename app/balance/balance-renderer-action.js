@@ -9,6 +9,7 @@
 
 import { projectBalanceActionOrigin } from './balance-action-origin.js';
 import { UIUtils } from './balance-utils.js';
+import { bindInfoPopovers, createInfoPopover } from '../shared/designsystem-info-popover.js';
 import { displayDiagnosisText } from './balance-diagnosis-transaction.js';
 import { describeBalanceActionSummary, hasMeaningfulFlow, materialProfileActions, summarizeBalanceAction } from './balance-action-summary.js';
 
@@ -255,7 +256,13 @@ export class ActionRenderer {
             : isPurchase ? 'Die Empfehlung bucht nichts. Käufe erfasst du im Vermögen – im Haushalt jeweils im zugehörigen Profil. Balance rechnet danach mit dem neuen Bestand.'
                 : summary.verb === 'Umschichten' ? 'Die Empfehlung bucht nichts. Umschichtungen erfasst du im Vermögen. Balance rechnet danach mit dem neuen Bestand.'
                     : 'Die Empfehlung bucht nichts. Balance rechnet mit dem vorhandenen Bestand.';
-        set('actionDetailsNote', note); texts.push(note);
+        set('actionDetailsNote', 'Die Empfehlung bucht nichts'); texts.push(note);
+        const noteHost = outputs.actionDetailsNote;
+        if (noteHost) {
+            const doc = noteHost.ownerDocument || document;
+            noteHost.append(createInfoPopover(doc, 'Erläuterung zur Empfehlung', note));
+            bindInfoPopovers(doc, { root: noteHost });
+        }
         set('actionManagerLink', isSale ? 'Verkauf erfassen →' : isPurchase ? 'Kauf erfassen →' : 'Vermögen öffnen →');
         const purposeHost = outputs.actionPurposeContent;
         purposeHost?.replaceChildren();

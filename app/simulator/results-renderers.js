@@ -29,6 +29,9 @@ function metricInfo(title, text) {
     return `<span class="ds-info"><button type="button" class="ds-info-button ds-button" aria-label="${escape(title)}" aria-expanded="false" aria-controls="${id}">i</button><span id="${id}" class="ds-info-pop" role="tooltip">${escape(text)}</span></span>`;
 }
 
+const metricValueTitle = kpi => kpi.displayValue !== undefined ? ` title="${escape(kpi.value)}"` : '';
+const metricTooltip = kpi => `${kpi.tooltip || kpi.description || kpi.title}${kpi.displayValue !== undefined && kpi.value !== '—' ? ` Genauer Wert: ${kpi.value}` : ''}`;
+
 /** Neue Renderknoten binden; vollständige kanonische Erklärungen bleiben erhalten. */
 export function bindResultInfoPopups(documentRef = globalThis.document) {
     if (!documentRef?.querySelectorAll) return;
@@ -91,8 +94,8 @@ export function renderKpiCard(kpi) {
 /** Ergänzende Werte mit denselben Angaben und Erklärungen als ruhige Zeilen. */
 function renderMetricRow(kpi) {
     return `<div class="sim-metric-row summary-item kpi-card ds-card ds-metric ${mapToneToClass(kpi.tone)}">
-        <div class="sim-metric-heading"><strong>${escape(kpi.title)}</strong>${metricInfo(kpi.title, kpi.tooltip || kpi.description || kpi.title)}</div>
-        ${kpi.pairedMetrics ? renderMetricPair(kpi.pairedMetrics) : `<div class="value-line">${kpi.value}</div>`}
+        <div class="sim-metric-heading"><strong>${escape(kpi.title)}</strong>${metricInfo(kpi.title, metricTooltip(kpi))}</div>
+        ${kpi.pairedMetrics ? renderMetricPair(kpi.pairedMetrics) : `<div class="value-line"${metricValueTitle(kpi)}>${kpi.displayValue ?? kpi.value}</div>`}
         ${kpi.priceBasis ? `<small class="sim-price-basis">${escape(kpi.priceBasis)}</small>` : ''}
         ${kpi.statusLine ? `<small class="kpi-status-line">${escape(formatMetricStatus(kpi.statusLine))}</small>` : ''}
         <div class="kpi-description summary-description">${kpi.description || ''}</div>
@@ -110,11 +113,11 @@ export function renderSummary(container, summaryCards) {
 
     // Alle Kennzahlen bleiben auch im einfachen Anzeigemodus erreichbar.
     const renderSummaryCard = card => {
-        const tooltip = card.tooltip || card.description || card.title;
+        const tooltip = metricTooltip(card);
         const layoutClass = card.layout === 'exact-risk' ? ' summary-exact-value' : '';
         return `<div class="summary-item ds-card ds-metric${mapToneToSummaryClass(card.tone)}${layoutClass}">
             <div class="sim-metric-heading"><strong>${card.title}</strong>${metricInfo(card.title, tooltip)}</div>
-            <span>${card.value}</span>${card.statusLine ? `<small class="summary-status-line">${escape(formatMetricStatus(card.statusLine))}</small>` : ''}
+            <span${metricValueTitle(card)}>${card.displayValue ?? card.value}</span>${card.statusLine ? `<small class="summary-status-line">${escape(formatMetricStatus(card.statusLine))}</small>` : ''}
             <small class="summary-description">${card.description || ''}</small></div>`;
     };
     const floor = summaryCards.find(card => card.displayRole === 'floor');
@@ -132,7 +135,7 @@ export function renderSummary(container, summaryCards) {
             </section>
             <section class="mc-floor-card ds-card ds-metric sim-run-summary${mapToneToSummaryClass(floor.tone)}">
                 <div class="sim-metric-heading"><strong>${floor.title}</strong>${metricInfo(floor.title, floor.description)}</div>
-                <div class="mc-floor-value">${floor.displayValue}</div>${floor.countText ? `<p class="sim-answer-count">${escape(floor.countText)}</p>` : ''}<div class="mc-floor-interval">${floor.intervalText}</div>
+                <div class="mc-floor-interval">${floor.intervalText}</div>
                 <div class="mc-outcome-bar" aria-hidden="true">${bars}</div>
                 <div class="mc-outcome-legend" aria-label="Endzustände">${legend}${metricInfo(outcomes.title, outcomes.description)}</div>
                 <p class="summary-description">${floor.description}</p><p class="summary-description">${outcomes.description}</p>
@@ -153,7 +156,7 @@ export function renderKpiDashboard(container, dashboard, riskContainer = null) {
     if (!container || !dashboard) return;
 
     const main = dashboard.primary.filter(card => card.title === 'Reale Depotentnahme P10');
-    const supplementary = dashboard.primary.filter(card => !main.includes(card));
+    const supplementary = dashboard.primary.filter(card => !main.includes(card) && card.displayRole !== 'restriction');
     let html = '<section class="ds-card mc-primary-card"><h3 class="unified-kpi-header">Entnahmen</h3><div class="kpi-grid kpi-grid-primary">';
     html += main.map(renderKpiCard).join('');
     html += `</div><div class="sim-metric-list">${supplementary.map(renderMetricRow).join('')}</div></section><section class="ds-card mc-drawdown-card">`;

@@ -109,7 +109,7 @@ assert(!marketChapter.includes('Der CSV-Button') && !handbook.includes('„🗓�
 assert(handbook.includes('Alt+N entfällt') && handbook.includes('Alt+J') && handbook.includes('Alt+I') && handbook.includes('Alt+E'), 'Handbuch nennt aktive Kürzel und den Wegfall von Alt+N');
 const expensesChapter = handbook.slice(handbook.indexOf('<article id="ausgaben"'), handbook.indexOf('<article id="kauf"'));
 assert(expensesChapter.includes('id="balance-ausgaben-check"') && expensesChapter.includes('Ausgaben.html'), 'AU1: Eigenständiges Handbuchkapitel erhält den alten Ausgabenanker und den neuen Seitenweg');
-assert(handbook.includes('class="toc-link" href="#ausgaben">') && expensesChapter.includes('übernommenen Jahresbeleg'), 'AU1: Handbuch-TOC und Budgetherkunft verweisen auf das eigenständige Ausgabenkapitel');
+assert(handbook.includes('class="toc-link" href="#ausgaben">') && expensesChapter.includes('festgeschriebenen Jahresbeleg'), 'AU1: Handbuch-TOC und Budgetherkunft verweisen auf das eigenständige Ausgabenkapitel');
 assert(handbook.includes('Mit diesem Kurs erneut abschließen') && handbook.includes('Während Speichern, Finalisierung und Wiederherstellung'), 'Handbuch erhält Handkursretry und geschützten Jahresabschluss');
 assert(handbook.includes('alle Planbeträge centgenau'), 'Handlungsplan-Kopie bleibt centgenau eingeordnet');
 

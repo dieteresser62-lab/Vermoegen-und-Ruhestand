@@ -36,6 +36,11 @@ for (const heading of ['h-strategy-adopt', 'h-strategy-market']) {
 assertEqual(tree.elements.filter(item => item.attrs.class === 'balance-value-tile' && inside(item, node('balanceAdoptedRows'))).length, 6, 'Übernommen zeigt sechs Kacheln');
 assertEqual(tree.elements.filter(item => item.attrs.class === 'balance-value-tile' && inside(item, tree.elements.find(item => item.attrs['aria-labelledby'] === 'h-strategy-market'))).length, 6, 'Marktdaten zeigt sechs Kacheln');
 assertEqual(householdPlanFieldSpec('horizonMethod').label, 'Horizont-Methode', 'Methode hat den gemeinsamen eindeutigen Namen');
+const sharedGroups = tree.elements.filter(item => item.attrs['data-plan-group-label'] && inside(item, parameters));
+assertEqual(sharedGroups.map(item => item.attrs['data-plan-group-label']).join(','), '1,2,3,4,5', 'Gemeinsame Karten folgen Weitere Planwerte');
+const withdrawal = tree.elements.find(item => item.attrs['aria-labelledby'] === 'h-withdrawal');
+for (const id of ['entnahmeStrategie', 'bondTargetFactor', 'drawdownTrigger', 'bondRefillThreshold', 'profilverbund-withdrawal-mode'])
+    assert(inside(node(id), withdrawal), id + ': in derselben Entnahmekarte wie im Plan');
 
 const backend = new Map(Object.entries(createMusterHaushaltRecords('2026-10-09')));
 P.resetPersistenceForTests(createLocalStorageAdapter({ getItem: key => backend.get(key) ?? null,

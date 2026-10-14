@@ -83,7 +83,12 @@ for (const year of [2026, 2027]) {
     const dialogRoot = {
         async waitFor() { assertEqual(new URL(currentUrl).pathname, '/Balance.html', 'Vorbereitung bleibt im Balance-Jahresdialog'); },
         locator(selector) {
+            if (selector === '[data-tagesgeld-apply]') return { async all() { return []; } };
             if (selector === '[data-tagesgeld-confirm]') return {
+                async all() { return [{ async isVisible() { return !cashConfirmed; }, async click() {
+                    assert(visited.has('cash'), 'Stand stimmt folgt dem sichtbaren Tagesgeldschritt');
+                    cashConfirmed = true; events.push('cash-confirmed');
+                } }]; },
                 async count() { return 1; },
                 async click() {
                     assert(visited.has('cash'), 'Stand stimmt folgt dem sichtbaren Tagesgeldschritt');

@@ -306,7 +306,7 @@ export function createPresentationTestDocument() {
     class Element {
         constructor(tagName) {
             this.tagName = tagName; this.ownerDocument = doc; this.children = []; this.attributes = new Map();
-            this.style = {}; this.events = new Map(); this.writes = 0; this.textContent = ''; this.className = '';
+            this.style = {}; this.dataset = {}; this.events = new Map(); this.writes = 0; this.textContent = ''; this.className = '';
         }
         get id() { return this.getAttribute('id') || ''; }
         set id(value) { this.setAttribute('id', value); }
@@ -862,7 +862,8 @@ export function validateDataLayout(sources) {
         check(sources[path].includes('preserveAspectRatio="xMidYMid meet"'), `Diagramm verzerrt Koordinaten: ${path}`);
     }
     check(has('css/balance.css', '.wealth-scroll svg', 'min-width', '640px')
-        && has('css/balance.css', '.wealth-scroll svg text', 'font-size', '13px'), 'Diagramm ohne Mindestbreite oder echte Pixelschrift');
+        && has('css/balance.css', '.wealth-scroll svg text', 'font-size', 'var(--text-dense)')
+        && has('css/tokens.css', ':root', '--text-dense', '14px'), 'Diagramm ohne Mindestbreite oder echte Pixelschrift');
     check(sources['app/balance/balance-wealth-history-renderer.js'].includes('height="360"')
         && sources['app/balance/balance-expenses-history-renderer.js'].includes('height="270"'), 'Definierte Diagrammhöhen fehlen');
     for (const rule of rules('css/balance.css', sources['css/balance.css'])) {
@@ -1086,7 +1087,7 @@ export function validateSimulatorOverviewFrame(sources) {
         || !wide.includes('.sim-crisis-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }')) errors.push('Simulator: breites Ergebnisraster ab 2300 px fehlt');
     for (const rule of rules('simulator.css', css)) {
         if (!rule.selector.includes('.sim-')) continue;
-        if (rule.declarations['font-size'] && !/^var\(--(?:balance-|value-(?:lg|md)\))/.test(rule.declarations['font-size'])) errors.push('Simulator: Typografietoken fehlt');
+        if (rule.declarations['font-size'] && !/^var\(--(?:balance-|value-(?:lg|md)\)|text-(?:base|dense)\))/.test(rule.declarations['font-size'])) errors.push('Simulator: Typografietoken fehlt');
     }
     if (!css.includes('@media screen {\n    svg.chart-native-svg.chart-native-svg { display: block; width: auto; height: auto; min-width: 0; max-width: none; box-sizing: content-box; }')) errors.push('Simulator: native SVG-Pixelmaße fehlen');
     return errors;

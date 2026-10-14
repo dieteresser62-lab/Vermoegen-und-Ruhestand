@@ -76,7 +76,7 @@ export function startAutomaticBacktest(documentRef, dependencies) {
             if (d.isBlocked()) { d.status('blocked'); return null; }
             d.setPeriod(period);
             d.status('preparing');
-            return await d.run({ automatic: true, opening: true, cohortsEnabled: false, focus: false, beforeRun: d.frame, isBlocked: d.isBlocked });
+            return await d.run({ automatic: true, opening: true, focus: false, beforeRun: d.frame, isBlocked: d.isBlocked });
         } catch (error) {
             d.status(d.isBlocked() || awaitingReadiness ? 'blocked'
                 : error?.name === 'SimulatorValidationError' ? 'invalid' : 'technical_error', error);

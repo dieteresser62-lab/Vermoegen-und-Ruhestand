@@ -27,6 +27,7 @@ export const PROFILE_VALUE_KEYS = {
 
 export const PROFILE_TRANCHES_KEY = 'depot_tranchen';
 export const PROFILE_HEALTH_BUCKET_KEY = 'profile_health_bucket';
+export const PROFILE_CASH_CONFIRMED_DATE_KEY = 'profile_tagesgeld_confirmed_date';
 
 export const DEFAULT_PROFILE_HEALTH_BUCKET = Object.freeze({
     enabled: false,
@@ -70,6 +71,7 @@ export class ProfileStateLoadError extends Error {
 export const PROFILE_SCOPED_FIXED_KEYS = [
     PROFILE_TRANCHES_KEY,
     'profile_cash_history_v1',
+    PROFILE_CASH_CONFIRMED_DATE_KEY,
     'profile_wealth_history_lots_v1',
     'overview_balance_summary_v1',
     'overview_month_provision_v1',

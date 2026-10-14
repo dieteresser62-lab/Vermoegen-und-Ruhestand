@@ -82,7 +82,7 @@ export const simulatorDocumentReady = startSimulatorDocument(document, async () 
     initializeResultOverview({ runMonteCarlo, activateTab: activateSimulatorTab, rerunBacktest: async () => {
         await whenBacktestIdle();
         if (!opened || !readHouseholdPersonStatus().ready || window.__profileRecoveryBlocker || !window.EngineAPI) return;
-        return runBacktestWithRuntimeProvenance({ automatic: true, cohortsEnabled: false, focus: false, beforeRun: nextPaintFrame,
+        return runBacktestWithRuntimeProvenance({ automatic: true, focus: false, beforeRun: nextPaintFrame,
             isBlocked: () => Boolean(window.__profileRecoveryBlocker) });
     } });
     await startAutomaticBacktest(document, {

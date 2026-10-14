@@ -306,7 +306,7 @@ try {
     startTrial();
     doc.getElementById('startFloorBedarf').value = '32000';
     assertEqual(getCommonInputs().startFloorBedarf, 32000, 'Noch ungespeicherte Formularänderung gewinnt beim Lesen');
-    assertEqual(getCommonInputs().minCashBufferMonths, 7, 'Unsichtbare Mindest-Liquidität kommt aus dem Plan');
+    assertEqual(getCommonInputs().minCashBufferMonths, 7, 'Mindest-Liquidität im Formular kommt aus dem Plan');
     doc.getElementById('startFloorBedarf').dispatchEvent({ type: 'change' });
     await PersistenceFacade.flush();
     await adoptTrial();
@@ -349,6 +349,24 @@ try {
     assertEqual(engineInput.decumulation.mode, '3_bucket_jilge', 'Drei-Töpfe-Strategie erreicht Enginegrenze');
     assertEqual(engineInput.dynamicFlex, true, 'Dynamikentscheidung erreicht Enginegrenze');
     assertEqual(engineInput.longevityMode, 'none', 'Preset-Langlebigkeit erreicht Enginegrenze');
+    const withCashBuffer = inputs => buildSimulatorEngineInput({ inputs, portfolio: { liquiditaet: 150000 },
+        marketDataCurrentYear: {}, marketDataHist: {}, yearData: { inflation: 0 }, yearIndex: 0, liquiditaet: 150000,
+        effectiveBaseFloor: inputs.startFloorBedarf, baseFlex: inputs.startFlexBedarf,
+        temporaryFlexFactor: 1, baseFlexBudgetAnnual: inputs.flexBudgetAnnual,
+        baseFlexBudgetRecharge: inputs.flexBudgetRecharge, pensionAnnual: 36000, resolvedCapeRatio: inputs.capeRatio }).engineInput;
+    doc.getElementById('minCashBufferMonths').value = '6';
+    doc.getElementById('minCashBufferMonths').dispatchEvent({ type: 'change' });
+    assertEqual(withCashBuffer(getCommonInputs()).minCashBufferMonths, 6, 'Sechs Monate aus dem Formular erreichen die Engine');
+    assertEqual(readHouseholdPlan({ scope }).entry.values.minCashBufferMonths, 7, 'Lokaler Reservenversuch überschreibt keinen Plan');
+    await adoptTrial();
+    assertEqual(readHouseholdPlan({ scope }).entry.values.minCashBufferMonths, 6, 'Bewusste Übernahme speichert sechs Monate im Plan');
+    getSimulatorPlanTrial(doc).reset(); renderSimulatorPlanTrial(doc, { project: true });
+    assertEqual(formNumber(doc.getElementById('minCashBufferMonths')), 6, 'Rückkehr lädt die gespeicherte Mindest-Liquidität');
+    assertEqual(doc.getElementById('minCashBufferMonths').disabled, true, 'Gespeicherte Mindest-Liquidität ist außerhalb des Versuchs lesend');
+    assertEqual(withCashBuffer(getCommonInputs()).minCashBufferMonths, 6, 'Plan mit sechs Monaten liefert Engine-Eingabe sechs');
+    const withoutCashBuffer = { ...getCommonInputs() }; delete withoutCashBuffer.minCashBufferMonths;
+    assertEqual(withCashBuffer(withoutCashBuffer).minCashBufferMonths, 2, 'Ohne Mindest-Liquidität bleibt der Engine-Standard zwei Monate');
+    startTrial();
     doc.getElementById('entnahmeStrategie').value = 'standard';
     doc.getElementById('entnahmeStrategie').dispatchEvent({ type: 'change' });
     assertEqual(getCommonInputs().decumulation.mode, 'standard', 'Standardstrategie wird über denselben Planweg gelesen');
@@ -558,7 +576,7 @@ for (const [expectedPreset, dynamicValues] of [
                 details.dispatchEvent({ type: 'change' });
                 refresh();
                 assertEqual(doc.getElementById('dynamicFlexPreset').value, expectedPreset, profileId + ': bestätigtes Preset nach Profilwechsel');
-                const expectedDetails = expectedPreset === 'off' ? false : showAdvanced;
+                const expectedDetails = false; // Profilprojektion übernimmt den Plan und verwirft die lokale Detailabsicht.
                 assertEqual(details.checked, expectedDetails, profileId + ': Detailzustand nach Profilwechsel');
                 assertEqual(doc.getElementById('dynamicFlexConfigGroup').style.display,
                     expectedDetails || expectedPreset === 'custom' ? 'grid' : 'none', profileId + ': Detailansicht folgt bestätigtem Preset');
