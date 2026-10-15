@@ -1,3 +1,4 @@
+import { EURO_PATH_FIELDS } from '../app/simulator/mc-euro-metrics.js';
 import { alterAmStichtag, validateIsoDate, personAge, projectPerson, personReferenceYear } from '../app/profile/profile-person-data.js';
 import { planningYear } from '../app/overview/overview-model.js';
 for (const [date, year, expected] of [['1958-01-01', 2026, 68], ['1958-03-14', 2026, 67], ['1960-02-29', 2026, 65], ['2000-12-31', 2026, 25], ['2000-12-31', 2027, 26], ['2000-01-01', 2027, 27]]) {
@@ -40,16 +41,20 @@ const { createHash } = await import('node:crypto');
 
 function projectLegacyFinancialBytes(result) {
     const projection = JSON.parse(JSON.stringify(result));
-    // Additive Mindest-Flex- und FR-10-Kontenbelege ausnehmen; sämtliche bisherigen Rechenwerte bleiben gepinnt.
+    // Additive Mindest-Flex-, FR-10-Konten- und Euro-Belege ausnehmen; bisherige Rechenwerte bleiben gepinnt.
     for (const key of Object.keys(projection.buffers)) {
-        if (key.startsWith('__mcChunkV1Path_minimumFlex') || key === '__mcChunkV1Missing_minimumFlexRestriction') {
+        if (key.startsWith('__mcChunkV1Path_minimumFlex') || key === '__mcChunkV1Missing_minimumFlexRestriction'
+            || Object.keys(EURO_PATH_FIELDS).some(field => key === `__mcChunkV1Path_${field}`)
+            || ['__mcChunkV1Missing_euroMetrics', '__mcChunkV1Missing_euroRealAmounts'].includes(key)) {
             delete projection.buffers[key];
         }
     }
     for (const key of Object.keys(projection.pathSummaries)) {
-        if (key.startsWith('minimumFlex')) delete projection.pathSummaries[key];
+        if (key.startsWith('minimumFlex') || Object.hasOwn(EURO_PATH_FIELDS, key)) delete projection.pathSummaries[key];
     }
     delete projection.pathMissingness.minimumFlexRestriction;
+    delete projection.pathMissingness.euroMetrics;
+    delete projection.pathMissingness.euroRealAmounts;
     function removeAnnualFields(value) {
         if (!value || typeof value !== 'object') return;
         delete value.personalPayout;

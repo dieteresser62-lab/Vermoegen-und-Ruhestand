@@ -14,6 +14,7 @@ import {
 } from '../app/simulator/simulator-main-helpers.js';
 import { STRATEGY_OPTIONS } from '../types/strategy-options.js';
 import { getProtocolColumns } from '../app/simulator/protocol-columns.js';
+import { getEuroMode, setEuroMode } from '../app/simulator/euro-display.js';
 
 console.log('--- Simulator Backtest UI Contract Tests ---');
 
@@ -387,7 +388,9 @@ console.log('Test 9: reale Provenienzvorbereitung ist abwartbar kündigbar');
             request: { startYear: 2000, endYear: 2000 }, rows: [], requestedYears: 1, completedYears: 1 });
         let calculations = 0;
         const dependencies = { runSinglePath: () => { calculations++; return oldResult; } };
+        setEuroMode('real', doc);
         const result = runBacktest(dependencies);
+        assertEqual(getEuroMode(doc), 'nominal', 'Neuer Backtest setzt die gemeinsame Wahl auf Nominal zurück');
         assert(result === oldResult && window.globalBacktestData.result === oldResult,
             'Synchroner Backtest behält die unveränderte Runnerinstanz');
         assert(guard.reasons().some(reason => reason.result), 'Erfolgreicher synchroner Backtest registriert Ergebnisverlust');
@@ -605,7 +608,8 @@ console.log('Test 9: reale Provenienzvorbereitung ist abwartbar kündigbar');
         ]) {
             const card = summary.match(new RegExp(`data-metric-id="${id}"[^>]*><strong>[^<]+</strong>([\\s\\S]*?)</div>`));
             assert(card !== null, `Echter Summaryrenderer liefert die Kennzahl ${id}`);
-            assertEqual(card[1], exact === null ? `<span>${visible}</span>`
+            const primaryMarkup = card[1].replace(/<small class="sim-other-basis">[^<]*<\/small>/, '');
+            assertEqual(primaryMarkup, exact === null ? `<span>${visible}</span>`
                 : `<span aria-hidden="true">${visible}</span><span class="ds-visually-hidden">${exact}</span>`,
             `Kennzahl ${id}: nur präziser Geldtext ist assistiv lesbar; Fehlwerte und Nichtgeldwerte bleiben lesbar`);
         }

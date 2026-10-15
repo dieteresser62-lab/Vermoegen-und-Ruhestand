@@ -5407,11 +5407,20 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
             const measure = () => page.evaluate(() => {
                 const group = document.querySelector('#scenarioWealthChart [data-scenario-id="char_p50"]');
                 const path = group.querySelector('path');
+                const grids = [...group.ownerSVGElement.querySelectorAll('.wealth-grid')];
+                const ticks = grids.map(grid => {
+                    const label = grid.nextElementSibling.textContent;
+                    return { y: Number(grid.getAttribute('y1')),
+                        value: Number(label.replace(/\s|Mio\./g, '').replaceAll('.', '').replace(',', '.')) * (label.includes('Mio.') ? 1e6 : 1) };
+                });
+                const zero = ticks[0], upper = ticks.at(-1);
+                const euros = y => zero.value + (zero.y - y) * (upper.value - zero.value) / (zero.y - upper.y);
                 const points = [...path.getAttribute('d').matchAll(/[ML]([\d.-]+) ([\d.-]+)/g)]
-                    .map(match => ({ x: Number(match[1]), value: (410 - Number(match[2])) * 3000 / 322 }));
+                    .map(match => ({ x: Number(match[1]), value: euros(Number(match[2])) }));
                 const probe = window.__scenarioBasisProbe;
-                return { points, plotWidth: group.ownerSVGElement.viewBox.baseVal.width - 180, finiteLength: Number.isFinite(path.getTotalLength()),
-                    endpoint: (410 - Number(group.querySelector('circle').getAttribute('cy'))) * 3000 / 322,
+                return { points, plotLeft: Number(grids[0].getAttribute('x1')),
+                    plotWidth: Number(grids[0].getAttribute('x2')) - Number(grids[0].getAttribute('x1')), finiteLength: Number.isFinite(path.getTotalLength()),
+                    endpoint: euros(Number(group.querySelector('circle').getAttribute('cy'))),
                     list: document.querySelector('#scenarioList [data-scenario-id="char_p50"] .scenario-value').textContent.replace(/\s+/g, ' '),
                     distribution: document.querySelector('#wealthDistribution .wealth-population').textContent,
                     fan: document.getElementById('wealthFanChart').textContent,
@@ -5423,7 +5432,7 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
             const verify = (state, values, mode) => {
                 assert(state.points.length === 5 && state.finiteLength, `${withFan}/${mode}: fünf echte SVG-Messpunkte`);
                 for (let year = 0; year < values.length; year++) assert(Math.abs(state.points[year].value - values[year]) < .05
-                    && Math.abs(state.points[year].x - (88 + state.plotWidth * year / 4)) < .01, `${withFan}/${mode}: Jahresposition ${year} mit ${values[year]} Euro`);
+                    && Math.abs(state.points[year].x - (state.plotLeft + state.plotWidth * year / 4)) < .01, `${withFan}/${mode}: Jahresposition ${year} mit ${values[year]} Euro`);
                 assert(Math.abs(state.endpoint - values.at(-1)) < 1e-8, `${withFan}/${mode}: aktive Endmarke entspricht dem Listenbetrag`);
                 assert(state.list === (mode === 'real' ? '1,4 Tsd. €' : '2,1 Tsd. €')
                     && state.distribution.includes(mode === 'real' ? 'heutige Euro' : 'nominale Euro')
@@ -5433,6 +5442,10 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
                 assert(state.selectedId === 'char_p50' && state.sameSource && state.selections === 2 && state.unchanged,
                     `${withFan}/${mode}: Auswahl, Quelllauf und Daten bleiben unverändert`);
             };
+            verify(await measure(), [1000, 1320, 1188, 1856.25, 2079], 'nominal');
+            assert(await page.locator('#mcWealthMode [data-wealth-mode="nominal"]').getAttribute('aria-pressed') === 'true',
+                `${withFan}: Sitzung startet nominal und behält die Wahl beim erneuten Binden`);
+            await page.locator('#mcWealthMode [data-wealth-mode="real"]').click();
             verify(await measure(), [1000, 1200, 1200, 1500, 1400], 'real');
             assert(await page.locator('#scenarioWealthChart svg').isVisible(), `${withFan}: reale Szenariolinie sichtbar`);
             assert(await page.locator('#scenarioSelectedHeading .scenario-selected-events').count() === 0,
@@ -5598,7 +5611,7 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
             await page.keyboard.press('End'); await page.keyboard.press(' ');
             assert(await page.locator('#scenarioList [aria-selected="true"]').evaluate(node => node.getAttribute('data-scenario-id') === document.activeElement.getAttribute('data-scenario-id')), 'Leertaste übernimmt den fokussierten Stichprobenlauf');
             await page.locator('#scenarioGroups [data-scenario-group="care"]').click();
-            assert(await page.locator('#scenarioList').textContent().then(text => text.includes('Höchster realer Pflege-Mehrbedarf')), 'Pflegegruppe behält Fachnamen');
+            assert(await page.locator('#scenarioList').textContent().then(text => text.includes('Höchster Pflege-Mehrbedarf')), 'Pflegegruppe behält Fachnamen');
             await page.locator('#scenarioGroups [data-scenario-group="wealth"]').click();
             await page.locator('#scenarioList [data-scenario-id="char_p10"]').click();
             assert(await page.locator('#scenarioSelectedHeading').textContent().then(text => text.includes('Person 1 Pflege 2027 · † 2029') && text.includes('Person 2 † 2028')),
@@ -5631,7 +5644,6 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
                             overlap: rects.some((rect, index) => rects.slice(index + 1).some(other => intersects(rect, other))),
                             accessible: buttons.every(button => /^↑ [\d.,]+(?: Mio\.)?$/.test(button.textContent)
                                 && button.getAttribute('title') === button.getAttribute('aria-label') && button.getAttribute('aria-label').includes('€')
-                                && button.getAttribute('aria-label').includes(window.__scenarioBasisProbe.logs.characteristic.find(s => 'char_' + s.key === button.dataset.scenarioId).label)
                                 && getComputedStyle(button).color === getComputedStyle(svg.querySelector(`.scenario-line[data-scenario-id="${button.dataset.scenarioId}"] path`)).stroke
                                 && getComputedStyle(button).backgroundColor === 'rgba(0, 0, 0, 0)' && getComputedStyle(button).borderWidth === '0px') };
                     });
@@ -6095,7 +6107,7 @@ async function runSimulatorSmoke(browser, baseUrl) {
         && !await page.locator('#mcRunHint').isVisible(),
         'Hinweisreset ändert nur Laufzahl und startet keine Großrechnung');
     await page.locator('.tab-btn[data-tab="werkstatt"]').click();
-    assert(await page.locator('#mcWealthMode').getAttribute('aria-label') === 'Maßstab der Vermögensansichten',
+    assert(await page.locator('#mcWealthMode').getAttribute('aria-label') === 'Euro-Basis aller Monte-Carlo-Geldbeträge',
         'gemeinsamer Vermögensmaßstab ist assistiv benannt');
     assert(await page.locator('#mcViewPanelLogs #scenarioSelector').count() === 1,
         'the stable scenario selector container lives exactly once in scenario logs');
@@ -9038,7 +9050,7 @@ async function runDesignsystemSimulatorLayout(browser, baseUrl) {
             window.__dsLayoutInput = JSON.stringify(results);
             document.getElementById('monteCarloResults').style.display = 'block';
             renderSummary(document.getElementById('monteCarloSummary'), buildSummaryData({ results, totalRuns: 1000, failCount: 0 }));
-            renderKpiDashboard(document.getElementById('unifiedKpiDashboard'), buildKpiDashboard(results));
+            renderKpiDashboard(document.getElementById('unifiedKpiDashboard'), buildKpiDashboard(results, {}, 'real'));
             renderHeatmap(document.getElementById('withdrawalRateChartContainer'), { heatmap: [[1, 1999, 0]], bins: [0, 3, 4.5, 100], totalRuns: 2000 });
             window.__dsLayoutInputUnchanged = JSON.stringify(results) === window.__dsLayoutInput;
             const { renderWorstRunLog } = await import('./app/simulator/simulator-results.js');
@@ -9053,7 +9065,7 @@ async function runDesignsystemSimulatorLayout(browser, baseUrl) {
         for (const width of [1366, 1920, 2560]) {
             await page.locator('#mcViewTabOverview').click();
             await measureSimulatorPresentation(page, width, '#monteCarloSummary');
-            assert((await page.locator('#unifiedKpiDashboard').textContent()).includes('12.345,67'), `${width}: centgenauer Bezug bleibt sichtbar`);
+            assert((await page.locator('#unifiedKpiDashboard').textContent()).includes('12.346'), `${width}: Bezug in ganzen Euro bleibt sichtbar`);
             await page.locator('#mcViewTabRisk').click();
             await measureSimulatorPresentation(page, width, '#withdrawalRateChartContainer', ['#withdrawalRateChartContainer .ds-chart-scroll']);
             assert((await page.locator('#withdrawalRateChartContainer').textContent()).includes('<0,1'), `${width}: Kleinstwert wird deutsch sichtbar`);
@@ -10312,10 +10324,10 @@ async function runDesignsystemSimulatorResults(browser, baseUrl) {
                 const results = { realWithdrawalP10: { realEur: value, p50RealEur: value, sampleSize: 1000 },
                     maxDrawdowns: { p50: value, p90: value, sampleSize: 1000 }, realMaxDrawdowns: { p50: value, p90: value, sampleSize: 1000 },
                     extraKPI: { lossCarryTaxSavings: { perRunMean: value, sampleSize: 1000 } } };
-                const before = JSON.stringify(results), dashboard = buildKpiDashboard(results);
+                const before = JSON.stringify(results), dashboard = buildKpiDashboard(results, {}, 'real');
                 const host = document.getElementById('unifiedKpiDashboard');
                 renderKpiDashboard(host, dashboard);
-                renderStressSection(host, buildStressMetrics({ presetKey: 'SYNTHETIC', years: 4, maxDD: results.maxDrawdowns, realWithdrawalP10: results.realWithdrawalP10 }));
+                renderStressSection(host, buildStressMetrics({ presetKey: 'SYNTHETIC', years: 4, maxDD: results.maxDrawdowns, realWithdrawalP10: results.realWithdrawalP10 }, 'real'));
                 const cards = [...document.querySelectorAll('#unifiedKpiDashboard .kpi-card, #stressKpiResults .kpi-card')].map(card => ({
                     title: card.querySelector('strong').textContent, value: card.querySelector('.value-line').textContent,
                     secondary: card.querySelector('.kpi-secondary-value strong')?.textContent,
@@ -10325,12 +10337,12 @@ async function runDesignsystemSimulatorResults(browser, baseUrl) {
                 }));
                 return { cards, unchanged: JSON.stringify(results) === before };
             }, value);
-            const unvalued = rendered.cards.filter(card => /Drawdown|Depotentnahme P10/.test(card.title));
+            const unvalued = rendered.cards.filter(card => /Drawdown|schwachen Jahren/.test(card.title));
             assert(rendered.unchanged && unvalued.length === 8 && unvalued.every(card => !/is-green|is-amber|is-red/.test(card.classes)
                 && card.color === 'rgb(29, 40, 48)' && (card.secondaryColor === null || card.secondaryColor === 'rgb(29, 40, 48)')),
                 'Acht Entnahme-/Drawdownkarten einschließlich Stress und Nebenwert sind neutral');
             if (value === null) assert(unvalued.every(card => card.value === '—')
-                && unvalued.filter(card => !card.title.includes('Stress') || card.title.includes('Depotentnahme')).every(card => card.reason.includes('Grund:')),
+                && unvalued.filter(card => !card.title.includes('Stress') || card.title.includes('schwachen Jahren')).every(card => card.reason.includes('Grund:')),
                 'Fehlende Beobachtungen behalten Fehlwert und vorhandenen Verfügbarkeitsgrund');
             const tax = rendered.cards.find(card => card.title === 'Ø Steuerersparnis Verlustvortrag');
             assert(!/is-green|is-amber|is-red/.test(tax.classes), 'Steuerersparnis bleibt neutral');
@@ -10342,10 +10354,10 @@ async function runDesignsystemSimulatorResults(browser, baseUrl) {
             const results = { realWithdrawalP10: { realEur: 12345.678, p50RealEur: 45678.912, sampleSize: 1000 },
                 maxDrawdowns: { p50: 22.331, p90: 34.251, sampleSize: 1000 }, realMaxDrawdowns: { p50: 25.401, p90: 38.759, sampleSize: 1000 } };
             renderSummary(document.getElementById('monteCarloSummary'), buildSummaryData({ results, totalRuns: 1000, failCount: 0 }));
-            renderKpiDashboard(document.getElementById('unifiedKpiDashboard'), buildKpiDashboard(results));
+            renderKpiDashboard(document.getElementById('unifiedKpiDashboard'), buildKpiDashboard(results, {}, 'real'));
         });
         const text = (await page.locator('#unifiedKpiDashboard').textContent()).replace(/\u00a0/g, ' ');
-        assert(text.includes('12.345,67') && text.includes('45.678,91'), 'Reale Depotentnahmen bleiben konservativ centgenau');
+        assert(text.includes('12.346') && text.includes('45.679'), 'Reale Entnahmen zeigen ganze Euro');
         assert(text.includes('22,34 %') && text.includes('34,26 %') && text.includes('25,41 %') && text.includes('38,76 %'), 'Vier nominale/reale Drawdown-Prozente bleiben erhalten');
         assert(await page.locator('.mc-view-tab').count() === 4, 'Vier Ergebnisreiter bleiben erhalten');
         // Stresspfad-Replay liegt seit Paket 16 in der Werkstatt.

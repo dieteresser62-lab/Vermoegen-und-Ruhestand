@@ -72,6 +72,7 @@ export function bindResultInfoPopups(documentRef = globalThis.document) {
 export function renderKpiCard(kpi) {
     const toneClass = mapToneToClass(kpi.tone);
     const layoutClass = kpi.layout === 'exact-risk' ? ' kpi-exact-value' : '';
+    const roleClass = kpi.displayRole?.startsWith('withdrawal') ? ' kpi-withdrawal' : '';
     const description = kpi.description || '';
     const tooltip = kpi.tooltip || description || kpi.title;
     const statusLine = kpi.statusLine
@@ -81,9 +82,10 @@ export function renderKpiCard(kpi) {
         ? `<div class="kpi-secondary-value"><span>${kpi.secondaryLabel}</span><strong>${kpi.secondaryValue || '—'}</strong>${kpi.secondaryStatusLine ? `<small>${escape(formatMetricStatus(kpi.secondaryStatusLine))}</small>` : ''}</div>`
         : '';
     return `
-    <div class="kpi-card ds-card ds-metric ${toneClass}${layoutClass}">
+    <div class="kpi-card ds-card ds-metric ${toneClass}${layoutClass}${roleClass}">
       <div class="sim-metric-heading"><strong>${kpi.title}</strong>${metricInfo(kpi.title, tooltip)}</div>
       ${kpi.pairedMetrics ? renderMetricPair(kpi.pairedMetrics) : `<div class="value-line">${kpi.value}</div>`}
+      ${kpi.otherBasisLine ? `<p class="ds-hint sim-other-basis">${escape(kpi.otherBasisLine)}</p>` : ''}
       ${kpi.priceBasis ? `<p class="ds-hint sim-price-basis">${escape(kpi.priceBasis)}</p>` : ''}
       ${statusLine}
       ${secondaryLine}
@@ -118,6 +120,7 @@ export function renderSummary(container, summaryCards) {
         return `<div class="summary-item ds-card ds-metric${mapToneToSummaryClass(card.tone)}${layoutClass}">
             <div class="sim-metric-heading"><strong>${card.title}</strong>${metricInfo(card.title, tooltip)}</div>
             <span${metricValueTitle(card)}>${card.displayValue ?? card.value}</span>${card.statusLine ? `<small class="summary-status-line">${escape(formatMetricStatus(card.statusLine))}</small>` : ''}
+            ${card.otherBasisLine ? `<small class="sim-other-basis">${escape(card.otherBasisLine)}</small>` : ''}
             <small class="summary-description">${card.description || ''}</small></div>`;
     };
     const floor = summaryCards.find(card => card.displayRole === 'floor');
@@ -130,7 +133,7 @@ export function renderSummary(container, summaryCards) {
         }).join('');
         const wealthCards = summaryCards.filter(card => card !== floor && card !== outcomes);
         container.innerHTML = `<div class="mc-overview-grid">
-            <section class="mc-final-card ds-card"><div class="mc-final-heading"><h3>Endvermögen und Steuern</h3><span>nominal · unabhängig vom Euro-Schalter</span></div>
+            <section class="mc-final-card ds-card"><div class="mc-final-heading"><h3>Endvermögen und Steuern</h3><span>${escape(wealthCards[0]?.priceBasis || 'nominale Euro')}</span></div>
                 <div class="mc-wealth-summary">${wealthCards.slice(0, 1).map(renderSummaryCard).join('')}<div class="sim-metric-list">${wealthCards.slice(1).map(renderMetricRow).join('')}</div></div>
             </section>
             <section class="mc-floor-card ds-card ds-metric sim-run-summary${mapToneToSummaryClass(floor.tone)}">
@@ -155,14 +158,14 @@ export function renderSummary(container, summaryCards) {
 export function renderKpiDashboard(container, dashboard, riskContainer = null) {
     if (!container || !dashboard) return;
 
-    const main = dashboard.primary.filter(card => card.title === 'Reale Depotentnahme P10');
+    const main = dashboard.primary.filter(card => card.displayRole === 'withdrawal');
     const supplementary = dashboard.primary.filter(card => !main.includes(card) && card.displayRole !== 'restriction');
     let html = '<section class="ds-card mc-primary-card"><h3 class="unified-kpi-header">Entnahmen</h3><div class="kpi-grid kpi-grid-primary">';
     html += main.map(renderKpiCard).join('');
     html += `</div><div class="sim-metric-list">${supplementary.map(renderMetricRow).join('')}</div></section><section class="ds-card mc-drawdown-card">`;
 
     if (Array.isArray(dashboard.drawdownKpis) && dashboard.drawdownKpis.length > 0) {
-        html += '<h4 class="drawdown-pair-heading">Maximum-Drawdown: nominal und real</h4><p class="ds-hint sim-price-basis">Real = heutige Euro · beide Maßstäbe bleiben sichtbar, unabhängig vom Euro-Schalter.</p>';
+        html += '<h4 class="drawdown-pair-heading">Größter Vermögensrückgang</h4><p class="ds-hint sim-price-basis">Prozentuale Verluste: nominal und in heutiger Kaufkraft.</p>';
         html += '<div class="kpi-grid kpi-grid-pair">';
         html += dashboard.drawdownKpis.map(renderKpiCard).join('');
         html += '</div>';

@@ -1,18 +1,14 @@
 import { escapeProtocolHtml as escape } from './protocol-renderer.js';
-import { formatCurrency } from './simulator-utils.js';
+import { formatWholeEuro as formatCurrency } from './results-formatting.js';
+import { bindEuroMode, getEuroMode, euroBasisLabel } from './euro-display.js';
 import { formatChartEuro } from './results-formatting.js';
-import { buildScenarioEntries, renderScenarioWealthChart, scenarioEndWealth } from './scenario-wealth-chart.js';
+import { buildScenarioEntries, renderScenarioWealthChart, scenarioEndWealth, scenarioDisplayLabel as scenarioLabel } from './scenario-wealth-chart.js';
 import { COMPARISON_DEFAULT, COMPARISON_EXTREMES, comparisonEntries, comparisonLabel, renderScenarioComparison } from './scenario-comparison.js';
 import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 
 const bindings = new WeakMap();
 const comparisonSelections = new WeakMap();
 const groups = [['wealth', 'Endvermögen'], ['care', 'Pflege'], ['risk', 'Risiko'], ['sample', 'Stichprobe']];
-
-function scenarioLabel(scenario) {
-    const ranks = { worst: 'Minimum', p5: 'P5', p10: 'P10', p25: 'P25', p50: 'Median', p75: 'P75', p90: 'P90', p95: 'P95', best: 'Maximum' };
-    return ranks[scenario.key] ? `${scenario.label} · nominaler Rang ${ranks[scenario.key]}` : scenario.label;
-}
 
 function scenarioLifeEvents(scenario, startYear, personDisplayContext) {
     const rows = scenario.logDataRows || [];
@@ -71,7 +67,7 @@ export function renderScenarioList(entries, selectedId, mode, options = {}) {
         const exactWealth = entry.scenario.failed || endWealth === null ? wealth : formatCurrency(endWealth);
         const label = scenarioLabel(entry.scenario);
         const events = scenarioLifeEvents(entry.scenario, options.startYear, options.personDisplayContext);
-        return `<button type="button" role="option" tabindex="${entry.id === focusedId ? 0 : -1}" class="scenario-list-item" data-scenario-group="${group}" data-scenario-id="${escape(entry.id)}" aria-selected="${entry.id === selectedId}" title="${escape(exactWealth)}" aria-label="${escape(`${entry.scenario.label} · ${exactWealth}${events.length ? ` · ${events.join(' · ')}` : ''}`)}"><span class="scenario-swatch" style="--scenario-color:${entry.color}" aria-hidden="true"></span><span class="scenario-name">${escape(label)}</span><small class="scenario-value${entry.scenario.failed ? ' is-ruin' : ''}">${escape(wealth)}</small>${events.length ? `<small class="scenario-details">${renderPersonMarks(events)}</small>` : ''}</button>`;
+        return `<button type="button" role="option" tabindex="${entry.id === focusedId ? 0 : -1}" class="scenario-list-item" data-scenario-group="${group}" data-scenario-id="${escape(entry.id)}" aria-selected="${entry.id === selectedId}" title="${escape(exactWealth)}" aria-label="${escape(`${label} · ${exactWealth}${events.length ? ` · ${events.join(' · ')}` : ''}`)}"><span class="scenario-swatch" style="--scenario-color:${entry.color}" aria-hidden="true"></span><span class="scenario-name">${escape(label)}</span><small class="scenario-value${entry.scenario.failed ? ' is-ruin' : ''}">${escape(wealth)}</small>${events.length ? `<small class="scenario-details">${renderPersonMarks(events)}</small>` : ''}</button>`;
     }).join('');
 }
 
@@ -94,7 +90,7 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
     let selectedId = entries.some(entry => entry.id === 'char_worst') ? 'char_worst' : entries[0]?.id || '';
     let activeGroup = entries.find(entry => entry.id === selectedId)?.group || 'wealth';
     let focusedId = selectedId;
-    let mode = 'real';
+    let mode = getEuroMode(doc);
     const remembered = new Map();
     const activeItems = () => scenarioGroupEntries(entries, activeGroup);
     const cleanup = [];
@@ -131,12 +127,12 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
             displayWidth: width > 0 ? Math.max(300, width) : undefined })
             + `<div class="scenario-comparison-legend">${paths.map(entry => `<button type="button" class="ds-button ds-button-secondary" data-scenario-id="${escape(entry.id)}" aria-pressed="${selectedId === entry.id}"><span class="scenario-swatch" style="--scenario-color:${entry.color}" aria-hidden="true"></span>${escape(comparisonLabel(entry))}</button>`).join('')}</div>`;
         const basis = doc.getElementById('scenarioComparisonChartBasis');
-        if (basis) basis.textContent = mode === 'nominal' ? 'Nominale Euro' : 'Heutige Euro · Kaufkraft zum Laufstart';
+        if (basis) basis.textContent = euroBasisLabel(mode);
     };
     const drawComparison = () => {
         if (comparison) {
             const focusId = comparison.contains?.(doc.activeElement) ? doc.activeElement?.id : null;
-            comparison.innerHTML = renderScenarioComparison(entries, comparisonSelection, { context: comparisonContext, selectedId });
+            comparison.innerHTML = renderScenarioComparison(entries, comparisonSelection, { context: comparisonContext, selectedId, moneyBasis: mode, realByRun: chartOptions.realByRun });
             bindInfoPopovers(doc, { root: comparison });
             if (focusId) doc.getElementById(focusId)?.focus?.({ preventScroll: true });
         }
@@ -177,14 +173,16 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
         const exactWealth = entry && !entry.scenario.failed ? scenarioEndWealth(entry.scenario, mode, chartOptions.realByRun) : null;
         const summary = doc.getElementById('scenarioSelectionSummary');
         if (summary) {
-            summary.textContent = entry ? `Szenario: ${label} · ${wealth}` : 'Szenario: Keine Auswahl';
+            summary.textContent = entry ? `Szenario: ${label} · ${wealth} · ${euroBasisLabel(mode)}` : 'Szenario: Keine Auswahl';
             summary.title = exactWealth === null ? wealth : formatCurrency(exactWealth);
         }
         const basis = doc.getElementById('scenarioListBasis');
-        if (basis) basis.textContent = `Endvermögen · ${mode === 'real' ? 'heutige Euro' : 'nominal'} · Auswahl nach nominalem Rang oder Gruppenmerkmal`;
+        if (basis) basis.textContent = `Endvermögen · ${euroBasisLabel(mode)}`;
+        const pathsHeading = doc.getElementById('scenarioPathsHeading');
+        if (pathsHeading) pathsHeading.textContent = `Ausgewählte Szenarien · ${euroBasisLabel(mode)}`;
         const heading = doc.getElementById('scenarioSelectedHeading');
         const events = entry ? scenarioLifeEvents(entry.scenario, chartOptions.startYear, chartOptions.personDisplayContext) : [];
-        if (heading) heading.innerHTML = entry ? `<p class="scenario-selected-eyebrow">Ausgewählt · Nach ${groups.find(([key]) => key === activeGroup)[1]}</p><strong class="scenario-selected-title">${escape(label)} · <span title="${escape(exactWealth === null ? wealth : formatCurrency(exactWealth))}"${entry.scenario.failed ? ' class="is-ruin"' : ''}>${escape(wealth)}</span></strong>${events.length ? `<div class="scenario-selected-events">${renderPersonMarks(events)}</div>` : ''}<div class="scenario-selected-meta"><span>Startjahr: ${Number.isInteger(chartOptions.startYear) ? chartOptions.startYear : 'unbekannt'}</span><span>${entry.scenario.logDataRows?.length || 0} Logzeilen</span><span>${mode === 'real' ? 'heutige Euro' : 'nominale Euro'}</span></div>` : '<strong>Ausgewählt: Kein Szenario</strong>';
+        if (heading) heading.innerHTML = entry ? `<p class="scenario-selected-eyebrow">Ausgewählt · Nach ${groups.find(([key]) => key === activeGroup)[1]}</p><strong class="scenario-selected-title">${escape(label)} · <span title="${escape(exactWealth === null ? wealth : formatCurrency(exactWealth))}"${entry.scenario.failed ? ' class="is-ruin"' : ''}>${escape(wealth)}</span></strong>${events.length ? `<div class="scenario-selected-events">${renderPersonMarks(events)}</div>` : ''}<div class="scenario-selected-meta"><span>Startjahr: ${Number.isInteger(chartOptions.startYear) ? chartOptions.startYear : 'unbekannt'}</span><span>${entry.scenario.logDataRows?.length || 0} Logzeilen</span><span>${euroBasisLabel(mode)}</span></div>` : '<strong>Ausgewählt: Kein Szenario</strong>';
         const items = activeItems(), position = items.findIndex(item => item.id === selectedId);
         for (const [id, offset, direction, neutral] of [
             ['scenarioPrevious', -1, 'Vorheriges', '‹ Vorheriges'],
@@ -194,8 +192,8 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
             if (!button) continue;
             const neighbor = position >= 0 ? items[position + offset] : null;
             button.disabled = !neighbor;
-            button.textContent = neighbor ? offset < 0 ? `‹ ${neighbor.scenario.label}` : `${neighbor.scenario.label} ›` : neutral;
-            button.setAttribute('aria-label', neighbor ? `${direction}: ${neighbor.scenario.label}` : direction);
+            button.textContent = neighbor ? offset < 0 ? `‹ ${scenarioLabel(neighbor.scenario)}` : `${scenarioLabel(neighbor.scenario)} ›` : neutral;
+            button.setAttribute('aria-label', neighbor ? `${direction}: ${scenarioLabel(neighbor.scenario)}` : direction);
         }
         drawChart();
         drawComparison();
@@ -306,11 +304,9 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
             target?.scrollIntoView?.({ block: 'start' });
         }
     });
-    for (const id of ['mcWealthMode']) listen(doc.getElementById(id), 'click', event => {
-        const next = event.target?.closest?.('[data-wealth-mode]')?.getAttribute('data-wealth-mode');
-        if (!['real', 'nominal'].includes(next) || next === mode) return;
+    cleanup.push(bindEuroMode(doc, doc.getElementById('mcWealthMode'), next => {
         mode = next; draw(); onMode(mode);
-    });
+    }));
     const binding = {
         choose, switchGroup,
         focusSelected: () => { if (disclosure) disclosure.open = true; focusOption(selectedId, { preventScroll: false }); },
@@ -323,7 +319,6 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
     };
     bindings.set(doc, binding);
     if (groupHost) groupHost.innerHTML = '';
-    onMode(mode);
     choose(selectedId);
     return binding;
 }

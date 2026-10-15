@@ -1,4 +1,5 @@
-import { quantile, formatCurrency } from './simulator-utils.js';
+import { quantile } from './simulator-utils.js';
+import { formatWholeEuro as formatCurrency } from './results-formatting.js';
 import { escapeProtocolHtml as escape } from './protocol-renderer.js';
 import { WEALTH_SCENARIO_COLORS } from './scenario-wealth-chart.js';
 import { formatChartEuro } from './results-formatting.js';

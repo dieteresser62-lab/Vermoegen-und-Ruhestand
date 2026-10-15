@@ -5,6 +5,8 @@ import { createProtocolPersonContext } from './protocol-columns.js';
 import { projectMinimumFlexDisplay } from './results-metrics.js';
 import { renderProtocolSummary } from './protocol-renderer.js';
 import { renderBacktestAnalysis } from './backtest-log-analysis.js';
+import { bindEuroMode, getEuroMode, resetEuroMode } from './euro-display.js';
+import { backtestEuroBasis, backtestStartYear, projectBacktestEuroMetrics } from './backtest-euro-display.js';
 "use strict";
 
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
@@ -69,6 +71,7 @@ let nextBacktestGeneration = 1;
 let backtestRevision = 0;
 const invalidatedHouseholds = new WeakSet();
 const backtestRegistrations = new WeakMap();
+const euroBindings = new WeakMap();
 // Die Herkunft gehört zur veröffentlichten Instanz, nicht zur nächsten Vorbereitung.
 const hasBacktestResult = () => ['completed', 'ruin'].includes(window.globalBacktestData?.result?.outcome?.kind)
     && window.globalBacktestData?.automatic !== true;
@@ -110,17 +113,18 @@ function canonicalAttribute(value) {
     return escapeBacktestHtml(String(value));
 }
 
-function summaryItem({ label, displayValue, rawValue, metricId = null, resultField = null, className = '', compact = false }) {
+function summaryItem({ label, displayValue, rawValue, displayRawValue = rawValue, otherBasisLine = '', metricId = null, resultField = null, className = '', compact = false }) {
     const attributes = [
         metricId ? `data-metric-id="${escapeBacktestHtml(metricId)}"` : '',
         resultField ? `data-result-field="${escapeBacktestHtml(resultField)}"` : '',
-        `data-canonical-value="${canonicalAttribute(rawValue)}"`
+        `data-canonical-value="${canonicalAttribute(rawValue)}"`,
+        `data-display-value="${canonicalAttribute(displayRawValue)}"`
     ].filter(Boolean).join(' ');
     // Visuell ganze Euro; Hilfstechnik liest ausschließlich den präzisen Geldbetrag.
-    const valueMarkup = metricId?.endsWith('_eur') && Number.isFinite(rawValue)
-        ? `<span aria-hidden="true">${escapeBacktestHtml(displayValue)}</span><span class="ds-visually-hidden">${escapeBacktestHtml(formatCurrency(rawValue))}</span>`
+    const valueMarkup = metricId?.endsWith('_eur') && Number.isFinite(displayRawValue)
+        ? `<span aria-hidden="true">${escapeBacktestHtml(displayValue)}</span><span class="ds-visually-hidden">${escapeBacktestHtml(formatCurrency(displayRawValue))}</span>`
         : `<span>${escapeBacktestHtml(displayValue)}</span>`;
-    return `<div class="summary-item ds-card ds-metric${compact ? ' sim-metric-row' : ''} ${escapeBacktestHtml(className)}" ${attributes}><strong>${escapeBacktestHtml(label)}</strong>${valueMarkup}</div>`;
+    return `<div class="summary-item ds-card ds-metric${compact ? ' sim-metric-row' : ''} ${escapeBacktestHtml(className)}" ${attributes}><strong>${escapeBacktestHtml(label)}</strong>${valueMarkup}${otherBasisLine ? `<small class="sim-other-basis">${escapeBacktestHtml(otherBasisLine)}</small>` : ''}</div>`;
 }
 
 function summaryPair(label, parts) {
@@ -133,10 +137,21 @@ function currencyOrDash(value) {
         ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value) : '—';
 }
 
-function renderBacktestSummary(result) {
+function renderBacktestSummary(result, moneyBasis = getEuroMode(document)) {
     const summaryElement = document.getElementById('simulationSummary');
     if (!summaryElement) return;
     const metrics = result?.metrics?.values || {};
+    const bases = projectBacktestEuroMetrics(result);
+    const display = bases[moneyBasis];
+    const otherBasisLine = id => {
+        const other = bases[moneyBasis === 'real' ? 'nominal' : 'real'][id];
+        const label = moneyBasis === 'real' ? 'nominal' : `in Kaufkraft von ${backtestStartYear(result) ?? 'Laufstart'}`;
+        return `${label} ${Number.isFinite(other) ? `etwa ${currencyOrDash(other)}` : 'unbekannt'}`;
+    };
+    const moneyItem = (label, id, compact = false) => summaryItem({ label,
+        displayValue: currencyOrDash(display[id]), displayRawValue: display[id], rawValue: metrics[id], metricId: id,
+        compact, otherBasisLine: compact ? '' : otherBasisLine(id) });
+    const moreOpen = summaryElement.querySelector?.('.sim-backtest-more-metrics')?.open;
     const healthBucket = result?.summary?.healthBucket || {};
     const outcome = result?.outcome?.kind || 'technical_error';
     const outcomeLabel = {
@@ -154,10 +169,10 @@ function renderBacktestSummary(result) {
         ? `${metrics.flex_reduction_years_gte_10_pct ?? '—'} von ${result.completedYears ?? '—'} Jahren`
         : restriction.valid ? `${restriction.count} von ${restriction.observationCount} Jahren · ${restriction.value}` : '—';
     summaryElement.innerHTML = `<div class="summary-grid sim-backtest-primary">
-        ${summaryItem({ label: 'Endvermögen', displayValue: currencyOrDash(metrics.wealth_end_nominal_eur), rawValue: metrics.wealth_end_nominal_eur, metricId: 'wealth_end_nominal_eur' })}
-        ${summaryItem({ label: 'Gesamte Entnahmen', displayValue: currencyOrDash(metrics.withdrawal_total_nominal_eur), rawValue: metrics.withdrawal_total_nominal_eur, metricId: 'withdrawal_total_nominal_eur' })}
+        ${moneyItem('Endvermögen', 'wealth_end_nominal_eur')}
+        ${moneyItem('Gesamte Entnahmen', 'withdrawal_total_nominal_eur')}
         <div class="summary-item ds-card ds-metric"><strong>${escapeBacktestHtml(restriction.title)}</strong><span>${escapeBacktestHtml(restrictionValue)}</span><small class="summary-description">${escapeBacktestHtml(restriction.legacy ? restriction.basisNote : restriction.valid ? '' : restriction.reason)}</small></div>
-    </div><details class="ds-disclosure sim-backtest-more-metrics"><summary class="ds-disclosure-toggle"><span>Weitere Kennzahlen</span><span class="ds-slider" aria-hidden="true"></span></summary><div class="sim-metric-list sim-backtest-supplementary">
+    </div><details class="ds-disclosure sim-backtest-more-metrics"${moreOpen ? ' open' : ''}><summary class="ds-disclosure-toggle"><span>Weitere Kennzahlen</span><span class="ds-slider" aria-hidden="true"></span></summary><div class="sim-metric-list sim-backtest-supplementary">
         ${summaryItem({ label: 'Ergebnis', displayValue: outcomeLabel, rawValue: outcome, resultField: 'outcome', compact: true })}
         ${summaryPair('Startjahr · Endjahr', [
             { field: 'period_start', display: result.request?.startYear ?? '—', raw: result.request?.startYear, title: 'Startjahr' },
@@ -168,14 +183,14 @@ function renderBacktestSummary(result) {
             { field: 'completed_years', display: result.completedYears ?? '—', raw: result.completedYears, title: 'Wirtschaftlich ausgewertete Jahre' }
         ])}
         ${summaryItem({ label: 'Jahreszeilen', displayValue: result.rows?.length ?? 0, rawValue: result.rows?.length ?? 0, resultField: 'row_count', compact: true })}
-        ${summaryItem({ label: 'Startvermögen', displayValue: currencyOrDash(metrics.wealth_start_nominal_eur), rawValue: metrics.wealth_start_nominal_eur, metricId: 'wealth_start_nominal_eur', compact: true })}
+        ${moneyItem('Startvermögen', 'wealth_start_nominal_eur', true)}
         ${summaryItem({ label: 'Max. Kürzungsdauer (≥ 10 %)', displayValue: `${metrics.flex_reduction_longest_streak_gte_10_pct ?? '—'} Jahre`, rawValue: metrics.flex_reduction_longest_streak_gte_10_pct, metricId: 'flex_reduction_longest_streak_gte_10_pct', compact: true })}
         ${summaryItem({ label: 'Jahre mit Kürzung (≥ 10 %)', displayValue: `${metrics.flex_reduction_years_gte_10_pct ?? '—'} von ${result.completedYears ?? '—'}`, rawValue: metrics.flex_reduction_years_gte_10_pct, metricId: 'flex_reduction_years_gte_10_pct', compact: true })}
-        ${summaryItem({ label: 'Gezahlte Steuern', displayValue: currencyOrDash(metrics.tax_total_nominal_eur), rawValue: metrics.tax_total_nominal_eur, metricId: 'tax_total_nominal_eur', compact: true })}
-        ${summaryItem({ label: healthBucket.enabled ? 'Pflegebucket am Laufende (im Endvermögen enthalten)' : 'Pflegebucket am Laufende (deaktiviert; im Endvermögen enthalten)', displayValue: currencyOrDash(metrics.health_bucket_end_nominal_eur), rawValue: metrics.health_bucket_end_nominal_eur, metricId: 'health_bucket_end_nominal_eur', compact: true })}
+        ${moneyItem('Gezahlte Steuern', 'tax_total_nominal_eur', true)}
+        ${moneyItem(healthBucket.enabled ? 'Pflegebucket am Laufende (im Endvermögen enthalten)' : 'Pflegebucket am Laufende (deaktiviert; im Endvermögen enthalten)', 'health_bucket_end_nominal_eur', true)}
         ${summaryPair('Pflegereserve: Zieldeckung · Lücke', [
             { field: 'health_bucket_coverage_pct', display: healthCoverage, raw: healthBucket.realCoveragePct, title: 'Pflegebucket-Zieldeckung' },
-            { field: 'health_bucket_target_gap', display: currencyOrDash(healthBucket.targetGap), raw: healthBucket.targetGap, title: 'Pflegebucket-Ziellücke' }
+            { field: 'health_bucket_target_gap', display: currencyOrDash(display.health_bucket_target_gap), raw: healthBucket.targetGap, title: `Pflegebucket-Ziellücke · ${backtestEuroBasis(result, moneyBasis)}` }
         ])}
     </div></details>`;
 }
@@ -347,13 +362,13 @@ function executeBacktest(options = {}) {
         });
 
         if (['completed', 'ruin'].includes(backtestResult.outcome?.kind)) {
+            resetEuroMode(document);
             invalidatedHouseholds.delete(document);
             setBacktestResultsVisible(true);
             setBacktestExportEnabled(true);
-            renderBacktestSummary(backtestResult);
             renderHistoricalBacktestContext(document, backtestResult);
             renderBacktestLog();
-            renderBacktestAnalysis(document, window.globalBacktestData);
+            renderBacktestEuroResults();
             completeOverviewRun('backtest', overviewToken, backtestResult);
             if (generation === backtestGeneration && simulatorRunAssumptions.read('backtest').last?.metadata === overviewToken.metadata) {
                 void (dependencies.completeSimulationSummary || completeSimulationSummary)(summaryContext, backtestResult, {},
@@ -451,18 +466,21 @@ export function renderBacktestLog() {
     const { rows: logRows } = window.globalBacktestData;
     const columns = buildBacktestColumnDefinitions(logDetailLevel, {
         display: true,
+        moneyBasis: getEuroMode(document),
         strategyMode: window.globalBacktestData?.decumulationMode,
         personDisplayContext: window.globalBacktestData?.personDisplayContext,
         goldAktiv: window.globalBacktestData?.goldAktiv
     });
 
-    document.getElementById('simulationLog').innerHTML = buildAccessibleBacktestTableHtml(
+    const logElement = document.getElementById('simulationLog');
+    if (logElement) logElement.innerHTML = buildAccessibleBacktestTableHtml(
         logRows,
         columns,
         formatColumnValue,
         { startYear: window.globalBacktestData.result?.request?.startYear ?? window.globalBacktestData.startJahr,
             inputs: window.globalBacktestData.result?.request?.inputs,
-            personDisplayContext: window.globalBacktestData?.personDisplayContext }
+            personDisplayContext: window.globalBacktestData?.personDisplayContext,
+            moneyBasis: getEuroMode(document) }
     );
     const protocolSummary = document.getElementById('backtestProtocolSummary');
     if (protocolSummary) {
@@ -471,16 +489,42 @@ export function renderBacktestLog() {
         protocolSummary.innerHTML = renderProtocolSummary(logRows, {
             personDataContext: window.globalBacktestData.personDataContext,
             source: 'backtest', outcome: window.globalBacktestData.result?.outcome,
-            endWealth: window.globalBacktestData.result?.metrics?.values?.wealth_end_nominal_eur,
-            subtitle: `${window.globalBacktestData.result?.request?.startYear ?? '—'}–${window.globalBacktestData.result?.request?.endYear ?? '—'} · ${logRows.length} Jahreszeilen · nominale Euro`
+            moneyBasis: getEuroMode(document),
+            endWealth: projectBacktestEuroMetrics(window.globalBacktestData.result)[getEuroMode(document)].wealth_end_nominal_eur,
+            subtitle: `${window.globalBacktestData.result?.request?.startYear ?? '—'}–${window.globalBacktestData.result?.request?.endYear ?? '—'} · ${logRows.length} Jahreszeilen · ${backtestEuroBasis(window.globalBacktestData.result, getEuroMode(document))}`
         });
     }
+    renderBacktestChart();
+}
+
+function renderBacktestChart() {
+    const data = window.globalBacktestData;
+    if (!data?.result) return;
+    const moneyBasis = getEuroMode(document);
     const chartContainer = document.getElementById('portfolioCompositionChart');
     if (chartContainer) {
         chartContainer.style.display = 'block';
-        renderThreeBucketPortfolioChart(chartContainer, logRows, { analysisData: window.globalBacktestData,
+        chartContainer.setAttribute?.('aria-label', `Portfolioverlauf des Backtests, ${backtestEuroBasis(data.result, moneyBasis)}, ohne Pflegebucket; horizontal scrollbar`);
+        renderThreeBucketPortfolioChart(chartContainer, data.rows, { analysisData: data, result: data.result, moneyBasis,
             annotationToggle: document.getElementById('backtestChartAnnotations') });
     }
+}
+
+/** Der Euro-Wechsel projiziert nur Anzeigen und startet keinen Backtest. */
+export function renderBacktestEuroResults() {
+    const result = window.globalBacktestData?.result;
+    const moneyBasis = getEuroMode(document);
+    const basis = backtestEuroBasis(result, moneyBasis);
+    for (const [id, text] of [['backtestResultHeading', `Kennzahlen · ${basis}`],
+        ['backtestChartHeading', `Portfolioverlauf · ${basis}`],
+        ['backtestLogHeading', `Backtest-Protokoll · ${basis}`]]) {
+        const element = document.getElementById(id);
+        if (element) element.textContent = text;
+    }
+    if (!result || !['completed', 'ruin'].includes(result.outcome?.kind)) return;
+    renderBacktestSummary(result, moneyBasis);
+    renderBacktestLog();
+    renderBacktestAnalysis(document, window.globalBacktestData, { moneyBasis });
 }
 
 /**
@@ -570,6 +614,8 @@ function clearBacktestFieldError(fieldId, errorId) {
  */
 export function initializeBacktestUI() {
     backtestNavigationRegistration();
+    euroBindings.get(document)?.();
+    euroBindings.set(document, bindEuroMode(document, document.getElementById('backtestWealthMode'), renderBacktestEuroResults));
     configureHistoricalBacktestControls(document, HISTORICAL_BACKTEST_PROVIDER);
     setBacktestExportEnabled(Boolean(window.globalBacktestData?.result));
 

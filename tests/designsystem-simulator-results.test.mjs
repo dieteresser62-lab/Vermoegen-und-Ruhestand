@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { prepareMonteCarloViewModel, buildSummaryData } from '../app/simulator/results-metrics.js';
 import { buildMonteCarloOutcomeInventoryV1 } from '../app/simulator/monte-carlo-chunk-result.js';
 import { renderKpiCard, renderKpiDashboard, renderSummary } from '../app/simulator/results-renderers.js';
@@ -54,8 +53,8 @@ import { STRATEGY_OPTIONS } from '../types/strategy-options.js';
     }
 }
 
-// Synthetische Eingaben; Digests stammen vom Basiscommit a7fcdfc7.
-// Bestehende Digests bleiben erhalten. Nur NBSP in formatierten value-Feldern wird vor Prozent-/Zeiteinheiten zurückgeführt; Fachwerte und Gründe bleiben vollständig geschützt; die R8-Projektion benennt jeden erlaubten Ton einzeln.
+// Synthetische Eingaben für Tonalität, Geldbasis und unveränderte Rohdaten.
+// EU-1 ersetzt die früheren Präsentationsdigests durch sichtbare Feldverträge.
 export const fixtures = [
     ...[0, 1, 50, 100].map(floorCoveragePct => ({
         results: { outcomeInventory: buildMonteCarloOutcomeInventoryV1({ requestedRuns: 1000, ruin: 1000 - floorCoveragePct * 10, all_dead: 0, horizon_exhausted: floorCoveragePct * 10, technical_error: 0 }) },
@@ -76,126 +75,6 @@ export const fixtures = [
         heatmap: [[1, 2]], bins: [0, 1, 2]
     }, totalRuns: 1000, failCount: 100, inputs: { pflegefallLogikAktivieren: true } }
 ];
-const baselineDigests = ["97ec246702c6c6b14dd99d896dc4409ded4d6c65fdd650b82541216f319ed33e","4e44212a0221373f61729121c3b415aff06490d443789df502c12d45079caca8","b40258dbb724686f5e56b9e4dab05ba8b4f33542dbba353f428e412a6e70910f","5d74e466c2ccf7d79c3690f3aae5557c0f6cbf2dace6da0f398c4536fe89140a","e2e406534bfc9d150922e7747d005dee899c88c0a3d34d5cfd48e7103e18a985","2b2db99f02c6833e2c40a0b9a6c67e62f22142dac91f6dabb942220738b7af77","d42b5d182f884d198d7305128f5ef701732629bcc20a388c8e1ced2775ac7085","b647474e5e4c15364efdc5a63b5f17e71acb5c3eac74b170971889c75ef8c46d"];
-// Nur diese Karten dürfen gegenüber den unveränderten Basisdigests neutral werden.
-const r8Tones = {
-    primary: [['Reale Depotentnahme P10', 'danger']],
-    drawdownKpis: [['Max. Drawdown nominal (Median)', 'warning'], ['Max. Drawdown real (Median)', 'warning'],
-        ['Max. Drawdown nominal (P90)', 'danger'], ['Max. Drawdown real (P90)', 'danger']],
-    stress: [['Max. Drawdown (Median, Stress)', 'warning'], ['Max. Drawdown (P90, Stress)', 'danger'],
-        ['Reale Depotentnahme P10 (Stress)', 'danger']]
-};
-const approvedEditorialChanges = [
-    [
-        "vorsorglich nicht ausgewiesen; die Endzustände bleiben sichtbar.",
-        "fail-closed nicht ausgewiesen; das Outcome-Inventar bleibt sichtbar."
-    ],
-    [
-        "Anteil Tod plus Horizontende an",
-        "Anteil all_dead plus horizon_exhausted an"
-    ],
-    [
-        "Endzustände",
-        "Terminale Outcomes"
-    ],
-    [
-        "der Anzahl Läufe",
-        "der Runzahl"
-    ],
-    [
-        "Ruin oder",
-        "Ruin (`isRuin`) oder"
-    ],
-    [
-        "Pflegereserve zählen",
-        "Pflegebucket zählen"
-    ],
-    [
-        "Median der Lauf-P10",
-        "Median der Run-P10"
-    ],
-    [
-        "laufbasierten",
-        "runbasierten"
-    ]
-];
-const displayBaseline = value => {
-    const copy = JSON.parse(JSON.stringify(value, (key, field) => key === 'value' && typeof field === 'string' ? field.replace(/\u00a0(?=%|Jahre|Monate)/g, ' ') : field));
-    for (const [cards, allowed] of [[copy.kpiDashboard.primary, r8Tones.primary],
-        [copy.kpiDashboard.drawdownKpis, r8Tones.drawdownKpis], [copy.stressMetrics?.kpis, r8Tones.stress]]) {
-        if (!cards) continue;
-        for (const [title, previousTone] of allowed) {
-            const matches = cards.filter(card => card.title === title);
-            assertEqual(matches.length, 1, `R8-Karte eindeutig vorhanden: ${title}`);
-            assertEqual(matches[0].tone, 'default', `R8-Ton direkt neutral: ${title}`);
-            const html = renderKpiCard(matches[0]);
-            assert(!/is-green|is-amber|is-red/.test(html), `Tatsächliches R8-Markup neutral: ${title}`);
-            matches[0].tone = previousTone;
-        }
-    }
-    // Neue reine Darstellungsfelder sind separat gegen das Inventar geprüft.
-    for (const card of copy.summaryCards) {
-        for (const key of ['displayRole', 'displayValue', 'intervalText', 'requestedRuns', 'outcomes', 'countText']) delete card[key];
-    }
-    // LR-4 kürzt nur die Erklärung der gerundeten Anzeige; die genauen Werte bleiben hashrelevant.
-    const summaryDescriptions = {
-        'Median (alle)': ['Typisches Endvermögen über alle finanziell auswertbaren Läufe.', ' Centgenaue Anzeige ohne Tausenderstufen; zusätzliche Nachkommastellen werden als Nutzenwert konservativ abgerundet.'],
-        'Median (erfolgreiche)': ['Median des Endvermögens aller erfolgreichen Läufe.', ' Centgenaue Anzeige ohne Tausenderstufen; zusätzliche Nachkommastellen werden als Nutzenwert konservativ abgerundet.'],
-        '10%/90% Perzentil': ['Spannweite der Endvermögen zwischen konservativem P10 und optimistischem P90.', ' Beide Nutzenwerte werden centgenau ohne Tausenderstufen angezeigt; zusätzliche Nachkommastellen werden konservativ abgerundet.'],
-        'Median Steuern': ['Median der kumulierten nominalen Steuerzahlungen.', 'Centgenauer Median der kumulierten nominalen Steuerzahlungen. Zusätzliche Nachkommastellen werden als Kostenwert konservativ aufgerundet.']
-    };
-    for (const card of copy.summaryCards) {
-        const approved = summaryDescriptions[card.title];
-        if (!approved) continue;
-        assertEqual(card.description, approved[0], 'LR-4 ändert nur den Anzeigetext: ' + card.title);
-        card.description = card.title === 'Median Steuern' ? approved[1] : approved.join('');
-    }
-    // SIM-1 ergänzt nur sichtbare Geldbasen; die vorhandenen Fachwerte bleiben im Digest.
-    for (const [cards, title, expected] of [
-        [copy.kpiDashboard.primary, 'Reale Depotentnahme P10', 'heutige Euro · unabhängig vom Euro-Schalter'],
-        [copy.kpiDashboard.primary, 'Ø Steuerersparnis Verlustvortrag', 'nominal · unabhängig vom Euro-Schalter'],
-        [copy.stressMetrics?.kpis, 'Reale Depotentnahme P10 (Stress)', 'heutige Euro · unabhängig vom Euro-Schalter']
-    ]) {
-        const card = cards?.find(card => card.title === title);
-        if (card) { assertEqual(card.priceBasis, expected, 'SIM-1 kennzeichnet die feste Geldbasis: ' + title); delete card.priceBasis; }
-    }
-    for (const card of copy.careMetrics?.cards || []) {
-        assert(['', 'heutige Euro · unabhängig vom Euro-Schalter', 'nominal · unabhängig vom Euro-Schalter'].includes(card.priceBasis), 'SIM-1 Pflegekarte nennt ihre Geldbasis');
-        delete card.priceBasis;
-    }
-    // FR-6/D18 ändern die Darstellung dieser Legacy-Karte; Rohwert bleibt hashrelevant.
-    const legacyFlexCard = copy.kpiDashboard.primary.find(card => card.title === 'mehr als 10 % unter Wunsch-Flex');
-    assert(legacyFlexCard, 'FR-6-Legacy-Karte ist ausdrücklich beschriftet');
-    assert(legacyFlexCard.tooltip.includes('einschließlich genau 10 %'), 'FR-6-Legacy-Karte erklärt unveränderte inklusive Altgrenze');
-    assertEqual(legacyFlexCard.description, 'Anteil der Entnahmejahre mit Flex-Kürzung ab 10 %.', 'D18-Legacy-Karte zeigt nur den kompakten Erklärungssatz');
-    // Das Viewmodell enthält keine Rohpopulation; Stichprobengröße aus dem geprüften Beschreibungssatz lesen.
-    const observedRuns = /Stichprobe: (\d+) Läufe/.exec(legacyFlexCard.tooltip)?.[1] || '0';
-    assertEqual(legacyFlexCard.tooltip, `Älteres Ergebnis: ältere Grundlage ohne Mindest-Flex-Messung. Medianer Anteil abgeschlossener Dekumulationsjahre mit mindestens 10 % Wunsch-Kürzung (einschließlich genau 10 %). Stichprobe: ${observedRuns} Läufe.`, 'Nur die freigegebene FR-6-Legacy-Erklärung wird im Altvergleich zurückgeführt');
-    assertEqual(legacyFlexCard.layout, 'exact-risk', 'FR-6-Zentralwert erhält vollständige Exaktwertdarstellung');
-    assertEqual(legacyFlexCard.decisionCritical, true, 'FR-6-Zentralwert bleibt im einfachen Modus sichtbar');
-    assertEqual(legacyFlexCard.displayRole, 'restriction', 'LR-4 kennzeichnet allein die doppelte Einschränkungszeile');
-    delete legacyFlexCard.displayRole;
-    legacyFlexCard.title = 'Anteil Kürzungsjahre (≥ 10 %)';
-    legacyFlexCard.description = `Medianer Anteil erfolgreich abgeschlossener Dekumulationsjahre mit Flex-Kürzung von mindestens 10 %; Nenner sind abgeschlossene Dekumulationsjahre mit endlicher Kürzungsentscheidung. Stichprobe: ${observedRuns} Läufe.`;
-    delete legacyFlexCard.layout; delete legacyFlexCard.decisionCritical; delete legacyFlexCard.tooltip;
-    const restoreText = item => {
-        if (Array.isArray(item)) return item.map(restoreText);
-        if (item && typeof item === 'object') return Object.fromEntries(Object.entries(item).map(([key, field]) =>
-            [key, ['title', 'description', 'secondaryLabel'].includes(key) && typeof field === 'string'
-                ? approvedEditorialChanges.filter(([current]) => current === 'Endzustände' ? key === 'title' : current === 'Ruin oder' ? key === 'description' : true).reduce((text, [current, previous]) => text.replaceAll(current, previous), field)
-                : restoreText(field)]));
-        return item;
-    };
-    // Einzige monetäre Änderung in diesen acht Fixtures: Pflegekosten P1,
-    // 123456.789 -> vollständige 123.457 € statt bisheriger Tausenderstufe.
-    const careCard = copy.careMetrics?.cards.find(card => card.title === 'Realer Pflege-Mehrbedarf P1 (Median)');
-    if (careCard) {
-        assertEqual(careCard.value, '123.457 €', 'Freigegebene Ganz-Euro-Karte erhält volle Gruppierung');
-        careCard.value = '120.000 €';
-    }
-    return restoreText(copy);
-};
-const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const previousDocument = globalThis.document;
 globalThis.document = { body: { classList: { contains: () => false } } };
 try {
@@ -203,7 +82,14 @@ try {
     for (const [index, fixture] of fixtures.entries()) {
         const before = JSON.stringify(fixture);
         const vm = prepareMonteCarloViewModel(fixture);
-        assertEqual(digest(displayBaseline(vm)), baselineDigests[index], `Vollständiges Viewmodell mit einzeln erlaubter Text-/Anzeigeprojektion, unveränderten Rohdaten und R8-Tönen: Fall ${index + 1}`);
+        const real = prepareMonteCarloViewModel({ ...fixture, moneyBasis: 'real' });
+        assertEqual(JSON.stringify(vm.kpiDashboard.drawdownKpis), JSON.stringify(real.kpiDashboard.drawdownKpis), 'Euro-Basis verändert keine Drawdown-Prozente');
+        for (const card of [...vm.kpiDashboard.primary.filter(card => card.displayRole === 'withdrawal'), ...vm.kpiDashboard.drawdownKpis,
+            ...vm.stressMetrics?.kpis.filter(card => /Drawdown|schwachen Jahren/.test(card.title)) || []]) {
+            assertEqual(card.tone, 'default', 'Entnahme und Drawdown bleiben neutral');
+            assert(!/is-green|is-amber|is-red/.test(renderKpiCard(card)), 'Erzeugte Karten bleiben neutral');
+        }
+        for (const card of vm.careMetrics?.cards || []) assert(['', 'nominale Euro'].includes(card.priceBasis), 'Pflegekarte nennt die gewählte Geldbasis');
         assertEqual(JSON.stringify(fixture), before, 'Darstellung verändert keine Rohdaten');
         assertEqual(vm.summaryCards[0].tone, index < 4 || index === 7 ? 'default' : 'warning', 'Floor-Warnbedingungen unverändert; vorhandene warnungsfreie Deckung neutral');
         const summary = { innerHTML: '' };

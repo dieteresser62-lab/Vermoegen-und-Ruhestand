@@ -62,7 +62,7 @@ export function analyzeLogEvents(context) {
         return event;
     };
     const addAmount = (type, item, nominal, sourceKeys, evidence = {}, extra = {}) => add(type, item,
-        { ...evidence, amount: moneyValue(nominal, item, moneyBasis) }, sourceKeys, extra);
+        { ...evidence, amount: moneyValue(nominal, item, moneyBasis, { yearStart: context.kind === 'monte_carlo' }) }, sourceKeys, extra);
 
     const minimumFlex = deriveMinimumFlexPath(financial.map(item => item.row));
     for (const item of rows) {
@@ -86,9 +86,12 @@ export function analyzeLogEvents(context) {
         const value = readMinimumFlexYear(item.row);
         return value && !value.missing ? { value: value.below ? 1 : 0,
             minimumNominalEur: item.row.minimumFlexAnnual, paidNominalEur: value.paid,
-            shortfallNominalEur: Math.max(0, item.row.minimumFlexAnnual - value.paid) } : null;
+            shortfallNominalEur: Math.max(0, item.row.minimumFlexAnnual - value.paid),
+            shortfallRealEur: moneyValue(Math.max(0, item.row.minimumFlexAnnual - value.paid), item, 'real', { yearStart: context.kind === 'monte_carlo' }).valueEur } : null;
     })) add('below_minimum_flex_phase', phase.first, { ...phaseEvidence(phase),
         maximumShortfallNominalEur: Math.max(...phase.observations.map(value => value.shortfallNominalEur)),
+        maximumShortfallRealEur: phase.observations.every(value => finite(value.shortfallRealEur))
+            ? Math.max(...phase.observations.map(value => value.shortfallRealEur)) : null,
         comparison: 'paid_household_flex_lt_applied_positive_minimum' }, ['minimum']);
     if (minimumFlex.missingReason === null && minimumFlex.affectedYearCount === 0)
         add('minimum_flex_held', financial[0], { years: financial.length, comparison: 'FR-6' }, ['minimum']);
@@ -166,6 +169,7 @@ export function analyzeLogEvents(context) {
     if (realSeries.length) {
         const low = realSeries.reduce((best, item) => item.realWealthEur < best.realWealthEur ? item : best);
         add('minimum_real_year_end_wealth', low, { amountRealEur: low.realWealthEur,
+            amount: moneyValue(low.nominalWealthEur, low, moneyBasis),
             observedFinancialYears: realSeries.length, missingFinancialYears: financial.length - realSeries.length,
             includesHealthReserve: true, basis: 'year_end_purchasing_power_at_run_start' }, ['wealth', 'inflation']);
     }
@@ -180,7 +184,8 @@ export function analyzeLogEvents(context) {
         }
         if (!item.financial || item.realWealthEur === null || item.year === null) { priorReal = null; continue; }
         if (peak !== null && item.realWealthEur < peak && !underwater)
-            underwater = { fromYear: item.year, peakYear, targetRealEur: peak };
+            underwater = { fromYear: item.year, peakYear, targetRealEur: peak,
+                targetNominalEur: peakYear === 'start' ? context.initialWealthEur : financial.find(row => row.year === peakYear)?.nominalWealthEur ?? null };
         if (peak === null || item.realWealthEur >= peak) {
             if (underwater) add('real_wealth_recovery', item, { ...underwater,
                 durationToRecoveryYears: item.year - underwater.fromYear + 1 }, ['wealth', 'inflation']);

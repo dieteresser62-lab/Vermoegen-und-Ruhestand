@@ -22,11 +22,11 @@ assertEqual(answer.value, '16,7 % der Jahre', 'FR-6 zeigt Laufmedian 16,7 %, ke
 assertEqual(answer.metrics[0].value, '16,7 %', 'Jahresanteil steht im ersten gleichwertigen Wertfeld');
 assertEqual(answer.metrics[1].value, '50,0 %', 'Betroffene Läufe stehen im zweiten gleichwertigen Wertfeld');
 assert(answer.subtitle.includes('unter Mindest-Flex'), 'Kernfrage wird sichtbar auf Mindest-Flex eingegrenzt');
-for (const text of ['30.000', 'jährlich fortgeschrieben', '50,0', '32.500', '45.000', '29.000', 'Nominale Jahresbeträge'])
+for (const text of ['30.000', 'jährlich fortgeschrieben', '50,0', '32.500', '45.000', '29.000', 'Jahresbeträge · nominale Euro'])
     assert(answer.tooltip.includes(text), 'Eingefrorene Erklärung enthält ' + text);
 assert(answer.text.includes('dein Flex unter deinem Mindest-Flex'), 'Wunsch-Kürzung ersetzt keine Mindest-Unterschreitung');
-assertEqual(answer.text, 'In typisch 16,7 % der Entnahmejahre liegt dein Flex unter deinem Mindest-Flex von 30.000 €.', 'Positive Mindest-Flex-Antwort bleibt genau ein Satz');
-assertEqual(answer.note, 'Nominale Jahresbeträge · Typisch 32.500 € von 45.000 € Wunsch-Flex laut Plan · schwächstes Jahr 29.000 €', 'Kurze Notiz enthält Geldbasis, Planbezug und Beträge');
+assertEqual(answer.text, 'In typisch 16,7 % der Entnahmejahre liegt dein Flex unter deinem Mindest-Flex (zum Laufstart 30.000 €).', 'Positive Mindest-Flex-Antwort bleibt genau ein Satz');
+assertEqual(answer.note, 'Jahresbeträge · nominale Euro · Typisch 32.500 € von 45.000 € Wunsch-Flex laut Plan · schwächstes Jahr 29.000 €', 'Kurze Notiz enthält Geldbasis, Planbezug und Beträge');
 assertEqual(JSON.stringify(projectMonteCarloOverview(results, 2, 0).answers[1]), JSON.stringify(answer), 'Übersicht und MC-Details nutzen identische FR-6-Antwort');
 const card = buildKpiDashboard(results, { minimumFlexAnnual: 99999 }).primary[2];
 assertEqual(card.value, '16,7 %', 'Detailkennzahl bleibt beim Laufwert nach Eingabeänderung');
@@ -57,7 +57,7 @@ assertEqual(pairValues.length, 2, 'Typische Jahre und betroffene Läufe verwende
 assert(mixedHost.innerHTML.includes('0,0 %') && mixedHost.innerHTML.includes('35,5 %') && mixedHost.innerHTML.includes('Mindestens ein Jahr unter Mindest-Flex'), 'Nullmedian und betroffene Läufe sind gleichzeitig sichtbar');
 assert(!mixedAnswer.text.includes('Gut:'), 'Nullmedian mit betroffenen Läufen erhält keine pauschale positive Botschaft');
 assert(zeroAnswer.text.includes('Im typischen Lauf') && zeroAnswer.tooltip.includes('keine Garantie') && zeroAnswer.text.includes('keinem ausgewerteten Entnahmejahr'), '0 % bleibt auf den typischen Lauf und beobachtete Jahre begrenzt');
-assertEqual(zeroAnswer.text, 'Im typischen Lauf liegt dein Flex in keinem ausgewerteten Entnahmejahr unter deinem Mindest-Flex von 30.000 €.', 'Null-Antwort bleibt genau ein Satz mit eingefrorenem Mindestbetrag');
+assertEqual(zeroAnswer.text, 'Im typischen Lauf liegt dein Flex in keinem ausgewerteten Entnahmejahr unter deinem Mindest-Flex (zum Laufstart 30.000 €).', 'Null-Antwort bleibt genau ein Satz mit eingefrorenem Mindestbetrag');
 for (const legacy of [{ cutYearSharePct: { p50: 12 } }, { ...results, minimumFlexRestriction: { ...block, startMinimumFlexAnnual: 0 } }]) {
     const old = buildMonteCarloAnswers({ results: legacy })[1];
     assert(old.text.includes('mehr als 10 % unter Wunsch-Flex') && old.tooltip.includes('einschließlich genau 10 %'), 'Legacy und Mindestwert 0 behalten beschriftete inklusive Altgrenze');

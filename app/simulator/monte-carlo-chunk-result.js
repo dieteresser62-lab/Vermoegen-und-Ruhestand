@@ -10,6 +10,7 @@ import {
     mergeMonteCarloSamplingDiagnosticsV1
 } from './mc-year-sampling.js';
 import { buildBinaryProportionEstimate } from './monte-carlo-statistics.js';
+import { EURO_PATH_FIELDS } from './mc-euro-metrics.js';
 
 import { assertWealthFan, createWealthFan, mergeWealthFan } from './wealth-fan-aggregation.js';
 
@@ -200,6 +201,7 @@ export const MONTE_CARLO_LIST_FIELDS = Object.freeze([
 ]);
 
 export const MONTE_CARLO_PATH_SUMMARY_FIELDS = Object.freeze({
+    ...EURO_PATH_FIELDS,
     globalRunIndex: Uint32Array,
     outcomeCode: Uint8Array,
     finalValueNominalEur: Float64Array,
@@ -247,6 +249,8 @@ export const MONTE_CARLO_PATH_SUMMARY_FIELDS = Object.freeze({
 });
 
 export const MONTE_CARLO_PATH_MISSINGNESS_FIELDS = Object.freeze({
+    euroMetrics: Uint8Array,
+    euroRealAmounts: Uint8Array,
     path: Uint8Array,
     minimumFlexRestriction: Uint8Array,
     maxDrawdownRealPct: Uint8Array,
@@ -388,6 +392,7 @@ export function recordMonteCarloPathSummaryV1({
     cutYearsNumerator = 0,
     cutYearsDenominator = 0,
     minimumFlexRestriction = null,
+    euroMetrics = null,
     realWithdrawalP10RealEur = null,
     realWithdrawalObservationCount = 0,
     meanWithdrawalRateRatio = null,
@@ -439,6 +444,9 @@ export function recordMonteCarloPathSummaryV1({
     }
 
     pathMissingness.path[localIndex] = MONTE_CARLO_MISSINGNESS_CODE.OBSERVED;
+    pathMissingness.euroMetrics[localIndex] = euroMetrics ? MONTE_CARLO_MISSINGNESS_CODE.OBSERVED : MONTE_CARLO_MISSINGNESS_CODE.NO_OBSERVATIONS;
+    pathMissingness.euroRealAmounts[localIndex] = euroMetrics?.valid ? MONTE_CARLO_MISSINGNESS_CODE.OBSERVED : MONTE_CARLO_MISSINGNESS_CODE.MISSING_INFLATION;
+    for (const field of Object.keys(EURO_PATH_FIELDS)) pathSummaries[field][localIndex] = euroMetrics?.[field] ?? 0;
     pathMissingness.minimumFlexRestriction[localIndex] = !minimum || minimum.missingReason === 'no_observations'
         ? MONTE_CARLO_MISSINGNESS_CODE.NO_OBSERVATIONS
         : minimum.missingReason === null ? MONTE_CARLO_MISSINGNESS_CODE.OBSERVED

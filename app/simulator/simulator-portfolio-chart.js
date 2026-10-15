@@ -2,6 +2,7 @@
 import { backtestChartSeries, HISTORICAL_CRISES } from './simulator-crises.js';
 import { buildBacktestChartAnnotations, layoutBacktestChartLabels } from './backtest-chart-annotations.js';
 import { jumpToBacktestYear } from './backtest-log-analysis.js';
+import { backtestEuroBasis, projectBacktestChartSeries } from './backtest-euro-display.js';
 
 function buildAreaPath(pointsTop, pointsBottom) {
     if (!pointsTop.length || !pointsBottom.length) return '';
@@ -32,11 +33,14 @@ export function renderThreeBucketPortfolioChart(container, rows, options = {}) {
     const doc = container.ownerDocument || globalThis.document;
     if (typeof doc?.createElementNS !== 'function') return;
     const view = doc.defaultView || globalThis.window;
-    options = { ...options, annotations: options.analysisData ? buildBacktestChartAnnotations(options.analysisData) : null };
+    options = { ...options, annotations: options.analysisData ? buildBacktestChartAnnotations(options.analysisData, { moneyBasis: options.moneyBasis ?? 'nominal' }) : null };
     container.innerHTML = '';
     let width = measurePortfolioWidth(container, view);
     let svg = drawPortfolioChart(container, rows, options, width, doc);
-    if (!svg) return;
+    if (!svg) {
+        container.textContent = 'Für diesen Verlauf fehlen belegte Vermögens- oder Inflationswerte.';
+        return;
+    }
     let active = true;
     let observer;
     const jumpState = {};
@@ -79,7 +83,7 @@ export function renderThreeBucketPortfolioChart(container, rows, options = {}) {
 }
 
 function drawPortfolioChart(container, rows, options, width, document, svgOnly = false) {
-    const source = options.result ? backtestChartSeries(options.result)
+    const source = options.result ? projectBacktestChartSeries(options.result, options.moneyBasis)
         : backtestChartSeries({ rows: Array.isArray(rows) ? rows : [] });
     const series = source.filter(point => point.total !== null).map((point, index) => ({ ...point, index }));
     if (!series.length) return;
@@ -88,7 +92,8 @@ function drawPortfolioChart(container, rows, options, width, document, svgOnly =
     const unit = maxTotal >= 1000000 ? 1000000 : maxTotal >= 1000 ? 1000 : 1;
     const suffix = unit === 1000000 ? 'Mio. €' : unit === 1000 ? 'Tsd. €' : '€';
     const yLabels = Array.from({ length: 5 }, (_, i) =>
-        `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format(maxTotal * i / 4 / unit)} ${suffix}`);
+        `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: unit === 1 ? 0 : 1 }).format(maxTotal * i / 4 / unit)} ${suffix}`);
+    const basis = backtestEuroBasis(options.result, options.moneyBasis);
 
     const height = 320;
     const margin = calendar ? { top: 64, right: 24, bottom: 38, left: Math.max(124, ...yLabels.map(label => label.length * 8 + 16)) }
@@ -141,7 +146,7 @@ function drawPortfolioChart(container, rows, options, width, document, svgOnly =
     svg.setAttribute('width', String(width));
     svg.setAttribute('height', String(svgHeight));
     svg.setAttribute('role', 'img');
-    svg.setAttribute('aria-label', calendar ? 'Jahresendvermögen ohne Pflegereserve nach Kalenderjahren' : 'Jahresendvermögen ohne Pflegereserve');
+    svg.setAttribute('aria-label', `${calendar ? 'Jahresendvermögen ohne Pflegereserve nach Kalenderjahren' : 'Jahresendvermögen ohne Pflegereserve'} · ${basis}`);
     svg.setAttribute('style', 'display:block;background:var(--surface);border:1px solid var(--border);border-radius:8px;');
     const addPath = (d, fill) => {
         if (!d) return;
@@ -201,7 +206,7 @@ function drawPortfolioChart(container, rows, options, width, document, svgOnly =
             'data-backtest-chart-year': marker.year, 'aria-label': `${marker.label} im Protokoll` });
         link.setAttribute('class', 'backtest-chart-marker');
         element(link, 'title', {}, `${marker.text} ${marker.type === 'minimum_real_year_end_wealth'
-            ? 'Reales Gesamttief einschließlich Pflegevorsorge; die Fläche zeigt nominales Vermögen ohne Pflegereserve. ' : ''}Zum Jahr im Protokoll springen.`);
+            ? `Reales Gesamttief einschließlich Pflegevorsorge; die Fläche zeigt Vermögen in ${basis === 'nominal' ? 'nominalen Euro' : basis} ohne Pflegereserve. ` : ''}Zum Jahr im Protokoll springen.`);
         element(link, 'line', { x1: x, x2: x, y1: y + 24, y2: height - margin.bottom,
             stroke: 'var(--accent)', 'stroke-width': 1.5, 'stroke-dasharray': '4 4' });
         element(link, 'circle', { cx: x, cy: yScale(series.find(point => point.year === marker.year).total), r: 5,
@@ -230,8 +235,8 @@ function drawPortfolioChart(container, rows, options, width, document, svgOnly =
 
     const hint = document.createElement('p');
     hint.className = 'ds-scroll-hint';
-    hint.textContent = 'Jahresende, nominal, ohne Pflegereserve · rot: historische Krisen. Bei Bedarf horizontal scrollen.';
-    if (options.annotations) hint.textContent = 'Jahresende, nominal, ohne Pflegereserve · rot: historische Krisen · Messing: Flex-Entnahme ab 10 % gekürzt. '
+    hint.textContent = `Jahresende, ${basis}, ohne Pflegereserve · rot: historische Krisen. Bei Bedarf horizontal scrollen.`;
+    if (options.annotations) hint.textContent = `Jahresende, ${basis}, ohne Pflegereserve · rot: historische Krisen · Messing: Flex-Entnahme ab 10 % gekürzt. `
         + 'Marken: Ereignisjahre, Klick öffnet das Protokoll. Reales Tief: Kaufkraft zum Laufstart einschließlich Pflegevorsorge. '
         + (options.annotations.missingCutYears ? 'Kürzungswerte fehlen in einzelnen Jahren; Bänder zeigen nur belegte Phasen. ' : '')
         + 'Bei Bedarf horizontal scrollen.';

@@ -1,3 +1,4 @@
+import { validateEuroAggregates } from './mc-euro-metrics.js';
 "use strict";
 
 import {
@@ -372,6 +373,7 @@ function projectMonteCarloKpis(aggregated = {}) {
     const stress = aggregated.stressKPI || {};
     return {
         floorCoverage: cloneContractValue(aggregated.outcomeInventory?.floorCoverageEstimate || null, '$.result.kpis.floorCoverage'),
+        ...(aggregated.euroMetrics ? { euroMetrics: cloneContractValue(aggregated.euroMetrics, '$.result.kpis.euroMetrics') } : {}),
         finalWealthNominalEur: cloneContractValue(aggregated.finalOutcomes || {}, '$.result.kpis.finalWealthNominalEur'),
         taxPaidNominalEur: cloneContractValue(aggregated.taxOutcomes || {}, '$.result.kpis.taxPaidNominalEur'),
         simulatedLifetimeYears: cloneContractValue(aggregated.kpiLebensdauer || {}, '$.result.kpis.simulatedLifetimeYears'),
@@ -897,6 +899,7 @@ export function validateMonteCarloRunResultV2(result) {
         throw contractError(MONTE_CARLO_RUN_RESULT_V2_VERSION, 'MC_RESULT_V2_BATCH_VALIDITY_INCONSISTENT', 'batchStatus, technical errors and financialMetricsValid are inconsistent.');
     }
     const kpis = requireObject(result.kpis, MONTE_CARLO_RUN_RESULT_V2_VERSION, 'kpis');
+    validateEuroAggregates(kpis.euroMetrics);
     assertDrawdownDistributionV2(kpis.maximumDrawdownNominalPct, 'kpis.maximumDrawdownNominalPct');
     assertDrawdownDistributionV2(kpis.maximumDrawdownRealPct, 'kpis.maximumDrawdownRealPct');
     assertObservationCountObject(kpis.realWithdrawalP10RealEur?.observationCount, 'kpis.realWithdrawalP10RealEur.observationCount');

@@ -89,10 +89,10 @@ export function adaptMonteCarloScenario(logs, selection, options = {}) {
     return adaptScenarioLog(matches.length === 1 ? matches[0].scenario : null, options);
 }
 
-export function moneyValue(nominalEur, item, moneyBasis) {
+export function moneyValue(nominalEur, item, moneyBasis, { yearStart = false } = {}) {
     const nominal = amount(nominalEur);
-    const real = nominal !== null && item?.yearEndPriceFactor
-        ? nominal / item.yearEndPriceFactor : null;
+    const factor = yearStart ? item?.row?.inflation_factor_cum : item?.yearEndPriceFactor;
+    const real = nominal !== null && finite(factor) && factor > 0 ? nominal / factor : null;
     return { nominalEur: nominal, realEur: finite(real) ? real : null, moneyBasis,
         valueEur: moneyBasis === 'real' ? finite(real) ? real : null : nominal };
 }

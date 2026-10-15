@@ -1,7 +1,7 @@
 import { escapeProtocolHtml as escape } from './protocol-renderer.js';
 import { buildWealthFanModel } from './wealth-fan-aggregation.js';
 import { renderWealthFanBands } from './wealth-fan-chart.js';
-import { formatCurrency } from './simulator-formatting.js';
+import { formatWholeEuro as formatCurrency } from './results-formatting.js';
 
 export const WEALTH_SCENARIO_KEYS = ['worst', 'p5', 'p10', 'p25', 'p50', 'p75', 'p90', 'p95', 'best'];
 export const WEALTH_SCENARIO_COLORS = ['var(--bad)', 'color-mix(in srgb, var(--bad) 80%, var(--warn))', 'var(--warn)', 'var(--accent-line)', 'var(--text-main)', 'color-mix(in srgb, var(--good) 55%, var(--surface))', 'color-mix(in srgb, var(--good) 80%, var(--surface))', 'var(--good)', 'color-mix(in srgb, var(--good) 85%, var(--text-main))'];
@@ -12,6 +12,17 @@ export function formatScenarioWealthTick(value) {
         : new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(value);
 }
 const finite = value => typeof value === 'number' && Number.isFinite(value);
+
+/** Neutrale Anzeigenamen; Rangwahl und gespeicherte Szenarien bleiben unverändert. */
+export function scenarioDisplayLabel(scenario) {
+    const labels = { worst: 'Worst Case', p5: 'P5', p10: 'P10', p25: 'P25', p50: 'Median',
+        p75: 'P75', p90: 'P90', p95: 'P95', best: 'Best Case', highestCareNeed: 'Höchster Pflege-Mehrbedarf' };
+    if (scenario?.key === 'highestCareNeed' && scenario.label) return scenario.label.replace('realer ', '');
+    if (/nominal/i.test(scenario?.label || '')) {
+        return labels[scenario?.key] || scenario?.label;
+    }
+    return scenario?.label || labels[scenario?.key] || 'Szenario';
+}
 
 /** Reine Projektion: keine neue Finanzmessung im Todesjahr, keine Ersatzinflation. */
 export function buildScenarioWealthPath(scenario, { mode = 'real', initialWealth = null, yearEndRealBasis = false } = {}) {
@@ -51,7 +62,8 @@ export function scenarioEndWealth(scenario, mode = 'real', realByRun = null) {
     if (scenario.failed === true) return 0;
     const rows = scenario.logDataRows || [];
     const lastFinancial = rows.filter(row => !['terminal_death', 'terminal_ruin'].includes(row.recordType)).at(-1);
-    const factor = lastFinancial?.inflation_factor_cum;
+    const factor = finite(lastFinancial?.inflation_factor_cum) && finite(lastFinancial?.inflation)
+        ? lastFinancial.inflation_factor_cum * (1 + lastFinancial.inflation / 100) : null;
     const value = finite(factor) && factor > 0 ? scenario.endVermoegen / factor : null;
     return finite(value) ? value : null;
 }
@@ -144,7 +156,7 @@ function renderScenarioOutliers(paths, { maximum, maxValue, x, width }) {
     }).join('');
     return `<g class="scenario-outliers">${guides}${visibleMarks.map(mark => {
         const { path, value, text } = mark;
-        const name = `${path.scenario.label} · ${formatCurrency(value)}`;
+        const name = `${scenarioDisplayLabel(path.scenario)} · ${formatCurrency(value)}`;
         return `<foreignObject x="${mark.left}" y="${mark.top}" width="${mark.width}" height="${height}"><button xmlns="http://www.w3.org/1999/xhtml" type="button" class="ds-scenario-outlier" style="color:${path.color};font-size:${fontSize}px;line-height:${height}px" data-scenario-id="${escape(path.id)}" title="${escape(name)}" aria-label="${escape(name)}">${escape(text)}</button></foreignObject>`;
     }).join('')}</g>`;
 }
@@ -189,7 +201,7 @@ export function renderScenarioWealthChart(entries, options = {}) {
         const active = path.id === options.selectedId;
         const end = path.points.at(-1);
         const endmark = (active || path.endpoint === 'ruin') && end?.value !== null ? `<circle cx="${x(end.year)}" cy="${y(end.value)}" r="${active ? 5 : 3}" fill="${path.endpoint === 'ruin' ? 'var(--bad)' : path.color}"/>${active ? `<text x="${x(end.year) - 8}" y="${y(end.value) - 12}" text-anchor="end">${path.endpoint === 'ruin' ? `Ruin ${Number.isInteger(options.startYear) ? options.startYear + end.year - 1 : `Jahr ${end.year}`}` : path.endpoint === 'death' ? 'Tod · letzte Messung' : 'Ende'}</text>` : ''}` : '';
-        return `<g data-scenario-id="${escape(path.id)}" class="scenario-line ${active ? ' is-active' : ''}" opacity="${comparison || active ? 1 : .45}"><title>${escape(path.scenario.label)}${path.missingCount ? ' · fehlende Messung' : ''}</title><path d="${d}" fill="none" stroke="${path.color}" stroke-width="${comparison || active ? 3.5 : path.group === 'sample' ? 1 : 1.6}"${['care', 'risk'].includes(path.group) ? ' stroke-dasharray="6 4"' : ''}/><path d="${d}" fill="none" stroke="transparent" stroke-width="10" pointer-events="stroke"/>${endmark}</g>`;
+        return `<g data-scenario-id="${escape(path.id)}" class="scenario-line ${active ? ' is-active' : ''}" opacity="${comparison || active ? 1 : .45}"><title>${escape(scenarioDisplayLabel(path.scenario))}${path.missingCount ? ' · fehlende Messung' : ''}</title><path d="${d}" fill="none" stroke="${path.color}" stroke-width="${comparison || active ? 3.5 : path.group === 'sample' ? 1 : 1.6}"${['care', 'risk'].includes(path.group) ? ' stroke-dasharray="6 4"' : ''}/><path d="${d}" fill="none" stroke="transparent" stroke-width="10" pointer-events="stroke"/>${endmark}</g>`;
     }).join('');
     const ticks = Array.from({ length: 5 }, (_, index) => {
         const value = maxValue * (index / 4);

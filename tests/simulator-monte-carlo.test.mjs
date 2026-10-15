@@ -1537,8 +1537,8 @@ console.log('--- Simulator Monte Carlo Tests Completed ---');
     assertEqual(projection.floorPct, 600 / 7, 'Raster verändert keine genaue Floor-Deckung');
     assert(projection.interval === results.outcomeInventory.floorCoverageEstimate.confidenceInterval95, 'Wilsonintervall stammt unverändert aus dem vorhandenen Inventar');
     assert(projection.finalOutcomes === results.finalOutcomes, 'P10, Median und P90 stammen unverändert aus finalOutcomes');
-    assert(projection.medianDisplay.includes('123,45') && projection.p10P90Display.includes('1,23') && projection.p10P90Display.includes('999,99'),
-        'MC-Übersicht übernimmt centgenaue konservative Quantilanzeige aus dem bestehenden Viewmodel');
+    assert(projection.medianDisplay.includes('123') && projection.p10P90Display.includes('1') && projection.p10P90Display.includes('1.000'),
+        'MC-Übersicht zeigt ganze Euro aus dem bestehenden Viewmodel');
     assertEqual(JSON.stringify(results), before, 'MC-Ergebnisprojektion verändert keinen Aggregationswert');
     const technical = projectMonteCarloOverview({ ...results, outcomeInventory: { ...results.outcomeInventory, technical_error: 1, floorCoveragePct: null } }, 7, 1);
     assert(technical.floorPct === null && technical.dots === null && technical.covered === null, 'Technische Fehler erfinden keinen Erfolgswert');

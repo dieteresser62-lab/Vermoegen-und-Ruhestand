@@ -39,7 +39,7 @@ const results = { minimumFlexRestriction: restriction, outcomeInventory: { schem
     ruin: 0, floorCoveredCount: 2, floorCoverageMissingnessReason: null, technical_error: 0 } };
 const context = buildComparisonContext({ results, totalRuns: 999, failCount: 99,
     inputs: { ...dynamicFlexPresetPatch('ausgewogen'), pflegefallLogikAktivieren: false } });
-assertEqual(context.sourceLine, '2 Pfade · Ausgewogen · Rang nach nominalem Endvermögen', 'Herkunft aus Laufaggregat und Laufinputs');
+assertEqual(context.sourceLine, '2 Pfade · Ausgewogen', 'Herkunft aus Laufaggregat und Laufinputs ohne feste Geldbasis');
 assertEqual(context.chips[0].text, 'Grundbedarf in allen 2 Pfaden gedeckt', 'Inventar hat Vorrang vor Legacyzählern');
 assertEqual(context.chips[1].text, '1 von 2 Pfaden zeitweise unter Mindest-Flex', 'FR-6-Aggregat zählt Pfade; Gleichheit zählt nicht als Unterschreitung');
 assertEqual(context.chips[2].text, 'Pflege nicht simuliert', 'Pflegeannahme aus Laufinputs');

@@ -1,8 +1,10 @@
 "use strict";
 
-import { formatCurrencySafe, formatNumberWithUnit, formatPercentage, sanitizeDescription } from './results-formatting.js';
+import { formatNumberWithUnit, formatPercentage, sanitizeDescription } from './results-formatting.js';
 import { formatWholeEuro, formatChartEuro, formatCoveragePercentage, formatCoveredRuns } from './results-formatting.js';
 import { STRESS_PRESETS } from './simulator-data.js';
+import { DEFAULT_EURO_MODE, euroBasisLabel } from './euro-display.js';
+import { quantile } from './simulator-utils.js';
 
 /**
  * Beschreibt eine KPI-Karte in neutraler Datenform ohne DOM-spezifische Elemente.
@@ -25,13 +27,29 @@ export const LEGACY_FLEX_RESTRICTION_LABEL = 'mehr als 10 % unter Wunsch-Flex';
 const amount = value => Number.isFinite(value) && value >= 0;
 const share = value => Number.isFinite(value) && value >= 0 && value <= 100;
 const summaryEuro = value => Math.abs(value) >= 1e6 ? formatChartEuro(value) : formatWholeEuro(value);
+export const WITHDRAWAL_CARD_TITLE = 'Entnahme aus dem Vermögen in schwachen Jahren';
+const missingMoney = { missingness: 'no_observations' };
+function finalMoney(results, mode) {
+    if (mode !== 'real') return results?.finalOutcomes || {};
+    if (results?.euroMetrics?.real?.finalOutcomes) return results.euroMetrics.real.finalOutcomes;
+    const values = results?.wealthView?.realValues;
+    return Array.isArray(values) && values.length ? { p10: quantile(values, 0.1), p50: quantile(values, 0.5), p90: quantile(values, 0.9) } : missingMoney;
+}
+function withdrawalMoney(results, mode, stress = false) {
+    if (mode === 'nominal') return results?.euroMetrics?.nominal?.[stress ? 'stressWithdrawalP10' : 'withdrawalP10'] || missingMoney;
+    const block = (stress ? results?.stressKPI?.realWithdrawalP10 : results?.realWithdrawalP10) || missingMoney;
+    return { ...block, p10: block.realEur, p50: block.p50RealEur };
+}
+const otherBasisLine = (value, mode) => Number.isFinite(value)
+    ? `${mode === 'nominal' ? 'in heutiger Kaufkraft' : 'nominal'} etwa ${summaryEuro(value)}`
+    : `${mode === 'nominal' ? 'Heutige Kaufkraft' : 'Nominaler Gegenwert'} fehlt · bitte neu rechnen`;
 export function hasTechnicalFinancialError(result) {
     return result?.outcomeInventory?.technical_error > 0 || result?.batchStatus === 'technical_error'
         || result?.financialMetricsValid === false || (result?.outcome && !['completed', 'ruin'].includes(result.outcome.kind));
 }
 
 /** Gemeinsame lesende FR-6-Projektion; nur eingefrorene Laufdaten. */
-export function projectMinimumFlexDisplay(result, { backtest = false } = {}) {
+export function projectMinimumFlexDisplay(result, { backtest = false, moneyBasis = DEFAULT_EURO_MODE } = {}) {
     const block = backtest ? result?.metrics?.minimumFlexRestriction ?? result?.minimumFlexRestriction : result?.minimumFlexRestriction;
     const present = Object.hasOwn(result || {}, 'minimumFlexRestriction')
         || (backtest && Object.hasOwn(result?.metrics || {}, 'minimumFlexRestriction'));
@@ -56,35 +74,38 @@ export function projectMinimumFlexDisplay(result, { backtest = false } = {}) {
     const minimumNote = amount(block?.startMinimumFlexAnnual)
         ? `Mindest-Flex zum Laufstart: ${formatWholeEuro(block.startMinimumFlexAnnual)}; im Lauf jährlich fortgeschrieben. Vergleich mit dem jeweils angewandten Jahresbetrag.`
         : 'Der Mindest-Flex zum Laufstart fehlt; aktuelle Eingaben ersetzen keinen Laufwert.';
-    const paid = backtest ? path?.paidMedianNominalEur : block?.paidMedianNominalEurP50;
-    const desired = backtest ? path?.desiredMedianNominalEur : block?.desiredMedianNominalEurP50;
-    const lowest = backtest ? path?.paidMinimumNominalEur : block?.paidMinimumNominalEurP50;
+    const realAmounts = result?.euroMetrics?.real?.minimumFlexAmounts;
+    const real = !backtest && moneyBasis === 'real';
+    const paid = backtest ? path?.paidMedianNominalEur : real ? realAmounts?.paidMedianRealEurP50 : block?.paidMedianNominalEurP50;
+    const desired = backtest ? path?.desiredMedianNominalEur : real ? realAmounts?.desiredMedianRealEurP50 : block?.desiredMedianNominalEurP50;
+    const lowest = backtest ? path?.paidMinimumNominalEur : real ? realAmounts?.paidMinimumRealEurP50 : block?.paidMinimumNominalEurP50;
     const euros = value => valid && amount(value) ? formatWholeEuro(value) : '—';
-    const amountNote = `Nominale Jahresbeträge: typisch bezahlt ${euros(paid)}, Wunsch ${euros(desired)}, schwächstes Jahr ${euros(lowest)}.${valid && ![paid, desired, lowest].every(amount) ? ' Betragsangaben fehlen.' : ''}`;
+    const basis = euroBasisLabel(real ? 'real' : 'nominal');
+    const amountNote = `${backtest ? 'Nominale Jahresbeträge' : `Jahresbeträge · ${basis}`}: typisch bezahlt ${euros(paid)}, Wunsch ${euros(desired)}, schwächstes Jahr ${euros(lowest)}.${valid && ![paid, desired, lowest].every(amount) ? ' Betragsangaben fehlen; bitte neu rechnen.' : ''}`;
     const populationNote = backtest ? 'Beobachtete abgeschlossene Entnahmejahre bis Laufende.'
         : `Anteil betroffener Läufe: ${valid ? formatPercentage(block.affectedRunSharePct) : '—'} (mindestens ein Jahr unter Mindest-Flex). Mediane der Laufstatistiken, keine gepoolten Jahre; ${Number.isInteger(block?.sampleSize) ? block.sampleSize : 0} auswertbare Läufe.`;
     const paidAbovePlan = valid && amount(paid) && amount(desired) && paid > desired;
     const compactAmounts = paidAbovePlan
         ? `Typisch ${euros(paid)} · Wunsch-Flex laut Plan ${euros(desired)}`
         : `Typisch ${euros(paid)} von ${euros(desired)} Wunsch-Flex laut Plan`;
-    const note = valid ? `Nominale Jahresbeträge · ${compactAmounts} · schwächstes Jahr ${euros(lowest)}` : '';
+    const note = valid ? `${backtest ? 'Nominale Jahresbeträge' : `Jahresbeträge · ${basis}`} · ${compactAmounts} · schwächstes Jahr ${euros(lowest)}` : '';
     return { legacy: false, valid, title: backtest ? 'Jahre unter Mindest-Flex' : 'Anteil Jahre unter Mindest-Flex',
         value: valid ? formatPercentage(pct) : '—', count: valid && backtest ? path.affectedYearCount : null,
         affectedRunValue: valid && !backtest ? formatPercentage(block.affectedRunSharePct) : '—',
         observationCount: valid && backtest ? path.observationCount : null,
         text: !valid ? reason : pct === 0
-            ? `Im typischen Lauf liegt dein Flex in keinem ausgewerteten Entnahmejahr unter deinem Mindest-Flex von ${euros(block.startMinimumFlexAnnual)}.`
-            : `In typisch ${formatPercentage(pct)} der Entnahmejahre liegt dein Flex unter deinem Mindest-Flex von ${euros(block.startMinimumFlexAnnual)}.`,
+            ? `Im typischen Lauf liegt dein Flex in keinem ausgewerteten Entnahmejahr unter deinem Mindest-Flex (zum Laufstart ${euros(block.startMinimumFlexAnnual)}).`
+            : `In typisch ${formatPercentage(pct)} der Entnahmejahre liegt dein Flex unter deinem Mindest-Flex (zum Laufstart ${euros(block.startMinimumFlexAnnual)}).`,
         note, tooltip: `${minimumNote} ${populationNote} ${amountNote} Wunsch-Flex laut Plan und bezahlter Haushalts-Flex enthalten den Rentenbeitrag zum Flex. Dynamic Flex (VPW) kann mehr als den Wunsch-Flex laut Plan auszahlen. Das ist keine Garantie für alle Läufe oder die gesamte Lebenszeit.`,
         reason: valid ? '' : reason };
 }
 
 /** Reine Anzeigeprojektion vorhandener Kennzahlen; keine neue Statistik. */
-export function buildMonteCarloAnswers({ results, totalRuns, failCount }) {
+export function buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBasis = DEFAULT_EURO_MODE }) {
     const inventory = results?.outcomeInventory;
     const current = inventory?.schemaVersion === 'MonteCarloOutcomeInventoryV1';
     const technical = hasTechnicalFinancialError(results);
-    const restriction = projectMinimumFlexDisplay(results);
+    const restriction = projectMinimumFlexDisplay(results, { moneyBasis });
     const coverageAvailable = !technical && (current ? Number.isFinite(inventory.floorCoveragePct)
         : Number.isFinite(totalRuns) && totalRuns > 0 && Number.isFinite(failCount));
     const floor = buildSummaryData({ results, totalRuns, failCount })[0];
@@ -133,7 +154,7 @@ export function buildMonteCarloAnswers({ results, totalRuns, failCount }) {
  * @param {number} params.failCount - Anzahl fehlgeschlagener Läufe.
  * @returns {Array<KpiDescriptor>} Formatierte Summary-Karten.
  */
-export function buildSummaryData({ results, totalRuns, failCount }) {
+export function buildSummaryData({ results, totalRuns, failCount, moneyBasis = DEFAULT_EURO_MODE }) {
     const safeTotalRuns = Math.max(0, Number(totalRuns) || 0);
     const safeFailCount = Math.max(0, Number(failCount) || 0);
     const outcomeInventory = results?.outcomeInventory;
@@ -160,10 +181,10 @@ export function buildSummaryData({ results, totalRuns, failCount }) {
     const floorWarning = floorEstimate?.uncertaintyWarning?.code === 'small_sample'
         ? ` Unsicherheitswarnung: nur ${requestedRuns} Läufe; Schwelle ${floorEstimate.uncertaintyWarning.thresholdRuns}.`
         : '';
-    const taxOutcomes = results?.taxOutcomes || {};
+    const taxOutcomes = (moneyBasis === 'real' ? results?.euroMetrics?.real?.taxOutcomes : results?.taxOutcomes) || missingMoney;
     const taxAvailable = directMetricReason(taxOutcomes) === null
         && Number.isFinite(taxOutcomes.p50);
-    const finalOutcomes = results?.finalOutcomes || {};
+    const finalOutcomes = finalMoney(results, moneyBasis);
     const finalP50Available = Number.isFinite(finalOutcomes.p50);
     const successfulP50Available = directMetricReason({
         missingness: finalOutcomes.successfulMissingness,
@@ -201,6 +222,8 @@ export function buildSummaryData({ results, totalRuns, failCount }) {
         },
         {
             title: 'Median (alle)',
+            priceBasis: euroBasisLabel(moneyBasis),
+            otherBasisLine: otherBasisLine(finalMoney(results, moneyBasis === 'real' ? 'nominal' : 'real').p50, moneyBasis),
             value: finalP50Available ? formatConservativeCurrency(finalOutcomes.p50, 'benefit') : '—',
             displayValue: finalP50Available ? summaryEuro(finalOutcomes.p50) : '—',
             statusLine: finalP50Available ? '' : unavailableStatus(finalOutcomes, 'no_observations'),
@@ -242,12 +265,13 @@ export function buildSummaryData({ results, totalRuns, failCount }) {
             value: taxAvailable ? formatConservativeCurrency(taxOutcomes.p50, 'cost') : '—',
             displayValue: taxAvailable ? summaryEuro(taxOutcomes.p50) : '—',
             statusLine: taxAvailable ? '' : unavailableStatus(taxOutcomes, 'no_observations'),
-            description: 'Median der kumulierten nominalen Steuerzahlungen.',
+            description: `Median der kumulierten Steuerzahlungen · ${euroBasisLabel(moneyBasis)}.`,
             tone: 'default',
             layout: 'exact-risk',
             decisionCritical: true
         }
-    ];
+    ].map(card => ['Median (alle)', 'Median (erfolgreiche)', '10%/90% Perzentil', 'Median Steuern'].includes(card.title)
+        ? { ...card, tooltip: `${card.description} ${euroBasisLabel(moneyBasis)}.` } : card);
 }
 
 /**
@@ -256,7 +280,7 @@ export function buildSummaryData({ results, totalRuns, failCount }) {
  * @param {Object} results - Ergebnisobjekt der Monte-Carlo-Simulation.
  * @returns {{ primary: Array<KpiDescriptor>, detailSections: Array<{title: string, kpis: Array<KpiDescriptor>}> }} Struktur für die KPI-Dashboards.
  */
-export function buildKpiDashboard(results, inputs = {}) {
+export function buildKpiDashboard(results, inputs = {}, moneyBasis = DEFAULT_EURO_MODE) {
     const deQuote = Number(results?.depotErschoepfungsQuote) || 0;
     // Severity thresholds tuned for UI color coding.
     const depotTone = deQuote > 20 ? 'danger' : (deQuote > 5 ? 'warning' : 'success');
@@ -275,7 +299,7 @@ export function buildKpiDashboard(results, inputs = {}) {
             tone: depotTone
         },
         (() => {
-            const restriction = projectMinimumFlexDisplay(results);
+            const restriction = projectMinimumFlexDisplay(results, { moneyBasis });
             return { title: restriction.title, displayRole: 'restriction', value: restriction.legacy
                 ? restriction.technical ? '—' : formatPercentage(results?.cutYearSharePct?.p50) : restriction.value,
                 description: restriction.legacy ? 'Anteil der Entnahmejahre mit Flex-Kürzung ab 10 %.'
@@ -288,7 +312,7 @@ export function buildKpiDashboard(results, inputs = {}) {
                 ],
                 tone: restriction.legacy || restriction.valid ? 'default' : 'warning', layout: 'exact-risk', decisionCritical: true };
         })(),
-        ...buildDecisionCriticalKpis(results)
+        ...buildDecisionCriticalKpis(results, moneyBasis)
     ];
 
     const detailSections = [];
@@ -347,13 +371,13 @@ export function buildKpiDashboard(results, inputs = {}) {
  * @param {Object|null} stressKPI - Stress-KPI-Objekt aus den Simulationsergebnissen.
  * @returns {Object|null} Struktur mit formatierten KPIs oder null, falls keine Stressdaten vorliegen.
  */
-export function buildStressMetrics(stressKPI) {
+export function buildStressMetrics(stressKPI, moneyBasis = DEFAULT_EURO_MODE, results = {}) {
     if (!stressKPI || !stressKPI.years || stressKPI.presetKey === 'NONE') {
         return null;
     }
 
     const presetLabel = STRESS_PRESETS[stressKPI.presetKey]?.label || 'Stress-Szenario';
-    const realWithdrawalP10 = stressKPI.realWithdrawalP10;
+    const realWithdrawalP10 = withdrawalMoney({ ...results, stressKPI }, moneyBasis, true);
     return {
         presetLabel,
         years: stressKPI.years,
@@ -383,22 +407,24 @@ export function buildStressMetrics(stressKPI) {
                 tone: 'warning'
             },
             {
-                title: 'Reale Depotentnahme P10 (Stress)',
-                priceBasis: 'heutige Euro · unabhängig vom Euro-Schalter',
-                value: Number.isFinite(realWithdrawalP10?.realEur)
-                    ? formatConservativeCurrency(realWithdrawalP10.realEur, 'benefit')
+                title: `${WITHDRAWAL_CARD_TITLE} (Stressphase)`,
+                displayRole: 'withdrawal-stress',
+                priceBasis: `${euroBasisLabel(moneyBasis)} / Jahr`,
+                value: Number.isFinite(realWithdrawalP10?.p10)
+                    ? formatConservativeCurrency(realWithdrawalP10.p10, 'benefit')
                     : '—',
-                secondaryLabel: 'Median der Lauf-P10',
-                secondaryValue: Number.isFinite(realWithdrawalP10?.p50RealEur)
-                    ? formatConservativeCurrency(realWithdrawalP10.p50RealEur, 'benefit')
+                secondaryLabel: 'im typischen Lauf:',
+                secondaryValue: Number.isFinite(realWithdrawalP10?.p50)
+                    ? formatConservativeCurrency(realWithdrawalP10.p50, 'benefit')
                     : '—',
-                statusLine: Number.isFinite(realWithdrawalP10?.realEur)
+                statusLine: Number.isFinite(realWithdrawalP10?.p10)
                     ? ''
                     : unavailableStatus(realWithdrawalP10, 'no_observations'),
-                secondaryStatusLine: Number.isFinite(realWithdrawalP10?.p50RealEur)
+                secondaryStatusLine: Number.isFinite(realWithdrawalP10?.p50)
                     ? ''
                     : unavailableStatus(realWithdrawalP10, 'no_observations'),
-                description: `P10 über die laufbasierten P10-Depotentnahmen im festen Stressfenster; nach Ruin werden verbleibende Lebensjahre im Fenster mit 0 Euro aufgefüllt. Stichprobe: ${formatObservationCount(observationCount(realWithdrawalP10))} Läufe. Kein Quantil-Konfidenzintervall geschätzt.`,
+                description: 'Jährliche Entnahme aus dem Vermögen in der Stressphase, ohne Renten.',
+                tooltip: `Je Lauf wird das Entnahmeniveau der schwächsten 10 % der Stressjahre bestimmt. Nach einem Ruin zählen verbleibende Lebensjahre in der Stressphase mit 0 €. Die große Zahl ist das untere Zehntel dieser Laufwerte (P10); darunter steht ihr Median. ${euroBasisLabel(moneyBasis)}. Auswertbare Läufe: ${formatObservationCount(observationCount(realWithdrawalP10))}.`,
                 tone: 'default',
                 layout: 'exact-risk',
                 decisionCritical: true
@@ -420,9 +446,19 @@ export function buildStressMetrics(stressKPI) {
  * @param {Object} inputs - Eingabeparameter der Simulation (inkl. Partnerdaten).
  * @returns {Object|null} Formatierte Pflege-KPI-Struktur oder null, wenn nicht aktiv.
  */
-export function buildCareMetrics(results, inputs) {
-    const care = results?.extraKPI?.pflege;
-    const healthBucket = results?.extraKPI?.healthBucket;
+export function buildCareMetrics(results, inputs, moneyBasis = DEFAULT_EURO_MODE) {
+    const sourceCare = results?.extraKPI?.pflege;
+    const selectedCare = results?.euroMetrics?.[moneyBasis]?.pflege;
+    const selected = (group, key) => selectedCare ? selectedCare[group]?.[key === 'realCostEurP50' ? 'additionalNeedEurP50' : key.replace('RealEur', 'Eur')]
+        : moneyBasis === 'real' ? sourceCare?.[group]?.[key] : null;
+    const care = sourceCare && { ...sourceCare,
+        p1: { ...sourceCare.p1, realCostEurP50: selected('p1', 'realCostEurP50') },
+        p2: { ...sourceCare.p2, realCostEurP50: selected('p2', 'realCostEurP50') },
+        household: { ...sourceCare.household, ...Object.fromEntries(['totalAdditionalNeedRealEurP50', 'maxAnnualAdditionalNeedRealEurP50', 'endWealthWithCareRealEurP50', 'endWealthNoCareRealEurP50'].map(key => [key, selected('household', key)])) },
+        comparison: { ...sourceCare.comparison, endWealthNoCareMinusCareRealEur: selected('comparison', 'endWealthNoCareMinusCareRealEur') } };
+    const sourceBucket = results?.extraKPI?.healthBucket;
+    const healthBucket = sourceBucket && (moneyBasis === 'nominal' ? sourceBucket
+        : { ...sourceBucket, usedMedian: null, usedP90: null, endMedian: null, targetGapMedian: null, ...results?.euroMetrics?.real?.healthBucket });
     const hasCareMetrics = care && inputs?.pflegefallLogikAktivieren;
     const hasHealthBucketMetrics = healthBucket && (inputs?.healthBucketEnabled || inputs?.healthBucket?.enabled);
     if (!hasCareMetrics && !hasHealthBucketMetrics) {
@@ -476,7 +512,11 @@ export function buildCareMetrics(results, inputs) {
         );
     }
 
-    return { cards };
+    return { cards: cards.map(card => ({ ...card,
+        title: card.title.replace('Realer ', '').replace('Reales ', '').replace(' (real)', ''),
+        priceBasis: card.priceBasis ? euroBasisLabel(moneyBasis) : '',
+        description: card.description.replaceAll('zu Preisen des Simulationsstarts', euroBasisLabel(moneyBasis))
+            .replace('Typische reale Deckung', 'Typische Deckung') })) };
 }
 
 /**
@@ -489,12 +529,12 @@ export function buildCareMetrics(results, inputs) {
  * @param {Object} params.inputs - Eingabeparameter der Simulation.
  * @returns {Object} Dom-neutrales View-Model für Renderer.
  */
-export function prepareMonteCarloViewModel({ results, totalRuns, failCount, inputs }) {
+export function prepareMonteCarloViewModel({ results, totalRuns, failCount, inputs, moneyBasis = DEFAULT_EURO_MODE }) {
     return {
-        summaryCards: buildSummaryData({ results, totalRuns, failCount }),
-        kpiDashboard: buildKpiDashboard(results, inputs),
-        stressMetrics: buildStressMetrics(results?.stressKPI),
-        careMetrics: buildCareMetrics(results, inputs),
+        summaryCards: buildSummaryData({ results, totalRuns, failCount, moneyBasis }),
+        kpiDashboard: buildKpiDashboard(results, inputs, moneyBasis),
+        stressMetrics: buildStressMetrics(results?.stressKPI, moneyBasis, results),
+        careMetrics: buildCareMetrics(results, inputs, moneyBasis),
         heatmapData: {
             heatmap: results?.heatmap,
             bins: results?.bins,
@@ -510,35 +550,38 @@ export function prepareMonteCarloViewModel({ results, totalRuns, failCount, inpu
  * @param {Object} results - Aggregierte Monte-Carlo-Ergebnisse.
  * @returns {Array<KpiDescriptor>} KPI-Liste mit entscheidungskritischen Exaktwerten.
  */
-function buildDecisionCriticalKpis(results) {
-    const withdrawal = results?.realWithdrawalP10 || {};
+function buildDecisionCriticalKpis(results, moneyBasis) {
+    const withdrawal = withdrawalMoney(results, moneyBasis);
     const withdrawalReason = directMetricReason(withdrawal);
-    const withdrawalP10Available = withdrawalReason === null && Number.isFinite(withdrawal.realEur);
-    const withdrawalMedianAvailable = withdrawalReason === null && Number.isFinite(withdrawal.p50RealEur);
-    const lossCarry = results?.extraKPI?.lossCarryTaxSavings || {};
+    const withdrawalP10Available = withdrawalReason === null && Number.isFinite(withdrawal.p10);
+    const withdrawalMedianAvailable = withdrawalReason === null && Number.isFinite(withdrawal.p50);
+    const lossCarry = (moneyBasis === 'real' ? results?.euroMetrics?.real?.lossCarryTaxSavings : results?.extraKPI?.lossCarryTaxSavings) || missingMoney;
     const lossCarryAvailable = directMetricReason(lossCarry) === null
         && Number.isFinite(lossCarry.perRunMean);
 
     return [
         {
-            title: 'Reale Depotentnahme P10',
-            priceBasis: 'heutige Euro · unabhängig vom Euro-Schalter',
-            value: withdrawalP10Available ? formatConservativeCurrency(withdrawal.realEur, 'benefit') : '—',
-            secondaryLabel: 'Median der Lauf-P10',
-            secondaryValue: withdrawalMedianAvailable ? formatConservativeCurrency(withdrawal.p50RealEur, 'benefit') : '—',
+            title: WITHDRAWAL_CARD_TITLE,
+            displayRole: 'withdrawal',
+            priceBasis: `${euroBasisLabel(moneyBasis)} / Jahr`,
+            value: withdrawalP10Available ? formatConservativeCurrency(withdrawal.p10, 'benefit') : '—',
+            otherBasisLine: otherBasisLine(withdrawalMoney(results, moneyBasis === 'real' ? 'nominal' : 'real').p10, moneyBasis),
+            secondaryLabel: 'im typischen Lauf:',
+            secondaryValue: withdrawalMedianAvailable ? formatConservativeCurrency(withdrawal.p50, 'benefit') : '—',
             statusLine: withdrawalP10Available ? '' : unavailableStatus(withdrawal, 'no_observations'),
             secondaryStatusLine: withdrawalMedianAvailable ? '' : unavailableStatus(withdrawal, 'no_observations'),
-            description: `Centgenaue reale Eurobeträge zu Preisen des Simulationsstarts; zusätzliche Nachkommastellen werden als Nutzenwerte konservativ abgerundet. P10 über die laufbasierten P10-Werte realer Depotentnahmen; das Fenster beginnt mit der ersten Dekumulationsverpflichtung und wird nach Ruin bis Tod oder Horizont mit 0 Euro aufgefüllt. Beobachtete Läufe: ${formatObservationCount(observationCount(withdrawal))}; ausgeschlossen: ${nonNegativeInteger(withdrawal.excludedRuns)}. Kein Quantil-Konfidenzintervall geschätzt.`,
+            description: 'Jährliche Entnahme aus dem Vermögen, ohne Renten.',
+            tooltip: `Je Lauf wird ab der ersten Entnahme das Niveau der schwächsten 10 % der Jahre bestimmt. Nach einem Ruin zählen verbleibende Jahre bis Tod oder Zeitraumende mit 0 €. Die große Zahl ist das untere Zehntel dieser Laufwerte (P10 über alle Läufe). Darunter steht der Median dieser Laufwerte: im typischen Lauf. ${euroBasisLabel(moneyBasis)}. Auswertbare Läufe: ${formatObservationCount(observationCount(withdrawal))}; ausgeschlossen: ${nonNegativeInteger(withdrawal.excludedRuns)}. Kein Konfidenzintervall geschätzt.`,
             tone: 'default',
             layout: 'exact-risk',
             decisionCritical: true
         },
         {
             title: 'Ø Steuerersparnis Verlustvortrag',
-            priceBasis: 'nominal · unabhängig vom Euro-Schalter',
+            priceBasis: euroBasisLabel(moneyBasis),
             value: lossCarryAvailable ? formatConservativeCurrency(lossCarry.perRunMean, 'benefit') : '—',
             statusLine: lossCarryAvailable ? '' : unavailableStatus(lossCarry, 'no_observations'),
-            description: 'Centgenaue durchschnittliche nominale Steuerersparnis pro Lauf durch Verlustvortrag; zusätzliche Nachkommastellen werden als Nutzenwert konservativ abgerundet. Ein beobachteter positiver Kleinstwert bleibt sichtbar.',
+            description: 'Durchschnittliche Steuerersparnis pro Lauf durch Verlustvortrag.',
             tone: 'default',
             layout: 'exact-risk',
             decisionCritical: true
@@ -725,7 +768,7 @@ function roundConservatively(value, fractionDigits, direction) {
 
 function formatConservativeCurrency(value, direction) {
     if (!Number.isFinite(value)) return '—';
-    return formatCurrencySafe(roundConservatively(value, 2, direction));
+    return formatWholeEuro(value);
 }
 
 function formatConservativePercentagePoints(value) {
@@ -818,7 +861,7 @@ function buildCareEntryCard(title, value, description, unit = null, isCurrency =
         title,
         value: formattedValue,
         description: sanitizeDescription(description),
-        priceBasis: isCurrency ? `${priceBasis} · unabhängig vom Euro-Schalter` : '',
+        priceBasis: isCurrency ? priceBasis : '',
         tone: 'default'
     };
 }

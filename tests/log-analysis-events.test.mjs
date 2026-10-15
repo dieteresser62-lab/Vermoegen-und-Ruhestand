@@ -179,13 +179,13 @@ for (const recordType of ['terminal_ruin', 'terminal_death', 'technical_error'])
     const nominal = analyzeMonteCarloScenario(logs, 'char_p50', { moneyBasis: 'nominal' });
     const real = analyzeMonteCarloScenario(logs, 'char_p50', { moneyBasis: 'real' });
     assertEqual(JSON.stringify(nominal.sourceIdentity), JSON.stringify(real.sourceIdentity), 'Euro-Schalter ändert den Quellpfad nicht');
-    assertClose(one(real, 'gold_purchase').evidence.amount.valueEur, 200, 1e-9, 'Reale Anzeigebeträge verwenden die Jahresendbasis');
+    assertClose(one(real, 'gold_purchase').evidence.amount.valueEur, 220, 1e-9, 'MC-Jahreszahlungen verwenden den Jahresanfangsfaktor');
     assertEqual(one(nominal, 'gold_purchase').evidence.amount.valueEur, 220, 'Nominale Anzeigebeträge');
     assertEqual(one(real, 'gold_purchase').evidence.amount.nominalEur, 220, 'Nominaler Beleg bleibt erhalten');
     assertEqual(analyzeMonteCarloScenario(logs, 'char_p10').available, false, 'Fehlende Auswahl wird nicht durch anderen Pfad ersetzt');
     assertEqual(analyzeMonteCarloScenario({ characteristic: [input], random: [input] }, 'p50').available, false, 'Mehrdeutige Kurzkennung bleibt unbekannt');
     const missingPrice = analyze([base(1, { inflation: null, kaufGld: 220 })], { moneyBasis: 'real' });
-    assertEqual(one(missingPrice, 'gold_purchase').evidence.amount.valueEur, null, 'Keine nominale Ersatzanzeige im Realmodus');
+    assertEqual(one(missingPrice, 'gold_purchase').evidence.amount.valueEur, 220, 'Belegter Jahresanfangsfaktor reicht für eine Jahreszahlung');
     for (const model of [real, analyze([]), analyzeScenario(null), analyzeBacktest(null)]) {
         assert(model.summarySentences.length >= 3 && model.summarySentences.length <= 6, 'Zusammenfassung hat drei bis sechs Sätze');
         for (const event of model.events) {

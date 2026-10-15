@@ -6,6 +6,7 @@ import { MC_HEATMAP_BINS } from './monte-carlo-runner-utils.js';
 import { MONTE_CARLO_MISSINGNESS_CODE } from './monte-carlo-chunk-result.js';
 import { summarizePerRunRealWithdrawalP10 } from './monte-carlo-statistics.js';
 import { summarizeMinimumFlexPaths } from './minimum-flex-metrics.js';
+import { buildEuroAggregates } from './mc-euro-metrics.js';
 
 const NO_OBSERVATIONS = 'no_observations';
 const WITHDRAWAL_RATE_DEFINITION_VERSION = 'MedianWithdrawalRateD14V1';
@@ -441,6 +442,7 @@ export function buildMonteCarloAggregates({
         enumerable: false
     });
     return Object.defineProperty({
+        euroMetrics: buildEuroAggregates(pathSummaries, pathMissingness, totalRuns, MONTE_CARLO_MISSINGNESS_CODE),
         // Anzeigezusatz: vorhandene Realbeobachtungen, keine KPI-/Exportprojektion.
         wealthView,
         outcomeCounts: {

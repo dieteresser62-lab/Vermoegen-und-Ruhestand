@@ -193,6 +193,21 @@ const exportedAt = '2026-07-22T12:34:56.789Z';
 const document = buildMonteCarloExportV1({ request, result, engine, exportedAt });
 const resultV2 = projectMonteCarloRunResultV2(result);
 const documentV2 = buildMonteCarloExportV2({ request, result: resultV2, engine, exportedAt });
+assertEqual(JSON.stringify(documentV2.result.kpis.euroMetrics), JSON.stringify(firstRun.aggregatedResults.euroMetrics),
+    'V2 exportiert die getrennten Euro-Aggregate ohne Rundung');
+const oldEuroResult = JSON.parse(JSON.stringify(resultV2));
+delete oldEuroResult.kpis.euroMetrics;
+const oldEuroExport = buildMonteCarloExportV2({ request, result: oldEuroResult, engine, exportedAt });
+assert(!readMonteCarloExport(serializeMonteCarloExportV2(oldEuroExport)).document.result.kpis.euroMetrics,
+    'V2-Exporte vor dem Euro-Zusatz bleiben lesbar');
+const euroRoundtrip = readMonteCarloExport(serializeMonteCarloExportV2(documentV2));
+assertEqual(canonicalizeHistoricalContractValue(euroRoundtrip.document.result.kpis.euroMetrics), canonicalizeHistoricalContractValue(resultV2.kpis.euroMetrics),
+    'Reale Steuern, nominale Entnahmen und Pflegebeträge überstehen den Export bytegleich');
+const invalidEuroResult = JSON.parse(JSON.stringify(resultV2));
+invalidEuroResult.kpis.euroMetrics.real.taxOutcomes.p50 = '123';
+let invalidEuroRejected = false;
+try { validateMonteCarloRunResultV2(invalidEuroResult); } catch { invalidEuroRejected = true; }
+assert(invalidEuroRejected, 'Ein optionaler Euro-Block mit ungültigem Geldwert wird abgewiesen');
 assertEqual(JSON.stringify(document.result.kpis.minimumFlexRestriction),
     JSON.stringify(firstRun.aggregatedResults.minimumFlexRestriction),
     'V1-Export erhält die gemeinsame Mindest-Flex-Auswertung additiv');

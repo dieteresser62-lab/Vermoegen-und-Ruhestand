@@ -94,8 +94,8 @@ try {
             maxDrawdowns: { p50: value, p90: value, sampleSize: 1000 }, realMaxDrawdowns: { p50: value, p90: value, sampleSize: 1000 } };
         const dashboard = buildKpiDashboard(input);
         const stress = buildStressMetrics({ ...input, presetKey: 'SYNTHETIC', years: 4, maxDD: input.maxDrawdowns });
-        const cards = [dashboard.primary.find(card => card.title === 'Reale Depotentnahme P10'), ...dashboard.drawdownKpis,
-            ...stress.kpis.filter(card => /Drawdown|Depotentnahme P10/.test(card.title))];
+        const cards = [dashboard.primary.find(card => card.title === 'Entnahme aus dem Vermögen in schwachen Jahren'), ...dashboard.drawdownKpis,
+            ...stress.kpis.filter(card => /Drawdown|schwachen Jahren/.test(card.title))];
         for (const card of cards) {
             const html = renderKpiCard(card);
             assert(!/is-red|is-amber|is-green/.test(html), 'Tatsächliche Entnahme-/Drawdownkarte bleibt neutral');
@@ -169,7 +169,7 @@ try {
         assert(target.innerHTML.includes(cards[0].intervalText), 'Wilson-Intervall steht separat im sichtbaren Kartenkörper');
         for (const outcome of cards[1].outcomes) assert(target.innerHTML.includes(`${outcome.label} ${outcome.count}`), 'Alle vier Endzustände behalten ihre Anzahl einschließlich Null');
         assertEqual((target.innerHTML.match(/summary-item(?: kpi-card)? ds-card/g) || []).length, 4, 'Endvermögenskarte erhält Hauptwert und drei ergänzende Exaktwerte');
-        assert(target.innerHTML.includes('0,00 €') && target.innerHTML.includes('Keine Beobachtungen'), 'Nullvermögen bleibt von fehlenden Kennzahlen und deren Gründen unterscheidbar');
+        assert(target.innerHTML.includes('0 €') && target.innerHTML.includes('Keine Beobachtungen'), 'Nullvermögen bleibt von fehlenden Kennzahlen und deren Gründen unterscheidbar');
         assert(!target.innerHTML.includes('all_dead') && !target.innerHTML.includes('horizon_exhausted') && !target.innerHTML.includes('no_observations'), 'Redaktionelle Floor-/Statusdarstellung verwendet verständliche Gründe');
         assertEqual(JSON.stringify(cards), before, 'Summaryrenderer verändert keine Deskriptoren');
     }
@@ -178,9 +178,9 @@ try {
             taxOutcomes: { p50: 77286.831 }, cutYearSharePct: { p50: 0 } };
         const before = JSON.stringify(raw), box = new MockElement('div', documentRef);
         renderSummary(box, buildSummaryData({ results: raw, totalRuns: 10000, failCount: 51 }));
-        assert(box.innerHTML.includes('title="3.900.982,09 €">3,9 Mio. €')
-            && box.innerHTML.includes('Genauer Wert: 3.900.982,09 €'), 'Gerundete Hauptsumme hält den genauen Betrag im Tooltip und im Informationsfeld');
-        assert(box.innerHTML.includes('title="1.000.335,45 € / 16.120.322,27 €">1 Mio. € / 16,1 Mio. €'), 'Sekundäre Perzentile sind gerundet und behalten beide genauen Werte');
+        assert(box.innerHTML.includes('title="3.900.982 €">3,9 Mio. €')
+            && box.innerHTML.includes('Genauer Wert: 3.900.982 €'), 'Gerundete Hauptsumme hält den genauen Betrag im Tooltip und im Informationsfeld');
+        assert(box.innerHTML.includes('title="1.000.335 € / 16.120.322 €">1 Mio. € / 16,1 Mio. €'), 'Sekundäre Perzentile sind gerundet und behalten beide genauen Werte');
         renderKpiDashboard(box, buildKpiDashboard(raw, {}));
         assert(!box.innerHTML.includes('mehr als 10 % unter Wunsch-Flex'), 'Entnahmezeilen wiederholen die Einschränkungsantwort nicht');
         assertEqual(JSON.stringify(raw), before, 'Rundung und Entfernen von Duplikaten erhalten alle Rohwerte');

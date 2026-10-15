@@ -15,6 +15,7 @@ export function buildScenarioAnalysisView(scenario, options = {}) {
     const dated = scenario.logDataRows.map(row => row?.jahr).filter(Number.isInteger);
     const period = dated.length ? `Simulationsjahr ${dated[0]}–${dated.at(-1)}` : 'Simulationsjahre unbekannt';
     return buildLogAnalysisView(model, { rows: scenario.logDataRows, startYear: options.startYear,
+        moneyBasis: options.moneyBasis,
         source: `${scenario.label || 'Gewählter Pfad'} · ${run} · ${period} · aus dem Jahresprotokoll` });
 }
 

@@ -2,6 +2,7 @@
 
 import { PROTOCOL_GROUPS, getProtocolColumns, readProtocolValue, formatProtocolValue,
     protocolRowData, protocolRowFlags, createProtocolPersonContext, PROTOCOL_COLUMNS } from './protocol-columns.js';
+import { euroBasisLabel } from './euro-display.js';
 
 export function escapeProtocolHtml(value) {
     return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -47,11 +48,15 @@ export function renderProtocolSummary(rows, options = {}) {
     const last = protocolRowData(data.at(-1), source);
     const chips = [];
     if (outcomeLabel) chips.push(chip(outcomeLabel, outcome === 'ruin' ? 'ruin' : ''));
-    const end = options.endWealth ?? last.portfolio_total_end;
-    if (Number.isFinite(end)) chips.push(chip(`Endvermögen ${formatProtocolValue({ format: 'money' }, end)}`));
+    const inflation = source === 'backtest' ? data.at(-1)?.inflationVJ : last.inflation;
+    const factor = Number.isFinite(last.inflation_factor_cum) && Number.isFinite(inflation)
+        ? last.inflation_factor_cum * (1 + inflation / 100) : null;
+    const end = Object.hasOwn(options, 'endWealth') ? options.endWealth : options.moneyBasis === 'real'
+        ? Number.isFinite(factor) && factor > 0 ? last.portfolio_total_end / factor : null : last.portfolio_total_end;
+    if (Number.isFinite(end)) chips.push(chip(`Endvermögen ${formatProtocolValue({ format: 'money' }, end)} · ${euroBasisLabel(options.moneyBasis)}`));
     chips.push(chip(`${flags.filter(flag => flag.cut).length} Jahre mit Kürzung`, 'cut'));
     chips.push(chip(`${flags.filter(flag => flag.care).length} Pflegejahre`, 'care'));
-    return renderPersonDataNotice(options.personDataContext) + `<p class="protocol-subtitle">${escape(options.subtitle || `${data.length} Jahreszeilen · nominale Euro · Anzeige unabhängig vom vollständigen Download`)}</p><div class="protocol-chips">${chips.join('')}</div>`;
+    return renderPersonDataNotice(options.personDataContext) + `<p class="protocol-subtitle">${escape(options.subtitle || `${data.length} Jahreszeilen · ${euroBasisLabel(options.moneyBasis)} · Anzeige unabhängig vom vollständigen Download`)}</p><div class="protocol-chips">${chips.join('')}</div>`;
 }
 
 export function renderProtocolLegend(options = {}) {

@@ -307,6 +307,18 @@ async function renderSyntheticRiskDisplayFixture(page) {
                 excludedRuns: 0,
                 missingness: { no_observations: 0, technical_error: 0 }
             },
+            euroMetrics: {
+                nominal: {
+                    withdrawalP10: { p10: 12345678.9, p50: 9876543.21, sampleSize: 12, excludedRuns: 0,
+                        missingness: { no_observations: 0, technical_error: 0 } },
+                    pflege: {
+                        p1: { additionalNeedEurP50: 25000 },
+                        household: { maxAnnualAdditionalNeedEurP50: 20000, totalAdditionalNeedEurP50: 80000,
+                            endWealthWithCareEurP50: 400000, endWealthNoCareEurP50: 550000 },
+                        comparison: { endWealthNoCareMinusCareEur: 150000 }
+                    }
+                }
+            },
             extraKPI: {
                 timeShareQuoteAbove45: 0.0125,
                 lossCarryTaxSavings: { perRunMean: 331.01 },
@@ -529,6 +541,8 @@ async function runWorkerSuccessCase(browser, baseUrl) {
         await page.locator('#mcCancelButton').waitFor({ state: 'visible' });
         assert(await page.locator('#mcButton').getAttribute('aria-busy') === 'true', 'running button exposes busy state');
         await waitForCompletedRun(page);
+        assert(await page.locator('#mcWealthMode [data-wealth-mode="nominal"]').getAttribute('aria-pressed') === 'true',
+            'completed browser run starts with nominal euros');
 
         assert(await page.locator('#scenarioSelector').count() === 1,
             'completed run keeps one stable scenario selector container');
@@ -557,17 +571,19 @@ async function runWorkerSuccessCase(browser, baseUrl) {
             return { json: serializeScenarioLogExportV2(projected), csv: serializeScenarioLogCsvV2(projected), label: document.getElementById('stressReplaySelectedScenarioLabel').textContent };
         });
         await assertScenarioDownloadBytes(page, beforeMode, 'Listenwahl');
-        await page.locator('#mcWealthMode [data-wealth-mode="nominal"]').click();
-        await assertScenarioDownloadBytes(page, beforeMode, 'Nominalwechsel');
-        assert(await page.locator('#scenarioList').getAttribute('data-selected-id') === scenarioValues[1]
-            && await page.locator('#mcWealthMode [data-wealth-mode="nominal"]').getAttribute('aria-pressed') === 'true',
-            'Moduswechsel erhält die Auswahl und synchronisiert beide Ergebnisansichten');
-        assert(await page.evaluate(async expected => {
-            const { projectScenarioLogV2, serializeScenarioLogExportV2, serializeScenarioLogCsvV2 } = await import('./app/simulator/monte-carlo-export.js');
-            const projected = projectScenarioLogV2(window.globalCurrentScenarioData.rows, { personDataContext: window.globalCurrentScenarioData.personDataContext });
-            return serializeScenarioLogExportV2(projected) === expected.json && serializeScenarioLogCsvV2(projected) === expected.csv
-                && document.getElementById('stressReplaySelectedScenarioLabel').textContent === expected.label;
-        }, beforeMode), 'Maßstabwechsel erhält vollständige Exportprojektion und Replayquelle');
+        for (const mode of ['real', 'nominal']) {
+            await page.locator(`#mcWealthMode [data-wealth-mode="${mode}"]`).click();
+            await assertScenarioDownloadBytes(page, beforeMode, `${mode}: Euro-Wechsel`);
+            assert(await page.locator('#scenarioList').getAttribute('data-selected-id') === scenarioValues[1]
+                && await page.locator(`#mcWealthMode [data-wealth-mode="${mode}"]`).getAttribute('aria-pressed') === 'true',
+                `${mode}: Moduswechsel erhält die Auswahl und synchronisiert beide Ergebnisansichten`);
+            assert(await page.evaluate(async expected => {
+                const { projectScenarioLogV2, serializeScenarioLogExportV2, serializeScenarioLogCsvV2 } = await import('./app/simulator/monte-carlo-export.js');
+                const projected = projectScenarioLogV2(window.globalCurrentScenarioData.rows, { personDataContext: window.globalCurrentScenarioData.personDataContext });
+                return serializeScenarioLogExportV2(projected) === expected.json && serializeScenarioLogCsvV2(projected) === expected.csv
+                    && document.getElementById('stressReplaySelectedScenarioLabel').textContent === expected.label;
+            }, beforeMode), `${mode}: Maßstabwechsel erhält vollständige Exportprojektion und Replayquelle`);
+        }
         await page.locator('#mcViewTabRisk').click();
         assert(await page.locator('#wealthDistribution svg').isVisible()
             && await page.locator('#wealthDistribution [data-wealth-mark]:visible').count() === 3
@@ -655,7 +671,7 @@ async function runWorkerSuccessCase(browser, baseUrl) {
             'Floor-Deckung im gewählten Horizont',
             'Endzustände',
             'mehr als 10 % unter Wunsch-Flex',
-            'Reale Depotentnahme P10'
+            'Entnahme aus dem Vermögen in schwachen Jahren'
         ]) {
             assert(visibleResult.includes(label), `completed browser result shows ${label}`);
         }
@@ -727,7 +743,12 @@ async function runWorkerSuccessCase(browser, baseUrl) {
         }
 
         const fixtureText = (await renderSyntheticRiskDisplayFixture(page)).replace(/\u00a0/g, ' ');
-        assert(fixtureText.includes('12.345.678,90') && fixtureText.includes('9.876.543,21'), 'synthetic browser fixture renders both large cent-exact benefit/cost values as DOM text');
+        assert(fixtureText.includes('12.345.679 €') && fixtureText.includes('9.876.543 €') && !/\d,\d{2}\s*€/.test(fixtureText),
+            'synthetic browser fixture renders large benefit/cost values in whole euros');
+        const benefitValue = (await page.locator('#unifiedKpiDashboard .kpi-secondary-value strong').textContent()).replace(/\u00a0/g, ' ');
+        const costValue = (await page.locator('#monteCarloSummary .summary-item').filter({ hasText: 'Median Steuern' }).locator('.value-line').getAttribute('title')).replace(/\u00a0/g, ' ');
+        assert(benefitValue === '9.876.543 €' && costValue === '12.345.679 €',
+            'fixture benefit 9876543.21 rounds down and cost 12345678.90 rounds up to whole euros');
         assert(fixtureText.includes('Max. Drawdown nominal (Median)') && fixtureText.includes('Max. Drawdown real (Median)'), 'synthetic browser fixture renders both price bases');
         assert(fixtureText.includes('34,25 %') && fixtureText.includes('35,50 %'), 'synthetic browser fixture renders both drawdowns exactly');
         assert(fixtureText.includes('Gruppenmedian-Differenz (nicht kausal)'), 'synthetic browser fixture renders the care non-causality marker in the DOM');

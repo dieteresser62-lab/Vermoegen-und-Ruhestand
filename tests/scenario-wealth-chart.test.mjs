@@ -1,7 +1,7 @@
 import { formatScenarioWealthTick, buildScenarioWealthPath, buildScenarioEntries, renderScenarioWealthChart, scenarioEndWealth } from '../app/simulator/scenario-wealth-chart.js';
 import { renderScenarioList } from '../app/simulator/scenario-log-view.js';
 import { createWealthFan, createWealthFanPath, recordWealthFanYear, commitWealthFanPath } from '../app/simulator/wealth-fan-aggregation.js';
-import { formatCurrency } from '../app/simulator/simulator-utils.js';
+import { formatWholeEuro as formatCurrency } from '../app/simulator/results-formatting.js';
 import { ScenarioAnalyzer } from '../app/simulator/scenario-analyzer.js';
 
 const rows = [
@@ -167,7 +167,7 @@ for (const [label, wealthFan] of fanStates) {
 }
 assertEqual(JSON.stringify({ yearlyScenario, scaleScenario, observedRealByRun }), untouched, 'Renderer und Liste erhalten Rohlogs, Quellidentitäten und Realaggregate bytegleich');
 assertEqual(buildScenarioWealthPath(yearlyScenario, { initialWealth: 1000 }).points[1].value, 1320, 'Direkter Legacy-Helfer behält Jahresbeginnbasis trotz beobachteter Inflation');
-assertEqual(scenarioEndWealth(yearlyScenario), 2079 / 1.2375, 'Direkter Legacy-Endwerthelfer ohne realByRun bleibt unverändert');
+assertEqual(scenarioEndWealth(yearlyScenario), 2079 / (1.2375 * 1.2), 'Endwerthelfer verwendet auch ohne realByRun den Jahresendfaktor');
 
 for (const [value, expected] of [[0, '0'], [200000.49, '200.000'], [1500000, '1,5 Mio.'], [1000000, '1 Mio.']]) {
     assertEqual(formatScenarioWealthTick(value), expected, `Tick ${value}: deutscher Kurztext ohne Cent`);

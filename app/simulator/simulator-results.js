@@ -7,6 +7,9 @@ import { renderScenarioAnalysis } from './scenario-log-analysis.js';
 import { buildWealthDistribution, renderWealthDistribution } from './wealth-distribution.js';
 import { formatChartEuro } from './results-formatting.js';
 import { renderWealthFanChart } from './wealth-fan-chart.js';
+import { getEuroMode, resetEuroMode, euroBasisLabel } from './euro-display.js';
+import { scenarioEndWealth, scenarioDisplayLabel } from './scenario-wealth-chart.js';
+import { formatWholeEuro } from './results-formatting.js';
 import { initializePortfolio } from './simulator-portfolio-init.js';
 import { getProtocolColumns, createProtocolPersonContext } from './protocol-columns.js';
 import { escapeProtocolHtml, renderProtocolSummary, renderProtocolTable } from './protocol-renderer.js';
@@ -46,7 +49,7 @@ function replaceScenarioChangeListener(element, handler) {
     } else scenarioChangeListeners.delete(element);
 }
 
-function projectStressReplayScenario(scenario) {
+function projectStressReplayScenario(scenario, moneyBasis = getEuroMode(), realByRun) {
     const empty = document.getElementById('stressReplaySelectedScenarioEmpty');
     const details = document.getElementById('stressReplaySelectedScenarioDetails');
     const label = document.getElementById('stressReplaySelectedScenarioLabel');
@@ -63,9 +66,12 @@ function projectStressReplayScenario(scenario) {
         return;
     }
 
-    label.textContent = scenario.label || 'Unbenannter Lauf';
-    wealth.textContent = scenario.failed ? 'Ruin' : formatChartEuro(scenario.endVermoegen);
-    wealth.title = scenario.failed ? 'Ruin' : formatCurrency(scenario.endVermoegen);
+    label.textContent = scenarioDisplayLabel(scenario);
+    const endWealth = scenarioEndWealth(scenario, moneyBasis, realByRun);
+    wealth.textContent = scenario.failed ? 'Ruin' : formatChartEuro(endWealth);
+    wealth.title = scenario.failed ? 'Ruin' : formatWholeEuro(endWealth);
+    const basis = document.getElementById('stressReplaySelectedScenarioBasis');
+    if (basis) basis.textContent = `Endvermögen · ${euroBasisLabel(moneyBasis)}`;
     care.textContent = scenario.careEverActive ? 'Pflegefall enthalten' : 'Nicht als Pflegefall markiert';
     empty.hidden = true;
     details.hidden = false;
@@ -140,8 +146,11 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
     displayContext = { ...displayContext };
     const personDisplayContext = createProtocolPersonContext(inputs, displayContext.personDisplayContext?.persons);
     disposeScenarioLogView(document);
+    resetEuroMode(document);
     const distributionHost = document.getElementById('wealthDistribution');
     const fanHost = document.getElementById('wealthFanChart');
+    let moneyBasis = getEuroMode(document);
+    let renderActiveScenario = () => {};
     if (distributionHost) distributionHost.innerHTML = '';
     const renderDistribution = mode => {
         if (distributionHost) {
@@ -172,23 +181,32 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
         if (previousSummary) previousSummary.innerHTML = '';
     }
 
-    const viewModel = prepareMonteCarloViewModel({ results, totalRuns: anzahl, failCount, inputs });
-
-    renderMonteCarloAnswers(document.getElementById('monteCarloAnswers'), buildMonteCarloAnswers({ results, totalRuns: anzahl, failCount }));
-    renderSummary(document.getElementById('monteCarloSummary'), viewModel.summaryCards);
+    const viewModel = prepareMonteCarloViewModel({ results, totalRuns: anzahl, failCount, inputs, moneyBasis });
     const personNotice = document.getElementById('monteCarloPersonNotice');
     if (personNotice) personNotice.innerHTML = renderPersonDataNotice(personDataContext);
 
     const dashboard = document.getElementById('unifiedKpiDashboard');
     const riskDashboard = document.getElementById('riskKpiDashboard');
-    renderKpiDashboard(dashboard, viewModel.kpiDashboard, riskDashboard);
-    renderStressSection(riskDashboard || dashboard, viewModel.stressMetrics);
-
     renderHeatmap(document.getElementById('advancedKpiDashboard'), viewModel.heatmapData);
 
     const pflegeResultsContainer = document.getElementById('pflegeKpiResults');
     const summaryBox = document.getElementById('pflegeKpiSummary');
-    renderCareSection(summaryBox, pflegeResultsContainer, viewModel.careMetrics, personDisplayContext);
+    const renderMoney = mode => {
+        moneyBasis = mode;
+        const model = prepareMonteCarloViewModel({ results, totalRuns: anzahl, failCount, inputs, moneyBasis });
+        const detailsOpen = dashboard?.querySelector?.('.mc-more-metrics')?.open;
+        for (const id of ['monteCarloAnswers', 'overviewMonteCarloAnswers']) renderMonteCarloAnswers(document.getElementById(id), buildMonteCarloAnswers({ results, totalRuns: anzahl, failCount, moneyBasis }));
+        renderSummary(document.getElementById('monteCarloSummary'), model.summaryCards);
+        renderKpiDashboard(dashboard, model.kpiDashboard, riskDashboard);
+        const disclosure = dashboard?.querySelector?.('.mc-more-metrics');
+        if (disclosure) disclosure.open = !!detailsOpen;
+        renderStressSection(riskDashboard || dashboard, model.stressMetrics);
+        renderCareSection(summaryBox, pflegeResultsContainer, model.careMetrics, personDisplayContext);
+        const basis = document.getElementById('scenarioProtocolBasis');
+        if (basis) basis.textContent = `Geldbeträge · ${euroBasisLabel(mode)}`;
+        renderDistribution(mode);
+        renderActiveScenario();
+    };
 
     // 5. Szenario-Log Auswahl (ersetzt den alten Worst-Run-Log)
     if (scenarioLogs && scenarioContainer) {
@@ -232,17 +250,17 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                         logDetailLevel: logDetailLevel,
                         strategyMode: inputs?.decumulation?.mode || STRATEGY_OPTIONS.STANDARD,
                         goldAktiv: inputs?.goldAktiv,
-                        inputs, startYear: displayContext.startYear, personDisplayContext
+                        inputs, startYear: displayContext.startYear, personDisplayContext, moneyBasis
                     });
                     const scenarioLabel = { earliestCareP1: personDisplayContext.persons[0]?.name,
                         earliestCareP2: personDisplayContext.persons[1]?.name }[scenario.key];
                     if (summary) summary.innerHTML = renderProtocolSummary(scenario.logDataRows, {
                         personDataContext,
-                        source: 'mc', endWealth: scenario.endVermoegen,
+                        source: 'mc', endWealth: scenarioEndWealth(scenario, moneyBasis, results?.wealthView?.realByRun), moneyBasis,
                         outcome: scenario.failed ? 'ruin' : scenario.logDataRows.at(-1)?.recordType === 'terminal_death' ? 'all_dead' : scenario.failed === false ? 'no_ruin' : undefined,
-                        subtitle: `${scenarioLabel ? `Frühester Pflegeeintritt ${scenarioLabel}` : scenario.label || 'Szenario'} · ${scenario.logDataRows.length} Jahreszeilen · nominale Euro`
+                        subtitle: `${scenarioLabel ? `Frühester Pflegeeintritt ${scenarioLabel}` : scenarioDisplayLabel(scenario)} · ${scenario.logDataRows.length} Jahreszeilen · ${euroBasisLabel(moneyBasis)}`
                     });
-                    projectStressReplayScenario(scenario);
+                    projectStressReplayScenario(scenario, moneyBasis, results?.wealthView?.realByRun);
                     selectStressReplayScenario(scenario);
                     output.style.display = 'block';
                     window.globalCurrentScenarioData = {
@@ -251,7 +269,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                         caR_Threshold: caR
                     };
                     exportButtons.style.display = 'flex';
-                    renderScenarioAnalysis(document, scenario, analysisOptions);
+                    renderScenarioAnalysis(document, scenario, { ...analysisOptions, moneyBasis });
                 } else {
                     projectStressReplayScenario(null);
                     selectStressReplayScenario(null);
@@ -270,6 +288,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                 console.error('Szenarioprotokoll fehlgeschlagen:', error);
             }
         };
+        renderActiveScenario = () => renderSelectedScenario();
 
         // Liste, Navigation und SVG werden unten gemeinsam gebunden.
 
@@ -352,7 +371,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
             comparisonContext: buildComparisonContext({ results, totalRuns: anzahl, failCount, inputs }),
             chartOptions: { initialWealth: portfolioTotal(initializePortfolio(inputs || {})), startYear: displayContext.startYear, startAge: inputs?.startAlter, realByRun: results?.wealthView?.realByRun, wealthFan: results?.wealthFan, personDisplayContext },
             onSelect: renderSelectedScenario,
-            onMode: renderDistribution
+            onMode: renderMoney
         });
 
     } else if (scenarioContainer) {
@@ -363,7 +382,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
         selectStressReplayScenario(null);
         scenarioContainer.style.display = 'none';
     }
-    if (!scenarioLogs || !scenarioContainer) bindScenarioLogView({ document, logs: null, onSelect: () => {}, onMode: renderDistribution });
+    if (!scenarioLogs || !scenarioContainer) bindScenarioLogView({ document, logs: null, onSelect: () => {}, onMode: renderMoney });
 
     // 6. Ergebnisinhalt bereitstellen. Die Sichtbarkeit der übergeordneten
     // Unteransicht wird ausschließlich vom MC-Cockpit gesteuert.

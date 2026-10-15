@@ -230,7 +230,7 @@ console.log('Test 4: Simulator DOM keeps cockpit contracts and ordering');
         'focused replay editor grid remains a direct fieldset child');
     assert(/\.stress-replay-editor-grid\s+\[data-active-when\]\[hidden\]\s*\{[^}]*display:\s*none;/s.test(css),
         'conditional replay fields keep their hidden state against the editor label layout');
-    assert(/projectStressReplayScenario\(scenario\);\s*selectStressReplayScenario\(scenario\);/s.test(resultsSource),
+    assert(/projectStressReplayScenario\(scenario, moneyBasis, results\?\.wealthView\?\.realByRun\);\s*selectStressReplayScenario\(scenario\);/s.test(resultsSource),
         'the read-only projection and replay controller consume the same resolved scenario in one path');
     assert((resultsSource.match(/projectStressReplayScenario\(null\)/g) || []).length >= 4,
         'initial, empty, unresolved and logless paths all clear the read-only projection');

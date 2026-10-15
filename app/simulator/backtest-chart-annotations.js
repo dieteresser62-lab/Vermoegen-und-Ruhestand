@@ -11,8 +11,8 @@ const markerLabels = {
 };
 
 /** Anzeigeauswahl aus LA-1; keine zusätzliche Finanz- oder Ereignisrechnung. */
-export function buildBacktestChartAnnotations(data) {
-    const model = analyzeBacktest(data);
+export function buildBacktestChartAnnotations(data, options = {}) {
+    const model = analyzeBacktest(data, options);
     const chartYears = new Set(backtestChartSeries(data?.result ?? data).filter(point => point.total !== null).map(point => point.year));
     const bands = model.events.filter(event => event.type === 'decision_flex_cut_phase'
         && Number.isInteger(event.evidence.startYear) && Number.isInteger(event.evidence.endYear))

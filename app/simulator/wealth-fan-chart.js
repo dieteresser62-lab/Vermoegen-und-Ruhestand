@@ -1,6 +1,6 @@
 import { buildWealthFanModel } from './wealth-fan-aggregation.js';
 import { escapeProtocolHtml as escape } from './protocol-renderer.js';
-import { formatCurrency } from './simulator-utils.js';
+import { formatWholeEuro as formatCurrency } from './results-formatting.js';
 import { formatChartEuro } from './results-formatting.js';
 import { infoPopoverHtml } from '../shared/designsystem-info-popover.js';
 

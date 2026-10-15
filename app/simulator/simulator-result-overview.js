@@ -10,6 +10,7 @@ import { buildSummaryData, buildMonteCarloAnswers, projectMinimumFlexDisplay } f
 import { info, renderMonteCarloAnswers } from './results-renderers.js';
 import { revealAssumptionControl } from './simulator-assumptions-ui.js';
 import { invalidateBacktestForHousehold, renderInvalidatedBacktestStatus } from './simulator-backtest.js';
+import { getEuroMode, subscribeEuroMode, euroBasisLabel } from './euro-display.js';
 
 const money = value => typeof value === 'number' && Number.isFinite(value)
     ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value) : '—';
@@ -121,6 +122,12 @@ export function projectMonteCarloOverview(results, totalRuns, failCount) {
     const valid = inventory?.schemaVersion === 'MonteCarloOutcomeInventoryV1'
         && Number.isFinite(inventory.floorCoveragePct) && !inventory.technical_error;
     return { valid, answers: buildMonteCarloAnswers({ results, totalRuns, failCount }), floorPct: valid ? inventory.floorCoveragePct : null,
+        moneyViews: Object.fromEntries(['nominal', 'real'].map(moneyBasis => {
+            const cards = buildSummaryData({ results, totalRuns, failCount, moneyBasis });
+            return [moneyBasis, { answers: buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBasis }),
+                medianDisplay: cards[2].displayValue, p10P90Display: cards[4].displayValue,
+                otherBasisLine: cards[2].otherBasisLine }];
+        })),
         floorDisplay: valid ? summary[0].displayValue : '—',
         countText: valid ? summary[0].countText : '',
         dots: valid ? Math.min(inventory.ruin > 0 ? 99 : 100, Math.round(inventory.floorCoveragePct)) : null,
@@ -312,11 +319,12 @@ function renderSimulatorOverviewContent() {
     const mcHost = doc.getElementById('overviewMonteCarlo');
     if (mc.last?.result?.answers) {
         for (const id of ['monteCarloAnswers', 'overviewMonteCarloAnswers']) {
-            renderMonteCarloAnswers(doc.getElementById(id), mc.last.result.answers, mc.stale);
+            renderMonteCarloAnswers(doc.getElementById(id), mc.last.result.moneyViews?.[getEuroMode(doc)]?.answers ?? mc.last.result.answers, mc.stale);
         }
     }
     if (mcHost) {
-        const p = mc.last?.result;
+        const base = mc.last?.result;
+        const p = base ? { ...base, ...base.moneyViews?.[getEuroMode(doc)] } : null;
         const state = mc.phase === 'idle' ? 'noch nicht gerechnet' : mc.phase === 'preparing'
             ? 'Monte-Carlo wird vorbereitet' : phaseLabels[mc.phase] ?? mc.phase;
         mcHost.innerHTML = `<div class="sim-card-heading"><h2>Reicht das Vermögen?</h2>${info('overviewFloorInfo', 'Erläuterung zur Floor-Deckung', p?.explanation ?? 'Monte-Carlo verwendet viele simulierte Lebens- und Marktpfade. Noch kein Lauf vorhanden.')}</div>`
@@ -324,7 +332,7 @@ function renderSimulatorOverviewContent() {
             + (p ? `<p class="sim-hero-amount">${escape(p.floorDisplay)}</p>${p.countText ? `<p class="sim-answer-count">${escape(p.countText)}</p>` : ''}<p>Floor-Deckung bis Lebensende oder Horizont</p>`
                 + (p.valid ? `<div class="sim-floor-dots" aria-hidden="true">${Array.from({ length: 100 }, (_, i) => `<i${i < p.dots ? ' class="covered"' : ''}></i>`).join('')}</div><p>Ein Punkt ≈ 1 % der Läufe${p.covered < p.denominator && p.floorPct > 99 ? ' · mindestens ein Punkt bleibt ungedeckt' : ''}</p>` : `<p>Finanziell nicht auswertbar · technische Läufe: ${p.technicalRuns ?? '—'}</p>`)
                 + `<p>Wilson-95-%-Intervall: ${p.interval ? `${percent(p.interval.lowerPct)}–${percent(p.interval.upperPct)}` : 'nicht verfügbar'}</p>`
-                + '<p class="ds-hint sim-price-basis">Endvermögen nominal · unabhängig vom Euro-Schalter</p>' + field('Endvermögen P10 / P90', p.p10P90Display) + field('Endvermögen Median', p.medianDisplay)
+                + `<p class="ds-hint sim-price-basis">Endvermögen · ${euroBasisLabel(getEuroMode(doc))}</p>` + field('Endvermögen P10 / P90', p.p10P90Display) + field('Endvermögen Median', p.medianDisplay)
                 + '<p>Am Laufende, ohne Pflegereserve</p>' : ['preparing', 'running'].includes(mc.phase) ? '' : '<p>Monte-Carlo wird erst auf deinen Wunsch gestartet.</p>')
             + renderMonteCarloRunControls();
         syncMonteCarloRunControls(doc, !!mc.last);
@@ -364,6 +372,7 @@ export function scheduleOverviewRefresh() {
 export function enableOverviewRevisions() { revisionsEnabled = true; }
 
 export function initializeResultOverview({ rerunBacktest, activateTab, runMonteCarlo }, doc = globalThis.document) {
+    subscribeEuroMode(doc, scheduleOverviewRefresh);
     if (!doc?.getElementById('overviewBacktest') || bindings.has(doc)) return;
     bindings.add(doc);
     rerun = rerunBacktest;

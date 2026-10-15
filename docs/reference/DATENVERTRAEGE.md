@@ -312,7 +312,7 @@ Der aktuelle Quellfingerprint hat Version 2 und SHA-256. Er bindet Fachannahmen;
 | Format | Hauptquelle | Umfang |
 | --- | --- | --- |
 | `HistoricalBacktestExportV2`, `HistoricalBacktestCsvV2` | [historical-backtest-export.js](../../app/simulator/historical-backtest-export.js) | Request, Resultat, inklusive Periode, Provenienz, Einheiten, Quantisierung, Fingerprints; Portfoliogrenzen nicht restartfähig |
-| `MonteCarloExportV2` | [monte-carlo-export.js](../../app/simulator/monte-carlo-export.js), [monte-carlo-contracts.js](../../app/simulator/monte-carlo-contracts.js) | eingefrorene Daten-/Seed-/Request-/Resultverträge, Outcomes und Missingness |
+| `MonteCarloExportV2` | [monte-carlo-export.js](../../app/simulator/monte-carlo-export.js), [monte-carlo-contracts.js](../../app/simulator/monte-carlo-contracts.js) | eingefrorene Daten-/Seed-/Request-/Resultverträge, Outcomes und Missingness; optional `result.kpis.euroMetrics` mit `MonteCarloEuroMetricsV1`, getrennten nominalen/realen Aggregaten und Preiszeitpunkten. Alte V2-Dateien ohne Zusatz bleiben gültig; Rundung erfolgt nur in der Anzeige. |
 | `ScenarioLogExportV2` | `monte-carlo-export.js` | ausgewählter Pfad samt Laufannahmen, Personenbeleg und Geldbasis |
 | Replayexport | [stress-replay-export.js](../../app/simulator/stress-replay-export.js) | materialisierter Markt-/Ereignispfad und Varianten |
 

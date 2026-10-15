@@ -25,12 +25,12 @@ function eventPoint(event, occurrences, model, { startYear }) {
     } else if (event.type === 'below_minimum_flex_phase') {
         point.valueText = `${years(event.evidence.durationYears)} · ${range(event)}`;
     } else if (event.type === 'minimum_real_year_end_wealth') {
-        point.label = `Tiefster Stand (Kaufkraft ${startYear ?? 'zum Laufstart'})`;
+        point.label = `Stand im Kaufkraft-Tief · ${model.moneyBasis === 'real' ? mc ? 'heutige Euro' : `Euro von ${startYear ?? 'Laufstart'}` : 'nominal'}`;
         point.valueText = `${event.valueText} · ${yearText(event.year, mc)}`;
         const recovery = model.events.find(item => item.type === 'real_wealth_unrecovered'
             && item.evidence.peakYear === 'start' && item.evidence.openAtEnd);
-        point.text = recovery
-            ? `Das reale Startvermögen von ${euro(recovery.evidence.targetRealEur)} wird bis ${yearText(recovery.evidence.observationEnd, mc)} in den Jahresendständen nicht wieder erreicht.`
+        point.text = recovery && !mc
+            ? `${event.text} Die Kaufkraft des Startvermögens wird bis ${yearText(recovery.evidence.observationEnd, mc)} in den Jahresendständen nicht wieder erreicht.`
             : event.text;
     } else if (event.type === 'liquidity_below_target') {
         point.valueText = `${years(occurrences.length)} · Beispiel ${yearText(event.year, mc)}`;
@@ -78,8 +78,8 @@ export function buildLogAnalysisView(model, { rows, source, startYear } = {}) {
     const lastYear = model.yearRange.end;
     const mc = model.source === 'monte_carlo';
     if (lastYear !== null) points.push({ type: 'end_wealth', priority: 120, label: `Ende ${yearText(lastYear, mc)}`, year: lastYear,
-        valueText: `${euro(model.nominalEndWealth)} nominal · ${euro(model.realEndWealth)} real`,
-        text: 'Stand des letzten abgeschlossenen Finanzjahrs, real in Kaufkraft zum Laufstart.' });
+        valueText: `${euro(model.moneyBasis === 'real' ? model.realEndWealth : model.nominalEndWealth)} · ${model.moneyBasis === 'real' ? mc ? 'heutige Euro' : `Euro von ${startYear ?? 'Laufstart'}` : 'nominal'}`,
+        text: `Stand des letzten abgeschlossenen Finanzjahrs · ${model.moneyBasis === 'real' ? mc ? 'heutige Euro' : `Euro von ${startYear ?? 'Laufstart'}` : 'nominale Euro'}.` });
     const ruin = model.events.find(event => event.type === 'ruin');
     const shortfall = model.events.find(event => event.type === 'floor_shortfall');
     const badge = ruin ? { tone: 'warning', text: `Finanzieller Abbruch ${yearText(ruin.year, mc)}` }
@@ -107,8 +107,9 @@ export function logAnalysisHtml(view, options) {
     if (!view) return '';
     const heading = options.mc ? '<h2 id="scenarioLogAnalysisHeading">Was im gewählten Pfad auffällt</h2>'
         : '<h2 id="backtestAnalysisHeading">Was im Lauf auffällt</h2>';
-    const info = 'Die Punkte stammen aus festen Regeln für diesen Lauf. Mindest-Flex und Grundbedarf haben Vorrang, danach folgen Kürzungsphasen und das reale Vermögenstief. Kürzung bedeutet mindestens 10 % weniger vorgesehene Flex-Entnahme; unter Mindest-Flex zählt der tatsächlich bezahlte Haushalts-Flex einschließlich Rentenbeitrag. Wiederholte Treffer werden je Art und Person gebündelt, bei Phasen steht die längste vorn. Steuerspitzen sind mindestens doppelt so hoch wie der Laufmedian und über 1.000 €, große Verkäufe erreichen mindestens 10 % des Vorjahresvermögens. Reale Werte zeigen Kaufkraft zum Laufstart einschließlich Pflegevorsorge. Fehlende Werte bleiben unbekannt; die Anzeige erklärt keine unbelegten Ursachen.'
+    let info = 'Die Punkte stammen aus festen Regeln für diesen Lauf. Mindest-Flex und Grundbedarf haben Vorrang, danach folgen Kürzungsphasen und das reale Vermögenstief. Kürzung bedeutet mindestens 10 % weniger vorgesehene Flex-Entnahme; unter Mindest-Flex zählt der tatsächlich bezahlte Haushalts-Flex einschließlich Rentenbeitrag. Wiederholte Treffer werden je Art und Person gebündelt, bei Phasen steht die längste vorn. Steuerspitzen sind mindestens doppelt so hoch wie der Laufmedian und über 1.000 €, große Verkäufe erreichen mindestens 10 % des Vorjahresvermögens. Reale Werte zeigen Kaufkraft zum Laufstart einschließlich Pflegevorsorge. Fehlende Werte bleiben unbekannt; die Anzeige erklärt keine unbelegten Ursachen.'
         + (options.mc ? ' Die Zeitachse nennt Simulationsjahre. Das ⓘ am Jahreslink nennt das dazu gezogene Datenjahr. Die Karten beschreiben nur diesen Pfad, keine Anteile aller Pfade. Pflege und Tod sind protokollierte Lebensereignisse, keine Bewertung.' : '');
+    info = info.replace('und über 1.000 €,', 'und überschreiten den festen Steuerfilter,');
     return `<div class="backtest-analysis-head"><div>${heading}
         <p class="backtest-analysis-source ds-explanation"><span>${escape(view.source)}</span>${infoPopoverHtml('Wie die Punkte gefunden werden', info)}</p></div>
         <div class="log-analysis-actions">${options.mc ? '<a href="#scenarioProtocolHeading" data-scenario-analysis-protocol>Zum Jahresprotokoll →</a>' : ''}<span class="backtest-analysis-badge is-${view.badge.tone}">${escape(view.badge.text)}</span></div></div>

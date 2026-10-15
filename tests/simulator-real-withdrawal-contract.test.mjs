@@ -379,6 +379,12 @@ for (let rowIndex = 0; rowIndex < mcRows.length; rowIndex++) {
 }
 assertEqual(mcChunk.allRealWithdrawalsSample.length, 0, 'Deprecated run-index withdrawal sampling should no longer be transferred');
 assertEqual(mcChunk.pathSummaries.realWithdrawalObservationCount[0], 3, 'Per-run withdrawal summary should count all decumulation observations');
+assertClose(mcChunk.pathSummaries.taxPaidRealEur[0],
+    mcRows.reduce((total, row) => total + row.steuern_gesamt / row.inflation_factor_cum, 0), 1e-8,
+    'Zusätzliche reale Steueraggregation folgt jedem protokollierten Jahresanfangsfaktor');
+assertClose(mcChunk.pathSummaries.withdrawalP10NominalEur[0],
+    quantile(mcRows.map(row => row.entnahme_effektiv), 0.1), 1e-9,
+    'Nominales Lauf-P10 kommt aus nominalen Jahreszahlungen vor der Quantilbildung');
 assertClose(
     mcChunk.pathSummaries.realWithdrawalP10RealEur[0],
     quantile(mcRows.map(row => row.jahresentnahme_real), 0.1),

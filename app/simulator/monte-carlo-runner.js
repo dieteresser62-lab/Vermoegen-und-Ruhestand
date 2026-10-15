@@ -8,7 +8,7 @@
 "use strict";
 
 import { rng, makeRunSeed, quantile } from './simulator-utils.js';
-import { BREAK_ON_RUIN, annualData } from './simulator-data.js';
+import { BREAK_ON_RUIN, annualData, STRESS_PRESETS } from './simulator-data.js';
 import { applyStressOverride, computeRentAdjRate } from './simulator-portfolio.js';
 import { simulateOneYear, initMcRunState, sampleNextYearData, computeRunStatsFromSeries, updateCareMeta, calcCareCost, computeCareMortalityMultiplier, computeHouseholdFlexFactor, getDataVersion, resolveMonteCarloCape, resolveSimulatorCumulativeInflationFactor } from './simulator-engine-wrapper.js';
 import { portfolioTotal } from './simulator-results.js';
@@ -78,6 +78,7 @@ import {
 } from './stress-replay-path-materializer.js';
 import { buildNextMarketDataHist } from './simulator-year-portfolio.js';
 import { createWealthFan, createWealthFanPath, recordWealthFanYear, commitWealthFanPath } from './wealth-fan-aggregation.js';
+import { createEuroPathTracker, recordEuroFinancialYear, recordEuroZeroWithdrawal, finalizeEuroPath } from './mc-euro-metrics.js';
 
 export { MC_HEATMAP_BINS, pickWorstRun, createMonteCarloBuffers, buildMonteCarloAggregates };
 export { buildStartYearCdf, pickStartYearIndex } from './mc-year-sampling.js';
@@ -322,6 +323,7 @@ function appendPostRuinZeroWithdrawals({
     rand,
     effectiveTransitionYear: initialTransitionYear,
     realWithdrawals,
+    euroTracker,
     stressTracker,
     wealthFanPath
 }) {
@@ -369,6 +371,7 @@ function appendPostRuinZeroWithdrawals({
         recordWealthFanYear(wealthFanPath, simulationsJahr + 1, 0, 0, true);
         if (!isAccumulation) {
             realWithdrawals.push(0);
+            recordEuroZeroWithdrawal(euroTracker, simulationsJahr);
             recordMonteCarloStressZeroWithdrawal(stressTracker, simulationsJahr);
         }
     }
@@ -597,6 +600,7 @@ export async function runMonteCarloChunk({
         const careNeedTracker = createMonteCarloCareNeedTracker();
         let technicalPathError = null;
         const realWithdrawalsThisRun = [];
+        const euroTracker = createEuroPathTracker(STRESS_PRESETS[inputs.stressPreset]?.years || 0);
         let withdrawalRateSumThisRun = 0;
         let withdrawalRateObservationCountThisRun = 0;
 
@@ -963,6 +967,7 @@ export async function runMonteCarloChunk({
                 recordWealthFanYear(wealthFanPath, simulationsJahr + 1, 0, 0, true);
                 if (!isAccumulation) {
                     realWithdrawalsThisRun.push(0);
+                    recordEuroZeroWithdrawal(euroTracker, simulationsJahr);
                     recordMonteCarloStressZeroWithdrawal(stressTracker, simulationsJahr);
                 }
                 // Bei Ruin ist das Depot definitiv erschöpft - setze Alter
@@ -1004,6 +1009,8 @@ export async function runMonteCarloChunk({
                 && result?.newState?.portfolio
                 && result?.logData) {
                 simState = result.newState;
+                recordEuroFinancialYear(euroTracker, result.logData, result.totalTaxesThisYear, simulationsJahr,
+                    Number.isFinite(yearData.inflation) ? resolveSimulatorCumulativeInflationFactor(simState) : NaN);
                 totalTaxesThisRun += result.totalTaxesThisYear;
                 totalTaxSavedByLossCarryThisRun += Number(result.logData?.taxSavedByLossCarry) || 0;
                 if (result.logData?.health_bucket_enabled) {
@@ -1139,6 +1146,7 @@ export async function runMonteCarloChunk({
                 rand,
                 effectiveTransitionYear,
                 realWithdrawals: realWithdrawalsThisRun,
+                euroTracker,
                 stressTracker,
                 wealthFanPath
             });
@@ -1432,6 +1440,7 @@ export async function runMonteCarloChunk({
             cutYearsNumerator: cutYearsNumeratorThisRun,
             cutYearsDenominator: cutDecisionYearsThisRun,
             minimumFlexRestriction: finalizeMinimumFlexPath(minimumFlexTracker),
+            euroMetrics: finalizeEuroPath(euroTracker),
             realWithdrawalP10RealEur: realWithdrawalsThisRun.length > 0
                 ? quantile(realWithdrawalsThisRun, 0.10)
                 : null,

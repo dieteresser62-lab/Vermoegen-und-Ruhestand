@@ -61,7 +61,7 @@ for (const [value, expected] of [[1234567.89, '1,2\u00a0Mio. €'], [125000.12, 
 }
 const millionModel = buildWealthDistribution(result([1000000.12, 1234567.89, 2000000.34]), null, 'nominal');
 const millionHtml = renderWealthDistribution(millionModel);
-assert(millionHtml.includes('Median <b title="1.234.567,89\u00a0€">1,2\u00a0Mio. €</b>'), 'Median zuerst gerundet, genauer Betrag im Tooltip');
+assert(millionHtml.includes('Median <b title="1.234.568\u00a0€">1,2\u00a0Mio. €</b>'), 'Median zuerst gerundet, genauer Betrag im Tooltip');
 assert(millionHtml.includes('P25–P75') && !millionHtml.includes('id="wealthShowAllMarks" checked') && !millionHtml.includes('wealth-statistics-details" open'), 'Erster Blick zeigt mittlere Streuung; weitere Marken und genaue Werte starten geschlossen');
 assert(renderWealthDistribution(millionModel, { showAllMarks: true, detailsOpen: true }).includes('id="wealthShowAllMarks" checked') && renderWealthDistribution(millionModel, { detailsOpen: true }).includes('wealth-statistics-details" open'), 'Anzeige kann Marken und genaue Details wieder geöffnet übernehmen');
 assert(realHtml.includes('Verteilungskennzahlen · heutige Euro') && realHtml.includes('Ausgewählte Szenarien'), 'Verteilung und Einzelpfade sind sichtbar getrennt');

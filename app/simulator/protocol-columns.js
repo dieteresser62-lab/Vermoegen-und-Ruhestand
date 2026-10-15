@@ -399,6 +399,9 @@ export function translateProtocolText(value) {
 }
 export function formatProtocolValue(column, value, entry, options = {}) {
     if (column.format === 'text') {
+        if (column.id === 'health-bucket-warning' && String(value).startsWith('Pflegebucket auf verfuegbare Liquiditaet gekappt:')) {
+            return 'Pflegereserve beim Start auf die verfügbare Liquidität begrenzt.';
+        }
         if (column.id === 'market') return ({ accumulation: 'Ansparphase', BANKRUPT: 'Ruin', recovery: 'Bestätigte Erholung', side_long: 'Lange Seitwärtsbewegung' })[value]
             || EngineAPI.getConfig().TEXTS?.SCENARIO?.[value] || String(value ?? '');
         return translateProtocolText(value);
@@ -413,6 +416,26 @@ export function formatProtocolValue(column, value, entry, options = {}) {
     if (column.legacyHeader === 'FlexPfl%' && entry && !protocolRowData(entry, options.source).pflege_aktiv) return '—';
     if (!finite(value)) return '';
     if (column.format === 'money') {
+        if (entry) {
+            const row = protocolRowData(entry, options.source);
+            const startFactor = row.inflation_factor_cum;
+            const inflation = options.source === 'backtest' ? entry.inflationVJ : row.inflation;
+            const realWithdrawal = column.id === 'jahresentnahme-real';
+            if (realWithdrawal && options.moneyBasis !== 'real') {
+                value = finite(row.entnahme_effektiv) ? row.entnahme_effektiv
+                    : finite(startFactor) && startFactor > 0 ? value * startFactor : NaN;
+            } else if (realWithdrawal && options.source === 'backtest') {
+                const nominal = finite(row.entnahme_effektiv) ? row.entnahme_effektiv : value * startFactor;
+                const factor = finite(inflation) ? startFactor * (1 + inflation / 100) : NaN;
+                value = finite(factor) && factor > 0 ? nominal / factor : NaN;
+            } else if (!realWithdrawal && options.moneyBasis === 'real') {
+                const endStock = ['equity', 'gold', 'bonds', 'cash', 'total', 'losscarryend', 'health-bucket-end'].includes(column.id);
+                const factor = endStock || options.source === 'backtest'
+                    ? finite(inflation) ? startFactor * (1 + inflation / 100) : NaN : startFactor;
+                value = finite(factor) && factor > 0 ? value / factor : NaN;
+            }
+            if (!finite(value)) return '—';
+        }
         const trade = ['neta', 'netg', 'handl-bd'].includes(column.id);
         if (trade && value === 0) return '—';
         const money = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(trade ? Math.abs(value) : value);
@@ -471,11 +494,15 @@ export function getProtocolColumns(options = {}) {
         || (STANDARD_IDS.includes(a.id) ? STANDARD_IDS.indexOf(a.id) : 1000)
             - (STANDARD_IDS.includes(b.id) ? STANDARD_IDS.indexOf(b.id) : 1000));
     return columns.map(column => {
+        if (column.id === 'jahresentnahme-real') column = { ...column, label: 'Entnahme aus Vermögen', header: 'Entnahme aus Vermögen' };
         if (column.group !== 'persons' && /Person [12]/.test(column.label)) {
             column = { ...column, label: named(column.label), header: named(column.label), explanation: named(column.explanation) };
         }
         const formatter = (value, entry) => formatProtocolValue(column, value, entry, options);
-        return { ...column, title: `${column.label}. ${column.explanation}`,
+        const explanation = column.format === 'money'
+            ? column.explanation.replaceAll('in nominalen Euro', options.moneyBasis === 'real' ? 'in heutiger Kaufkraft' : 'in nominalen Euro')
+                + ` Anzeige: ${options.moneyBasis === 'real' ? 'heutige Euro' : 'nominale Euro'}.` : column.explanation;
+        return { ...column, title: `${column.label}. ${explanation}`,
             key: source === 'backtest' ? column.backtestPath : column.mcPath,
             extractor: entry => readProtocolValue(column, entry, options),
             fmt: formatter, valueFormatter: formatter, align: ['text', 'boolean', 'alive', 'grade', 'person'].includes(column.format) ? 'left' : 'right',

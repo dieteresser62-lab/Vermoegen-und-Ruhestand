@@ -1,3 +1,4 @@
+import { setEuroMode, getEuroMode } from '../app/simulator/euro-display.js';
 import { bindScenarioLogView, disposeScenarioLogView, renderScenarioList, scenarioGroupEntries, focusSelectedScenario } from '../app/simulator/scenario-log-view.js';
 import { buildScenarioEntries, renderScenarioWealthChart } from '../app/simulator/scenario-wealth-chart.js';
 import { displayMonteCarloResults, WORST_LOG_DETAIL_KEY } from '../app/simulator/simulator-results.js';
@@ -27,11 +28,11 @@ class Element {
 }
 const ids = ['monteCarloPersonNotice', 'scenarioGroups', 'scenarioSelectionDisclosure', 'scenarioSelectionSummary', 'scenarioSelectedHeading', 'scenarioPrevious', 'scenarioNext', 'scenarioList', 'scenarioWealthChart', 'mcWealthMode', 'scenarioLogContainer', 'scenarioSelector', 'scenarioLogOutput', 'scenarioProtocolSummary', 'scenarioExportButtons', 'exportScenarioLogJson', 'exportScenarioLogCsv', 'toggle-log-detail', 'toggle-care-details', 'monteCarloResults', 'wealthDistribution', 'toastContainer', 'stressReplayFixButton', 'stressReplayStatus', 'stressReplaySelectedScenarioEmpty', 'stressReplaySelectedScenarioDetails', 'stressReplaySelectedScenarioLabel', 'stressReplaySelectedScenarioWealth', 'stressReplaySelectedScenarioCare'];
 const hosts = Object.fromEntries(ids.map(id => [id, new Element(id)]));
-for (const id of ['scenarioComparison', 'scenarioComparisonChart', 'scenarioComparisonChartBasis', 'scenarioLogAnalysis']) hosts[id] = new Element(id);
+for (const id of ['scenarioComparison', 'scenarioComparisonChart', 'scenarioComparisonChartBasis', 'scenarioLogAnalysis', 'scenarioPathsHeading', 'scenarioListBasis', 'scenarioProtocolBasis']) hosts[id] = new Element(id);
 const doc = { getElementById: id => hosts[id] || null, createElement: () => new Element('download'), body: new Element('body') };
 for (const id of ['mcWealthMode']) hosts[id].children = ['real', 'nominal'].map(mode => { const e = new Element(mode); e.setAttribute('data-wealth-mode', mode); return e; });
 const pick = id => { const e = new Element('button'); e.setAttribute('data-scenario-id', id); return e; };
-const row = { jahr: 1, recordType: 'financial_year', financiallyEvaluable: true, portfolio_total_end: 100, inflation_factor_cum: 1.25, entscheidung: { jahresEntnahme: 10 }, aktionUndGrund: 'Halten', Person1Alive: 1 };
+const row = { jahr: 1, recordType: 'financial_year', financiallyEvaluable: true, portfolio_total_end: 100, inflation_factor_cum: 1.25, inflation: 0, entscheidung: { jahresEntnahme: 10 }, aktionUndGrund: 'Halten', Person1Alive: 1 };
 const worst = { key: 'worst', label: 'Worst Case', sourceIdentity: { absoluteRunIndex: 0 }, endVermoegen: 100, failed: false, logDataRows: [row] };
 const median = { ...worst, key: 'p50', label: 'Median', logDataRows: [{ ...row, portfolio_total_end: 200 }] };
 const logs = { characteristic: [worst, median], random: [{ ...worst, key: 'random_0' }] };
@@ -69,7 +70,7 @@ hosts.scenarioList.dispatch('click', pick('char_p50'));
 assert(selectionCalls.at(-1).source === median, 'Zugängliche Alternative nutzt denselben Auswahlweg');
 const beforeMode = selectionCalls.length;
 hosts.mcWealthMode.dispatch('click', hosts.mcWealthMode.children[1]);
-assertEqual(selectionCalls.length, beforeMode, 'Maßstabwechsel erzeugt keine zweite Protokoll-/Exportprojektion');
+assertEqual(selectionCalls.length, beforeMode, 'Maßstabwechsel erhält die Quellauswahl');
 assertEqual(hosts.scenarioList.getAttribute('data-selected-id'), 'char_p50', 'Maßstabwechsel erhält die Kennung');
 assertEqual(hosts.mcWealthMode.children[1].getAttribute('aria-pressed'), 'true', 'Gemeinsamer Maßstabschalter zeigt den gewählten Modus');
 const focused = hosts.scenarioList.children.find(e => e.getAttribute('data-scenario-id') === 'char_p50'); doc.activeElement = focused;
@@ -92,6 +93,12 @@ try {
     globalThis.console = { ...saved.console, error() {} };
     URL.createObjectURL = blob => { blobs.push(blob); return 'blob:probe'; }; URL.revokeObjectURL = () => {};
     const run = batch => displayMonteCarloResults({}, 1, 0, null, {}, {}, 0, { startAlter: 62 }, null, batch, { startYear: 2026 });
+    setEuroMode('real', doc);
+    run(logs);
+    assertEqual(getEuroMode(doc), 'nominal', 'Neues MC-Ergebnis setzt die Wahl auf Nominal zurück');
+    setEuroMode('real', doc);
+    hosts['toggle-log-detail'].dispatch('change');
+    assertEqual(getEuroMode(doc), 'real', 'Detailwechsel erhält die Sitzungswahl');
     const draft = { startAlter: 62, startVermoegen: 1200, minimumFlexAnnual: 100,
         partner: { aktiv: true }, pflegefallLogikAktivieren: true };
     const names = { persons: [{ name: 'Max Mustermann' }, { name: 'Erika Mustermann' }] };
@@ -114,7 +121,7 @@ try {
     hosts['toggle-log-detail'].dispatch('change');
     assertEqual(hosts.scenarioLogAnalysis.innerHTML, originalCards, 'Geänderte Eingaben und Detailneuaufbau erhalten Karten samt eingefrorenen Personen');
     hosts.mcWealthMode.dispatch('click', hosts.mcWealthMode.children[1]);
-    assertEqual(hosts.scenarioLogAnalysis.innerHTML, originalCards, 'Euro-Wechsel nach Eingabeänderung behält die Geldbasis der Karten');
+    assertEqual(hosts.scenarioLogAnalysis.innerHTML, originalCards, 'Euro-Wechsel nach Eingabeänderung erhält unveränderte Ereignisse ohne Geldbeobachtung');
     assert(window.globalCurrentScenarioData.rows === carePath.logDataRows, 'Veraltete Eingaben ersetzen keine Protokollquelle');
     assertEqual(JSON.stringify(careBatch), careBefore, 'Durchstich lässt Pflege- und Terminalbeleg unverändert');
     const ruinPath = { ...worst, label: 'Neuer Ruinpfad', failed: true, endVermoegen: 0,
@@ -223,6 +230,27 @@ try {
     for (const [key, value] of preferences) if (value === null) persistenceStorage.removeItem(key); else persistenceStorage.setItem(key, value);
 }
 
+// Alte Pfadnamen dürfen im Real-Modus keine nominale Geldbasis behaupten.
+{
+    const ranked = { ...worst, key: 'p10', label: 'P10 des nominalen Endvermögens' };
+    const source = JSON.stringify(ranked);
+    const b = bindScenarioLogView({ document: doc, logs: { characteristic: [ranked] },
+        onSelect() {}, onMode() {}, chartOptions: { initialWealth: 100 } });
+    for (const mode of ['real', 'nominal']) {
+        setEuroMode(mode, doc);
+        const basis = mode === 'real' ? 'heutige Euro' : 'nominale Euro';
+        assertEqual(hosts.scenarioPathsHeading.textContent, `Ausgewählte Szenarien · ${basis}`, 'Szenarioüberschrift folgt der Basis');
+        assertEqual(hosts.scenarioListBasis.textContent, `Endvermögen · ${basis}`, 'Szenarioliste nennt nur die gezeigte Geldbasis');
+        assert(hosts.scenarioSelectionSummary.textContent.replaceAll('\u00a0', ' ').includes(`P10 · ${mode === 'real' ? '80' : '100'} € · ${basis}`), 'Auswahlüberschrift verbindet neutralen Rang, passenden Betrag und Basis');
+        const markup = hosts.scenarioList.innerHTML + hosts.scenarioSelectedHeading.innerHTML
+            + hosts.scenarioComparison.innerHTML + hosts.scenarioWealthChart.innerHTML;
+        assert(!markup.includes('nominalen Endvermögens') && !markup.includes('nominaler Rang'), 'Rangbezeichnungen und Kurventitel sind ohne feste Euro-Basis');
+        assertEqual((markup.match(/Die Läufe werden nach dem Endvermögen auf dem Konto ausgewählt/g) || []).length, 1, 'Genau ein Szenario-Info erklärt die unveränderte Auswahl');
+    }
+    assertEqual(JSON.stringify(ranked), source, 'Neutrale Anzeigenamen verändern weder Quellpfad noch Rang');
+    b.dispose();
+}
+
 // Hostgeometrie: Resize zeichnet nur neu, ohne Auswahl-/Export-/Modusereignis.
 {
     const nodes = Object.fromEntries(['scenarioGroups', 'scenarioSelectionDisclosure', 'scenarioSelectionSummary', 'scenarioSelectedHeading', 'scenarioPrevious', 'scenarioNext', 'scenarioList', 'scenarioWealthChart', 'mcWealthMode'].map(id => [id, new Element(id)]));
@@ -282,7 +310,7 @@ assertEqual(JSON.stringify(eventScenario), eventBefore, 'Lebensereignisse verän
 assert(!eventList.includes(' · Pflege ·') && !eventList.includes('>Pflege</small>'), 'Vermögensname enthält keinen redundanten Pflegezusatz');
 assert(eventList.includes('class="scenario-details"') && eventList.includes('class="scenario-value"'), 'Detailzeile und rechtsbündiger Wert sind getrennt');
 const careNames = renderScenarioList(buildScenarioEntries({ characteristic: [{ ...eventScenario, key: 'highestCareNeed', label: 'Höchster realer Pflege-Mehrbedarf' }] }), '', 'nominal');
-assert(careNames.includes('data-scenario-group="care"') && careNames.includes('Höchster realer Pflege-Mehrbedarf'), 'Pflegegruppenkennung und Fachbezeichnung bleiben erhalten');
+assert(careNames.includes('data-scenario-group="care"') && careNames.includes('Höchster Pflege-Mehrbedarf') && !careNames.includes('realer'), 'Pflegegruppenkennung bleibt erhalten, Anzeigename behauptet keine feste Geldbasis');
 
 // Echte Binder-Ereignisse: Fokus getrennt von Auswahl, Scrollsichtbarkeit,
 // Gruppenmerker, Leergruppe, Navigation und Replayöffnung.
@@ -427,11 +455,12 @@ assert(careNames.includes('data-scenario-group="care"') && careNames.includes('H
     b.switchGroup('care');
     assert(!hosts.scenarioSelectedHeading.innerHTML.includes('Logzeilen') && !hosts.scenarioSelectedHeading.innerHTML.includes('Ereignislauf'), 'Leergruppe entfernt alte Namen, Werte und Metadaten');
     expectNavigation('‹ Vorheriges', 'Nächstes ›', 'Vorheriges', 'Nächstes');
+    setEuroMode('real', doc);
     b.choose('char_worst');
-    assert(hosts.scenarioSelectedHeading.innerHTML.includes('80,00') && hosts.scenarioSelectedHeading.innerHTML.includes('>heutige Euro</span>'), 'Auswahlkopf zeigt unveränderten Realwert und aktuellen Modus');
+    assert(hosts.scenarioSelectedHeading.innerHTML.includes('80') && hosts.scenarioSelectedHeading.innerHTML.includes('>heutige Euro</span>'), 'Auswahlkopf zeigt unveränderten Realwert und aktuellen Modus');
     const callbacksBeforeMode = callbacks.length;
     hosts.mcWealthMode.dispatch('click', hosts.mcWealthMode.children[1]);
-    assert(hosts.scenarioSelectedHeading.innerHTML.includes('100,00') && hosts.scenarioSelectedHeading.innerHTML.includes('>nominale Euro</span>'), 'Auswahlkopf wechselt zum unveränderten nominalen Originalwert');
+    assert(hosts.scenarioSelectedHeading.innerHTML.includes('100') && hosts.scenarioSelectedHeading.innerHTML.includes('>nominale Euro</span>'), 'Auswahlkopf wechselt zum unveränderten nominalen Originalwert');
     assertEqual(callbacks.length, callbacksBeforeMode, 'Kopfmodus löst keinen neuen Auswahlcallback aus');
     disposeScenarioLogView(doc);
     const ruined = { ...worst, failed: true, logDataRows: [row, { jahr: 3, recordType: 'terminal_ruin' }, { ...row, jahr: 4 }] };
@@ -463,7 +492,7 @@ assert(careNames.includes('data-scenario-group="care"') && careNames.includes('H
     assertEqual(b.comparisonSelection.join(), selected, 'Euro-Wechsel erhält alle drei nominalen Rangwahlen');
     assertEqual(b.selectedId, 'char_highestCareNeed', 'Euro-Wechsel erhält die gewählte Quellidentität');
     assertEqual(callbacks.length, calls, 'Euro-Wechsel löst keine Pfadneuberechnung oder neue Protokollauswahl aus');
-    assertEqual(hosts.scenarioComparisonChartBasis.textContent, 'Nominale Euro', 'Vergleichsgrafik nennt die gewählte Geldbasis');
+    assertEqual(hosts.scenarioComparisonChartBasis.textContent, 'nominale Euro', 'Vergleichsgrafik nennt die gewählte Geldbasis');
     hosts.scenarioComparisonChart.dispatch('click', pick('char_p90'));
     assertEqual(b.selectedId, 'char_p90', 'Vergleichslinie/Legende wählt denselben Pfad');
     hosts.scenarioWealthChart.dispatch('click', pick('char_maxCut'));

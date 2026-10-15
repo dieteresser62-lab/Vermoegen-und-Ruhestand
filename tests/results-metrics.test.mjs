@@ -124,7 +124,7 @@ const exactTaxSummary = buildSummaryData({
     failCount: 0
 });
 const exactTaxCard = exactTaxSummary.find(card => card.title === 'Median Steuern');
-assertEqual(exactTaxCard?.value, '12.345.678,90 €', 'Tax cost median remains cent-exact for its tooltip');
+assertEqual(exactTaxCard?.value, '12.345.679 €', 'Steuermedian zeigt ganze Euro');
 assertEqual(exactTaxCard?.displayValue, '12,3 Mio. €', 'Large secondary amounts use the same rounding as diagram summaries');
 assert(exactTaxCard?.decisionCritical === true, 'Tax cost median should remain visible in simple mode');
 
@@ -144,10 +144,10 @@ const conservativeSummary = buildSummaryData({
     totalRuns: 4,
     failCount: 0
 });
-assertEqual(conservativeSummary.find(card => card.title === 'Median (alle)')?.value, '487.501,00 €', 'All-run median should avoid coarse 25,000-euro rounding and conservatively floor benefit cents');
-assertEqual(conservativeSummary.find(card => card.title === 'Median (erfolgreiche)')?.value, '212.500,00 €', 'Successful median should avoid optimistic coarse rounding');
-assertEqual(conservativeSummary.find(card => card.title === '10%/90% Perzentil')?.value, '55.000,00 € / 490.000,00 €', 'P10/P90 benefit values should remain cent-precise and never round upward');
-assertEqual(conservativeSummary.find(card => card.title === 'Median Steuern')?.value, '12,35 €', 'Tax cost should conservatively ceil fractions beyond a cent');
+assertEqual(conservativeSummary.find(card => card.title === 'Median (alle)')?.value, '487.501 €', 'All-run median should avoid coarse 25,000-euro rounding and round to whole euros');
+assertEqual(conservativeSummary.find(card => card.title === 'Median (erfolgreiche)')?.value, '212.500 €', 'Successful median should avoid optimistic coarse rounding');
+assertEqual(conservativeSummary.find(card => card.title === '10%/90% Perzentil')?.value, '55.000 € / 490.000 €', 'P10/P90 benefit values should remain whole-euro and never round upward');
+assertEqual(conservativeSummary.find(card => card.title === 'Median Steuern')?.value, '12 €', 'Tax cost uses whole euros');
 assertEqual(conservativeSummary.find(card => card.title === 'Median (alle)')?.displayValue, '487.501 €', 'Secondary amounts below a million show whole euros');
 assertEqual(conservativeSummary.find(card => card.title === '10%/90% Perzentil')?.displayValue, '55.000 € / 490.000 €', 'Both percentiles use whole euros without changing exact values');
 
@@ -237,6 +237,7 @@ assert(volatilityKpi?.description.includes('(N-1)'), 'Volatility tooltip should 
 assert(volatilityKpi?.description.includes('keine zusätzliche Annualisierung'), 'Volatility tooltip should document annual frequency semantics');
 
 const withdrawalDashboard = buildKpiDashboard({
+    euroMetrics: { real: { lossCarryTaxSavings: { perRunMean: 331.01 } } },
     depotErschoepfungsQuote: 0,
     maxDrawdowns: {
         p50: 34.25,
@@ -261,19 +262,20 @@ const withdrawalDashboard = buildKpiDashboard({
         timeShareQuoteAbove45: 0.0125,
         lossCarryTaxSavings: { perRunMean: 331.01 }
     }
-});
+}, {}, 'real');
 const withdrawalKpi = withdrawalDashboard.primary
-    .find(kpi => kpi.title === 'Reale Depotentnahme P10');
-assertEqual(withdrawalKpi.value, '12.345,67 €', 'Run-based real withdrawal P10 should be cent-exact instead of coarsely rounded');
-assertEqual(withdrawalKpi.secondaryValue, '19.876,54 €', 'Median of run-P10 withdrawals should be a second visible cent-exact value');
-assert(withdrawalKpi.description.includes('Beobachtete Läufe: 8'), 'Withdrawal P10 description should expose evaluable run count');
-assert(withdrawalKpi.description.includes('Kein Quantil-Konfidenzintervall'), 'Withdrawal P10 tooltip should not imply an unimplemented interval');
+    .find(kpi => kpi.title === 'Entnahme aus dem Vermögen in schwachen Jahren');
+assertEqual(withdrawalKpi.value, '12.346 €', 'Run-based real withdrawal P10 should be whole-euro instead of coarsely rounded');
+assertEqual(withdrawalKpi.secondaryValue, '19.877 €', 'Median of run-P10 withdrawals should be a second visible whole-euro value');
+assert(withdrawalKpi.tooltip.includes('Auswertbare Läufe: 8'), 'Withdrawal P10 description should expose evaluable run count');
+assert(withdrawalKpi.tooltip.includes('Kein Konfidenzintervall'), 'Withdrawal P10 tooltip should not imply an unimplemented interval');
 assert(withdrawalKpi.layout === 'exact-risk' && withdrawalKpi.decisionCritical === true, 'Withdrawal exact values should use the non-clipping primary-card layout');
 
 const lossCarryKpi = withdrawalDashboard.primary.find(kpi => kpi.title === 'Ø Steuerersparnis Verlustvortrag');
-assertEqual(lossCarryKpi?.value, '331,01 €', 'Positive small loss-carry savings must remain visible instead of rounding to zero');
+assertEqual(lossCarryKpi?.value, '331 €', 'Positive small loss-carry savings must remain visible instead of rounding to zero');
 
 const inapplicableDecisionDashboard = buildKpiDashboard({
+    euroMetrics: { real: { lossCarryTaxSavings: { perRunMean: 331.01, applicability: { applicable: false, reason: 'not_applicable' } } } },
     depotErschoepfungsQuote: 0,
     realWithdrawalP10: {
         realEur: 12345.67,
@@ -287,8 +289,8 @@ const inapplicableDecisionDashboard = buildKpiDashboard({
             applicability: { applicable: false, reason: 'not_applicable' }
         }
     }
-});
-const inapplicableWithdrawal = inapplicableDecisionDashboard.primary.find(kpi => kpi.title === 'Reale Depotentnahme P10');
+}, {}, 'real');
+const inapplicableWithdrawal = inapplicableDecisionDashboard.primary.find(kpi => kpi.title === 'Entnahme aus dem Vermögen in schwachen Jahren');
 const inapplicableLossCarry = inapplicableDecisionDashboard.primary.find(kpi => kpi.title === 'Ø Steuerersparnis Verlustvortrag');
 assertEqual(inapplicableWithdrawal?.value, '—', 'Applicability reason should suppress a finite withdrawal P10 value');
 assertEqual(inapplicableWithdrawal?.secondaryValue, '—', 'Applicability reason should suppress a finite withdrawal median value');
@@ -297,6 +299,7 @@ assertEqual(inapplicableLossCarry?.value, '—', 'Applicability reason should su
 assert(inapplicableLossCarry?.statusLine.includes('not_applicable') && inapplicableLossCarry.statusLine.includes('Beobachtungen: unbekannt'), 'Inapplicable loss-carry value should not invent an observation count');
 
 const conservativelyRoundedDecisionDashboard = buildKpiDashboard({
+    euroMetrics: { real: { lossCarryTaxSavings: { perRunMean: 331.019 } } },
     depotErschoepfungsQuote: 0,
     realWithdrawalP10: {
         realEur: 12345.679,
@@ -305,10 +308,10 @@ const conservativelyRoundedDecisionDashboard = buildKpiDashboard({
         excludedRuns: 0
     },
     extraKPI: { lossCarryTaxSavings: { perRunMean: 331.019 } }
-});
-assertEqual(conservativelyRoundedDecisionDashboard.primary.find(kpi => kpi.title === 'Reale Depotentnahme P10')?.value, '12.345,67 €', 'Withdrawal benefit should conservatively floor fractions beyond a cent');
-assertEqual(conservativelyRoundedDecisionDashboard.primary.find(kpi => kpi.title === 'Reale Depotentnahme P10')?.secondaryValue, '19.876,54 €', 'Run-P10 median benefit should conservatively floor fractions beyond a cent');
-assertEqual(conservativelyRoundedDecisionDashboard.primary.find(kpi => kpi.title === 'Ø Steuerersparnis Verlustvortrag')?.value, '331,01 €', 'Loss-carry benefit should conservatively floor fractions beyond a cent');
+}, {}, 'real');
+assertEqual(conservativelyRoundedDecisionDashboard.primary.find(kpi => kpi.title === 'Entnahme aus dem Vermögen in schwachen Jahren')?.value, '12.346 €', 'Withdrawal benefit should round to whole euros');
+assertEqual(conservativelyRoundedDecisionDashboard.primary.find(kpi => kpi.title === 'Entnahme aus dem Vermögen in schwachen Jahren')?.secondaryValue, '19.877 €', 'Run-P10 median benefit should round to whole euros');
+assertEqual(conservativelyRoundedDecisionDashboard.primary.find(kpi => kpi.title === 'Ø Steuerersparnis Verlustvortrag')?.value, '331 €', 'Loss-carry benefit should round to whole euros');
 
 const nominalMedianDrawdown = withdrawalDashboard.drawdownKpis.find(kpi => kpi.title === 'Max. Drawdown nominal (Median)');
 const realMedianDrawdown = withdrawalDashboard.drawdownKpis.find(kpi => kpi.title === 'Max. Drawdown real (Median)');
@@ -416,11 +419,11 @@ const stressMetrics = buildStressMetrics({
     cutYears: { p50: 2 },
     realWithdrawalP10: { realEur: 7123.45, p50RealEur: 9456.78, sampleSize: 7 },
     recoveryYears: { p50: 3 }
-});
-const stressWithdrawal = stressMetrics.kpis.find(kpi => kpi.title === 'Reale Depotentnahme P10 (Stress)');
-assertEqual(stressWithdrawal.value, '7.123,45 €', 'Stress withdrawal P10 should use the canonical across-run P10 field cent-exactly');
-assert(stressWithdrawal.description.includes('Stichprobe: 7 Läufe'), 'Stress withdrawal tooltip should expose sample size');
-assertEqual(stressWithdrawal.secondaryValue, '9.456,78 €', 'Stress median run-P10 should remain separately and visibly cent-exact');
+}, 'real');
+const stressWithdrawal = stressMetrics.kpis.find(kpi => kpi.title === 'Entnahme aus dem Vermögen in schwachen Jahren (Stressphase)');
+assertEqual(stressWithdrawal.value, '7.123 €', 'Stress withdrawal P10 should use the canonical across-run P10 field whole-euroly');
+assert(stressWithdrawal.tooltip.includes('Auswertbare Läufe: 7'), 'Stress withdrawal tooltip should expose sample size');
+assertEqual(stressWithdrawal.secondaryValue, '9.457 €', 'Stress median run-P10 should remain separately and visibly whole-euro');
 const stressRate = stressMetrics.kpis.find(kpi => kpi.title.includes('Entnahmequote'));
 assert(stressRate?.title.includes('> 4,5 %') && stressRate.description.includes('Berichtsreferenz'), 'Stress KPI should retain strict realized-rate and reporting-role copy');
 
@@ -466,14 +469,14 @@ const careMetrics = buildCareMetrics({
 }, {
     pflegefallLogikAktivieren: true,
     partner: { aktiv: true }
-});
+}, 'real');
 const careCard = title => careMetrics.cards.find(card => card.title === title);
 assert(careCard('Pflegefall-Eintrittsquote P1')?.value === '25,0\u00a0%', 'P1 entry rate should render as a percentage');
 assert(careCard('Median Eintrittsalter P2')?.value === '—', 'Empty P2 entry-age distribution should render as an em dash');
 assert(careCard('Median Pflegejahre P2')?.value === '—', 'Empty P2 care-years distribution should render as an em dash');
-assert(careCard('Realer Pflege-Mehrbedarf P2 (Median)')?.value === '—', 'Empty P2 real-cost distribution should render as an em dash');
+assert(careCard('Pflege-Mehrbedarf P2 (Median)')?.value === '—', 'Empty P2 real-cost distribution should render as an em dash');
 assert(careCard('Median Jahre beide in Pflege')?.value === '0,0\u00a0Jahre', 'Observed zero simultaneous-care years should remain distinguishable from missingness');
-assert(careCard('Max. jährlicher Pflege-Mehrbedarf (real)')?.description.includes('P1 + P2'), 'Annual household care need should document the summed persons');
+assert(careCard('Max. jährlicher Pflege-Mehrbedarf')?.description.includes('P1 + P2'), 'Annual household care need should document the summed persons');
 assert(!careMetrics.cards.some(card => card.title.includes('Depot')), 'Care KPI cards must not claim a depot-financed care amount');
 assert(careCard('Gruppenmedian-Differenz (nicht kausal)')?.value.includes('100.000'), 'Care comparison should use no-care minus care sign convention');
 assert(careCard('Gruppenmedian-Differenz (nicht kausal)')?.description.includes('nicht kausaler'), 'Care comparison should disclose the unpaired non-causal method visibly');
@@ -496,10 +499,10 @@ for (const value of [0, 12.345, null, NaN, Infinity, -1]) {
     const results = { realWithdrawalP10: { realEur: value, p50RealEur: value, sampleSize: 8 },
         maxDrawdowns: { p50: value, p90: value, sampleSize: 8 }, realMaxDrawdowns: { p50: value, p90: value, sampleSize: 8 } };
     const before = JSON.stringify(results), dashboard = buildKpiDashboard(results);
-    const withdrawal = dashboard.primary.find(card => card.title === 'Reale Depotentnahme P10');
+    const withdrawal = dashboard.primary.find(card => card.title === 'Entnahme aus dem Vermögen in schwachen Jahren');
     for (const card of [withdrawal, ...dashboard.drawdownKpis]) assertEqual(card.tone, 'default', 'Entnahme/Drawdown ist unabhängig vom Wert neutral');
     const stress = buildStressMetrics({ presetKey: 'SYNTHETIC', years: 4, maxDD: results.maxDrawdowns, realWithdrawalP10: results.realWithdrawalP10 });
-    for (const title of ['Max. Drawdown (Median, Stress)', 'Max. Drawdown (P90, Stress)', 'Reale Depotentnahme P10 (Stress)']) assertEqual(stress.kpis.find(card => card.title === title).tone, 'default', 'Gleichartige Stresskarte ist neutral');
+    for (const title of ['Max. Drawdown (Median, Stress)', 'Max. Drawdown (P90, Stress)', 'Entnahme aus dem Vermögen in schwachen Jahren (Stressphase)']) assertEqual(stress.kpis.find(card => card.title === title).tone, 'default', 'Gleichartige Stresskarte ist neutral');
     assertEqual(stress.kpis.find(card => card.title.includes('Entnahmequote')).tone, 'warning', 'Bestehende Stresswarnung außerhalb R8 bleibt erhalten');
     assertEqual(JSON.stringify(results), before, 'R8-Töne ändern keine Rohwerte');
 }
@@ -528,7 +531,7 @@ for (const counts of [
 for (const [value, expected] of [[0, '0 €'], [12345.678, '12.346 €'], [12345678.9, '12.345.679 €'], [null, '—'], [NaN, '—']]) {
     const result = { extraKPI: { pflege: { p1: { realCostEurP50: value } } } };
     const before = JSON.stringify(result);
-    const cards = buildCareMetrics(result, { pflegefallLogikAktivieren: true }).cards;
-    assertEqual(cards.find(card => card.title === 'Realer Pflege-Mehrbedarf P1 (Median)').value, expected, 'Ungebundene Pflegekarte zeigt volle ganze Euro, Null oder Fehlwert');
+    const cards = buildCareMetrics(result, { pflegefallLogikAktivieren: true }, 'real').cards;
+    assertEqual(cards.find(card => card.title === 'Pflege-Mehrbedarf P1 (Median)').value, expected, 'Ungebundene Pflegekarte zeigt volle ganze Euro, Null oder Fehlwert');
     assertEqual(JSON.stringify(result), before, 'Ganz-Euro-Anzeige verändert keinen Rohbetrag');
 }

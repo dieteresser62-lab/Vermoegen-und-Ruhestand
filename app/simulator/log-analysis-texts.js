@@ -17,15 +17,19 @@ const policyNames = { SafetyCapActive: 'Bereitschaft der Leitplanke', SafetyCapA
 const status = value => value === true ? 'aktiv' : value === false ? 'inaktiv' : `${value ?? 'unbekannt'}`;
 
 /** Ein Satz und kurze Kartenwerte je Ereignis, ohne HTML oder Ursachenvermutung. */
-export function describeLogAnalysisEvent(event) {
+export function describeLogAnalysisEvent(event, context = {}) {
     const e = event.evidence, at = when(event);
+    const mc = event.source === 'monte_carlo';
+    const real = context.moneyBasis === 'real';
+    const basis = real ? mc ? 'in heutiger Kaufkraft' : 'in Kaufkraft zum Laufstart' : 'nominal';
+    const target = real ? e.targetRealEur : e.targetNominalEur;
     const result = (label, valueText, text) => ({ label, valueText, text });
     switch (event.type) {
     case 'floor_covered': return result('Grundbedarf gedeckt', years(e.years), `Der Grundbedarf bleibt in allen ${e.years} abgeschlossenen Finanzjahren dieses Laufs gedeckt.`);
     case 'ruin': return result('Finanzieller Abbruch', yearLabel(event.year, event.source), `${at} endet der Pfad finanziell${e.causeAvailable ? ` mit dem protokollierten Grund „${e.reason}“` : '; ein konkreter Grund ist im Laufbeleg nicht verfügbar'}.`);
     case 'floor_shortfall': return result('Grundbedarf ungedeckt', money(e), `${at} fehlen laut Laufbeleg ${money(e)} zur Deckung des Grundbedarfs.`);
     case 'minimum_flex_held': return result('Mindest-Flex gehalten', '0 Jahre darunter', `Der bezahlte Haushalts-Flex einschließlich Rentenbeitrag liegt in keinem der ${e.years} abgeschlossenen Jahre unter dem angewandten Mindest-Flex.`);
-    case 'below_minimum_flex_phase': return result('Unter Mindest-Flex', years(e.durationYears), `Der bezahlte Haushalts-Flex einschließlich Rentenbeitrag liegt ${range(event)} für ${years(e.durationYears)} unter dem angewandten Mindest-Flex, mit bis zu ${euro(e.maximumShortfallNominalEur)} nominalem Fehlbetrag pro Jahr${e.openAtEnd ? ' und noch am Laufende' : ''}.`);
+    case 'below_minimum_flex_phase': return result('Unter Mindest-Flex', years(e.durationYears), `Der bezahlte Haushalts-Flex einschließlich Rentenbeitrag liegt ${range(event)} für ${years(e.durationYears)} unter dem angewandten Mindest-Flex, mit einem jährlichen Fehlbetrag von bis zu ${euro(real ? e.maximumShortfallRealEur : e.maximumShortfallNominalEur)} ${basis}${e.openAtEnd ? ' und noch am Laufende' : ''}.`);
     case 'decision_flex_cut_phase': return result('Flex-Entnahme gekürzt', years(e.durationYears), `Die vorgesehene Flex-Entnahme aus dem Vermögen wird ${range(event)} ${inYears(e.durationYears)} um mindestens 10 % gekürzt, jährlich höchstens ${number(e.maximumAnnualValue)} %${e.openAtEnd ? ' und noch am Laufende' : ''}.`);
     case 'household_flex_cut_phase': return result('Haushalts-Flex gekürzt', years(e.durationYears), `Der Haushalts-Flex wird ${range(event)} auf der ${e.basis === 'static_input' ? 'statischen Wunschbasis' : e.basis === 'effective_vpw_plus_pension_surplus' ? 'dynamischen Basis mit Rentenüberschuss' : `protokollierten Basis „${e.basis}“`} für ${years(e.durationYears)} um mindestens 10 % gekürzt${e.openAtEnd ? ' und noch am Laufende' : ''}.`);
     case 'flex_basis_change': return result('Flex-Bezugsgröße wechselt', yearLabel(event.year, event.source), `${at} wechselt die protokollierte Bezugsgröße des Haushalts-Flex, deshalb werden Kürzungsphasen auf diesen Basen getrennt ausgewiesen.`);
@@ -33,16 +37,16 @@ export function describeLogAnalysisEvent(event) {
     case 'initial_policy_observation': return result('Beobachteter Sicherheitsstatus', status(e.to), `${at} ist ${policyNames[e.field]} mit „${status(e.to)}“ protokolliert; der Beginn dieses Zustands ist nicht belegt.`);
     case 'market_regime_change': return result('Marktphase wechselt', `${e.from} → ${e.to}`, `${at} wechselt die Marktklassifikation der Engine von „${e.from}“ zu „${e.to}“.`);
     case 'extreme_bear': return result('Extrembär protokolliert', yearLabel(event.year, event.source), `${at} klassifiziert die Engine den Markt als Extrembär.`);
-    case 'minimum_real_year_end_wealth': return result('Reales Vermögenstief', euro(e.amountRealEur), `${at} liegt der niedrigste beobachtete Jahresendstand des Gesamtvermögens einschließlich Pflegevorsorge bei ${euro(e.amountRealEur)} in Kaufkraft zum Laufstart${e.missingFinancialYears ? `; für ${years(e.missingFinancialYears)} fehlen reale Werte` : ''}.`);
-    case 'real_wealth_recovery': return result('Reales Hoch wieder erreicht', yearLabel(event.year, event.source), `${at} erreicht das Gesamtvermögen erstmals seit Beginn des Rückgangs in ${yearLabel(e.fromYear, event.source)} wieder das frühere reale Hoch von ${euro(e.targetRealEur)}.`);
-    case 'real_wealth_unrecovered': return result('Reales Hoch noch nicht erreicht', euro(e.targetRealEur), `Bis ${yearLabel(e.observationEnd, event.source)} wird das frühere reale Hoch von ${euro(e.targetRealEur)} in den zusammenhängend beobachteten Jahresendständen nicht wieder erreicht.`);
+    case 'minimum_real_year_end_wealth': return result('Stand im Kaufkraft-Tief', money(e), `${at} liegt der nach Kaufkraft niedrigste beobachtete Jahresendstand einschließlich Pflegevorsorge bei ${money(e)}${e.missingFinancialYears ? `; für ${years(e.missingFinancialYears)} fehlen reale Werte` : ''}.`);
+    case 'real_wealth_recovery': return result('Reales Hoch wieder erreicht', yearLabel(event.year, event.source), `${at} erreicht das Gesamtvermögen erstmals seit Beginn des Rückgangs in ${yearLabel(e.fromYear, event.source)} wieder die Kaufkraft des früheren Hochs von ${euro(target)} ${basis}.`);
+    case 'real_wealth_unrecovered': return result('Reales Hoch noch nicht erreicht', euro(target), `Bis ${yearLabel(e.observationEnd, event.source)} wird die Kaufkraft des früheren Hochs von ${euro(target)} ${basis} in den zusammenhängend beobachteten Jahresendständen nicht wieder erreicht.`);
     case 'liquidity_below_target': return result('Liquidität unter Ziel', `${number(e.coveragePct)} %`, `${at} deckt die Liquidität nach Transaktionen und vor Auszahlung ${number(e.coveragePct)} % des Ziels${e.runwayMonths !== null ? ` bei ${number(e.runwayMonths)} Monaten Reichweite` : ' bei unbekannter Monatsreichweite'}, das allein belegt keinen Auszahlungsausfall.`);
     case 'forced_liquidity_need': return result('Bedarf vor Notverkäufen', money(e), `${at} sind nach dem Reserveeinsatz und vor Notverkäufen noch ${money(e)} Liquiditätsbedarf protokolliert.`);
     case 'forced_liquidity_coverage': return result('Notfüllung ausgeführt', money(e), `${at} liefern die protokollierten Notverkäufe ${money(e)} zusätzliche Liquidität.`);
     case 'unmet_liquidity': return result('Offener Liquiditätsbedarf', money(e), `${at} bleiben im Anleihetopf-Pfad ${money(e)} Liquiditätsbedarf offen.`);
     case 'health_reserve_use': return result('Pflegereserve verwendet', money(e), `${at} werden ${money(e)} aus der Pflegereserve verwendet.`);
     case 'large_sale': return result('Großer Verkauf', money(e), `${at} werden ${money(e)} verkauft, das sind ${number(e.shareOfPreviousYearEnd * 100)} % des Vorjahresvermögens bei einem Anzeigefilter ab 10 %.`);
-    case 'tax_peak': return result('Steuerspitze', money(e), `${at} fallen ${money(e)} Jahressteuer an, mindestens doppelt so viel wie der nominale Laufmedian von ${euro(e.medianTaxNominalEur)} und mehr als 1.000 € nominal.`);
+    case 'tax_peak': return result('Steuerspitze', money(e), `${at} fallen ${money(e)} Jahressteuer an. Die nominale Steuer überschreitet den festen Filter und beträgt mindestens das Doppelte der typischen Jahressteuer dieses Pfads.`);
     case 'gold_purchase': return result('Gold gekauft', money(e), `${at} wird Gold für ${money(e)} gekauft.`);
     case 'gold_sale': return result('Gold verkauft', money(e), `${at} wird Gold für ${money(e)}${e.scope === 'regular_only' ? ' im regulären Verkauf' : ''} verkauft.`);
     case 'bond_refill': return result('Anleihetopf aufgefüllt', money(e), `${at} wird der Anleihetopf um brutto ${money(e)} aufgefüllt.`);
@@ -80,7 +84,7 @@ export function summarizeLogAnalysis(model) {
         : 'Die vorgesehene Flex-Entnahme aus dem Vermögen wird in keinem abgeschlossenen Jahr um mindestens 10 % gekürzt.');
     const low = pick('minimum_real_year_end_wealth');
     sentences.push(low?.text ?? 'Das reale Vermögenstief bleibt wegen fehlender Vermögens- oder Inflationswerte unbekannt.');
-    if (model.nominalEndWealth !== null) sentences.push(`Am Ende des letzten abgeschlossenen Finanzjahrs sind ${euro(model.nominalEndWealth)} nominal vorhanden${model.realEndWealth !== null ? `, in Kaufkraft zum Laufstart ${euro(model.realEndWealth)}` : '; der reale Endstand ist unbekannt'}.`);
+    if (model.nominalEndWealth !== null) sentences.push(`Am Ende des letzten abgeschlossenen Finanzjahrs sind ${euro(model.moneyBasis === 'real' ? model.realEndWealth : model.nominalEndWealth)} ${model.moneyBasis === 'real' ? model.source === 'monte_carlo' ? 'in heutiger Kaufkraft' : 'in Kaufkraft zum Laufstart' : 'nominal'} vorhanden.`);
     const other = pick('liquidity_below_target') ?? pick('forced_liquidity_coverage') ?? pick('tax_peak')
         ?? pick('care_phase') ?? pick('household_end') ?? pick('tail_risk_overlay');
     if (other) sentences.push(other.text);

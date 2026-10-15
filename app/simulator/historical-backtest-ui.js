@@ -303,6 +303,6 @@ export function buildAccessibleBacktestTableHtml(rows, columns, formatValue, con
     });
     return renderProtocolTable(rows, { ...context, source: 'backtest', columns: describedColumns,
         formatValue: (column, entry) => ['neta', 'netg', 'handl-bd'].includes(column.id)
-            ? formatProtocolValue(column, readProtocolValue(column, entry, { source: 'backtest' }), entry, { source: 'backtest' })
+            ? formatProtocolValue(column, readProtocolValue(column, entry, { source: 'backtest' }), entry, { ...context, source: 'backtest' })
             : formatValue(column, entry) });
 }
