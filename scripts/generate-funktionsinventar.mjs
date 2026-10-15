@@ -15,7 +15,7 @@ const extras = { keyboard: 'Tastatur', print: 'Druck', messages: 'Meldungen', di
 /** Aufgabenhauptort für die Handbuchpflicht jedes Funktionseintrags. */
 export function handbookChapter(entry) {
     const text = `${entry.section} ${entry.label}`.toLowerCase();
-    if (/probelauf/.test(text)) return 'probelauf';
+    if (/probelauf|spielbereich/.test(text)) return 'probelauf';
     if (entry.page === 'Daten-Sicherung.html') return 'daten-sicherung';
     if (entry.page === 'Ausgaben.html' || /ausgaben/.test(text)) return 'ausgaben';
     if (/verlauf|vermögenshistorie/.test(text)) return 'vermoegensverlauf';

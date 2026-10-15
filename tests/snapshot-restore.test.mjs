@@ -125,7 +125,7 @@ for (const failure of ['snapshot', 'readback', 'change', 'target', 'rollback', '
     const f = await fixture(); const snapshot = f.snapshots.get('target');
     for (const invalid of [{ ...snapshot, activeProfileId: '' }, { ...snapshot, activeProfileId: 'missing' }, { ...snapshot, kind: 'probelauf-before' }]) {
         let error; try { buildSnapshotRestorePlan(invalid, f.records); } catch (caught) { error = caught; }
-        assert(error, 'Fehlende Profilzuordnung und Probelauf verhindern generischen Restore');
+        assert(error, 'Fehlende Profilzuordnung und Spielbereich verhindern generischen Restore');
     }
 }
 // Echter noch ausstehender Write wird vor dem Vorschau-Read bestätigt.

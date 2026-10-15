@@ -56,11 +56,11 @@ function portfolioTranches(portfolio) {
     ];
 }
 
-function createSimulationLot(portfolio, amount, assetKind) {
+function createSimulationLot(portfolio, amount, assetKind, profileId = null) {
     const value = Number(amount);
     if (!Number.isFinite(value) || value <= 0) return null;
 
-    const sourceProfileId = String(portfolio?.simulationSourceProfileId || 'simulation').trim() || 'simulation';
+    const sourceProfileId = String(profileId || portfolio?.simulationSourceProfileId || 'simulation').trim() || 'simulation';
     const purchaseDate = /^\d{4}-\d{2}-\d{2}$/.test(String(portfolio?.simulationDate || ''))
         ? String(portfolio.simulationDate)
         : '1970-01-01';
@@ -380,8 +380,8 @@ export function buildInputsCtxFromPortfolio(inputs, portfolio, { pensionAnnual, 
     const gTr = sumByType(portfolio.depotTranchesGold, 'gold');
 
     const gmm = sumByType(portfolio.depotTranchesGeldmarkt, 'geldmarkt');
-    const geldmarktEtf = Number(portfolio.geldmarktEtf) || gmm.marketValue || 0;
-    const tagesgeld = Number(portfolio.tagesgeld) || Math.max(0, (portfolio.liquiditaet || 0) - geldmarktEtf);
+    const geldmarktEtf = Array.isArray(portfolio.personAccounts) ? portfolio.geldmarktEtf : Number(portfolio.geldmarktEtf) || gmm.marketValue || 0;
+    const tagesgeld = Array.isArray(portfolio.personAccounts) ? portfolio.tagesgeld : Number(portfolio.tagesgeld) || Math.max(0, (portfolio.liquiditaet || 0) - geldmarktEtf);
 
     return {
         ...inputs,
@@ -416,8 +416,8 @@ export function sumDepot(portfolio) {
 /**
  * Kauft Gold und fügt es zum Portfolio hinzu
  */
-export function buyGold(portfolio, amount) {
-    const lot = createSimulationLot(portfolio, amount, 'gold');
+export function buyGold(portfolio, amount, profileId = null) {
+    const lot = createSimulationLot(portfolio, amount, 'gold', profileId);
     if (!lot) return null;
     if (!Array.isArray(portfolio.depotTranchesGold)) portfolio.depotTranchesGold = [];
     portfolio.depotTranchesGold.push(lot);
@@ -427,8 +427,8 @@ export function buyGold(portfolio, amount) {
 /**
  * Kauft Aktien und fügt sie zum Portfolio hinzu
  */
-export function buyStocksNeu(portfolio, amount) {
-    const lot = createSimulationLot(portfolio, amount, 'equity');
+export function buyStocksNeu(portfolio, amount, profileId = null) {
+    const lot = createSimulationLot(portfolio, amount, 'equity', profileId);
     if (!lot) return null;
     if (!Array.isArray(portfolio.depotTranchesAktien)) portfolio.depotTranchesAktien = [];
     portfolio.depotTranchesAktien.push(lot);

@@ -81,7 +81,7 @@ export function renderBalanceExpensesHistory(dom, result, currentYear, backend =
         const rows = prepareExpensesHistoryMetrics(result.store, currentYear).map(row => {
             const records = Object.values(result.store.years[row.year]?.months || {}).flatMap(month => Object.values(month.profiles || {}));
             const count = records.filter(record => record.source === 'probelauf-example').length;
-            return { ...row, origin: count ? ` · Beispieldaten (Probelauf)${count < records.length ? ' · gemischte Herkunft' : ''}` : '' };
+            return { ...row, origin: count ? ` · Beispieldaten (Spielbereich)${count < records.length ? ' · gemischte Herkunft' : ''}` : '' };
         });
         if (rows.some(row => !Number.isFinite(row.annualUsed) || !Number.isFinite(row.avgMonthly))) throw new Error('amount');
         if (rows.length) {

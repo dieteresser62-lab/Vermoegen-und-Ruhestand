@@ -94,6 +94,18 @@ export function completeProfilePageReadiness(doc = globalThis.document, error = 
     return true;
 }
 
+/** Eine verworfene Spielkopie sperrt den unveränderten echten Bestand nicht. */
+export function renderStorageAreaNotice(doc, warning) {
+    const host = doc?.getElementById?.('suiteNavigationStatus');
+    if (!warning || !host || doc.querySelector?.('[data-storage-area-notice]')) return;
+    const notice = doc.createElement('p');
+    notice.className = 'ds-note';
+    notice.dataset.storageAreaNotice = 'true';
+    notice.setAttribute('role', 'status');
+    notice.textContent = warning.message;
+    host.insertAdjacentElement('afterend', notice);
+}
+
 export function showHandoffFailure(root, error) {
     const doc = root?.ownerDocument || root;
     const target = doc?.getElementById?.('suiteNavigationStatus');
@@ -209,8 +221,10 @@ export function initializeProfilePage(options = {}) {
     const task = (async () => {
         try {
             await PersistenceFacade.init({ doc, window: win, installLifecycleHooks: kind !== 'handbook', installTauriCloseHook: true });
+            renderStorageAreaNotice(doc, PersistenceFacade.getPersistenceStatus().areaWarning);
             const probelauf = await initializeProbelaufPage({ doc, win, guard: getPageNavigationGuard(doc, win),
                 saveProfile: () => {
+                    if (kind === 'handbook') return;
                     const profileId = PersistenceFacade.getItemSync('rs_current_profile');
                     const profile = loadProfileRegistry().value?.profiles?.[profileId];
                     const liveKeys = listProfileScopedKeys();
@@ -219,7 +233,7 @@ export function initializeProfilePage(options = {}) {
                     if (!unchanged) saveCurrentProfileFromLocalStorage();
                 }, notify: (controller, error) => renderProbelaufUI(doc, controller, error) });
             bindProbelaufUI(doc, probelauf);
-            if (probelauf.blocked) throw new Error('Probelauf-Recovery: Ausgangsbestand wiederherstellen, bevor Fachdaten geladen werden.');
+            if (probelauf.blocked) throw new Error(probelauf.blockReason);
             if (kind === 'handbook') {
                 installProfileBfcacheRefresh({ win, doc });
                 completeProfilePageReadiness(doc);
@@ -389,7 +403,7 @@ export function retryDeferredPersonMigration({ doc = globalThis.document, win = 
             return await reloadGuardedPage({ doc, win, reload,
                 ready: () => whenProfilePageReady(doc), flush: () => runPersistenceFlush(PersistenceFacade.flush) });
         } catch (error) {
-            // Navigation/Probelauf können die Vorbereitung regulär abbrechen
+            // Navigation/Spielbereich können die Vorbereitung regulär abbrechen
             // oder bereits besitzen. Das ist kein beschädigter Profilbestand.
             if (error.name === 'AbortError' || error.code === 'NAVIGATION_WRITE_BUSY') return false;
             migrationRetryErrors.set(doc, error);

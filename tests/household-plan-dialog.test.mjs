@@ -18,7 +18,7 @@ for (const action of ['accept', 'later', 'escape', 'abort']) {
     const reset = env.nodes.find(node => node.dataset.householdPlanReset !== undefined);
     assert(reset.hidden, 'Unveränderte Balanceauswahl zeigt keinen Reset');
     floor.value = 'simulator'; floor.fire('change');
-    assert(!reset.hidden, 'Tatsächliche 1000-Euro-Resetschwelle zeigt Hinweis vor Bestätigung');
+    assert(!reset.hidden, 'Bewusste 1000-Euro-Planänderung zeigt Hinweis vor Bestätigung');
     minimum.value = 'simulator'; minimum.fire('change'); accept.fire('click');
     assert(env.dialog().open, 'Ungültige gekoppelte Werte verhindern Übernahme');
     assert(env.nodes.find(node => node.dataset.householdPlanValidation !== undefined).textContent.includes('Mindest-Flex'), 'Mindest-Flex-Fehler wird erklärt');
@@ -34,9 +34,9 @@ for (const action of ['accept', 'later', 'escape', 'abort']) {
 }
 const threshold = analysis({ floorBedarf: 50000 });
 threshold.fields[0].simulator.value = 50999;
-assert(!migrationResetWarning(threshold, { floorBedarf: 'simulator' }), '999 Euro unter beiden Bedarfsschwellen erzeugt keinen Hinweis');
+assert(migrationResetWarning(threshold, { floorBedarf: 'simulator' }), 'FR-12: Auch 999 Euro bewusste Bedarfsänderung zeigen den Reset');
 threshold.fields[0].simulator.value = 51000;
-assert(migrationResetWarning(threshold, { floorBedarf: 'simulator' }), '1000 Euro trifft tatsächlichen Resetvertrag');
+assert(migrationResetWarning(threshold, { floorBedarf: 'simulator' }), '1000 Euro bewusste Bedarfsänderung trifft denselben Resetvertrag');
 const budget = analysis(); budget.fields = [{ path: 'flexBudgetAnnual', selected: 7000, conflict: true, balance: { status: 'present', value: 7000 }, simulator: { status: 'present', value: 8000 } }]; budget.conflicts = budget.fields;
 assert(migrationResetWarning(budget, { flexBudgetAnnual: 'simulator' }), 'Budgetwechsel nutzt ebenfalls den vorhandenen Resetvertrag');
 const env = documentDouble(); let calls = 0;

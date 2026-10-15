@@ -995,7 +995,7 @@ try {
             const result = await importFullPersistenceBackup(payload, { probelaufController: controller });
             assertEqual(result.ok, false, source + ': gültiger Import bleibt gesperrt');
             assertEqual(result.code, 'probelauf_backup_blocked', source + ': bisheriger Sperrcode');
-            assert(result.message.includes('Probelauf') && result.message.includes('Probelauf beenden')
+            assert(result.message.includes('Spielbereich') && result.message.includes('Spielbereich beenden')
                 && !result.message.includes('erneut versuchen'), source + ': konkrete Beenden-Aufforderung');
             assertEqual(result.recoverySnapshotId, null, source + ': kein Recovery vor erster Grenze');
             assertSafeMessage(result);
@@ -1052,7 +1052,7 @@ try {
             assertEqual(recoveryRead, true, 'Späte Sperre tritt erst bei bestätigter Recoverylesung ein');
             assertEqual(result.ok, false, 'Späte Probelaufsperre verhindert Ersatz');
             assertEqual(result.code, 'probelauf_backup_blocked', 'Zweite Grenze erhält Sperrcode');
-            assert(result.message.includes('Probelauf beenden') && !result.message.includes('erneut versuchen'),
+            assert(result.message.includes('Spielbereich beenden') && !result.message.includes('erneut versuchen'),
                 'Zweite Grenze nennt denselben konkreten Probelaufhinweis');
             assertSafeMessage(result);
             assertEqual((await SnapshotArchive.readSnapshot(result.recoverySnapshotId)).records.sim_old,
@@ -1233,7 +1233,7 @@ try {
             await handlers.get('file:change')();
             assertEqual(mutations, 1, 'Sperre wird vom echten mutate-Callback des Binders behandelt');
             assertEqual(status.dataset.kind, 'error', '#fullBackupStatus erhält Fehlerstatus');
-            assert(status.textContent.includes('Probelauf beenden') && !status.textContent.includes('erneut versuchen'),
+            assert(status.textContent.includes('Spielbereich beenden') && !status.textContent.includes('erneut versuchen'),
                 '#fullBackupStatus nennt die konkrete Beenden-Aufforderung');
             assert(!status.textContent.includes(recoveryId) && !status.textContent.includes('probelauf_backup_'),
                 'Sichtbarer Binderstatus enthält weder Kennung noch Code');
@@ -1937,11 +1937,12 @@ try {
             window: { __TAURI__: {} },
             localStorage: storage,
             invoke: async (command, args = {}) => {
-                if (command === 'load_app_state') return fileContent;
+                if (command === 'load_app_state') return args.target === 'control' ? '' : fileContent;
                 if (command === 'save_app_state') {
                     fileContent = args.content;
                     return null;
                 }
+                if (command === 'delete_play_state') return null;
                 if (command === 'quarantine_app_state') return 'quarantined.json';
                 throw new Error(`unknown command ${command}`);
             }
@@ -1959,8 +1960,9 @@ try {
         resetPersistenceRuntimeForTests();
         await init({
             window: { __TAURI__: {} },
-            invoke: async (command) => {
-                if (command === 'load_app_state') return '{broken json';
+            invoke: async (command, args = {}) => {
+                if (command === 'load_app_state') return args.target === 'control' ? '' : '{broken json';
+                if (command === 'delete_play_state') return null;
                 if (command === 'quarantine_app_state') return 'quarantined.json';
                 if (command === 'save_app_state') return null;
                 throw new Error(`unknown command ${command}`);
@@ -2476,7 +2478,7 @@ for (const scenario of ['local', 'foreign', 'unknown', 'changed-owner', 'timeout
         });
     } catch (cause) { error = cause; }
     assertEqual(executions, scenario === 'local' ? 1 : 0, 'Nur nach Freigabe des lokalen Besitzers ausgeführt');
-    if (['foreign', 'changed-owner'].includes(scenario)) assertEqual(error?.message, 'Eine andere Seite führt gerade eine Probelauf-Aktion aus.', 'Identifizierte andere Seite behält Meldung');
+    if (['foreign', 'changed-owner'].includes(scenario)) assertEqual(error?.message, 'Eine andere Seite führt gerade eine Spielbereich-Aktion aus.', 'Identifizierte andere Seite behält Meldung');
     if (['unknown', 'timeout'].includes(scenario)) assertEqual(error?.code, 'PROBELAUF_COMMIT_BUSY', 'Unbekannter Besitzer und Timeout umgehen keinen Lock');
     if (scenario === 'timeout') assertEqual(elapsed, 10000, 'Web-Lock-Warteepisode endet nach zehn Sekunden');
     assertEqual([...held.keys()].filter(name => name.startsWith('rs-probelauf-client-')).length, 0, 'Keine übrig gebliebene Hilfssperre');

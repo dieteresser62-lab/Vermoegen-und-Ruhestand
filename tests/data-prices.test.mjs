@@ -135,7 +135,7 @@ for (const action of ['cancel', 'profile', 'page', 'guard']) {
         setAppTestDate('2026-01-10');
         const h = harness({ fetchImpl: () => { network++; throw new Error('Netz verboten'); } });
         await h.binder.execute('history');
-        assertEqual(network, 0, 'Manuelles Nachladen im Probelauf verwendet ausschließlich synthetischen Adapter');
+        assertEqual(network, 0, 'Manuelles Nachladen im Spielbereich verwendet ausschließlich synthetischen Adapter');
         assert(JSON.parse(h.storage.getItem(DAILY_PRICES_KEY)).symbols['TEST.DE'].queried.length > 0, 'Synthetische Abdeckung wird tatsächlich bestätigt');
     } finally { setAppTestDate(null); }
 }

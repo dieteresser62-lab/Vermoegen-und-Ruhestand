@@ -13,7 +13,7 @@ function assertExecutedTaxClose(actual, expected, field) {
     }
 }
 
-function attachExecutedTaxContract({
+export function attachExecutedTaxContract({
     actionResult,
     plannedActionFlow,
     regularSaleScale,

@@ -291,7 +291,7 @@ for (const mixed of [false, true]) {
     raw = JSON.stringify(examples);
     const oracle = prepareExpensesHistoryMetrics(examples, 2026);
     refreshBalanceExpensesHistory(display, options);
-    assert(display.table.innerHTML.includes('Beispieldaten (Probelauf)') && display.chart.innerHTML.includes('Beispieldaten (Probelauf)'), 'Herkunft bleibt nach Speicherreload in Tabelle und Diagrammbeschreibung sichtbar');
+    assert(display.table.innerHTML.includes('Beispieldaten (Spielbereich)') && display.chart.innerHTML.includes('Beispieldaten (Spielbereich)'), 'Herkunft bleibt nach Speicherreload in Tabelle und Diagrammbeschreibung sichtbar');
     assertEqual(display.table.innerHTML.includes('gemischte Herkunft'), mixed, 'Gemischtes Jahr wird separat ausgewiesen');
     assertEqual(oracle[0].annualUsed, mixed ? 150 : 100, 'Herkunft ändert Rechenorakel nicht');
 }

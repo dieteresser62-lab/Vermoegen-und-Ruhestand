@@ -160,6 +160,20 @@ export function createAnnualCombinedResult({ doc, result, data, annual, action, 
     return root;
 }
 
+export function createAnnualReceiptCard({ doc, text, logButton }) {
+    const card = doc.createElement('details');
+    card.className = 'close-dialog-derivation'; card.dataset.annualReceiptDetails = '';
+    const summary = doc.createElement('summary'); summary.textContent = 'Abschlussbeleg';
+    card.append(summary);
+    if (text) {
+        const note = doc.createElement('p'); note.className = 'annual-receipt-note'; note.textContent = text;
+        card.append(note);
+    }
+    card.append(logButton);
+    card.hidden = !text && logButton.hidden;
+    return card;
+}
+
 /** Datenvollständigkeit bleibt vom Besuch und vom gespeicherten Abschluss getrennt. */
 export function createAnnualExpenseStatus({ doc, model, targetYear }) {
     const node = (tag, text) => { const el = doc.createElement(tag); if (text !== undefined) el.textContent = text; return el; };

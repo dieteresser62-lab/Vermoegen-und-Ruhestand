@@ -27,6 +27,7 @@ class Element {
 }
 const ids = ['monteCarloPersonNotice', 'scenarioGroups', 'scenarioSelectionDisclosure', 'scenarioSelectionSummary', 'scenarioSelectedHeading', 'scenarioPrevious', 'scenarioNext', 'scenarioList', 'scenarioWealthChart', 'mcWealthMode', 'scenarioLogContainer', 'scenarioSelector', 'scenarioLogOutput', 'scenarioProtocolSummary', 'scenarioExportButtons', 'exportScenarioLogJson', 'exportScenarioLogCsv', 'toggle-log-detail', 'toggle-care-details', 'monteCarloResults', 'wealthDistribution', 'toastContainer', 'stressReplayFixButton', 'stressReplayStatus', 'stressReplaySelectedScenarioEmpty', 'stressReplaySelectedScenarioDetails', 'stressReplaySelectedScenarioLabel', 'stressReplaySelectedScenarioWealth', 'stressReplaySelectedScenarioCare'];
 const hosts = Object.fromEntries(ids.map(id => [id, new Element(id)]));
+for (const id of ['scenarioComparison', 'scenarioComparisonChart', 'scenarioComparisonChartBasis', 'scenarioLogAnalysis']) hosts[id] = new Element(id);
 const doc = { getElementById: id => hosts[id] || null, createElement: () => new Element('download'), body: new Element('body') };
 for (const id of ['mcWealthMode']) hosts[id].children = ['real', 'nominal'].map(mode => { const e = new Element(mode); e.setAttribute('data-wealth-mode', mode); return e; });
 const pick = id => { const e = new Element('button'); e.setAttribute('data-scenario-id', id); return e; };
@@ -91,6 +92,38 @@ try {
     globalThis.console = { ...saved.console, error() {} };
     URL.createObjectURL = blob => { blobs.push(blob); return 'blob:probe'; }; URL.revokeObjectURL = () => {};
     const run = batch => displayMonteCarloResults({}, 1, 0, null, {}, {}, 0, { startAlter: 62 }, null, batch, { startYear: 2026 });
+    const draft = { startAlter: 62, startVermoegen: 1200, minimumFlexAnnual: 100,
+        partner: { aktiv: true }, pflegefallLogikAktivieren: true };
+    const names = { persons: [{ name: 'Max Mustermann' }, { name: 'Erika Mustermann' }] };
+    const carePath = { ...worst, key: 'p10', label: 'Pflegepfad', logDataRows: [
+        { ...row, inflation: 0, minimumFlexAnnual: 100, flex_haushalt_erfuellt: 100,
+            Person2Alive: 1, CareP1_Active: 0, CareP2_Active: 0 },
+        { ...row, jahr: 2, inflation: 0, minimumFlexAnnual: 100, flex_haushalt_erfuellt: 99,
+            Person2Alive: 1, CareP1_Active: 1, CareP1_Grade: 2, CareP2_Active: 0 },
+        { jahr: 3, recordType: 'terminal_death', financiallyEvaluable: false,
+            Person1Alive: 0, Person2Alive: 0, portfolio_total_end: 0 }
+    ] };
+    const careBatch = { characteristic: [carePath], random: [] }, careBefore = JSON.stringify(careBatch);
+    displayMonteCarloResults({}, 1, 0, null, {}, {}, 0, draft, null, careBatch,
+        { startYear: 2026, personDisplayContext: names });
+    const originalCards = hosts.scenarioLogAnalysis.innerHTML;
+    assert(originalCards.includes('Pflege Max Mustermann') && originalCards.includes('Tod Erika Mustermann'), 'Durchstich zeigt Pflege und Terminalereignisse mit Laufnamen');
+    assert(hosts.scenarioComparison.innerHTML.includes('<td>2</td>'), 'Durchstich zählt im Vergleich zwei Entnahmejahre ohne Todeszeile');
+    draft.minimumFlexAnnual = 9999; draft.startVermoegen = 1; draft.partner.aktiv = false;
+    names.persons[0].name = 'Geänderter Entwurf';
+    hosts['toggle-log-detail'].dispatch('change');
+    assertEqual(hosts.scenarioLogAnalysis.innerHTML, originalCards, 'Geänderte Eingaben und Detailneuaufbau erhalten Karten samt eingefrorenen Personen');
+    hosts.mcWealthMode.dispatch('click', hosts.mcWealthMode.children[1]);
+    assertEqual(hosts.scenarioLogAnalysis.innerHTML, originalCards, 'Euro-Wechsel nach Eingabeänderung behält die Geldbasis der Karten');
+    assert(window.globalCurrentScenarioData.rows === carePath.logDataRows, 'Veraltete Eingaben ersetzen keine Protokollquelle');
+    assertEqual(JSON.stringify(careBatch), careBefore, 'Durchstich lässt Pflege- und Terminalbeleg unverändert');
+    const ruinPath = { ...worst, label: 'Neuer Ruinpfad', failed: true, endVermoegen: 0,
+        logDataRows: [carePath.logDataRows[0], { jahr: 2, recordType: 'terminal_ruin', financiallyEvaluable: false,
+            portfolio_total_end: 0, flex_haushalt_erfuellt: 0 }] };
+    run({ characteristic: [ruinPath], random: [] });
+    assert(hosts.scenarioLogAnalysis.innerHTML.includes('Neuer Ruinpfad') && !hosts.scenarioLogAnalysis.innerHTML.includes('Pflege Max Mustermann'), 'Neuer Lauf entfernt Pflegekarten des alten Laufs');
+    assert(hosts.scenarioLogAnalysis.innerHTML.includes('data-scenario-analysis-year="2"')
+        && hosts.scenarioLogOutput.innerHTML.includes('id="scenario-year-2"'), 'Neuer Ruinlink und Protokoll zeigen dieselbe Terminalzeile');
     run(logs); run(logs); run(logs);
     const jsonOracle = serializeScenarioLogExportV2(projectScenarioLogV2(worst.logDataRows));
     const csvOracle = serializeScenarioLogCsvV2(projectScenarioLogV2(worst.logDataRows));
@@ -102,6 +135,7 @@ try {
         else hosts.scenarioPrevious.dispatch('click');
         assertEqual(hosts.scenarioLogOutput.writes - writes, 2, `${source}: genau eine Invalidierung und eine Protokolldarstellung`);
         assert(window.globalCurrentScenarioData.rows === worst.logDataRows, `${source}: Download verwendet exakt die aktuellen Rohzeilen`);
+        assert(!hosts.scenarioLogAnalysis.hidden && hosts.scenarioLogAnalysis.innerHTML.includes('Worst Case · Pfad 1'), `${source}: Auffälliges folgt derselben Quelle`);
         assertEqual(hosts.stressReplaySelectedScenarioLabel.textContent, 'Worst Case', `${source}: Replayprojektion folgt derselben Auswahl`);
         hosts.exportScenarioLogJson.onclick(); hosts.exportScenarioLogCsv.onclick();
         assertEqual(await blobs.at(-2).text(), jsonOracle, `${source}: vollständiger JSON-Download bleibt bytegleich`);
@@ -125,8 +159,10 @@ try {
     run(logs);
     assertEqual(hosts.monteCarloPersonNotice.innerHTML, '', 'Zweiter regulärer Ergebnisbatch entfernt falschen Alternativhinweis');
     const writes = hosts.scenarioLogOutput.writes;
+    const analysisBeforeMode = hosts.scenarioLogAnalysis.innerHTML;
     hosts.mcWealthMode.dispatch('click', hosts.mcWealthMode.children[1]);
     assertEqual(hosts.scenarioLogOutput.writes, writes, 'Real-/Nominalwechsel verändert das nominale Rohprotokoll nicht');
+    assertEqual(hosts.scenarioLogAnalysis.innerHTML, analysisBeforeMode, 'Euro-Wechsel erhält Pfadkarten und ihre benannte Geldbasis');
     for (const detail of [false, true]) for (const care of [false, true]) {
         hosts['toggle-log-detail'].checked = detail; hosts['toggle-log-detail'].dispatch('change');
         hosts['toggle-care-details'].checked = care; hosts['toggle-care-details'].dispatch('change');
@@ -136,6 +172,7 @@ try {
     }
     hosts.scenarioList.dispatch('click', pick('char_p50'));
     assert(window.globalCurrentScenarioData.rows === median.logDataRows, 'Andere Kennung wechselt die Exportquelle auf ihren eigenen Lauf');
+    assert(hosts.scenarioLogAnalysis.innerHTML.includes('Median · Pfad 1'), 'Andere Kennung aktualisiert auch die Ereigniskarten');
     // B vor dem regulären Rebind publizieren; keine künstliche Listeoption nach Bindung.
     const invalidRows = [{ ...row, invalidExportProbe: Number.NaN }];
     const badB = { ...median, key: 'bad_b', label: 'B', logDataRows: invalidRows };
@@ -160,19 +197,23 @@ try {
     assert(window.globalCurrentScenarioData.rows === invalidRows, 'Exportfehler erhält Bs Rohquelle');
     hosts.scenarioList.dispatch('click', pick('char_unknown'));
     assertEqual(window.globalCurrentScenarioData, null, 'Unbekannte ID invalidiert weiter die Quelle');
+    assert(hosts.scenarioLogAnalysis.hidden && !hosts.scenarioLogAnalysis.innerHTML, 'Unbekannte ID entfernt alte Ereigniskarten');
     run({ characteristic: [worst, { ...median, key: 'empty', logDataRows: [] }], random: [] });
     hosts.scenarioWealthChart.dispatch('click', pick('char_empty'));
     assertEqual(window.globalCurrentScenarioData, null, 'Fehlende Logs entfernen die alte Exportquelle');
+    assert(hosts.scenarioLogAnalysis.hidden, 'Leerer Pfad zeigt keine alten Auffälligkeiten');
     const beforeMissing = downloads; hosts.exportScenarioLogJson.onclick(); hosts.exportScenarioLogCsv.onclick();
     assertEqual(downloads, beforeMissing, 'Fehlende Logs erzeugen keinen alten Download');
     const invalid = { characteristic: [{ ...worst, logDataRows: [{ ...row, get aktionUndGrund() { throw new Error('synthetischer Renderfehler'); } }] }], random: [] };
     run(invalid);
     assertEqual(window.globalCurrentScenarioData, null, 'Darstellungsfehler invalidiert den alten Exportpfad');
+    assert(hosts.scenarioLogAnalysis.hidden, 'Darstellungsfehler entfernt alte Pfadkarten');
     assertEqual(hosts.stressReplaySelectedScenarioDetails.hidden, true, 'Darstellungsfehler entfernt die alte Replayprojektion');
     const previousDownloads = downloads; hosts.exportScenarioLogJson.onclick();
     assertEqual(downloads, previousDownloads, 'Fehler erzeugt keinen Download des alten Laufs');
     run(logs); run(null);
     assertEqual(window.globalCurrentScenarioData, null, 'Neuer Batch ohne Logs invalidiert alle Auswahlflächen');
+    assert(hosts.scenarioLogAnalysis.hidden && !hosts.scenarioLogAnalysis.innerHTML, 'Neuer Batch ohne Logs entfernt Ereigniskarten');
     assertEqual(hosts.exportScenarioLogJson.onclick, null, 'Neuer leerer Batch entfernt alte Downloadclosure');
     assertEqual(hosts.scenarioGroups.listeners.get('click').size, 1, 'Leerer Batch hat nur den aktuellen leeren Auswahlweg');
 } finally {
@@ -397,4 +438,55 @@ assert(careNames.includes('data-scenario-group="care"') && careNames.includes('H
     bindScenarioLogView({ document: doc, logs: { characteristic: [ruined] }, chartOptions: { startYear: 2026 }, onSelect() {}, onMode() {} });
     assert(hosts.scenarioSelectedHeading.innerHTML.includes('class="is-ruin">Ruin 2028') && hosts.scenarioSelectedHeading.innerHTML.includes('>3 Logzeilen</span>'), 'Ruinkopf behält Ruinjahr und zählt sämtliche Rohzeilen einschließlich Terminal-/Schattenzeilen');
     disposeScenarioLogView(doc);
+}
+
+// LA-4: Vergleichsauswahl, Liste, Randmarken und Protokoll teilen denselben Binder.
+{
+    const compareLogs = { characteristic: ['worst', 'p10', 'p50', 'p90', 'best', 'highestCareNeed', 'maxCut'].map((key, index) => ({
+        ...worst, key, label: key, sourceIdentity: { absoluteRunIndex: index === 3 ? 1 : index }
+    })) };
+    const before = JSON.stringify(compareLogs);
+    const callbacks = [];
+    const bind = () => bindScenarioLogView({ document: doc, logs: compareLogs,
+        onSelect: (id, scenario) => callbacks.push([id, scenario]), onMode() {} });
+    let b = bind();
+    assertEqual(b.comparisonSelection.join(), 'char_p10,char_p50,char_p90', 'Vergleich startet mit P10, Median und P90');
+    assert(hosts.scenarioComparison.innerHTML.includes('Gleicher Quellpfad wie Spalte'), 'Doppelte Quellen sind auch im gebundenen Vergleich sichtbar');
+    const select = new Element('scenarioCompare2'); select.setAttribute('data-comparison-column', '1'); select.value = 'char_highestCareNeed';
+    hosts.scenarioComparison.dispatch('change', select);
+    assertEqual(b.selectedId, 'char_highestCareNeed', 'Pflegeauswahl im Vergleich wählt denselben Pfad im Protokoll');
+    assertEqual(b.activeGroup, 'care', 'Vergleich öffnet die passende Szenariogruppe');
+    assertEqual(hosts.scenarioList.getAttribute('data-selected-id'), 'char_highestCareNeed', 'Liste folgt Vergleichsauswahl');
+    assert(callbacks.at(-1)[1] === compareLogs.characteristic[5], 'Vergleich reicht das identische Quellobjekt weiter');
+    const selected = b.comparisonSelection.join(), calls = callbacks.length;
+    hosts.mcWealthMode.dispatch('click', hosts.mcWealthMode.children[1]);
+    assertEqual(b.comparisonSelection.join(), selected, 'Euro-Wechsel erhält alle drei nominalen Rangwahlen');
+    assertEqual(b.selectedId, 'char_highestCareNeed', 'Euro-Wechsel erhält die gewählte Quellidentität');
+    assertEqual(callbacks.length, calls, 'Euro-Wechsel löst keine Pfadneuberechnung oder neue Protokollauswahl aus');
+    assertEqual(hosts.scenarioComparisonChartBasis.textContent, 'Nominale Euro', 'Vergleichsgrafik nennt die gewählte Geldbasis');
+    hosts.scenarioComparisonChart.dispatch('click', pick('char_p90'));
+    assertEqual(b.selectedId, 'char_p90', 'Vergleichslinie/Legende wählt denselben Pfad');
+    hosts.scenarioWealthChart.dispatch('click', pick('char_maxCut'));
+    assertEqual(b.selectedId, 'char_maxCut', 'Bestehende Linie/Randmarke bleibt derselbe Auswahlweg');
+    assertEqual(b.comparisonSelection.join(), selected, 'Randmarke überschreibt keine der drei Vergleichsspalten');
+    const inspect = new Element('link'); inspect.setAttribute('data-comparison-inspect', 'char_p10');
+    const beforeInspect = callbacks.length;
+    assert(hosts.scenarioComparison.dispatch('click', inspect), 'Vergleichslink verhindert unabhängigen Ankersprung');
+    assertEqual(callbacks.length - beforeInspect, 1, 'Was hier auffällt wählt genau einmal');
+    assertEqual(b.selectedId, 'char_p10', 'Vergleichslink wählt seinen Quellpfad');
+    assert(hosts.scenarioLogAnalysis.scrollCalls.length > 0, 'Link führt zu den Auffälligkeiten des gewählten Pfads');
+    b = bind();
+    assertEqual(b.comparisonSelection.join(), selected, 'Sitzung behält eigene Spaltenwahl auch bei erneuter Ergebnisveröffentlichung');
+    for (const [id, event] of [['scenarioComparison', 'change'], ['scenarioComparison', 'click'], ['scenarioComparisonChart', 'click']])
+        assertEqual(hosts[id].listeners.get(event).size, 1, 'Rebind hält genau einen Vergleichslistener: ' + id + ' ' + event);
+    const preset = new Element('button'); preset.setAttribute('data-comparison-preset', 'extremes');
+    hosts.scenarioComparison.dispatch('click', preset);
+    assertEqual(b.comparisonSelection.join(), 'char_worst,char_p50,char_best', 'Schnellwahl setzt Schwächster, Median, Stärkster');
+    assertEqual(b.selectedId, 'char_worst', 'Schnellwahl wählt den ersten Vergleichspfad im gemeinsamen Binder');
+    preset.setAttribute('data-comparison-preset', 'default'); hosts.scenarioComparison.dispatch('click', preset);
+    assertEqual(b.comparisonSelection.join(), 'char_p10,char_p50,char_p90', 'Standard-Schnellwahl stellt P10, Median, P90 wieder her');
+    assertEqual(JSON.stringify(compareLogs), before, 'Sämtliche Vergleichsaktionen lassen Rohlogs unverändert');
+    disposeScenarioLogView(doc);
+    for (const id of ['scenarioComparison', 'scenarioComparisonChart'])
+        assert([...hosts[id].listeners.values()].every(handlers => !handlers.size), 'Dispose entfernt Vergleichslistener: ' + id);
 }

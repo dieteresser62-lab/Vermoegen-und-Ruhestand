@@ -10,6 +10,8 @@ import {
 } from './simulator-engine-helpers.js';
 
 export function buildSimulatorYearResult({
+    guardrailPlanInputs,
+    personalPayout,
     portfolio,
     liquiditaet,
     spendingResult,
@@ -122,7 +124,6 @@ export function buildSimulatorYearResult({
     const portfolioFlowDelta = portfolioActiveEnd - (
         euros(portfolioTotalBeforePayout)
         - euros(jahresEntnahmeEffektiv)
-        - euros(bondRefillTax)
         + signedCashInterest
         + taxCashAdjustment
     );
@@ -250,6 +251,7 @@ export function buildSimulatorYearResult({
             }
         },
         newState: {
+            guardrailPlanInputs,
             portfolio: nextPortfolio,
             cumulativeInflationFactor: nextCumulativeInflationFactor,
             baseFloor: euros(baseFloor * inflFactorThisYear),
@@ -434,6 +436,10 @@ export function buildSimulatorYearResult({
             netTradeEq: equityAfterReturn - equityAfterBuys,
             executedSaleEq: equityAfterReturn - equityAfterSales,
             liqStart: initialLiqStart,
+            personalPayout,
+            personAccounts: nextPortfolio.personAccounts?.map(person => ({ ...person })),
+            personalTaxModel: actionResult.personalAnnualTaxes ? 'personal_annual_settlement' : 'legacy_pooled_tax_unproven',
+            ...(actionResult.personalAnnualTaxes ? { tax_funding_sale_gross: actionResult.personalAnnualTaxes.reduce((sum, row) => sum + row.taxFundingGross, 0) } : {}),
             cashInterestEarned: cashZinsen,
             liqEnd: liqNachZins,
             liq_post_payout_end_of_year: liquiditaet,

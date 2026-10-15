@@ -32,6 +32,7 @@ export function createDialogFixture() {
             closest(selector) { return matches(this, selector) ? this : this.parent?.closest(selector) || null; },
             append(...children) { children.forEach(child => this.appendChild(child)); },
             appendChild(child) { child.remove(); child.parent = this; this.children.push(child); return child; },
+            insertBefore(child, before) { child.remove(); child.parent = this; const index = this.children.indexOf(before); this.children.splice(index < 0 ? this.children.length : index, 0, child); return child; },
             remove() { if (this.parent) this.parent.children = this.parent.children.filter(child => child !== this); this.parent = null; },
             querySelectorAll(selector) { return dialogElements(this).slice(1).filter(node => matches(node, selector)); },
             querySelector(selector) { return this.querySelectorAll(selector)[0] || null; },

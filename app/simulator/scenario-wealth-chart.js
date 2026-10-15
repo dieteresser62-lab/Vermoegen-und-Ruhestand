@@ -152,7 +152,8 @@ function renderScenarioOutliers(paths, { maximum, maxValue, x, width }) {
 let clipSequence = 0;
 
 export function renderScenarioWealthChart(entries, options = {}) {
-    const fan = buildWealthFanModel(options.wealthFan, options.mode || 'real');
+    const comparison = options.comparison === true;
+    const fan = buildWealthFanModel(comparison ? null : options.wealthFan, options.mode || 'real');
     const paths = entries.map(entry => ({ ...entry, ...buildScenarioWealthPath(entry.scenario, { ...options, yearEndRealBasis: true }) }));
     let maxYear = 1;
     const maximum = path => path.points.reduce((max, point) => finite(point.value) ? Math.max(max, point.value) : max, 0);
@@ -162,19 +163,21 @@ export function renderScenarioWealthChart(entries, options = {}) {
     const p95 = paths.find(path => path.id === 'char_p95' && observed(path));
     const fallback = paths.filter(path => path.group === 'wealth' && path.id !== 'char_best' && observed(path));
     let basis = p95 ? maximum(p95) : fallback.reduce((max, path) => Math.max(max, maximum(path)), 0);
+    if (comparison) basis = paths.reduce((max, path) => Math.max(max, maximum(path)), 0);
     if (!p95 && !fallback.length && fan.available) {
         for (const row of fan.years) if (finite(row.quantiles[95].value)) basis = Math.max(basis, row.quantiles[95].value);
     }
     const selected = paths.find(path => path.id === options.selectedId);
     const maxValue = Math.max(1, basis, finite(options.initialWealth) ? options.initialWealth : 0, selected ? maximum(selected) : 0);
     const width = finite(options.displayWidth) ? Math.max(300, options.displayWidth) : 1100;
-    const right = width - 92, top = 88, bottom = 410;
+    const height = comparison ? 310 : 470;
+    const right = width - 92, top = comparison ? 20 : 88, bottom = comparison ? 250 : 410;
     const x = year => 88 + (year / maxYear) * (right - 88);
     // Extremwerte bleiben in den Rohpunkten erhalten. Nur weit außerhalb des
     // Clips begrenzen wir die Zeichenkoordinate gegen numerischen Überlauf.
     const y = value => bottom - Math.max(-1e6, Math.min(1e6, value / maxValue)) * (bottom - top);
     const clipId = `scenarioWealthPlot-${++clipSequence}`;
-    const marks = renderScenarioOutliers(paths, { maximum, maxValue, x, width });
+    const marks = comparison ? '' : renderScenarioOutliers(paths, { maximum, maxValue, x, width });
     const order = [...paths.filter(path => path.id !== options.selectedId), ...paths.filter(path => path.id === options.selectedId)];
     const lines = order.map(path => {
         let connected = false;
@@ -186,7 +189,7 @@ export function renderScenarioWealthChart(entries, options = {}) {
         const active = path.id === options.selectedId;
         const end = path.points.at(-1);
         const endmark = (active || path.endpoint === 'ruin') && end?.value !== null ? `<circle cx="${x(end.year)}" cy="${y(end.value)}" r="${active ? 5 : 3}" fill="${path.endpoint === 'ruin' ? 'var(--bad)' : path.color}"/>${active ? `<text x="${x(end.year) - 8}" y="${y(end.value) - 12}" text-anchor="end">${path.endpoint === 'ruin' ? `Ruin ${Number.isInteger(options.startYear) ? options.startYear + end.year - 1 : `Jahr ${end.year}`}` : path.endpoint === 'death' ? 'Tod · letzte Messung' : 'Ende'}</text>` : ''}` : '';
-        return `<g data-scenario-id="${escape(path.id)}" class="scenario-line ${active ? ' is-active' : ''}" opacity="${active ? 1 : .45}"><title>${escape(path.scenario.label)}${path.missingCount ? ' · fehlende Messung' : ''}</title><path d="${d}" fill="none" stroke="${path.color}" stroke-width="${active ? 3.5 : path.group === 'sample' ? 1 : 1.6}"${['care', 'risk'].includes(path.group) ? ' stroke-dasharray="6 4"' : ''}/><path d="${d}" fill="none" stroke="transparent" stroke-width="10" pointer-events="stroke"/>${endmark}</g>`;
+        return `<g data-scenario-id="${escape(path.id)}" class="scenario-line ${active ? ' is-active' : ''}" opacity="${comparison || active ? 1 : .45}"><title>${escape(path.scenario.label)}${path.missingCount ? ' · fehlende Messung' : ''}</title><path d="${d}" fill="none" stroke="${path.color}" stroke-width="${comparison || active ? 3.5 : path.group === 'sample' ? 1 : 1.6}"${['care', 'risk'].includes(path.group) ? ' stroke-dasharray="6 4"' : ''}/><path d="${d}" fill="none" stroke="transparent" stroke-width="10" pointer-events="stroke"/>${endmark}</g>`;
     }).join('');
     const ticks = Array.from({ length: 5 }, (_, index) => {
         const value = maxValue * (index / 4);
@@ -195,7 +198,8 @@ export function renderScenarioWealthChart(entries, options = {}) {
     const years = Array.from({ length: 6 }, (_, index) => {
         const year = Math.round(maxYear * (index / 5));
         const label = Number.isInteger(options.startYear) ? `${options.startYear + year} · ${Number.isFinite(options.startAge) ? options.startAge + year : `Jahr ${year}`}` : `Jahr ${year}`;
-        return `<text x="${x(year)}" y="445" text-anchor="middle">${escape(label)}</text>`;
+        return `<text x="${x(year)}" y="${height - 25}" text-anchor="middle">${escape(label)}</text>`;
     }).join('');
-    return `<svg class="scenario-wealth-svg chart-native-svg" width="${width}" height="470" viewBox="0 0 ${width} 470" role="group" aria-labelledby="scenarioWealthTitle scenarioWealthDescription"><title id="scenarioWealthTitle">Vermögensverläufe der Szenario-Logs</title><desc id="scenarioWealthDescription">${options.mode === 'nominal' ? 'Nominale Euro' : 'Heutige Euro'}. Linien, Randmarken oder die gleichwertige Liste und Szenarioauswahl wählen. Die Basisachse folgt P95; eine Auswahl mit höherem Maximum erweitert sie. Lücken bedeuten fehlende Messungen; roter Endpunkt bedeutet Ruin; Tod erzeugt keinen weiteren Jahresendwert.${fan.available ? ' Blasser Hintergrund: Jahresbänder aller noch lebenden gültigen Haushalte im selben Maßstab.' : ''}</desc>${ticks}<defs><clipPath id="${clipId}"><rect x="88" y="${top}" width="${right - 88}" height="${bottom - top}"/></clipPath></defs><g clip-path="url(#${clipId})">${renderWealthFanBands(fan, { x, y, background: true })}${lines}</g>${years}${marks}</svg>`;
+    const suffix = comparison ? 'Comparison' : '';
+    return `<svg class="scenario-wealth-svg chart-native-svg${comparison ? ' scenario-comparison-svg' : ''}" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="group" aria-labelledby="scenarioWealthTitle${suffix} scenarioWealthDescription${suffix}"><title id="scenarioWealthTitle${suffix}">${comparison ? 'Vermögen der drei Pfade' : 'Vermögensverläufe der Szenario-Logs'}</title><desc id="scenarioWealthDescription${suffix}">${options.mode === 'nominal' ? 'Nominale Euro' : 'Heutige Euro'}. ${comparison ? 'Die Achse umfasst die drei gewählten Pfade. Linie oder Legende wählen.' : 'Linien, Randmarken oder die gleichwertige Liste und Szenarioauswahl wählen. Die Basisachse folgt P95; eine Auswahl mit höherem Maximum erweitert sie.'} Lücken bedeuten fehlende Messungen; roter Endpunkt bedeutet Ruin; Tod erzeugt keinen weiteren Jahresendwert.${fan.available ? ' Blasser Hintergrund: Jahresbänder aller noch lebenden gültigen Haushalte im selben Maßstab.' : ''}</desc>${ticks}<defs><clipPath id="${clipId}"><rect x="88" y="${top}" width="${right - 88}" height="${bottom - top}"/></clipPath></defs><g clip-path="url(#${clipId})">${renderWealthFanBands(fan, { x, y, background: true })}${lines}</g>${years}${marks}</svg>`;
 }

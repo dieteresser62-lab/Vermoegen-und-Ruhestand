@@ -9,10 +9,11 @@ export const EXAMPLE_SOURCE = 'probelauf-example';
 export function canGenerateExampleExpenses(controller = getProbelaufController(globalThis.document), { allowBusy = false } = {}) {
     return Boolean(typeof controller?.initialize === 'function' && controller?.state?.active && controller.state.phase === 'active'
         && controller.runtime?.canContinue && (allowBusy || !controller.busy) && !controller.blocked
-        && controller.state.testDate === localCalendarDate(appNow()));
+        // Ohne Testdatum („Stand heute“) gilt das heutige Datum.
+        && (controller.state.testDate === null || controller.state.testDate === localCalendarDate(appNow())));
 }
 export function assertExampleExpensesAllowed(controller) {
-    if (!canGenerateExampleExpenses(controller)) throw Object.assign(new Error('Beispielausgaben sind nur im bestätigten aktiven Probelauf verfügbar.'), { code: 'EXPENSES_NOT_ALLOWED' });
+    if (!canGenerateExampleExpenses(controller)) throw Object.assign(new Error('Beispielausgaben sind nur im bestätigten aktiven Spielbereich verfügbar.'), { code: 'EXPENSES_NOT_ALLOWED' });
 }
 
 // Das Haushaltsbudget und der gemeinsam gespeicherte Bedarf werden genau einmal gelesen.

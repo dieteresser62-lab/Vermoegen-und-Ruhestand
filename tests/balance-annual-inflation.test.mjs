@@ -450,7 +450,7 @@ try {
         const result = await handlers.handleFetchInflation();
         assertEqual(result.year, 2026, 'Bestätigte Fachuhr bestimmt Abschlussjahr');
         assertEqual(result.rate, 2.5, 'Fester Jahreswert');
-        assertEqual(result.source, 'Probelauf · synthetisch', 'Sichtbare Herkunft');
+        assertEqual(result.source, 'Spielbereich · synthetisch', 'Sichtbare Herkunft');
         assertEqual(result.dataAsOf, '2026-12-31', 'Fester Jahresdatenstand');
         assertEqual(result.fetchStatus, 'ok_synthetic', 'Synthetischer Erfolgsstatus');
         assertEqual(JSON.stringify(StorageManager.loadState().annualMarketDataMeta.inflation), JSON.stringify(result), 'Vollständige validierte Meta bei Bedarfsmutation');

@@ -173,8 +173,10 @@ export function evaluateWealthHistory({ profiles, prices = { symbols: {} }, even
             try {
                 const chain = reconstructHistoryShares(lot, ownSales);
                 const symbol = tranche.ticker ? normalizeHistorySymbol(tranche.ticker) : null;
-                marks.push({ kind: 'buy', day: chain.purchaseDay, name: tranche.name, symbol, shares: chain.initial, amount: chain.initial * tranche.purchasePrice });
-                chain.changes.forEach(change => marks.push({ kind: 'sell', day: change.day, name: tranche.name, symbol, shares: change.sale.actual.sharesSold, amount: change.sale.actual.grossProceeds }));
+                marks.push({ kind: 'buy', day: chain.purchaseDay, name: tranche.name, symbol, shares: chain.initial, amount: chain.initial * tranche.purchasePrice,
+                    ...(tranche.source === 'spielwert' ? { source: 'spielwert' } : {}) });
+                chain.changes.forEach(change => marks.push({ kind: 'sell', day: change.day, name: tranche.name, symbol, shares: change.sale.actual.sharesSold, amount: change.sale.actual.grossProceeds,
+                    ...(change.sale.source === 'spielwert' ? { source: 'spielwert' } : {}) }));
                 return { tranche, chain, symbol };
             } catch (error) {
                 const diagnostic = uncertainty ? uncertainty.fromDay === null

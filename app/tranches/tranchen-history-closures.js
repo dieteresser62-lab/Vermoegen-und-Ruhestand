@@ -1,6 +1,8 @@
 import { prepareWealthHistoryMetrics } from '../balance/balance-wealth-history-metrics.js';
 import { summaryMarkup, tableMarkup } from '../balance/balance-wealth-history-renderer.js';
-import { loadStoredBalanceStateFromData } from '../profile/profile-state.js';
+import { projectWealthCaptures } from '../profile/profile-wealth-captures.js';
+import { WEALTH_CAPTURES_KEY } from '../../types/wealth-capture-contract.js';
+import { persistenceStorage } from '../shared/persistence-facade.js';
 import { historyDay, historyDate } from './tranchen-history-store.js';
 import { renderWealthHistorySvg, wealthHistoryScale, bindHistoryChartSize, bindHistoryDayInteraction, HISTORY_TYPE_LABELS } from './tranchen-history-svg.js';
 import { escapeHtml } from '../shared/security-utils.js';
@@ -93,7 +95,7 @@ export function managerHistoryLegend(chart) {
     return entries.join('');
 }
 
-export function renderManagerWealthHistory(doc, projection, registry, activeId, view) {
+export function renderManagerWealthHistory(doc, projection, registry, activeId, view, storage = persistenceStorage) {
     const host = doc.getElementById('managerWealthChart');
     if (!host) return;
     const byId = id => doc.getElementById(id);
@@ -119,7 +121,9 @@ export function renderManagerWealthHistory(doc, projection, registry, activeId, 
     }
     const household = view?.kind === 'plan' || view?.kind === 'history' && view.historyScope !== 'person';
     const active = projection.profiles.find(person => person.id === activeId);
-    byId('managerWealthContext').textContent = `Erfasste Stände sind bei ${active?.name || activeId} gespeichert. Der damalige Umfang kann vom heutigen Haushalt abweichen.`;
+    byId('managerWealthContext').textContent = household
+        ? 'Erfasste Haushaltsstände sind unabhängig vom aktiven Profil sichtbar. Der damalige Umfang kann vom heutigen Haushalt abweichen.'
+        : `Für ${active?.name || activeId} zeigen Tageslinie und neue erfasste Stände nur eigene Werte. Ältere Stände ohne Personenaufteilung erscheinen nur im Haushalt.`;
     const history = selection.period !== 'all' && projection.historyContext?.status === 'ready'
         ? projectProfileWealthHistory(registry, projection.profiles, { ...projection.historyContext, period: selection.period,
             profileId: household ? null : activeId })
@@ -127,13 +131,25 @@ export function renderManagerWealthHistory(doc, projection, registry, activeId, 
     renderDailyHistory(doc, history, projection.historyContext);
     let chart = null;
     try {
-        const loaded = loadStoredBalanceStateFromData(registry.profiles[activeId]?.data || {});
-        if (['corrupt', 'unavailable'].includes(loaded.status)) throw loaded.error || new Error('Abschlussstände nicht lesbar.');
-        const prepared = projectHistoryClosures(history, loaded.value || {});
+        const captured = projectWealthCaptures(registry, storage.getItem(WEALTH_CAPTURES_KEY), household ? null : activeId);
+        const prepared = projectHistoryClosures(history, captured);
+        for (const id of ['managerWealthCapturedTitle', 'managerWealthMetrics', 'managerWealthTable']) {
+            if (byId(id)) byId(id).hidden = !household && !prepared.rows.length;
+        }
+        if (byId('managerWealthPersonHint')) byId('managerWealthPersonHint').hidden = household || !captured.hasLegacy;
+        if (byId('managerWealthPersonHintText')) byId('managerWealthPersonHintText').textContent = prepared.rows.length
+            ? 'Ältere Stände gibt es nur für den Haushalt' : 'Erfasste Stände gibt es für den Haushalt';
+        if (household && captured.conflicts.length) {
+            const labels = { tagesgeld: 'Tagesgeld', geldmarktEtf: 'Geldmarkt', depotwertAlt: 'Alt-Depot', depotwertNeu: 'Neu-Depot', aktienEtf: 'Aktien', goldWert: 'Gold', anleihen: 'Anleihen', total: 'Summe' };
+            byId('managerWealthContext').textContent += ' Abweichende Stände: ' + captured.conflictDetails.map(detail =>
+                detail.asOf.split('-').reverse().join('.') + ': ' + detail.fields.map(({ field, values }) =>
+                    `${labels[field]} ${values.map(money).join(' / ')} (angezeigt: ${money(detail.selected[field] ?? 0)})`).join('; ')).join('. ')
+                + '. Angezeigt wird die letzte Erfassung nach Zeitstempel, ohne vergleichbare Zeitstempel nach Speicherreihenfolge der Profile und Einträge. Altstände bleiben unverändert. Neue Stände enthalten zusätzlich Gold; Anleihen werden getrennt ausgewiesen.';
+        }
         chart = prepared.chart;
         byId('managerWealthMetrics').innerHTML = summaryMarkup(prepared.rows, { missingComparisonHint: 'Jahresvergleich braucht zwei erfasste Stände' });
         byId('managerWealthTable').innerHTML = prepared.rows.length ? tableMarkup(prepared.rows) : '';
-        byId('managerWealthHint').textContent = prepared.rows.length ? '' : 'Noch keine Stände erfasst. Mit „Stand jetzt erfassen“ legst du den ersten an.';
+        byId('managerWealthHint').textContent = !household || prepared.rows.length ? '' : 'Noch keine Stände erfasst. Mit „Stand jetzt erfassen“ legst du den ersten an.';
     } catch (error) {
         byId('managerWealthMetrics').innerHTML = '';
         byId('managerWealthTable').innerHTML = '';
@@ -142,9 +158,9 @@ export function renderManagerWealthHistory(doc, projection, registry, activeId, 
     }
     byId('managerWealthLegend').innerHTML = managerHistoryLegend(chart);
     if (byId('managerWealthBasis')) byId('managerWealthBasis').textContent = chart
-        ? `${chart.points.some(point => Number.isFinite(point.total)) ? 'Kurve aus Beständen und Tageskursen' : 'Keine bewertbare Tageskurve'} · Rauten aus erfassten Ständen`
+        ? `${chart.points.some(point => Number.isFinite(point.total)) ? 'Kurve aus Beständen und Tageskursen' : 'Keine bewertbare Tageskurve'}${chart.closures?.length ? ' · Rauten aus erfassten Ständen' : ''}`
         : '';
-    byId('managerWealthDailyNote').textContent = `${household ? 'Tageslinie des Haushalts' : `Tageslinie ${active?.name || ''}`} · ${history?.points.some(point => Number.isFinite(point.total)) ? 'aus Beständen und Tageskursen bis zum letzten abgeschlossenen Tag.' : 'noch nicht bewertbar; gespeicherte Stände bleiben sichtbar.'}`;
+    byId('managerWealthDailyNote').textContent = `${household ? 'Tageslinie des Haushalts' : `Tageslinie ${active?.name || ''}`} · ${history?.points.some(point => Number.isFinite(point.total)) ? 'aus Beständen und Tageskursen bis zum letzten abgeschlossenen Tag.' : household ? 'noch nicht bewertbar; gespeicherte Stände bleiben sichtbar.' : 'noch nicht bewertbar.'}`;
     bindHistoryDayInteraction(host);
     bindHistoryChartSize(host, (value, size) => {
         host.innerHTML = value ? renderWealthHistorySvg(value, size) : '';

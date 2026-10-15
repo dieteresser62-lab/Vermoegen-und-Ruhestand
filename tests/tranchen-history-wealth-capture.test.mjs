@@ -4,6 +4,7 @@ import { CONFIG } from '../app/balance/balance-config.js';
 import { PersistenceFacade } from '../app/shared/persistence-facade.js';
 import { createBalanceWealthHistoryPreview } from '../app/balance/balance-wealth-history-preview.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
+import { WEALTH_CAPTURES_KEY, readWealthCaptures } from '../types/wealth-capture-contract.js';
 
 for (const options of [{}, { quoteAge: 604800 }, { quoteAge: 604801 }, { quoteAge: null }, { noLots: true }, { failWealth: 'write' }, { failWealth: 'readback' }]) {
     const f = await overviewImportFixture(options);
@@ -23,7 +24,11 @@ for (const options of [{}, { quoteAge: 604800 }, { quoteAge: 604801 }, { quoteAg
         const message = f.doc.getElementById('managerWealthStatus').textContent;
         assertEqual(message.includes('Vermögensstand gesichert'), saved, 'Speicherfehler und abgelehnte Kurse melden keinen Erfolg');
         if (!saved) assertEqual(f.backend.get(CONFIG.STORAGE.LS_KEY), original, 'Abgelehnte Erfassung und Rollback erhalten alte Historie');
+        if (!saved) assertEqual(f.backend.get(WEALTH_CAPTURES_KEY), undefined, 'Abgelehnte Erfassung und Rollback hinterlassen auch keinen Personenstand');
         else {
+            const together = readWealthCaptures(f.backend.get(WEALTH_CAPTURES_KEY)).captures.find(capture => capture.household.asOf === '2026-10-08');
+            assertEqual(Object.keys(together.people).length, 2, 'Managerklick erfasst beide Haushaltsmitglieder');
+            assertClose(together.household.total, together.people.muster_a.total + together.people.muster_b.total, 1e-8, 'Personenstände ergeben den gespeicherten Haushalt');
             const annualCount = live.wealthHistory.entries.filter(entry => entry.reason === 'annual_close').length;
             await api.capture();
             const second = JSON.parse(f.backend.get(CONFIG.STORAGE.LS_KEY));

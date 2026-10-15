@@ -25,18 +25,18 @@ export function validateSnapshotWealthHistory(snapshot) {
 /** Reiner Plan: dieselbe Recordmenge dient Vorschau, Recovery und Zielwrite. */
 export function buildSnapshotRestorePlan(input, currentRecords, { importRollback = false } = {}) {
     const snapshot = validateSnapshot(input);
-    if (snapshot.kind === SNAPSHOT_KINDS.probelaufBefore) throw new Error('Diesen Rückkehrpunkt ausschließlich über Probelauf beenden zurückholen.');
+    if (snapshot.kind === SNAPSHOT_KINDS.probelaufBefore) throw new Error('Diesen Rückkehrpunkt ausschließlich über Spielbereich beenden zurückholen.');
     validateSnapshotWealthHistory(snapshot);
     const scope = snapshot.restoreScope;
     const registry = parse(currentRecords[P.registry]);
     const full = isFullImportRecoverySnapshot(snapshot);
     const mode = full ? (scope.liveKeyMode || (snapshot.kind === SNAPSHOT_KINDS.newBeginningBefore ? 'new-beginning' : snapshot.kind === SNAPSHOT_KINDS.fullBackupImportRecovery ? 'full-import' : 'snapshot-full')) : 'standard';
-    if (!['standard', 'full-import', 'snapshot-full', 'new-beginning'].includes(mode)
+    if (!['standard', 'full-import', 'snapshot-full', 'new-beginning', 'play-transfer'].includes(mode)
         || (!full && !['preserve-by-default', 'restore-target-profile'].includes(scope.profileRegistryMode))) {
         throw new Error('Unbekannter Wiederherstellungsumfang. Dieser Punkt bleibt erhalten.');
     }
     const targetProfileId = scope.targetProfileId || snapshot.activeProfileId;
-    const allowKey = mode === 'new-beginning' ? isNewBeginningRecordKey : mode === 'full-import' ? isAllowedPersistenceImportKey
+    const allowKey = ['new-beginning', 'play-transfer'].includes(mode) ? isNewBeginningRecordKey : mode === 'full-import' ? isAllowedPersistenceImportKey
         : mode === 'snapshot-full' ? key => isAllowedSnapshotRestoreLiveKey(key, { mode: 'full' })
             : key => key === P.registry || isAllowedSnapshotRestoreLiveKey(key, { mode: 'standard', snapshotActiveProfileId: targetProfileId, currentRegistry: registry });
     // Der interne Importrollback behält seinen historischen profilfreien Vollfallback.
@@ -74,7 +74,7 @@ export async function previewSnapshotRestore(id, { persistence = PersistenceFaca
     if (await persistence.flush({ navigationOperation }) === false) throw new Error('PERSISTENCE_FLUSH_FAILED');
     const snapshot = await archive.readSnapshot(id, { storage: persistence });
     const records = await persistence.readPersistedRecords();
-    if (records[PROBELAUF_STATE_KEY]) throw new Error('Zurückholen während des Probelaufs gesperrt. Beende ihn zuerst über das Probelaufband.');
+    if (records[PROBELAUF_STATE_KEY]) throw new Error('Zurückholen während des Spielbereichs gesperrt. Beende ihn zuerst über das Spielbereichsband.');
     return buildSnapshotRestorePlan(snapshot, records);
 }
 
@@ -96,7 +96,7 @@ export async function executeSnapshotRestore(preview, options = {}) {
                 const fresh = await previewSnapshotRestore(preview.snapshot.id, { persistence, archive, navigationOperation: operation });
                 operation.check();
                 if (fresh.identity !== preview.identity) throw new Error('Der Bestand oder Punkt hat sich seit der Vorschau geändert. Bitte die Vorschau erneut öffnen.');
-                release = persistence.blockSyncWrites([], message, { predicate: fresh.mode === 'new-beginning' ? fresh.allowKey : isAllowedPersistenceImportKey });
+                release = persistence.blockSyncWrites([], message, { predicate: ['new-beginning', 'play-transfer'].includes(fresh.mode) ? fresh.allowKey : isAllowedPersistenceImportKey });
                 const full = fresh.mode !== 'standard';
                 const recovery = await archive.createSnapshot({ id: `before_restore_${globalThis.crypto.randomUUID()}`,
                     label: 'vor Zurückholen', kind: SNAPSHOT_KINDS.beforeRestoreRecovery, records: fresh.before,

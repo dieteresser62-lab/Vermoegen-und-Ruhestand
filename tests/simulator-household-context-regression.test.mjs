@@ -82,7 +82,8 @@ try {
     assert(heads.read('backtest').phase !== 'completed', 'Altabschluss kann neuen Haushalt nicht abgeschlossen markieren');
     await tick();
     assertEqual(runs.length, 3, 'Kontextwechsel während Altabschluss startet genau einen Ersatz');
-    const numericalInputs = inputs => ({ ...inputs, minimumFlexProfiles: inputs.minimumFlexProfiles.map(p => p.minimumFlexAnnual) });
+    const numericalInputs = inputs => ({ ...inputs, simulationPeople: inputs.simulationPeople.map(({ profileId, name, ...values }) => values),
+        minimumFlexProfiles: inputs.minimumFlexProfiles.map(p => p.minimumFlexAnnual) });
     assertEqual(JSON.stringify(numericalInputs(runs[2].inputs)), JSON.stringify(numericalInputs(runs[0].inputs)), 'Identitätswechsel a,b -> a,c bei exakt gleichen Zahlen');
     assertEqual(runs[2].personDataContext.persons.map(p => p.profileId).join(','), 'a,c', 'Ausgeschiedene Person fehlt im neuen Ergebnis');
     assert(!heads.read('backtest').stale, 'Neues Ergebnis ist an aktuellen Haushalt gebunden');

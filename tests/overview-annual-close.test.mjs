@@ -687,10 +687,10 @@ try {
         } else { root.close(); await closing; }
         f.close();
     }
-    // Die produktiven Vorableser im Probelauf bleiben synthetisch und schreibfrei.
+    // Die produktiven Vorableser im Spielbereich bleiben synthetisch und schreibfrei.
     {
         const fetchBefore = globalThis.fetch; let networkCalls = 0;
-        globalThis.fetch = () => { networkCalls++; throw new Error('Kein Netz im Probelauf'); };
+        globalThis.fetch = () => { networkCalls++; throw new Error('Kein Netz im Spielbereich'); };
         const f = await overviewAnnualFixture({ readers: createAnnualMarketDataReaders({ now: annualTestNow }) });
         try {
             const before = await storageEvidence(f), closing = f.open();
@@ -701,7 +701,7 @@ try {
             assertEqual(market.querySelectorAll('.close-dialog-tile').length, 3, 'Alle drei vorbereiteten Jahreswerte stehen in Kacheln');
             assert(market.querySelector('[data-annual-market-provenance]').textContent.includes(SYNTHETIC_MARKET_SOURCE.replace(' · ', ', ')),
                 'Gemeinsame Herkunft weist alle vorbereiteten Jahreswerte als synthetisch aus');
-            assertEqual(networkCalls, 0, 'Produktive Jahresvorbereitung startet im Probelauf keinen Netzzugriff');
+            assertEqual(networkCalls, 0, 'Produktive Jahresvorbereitung startet im Spielbereich keinen Netzzugriff');
             assertEqual(await storageEvidence(f), before, 'Synthetische Vorbereitung verändert keine Finanzrecords oder Snapshots');
             root.close(); await closing;
         } finally { f.close(); globalThis.fetch = fetchBefore; }
@@ -718,7 +718,9 @@ try {
         const field = f.doc.getElementById('annualPlan_floorBedarf'); field.value = '21000'; const changing = field.fire('input');
         assert(f.doc.getElementById('annualConfirmBtn').disabled, 'Eingabe sperrt Bestätigung bis zur aktuellen Berechnung'); await changing;
         await prepareCloseFixture(globalThis.document); await annualUntil(() => !f.doc.getElementById('annualConfirmBtn').disabled);
-        const invalid = f.doc.getElementById('annualPlan_minimumFlexAnnual'), originalMinimum = invalid.value; invalid.value = '999999'; await invalid.fire('input');
+        const invalid = f.doc.getElementById('annualPlan_minimumFlexAnnual');
+        await invalid.fire('focus'); // Eingabefokus zeigt die ungerundete Rechenbasis (FR-14).
+        const originalMinimum = invalid.value; invalid.value = '999999'; await invalid.fire('input');
         await annualUntil(() => root.querySelector('[data-annual-plan-status]').textContent.includes('Mindest-Flex'));
         assert(f.doc.getElementById('annualConfirmBtn').disabled, 'Ungültige Planwerte sperren sichtbar');
         invalid.value = originalMinimum; await invalid.fire('input'); await prepareCloseFixture(globalThis.document); await annualUntil(() => !f.doc.getElementById('annualConfirmBtn').disabled);

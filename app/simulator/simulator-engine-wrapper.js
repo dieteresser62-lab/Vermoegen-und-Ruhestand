@@ -27,6 +27,7 @@ export * from './simulator-engine-helpers.js';
  * @param {Object} householdContext - Household context
  * @param {number} temporaryFlexFactor - Temporary flex factor
  * @param {Object} engineAPI - Optional engine override
+ * @param {Object|null} replayCollector - Optional read-only parity collector
  * @returns {Object} Simulation result
  */
 export function simulateOneYear(
@@ -38,7 +39,8 @@ export function simulateOneYear(
     careFloorAddition = 0,
     householdContext = null,
     temporaryFlexFactor = 1.0,
-    engineAPI = null
+    engineAPI = null,
+    replayCollector = null
 ) {
     const performanceMonitoring = featureFlags.getAllFlags().performanceMonitoring;
     let startTime;
@@ -59,7 +61,8 @@ export function simulateOneYear(
             careFloorAddition,
             householdContext,
             temporaryFlexFactor,
-            engine
+            engine,
+            replayCollector
         );
 
         if (performanceMonitoring && startTime) {

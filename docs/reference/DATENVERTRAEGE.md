@@ -122,6 +122,10 @@ Stücke, Profilwerte und Ausführungsbeleg werden gemeinsam bestätigt. Identisc
 
 Der Erlös erhöht Tagesgeld nicht automatisch. Der absolute Stand und ein bereits berücksichtigter Erlös werden ausdrücklich belegt; Bestätigung und Korrektur ergänzen den Cashnachweis.
 
+Erzeugte Spielverkäufe tragen `source: spielwert` und optional `actual.taxes`. Der Nettoerlös ist dann Brutto minus Gebühren minus Steuern. Ohne Steuerfeld gilt der bisherige Vertrag. Der normale Verkaufswriter erlaubt die Spielwertherkunft ausschließlich im Speicherbereich `spiel`; Cashbestätigungen übernehmen sie vom Verkauf. Spielkäufe tragen dieselbe Herkunft an der Tranche und deren Verlaufskopie.
+
+Das Registryfeld `playActionExecutions` hält je bestätigter Spielanweisung eine Kennung, Datum und Personen mit Verkaufskennungen, Nettoerlös, Kaufsumme sowie Tagesgeld vor und nach der Gutschrift. Solange Verkäufe offen sind, bleiben die zugehörigen Tagesgeldstände unverändert. Die separate Gutschrift bestätigt die normalen Verkaufsbelege und setzt den Tagesgeld-Stand nach Abzug der Käufe. Reine Käufe ändern Tagesgeld sofort. Vorbereitung und Abbruch schreiben nichts; Rohvergleich, Jahresbesitz, Navigationsschutz und transaktionaler Replace mit Readback schützen den gemeinsamen Write. Eine zwischenzeitliche Tagesgeldänderung oder externe Teilbestätigung verweist zur manuellen Prüfung im Vermögensbereich.
+
 ## Abschlüsse und Ausgaben
 
 ### Jahresperiode und Planbeleg
@@ -131,6 +135,8 @@ Der Erlös erhöht Tagesgeld nicht automatisch. Der absolute Stand und ein berei
 `annual_plan_record_v1` enthält `version: 1`, `entries` und Schlüssel `JSON.stringify([Planjahr, scope.key])`. Ein Eintrag hält `year`, `scope`, `periodId`, `committedAt`, `recommended`, `adopted`, `adjusted`, `adjustedFields`. Beim regulären Abschluss J ist das Planjahr J+1 und die Periode `calendar-year:J`.
 
 [annual-plan-record.js](../../app/profile/annual-plan-record.js) verlangt Ergebnisbeträge, Marktphase und vollständige Aktion. `adopted.snapshot` hält Inflation, Plan und Alter am 1. Januar je Person. Vorhandene Belege desselben Jahres/Bereichs werden nicht überschrieben.
+
+Neue Jahresbelege behalten ungerundete Bedarfe, Inflation, CAPE und Monatsbudgets. Die Jahresfortschreibung erhält auch die Präzision des ETF-Schlusskurses. Rundung gehört an die Anzeige und an gebuchte Beträge; die fachliche Entnahmequantisierung bleibt bestehen. Gerundete ältere Belege sind weiter gültige Schema-1-Einträge und werden beim Lesen oder Ergänzen eines Folgejahres nicht normalisiert.
 
 Jahr und anschließender Dezembermonat haben eigene Vorabpunkte und Speichergrenzen. Ein Monatsfehler hebt das bestätigte Jahr nicht auf; die Wiederholung schließt die fehlende Phase.
 
@@ -170,7 +176,9 @@ Monats- und Jahresabschluss speichern zusätzlich `profile_tagesgeld_confirmed_d
 
 ### Balance-Messpunkte
 
-[wealth-history-contract.js](../../types/wealth-history-contract.js) führt getrennt die `wealthHistory` im Balance-State mit `schemaVersion: 1` und `entries`. Manuelle Punkte verwenden `manual:<Datum>`, Jahrespunkte eine Periodenidentität; Komponenten und Summe werden validiert. Die Messpunkte beginnen frühestens am 1. Januar 2026.
+[wealth-history-contract.js](../../types/wealth-history-contract.js) führt die bisherige `wealthHistory` im Balance-State mit `schemaVersion: 1` und `entries`. Manuelle Punkte verwenden `manual:<Datum>`, Jahrespunkte eine Periodenidentität; Komponenten und Summe werden validiert. Die Messpunkte beginnen frühestens am 1. Januar 2026. Neue Erfassungen behalten hier eine Haushaltskopie im alten Format, damit ältere Leser die bisherigen Felder weiter verwenden können.
+
+[wealth-capture-contract.js](../../types/wealth-capture-contract.js) ergänzt den globalen Record `rs_household_wealth_captures_v1` mit `schemaVersion: 1` und `captures`. Jede Erfassung enthält `capturedAt`, `household` und `people` mit Einträgen je Profil-ID. Haushalt und Personen haben dieselbe Standidentität und denselben Stichtag. Zusätzlich zu den bisherigen Beträgen stehen `goldWert` und `anleihen` separat; das Neu-Depot enthält hier nur Aktien. `total` summiert Tagesgeld, Geldmarkt, Aktien, Gold und Anleihen. Der Vertrag prüft jede Komponente und die Summe aller Personen zum Haushalt. Ein manueller Tag wird gemeinsam ersetzt; ein bestätigter Jahresstand bleibt erhalten. Erfassungs- und Abschlussdienste schreiben diesen Record atomar mit ihren übrigen Records. Vollsicherung, Wiederherstellung und Spielbereich behandeln ihn als globale Fachdaten. Fehlende Records in älteren Sicherungen sind gültig und erzeugen keine rückwirkenden Personenstände.
 
 Dieser Verlauf enthält bestätigte Messpunkte. Der aus Tagesschlusskursen bewertete Depotverlauf verwendet einen anderen Datenpfad. Die beiden Formen dürfen nicht still zusammengefügt oder als tägliche vollständige Buchführung bezeichnet werden.
 
@@ -265,25 +273,29 @@ Vor Vollimport: offene Writes flushen, Ausgangsbestand prüfen, Recoverypunkt da
 
 [profile-person-file.js](../../app/profile/profile-person-file.js) begrenzt Ein-Person-Dateien auf genau ein Profil ohne Globals. Eigene Person, Depot, Cash und Verlauf werden exportiert; Haushalts-/Balance-/Simulator-/Monatsbelege entfallen. Import erzeugt konfliktfreie ID/Namen und zunächst ein Außenprofil. Aktive Person und Plan werden nicht ersetzt. Vorschau und Commit vergleichen den bestätigten Bestand; im Probelauf ist Austausch gesperrt.
 
+Vor der Importfilterung übernimmt die bestehende Personenmigration eigene ältere `sim_*`-Angaben und Balance-Personenwerte. Relative Rentenbeginne beziehen sich auf das Exportjahr oder, falls weiter fortgeschritten, auf das Planungsjahr der gespeicherten Jahresmetadaten. Der Beginn bleibt als datierte Herkunft erhalten, ohne ein bestätigtes Kalenderdatum zu erfinden.
+
+Widersprüchliche Quellen, nicht zuordenbare Partnerwerte und aktive oder ungültige Partnerschalter verhindern die Vorschau mit einer verständlichen Meldung. Das gilt auch für Dateien, die bestehende Migrationsherkunft mit erneut umzustellenden Angaben mischen. Abgeschaltete oder leere Partnerschalter entfallen. Bereits umgestellte Personendaten ohne neue Altangaben durchlaufen keine erneute Migration; ihre Datenstrings bleiben beim Import und anschließenden Export bytegleich.
+
 ### Snapshotvertrag und Restoreumfang
 
 [snapshot-archive.js](../../app/shared/snapshot-archive.js) hält `schemaVersion: 1`, `snapshotType: persistence-records-v1`, `id`, `kind`, `createdAt`, `label`, aktive Profilangaben, `recordCount`, `records`, `restoreScope`. Der Index ohne Records beweist keinen Restore.
 
-Anlässe sind `annual-close-pre-mutation`, `monthly-close-pre-mutation`, `balance-import-recovery`, `full-backup-import-recovery`, `person-data-migration-recovery`, `household-plan-migration-recovery`, `probelauf-before`, `new-beginning-before`, `before-restore-recovery`, `manual`.
+Anlässe sind `annual-close-pre-mutation`, `monthly-close-pre-mutation`, `balance-import-recovery`, `full-backup-import-recovery`, `person-data-migration-recovery`, `household-plan-migration-recovery`, `probelauf-before`, `probelauf-transfer-before`, `new-beginning-before`, `before-restore-recovery`, `manual`.
 
 [snapshot-restore.js](../../app/shared/snapshot-restore.js) bildet denselben Plan für Vorschau und Write. Standardrestore bewahrt die Registry und verlangt ein noch vorhandenes Zielprofil. Ein expliziter Recoveryumfang kann Registry/Livekeys umfassender ersetzen. Fremde Außenprofile bleiben beim Standardrestore erhalten.
 
-Vor Restore entsteht ein bestätigter Vorabpunkt. Bestand und Punkt werden gegen die Vorschau verglichen; danach folgen Replace und geschützter Reload. Ein fehlgeschlagener Reload lässt alte Formularwrites gesperrt. `probelauf-before` gehört ausschließlich dem Probelaufkoordinator.
+Vor Restore entsteht ein bestätigter Vorabpunkt. Bestand und Punkt werden gegen die Vorschau verglichen; danach folgen Replace und geschützter Reload. Ein fehlgeschlagener Reload lässt alte Formularwrites gesperrt. `probelauf-before` gehört ausschließlich der Ablösung alter Probeläufe. „Vor Übernahme aus dem Spielbereich“ verwendet `probelauf-transfer-before` mit `liveKeyMode: play-transfer` und vollständigem Registry-/Live-Rollback. Der Punkt enthält den Hauptspeicher einschließlich Altschlüsseln; Spielsteuerrecord und Archivcontainer bleiben getrennt. Er lässt sich unter Daten & Sicherung auch ohne aktives Profil zurückholen und bleibt bei der Archivpflege dauerhaft erhalten. Dabei wird der bytegleiche Vorher-Stand durch denselben Restoreweg bestätigt, ohne Gerätepräferenzen oder Sitzungen zu bereinigen.
 
 [snapshot-retention.js](../../app/shared/snapshot-retention.js) erhält Dauer-, Recovery-, unbekannte/defekte und benötigte Punkte. Vergleichbare manuelle/Monatspunkte bleiben einschließlich 30 Tagen; für ältere Monate bleibt ein repräsentativer Stand je Umfang. Vorschau und bestätigter Aufräumwrite bestimmen die Löschung.
 
 ## Probelauf, Neustart und Laufbelege
 
-### Probelaufzustand
+### Spielbereichszustand
 
-[probelauf-state.js](../../app/shared/probelauf-state.js) führt `rs_probelauf_state_v1` mit `version: 1`, `active: true`, `phase` (`starting`, `active`, `restoring`), `snapshotId`, `source` (`copy`, `demo`), `runtime`, `testDate`, `archiveIds`, `sessions`. Der Rückkehrpunkt wird vor dem Bestandswechsel bestätigt. Fremde Phase oder beschädigter Punkt sperrt Writes.
+[probelauf-state.js](../../app/shared/probelauf-state.js) führt neue Sitzungen mit `version: 2`, `active: true`, `phase` (`starting`, `active`), `source` (`copy`, `demo`), `runtime`, `testDate` und `hasDateJump`. Die Records liegen ausschließlich im getrennten Spielbereich. `startedAt`, `realDomainChecksum`, `initialDomain` und `initialMonteCarloRuns` belegen den Startvergleich. Die Bereichssteuerung liegt außerhalb der Fachrecords. Fremde Zustände sperren Writes. Version 1 mit `snapshotId`, `archiveIds` und `sessions` dient nur noch der einmaligen Ablösung alter Probeläufe.
 
-`app-clock.js` liefert das Testdatum. Sprünge können synthetische Kurse erzeugen, ohne Ausgaben oder Abschlüsse zu bestätigen. Der Muster-Haushalt verwendet Max und Erika Mustermann. Beim Beenden werden Records und gesicherte Sitzungswerte zurückgeholt; ursprüngliches Archiv und Rückkehrpunkt sind während des Versuchs geschützt.
+`app-clock.js` liefert das Testdatum. Ein Datumssprung aktiviert dauerhaft synthetische Kurse, ohne Abschlüsse zu bestätigen. Verwerfen entfernt ausschließlich die Spielkopie. Übernehmen verlangt eine Kopie ohne Sprung und unveränderten echten Fachbestand. Nach Bestätigung des echten Rückkehrpunkts ersetzt der gemeinsame Transaktionskern die fachlichen Records und liest sie zurück. Technische Schlüssel und Sitzungen bleiben echt. Erst danach wird der Bereich gewechselt; Fehler erhalten Spielkopie und echten Vorher-Stand.
 
 ### Neu beginnen
 

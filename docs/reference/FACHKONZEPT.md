@@ -83,6 +83,8 @@ Die historischen Namen `inflatedBedarf.floor` und `inflatedBedarf.flex` bezeichn
 
 [MarketAnalyzer](../../engine/analyzers/MarketAnalyzer.mjs) bestimmt das Marktregime. Alarm-, Vermögens-, Erholungs- und Entnahmequotenregeln beeinflussen die Flex-Rate. Die Enginepolicy kombiniert eigene Regeln; deren Wirkung ist nicht allein durch die Bezeichnung Guardrail belegt.
 
+Die Leitplanken behalten ihre Historie bei normalen Jahres-, Markt- und Inflationswechseln. Nur eine bewusste Änderung von Bedarf oder Plan beginnt sie neu: Bedarfswerte, Flex-Budget, Reserven, Strategie, Dynamik und Haushaltsverteilung. Das gilt für Haushalt & Plan und Anpassungen im Jahresabschluss, auch bei kleinen Betragsänderungen. CAPE, Bestände und Renten zählen nicht dazu. Balance und Simulator verwenden dafür [guardrail-history.js](../../app/shared/guardrail-history.js); Steuerstände bleiben erhalten.
+
 [spending-policy-pipeline.mjs](../../engine/planners/spending-policy-pipeline.mjs) bindet die Reihenfolge an `SpendingPolicyOrderV2`: Nach Alarm und Guardrails folgen Mindest-Flex, Flex-Budget, finale Glättung und Safety-Cap. Das [Ablaufdiagramm der Entnahme-Kette](ENGINE_DECISION_LOGIC.md#bedarf-und-flex-trace) zeigt auch das Notlage-Gate.
 
 Mindest-Flex darf die vorherige Rate anheben, wenn keine Notlage blockiert. Das [Minimum-Modul](../../engine/planners/minimum-flex-policy.mjs) berücksichtigt den Rentenbeitrag zum Flex und prüft die Finanzierung des verbleibenden Mindestbetrags samt erforderlicher Reserve. Ein aktiver Alarm oder nicht wiederherstellbare Deckung kann die Anhebung sperren. Budget und finale Glättung bleiben danach wirksam.
@@ -105,7 +107,7 @@ Die Näherung um null ist Teil der implementierten Formel. Anschließend wird de
 
 [vpw-return-policy.mjs](../../engine/planners/vpw-return-policy.mjs) unterscheidet `legacy_step` und `cape_continuous`. Der kontinuierliche Pfad leitet einen Aktienbeitrag aus `1 / CAPE` und dem konfigurierten Zuschlag ab, begrenzt ihn und gewichtet Aktien, Gold und sichere Anlagen. Die erwartete Portfoliorealrendite wird ebenfalls begrenzt und im Core geglättet. Fehlendes oder ungültiges CAPE verwendet den bezeichneten Ersatzwert. Das ist eine Renditeannahme, keine Vorhersage für das nächste Jahr.
 
-[simulator-engine-helpers.js](../../app/simulator/simulator-engine-helpers.js) und [dynamic-flex-longevity-horizon.js](../../app/simulator/dynamic-flex-longevity-horizon.js) leiten den Horizont aus Mittelwert oder Überlebensquantil ab. Zusätzliche Vorsicht kann das Quantil verschieben, einen relativen Horizontpuffer oder feste Jahre hinzufügen. Grenzen und Übergangsglättung gehören zur Policy. Ein kürzerer Horizont kann heute mehr Flex erlauben und spätere Versorgung schwächen.
+[planning-horizon.js](../../app/shared/planning-horizon.js) und [life-expectancy.js](../../app/shared/life-expectancy.js) leiten den Horizont in Balance und Simulator jedes Jahr aus Alter und Haushalt ab. Die gewählte Methode verwendet Mittelwert oder Überlebensquantil. Die gespeicherte Jahresvorgabe bleibt im Plan und wird bei diesen Methoden nicht als feste Restdauer verwendet. Zusätzliche Vorsicht kann das Quantil verschieben, einen relativen Horizontpuffer oder feste Jahre hinzufügen. Grenzen und Übergangsglättung gehören zur Policy. Ein kürzerer Horizont kann heute mehr Flex erlauben und spätere Versorgung schwächen.
 
 Die gemeinsamen Voreinstellungen stehen in [dynamic-flex-presets.js](../../app/shared/dynamic-flex-presets.js). Ihre Namen sind Parameterauswahlen; sie belegen keine zertifizierten Risikoklassen. Ausgeschaltetes Dynamic Flex muss die Rechnung ohne dieses Modul erhalten.
 
@@ -141,7 +143,7 @@ Operativer Runway ist freie Liquidität relativ zur final quantisierten Netto-Po
 
 Gold kann Zielquote, unteren Rahmen und Rebalancingband haben. Steuerfreiheit ist ein explizites Flag und keine aus dem Kaufdatum automatisch geprüfte Rechtslage.
 
-[three-bucket-logic.mjs](../../engine/transactions/three-bucket-logic.mjs) ergänzt bei `3_bucket_jilge` Liquidität, Anleihen und Wachstumsanlagen. Ziel, Drawdowntrigger und Auffüllschwelle steuern die einmalige Finalisierung im Rechenpfad. Drei Töpfe belegen keinen Rendite- oder Sicherheitsvorteil.
+[three-bucket-logic.mjs](../../engine/transactions/three-bucket-logic.mjs) ergänzt bei `3_bucket_jilge` Liquidität, Anleihen und Wachstumsanlagen. Ziel, Drawdowntrigger und Auffüllschwelle steuern die einmalige Finalisierung im Rechenpfad. Ein schlechtes Jahr wird an Kursrendite minus Inflation gemessen. Die vollständige Umschichtung wird vor der Auszahlung geplant: Geplante Anleihenverkäufe mindern den Bestand, erst danach wird der Rest auf das Ziel aufgefüllt. Der zusätzliche Aktienverkauf nutzt nur den noch freien Sparerpauschbetrag; sein Bruttobetrag wahrt die Aktienreserve. Reicht der Aktienbestand nicht, bleibt die Auffüllung begrenzt. Drei Töpfe belegen keinen Rendite- oder Sicherheitsvorteil.
 
 ### Pflegebucket
 

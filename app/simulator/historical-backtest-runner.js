@@ -535,6 +535,7 @@ export function runHistoricalBacktest({
             capeRatio: resolvedCapeRatio,
             marketCapeRatio: resolvedCapeRatio,
             horizonYears: horizonResolution.horizonYears,
+            guardrailPlanHorizonYears: runInputs.horizonYears,
             ...(horizonResolution.diagnostics?.longevityMode !== 'none'
                 ? { longevityHorizonDiagnostics: horizonResolution.diagnostics }
                 : {})

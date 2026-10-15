@@ -117,7 +117,9 @@ export function renderProtocolTable(rows, options = {}) {
     data.forEach((entry, index) => {
         const flags = protocolRowFlags(entry, source), raw = protocolRowData(entry, source);
         const belowCar = Number.isFinite(options.caRThreshold) && Number.isFinite(raw.jahresentnahme_real) && raw.jahresentnahme_real < options.caRThreshold;
-        html += `<tr class="${index % 2 === 0 ? 'even' : 'odd'}${flags.cut ? ' backtest-row-cut protocol-row-cut' : ''}${flags.care ? ' protocol-row-care' : ''}${flags.ruin ? ' backtest-row-ruin protocol-row-ruin' : ''}${belowCar ? ' below-car' : ''}">`;
+        const yearAnchor = Number.isInteger(entry?.jahr)
+            ? ` id="${source === 'backtest' ? 'backtest' : 'scenario'}-year-${entry.jahr}" tabindex="-1"` : '';
+        html += `<tr${yearAnchor} class="${index % 2 === 0 ? 'even' : 'odd'}${flags.cut ? ' backtest-row-cut protocol-row-cut' : ''}${flags.care ? ' protocol-row-care' : ''}${flags.ruin ? ' backtest-row-ruin protocol-row-ruin' : ''}${belowCar ? ' below-car' : ''}">`;
         columns.forEach((column, position) => {
             const value = column.id ? readProtocolValue(column, entry, options) : undefined;
             const requested = typeof column.cellClass === 'function' ? column.cellClass(entry) : column.cellClass;

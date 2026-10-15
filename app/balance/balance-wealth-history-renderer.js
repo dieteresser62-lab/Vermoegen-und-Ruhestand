@@ -50,8 +50,10 @@ export function summaryMarkup(rows, { missingComparisonHint = 'Kein zweiter Stan
 }
 
 export function tableMarkup(rows) {
-    const headers = ['Datum', 'Anlass', 'Liquidität (Tagesgeld)', 'Geldmarkt-ETF', 'Aktien-ETF', 'Alt-Depot', 'Neu-Depot', 'Summe'];
-    return `<table class="ds-table"><caption class="balance-table-caption">Erfasste Vermögensstände · nominale Euro</caption><thead><tr>${headers.map(label => `<th scope="col">${label}</th>`).join('')}</tr></thead><tbody>${[...rows].reverse().map(row => `<tr><th scope="row">${dateLabel(row.asOf)}</th><td>${row.marker} ${row.label}</td>${['tagesgeld', 'geldmarktEtf', 'aktienEtf', 'depotwertAlt', 'depotwertNeu', 'total'].map(key => `<td${key === 'total' ? ' class="wealth-total-value"' : ''}>${euro(row[key])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    const extended = rows.some(row => Object.hasOwn(row, 'goldWert'));
+    const headers = ['Datum', 'Anlass', 'Liquidität (Tagesgeld)', 'Geldmarkt-ETF', 'Aktien-ETF', 'Alt-Depot', 'Neu-Depot', ...(extended ? ['Gold', 'Anleihen'] : []), 'Summe'];
+    const fields = ['tagesgeld', 'geldmarktEtf', 'aktienEtf', 'depotwertAlt', 'depotwertNeu', ...(extended ? ['goldWert', 'anleihen'] : []), 'total'];
+    return `<table class="ds-table"><caption class="balance-table-caption">Erfasste Vermögensstände · nominale Euro</caption><thead><tr>${headers.map(label => `<th scope="col">${label}</th>`).join('')}</tr></thead><tbody>${[...rows].reverse().map(row => `<tr><th scope="row">${dateLabel(row.asOf)}</th><td>${row.marker} ${row.label}</td>${fields.map(key => `<td${key === 'total' ? ' class="wealth-total-value"' : ''}>${row[key] == null ? '—' : euro(row[key])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
 
 // Sichtbarkeit gehört ausschließlich zum DOM, weder zum Profil noch zum Export.

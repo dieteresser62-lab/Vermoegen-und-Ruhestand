@@ -14,7 +14,7 @@ assert(!html.includes('id="dataBackupTop"') && (html.match(/>Jetzt sichern<\/but
     && /id="daten-sicherung"[\s\S]*?id="fullBackupBtn"[^>]*>Jetzt sichern<\/button>/.test(html),
     'Jetzt sichern bleibt ausschließlich in der Vollsicherungskarte');
 assert(!html.includes('dataTrialTitle') && !html.includes('Ausprobieren ohne Risiko')
-    && !html.includes('Probelauf mit Muster-Haushalt oder einer Kopie deiner Daten:')
+    && !html.includes('Spielbereich mit Muster-Haushalt oder einer Kopie deiner Daten:')
     && /class="suite-header"[\s\S]*?id="probelaufStart"/.test(html),
     'Probelaufkarte entfällt; Einstieg bleibt in der Kopfzeile');
 const time = '2026-09-01T12:00:00.000Z', now = new Date('2026-10-02T12:00:00.000Z');
@@ -253,7 +253,7 @@ renderDataPage(doc, { ...projected, snapshots: [availablePoint] });
 assertEqual(doc.getElementById('dataSnapshotTile').dataset.state, 'ok', 'Nur vollständig verfügbare Punkte erhalten einen grünen Status');
 renderDataPage(doc, { ...projected, snapshots: [{ ...availablePoint, kind: 'probelauf-before' }] });
 assertEqual(doc.getElementById('dataSnapshotCount').textContent, '0 verfügbar · 1 gesperrt', 'Probelaufpunkt bleibt für das Zurückholen auf dieser Seite gesperrt');
-assert(textOf(doc.getElementById('dataSnapshotList')).includes('Probelauf beenden'), 'Probelaufpunkt nennt seinen vorhandenen Rückweg');
+assert(textOf(doc.getElementById('dataSnapshotList')).includes('Spielbereich beenden'), 'Probelaufpunkt nennt seinen vorhandenen Rückweg');
 
 const backupStatus = dataBackupStatus(doc);
 for (const raw of ['IndexedDB kv rs_profiles_v1 SYNTHETIC_WRITE_FAILED', 'Quota UTF-8 SHA-Fingerabdruck serialisiert', 'Store metadata snapshots Browser-Dateidialog']) {
@@ -261,8 +261,8 @@ for (const raw of ['IndexedDB kv rs_profiles_v1 SYNTHETIC_WRITE_FAILED', 'Quota 
     assert(checkMainText(mainText()), 'Sicherungsfehler hält technische Wörter aus dem Haupttext fern');
     assertEqual(doc.getElementById('dataBackupTechnical').textContent, raw, 'Sicherungsfehler bleibt unverändert in Details');
 }
-backupStatus.textContent = 'Probelauf gesperrt';
-assert(doc.getElementById('fullBackupStatus').textContent.includes('Probelauf beenden'), 'Probelaufsperre bleibt verständlich und handlungsfähig');
+backupStatus.textContent = 'Spielbereich gesperrt';
+assert(doc.getElementById('fullBackupStatus').textContent.includes('Spielbereich beenden'), 'Probelaufsperre bleibt verständlich und handlungsfähig');
 backupStatus.textContent = 'Die Rückkehr wurde nicht bestätigt. In Daten & Sicherung mit dem Wiederherstellungspunkt wiederherstellen.';
 assert(doc.getElementById('fullBackupStatus').textContent.includes('nicht bestätigt') && doc.getElementById('fullBackupStatus').textContent.includes('wiederherstellen'), 'Unbestätigter Rückweg verliert keinen nötigen Wiederherstellungshinweis');
 backupStatus.dataset.kind = 'ok'; backupStatus.textContent = 'Komplettes fachliches Backup erstellt (12 Eintraege). Dateiausgabe der Vollsicherung angestoßen. 3 UI-/Layout-Einstellungen sind nicht enthalten.';

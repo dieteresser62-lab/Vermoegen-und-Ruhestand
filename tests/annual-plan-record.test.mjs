@@ -37,6 +37,24 @@ assertEqual(next.entry.year, 2028, 'Neuer Beleg gehört zum Folgeplanungsjahr');
 assertEqual(next.entry.periodId, 'calendar-year:2027', 'Neuer Beleg bindet tatsächliche Abschlussperiode');
 assertEqual(JSON.stringify(next.entry.recommended), JSON.stringify(next.entry.adopted), 'Unangepasster neuer Beleg enthält bytegleiche Zweige');
 assertEqual(JSON.stringify(next.record.entries[key]), JSON.stringify(item), 'Neue Belegbildung erhält vorhandenen H1-Eintrag unverändert');
+const legacy = structuredClone(item);
+legacy.adopted.snapshot.plan.floorBedarf = 30704;
+legacy.adopted.snapshot.plan.minimumFlexAnnual = 7676;
+legacy.adopted.snapshot.plan.cape.value = 25.1;
+legacy.adopted.snapshot.inflation = 2.3;
+legacy.adopted.monthlyBudget = 1550 + 32935 / 12;
+const legacyRaw = JSON.stringify({ version: 1, entries: { [key]: legacy } });
+assertEqual(JSON.stringify(readAnnualPlanRecord({ year: 2027, scope, storage: { getItem: () => legacyRaw } })), JSON.stringify(legacy),
+    'FR-14: älterer gerundeter Jahresbeleg bleibt ohne Migration lesbar');
+const precise = structuredClone(legacy.adopted);
+Object.assign(precise.snapshot.plan, { floorBedarf: 30704.100000000002, minimumFlexAnnual: 7676.025000000001 });
+precise.snapshot.plan.cape.value = 25.06;
+precise.snapshot.inflation = 2.347;
+precise.monthlyBudget = 1550 + 32934.971999999994 / 12;
+const mixed = buildAnnualPlanRecord(legacyRaw, { targetYear: 2027, scope, committedAt: '2028-01-02T12:00:00Z', recommended: precise });
+assertEqual(JSON.stringify(mixed.record.entries[key]), JSON.stringify(legacy), 'FR-14: neuer präziser Beleg bewahrt den gerundeten Altbeleg unverändert');
+assertEqual(JSON.stringify(readAnnualPlanRecord({ year: 2028, scope, storage: { getItem: () => mixed.raw } }).adopted), JSON.stringify(precise),
+    'FR-14: alter und neuer Präzisionsstand sind im selben Schema lesbar');
 const foreignPeriod = { ...next.entry, periodId: 'calendar-year:2025' };
 assertEqual(readAnnualPlanRecord({ year: 2028, scope, storage: { getItem: () => JSON.stringify({ version: 1, entries: { [annualPlanEntryKey(2028, scope)]: foreignPeriod } }) } }).status,
     'invalid', 'Fremder Jahresabstand bleibt ungültig');

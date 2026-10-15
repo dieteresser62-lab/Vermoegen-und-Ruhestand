@@ -286,8 +286,8 @@ try {
         assertEqual(questions, 1, origin + ': Offenübernahme und Abschluss fragen zusammen einmal');
         assertEqual(preparations, 1, origin + ': genau eine bestätigte Vorbereitung');
         const after = await env.persistence.readPersistedRecords();
-        assertEqual(JSON.parse(after[CONFIG.STORAGE.LS_KEY]).lastState.cumulativeInflationFactor, 1 * 1.021, origin + ': Inflation genau einmal');
-        assertEqual(JSON.parse(after.household_plan_v1).entries[sample.scope.key].values.floorBedarf, 30642, origin + ': Bedarf genau einmal fortgeschrieben');
+        assertEqual(JSON.parse(after[CONFIG.STORAGE.LS_KEY]).lastState.cumulativeInflationFactor, 1 * 1.0214, origin + ': Inflation genau einmal');
+        assertEqual(JSON.parse(after.household_plan_v1).entries[sample.scope.key].values.floorBedarf, 30000 * 1.0214, origin + ': Bedarf genau einmal fortgeschrieben');
         assertEqual(env.batches.filter(batch => batch.upserts.some(([key]) => key === 'annual_plan_record_v1')).length, 1, origin + ': genau ein Fachbatch');
         assertEqual((await env.create().close()).status, 'already_committed', origin + ': neue Instanz bleibt idempotent');
         assertEqual((await service.close()).status, 'already_committed', origin + ': weiterer Aufruf bleibt idempotent');
@@ -348,9 +348,9 @@ try {
         assertEqual((await service.close()).status, 'already_committed', 'Vorjahresfaktor erlaubt echten Abschluss 2026');
         assertEqual(questions, 1, 'Seitenvorprüfung und Abschluss fragen zusammen genau einmal');
         const after = await env.persistence.readPersistedRecords();
-        assertEqual(JSON.parse(after[CONFIG.STORAGE.LS_KEY]).lastState.cumulativeInflationFactor, 1.10 * 1.021,
+        assertEqual(JSON.parse(after[CONFIG.STORAGE.LS_KEY]).lastState.cumulativeInflationFactor, 1.10 * 1.0214,
             'Vorjahresfaktor wird genau einmal mit der neuen Inflation fortgeschrieben');
-        assertEqual(JSON.parse(after.household_plan_v1).entries[sample.scope.key].values.floorBedarf, 30642,
+        assertEqual(JSON.parse(after.household_plan_v1).entries[sample.scope.key].values.floorBedarf, 30000 * 1.0214,
             'Bedarfsplan erhält die Zieljahresinflation genau einmal');
         assertEqual(env.batches.filter(batch => batch.upserts.some(([key]) => key === ANNUAL_PLAN_RECORD_KEY)).length, 1, 'Vorjahresmarker: genau ein Fachbatch');
         assertEqual((await env.create().close()).status, 'already_committed', 'Reload wiederholt den geklärten Jahresabschluss nicht');
@@ -411,7 +411,7 @@ try {
         assertEqual((await service.close()).status, 'already_committed', 'Normaler Jahresknopf funktioniert nach Restore ohne Falschantwort');
         assertEqual(questions, 0, 'Zurückgeladener offener Vorabstand braucht keine Abschlussbehauptung');
         const after = JSON.stringify(await env.persistence.readPersistedRecords());
-        assertEqual(JSON.parse(env.storage.getItem(CONFIG.STORAGE.LS_KEY)).lastState.cumulativeInflationFactor, 1.021, 'Recovery-Neustart wendet Inflation einmal an');
+        assertEqual(JSON.parse(env.storage.getItem(CONFIG.STORAGE.LS_KEY)).lastState.cumulativeInflationFactor, 1.0214, 'Recovery-Neustart wendet Inflation einmal an');
         assertEqual(env.batches.filter(batch => batch.upserts.some(([key]) => key === ANNUAL_PLAN_RECORD_KEY)).length, 1, 'Recovery-Neustart schreibt genau einen Fachbatch');
         await env.create().close();
         assertEqual(JSON.stringify(await env.persistence.readPersistedRecords()), after, 'Recovery-Neustart bleibt auch nach Reload idempotent');

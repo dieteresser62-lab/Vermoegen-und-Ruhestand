@@ -6,7 +6,7 @@ import { fetchHistoryChart } from '../app/tranches/tranchen-history-fetch.js';
 
 const fetchBefore = globalThis.fetch;
 let requests = 0;
-globalThis.fetch = () => { requests++; throw new Error('Kursnetz ist im Probelauf verboten.'); };
+globalThis.fetch = () => { requests++; throw new Error('Kursnetz ist im Spielbereich verboten.'); };
 try {
     const first = syntheticPrice('vwce.de', '2027-07-01');
     assertEqual(first, 144.304481, 'Fester bestehender ETF-Referenzkurs');

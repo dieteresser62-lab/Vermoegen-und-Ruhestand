@@ -1,3 +1,4 @@
+import { areaSessionStorage } from '../shared/persistence-area-storage.js';
 import { projectAnnualCloseResult } from '../shared/annual-close-result.js';
 import { annualCloseArchiveReader } from '../shared/annual-close-evidence.js';
 import { projectAnnualCloseRecovery } from '../shared/annual-close-recovery.js';
@@ -71,7 +72,7 @@ export function bindOverviewAnnualClose({ doc, win, getModel, refresh, getImport
             description: `Ist das Jahr ${targetYear} bereits abgeschlossen?`, label: 'Stand der Jahresperiode', value: 'cancel',
             options: [{ value: 'cancel', label: 'Abbrechen' }, { value: 'not_committed', label: 'Noch nicht abgeschlossen' }, { value: 'already_committed', label: 'Bereits abgeschlossen' }] }),
         projectAnnualState: () => refresh(), reportError: error => dialog.reportError(error), clearError: dialog.clearError,
-        showPlanningStart: dialog.showPlanningStart, sessionStore: () => win.sessionStorage, reload: () => win.location.reload(),
+        showPlanningStart: dialog.showPlanningStart, sessionStore: () => areaSessionStorage(win.sessionStorage), reload: () => win.location.reload(),
         confirmRestore: (id, options) => requestPageConfirmation({ ...options, doc, title: 'Jahresstand wiederherstellen',
             description: `Wiederherstellungspunkt ${id} laden und dieselbe Jahresperiode einmalig mit dem Handkurs fortsetzen?`, confirmLabel: 'Wiederherstellen' }),
         restoreSnapshot: (id, options) => restoreSnapshotById(id, { ...options, guard, document: doc }),
@@ -194,7 +195,7 @@ export function bindOverviewAnnualClose({ doc, win, getModel, refresh, getImport
         },
         showLog: () => dialog.handleShowUpdateLog(),
         async resume(request) { if (!request || resumed.has(request)) return { status: 'cancelled' }; resumed.add(request); return controls.start({ resume: request }); },
-        consumeRetry: () => consumeAnnualRetry(win.sessionStorage),
+        consumeRetry: () => consumeAnnualRetry(areaSessionStorage(win.sessionStorage)),
         dispose: () => preparation.dispose()
     };
     const resumed = new WeakSet();

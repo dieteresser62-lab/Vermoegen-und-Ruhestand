@@ -63,9 +63,9 @@ function smokeSection(source, start, end) {
     return source.slice(from, to);
 }
 const exampleFlow = smokeSection(browserSource, 'async function runProbelaufExampleExpenses(', 'async function runProbelaufAnnualOffline(');
-assert(exampleFlow.includes('await page.goto(`${baseUrl}/Balance.html`); await waitForWealthBrowserStartup(page);'), 'Browser-Probelauf wartet beim Normalstart auf Balance-Bereitschaft');
-assert(!exampleFlow.includes('.tab-btn[data-tab="overview"]'), 'Browser-Probelauf verwendet auf der Ausgabenseite keinen Balance-Reiterlocator');
-assert(exampleFlow.includes("await activateSuiteSection(page, 'overview');\n                await page.locator('#jahresabschlussBtn').click();"), 'Browser-Probelauf wechselt vor dem Jahresabschluss zurück zu Balance');
+assert(exampleFlow.includes('await page.goto(`${baseUrl}/Balance.html`); await waitForWealthBrowserStartup(page);'), 'Browser-Spielbereich wartet beim Normalstart auf Balance-Bereitschaft');
+assert(!exampleFlow.includes('.tab-btn[data-tab="overview"]'), 'Browser-Spielbereich verwendet auf der Ausgabenseite keinen Balance-Reiterlocator');
+assert(exampleFlow.includes("await activateSuiteSection(page, 'overview');\n                await page.locator('#jahresabschlussBtn').click();"), 'Browser-Spielbereich wechselt vor dem Jahresabschluss zurück zu Balance');
 assert(browserSource.includes("await page.waitForURL(url => url.pathname.endsWith('/Ausgaben.html'));"), 'Ausgaben-Bereitschaft wird erst auf der tatsächlichen Zielseite geprüft');
 // Die echten Smoke-Sequenzen mit verzögerter Altlinkweiterleitung ausführen.
 // Falsche Bereitschaftshelfer und Balance-Locatoren auf Ausgaben schlagen sofort fehl.

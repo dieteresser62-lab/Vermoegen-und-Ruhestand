@@ -16,7 +16,8 @@ export function snapshotOccasion(point) {
     if (point.kind === SNAPSHOT_KINDS.fullBackupImportRecovery) return 'vor Vollimport';
     if (point.kind === SNAPSHOT_KINDS.balanceImportRecovery) return 'vor Balance-Import';
     if (point.kind === SNAPSHOT_KINDS.beforeRestoreRecovery) return 'vor Zurückholen';
-    if (point.kind === SNAPSHOT_KINDS.probelaufBefore) return 'vor Probelauf · nur über Probelauf beenden';
+    if (point.kind === SNAPSHOT_KINDS.probelaufBefore) return 'vor Spielbereich · nur über Spielbereich beenden';
+    if (point.kind === SNAPSHOT_KINDS.probelaufTransferBefore) return 'vor Übernahme aus dem Spielbereich · dauerhaft';
     if (point.kind === SNAPSHOT_KINDS.monthlyClosePreMutation || (point.kind === 'manual' && /^Monatsabschluss \d{4}-\d{2}$/.test(point.label))) return 'Monatsabschluss';
     return point.kind === 'manual' ? 'Manuell' : 'Unbekannter Anlass · bleibt erhalten';
 }
@@ -63,7 +64,7 @@ export function buildSnapshotRetentionPlan(points, { now = appNow(), neededIds =
 
 export async function previewSnapshotRetention({ persistence = PersistenceFacade, archive = SnapshotArchive, now = appNow() } = {}) {
     const records = await persistence.readPersistedRecords();
-    if (records[PROBELAUF_STATE_KEY]) throw new Error('Aufräumen während des Probelaufs gesperrt.');
+    if (records[PROBELAUF_STATE_KEY]) throw new Error('Aufräumen während des Spielbereichs gesperrt.');
     const neededIds = new Set();
     let referenceError = false;
     function references(value) {
@@ -107,9 +108,9 @@ export async function executeSnapshotRetention(preview, options = {}) {
                 if (current.identity !== expected.identity) throw new Error('Das Archiv hat sich während des Aufräumens geändert.');
                 if (!current.remove.some(item => item.id === point.id)) throw new Error('Der Punkt wird inzwischen benötigt und bleibt erhalten.');
                 await archive.deleteSnapshot(point.id, { storage: persistence, navigationOperation: operation });
-                // Ein inzwischen gestarteter Probelauf stoppt auch nach dem Delete.
+                // Ein inzwischen gestarteter Spielbereich stoppt auch nach dem Delete.
                 const records = await persistence.readPersistedRecords();
-                if (records[PROBELAUF_STATE_KEY]) throw new Error('Aufräumen während des Probelaufs gesperrt.');
+                if (records[PROBELAUF_STATE_KEY]) throw new Error('Aufräumen während des Spielbereichs gesperrt.');
                 const index = await archive.listSnapshots({ storage: persistence });
                 if (index.some(item => item.id === point.id)) throw new Error('Das Entfernen des Punkts wurde nicht bestätigt.');
                 deleted.push(point.id);

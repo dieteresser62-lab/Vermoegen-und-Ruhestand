@@ -1,3 +1,4 @@
+import { areaSessionStorage } from '../shared/persistence-area-storage.js';
 import { appNow, getAppTestDate } from '../shared/app-clock.js';
 // @ts-check
 import { initializeProfilePage, whenProfileDisplayReady, shouldHandleAppNavigation } from '../profile/profile-navigation.js';
@@ -217,7 +218,7 @@ export function sessionReport(report) {
 
 /** Dialogabrufe warten auf den einmaligen Sitzungsabruf, ohne seinen Merker zurückzusetzen. */
 export function waitStartupPriceRefresh(doc) { return bindings.get(doc) || Promise.resolve(); }
-export function publishStartupPriceReport(report, session = globalThis.window?.sessionStorage) {
+export function publishStartupPriceReport(report, session = areaSessionStorage()) {
     if (!session) return;
     const saved = sessionReport(report);
     sessionRuns.set(session, saved);
@@ -225,7 +226,7 @@ export function publishStartupPriceReport(report, session = globalThis.window?.s
 }
 
 /** Unterseiten lesen den bestehenden Sitzungsbefund, ohne einen Quotejob zu starten. */
-export function readStartupPriceReport(session = globalThis.window?.sessionStorage) {
+export function readStartupPriceReport(session = areaSessionStorage()) {
     try {
         const report = sessionRuns.get(session) || JSON.parse(session?.getItem(STARTUP_PRICE_SESSION_KEY) || 'null');
         return report && typeof report === 'object' && Array.isArray(report.results) ? report : null;
@@ -422,7 +423,7 @@ export function bindStartupPrices({ doc = globalThis.document, win = globalThis.
         try {
             if (!await initialize() || !await ready()) { render({ status: 'recovery' }); return; }
             if (!valid) return;
-            try { session ||= win.sessionStorage; } catch { render({ status: 'unavailable' }); return; }
+            try { session ||= areaSessionStorage(win.sessionStorage); } catch { render({ status: 'unavailable' }); return; }
             if (!session) { render({ status: 'unavailable' }); return; }
             if (sessionRuns.has(session)) { render(sessionRuns.get(session)); return; }
             let prior;

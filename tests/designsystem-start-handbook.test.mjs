@@ -3,6 +3,8 @@ import vm from 'node:vm';
 import fs from 'node:fs';
 import { readSources, createPresentationTestDocument, rules, contrast } from './designsystem-source-contract.mjs';
 import { createTauriJsonFileAdapter } from '../app/shared/persistence-adapter-tauri.js';
+import { PersistenceFacade } from '../app/shared/persistence-facade.js';
+import { MemoryWebStorage } from './helpers/persistence-area-backends.mjs';
 import { PERSON_VALUE_KEYS } from '../app/profile/profile-person-data.js';
 import { personDataCsvFields } from '../app/simulator/simulator-person-overrides.js';
 const sources = readSources();
@@ -49,10 +51,10 @@ const backupSource = fs.readFileSync(new URL('../app/shared/persistence-backup.j
 assert(!overviewMain.includes('renderPersistenceBackupInfo') && !/getPersistenceBackupInfo|renderPersistenceBackupInfo/.test(backupSource), 'Ungenutzter Übersichtsrenderer und Infohelfer sind entfernt');
 assert(handbook.includes('Daten-Sicherung.html#dataStorageTitle'), 'Handbuch verweist für Speichertechnik auf Daten & Sicherung');
 const suiteHeader = index.match(/<header class="suite-header">([\s\S]*?)<\/header>/)?.[1] || '';
-assertEqual((index.match(/id="probelaufStart"/g) || []).length, 1, 'Probelauf besitzt genau einen Startzugang');
-assert(/<button\b[^>]*id="probelaufStart"[^>]*disabled[^>]*>Probelauf …<\/button>/.test(suiteHeader)
+assertEqual((index.match(/id="probelaufStart"/g) || []).length, 1, 'Spielbereich besitzt genau einen Startzugang');
+assert(/<button\b[^>]*id="probelaufStart"[^>]*disabled[^>]*>Spielbereich starten …<\/button>/.test(suiteHeader)
     && suiteHeader.indexOf('id="probelaufStart"') > suiteHeader.indexOf('id="suiteProfileContext"'),
-    'Probelauf startet nach sicherer Initialisierung rechts vom Profilkontext in der Kopfzeile');
+    'Spielbereich startet nach sicherer Initialisierung rechts vom Profilkontext in der Kopfzeile');
 assert(!index.includes('id="overviewTrial"') && !index.includes('id="probelaufControls"'), 'Entfernte Probelaufkarte erhält keine Ersatzhosts');
 const statusPosition = index.indexOf('id="probelaufStatus"');
 assert(statusPosition > index.indexOf('</header>') && statusPosition < index.indexOf('<main class="suite-content"')
@@ -63,7 +65,7 @@ for (const id of ['inhaltsverzeichnis', 'quickstart', 'manual', 'ueberblick', 'i
 const handbookUi = fs.readFileSync(new URL('../app/handbook/handbook.js', import.meta.url), 'utf8');
 const imageManifest = JSON.parse(fs.readFileSync(new URL('../docs/ui/manifest.json', import.meta.url), 'utf8'));
 const handbookImages = [...handbook.matchAll(/<img\b[^>]*src="(docs\/ui\/[^"]+)"/g)].map(match => match[1]);
-assertEqual(handbookImages.length, 39, 'Alle passenden App-Ansichten und Abschlussfolgen sind eingebunden');
+assertEqual(handbookImages.length, 38, 'Alle passenden App-Ansichten und Abschlussfolgen sind eingebunden');
 assert(handbookImages.every(src => imageManifest.images.some(image => image.path === src)), 'Handbuchbilder stammen aus dem geprüften Manifest');
 assertEqual((handbook.match(/<figcaption>/g) || []).length, handbookImages.length, 'Jedes Handbuchbild hat eine Unterschrift');
 assert(handbookUi.includes('target.focus({ preventScroll: true })') && handbookUi.includes("win.history.pushState(null, '', '#' + id)"), 'Kapitelnavigation bewahrt Zielfokus und teilbaren Hash mit Verlauf');
@@ -101,6 +103,30 @@ const reopened = createTauriJsonFileAdapter({ invoke: fixtureWindow.__TAURI__.co
 await reopened.open();
 assertEqual((await reopened.loadAll())['synthetic-test-key'], 'fixture-value', 'I10: Browserfixture bewahrt normales Schreiben nach Quarantäne');
 assertEqual(fixtureWindow.__recoveryCommands.filter(command => command === 'quarantine_app_state').length, 1, 'I10: kein künstlich wiederholter Quarantänefehler im selben Seitenstart');
+
+// Derselbe Browserfehler muss auch hinter der Speicherbereichsauswahl im sichtbaren Renderer ankommen.
+const recoveryWindow = { localStorage: new MemoryWebStorage(), sessionStorage: new MemoryWebStorage() };
+vm.runInNewContext(fixture, { window: recoveryWindow });
+const invoke = recoveryWindow.__TAURI__.core.invoke;
+const snapshotsBefore = await invoke('load_app_state', { target: 'snapshots' });
+const storageBefore = JSON.stringify([...recoveryWindow.localStorage.records]);
+try {
+    PersistenceFacade.resetPersistenceRuntimeForTests();
+    await PersistenceFacade.init({ window: recoveryWindow, installLifecycleHooks: false });
+    const status = PersistenceFacade.getPersistenceStatus();
+    assertEqual(status.activeArea, 'echt', 'BR-1: fehlende Bereichssteuerung wählt echte Daten');
+    assertEqual(status.areaWarning, null, 'BR-1: beschädigte Nutzdaten sind kein Steuerdatensatzfehler');
+    assertEqual(status.migrationWarning?.code, 'tauri-state-corrupt', 'BR-1: Fassade bewahrt Recovery nach Bereichsauswahl');
+    const recoveredView = render(status.migrationWarning);
+    assert(recoveredView.banner && recoveredView.banner.style.display !== 'none', 'BR-1: echte Fassade liefert sichtbaren Recoverybanner');
+    assert(recoveredView.banner.children[1].textContent.includes('synthetic-quarantine.json'), 'BR-1: sichtbarer Banner nennt die echte Adapterquarantäne');
+    assertEqual(await invoke('load_app_state', { target: 'snapshots' }), snapshotsBefore, 'BR-1: Recovery und Spielbereinigung lassen echte Sicherungspunkte bytegleich');
+    assertEqual(JSON.stringify([...recoveryWindow.localStorage.records]), storageBefore, 'BR-1: Recovery beschreibt keine echten lokalen Altdaten');
+    assertEqual(await invoke('load_app_state', { target: 'control' }), null, 'BR-1: Nutzdatenquarantäne schreibt keinen Steuerdatensatz');
+    assertEqual(recoveryWindow.__recoveryCommands.filter(command => command === 'quarantine_app_state').length, 1, 'BR-1: vollständiger Start quarantiniert nur die defekte Datendatei');
+} finally {
+    PersistenceFacade.resetPersistenceRuntimeForTests();
+}
 
 // Der erhaltene Altanker erläutert den Wegfall, verspricht keinen CSV-Button.
 const marketChapter = handbook.slice(handbook.indexOf('id="hilfe-offline"'), handbook.indexOf('id="hilfe-verlassen"'));

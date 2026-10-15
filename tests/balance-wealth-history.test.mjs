@@ -1,4 +1,5 @@
 import strict from 'node:assert/strict';
+import { WEALTH_CAPTURES_KEY, readWealthCaptures } from '../types/wealth-capture-contract.js';
 import { createAnnualSnapshot } from '../app/shared/annual-coordinator.js';
 import { readyAnnualFixture, annualTestMarketData, installAnnualLocks } from './helpers/balance-storage-fixtures.mjs';
 import { commitAnnualPlanUpdate } from '../app/balance/balance-annual-storage-commit.js';
@@ -951,6 +952,10 @@ try {
             assertEqual(backend.profile_tagesgeld, '90.125', 'Jahresfinalisierung bestätigt Cash A im Backend');
             assertEqual(cashRegistry.profiles.b.data.profile_tagesgeld, '180.25', 'Jahresfinalisierung bestätigt Cash B im Backend');
             assertEqual(state.wealthHistory.entries.find(entry => entry.id === 'annual:2026').tagesgeld, 270.375, 'Jahrespunkt enthält bestätigte Haushaltssumme statt alter Enginequelle');
+            const captured = readWealthCaptures(backend[WEALTH_CAPTURES_KEY]).captures.find(capture => capture.household.id === 'annual:2026');
+            assertEqual(captured.people.a.tagesgeld, 90.125, 'Jahresfinalisierung erfasst bestätigtes eigenes Tagesgeld A');
+            assertEqual(captured.people.b.tagesgeld, 180.25, 'Jahresfinalisierung erfasst bestätigtes eigenes Tagesgeld B');
+            assertEqual(captured.household.tagesgeld, 270.375, 'Jahresfinalisierung speichert dieselbe Haushaltssumme im globalen Record');
             assertEqual(JSON.stringify(cashRegistry.profiles.c), outside, 'Jahresfinalisierung erhält Außenprofil');
             await handlers.handleJahresabschluss();
             assertEqual(JSON.parse(persistenceStorage.getItem('profile_cash_history_v1')).entries.length, 1, 'Bereits finalisierte Periode hängt keinen zweiten Cashbeleg an');

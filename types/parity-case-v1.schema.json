@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ParityCaseV1",
+  "type": "object",
+  "required": ["schemaVersion", "id", "kind", "source", "configurationHash", "phases", "replay", "expected", "measured", "tolerances", "fields", "summary", "caseHash"],
+  "properties": {
+    "schemaVersion": { "const": "ParityCaseV1" },
+    "id": { "type": "string", "minLength": 1 },
+    "kind": { "enum": ["RECORDED_YEAR", "D23_PROBE"] },
+    "source": {
+      "type": "object",
+      "required": ["revision", "sourceHash", "datasetHash", "engineVersion", "temporalConventionId"],
+      "properties": {
+        "revision": { "type": ["string", "null"] },
+        "sourceHash": { "$ref": "#/$defs/nullableHash" },
+        "datasetHash": { "$ref": "#/$defs/nullableHash" },
+        "engineVersion": { "type": ["object", "null"] },
+        "temporalConventionId": { "type": ["string", "null"] }
+      }
+    },
+    "configurationHash": { "$ref": "#/$defs/hash" },
+    "caseHash": { "$ref": "#/$defs/hash" },
+    "phases": { "type": "array", "items": { "$ref": "#/$defs/phase" } },
+    "historicalYear": { "type": ["integer", "null"] },
+    "logicalPlanningYear": { "type": ["integer", "null"] },
+    "yearIndex": { "type": "integer", "minimum": 0 },
+    "replay": { "type": "object" },
+    "tolerances": {
+      "type": "object", "required": ["EUR", "RATE", "EXACT"], "additionalProperties": false,
+      "properties": { "EUR": { "const": 0.01 }, "RATE": { "const": 1e-9 }, "EXACT": { "const": 0 } }
+    },
+    "fields": { "type": "array", "items": { "$ref": "#/$defs/field" } },
+    "summary": { "type": "object", "required": ["status", "complete", "counts"], "properties": {
+      "status": { "enum": ["GLEICH", "UNVOLLSTAENDIG", "TECHNISCHER_FEHLER"] },
+      "complete": { "type": "boolean" }, "counts": { "type": "object" }
+    } }
+  },
+  "allOf": [
+    { "if": { "properties": { "kind": { "const": "RECORDED_YEAR" } } }, "then": {
+      "required": ["yearIndex", "historicalYear", "logicalPlanningYear"],
+      "properties": { "replay": { "required": ["log"] } }
+    } },
+    { "if": { "properties": { "kind": { "const": "D23_PROBE" } } }, "then": {
+      "properties": { "replay": { "required": ["fixture"] } }
+    } }
+  ],
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "nullableHash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+    "phase": { "enum": ["VOR_TRANSAKTION", "NACH_TRANSAKTION", "VOR_AUSZAHLUNG", "JAHRESENDE"] },
+    "status": { "enum": ["GLEICH", "ABWEICHUNG", "FEHLT_LOG", "FEHLT_MODELL", "PHASE_NICHT_VERGLEICHBAR", "FACHLICH_OFFEN", "NICHT_ANWENDBAR", "AUSGEKLAMMERT", "TECHNISCHER_FEHLER"] },
+    "measurement": {
+      "type": "object", "required": ["status", "value", "reason", "phase", "path"],
+      "properties": { "status": { "$ref": "#/$defs/status" }, "reason": { "type": "string" },
+        "phase": { "$ref": "#/$defs/phase" }, "path": { "type": "string" } }
+    },
+    "field": {
+      "type": "object",
+      "required": ["id", "phase", "category", "tolerance", "absoluteTolerance", "status", "classification", "reason", "question", "upstream", "withinTolerance", "delta", "simulator", "balance"],
+      "properties": {
+        "id": { "type": "string" }, "phase": { "$ref": "#/$defs/phase" }, "status": { "$ref": "#/$defs/status" },
+        "category": { "enum": ["EINGABE", "VORZUSTAND", "ENTSCHEIDUNG", "PERSONENVERTEILUNG", "AUSFUEHRUNG", "RUNDUNG", "ZEITLAGE"] },
+        "classification": { "enum": ["gleich", "Rundungsursache", "offene Fachfrage 1", "offene Fachfrage 2", "offene Fachfrage 3", "offene Fachfrage 4", "offene Fachfrage 5", "offene Fachfrage 6", "offene Fachfrage 7", "offene Fachfrage 8", "fehlendes Personenmodell", "fehlender Logwert", "andere Phase", "technischer Fehler", "nicht anwendbar", "ausgeklammert"] },
+        "tolerance": { "enum": ["EUR", "RATE", "EXACT"] }, "absoluteTolerance": { "type": "number" },
+        "question": { "type": ["integer", "null"], "minimum": 1, "maximum": 8 },
+        "reason": { "type": "string" }, "upstream": { "type": "array", "items": { "type": "string" } },
+        "withinTolerance": { "type": "boolean" }, "delta": { "type": ["number", "null"] },
+        "simulator": { "$ref": "#/$defs/measurement" }, "balance": { "$ref": "#/$defs/measurement" }
+      }
+    }
+  }
+}

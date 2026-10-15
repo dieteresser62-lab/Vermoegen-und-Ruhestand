@@ -1,5 +1,7 @@
 "use strict";
 import { backtestChartSeries, HISTORICAL_CRISES } from './simulator-crises.js';
+import { buildBacktestChartAnnotations, layoutBacktestChartLabels } from './backtest-chart-annotations.js';
+import { jumpToBacktestYear } from './backtest-log-analysis.js';
 
 function buildAreaPath(pointsTop, pointsBottom) {
     if (!pointsTop.length || !pointsBottom.length) return '';
@@ -30,30 +32,45 @@ export function renderThreeBucketPortfolioChart(container, rows, options = {}) {
     const doc = container.ownerDocument || globalThis.document;
     if (typeof doc?.createElementNS !== 'function') return;
     const view = doc.defaultView || globalThis.window;
+    options = { ...options, annotations: options.analysisData ? buildBacktestChartAnnotations(options.analysisData) : null };
     container.innerHTML = '';
     let width = measurePortfolioWidth(container, view);
     let svg = drawPortfolioChart(container, rows, options, width, doc);
     if (!svg) return;
     let active = true;
     let observer;
+    const jumpState = {};
+    const jump = event => {
+        const link = event.target.closest?.('.backtest-chart-marker');
+        if (link && container.contains(link) && jumpToBacktestYear(doc, Number(link.getAttribute('data-backtest-chart-year')), jumpState)) event.preventDefault();
+    };
     const dispose = () => {
         active = false;
         if (typeof observer?.disconnect === 'function') observer.disconnect();
         else observer?.unobserve?.(container);
         view?.removeEventListener?.('resize', resize);
+        options.annotationToggle?.removeEventListener('change', redraw);
+        container.removeEventListener?.('click', jump);
+        clearTimeout(jumpState.timer);
+        jumpState.row?.classList.remove('backtest-analysis-highlight');
     };
-    const resize = () => {
+    const redraw = () => {
         if (!active) return;
         if (container.isConnected === false) { disposeThreeBucketPortfolioChart(container); return; }
-        const nextWidth = measurePortfolioWidth(container, view);
-        if (nextWidth === width) return;
-        width = nextWidth;
+        width = measurePortfolioWidth(container, view);
         // Nur das SVG ersetzen: Legende und Hinweise gehören weiterhin dem ersten Render.
         const nextSvg = drawPortfolioChart(container, rows, options, width, doc, true);
         container.replaceChild(nextSvg, svg);
         svg = nextSvg;
     };
+    const resize = () => {
+        if (container.isConnected === false || measurePortfolioWidth(container, view) !== width) redraw();
+    };
     chartBindings.set(container, dispose);
+    if (options.annotations) {
+        options.annotationToggle?.addEventListener('change', redraw);
+        container.addEventListener?.('click', jump);
+    }
     if (typeof view?.ResizeObserver === 'function') {
         observer = new view.ResizeObserver(resize);
         observer.observe(container);
@@ -82,6 +99,14 @@ function drawPortfolioChart(container, rows, options, width, document, svgOnly =
     const yearScale = year => margin.left + (series.at(-1).year === series[0].year ? 0
         : (year - series[0].year) / (series.at(-1).year - series[0].year)) * plotWidth;
     const yScale = (value) => margin.top + plotHeight - ((value / maxTotal) * plotHeight);
+    const annotations = calendar && options.annotationToggle?.checked !== false ? options.annotations : null;
+    const visibleYears = new Set(series.map(point => point.year));
+    const markers = layoutBacktestChartLabels((annotations?.markers ?? []).filter(marker => visibleYears.has(marker.year)),
+        marker => yearScale(marker.year), margin.left, width - margin.right);
+    const bands = layoutBacktestChartLabels((annotations?.bands ?? []).filter(band => band.endYear >= series[0].year
+        && band.startYear <= series.at(-1).year), band => yearScale((Math.max(band.startYear, series[0].year)
+            + Math.min(band.endYear, series.at(-1).year)) / 2), margin.left, width - margin.right);
+    const svgHeight = height + (bands.length ? 42 + Math.max(...bands.map(band => band.lane)) * 24 : 0);
 
     const etfTop = [];
     const etfBottom = [];
@@ -112,9 +137,9 @@ function drawPortfolioChart(container, rows, options, width, document, svgOnly =
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'ds-portfolio-svg chart-native-svg');
     if (calendar) svg.setAttribute('class', 'ds-portfolio-svg ds-portfolio-calendar chart-native-svg');
-    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('viewBox', `0 0 ${width} ${svgHeight}`);
     svg.setAttribute('width', String(width));
-    svg.setAttribute('height', String(height));
+    svg.setAttribute('height', String(svgHeight));
     svg.setAttribute('role', 'img');
     svg.setAttribute('aria-label', calendar ? 'Jahresendvermögen ohne Pflegereserve nach Kalenderjahren' : 'Jahresendvermögen ohne Pflegereserve');
     svg.setAttribute('style', 'display:block;background:var(--surface);border:1px solid var(--border);border-radius:8px;');
@@ -163,11 +188,53 @@ function drawPortfolioChart(container, rows, options, width, document, svgOnly =
         years.forEach(point => text(yearScale(point.year), height - 12, point.year));
     }
 
+    const element = (parent, tag, attributes, content) => {
+        const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+        for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value));
+        if (content !== undefined) node.textContent = content;
+        parent.appendChild(node);
+        return node;
+    };
+    for (const marker of markers) {
+        const x = yearScale(marker.year), y = margin.top + 8 + marker.lane * 30;
+        const link = element(svg, 'a', { href: `#backtest-year-${marker.year}`,
+            'data-backtest-chart-year': marker.year, 'aria-label': `${marker.label} im Protokoll` });
+        link.setAttribute('class', 'backtest-chart-marker');
+        element(link, 'title', {}, `${marker.text} ${marker.type === 'minimum_real_year_end_wealth'
+            ? 'Reales Gesamttief einschließlich Pflegevorsorge; die Fläche zeigt nominales Vermögen ohne Pflegereserve. ' : ''}Zum Jahr im Protokoll springen.`);
+        element(link, 'line', { x1: x, x2: x, y1: y + 24, y2: height - margin.bottom,
+            stroke: 'var(--accent)', 'stroke-width': 1.5, 'stroke-dasharray': '4 4' });
+        element(link, 'circle', { cx: x, cy: yScale(series.find(point => point.year === marker.year).total), r: 5,
+            fill: 'var(--surface)', stroke: 'var(--accent)', 'stroke-width': 2 });
+        element(link, 'rect', { x: marker.center - marker.labelWidth / 2, y, width: marker.labelWidth, height: 24, rx: 12,
+            fill: 'var(--accent)' });
+        element(link, 'text', { x: marker.center, y: y + 17, 'text-anchor': 'middle',
+            fill: 'var(--surface)', 'font-size': 'var(--balance-help)' }, marker.label);
+    }
+    for (const band of bands) {
+        const from = Math.max(margin.left, yearScale(band.startYear - 0.5));
+        const to = series.length === 1 ? width - margin.right : Math.min(width - margin.right, yearScale(band.endYear + 0.5));
+        const group = element(svg, 'g', {});
+        group.setAttribute('class', 'backtest-chart-cut-band');
+        element(group, 'title', {}, band.text);
+        element(group, 'rect', { x: from, y: height + 8, width: Math.max(2, to - from), height: 8, rx: 3,
+            fill: 'var(--accent-soft)', stroke: 'var(--accent-line)' });
+        const labelY = height + 36 + band.lane * 24;
+        element(group, 'line', { x1: (from + to) / 2, y1: height + 16, x2: band.center, y2: labelY - 14,
+            stroke: 'var(--accent-line)' });
+        element(group, 'text', { x: band.center, y: labelY, 'text-anchor': 'middle',
+            fill: 'var(--accent)', 'font-size': 'var(--balance-help)' }, band.label);
+    }
+
     if (svgOnly) return svg;
 
     const hint = document.createElement('p');
     hint.className = 'ds-scroll-hint';
     hint.textContent = 'Jahresende, nominal, ohne Pflegereserve · rot: historische Krisen. Bei Bedarf horizontal scrollen.';
+    if (options.annotations) hint.textContent = 'Jahresende, nominal, ohne Pflegereserve · rot: historische Krisen · Messing: Flex-Entnahme ab 10 % gekürzt. '
+        + 'Marken: Ereignisjahre, Klick öffnet das Protokoll. Reales Tief: Kaufkraft zum Laufstart einschließlich Pflegevorsorge. '
+        + (options.annotations.missingCutYears ? 'Kürzungswerte fehlen in einzelnen Jahren; Bänder zeigen nur belegte Phasen. ' : '')
+        + 'Bei Bedarf horizontal scrollen.';
     container.appendChild(svg);
 
     const legend = document.createElement('div');

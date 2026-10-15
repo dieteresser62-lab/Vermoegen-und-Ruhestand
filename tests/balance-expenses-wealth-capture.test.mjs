@@ -50,11 +50,12 @@ for (const depotwertNeu of [0, 100]) {
 
 function fixture() {
     const annual = createAnnualWealthHistoryEntry(source, 2026);
-    const state = { inputs: { saved: true }, lastState: { sentinel: 42 },
+    const state = { inputs: { ...source, saved: true }, lastState: { sentinel: 42 },
         wealthHistory: { schemaVersion: 1, entries: [annual] } };
-    const foreign = { meta: { id: 'b', updatedAt: TIME.toISOString() }, data: { untouched: 'foreign' } };
+    const foreign = { meta: { id: 'b', updatedAt: TIME.toISOString() }, data: { untouched: 'foreign',
+        profile_tagesgeld: '0', [STATE]: JSON.stringify({ inputs: { tagesgeld: 0, geldmarktEtf: 0, depotwertAlt: 0, depotwertNeu: 0 } }) } };
     const records = new Map([
-        [STATE, JSON.stringify(state)], [KEYS.current, 'a'], [KEYS.active, 'a'],
+        [STATE, JSON.stringify(state)], ['profile_tagesgeld', '500'], [KEYS.current, 'a'], [KEYS.active, 'a'],
         [KEYS.registry, JSON.stringify({ version: 1, profiles: { a: { meta: { id: 'a' }, data: { [STATE]: JSON.stringify(state) } }, b: foreign } })],
         ['balance_expenses_v1', '{"version":1,"years":{"2025":{"months":{"1":{"profiles":{"a":{},"b":{}}},"2":{"profiles":{"a":{}}}}}}']
     ]);

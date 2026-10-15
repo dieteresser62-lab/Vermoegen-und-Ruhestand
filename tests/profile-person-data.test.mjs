@@ -40,7 +40,7 @@ const { createHash } = await import('node:crypto');
 
 function projectLegacyFinancialBytes(result) {
     const projection = JSON.parse(JSON.stringify(result));
-    // Nur additive Mindest-Flex-Messfelder ausnehmen; alle Altpfadbytes bleiben gepinnt.
+    // Additive Mindest-Flex- und FR-10-Kontenbelege ausnehmen; sämtliche bisherigen Rechenwerte bleiben gepinnt.
     for (const key of Object.keys(projection.buffers)) {
         if (key.startsWith('__mcChunkV1Path_minimumFlex') || key === '__mcChunkV1Missing_minimumFlexRestriction') {
             delete projection.buffers[key];
@@ -52,6 +52,9 @@ function projectLegacyFinancialBytes(result) {
     delete projection.pathMissingness.minimumFlexRestriction;
     function removeAnnualFields(value) {
         if (!value || typeof value !== 'object') return;
+        delete value.personalPayout;
+        delete value.personAccounts;
+        delete value.personalTaxModel;
         delete value.flex_wunsch_haushalt_nominal;
         delete value.flex_unter_mindestflex;
         for (const child of Object.values(value)) removeAnnualFields(child);

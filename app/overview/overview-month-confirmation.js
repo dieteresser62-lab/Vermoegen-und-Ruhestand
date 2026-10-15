@@ -6,6 +6,7 @@ import { createCloseDialog, createCloseResult, dialogElements, closeImportProgre
 import { overviewPricesDone, overviewPriceLabel } from './overview-model.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { appendExampleExpensesIcon, exampleExpensesLabel } from '../shared/designsystem-icons.js';
+import { createCashProposals } from './overview-cash-proposal.js';
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 2 }) : '—';
 const monthName = (year, month) => new Date(year, month - 1, 1).toLocaleDateString('de-DE', { month: 'long' });
@@ -92,7 +93,7 @@ export function projectConfirmedMonthResult(model, cash = {}) {
         expenses: steps[1].result, budgetComparison: steps[2].result, budgetTone: steps[2].resultTone,
         people: (cash.people || []).map(person => ({ name: person.name,
             value: Number.isFinite(cash.values?.[person.id]) ? new Intl.NumberFormat('de-DE', { maximumFractionDigits: 20 }).format(cash.values[person.id]) + ' €' : '—',
-            status: cash.values?.[person.id] !== person.value ? 'geändert' : 'bestätigt' })),
+            status: cash.playValues?.[person.id] ? 'geändert · Spielwert' : cash.values?.[person.id] !== person.value ? 'geändert' : 'bestätigt' })),
         expensesAmount: money(model.expenses?.spent), budgetAmount: money(model.expenseBudget), budgetSource: budgetSourceLabel(model),
         withdrawalFixed: withdrawalSource(model).fixed,
         cashTotal: cashTotalMoney(Object.values(cash.values || {})), withdrawal: money(model.summary?.monthlyWithdrawal),
@@ -229,12 +230,13 @@ export function requestOverviewMonthConfirmation({ doc = document, signal, retur
         const node = (tag, text) => { const element = doc.createElement(tag); if (text !== undefined) element.textContent = text; return element; };
         const accept = node('button'); accept.type = 'button'; accept.className = 'ds-button ds-button-primary'; accept.dataset.overviewMonthAccept = '';
         const cancel = node('button', 'Schließen'); cancel.type = 'button'; cancel.className = 'ds-button ds-button-secondary'; cancel.dataset.overviewMonthCancel = '';
-        const cash = people.length ? createTagesgeldFields({ doc, people, prefix: 'overviewTagesgeld', monthly: true, closePresentation: true, requireConfirmation: true,
+        const proposals = next => createCashProposals({ doc, model: next, people });
+        const cash = people.length ? createTagesgeldFields({ doc, people, proposals: proposals(model), prefix: 'overviewTagesgeld', monthly: true, closePresentation: true, requireConfirmation: true,
             asOfLabel: model.now ? `Kontostand heute, ${model.now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}` : 'Kontostand heute',
             explanation: 'Tagesgeldentwurf – wird erst mit dem Monatsabschluss gespeichert. Der Cashbeleg trägt den heutigen Bestätigungstag, nicht den letzten Tag des abgeschlossenen Monats. Fließt in den Vermögensverlauf ein.', title: '' }) : null;
         const cashReady = () => !cash || cash.ready;
         const initial = cash?.inputs.map(input => input.value) || [];
-        const dirty = () => cash?.inputs.some((input, index) => {
+        const dirty = () => cash?.hasChanges || cash?.inputs.some((input, index) => {
             try { return parseMonthlyCashInput(input.value) !== parseMonthlyCashInput(initial[index]); }
             catch { return input.value !== initial[index]; }
         }) || false;
@@ -288,6 +290,7 @@ export function requestOverviewMonthConfirmation({ doc = document, signal, retur
             const previousModel = currentModel;
             currentModel = nextModel;
             if (completed) return;
+            cash?.updateProposals(proposals(nextModel));
             if (!accept.hasAttribute('data-overview-month-retry')) accept.textContent = `${monthName(nextModel.occasion?.previousYear, nextModel.occasion?.previousMonth)} abschließen`;
             accept.disabled = !isReady();
             const steps = project(nextModel);
@@ -310,7 +313,7 @@ export function requestOverviewMonthConfirmation({ doc = document, signal, retur
         const heading = dialogElements(handle.root).find(node => (node.tagName?.toLowerCase() || node.tag) === 'h2');
         heading.id = 'overviewMonthConfirmationTitle';
         handle.setOnVisit(syncReady);
-        cash?.bind(handle.listen, () => update(currentModel));
+        cash?.bind(handle.listen, () => { onDirty(dirty()); update(currentModel); });
         update(model);
         handle.listen(cancel, 'click', () => { void handle.requestClose(); });
         bindClosePriceActions(handle, { actions: priceActions, getModel, update, signal });

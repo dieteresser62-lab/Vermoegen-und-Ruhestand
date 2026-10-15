@@ -60,7 +60,8 @@ export function applyForcedSaleLiquidityCoverage({
     equityBeforeForced,
     goldBeforeForced,
     combinedTaxRawAggregate,
-    captureTransactions = false
+    captureTransactions = false,
+    attributeAction = null
 }) {
     if (!(forcedShortfall > 0)) {
         return {
@@ -105,11 +106,19 @@ export function applyForcedSaleLiquidityCoverage({
         depotwertNeu: sumDepot({ depotTranchesAktien: depotTranchesAktien.filter(t => t.type === 'aktien_neu') }),
         goldWert: sumDepot({ depotTranchesGold })
     };
-    const forcedSale = calculateSaleAndTax(forcedShortfall, forcedInputWithCurrentTranches, { minGold: 0 }, market, true);
+    let forcedSale = calculateSaleAndTax(forcedShortfall, forcedInputWithCurrentTranches, { minGold: 0 }, market, true);
+    if (attributeAction && forcedSale.bruttoVerkaufGesamt > 0) {
+        const attributed = attributeAction({ type: 'TRANSACTION', quellen: forcedSale.breakdown,
+            steuer: forcedSale.steuerGesamt, nettoErlös: forcedSale.achievedRefill,
+            verwendungen: { liquiditaet: forcedSale.achievedRefill } });
+        forcedSale = { ...forcedSale, breakdown: attributed.quellen, steuerGesamt: attributed.steuer,
+            achievedRefill: attributed.nettoErlös, bruttoVerkaufGesamt: attributed.bruttoVerkaufGesamt,
+            taxRawAggregate: attributed.taxRawAggregate };
+    }
     const forcedBrutto = forcedSale.bruttoVerkaufGesamt || 0;
 
     if (forcedBrutto > 0) {
-        const fallbackBreakdown = normalizeForcedBreakdown({
+        const fallbackBreakdown = attributeAction ? forcedSale.breakdown : normalizeForcedBreakdown({
             breakdown: forcedSale.breakdown,
             fallbackKind: (is3Bucket && isBadYear) ? 'anleihe' : 'aktien_alt',
             brutto: forcedBrutto,
@@ -187,6 +196,7 @@ export function applyForcedSaleLiquidityCoverage({
         didForcedSale,
         forcedSaleScaleApplied,
         forcedTaxReservedDelta,
+        sources: (forcedSale.breakdown || []).map(source => ({ ...source, steuer: (source.steuer || 0) * (forcedSaleScaleApplied ?? 0) })),
         ...(captureTransactions ? { transactionDiagnostic: forcedGrossObserved > 0
             ? {
                 class: 'liquidity_shortfall_forced_sale',

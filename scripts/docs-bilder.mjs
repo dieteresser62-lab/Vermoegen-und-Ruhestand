@@ -11,6 +11,7 @@ import { createSuiteServer } from './serve.mjs';
 import { IMAGE_FILES } from './docs-pruefen.mjs';
 import { STARTUP_PRICE_SESSION_KEY } from '../app/tranches/tranchen-startup-prices.js';
 import { syntheticQuote, syntheticAnnualQuote } from '../app/shared/probelauf-prices.js';
+import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const viewport = { width: 1920, height: 1080 };
@@ -19,6 +20,8 @@ const seed = 12345;
 const maskDate = '2026-10-20';
 const monthDate = '2026-11-10';
 const yearDate = '2027-01-02';
+// Echtes „heute“ vor allen Testdaten: Ein Testdatum gleich heute gilt im Spielbereich als „Stand heute“ ohne Spielkurse.
+const realToday = '2026-10-15';
 const captions = [
     'Auf der Übersicht steht, was als Nächstes ansteht.',
     'Haushalt & Plan zeigt Vermögen und Bedarf; Weitere Planwerte ist zugeklappt.',
@@ -33,18 +36,19 @@ const captions = [
     'Diagnose erklärt die Empfehlung.',
     'Ergebnis zeigt Backtest und MC.',
     'Annahmen zeigt Bedarf, Personen und Pflege; Alle Parameter fasst dieselben Planwerte wie Haushalt & Plan zusammen.',
-    'Backtest zeigt Zeitraum links neben Kennzahlen und Einordnung im ⓘ.',
+    'Was im Lauf auffällt zeigt drei Backtest-Karten und Jahreslinks; Weitere bleibt geschlossen.',
     'Simulation, Zeitraum & Daten und Stresstest stehen in Einstellungen; Erweitert zeigt die technischen Optionen.',
     'Überblick zeigt den Musterlauf.',
     'Die Verteilung macht die Streuung sichtbar.',
     'Pflege zeigt das Modellrisiko.',
-    'Einzelne Pfade lassen sich in Szenario-Logs nachlesen.',
+    'Pfade vergleichen zeigt P10, Median und P90 mit Gesamtanteilen und Kennzahlen der Einzelpfade.',
     'Drei Werkzeuge stehen in der Werkstatt bereit.',
     'Replay zeigt die Pfadeingaben.',
     'Parameter-Sweep zeigt die Eingaben.',
     'Auto-Optimize zeigt die Sucheingaben.',
     'Der Datenstatus steht in Daten & Sicherung.',
-    'Das Band zeigt Datum und Rückkehr.',
+    'Das Band zeigt Testdatum und Kursmodus; Ein Jahr durchspielen steht links von Spielbereich beenden.',
+    'Eine Kopie ohne Datumssprung zeigt beim Beenden den Vergleich Echt / Spielbereich.',
     'Die Startseite zeigt die Aufgaben im aktuellen Handbuch.',
     'Die Übersicht bietet den Oktoberabschluss an.',
     'Kurse prüfen zeigt die vorhandenen Kursstände.',
@@ -108,10 +112,10 @@ async function ready(page, date) {
         const { localCalendarDate, appNow } = await import('./app/shared/app-clock.js');
         if (!await whenProfileDisplayReady(document)) return false;
         const controller = getProbelaufController(document), guard = getPageNavigationGuard(document, window);
-        return controller?.state?.phase === 'active' && controller.state.testDate === date
+        return controller?.state?.phase === 'active' && (controller.state.testDate === date || controller.state.testDate === null && localCalendarDate(appNow()) === date)
             && localCalendarDate(appNow()) === date && !controller.busy && !controller.blocked
             && !guard.isBusy() && !guard.reasons().some(reason => ['commit', 'running'].includes(reason.phase));
-    }, date, `Probelauf ${date}`);
+    }, date, `Spielbereich ${date}`);
     await page.evaluate(async () => {
         await (await import('./app/shared/persistence-facade.js')).PersistenceFacade.flush();
         await document.fonts.ready;
@@ -123,7 +127,7 @@ async function reloadDate(page, action, date) {
     await ready(page, date);
 }
 
-async function newProbelauf(browser, baseUrl, date) {
+async function newProbelauf(browser, baseUrl, date, source = 'demo') {
     const context = await browser.newContext({ viewport, deviceScaleFactor: 1,
         locale: 'de-DE', timezoneId: 'Europe/Berlin', colorScheme: 'light', serviceWorkers: 'block' });
     try {
@@ -160,14 +164,22 @@ async function newProbelauf(browser, baseUrl, date) {
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         page.on('dialog', async dialog => { errors.push(`Unerwarteter nativer Dialog: ${dialog.message()}`); await dialog.dismiss(); });
-        await page.clock.setFixedTime(new Date(`${date}T12:00:00+01:00`));
+        await page.clock.setFixedTime(new Date(`${realToday}T12:00:00+02:00`));
+        if (source === 'copy') await context.addInitScript(records => {
+            if (localStorage.getItem('docs_comparison_seeded')) return;
+            for (const [key, value] of Object.entries(records)) localStorage.setItem(key, value);
+            localStorage.setItem('docs_comparison_seeded', 'true');
+        }, createMusterHaushaltRecords(date));
         await page.goto(`${baseUrl}/index.html`);
         await page.locator('#probelaufStart:enabled').waitFor();
         await page.locator('#probelaufStart').click();
         const dialog = page.locator('[data-probelauf-dialog]');
-        await dialog.getByLabel('Datenquelle').selectOption('demo');
-        await dialog.getByLabel('Testdatum').fill(date);
-        await reloadDate(page, () => dialog.getByRole('button', { name: 'Probelauf starten', exact: true }).click(), date);
+        await dialog.getByLabel('Datenquelle').selectOption(source);
+        if (date !== realToday) {
+            await dialog.getByLabel('Kursmodus').selectOption({ label: 'Testdatum wählen' });
+            await dialog.getByLabel('Testdatum').fill(date);
+        }
+        await reloadDate(page, () => dialog.getByRole('button', { name: 'Spielbereich starten', exact: true }).click(), date);
         return { context, page, errors };
     } catch (error) { await context.close(); throw error; }
 }
@@ -210,9 +222,11 @@ Die Bilder zeigen Max und Erika Mustermann mit synthetischen Daten. Öffne [Mona
 
 Führe im Repository \`npm run docs:bilder\` aus. Du brauchst die installierten npm-Abhängigkeiten und Playwright Chromium. Fehlt der Browser, installiere ihn einmal mit \`npx playwright install chromium\`.
 
-Das Werkzeug startet denselben lokalen Server wie \`npm run serve\`, ohne Kursproxy. Es nutzt einen freien Port und drei frische Browserkontexte für Ansichten, Monat und Jahr. Vorhandene Browserprofile werden nicht geöffnet. Kurse und Marktdaten stammen aus festen lokalen Stubs oder dem Probelauf; externe Abrufe werden blockiert.
+Das Werkzeug startet denselben lokalen Server wie \`npm run serve\`, ohne Kursproxy. Es nutzt einen freien Port und vier frische Browserkontexte für Ansichten, Monat, Jahr und Vergleich. Vorhandene Browserprofile werden nicht geöffnet. Kurse und Marktdaten stammen aus festen lokalen Stubs oder dem Spielbereich; externe Abrufe werden blockiert.
 
-Die Ansichten verwenden den 20.10.2026. Für Oktober springt der Probelauf vom 20.10. auf den 10.11.2026. Für den Jahresabschluss springt ein eigener Probelauf vom 15.12.2026 auf den 02.01.2027. Der Simulator rechnet einmal 10.000 Monte-Carlo-Läufe mit Seed 12345; die Werkstatt zeigt Eingaben.
+Im Startdialog wählt das Werkzeug „Max und Erika“ und den Kursmodus „Testdatum wählen“, trägt das Datum ein und bestätigt mit „Spielbereich starten“. Die Ansichten verwenden den 20.10.2026. Für Oktober springt der Spielbereich vom 20.10. auf den 10.11.2026. Für den Jahresabschluss springt ein eigener Spielbereich vom 15.12.2026 auf den 02.01.2027. Der Simulator rechnet einmal 10.000 Monte-Carlo-Läufe mit Seed 12345; die Werkstatt zeigt Eingaben. Die Backtestaufnahme zeigt „Was im Lauf auffällt“ mit drei Karten und geschlossenem „Weitere“. Die Aufnahme aus Szenario-Logs zeigt „Pfade vergleichen“ mit P10, Median und P90.
+
+Mit \`npm run docs:bilder -- --spielbereich\` erneuerst du Band und Vergleich und behältst die übrigen Aufnahmen. Das Band zeigt den Zeitraffer links von Spielbereich beenden. Bei Max und Erika prüft das Werkzeug danach die kurze Beenden-Bestätigung ohne Vergleich und Übernehmen. Für das Vergleichsbild legt es Max und Erika als erfundenen echten Bestand in einem frischen Browserkontext an, startet eine Kopie ohne Datumssprung und ändert Gold, Flex und Tagesgeld. Es öffnet keine Balance und wartet auf die frisch gerechnete Vorschau mit höherem Monatsbudget und Goldkauf.
 
 Haushalt & Plan, Balance und Simulator zeigen ihre zunächst geschlossenen Planbereiche. Bei Max wird Person, Rente & Steuern vor der Aufnahme geöffnet. Für die Monte-Carlo-Einstellungen öffnet Einstellungen anzeigen den Bereich Alle Parameter unter Annahmen; die Aufnahme zeigt gezielt die Monte-Carlo-Karte. Danach schließt das Werkzeug den Bereich und wechselt zum Rechnen zurück zu Monte Carlo.
 
@@ -236,6 +250,8 @@ ${images.filter(item => item.group === 'jahresabschluss').map(item => `- [${path
 
 async function main() {
     const started = performance.now(), images = [];
+    const comparisonOnly = process.argv.includes('--spielbereich');
+    if (comparisonOnly) images.push(...JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8')).images.filter(item => !['docs/ui/spielbereich-vergleich.png', 'docs/ui/probelauf-band.png'].includes(item.path)));
     const git = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });
     const commit = git.stdout?.trim();
     if (git.status !== 0 || !/^[a-f0-9]{40}$/.test(commit)) throw new Error('Git-Commit für die Bildherkunft nicht lesbar.');
@@ -256,7 +272,8 @@ async function main() {
             const file = `docs/ui/${name}.png`;
             current = `${file} · ${state}`; console.log(current);
             const { page, errors } = session; activePage = page;
-            await ready(page, date);
+            if (target === '.probelauf-end-dialog') await page.evaluate(() => document.fonts.ready.then(() => true));
+            else await ready(page, date);
             await poll(page, target => [...document.querySelector(target).querySelectorAll('[role="status"], .close-dialog-step-pill')]
                 .filter(element => element.checkVisibility()).every(element =>
                     !/wird geladen|wird vorbereitet|werden .*vorbereitet|Speichert noch|wird gespeichert|Speichervorgang läuft/i.test(element.textContent)),
@@ -298,6 +315,7 @@ async function main() {
             if (confirm) await page.locator('#navigationGuardLeave').click();
             await navigation; await ready(page, date);
         }
+        if (!comparisonOnly) {
         const masks = await newProbelauf(browser, baseUrl, maskDate);
         try {
             const { page } = masks; activePage = page;
@@ -351,23 +369,22 @@ async function main() {
             for (const [name, value] of [['ueberblick', 'overview'], ['risiko-verteilung', 'risk'], ['pflege', 'care'], ['szenario-logs', 'logs']]) {
                 await page.locator(`[data-mc-view="${value}"]`).click();
                 if (value === 'logs') {
-                    if (!await page.locator('#scenarioSelectionDisclosure').evaluate(element => element.open))
-                        await page.locator('#scenarioSelectionSummary').click();
-                    await page.locator('#scenarioList [role="option"]').first().click();
-                    await page.locator('#scenarioLogOutput table').waitFor();
+                    await page.locator('#scenarioComparison [data-comparison-preset="default"]').click();
+                    await page.locator('#scenarioComparisonHeading').waitFor({ state: 'visible' });
                 }
-                await capture(masks, `monte-carlo-${name}`, `Monte-Carlo ${name} · 10.000 Läufe · Seed 12345`, maskDate,
-                    'masken', value === 'logs' ? '#scenarioLogContainer' : '#tab-montecarlo', value === 'logs' ? '#scenarioProtocolHeading' : '.mc-view-nav');
+                await capture(masks, `monte-carlo-${name}`, `Monte-Carlo ${name} · 10.000 Läufe · Seed 12345${value === 'logs' ? ' · Pfade vergleichen · P10, Median, P90' : ''}`, maskDate,
+                    'masken', value === 'logs' ? '#scenarioComparison' : '#tab-montecarlo', value === 'logs' ? '#scenarioComparison' : '.mc-view-nav');
             }
             for (const [name, value] of [['ergebnis', 'ergebnis'], ['annahmen', 'annahmen'], ['backtest', 'backtesting']]) {
                 await tab(page, value);
                 if (value === 'annahmen') await page.locator('#simPlanParameters').evaluate(details => { details.open = false; });
                 if (value === 'backtesting') {
-                    await page.locator('#backtestResultInfo .ds-info-button').click();
-                    await page.locator('#backtestResultInfoPop').waitFor({ state: 'visible' });
+                    await page.locator('#backtestAnalysis').waitFor({ state: 'visible' });
+                    await page.locator('#backtestAnalysis .backtest-analysis-more').evaluate(details => { details.open = false; });
                 }
-                await capture(masks, `simulator-${name}`, `Simulator ${name} nach Backtest und Monte-Carlo${value === 'annahmen' ? ' · Alle Parameter, Personen- und Pflegedetails geschlossen' : value === 'backtesting' ? ' · Einordnung im ⓘ geöffnet' : ''}`, maskDate,
-                    'masken', value === 'annahmen' ? '#tab-annahmen' : '#suiteMain', value === 'annahmen' ? '.sim-need-card' : false);
+                await capture(masks, `simulator-${name}`, `Simulator ${name} nach Backtest und Monte-Carlo${value === 'annahmen' ? ' · Alle Parameter, Personen- und Pflegedetails geschlossen' : value === 'backtesting' ? ' · Was im Lauf auffällt · Weitere geschlossen' : ''}`, maskDate,
+                    'masken', value === 'backtesting' ? '#backtestAnalysis' : value === 'annahmen' ? '#tab-annahmen' : '#suiteMain',
+                    value === 'backtesting' ? '#backtestAnalysis' : value === 'annahmen' ? '.sim-need-card' : false);
             }
             await tab(page, 'werkstatt');
             await capture(masks, 'werkstatt', 'Werkstatt · Werkzeugauswahl', maskDate);
@@ -378,14 +395,14 @@ async function main() {
             await goto(masks, 'Daten-Sicherung.html');
             await capture(masks, 'daten-sicherung', 'Daten & Sicherung', maskDate);
             await goto(masks, 'index.html');
-            await capture(masks, 'probelauf-band', 'Probelauf · Datum und Rückkehr', maskDate, 'masken', '#probelaufBand');
+            await capture(masks, 'probelauf-band', 'Spielbereich · Testdatum, Kursmodus und Beenden', maskDate, 'masken', '#probelaufBand');
             await goto(masks, 'Handbuch.html');
             await capture(masks, 'handbuch-start', 'Handbuchstart mit Aufgaben, Kapitelnavigation und Suche', maskDate);
         } finally { await masks.context.close(); }
         for (const annual of [false, true]) {
             const group = annual ? 'jahresabschluss' : 'monatsabschluss';
             const date = annual ? yearDate : monthDate;
-            current = `${group} · Probelauf starten und Datum wechseln`;
+            current = `${group} · Spielbereich starten und Datum wechseln`;
             const session = await newProbelauf(browser, baseUrl, annual ? '2026-12-15' : maskDate);
             try {
                 const { page } = session; activePage = page;
@@ -444,15 +461,49 @@ async function main() {
                 await capture(session, `${group}/${annual ? '08' : '06'}-ergebnis`, `${group} · bestätigtes Ergebnis`, date, group, selector);
             } finally { await session.context.close(); }
         }
+        }
+        if (comparisonOnly) {
+            const band = await newProbelauf(browser, baseUrl, maskDate);
+            try {
+                await capture(band, 'probelauf-band', 'Spielbereich · Zeitraffer links von Beenden', maskDate, 'masken', '#probelaufBand');
+                await band.page.locator('[data-probelauf-action="end"]').click();
+                const dialog = band.page.locator('.probelauf-end-dialog[open][data-comparison-status="ready"]');
+                await dialog.waitFor();
+                if (await dialog.locator('table, details').count() || await dialog.getByRole('button', { name: 'Übernehmen …', exact: true }).count()) throw new Error('Max und Erika zeigt einen Vergleich oder Übernehmen.');
+                await dialog.getByRole('heading', { name: 'Spielbereich beenden?', exact: true }).waitFor();
+                await dialog.getByRole('button', { name: 'Weiter spielen', exact: true }).click();
+            } finally { await band.context.close(); }
+        }
+        current = 'Spielbereich vergleichen';
+        const comparison = await newProbelauf(browser, baseUrl, realToday, 'copy');
+        try {
+            activePage = comparison.page;
+            await comparison.page.evaluate(async () => {
+                const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
+                p.setItemSync('profile_gold_aktiv', 'true'); p.setItemSync('profile_gold_ziel_pct', '10');
+                p.setItemSync('profile_tagesgeld', '20000');
+                const plan = JSON.parse(p.getItemSync('household_plan_v1'));
+                Object.values(plan.entries)[0].values.flexBedarf = 32000;
+                p.setItemSync('household_plan_v1', JSON.stringify(plan)); await p.flush();
+            });
+            await comparison.page.locator('#probelaufBand [data-probelauf-action="end"]').click();
+            const dialog = comparison.page.locator('.probelauf-end-dialog[open][data-comparison-status="ready"]');
+            await dialog.waitFor();
+            const budget = dialog.locator('tbody tr').nth(0);
+            if (!(await budget.textContent()).includes('mehr')) throw new Error('Vergleich zeigt kein höheres Monatsbudget.');
+            if (!(await dialog.locator('tbody tr').nth(1).textContent()).includes('Gold kaufen')) throw new Error('Vergleich zeigt keine Gold-Handlungsanweisung.');
+            if ((await dialog.textContent()).includes('nicht berechenbar')) throw new Error('Vergleich ist nicht berechenbar.');
+            await capture(comparison, 'spielbereich-vergleich', 'Spielbereich beenden · frische Vorschau heute mit höherem Monatsbudget und Goldkauf', realToday, 'masken', '.probelauf-end-dialog');
+        } finally { await comparison.context.close(); }
         images.sort((a, b) => IMAGE_FILES.indexOf(a.path) - IMAGE_FILES.indexOf(b.path));
         if (images.length !== IMAGE_FILES.length) throw new Error(`Erwartet: ${IMAGE_FILES.length} Bilder; erzeugt: ${images.length}.`);
         const totalBytes = images.reduce((sum, image) => sum + image.bytes, 0);
         const durationSeconds = Number(((performance.now() - started) / 1000).toFixed(2));
         await fs.writeFile(path.join(root, 'docs/ui/README.md'), readme(images));
         await fs.writeFile(path.join(root, 'docs/ui/monatsabschluss.html'), flowHtml('monatsabschluss', 'Monat abschließen',
-            'Du startest den Probelauf am 20.10.2026 und wechselst auf den 10.11.2026. Der Oktoberabschluss stellt den Monatsbetrag für November bereit.', images.filter(item => item.group === 'monatsabschluss')));
+            'Du startest den Spielbereich am 20.10.2026 und wechselst auf den 10.11.2026. Der Oktoberabschluss stellt den Monatsbetrag für November bereit.', images.filter(item => item.group === 'monatsabschluss')));
         await fs.writeFile(path.join(root, 'docs/ui/jahresabschluss.html'), flowHtml('jahresabschluss', 'Jahr abschließen',
-            'Du startest einen eigenen Probelauf am 15.12.2026 und wechselst auf den 02.01.2027. Ein Hauptklick bestätigt 2026, schließt Dezember ab und schreibt den Plan für 2027.', images.filter(item => item.group === 'jahresabschluss')));
+            'Du startest einen eigenen Spielbereich am 15.12.2026 und wechselst auf den 02.01.2027. Ein Hauptklick bestätigt 2026, schließt Dezember ab und schreibt den Plan für 2027.', images.filter(item => item.group === 'jahresabschluss')));
         // Erst der vollständige Lauf ersetzt das Manifest; Teilaufnahmen bleiben erkennbar.
         await fs.writeFile(path.join(root, 'docs/ui/manifest.json'), JSON.stringify({
             schemaVersion: 1, imageCount: images.length, totalBytes, durationSeconds, images

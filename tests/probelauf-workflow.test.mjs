@@ -1,3 +1,4 @@
+import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import { installAnnualLocks } from './helpers/balance-storage-fixtures.mjs';
 import { createAnnualModalHandlers } from '../app/balance/balance-annual-modal.js';
 import { createDialogFixture } from './close-dialog.test.mjs?fixture';
@@ -8,7 +9,11 @@ import { parseCategoryCsv } from '../app/balance/balance-expenses-csv.js';
 import { PersistenceFacade as P, persistenceStorage as storage } from '../app/shared/persistence-facade.js';
 import { createProbelaufController } from '../app/shared/probelauf-state.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
-import { appNow, getAppTestDate, setAppTestDate, advanceCalendarDate } from '../app/shared/app-clock.js';
+import { appNow, getAppTestDate, setAppTestDate, advanceCalendarDate, localCalendarDate } from '../app/shared/app-clock.js';
+import { isSyntheticPriceMode } from '../app/shared/market-price-adapter.js';
+import { saveTranchesToStorage } from '../app/tranches/tranchen-manager-state.js';
+import { buildSimulatorInputsFromProfileData } from '../app/simulator/simulator-profile-inputs.js';
+import { patchHouseholdPlan } from '../app/profile/household-plan.js';
 import { SnapshotArchive as A } from '../app/shared/snapshot-archive.js';
 import { PROBELAUF_STATE_KEY, isProbelaufRecordKey } from '../app/shared/persistence-key-policy.js';
 import { projectOverviewFromRecords, bindOverviewMonthClose } from '../app/overview/overview-main.js';
@@ -22,6 +27,7 @@ import { commitTrancheReconciliation, commitCashPostingConfirmation, projectReco
 import { runStartupPriceRefresh } from '../app/tranches/tranchen-startup-prices.js';
 import { runHistoryFetch } from '../app/tranches/tranchen-history-fetch.js';
 import { createAnnualHandlers } from '../app/balance/balance-binder-annual.js';
+import { createMarketdataHandlers } from '../app/balance/balance-annual-marketdata.js';
 import { commitAnnualPlanUpdate } from '../app/balance/balance-annual-storage-commit.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
 import { createSnapshotHandlers } from '../app/balance/balance-binder-snapshots.js';
@@ -33,17 +39,22 @@ import { UIRenderer } from '../app/balance/balance-renderer.js';
 import { CONFIG } from '../app/balance/balance-config.js';
 import { createNavigationGuard, createNavigationOperationLifecycle } from '../app/shared/navigation-guard.js';
 
-function backend(records) {
-    const values = { ...records }, points = new Map();
-    return { values, points, writes: 0, snapshotWrites: 0, fail: false, async loadAll() { return { ...values }; },
-        async saveBatch({ deletes, upserts }) { this.writes++; if (this.fail) { this.fail = false; throw new Error('Test-Commitfehler'); } deletes.forEach(key => delete values[key]); upserts.forEach(([key, value]) => values[key] = value); },
-        async listSnapshots() { return [...points.values()].map(({ records, ...point }) => point); },
-        async readSnapshot(id) { if (!points.has(id)) throw new Error('missing'); return structuredClone(points.get(id)); },
-        async writeSnapshot(point) { this.snapshotWrites++; points.set(point.id, structuredClone(point)); }, async deleteSnapshot(id) { points.delete(id); } };
+const backend = records => playFixture('tauri', records);
+const win = { location: { href: 'http://localhost/index.html' } };
+async function boot(f) {
+    setAppTestDate(null);
+    const c = await f.boot();
+    for (const method of ['start', 'changeDate', 'end']) {
+        const run = c[method].bind(c);
+        c[method] = async (...args) => {
+            const before = f.realBytes();
+            const result = await run(...args);
+            assert(f.realBytes() === before, `${method}: echte Daten und Sicherungspunkte bytegleich`);
+            return result;
+        };
+    }
+    return c;
 }
-const win = { location: { href: 'http://localhost/index.html?probelauf=1' } };
-const makeController = () => createProbelaufController({ win, reload() {}, restoreReload() {}, session: null });
-async function boot(adapter) { P.resetPersistenceForTests(adapter); await P.init({ installLifecycleHooks: false }); const c = makeController(); await c.initialize(); return c; }
 const model = () => projectOverviewFromRecords({ registry: JSON.parse(storage.getItem('rs_profiles_v1')), activeId: storage.getItem('rs_active_profile'), liveData: P.exportAllSync().records });
 const bytes = values => JSON.stringify(Object.entries(values).filter(([key]) => isProbelaufRecordKey(key)).sort());
 const restoreAnnualLocks = installAnnualLocks();
@@ -90,7 +101,7 @@ async function rejectedDownload(action, options, label) {
     let error;
     try { await action(options); } catch (caught) { error = caught; }
     assertEqual(error?.code, 'probelauf_backup_blocked', `${label}: direkte API meldet Probelaufsperre`);
-    assert(error?.message.includes('Probelauf'), `${label}: verständlicher Sperrgrund`);
+    assert(error?.message.includes('Spielbereich'), `${label}: verständlicher Sperrgrund`);
 }
 function bindImport(dom, extra = {}) {
     bindFullBackupImport({ document: dom.doc, guard: createNavigationGuard({ decide: async () => true }),
@@ -99,7 +110,7 @@ function bindImport(dom, extra = {}) {
 }
 function blockedStatus(dom, label) {
     assertEqual(dom.nodes.fullBackupStatus.dataset.kind, 'error', `${label}: kein Backup-Erfolgsstatus`);
-    assert(dom.nodes.fullBackupStatus.textContent.includes('Probelauf'), `${label}: sichtbarer Probelaufhinweis`);
+    assert(dom.nodes.fullBackupStatus.textContent.includes('Spielbereich'), `${label}: sichtbarer Probelaufhinweis`);
 }
 async function verifyBackupBlocked(adapter, c, payload, label) {
     await withBackupDOM(payload, async dom => {
@@ -152,7 +163,7 @@ async function verifyBackupBlocked(adapter, c, payload, label) {
             assertEqual(adapter.writes, writes, `${label}: keine Backendwrites`);
             assertEqual(adapter.snapshotWrites, snapshotWrites, `${label}: keine Snapshotwrites`);
             assertEqual(JSON.stringify(adapter.values), records, `${label}: gesamte Backendrecords bytegleich`);
-            assertEqual(archiveBytes(adapter), points, `${label}: sämtliche Archivpunkte einschließlich Vor Probelauf bytegleich`);
+            assertEqual(archiveBytes(adapter), points, `${label}: sämtliche Archivpunkte einschließlich Vor Spielbereich bytegleich`);
             assertEqual(storage.getItem(OVERVIEW_BACKUP_KEY), time, `${label}: Sicherungszeit im Cache unverändert`);
             assertEqual(adapter.values[OVERVIEW_BACKUP_KEY], persistedTime, `${label}: Sicherungszeit im Backend unverändert`);
         } finally { P.flush = originalFlush; P.replaceRecordsTransactional = originalReplace; }
@@ -202,11 +213,11 @@ async function verifyAnnualProtocol(results) {
         const text = () => rendered().map(node => node.textContent).join(' ');
         assert(text().includes('Jahresabschluss bestätigt'), 'Gemeinsamer Renderer zeigt bestätigten Abschluss');
         assertEqual(doc.getElementById('balanceAnnualClose').dataset.annualYearResult, 'confirmed', 'Ergebnisdialog kennzeichnet die echte Jahresbestätigung');
-        assertEqual(text().split('Probelauf · synthetisch').length - 1, 3, 'Gemeinsamer Renderer zeigt Herkunft aller drei Werte');
+        assertEqual(text().split('Spielbereich · synthetisch').length - 1, 3, 'Gemeinsamer Renderer zeigt Herkunft aller drei Werte');
         await doc.getElementById('annualCloseBtn').fire('click');
         assert(!doc.getElementById('balanceAnnualClose'), 'Ergebnisdialog ist vor dem erneuten Protokollaufruf entfernt');
         renderer.handleShowUpdateLog(true);
-        assertEqual(text().split('Probelauf · synthetisch').length - 1, 3, 'Erneut geöffnetes Protokoll erhält Jahresherkunft');
+        assertEqual(text().split('Spielbereich · synthetisch').length - 1, 3, 'Erneut geöffnetes Protokoll erhält Jahresherkunft');
         assert(rendered().some(node => node.tag === 'h4' && node.textContent === 'Protokoll'), 'Gemeinsamer Protokollrenderer wird ausgeführt');
         assert(Number.isFinite(results.startTime) && Number.isFinite(results.endTime), 'Produktiver Jahrespfad liefert gültige Protokollzeiten');
         assert(text().includes(`Start: ${new Date(results.startTime).toLocaleString('de-DE')} · Ende: ${new Date(results.endTime).toLocaleString('de-DE')}`), 'Protokoll enthält die tatsächlichen Jahreszeiten');
@@ -273,13 +284,13 @@ async function closeYear(profileId, targetYear, { failFinalWrite } = {}) {
         await verifyAnnualProtocol(committed.results);
         assertEqual(committed.results.confirmed, true, 'Produktiver Abschluss bestätigt Ergebnis');
         assertEqual(committed.results.errors.length, 0, 'Alle produktiven Jahresschritte erfolgreich');
-        for (const step of ['inflation', 'etf']) assertEqual(committed.results[step].source, 'Probelauf · synthetisch', 'Ergebnis nennt Jahresherkunft');
-        assertEqual(committed.results.cape.sourceLabel, 'Probelauf · synthetisch', 'CAPE-Ergebnislabel');
+        for (const step of ['inflation', 'etf']) assertEqual(committed.results[step].source, 'Spielbereich · synthetisch', 'Ergebnis nennt Jahresherkunft');
+        assertEqual(committed.results.cape.sourceLabel, 'Spielbereich · synthetisch', 'CAPE-Ergebnislabel');
         assertEqual(final.annualPeriodMetadata.pendingCommit, null, 'Dauerhafter Abschluss ohne Recoverymarker');
         assertEqual(final.annualMarketDataMeta.inflation.year, targetYear, 'Inflationsmeta überlebt ETF-Aufbau und Backendreadback');
-        assertEqual(final.annualMarketDataMeta.inflation.source, 'Probelauf · synthetisch', 'Persistierte Inflationsherkunft');
-        assertEqual(final.annualMarketDataMeta.source, 'Probelauf · synthetisch', 'Persistierte ETF-Herkunft');
-        assertEqual(final.capeMeta.capeSource, 'Probelauf · synthetisch', 'Persistierte CAPE-Herkunft');
+        assertEqual(final.annualMarketDataMeta.inflation.source, 'Spielbereich · synthetisch', 'Persistierte Inflationsherkunft');
+        assertEqual(final.annualMarketDataMeta.source, 'Spielbereich · synthetisch', 'Persistierte ETF-Herkunft');
+        assertEqual(final.capeMeta.capeSource, 'Spielbereich · synthetisch', 'Persistierte CAPE-Herkunft');
         assertEqual(final.capeMeta.capeAsOf, `${targetYear}-12-31`, 'Persistierter CAPE-Jahresstand');
         assertEqual(final.wealthHistory.entries.filter(entry => entry.id === `annual:${targetYear}`).length, 1, 'Genau ein Jahresstand');
         assertEqual(protocol.inflation.year, targetYear, 'Produktiver Protokollspeicher bewahrt Jahresherkunft');
@@ -296,7 +307,7 @@ async function closeYear(profileId, targetYear, { failFinalWrite } = {}) {
 
 try {
     {
-        const adapter = backend(createMusterHaushaltRecords('2026-12-15'));
+        const adapter = await backend(createMusterHaushaltRecords('2026-12-15'));
         const original = bytes(adapter.values);
         let c = await boot(adapter);
         await c.start(() => ({ source: 'demo', testDate: '2026-12-15' }));
@@ -310,10 +321,10 @@ try {
         assertEqual(net, 0, '15.12.2026 → 02.01.2027: Abschluss ohne sämtliche Datenanfragen');
         await c.end(() => true);
         assertEqual(bytes(adapter.values), original, 'Rückkehr erhält ursprüngliche Rohrecords');
-        assertEqual((await A.listSnapshots()).length, 1, 'Nur erlaubter Punkt Vor Probelauf verbleibt');
+        await boot(adapter); assertEqual((await A.listSnapshots()).length, 0, 'Keine neuen echten Sicherungspunkte');
     }
     {
-        const adapter = backend(createMusterHaushaltRecords('2026-12-15'));
+        const adapter = await backend(createMusterHaushaltRecords('2026-12-15'));
         const original = bytes(adapter.values);
         let c = await boot(adapter);
         await c.start(() => ({ source: 'demo', testDate: '2026-12-15' })); c = await boot(adapter);
@@ -328,7 +339,7 @@ try {
     }
     // Ruhiger Musterstart 02.11., dann November/Dezember über denselben Bestand.
     {
-        const adapter = backend(createMusterHaushaltRecords('2026-11-02'));
+        const adapter = await backend(createMusterHaushaltRecords('2026-11-02'));
         const beforeRun = bytes(adapter.values);
         let c = await boot(adapter);
         await c.start(() => ({ source: 'demo', testDate: '2026-11-02' })); c = await boot(adapter);
@@ -377,7 +388,7 @@ try {
         originals.rs_profiles_v1 = JSON.stringify({ version: 1, profiles: { 'eigene-einzelperson': person } });
         originals.rs_current_profile = originals.rs_active_profile = 'eigene-einzelperson';
         originals.balance_expenses_v1 = JSON.stringify({ version: 1, activeYear: 2026, years: {} });
-        const adapter = backend(originals); let c = await boot(adapter);
+        const adapter = await backend(originals); let c = await boot(adapter);
         await c.start(() => ({ source: 'copy', testDate: '2026-11-02' })); c = await boot(adapter);
         const current = model();
         assertEqual(current.scope.ids.join(','), 'eigene-einzelperson', 'Übersicht verwendet tatsächliche Einzelkennung');
@@ -402,7 +413,7 @@ try {
         const existing = JSON.parse(originals.balance_expenses_v1);
         existing.years[2026].months[10].profiles.muster_a.categories = { 'Eigener Altbestand': -321.09 };
         originals.balance_expenses_v1 = JSON.stringify(existing);
-        const adapter = backend(originals), rawBefore = bytes(adapter.values);
+        const adapter = await backend(originals), rawBefore = bytes(adapter.values);
         let c = await boot(adapter);
         await A.createSnapshot({ id: 'beispiel-vorher', label: 'Vorhanden', records: { balance_expenses_v1: originals.balance_expenses_v1 } });
         const archiveBefore = JSON.stringify(await A.readSnapshot('beispiel-vorher'));
@@ -448,13 +459,13 @@ try {
         }
         await c.end(() => true);
         assertEqual(bytes(adapter.values), rawBefore, `${source}: ursprüngliche Fachrecords und eigene Ausgaben bytegleich`);
-        assertEqual(JSON.stringify(await A.readSnapshot('beispiel-vorher')), archiveBefore, `${source}: vorhandener Archivpunkt bytegleich`);
+        await boot(adapter); assertEqual(JSON.stringify(await A.readSnapshot('beispiel-vorher')), archiveBefore, `${source}: vorhandener Archivpunkt bytegleich`);
     }
     for (const source of ['demo', 'copy']) {
         const originals = createMusterHaushaltRecords('2026-11-01');
         originals[OVERVIEW_BACKUP_KEY] = '2026-10-01T12:00:00.000Z';
         originals.profile_tagesgeld = '090000'; // Rohstringformat wird beim Rückweg erhalten.
-        const adapter = backend(originals), originalBytes = bytes(adapter.values);
+        const adapter = await backend(originals), originalBytes = bytes(adapter.values);
         let c = await boot(adapter);
         const payload = buildFullPersistenceBackup();
         assert(normalizeFullPersistenceBackup(payload).ok, `${source}: Importpayload vor Start fachlich gültig`);
@@ -516,169 +527,114 @@ try {
         assertEqual(bytes(adapter.values), testBytes, 'Endabbruch verändert Testbestand nicht');
         await c.end(() => true);
         assertEqual(bytes(adapter.values), originalBytes, `${source}: sämtliche ursprünglichen Rohrecords bytegleich`);
-        assertEqual(JSON.stringify(await A.readSnapshot('alt')), oldPoint, 'Vorheriger Archivpunkt bytegleich');
-        assertEqual((await A.listSnapshots()).length, 2, 'Nur alter Punkt und Vor Probelauf bleiben');
+        await boot(adapter); assertEqual(JSON.stringify(await A.readSnapshot('alt')), oldPoint, 'Vorheriger Archivpunkt bytegleich');
+        assertEqual((await A.listSnapshots()).length, 1, 'Nur alter Punkt bleibt');
         assertEqual(storage.getItem('rs_probelauf_state_v1'), null, 'Kein Testzustand als Echtbestand');
         c = await boot(adapter);
         await verifyBackupNormal(adapter, payload, `${source} nach Beenden und Initialisieren`);
     }
-    // Steuerrecord allein sperrt auch ohne Fachuhr und ohne Dokumentkoordinator.
-    for (const phase of ['starting', 'active', 'restoring', 'beschädigt']) for (const location of ['cache', 'backend']) {
-        const adapter = backend(createMusterHaushaltRecords('2026-11-01'));
-        P.resetPersistenceForTests(adapter); await P.init({ installLifecycleHooks: false }); setAppTestDate(null);
-        const payload = buildFullPersistenceBackup();
-        const raw = phase === 'beschädigt' ? '{kaputt' : JSON.stringify({ version: 1, active: true, phase });
-        if (location === 'cache') { storage.setItem(PROBELAUF_STATE_KEY, raw); await P.flush(); delete adapter.values[PROBELAUF_STATE_KEY]; }
-        else adapter.values[PROBELAUF_STATE_KEY] = raw;
-        await verifyBackupBlocked(adapter, undefined, payload, `${phase} nur ${location}, Systemuhr`);
+    // Durchstich über alle Produktionsadapter, beide Quellen und echte Abschlusswriter.
+    for (const kind of ['tauri', 'indexeddb', 'localstorage']) for (const source of ['copy', 'demo']) {
+        const f = await playFixture(kind, createMusterHaushaltRecords('2026-12-15'));
+        let c = await f.boot();
+        await A.createSnapshot({ id: 'echt-vorher', records: { profile_tagesgeld: 'unverändert' } });
+        const before = f.realBytes();
+        const unchanged = label => assert(f.realBytes() === before, `${kind}/${source}: ${label} erhält echte Daten, Sicherungspunkte und Metadaten bytegleich`);
+        await c.start(() => ({ source, testDate: '2026-12-15' })); c = await f.boot(); unchanged('Start');
+        const current = model();
+        assert(await storeMonthProvision({ month: '2026-11', scope: current.scope, expectedProfileId: current.activeId, guard: null }), 'Produktiver Monatswriter im Spielbereich');
+        unchanged('Monatsabschluss');
+        await c.changeDate('2027-01-02'); c = await f.boot(); unchanged('Datumssprung');
+        await closeYear('muster_a', 2026); await closeYear('muster_b', 2026); unchanged('Jahresabschluss');
+        c = await f.boot(); unchanged('Neustart');
+        assertEqual(StorageManager.loadState().annualPeriodMetadata.lastCommittedPeriod, 'calendar-year:2026', 'Neustart behält Jahresbeleg');
+        await c.end(() => true); unchanged('Beenden');
+        await f.boot(); unchanged('Echter Neustart');
     }
-    for (const flag of ['state', 'busy', 'blocked']) {
-        const adapter = backend(createMusterHaushaltRecords('2026-11-01'));
-        await boot(adapter);
-        const payload = buildFullPersistenceBackup(), coordinator = { [flag]: flag === 'state' ? { phase: 'starting' } : true };
-        await withBackupDOM(payload, async dom => {
-            const options = { document: dom.doc, probelaufController: coordinator };
-            await rejectedDownload(downloadFullPersistenceBackup, options, `Koordinator ${flag}`);
-            await rejectedDownload(downloadRecoveryPersistenceBackup, options, `Koordinator ${flag} Recovery`);
-            assertEqual((await importFullPersistenceBackup(payload, options)).code, 'probelauf_backup_blocked', `${flag}: Koordinator sperrt Direktimport`);
-            bindFullBackupButton(options); await dom.nodes.fullBackupBtn.click(); blockedStatus(dom, flag);
-            bindImport(dom, { probelaufController: coordinator });
-            await dom.nodes.fullBackupImportBtn.click(); await dom.nodes.fullBackupImportFile.handlers.change(); blockedStatus(dom, flag);
-            assertEqual(dom.count.downloads + dom.count.recovery + dom.count.reloads + dom.count.reads + dom.count.choosers, 0, `${flag}: Binder und APIs ohne Nebenwirkungen`);
-            assertEqual(adapter.snapshotWrites, 0, `${flag}: kein Recovery-Snapshot`);
-        });
+    // SB-3: Stand heute → Gold über die produktiven Saver → beide Rechenwege
+    // → echte Kurswriter → Datumssprung und Rücksprung → bytegleich verwerfen.
+    for (const kind of ['tauri', 'indexeddb', 'localstorage']) {
+        const today = localCalendarDate(), originals = createMusterHaushaltRecords(today);
+        delete originals.rs_daily_prices_v1;
+        const f = await playFixture(kind, originals);
+        let c = await f.boot();
+        await A.createSnapshot({ id: 'vor-gold', records: { profile_gold_aktiv: 'false' } });
+        f.session.setItem('rs_startup_prices_session_v1', 'echte Kurssitzung');
+        const real = f.realBytes();
+        const unchanged = label => assertEqual(f.realBytes(), real, `${kind}: Stand heute / ${label}: echte Records, Archive, Sitzungen und Metadaten bytegleich`);
+        await c.start(() => ({ source: 'copy', testDate: null })); c = await f.boot();
+        assertEqual(c.state.testDate, null, 'Stand heute hat kein Testdatum');
+        assertEqual(c.state.hasDateJump, false, 'Steuerdatensatz hält fehlenden Sprung fest');
+        assert(!isSyntheticPriceMode(), 'Stand heute öffnet echte Kurswege'); unchanged('Start');
+        assertEqual((await c.changeDate(today)).status, 'cancelled', 'Heute erneut wählen ist kein Datumssprung');
+        saveProfileAssetValues({ ...loadProfileAssetValues(), goldAktiv: true, goldZiel: 10, goldFloor: 5,
+            tagesgeld: 22000, renteMonatlich: 2400 }, storage, { recordCashChange: true });
+        const gold = { schemaVersion: 2, trancheId: 'spiel_gold_1', type: 'gold', category: 'gold', name: 'Testgold',
+            ticker: '4GLD.DE', isin: 'DE000A0S9GB0', shares: 10, purchasePrice: 200, currentPrice: 200,
+            purchaseDate: today, tqf: 0, taxExempt: false };
+        saveTranchesToStorage([...JSON.parse(storage.getItem('depot_tranchen')), gold]);
+        assert(saveCurrentProfileFromLocalStorage(), 'Gold und Kauf werden im aktiven Profil gespeichert'); await P.flush();
+        const initial = buildBalanceEngineInputFromStorage({ storage });
+        await patchHouseholdPlan({ scope: initial.scope, patch: { floorBedarf: 32000, liquidityRunwayYears: 4,
+            decumulation: { mode: '3_bucket_jilge', bondTargetFactor: 4, drawdownTrigger: 15, bondRefillThreshold: null } } });
+        const balance = buildBalanceEngineInputFromStorage({ storage });
+        assert(balance.inputData.goldAktiv && balance.inputData.goldWert === 2000, 'Balance-Eingaben enthalten neue Gold-Tranche');
+        assertEqual(balance.inputData.decumulation.mode, '3_bucket_jilge', 'Anleihenstrategie im Spielbereich bedienbar');
+        assertEqual(balance.inputData.floorBedarf, 32000, 'Bedarf im Spielbereich bedienbar');
+        assertEqual(balance.inputData.liquidityRunwayYears, 4, 'Liquiditätsziel im Spielbereich bedienbar');
+        const simulator = buildSimulatorInputsFromProfileData(P.exportAllSync().records);
+        assert(simulator.goldAktiv && simulator.detailledTranches.some(lot => lot.trancheId === gold.trancheId), 'Simulator-Eingaben enthalten neue Gold-Tranche');
+        assertEqual(simulator.startFloorBedarf, 32000, 'Simulator liest geänderten Bedarf');
+        assert(EngineAPI.simulateSingleYear(balance.engineInput, balance.engineLastState).ui, 'Balance rechnet mit Gold');
+        unchanged('Gold, Bedarf, Rente und Strategie');
+
+        const requests = [];
+        globalThis.fetch = async url => {
+            const request = new URL(url); requests.push(request);
+            if (request.href.includes('yale.edu')) return { ok: true,
+                text: async () => `${today.slice(0, 7).replace('-', '.')} foo bar 28.1` };
+            const symbol = request.searchParams.get('symbol');
+            if (request.pathname === '/quote') return { ok: true, json: async () => ({ symbol, price: symbol === '4GLD.DE' ? 210 : 123.45,
+                currency: 'EUR', asOf: Math.floor(Date.now() / 1000), source: 'Gefälschter Kursdienst' }) };
+            if (request.pathname === '/chart') return { ok: true, json: async () => ({ chart: { result: [{
+                meta: { symbol, currency: 'EUR', exchangeTimezoneName: 'UTC' },
+                timestamp: [Number(request.searchParams.get('period1'))], indicators: { quote: [{ close: [111.25] }] }
+            }], error: null } }) };
+            throw new Error('Unerwarteter Datenabruf: ' + url);
+        };
+        const quotes = await runStartupPriceRefresh({ operation: { controller: new AbortController(), check() {}, commit() {} } });
+        assert(quotes.updated > 0 && requests.some(url => url.pathname === '/quote'), 'Stand heute ruft gefälschten echten Kursdienst auf');
+        const persisted = await P.readPersistedRecords(key => key === 'depot_tranchen');
+        assertEqual(JSON.parse(persisted.depot_tranchen).find(lot => lot.trancheId === gold.trancheId).currentPrice, 210, 'Echter Kurswriter bestätigt Goldkurs nur im Spielbereich');
+        unchanged('Kursabruf');
+        const history = await runHistoryFetch({ firstPlanningYear: new Date().getFullYear(), fetchImpl: globalThis.fetch });
+        assert(history.completed > 0 && requests.some(url => url.pathname === '/chart'), 'Stand heute lädt echten Kursverlauf');
+        assert(Object.values(JSON.parse((await P.readPersistedRecords(key => key === 'rs_daily_prices_v1')).rs_daily_prices_v1).symbols)
+            .some(curve => curve.closes.includes(111.25)), 'Verlaufswriter bestätigt Dienstkurs im Spielbereich'); unchanged('Kursverlauf');
+        const annual = createMarketdataHandlers({ dom: { inputs: { capeRatio: { value: '' } }, controls: {} }, appState: {},
+            debouncedUpdate() {}, navigationLifecycle: createAnnualNavigationLifecycle({ guard: null }) });
+        const cape = await annual.handleFetchCapeAuto({ nested: true }); await P.flush();
+        assertEqual(cape.capeFetchStatus, 'ok_primary', 'Stand heute verwendet echte CAPE-Quelle');
+        assertEqual(JSON.parse((await P.readPersistedRecords(key => key === CONFIG.STORAGE.LS_KEY))[CONFIG.STORAGE.LS_KEY]).capeMeta.capeRatio,
+            28.1, 'Jahresmarktdatenwriter bestätigt Dienstwert im Spielbereich'); unchanged('Jahresmarktdaten');
+        const sold = await commitTrancheReconciliation({ profileId: 'muster_a', expectedTranchesRaw: storage.getItem('depot_tranchen'),
+            action: { actionId: 'spiel_gold_verkauf', profileId: 'muster_a', trancheId: gold.trancheId, executedAt: today, sharesSold: 1, grossProceeds: 210, fees: 0 } });
+        assertEqual(sold.status, 'applied', 'Verkauf bleibt im Spielbereich bedienbar'); unchanged('Verkauf');
+        c = await f.boot(); assert(!isSyntheticPriceMode(), 'Neustart erhält Stand heute');
+        await c.changeDate(advanceCalendarDate(today, 'day')); c = await f.boot();
+        assert(c.state.hasDateJump && isSyntheticPriceMode(), 'Datumssprung bleibt im Steuerdatensatz gespeichert');
+        await c.changeDate(today); c = await f.boot();
+        assert(c.state.hasDateJump && isSyntheticPriceMode(), 'Rücksprung auf heute bleibt synthetisch');
+        const count = requests.length;
+        await runStartupPriceRefresh({ operation: { controller: new AbortController(), check() {}, commit() {} } });
+        await runHistoryFetch({ firstPlanningYear: new Date().getFullYear(), fetchImpl: globalThis.fetch });
+        assertEqual((await annual.prepareCape()).capeFetchStatus, 'ok_synthetic', 'Nach Datumssprung bleibt CAPE synthetisch');
+        assertEqual(requests.length, count, 'Nach Sprung und Rücksprung kein Kursnetz'); unchanged('Datumssprünge');
+        await c.end(() => true); unchanged('Beenden'); await f.boot(); unchanged('Echter Neustart');
+        assertEqual(storage.getItem('profile_gold_aktiv'), 'false', 'Echte Daten bleiben ohne Goldaktivierung');
+        assert(!JSON.parse(storage.getItem('depot_tranchen')).some(lot => lot.type === 'gold'), 'Echte Daten bleiben ohne Gold-Tranche');
+        globalThis.fetch = () => { net++; throw new Error('Kein Kursnetz im Musterlauf.'); };
     }
-    // Zustand kann auch erst während des verifizierenden Backendreads eintreten.
-    {
-        const adapter = backend(createMusterHaushaltRecords('2026-11-01')); await boot(adapter);
-        const payload = buildFullPersistenceBackup(), read = P.readPersistedRecords;
-        await withBackupDOM(payload, async dom => {
-            P.readPersistedRecords = async () => { setAppTestDate('2027-07-01'); return {}; };
-            try { await rejectedDownload(downloadFullPersistenceBackup, { document: dom.doc }, 'Fachuhr während Backendread'); }
-            finally { P.readPersistedRecords = read; setAppTestDate(null); }
-            assertEqual(dom.count.downloads, 0, 'Erneute Fachuhrprüfung nach Backendread verhindert Download');
-            P.readPersistedRecords = async () => { throw new Error('Test-Readfehler'); };
-            try {
-                let error; try { await downloadRecoveryPersistenceBackup({ document: dom.doc }); } catch (caught) { error = caught; }
-                assertEqual(error?.code, 'probelauf_backup_state_unavailable', 'Backendlesefehler sperrt Recovery');
-                const result = await importFullPersistenceBackup(payload, { guard: null });
-                assertEqual(result.code, 'probelauf_backup_state_unavailable', 'Backendlesefehler sperrt Import');
-                bindImport(dom); await dom.nodes.fullBackupImportFile.handlers.change(); blockedStatus(dom, 'Backendlesefehler');
-            } finally { P.readPersistedRecords = read; }
-            assertEqual(dom.count.downloads + dom.count.recovery + dom.count.reloads + dom.count.reads, 0, 'Lesefehler gibt keinen Nebenwirkungsweg frei');
-            assertEqual(adapter.snapshotWrites, 0, 'Lesefehler schreibt keinen Snapshot');
-        });
-    }
-    for (const action of ['export', 'recovery', 'import']) {
-        const adapter = backend(createMusterHaushaltRecords('2026-11-01')), c = await boot(adapter);
-        const payload = buildFullPersistenceBackup(), flush = P.flush;
-        await withBackupDOM(payload, async dom => {
-            let afterStart;
-            P.flush = async () => {
-                P.flush = flush;
-                await c.start(() => ({ source: 'copy', testDate: '2027-07-01' }));
-                afterStart = { records: JSON.stringify(adapter.values), points: archiveBytes(adapter), writes: adapter.writes, snapshots: adapter.snapshotWrites };
-                return true;
-            };
-            try {
-                if (action === 'import') assertEqual((await importFullPersistenceBackup(payload, { guard: null })).code, 'probelauf_backup_blocked', 'Start während Importflush sperrt vor Snapshot');
-                else await rejectedDownload(action === 'export' ? downloadFullPersistenceBackup : downloadRecoveryPersistenceBackup, { document: dom.doc }, `Start während ${action}-Flush`);
-            } finally { P.flush = flush; }
-            assert(afterStart && c.state?.phase === 'active', `${action}: echter Probelauf im Vorflush gestartet`);
-            assertEqual(dom.count.downloads, 0, `${action}: kein Download nach Vorflush`);
-            assertEqual(adapter.writes, afterStart.writes, `${action}: keine zusätzlichen Writes nach Start`);
-            assertEqual(adapter.snapshotWrites, afterStart.snapshots, `${action}: nur Vor Probelauf, kein Importsnapshot`);
-            assertEqual(JSON.stringify(adapter.values), afterStart.records, `${action}: Startbestand bytegleich`);
-            assertEqual(archiveBytes(adapter), afterStart.points, `${action}: Startarchiv bytegleich`);
-        });
-    }
-    for (const stage of ['file', 'confirm', 'callback']) {
-        const adapter = backend(createMusterHaushaltRecords('2026-11-01')), c = await boot(adapter);
-        const payload = buildFullPersistenceBackup();
-        await withBackupDOM(payload, async dom => {
-            let afterStart;
-            const start = async () => {
-                await c.start(() => ({ source: 'demo', testDate: '2027-07-01' }));
-                afterStart = { records: JSON.stringify(adapter.values), points: archiveBytes(adapter), writes: adapter.writes, snapshots: adapter.snapshotWrites };
-            };
-            const options = { probelaufController: c };
-            if (stage === 'file') dom.onRead = start;
-            if (stage === 'confirm') options.confirmImport = () => { setAppTestDate('2027-07-01'); return true; };
-            if (stage === 'callback') options.createRecoveryBackup = async () => { dom.count.recovery++; await start(); return { skipped: false }; };
-            bindImport(dom, options);
-            await dom.nodes.fullBackupImportFile.handlers.change(); blockedStatus(dom, `Start während ${stage}`);
-            assertEqual(dom.count.reads, 1, `${stage}: Dateilesen tatsächlich erreicht`);
-            assertEqual(dom.count.recovery, stage === 'callback' ? 1 : 0, `${stage}: Recoverycallback kann Vorabprüfung nicht umgehen`);
-            assertEqual(dom.count.downloads + dom.count.reloads, 0, `${stage}: kein Dateidownload oder Reload`);
-            assertEqual(dom.nodes.fullBackupImportFile.value, '', `${stage}: Dateifeld nach Sperre zurückgesetzt`);
-            if (afterStart) {
-                assertEqual(adapter.writes, afterStart.writes, `${stage}: keine zusätzlichen Transaktionswrites`);
-                assertEqual(adapter.snapshotWrites, afterStart.snapshots, `${stage}: kein zusätzlicher Importsnapshot`);
-                assertEqual(JSON.stringify(adapter.values), afterStart.records, `${stage}: Backendrecords bytegleich`);
-                assertEqual(archiveBytes(adapter), afterStart.points, `${stage}: Archivpunkte bytegleich`);
-            } else assertEqual(adapter.snapshotWrites, 0, 'Fachuhr während Bestätigung sperrt vor Recovery');
-        });
-    }
-    {
-        const adapter = backend(createMusterHaushaltRecords('2026-11-01')); await boot(adapter);
-        await verifyBackupNormal(adapter, buildFullPersistenceBackup(), 'Nur URL-Parameter bei leerem Steuerzustand und Systemuhr');
-    }
-    const adapter = backend(createMusterHaushaltRecords('2026-11-01'));
-    let c = await boot(adapter);
-    const originals = bytes(adapter.values);
-    await c.start(() => ({ source: 'demo', testDate: '2027-07-01' })); c = await boot(adapter);
-    const guard = createNavigationGuard({ decide: async () => true });
-    const lifecycle = createNavigationOperationLifecycle({ guard });
-    let entered, jobEnded = false;
-    const jobReady = new Promise(resolve => entered = resolve);
-    const job = lifecycle.run({}, operation => runStartupPriceRefresh({ operation, commit: async () => {
-        entered();
-        await new Promise(resolve => operation.controller.signal.addEventListener('abort', resolve, { once: true }));
-        operation.check();
-    } }).finally(() => jobEnded = true));
-    await jobReady;
-    c = createProbelaufController({ win, guard, session: null, reload: () => assert(jobEnded, 'Echter Kursjob endet vor Datumsreload'), restoreReload() {} });
-    await c.initialize();
-    await c.changeDate('2027-07-02'); await job; c = await boot(adapter);
-    assertEqual(c.state.testDate, '2027-07-02', 'Datumssprung mit laufendem Kursjob bestätigt');
-    adapter.fail = true;
-    let failed = false; try { await c.changeDate('2027-06-01'); } catch { failed = true; }
-    assert(failed && c.blocked && c.state.snapshotId, 'Commitfehler blockiert mit Rückkehrpunkt');
-    c = await boot(adapter); await c.end(() => true);
-    assertEqual(bytes(adapter.values), originals, 'Commitfehler hinterlässt keine Testrecords nach Recovery');
-    assertEqual(net, 0, 'Start-, Chart- und Jahreskurswege erreichen nie die werfende Netzwerkfunktion');
 } finally { Object.assign(globalThis, { fetch: before.fetch }); UIRenderer.toast = before.toast; UIRenderer.handleActionError = before.error; StorageManager.renderSnapshots = before.render; P.resetPersistenceForTests(); setAppTestDate(null); }
 
-// Alltags-Tauri mit fremder Kennung: echter Musterloader, Neustart, Schutz und Rohrestore.
-{
-    const alltagsWin = { location: { href: 'tauri://localhost/index.html' }, __TAURI__: { app: { getIdentifier: async () => 'com.fremd.alltag' } } };
-    const original = { ...createMusterHaushaltRecords('2026-11-01'), profile_tagesgeld: '00123.40', unrelated: 'bewahren' };
-    const adapter = backend(original);
-    P.resetPersistenceForTests(adapter); await P.init({ installLifecycleHooks: false });
-    await A.createSnapshot({ id: 'alltag-alt', label: 'Ursprünglicher Punkt', records: { profile_tagesgeld: '00123.40' } });
-    const originalPoints = new Map([...adapter.points].map(([id, point]) => [id, JSON.stringify(point)]));
-    const options = { win: alltagsWin, session: null, reload() {}, restoreReload() {} };
-    const alltagsPayload = buildFullPersistenceBackup();
-    assert(normalizeFullPersistenceBackup(alltagsPayload).ok, 'Alltagsimportgegenprobe verwendet fachlich gültige Vollsicherung');
-    let c = createProbelaufController(options); await c.initialize();
-    assertEqual(c.runtime.kind, 'tauri', 'Fremde Alltagskennung bleibt Tauri');
-    const result = await c.start(() => ({ source: 'demo', testDate: '2027-07-01' }));
-    assertEqual(result.status, 'reloaded', 'Fremde Alltagskennung startet echten Muster-Haushalt');
-    const beforeId = c.state.snapshotId;
-    assertEqual(JSON.parse(adapter.values.rs_profiles_v1).profiles.muster_a.meta.name, 'Max', 'Alltagsstart benutzt echten Musterloader');
-    P.resetPersistenceForTests(adapter); await P.init({ installLifecycleHooks: false });
-    c = createProbelaufController(options); await c.initialize();
-    assertEqual(c.state.phase, 'active', 'Alltagslauf nach Neustart aktiv');
-    assertEqual(c.state.testDate, '2027-07-01', 'Alltagslauf setzt Testdatum fort');
-    await verifyBackupBlocked(adapter, c, alltagsPayload, 'Fremdes Alltags-Tauri');
-    P.setItemSync('profile_tagesgeld', 'Testwert'); await P.flush();
-    await A.createSnapshot({ id: 'alltag-test', label: 'Testpunkt', records: {} });
-    await c.end(() => true);
-    assertEqual(JSON.stringify(adapter.values), JSON.stringify(original), 'Alle ursprünglichen Alltags-Rohrecords bytegleich, Steuerkey und Testrecords entfernt');
-    assertEqual(getAppTestDate(), null, 'Alltagsende entfernt Testdatum');
-    assertEqual(adapter.points.size, originalPoints.size + 1, 'Nur Vor Probelauf kommt zum ursprünglichen Archiv hinzu');
-    for (const [id, bytes] of originalPoints) assertEqual(JSON.stringify(adapter.points.get(id)), bytes, 'Ursprünglicher Alltagsarchivpunkt bytegleich');
-    assertEqual(adapter.points.get(beforeId).label, 'Vor Probelauf', 'Verlangter neuer Rückkehrpunkt bleibt erhalten');
-    assert(!adapter.points.has('alltag-test'), 'Alltagstestpunkt entfernt');
-}
 P.resetPersistenceForTests(); setAppTestDate(null); restoreAnnualLocks();

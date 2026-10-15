@@ -146,7 +146,7 @@ export function bindManagerProfileSwitch(doc, switchPerson) {
             .finally(() => { state.pending = null; });
         return state.pending;
     };
-    for (const id of ['managerHousehold', 'managerSectionNav', 'managerHistorySwitch']) doc.getElementById(id)?.addEventListener('click', handler);
+    for (const id of ['managerHousehold', 'managerSectionNav', 'managerHistorySwitch', 'managerWealthPersonHint']) doc.getElementById(id)?.addEventListener('click', handler);
     const nav = doc.getElementById('managerSectionNav');
     nav?.addEventListener('keydown', event => {
         const tab = event.target?.closest?.('[role="tab"]');

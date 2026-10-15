@@ -52,11 +52,8 @@ export function calculateHouseholdPensionForYear({
     if (inputs.partner?.aktiv && p2Alive) {
         if (yearIndex >= partnerStartOffsetYears) {
             rente2BruttoEigen = currentAnnualPension2 * pensionPaymentFactor(yearIndex, partnerStartOffsetYears, inputs.partner.renteStartMonate);
-            if (inputs.partner.steuerquotePct > 0) {
-                rente2 = rente2BruttoEigen * (1 - inputs.partner.steuerquotePct / 100);
-            } else {
-                rente2 = rente2BruttoEigen;
-            }
+            // FR-11: Beide Eingaben sind verfügbare Nettorenten. Alte Quoten bleiben wirkungslos.
+            rente2 = rente2BruttoEigen;
             rente2 = Math.max(0, rente2);
         }
     }

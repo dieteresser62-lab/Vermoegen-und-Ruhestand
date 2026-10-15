@@ -75,14 +75,14 @@ export function bindDataExchange(doc, { win = doc.defaultView, refresh = async (
     const report = error => {
         const detail = doc.getElementById('dataExchangeTechnical'); if (detail) detail.textContent = error.message;
         if (status) status.textContent = error.name === 'AbortError' ? 'Austausch abgebrochen.'
-            : /Probelauf/.test(error.message) ? 'Beende bitte zuerst den Probelauf.'
+            : /Spielbereich/.test(error.message) ? 'Beende bitte zuerst den Spielbereich.'
                 : 'Der Austausch konnte nicht abgeschlossen werden. Weitere Hinweise findest du unter „Technische Details“.';
     };
     const run = (task, reporter = report) => controller.run(task).catch(reporter);
     const reportDelete = error => reportDataRestoration(doc, {
         message: error.name === 'AbortError' ? 'Punktlöschen abgebrochen.'
             : error.code === 'point_protected' ? 'Dieser Punkt ist dauerhaft oder noch nicht abgedeckt und bleibt erhalten.'
-                : /Probelauf/.test(error.message) ? 'Beende bitte zuerst den Probelauf.'
+                : /Spielbereich/.test(error.message) ? 'Beende bitte zuerst den Spielbereich.'
                     : /Das Archiv hat sich geändert/.test(error.message) ? 'Das Archiv hat sich geändert. Bitte erneut prüfen.'
                         : 'Der Punkt konnte nicht entfernt werden. Weitere Hinweise findest du unter „Technische Details“.',
         technical: error.message

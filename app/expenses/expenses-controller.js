@@ -17,6 +17,10 @@ export function createExpensesController({ doc, win, storage = persistenceStorag
     const refs = collectExpensesDom(doc), messages = createExpensesMessages(doc);
     const importJobs = new Set();
     let personId = null, close, view, initializing = true;
+    const pageStopped = () => {
+        const probelauf = getProbelaufController(doc);
+        return PersistenceFacade.getPersistenceStatus().reloadRequired || probelauf?.busy || probelauf?.blocked;
+    };
     const registry = () => {
         const result = loadProfileRegistry(storage);
         if (!result.value) throw new Error('Personendaten nicht verfügbar. Bitte Daten & Sicherung öffnen.');
@@ -32,7 +36,7 @@ export function createExpensesController({ doc, win, storage = persistenceStorag
     const history = { chart: doc.getElementById('expensesHistoryChart'), table: doc.getElementById('expensesHistoryTable'),
         hint: doc.getElementById('expensesHistoryHint'), scrollHint: doc.getElementById('expensesHistoryScrollHint'), isVisible: () => true };
     const render = () => {
-        if (initializing) return;
+        if (initializing || pageStopped()) return;
         const model = close?.read();
         const year = getExpensesViewYear(), persons = people();
         const ids = visible().map(person => person.id);
@@ -56,7 +60,7 @@ export function createExpensesController({ doc, win, storage = persistenceStorag
         close?.sync();
     };
     const capture = createOverviewExpensesWealthCapture({ doc, win, storage, refresh: () => refresh(), report: text => messages.toast(text) });
-    // Auch der gemeinsame Probelauf-Observer kann die Matrix ersetzen.
+    // Auch der gemeinsame Spielbereich-Observer kann die Matrix ersetzen.
     // Identität vor dem Entfernen merken; Nutzerfokus außerhalb beendet den Auftrag.
     let matrixFocus = null, arrivalFocus = null, matrixUpdates = 0;
     const identityOf = node => refs.expenses.table.contains(node) && node?.dataset?.action
@@ -106,13 +110,17 @@ export function createExpensesController({ doc, win, storage = persistenceStorag
             if (!matrixUpdates) restoreMatrixFocus();
         }
     };
-    const refresh = () => preserveMatrixFocus(() => { refreshExpensesView(); render(); });
+    const refresh = () => {
+        if (pageStopped()) return;
+        return preserveMatrixFocus(() => { refreshExpensesView(); render(); });
+    };
     const guard = getPageNavigationGuard(doc, win);
     const pageImports = {
         get pending() { return importJobs.size > 0; },
         wait: () => Promise.allSettled([...importJobs]),
         abort: () => refreshExpensesView({ invalidateContext: true }),
         syncButtons() {
+            if (pageStopped()) return;
             const loaded = loadExpensesStoreResult(storage);
             const probelauf = getProbelaufController(doc);
             const blocked = importJobs.size > 0 || close?.imports.pending || loaded.status === 'corrupt'

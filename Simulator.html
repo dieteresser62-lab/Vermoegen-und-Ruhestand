@@ -382,7 +382,7 @@
         <header class="suite-header">
             <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
             <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span id="suiteHouseholdContext" class="suite-context">Haushalt wird geladen</span><div id="simulatorContextPills" class="suite-context-details" aria-live="polite"></div></div>
-            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Probelauf …</button>
+            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Spielbereich starten …</button>
         </header>
         <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
         <div id="suiteNavigationStatus" class="suite-navigation-status" role="alert" hidden></div>
@@ -400,13 +400,13 @@
                 <a href="Daten-Sicherung.html" data-profile-handoff data-suite-backup aria-label="Daten &amp; Sicherung" title="Daten &amp; Sicherung"><span data-suite-icon="landmark" aria-hidden="true"></span><span>Daten &amp; Sicherung</span></a>
             </nav>
             <main class="suite-content" id="suiteMain" tabindex="-1">
-                <aside id="probelaufBand" class="probelauf-band" aria-label="Probelauf" hidden>
+                <aside id="probelaufBand" class="probelauf-band" aria-label="Spielbereich" hidden>
                     <strong id="probelaufBandText"></strong>
                     <div class="ds-actions">
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="day">+1 Tag</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="month">+1 Monat</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="date">Datum wählen …</button>
-                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Probelauf beenden</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Spielbereich beenden</button>
                     </div>
                 </aside>
 
@@ -708,7 +708,7 @@
 <option value="9">9 %</option>
 </select>
 </div>
-<div class="ds-field">
+<div class="ds-field" hidden>
 <label for="r2Steuerquote">Steuerquote · bisherige Rentenbasis</label>
 <div class="ds-unit-frame">
 <input type="number" id="r2Steuerquote" class="ds-input" disabled data-no-persist="true" min="0" step="any">
@@ -895,7 +895,8 @@
                     <div id="simulationResults" style="display:none">
                         <section class="ds-card sim-backtest-metrics"><div class="sim-card-heading"><h2 id="backtestResultHeading" tabindex="-1">Kennzahlen · nominal</h2><span class="sim-backtest-result-context"><span id="backtestResultPeriod" class="ds-source"></span><span id="backtestResultInfo" class="ds-info"><button type="button" class="ds-info-button" aria-label="Backtest einordnen und Hinweise lesen" aria-expanded="false" aria-controls="backtestResultInfoPop">i</button><span id="backtestResultInfoPop" class="ds-info-pop" role="tooltip"></span></span></span></div>
                         <div id="simulationSummary"></div></section>
-                        <section class="ds-card sim-backtest-chart" aria-labelledby="backtestChartHeading"><h2 id="backtestChartHeading">Portfolioverlauf · nominal</h2><div id="portfolioCompositionChart" role="region" tabindex="0" aria-label="Portfolioverlauf des Backtests, nominale Euro, ohne Pflegebucket; horizontal scrollbar" style="display:none"></div></section>
+                        <section id="backtestAnalysis" class="ds-card backtest-analysis" aria-labelledby="backtestAnalysisHeading" hidden></section>
+                        <section class="ds-card sim-backtest-chart" aria-labelledby="backtestChartHeading"><div class="backtest-chart-head"><h2 id="backtestChartHeading">Portfolioverlauf · nominal</h2><label class="backtest-chart-toggle"><input id="backtestChartAnnotations" type="checkbox" class="ds-checkbox" checked> Auffälliges einblenden</label></div><div id="portfolioCompositionChart" role="region" tabindex="0" aria-label="Portfolioverlauf des Backtests, nominale Euro, ohne Pflegebucket; horizontal scrollbar" style="display:none"></div></section>
                         <section class="ds-card sim-backtest-log protocol-panel"><div class="protocol-head"><div><h2 id="backtestLogHeading">Backtest-Protokoll</h2><div id="backtestProtocolSummary"></div></div><div class="protocol-controls">
                         <label class="ds-toggle sim-toggle-row backtest-detail-toggle" title="Zeigt sämtliche anwendbaren Diagnosespalten; Downloads bleiben vollständig."><input type="checkbox" id="toggle-backtest-detail" class="ds-checkbox"><span class="ds-slider" aria-hidden="true"></span><span>Details</span></label>
                         <div class="log-export-buttons"><button type="button"
@@ -1098,12 +1099,19 @@
                         </div>
                         <!-- Szenario-Log Auswahl -->
                         <div id="scenarioLogContainer" class="protocol-panel" style="display:none">
+                            <section id="scenarioComparison" class="ds-card scenario-comparison-panel" aria-labelledby="scenarioComparisonHeading"></section>
+                            <section class="ds-card scenario-comparison-chart-panel" aria-labelledby="scenarioComparisonChartHeading">
+                                <h2 id="scenarioComparisonChartHeading">Vermögen der drei Pfade</h2>
+                                <p id="scenarioComparisonChartBasis" class="scenario-comparison-note">Heutige Euro · Kaufkraft zum Laufstart</p>
+                                <div id="scenarioComparisonChart" class="ds-chart-scroll" role="region" tabindex="0" aria-label="Vermögen der drei Pfade, horizontal scrollbar"></div>
+                            </section>
                             <section class="ds-card scenario-paths-panel" aria-labelledby="scenarioPathsHeading">
                                 <div class="scenario-paths-heading"><div><h2 id="scenarioPathsHeading">Ausgewählte Szenarien</h2><p class="ds-note">Einzelne Läufe nach nominalem Rang, Pflege oder Risiko. Linie oder Eintrag wählen; darunter steht das Jahresprotokoll.</p></div></div>
                                 <div class="scenario-paths-split"><div><div id="scenarioWealthChart" class="ds-chart-scroll" role="region" tabindex="0" aria-label="Vermögensverläufe, horizontal scrollbar"></div><p class="ds-note">Roter Endpunkt: Ruin. Tod beendet die Linie an der letzten Finanzmessung. Gestrichelt: Pflege- und Risikofälle. Grau: Stichproben. Lücken: Messung fehlt.</p></div><div id="scenarioSelector" class="scenario-selection-pane"><details id="scenarioSelectionDisclosure" open><summary id="scenarioSelectionSummary">Szenario: Keine Auswahl</summary><div class="scenario-selection-content"><p id="scenarioListBasis" class="ds-note">Endvermögen · heutige Euro · Auswahl nach nominalem Rang oder Gruppenmerkmal</p><div id="scenarioGroups" class="scenario-groups" role="group" aria-label="Szenariogruppen"></div><div id="scenarioList" class="scenario-list" role="listbox" tabindex="0" aria-label="Szenarien" aria-describedby="scenarioListHint"></div><p id="scenarioListHint" class="scenario-list-hint">Weitere Szenarien: in der Liste scrollen ↕</p></div></details></div></div>
                                 <div class="scenario-selected-bar"><div id="scenarioSelectedHeading"></div><div class="scenario-navigation"><button id="scenarioPrevious" type="button" class="ds-button ds-button-secondary" aria-label="Vorheriges Szenario">← Vorheriges</button><button id="scenarioNext" type="button" class="ds-button ds-button-secondary" aria-label="Nächstes Szenario">Nächstes →</button></div></div>
                             </section>
-                            <div class="protocol-head"><div><h4 id="scenarioProtocolHeading">Szenario-Protokoll</h4><p class="ds-hint sim-price-basis">Geldbeträge nominal · unabhängig vom Euro-Schalter</p><div id="scenarioProtocolSummary"></div></div>
+                            <section id="scenarioLogAnalysis" class="ds-card backtest-analysis" aria-labelledby="scenarioLogAnalysisHeading" hidden></section>
+                            <div class="protocol-head"><div><h4 id="scenarioProtocolHeading" tabindex="-1">Szenario-Protokoll</h4><p class="ds-hint sim-price-basis">Geldbeträge nominal · unabhängig vom Euro-Schalter</p><div id="scenarioProtocolSummary"></div></div>
                             <div id="scenario-controls" class="protocol-controls">
                                 <label class="ds-toggle sim-toggle-row" title="Zeigt sämtliche anwendbaren Diagnosespalten; Downloads bleiben vollständig."><input type="checkbox" id="toggle-log-detail" class="ds-checkbox"><span class="ds-slider" aria-hidden="true"></span><span>Detailliert</span></label>
                                 <label class="ds-toggle sim-toggle-row" title="Zeigt Pflegekosten und Pflegebucket nur zusammen mit Detailliert. Personenstatus bleibt immer sichtbar; Lauf und Download bleiben unverändert."><input type="checkbox" id="toggle-care-details" class="ds-checkbox"><span class="ds-slider" aria-hidden="true"></span><span>Pflege-Spalten</span></label>

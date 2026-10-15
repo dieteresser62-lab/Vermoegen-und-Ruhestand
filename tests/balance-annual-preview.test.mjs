@@ -75,7 +75,7 @@ try {
         assertEqual(preview.needs.find(need => need.id === 'flexBedarf').after, actual.totalFlex, 'Flex nach Rundung entspricht echtem Jahres-/Haushaltspfad');
         assertEqual(persistenceStorage.getItem('profile_aktuelles_alter'), '67', 'Jahresprojektion schreibt kein Personenalter');
         assertEqual(persistenceStorage.getItem('profile_geburtsdatum'), fallback ? '' : '1958-03-14', 'Geburtsdatum bleibt bytegleich');
-        assertEqual(network, 0, 'Vorbereitung und Jahresanwendung im Probelauf ohne Netz');
+        assertEqual(network, 0, 'Vorbereitung und Jahresanwendung im Spielbereich ohne Netz');
         assertEqual(applied.results.inflation.rate, packageData.inflation.rate, 'Genau vorbereitete Inflationsrate angewendet');
         assertEqual(applied.results.etf.price, Math.round(packageData.etf.price), 'Genau vorbereiteter ETF-Kurs angewendet');
         assertEqual(applied.results.cape.capeRatio, packageData.cape.capeRatio, 'Genau vorbereiteter CAPE angewendet');

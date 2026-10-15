@@ -4,7 +4,7 @@
  */
 "use strict";
 
-import { shouldResetGuardrailState } from './balance-guardrail-reset.js';
+import { applyGuardrailPlanChange, selectGuardrailPlanInputs } from '../shared/guardrail-history.js';
 import { buildBalanceHealthBucketDiagnostics } from './balance-health-bucket.js';
 import { ValidationError } from './balance-config.js';
 import { stripBalancePlanInputs, projectPlanToBalance } from '../profile/household-plan.js';
@@ -460,14 +460,9 @@ export function validateBalanceInputs(inputData = {}) {
     }
 }
 
-export function prepareEngineLastState(persistentState = {}, inputData = {}) {
+export function prepareEngineLastState(persistentState = {}, inputData = {}, planInputs = inputData) {
     const previousLastState = cloneBalanceState(persistentState.lastState || null);
-    const preservedTaxState = previousLastState?.taxState
-        ? { taxState: cloneBalanceState(previousLastState.taxState) }
-        : null;
-    return shouldResetGuardrailState(persistentState.inputs, inputData)
-        ? preservedTaxState
-        : previousLastState;
+    return applyGuardrailPlanChange(previousLastState, persistentState.inputs, planInputs);
 }
 
 /** Gleiche Rechnung, zusätzliche lesende Diagnose für die aktuelle Balance-Karte. */
@@ -489,15 +484,17 @@ export function buildBalanceRendererPayload(modelResult = {}, inputData = {}) {
 /** Historische Rechenentscheidung liegt nur im haushaltsweiten Lifecycle, nie im Mitglied.
  * Sie ist Resetvergleich, keine Quelle für die aktuellen Engineeingaben.
  */
-export function projectBalancePlanHistory(persistentState, profiles, plan) {
+export function projectBalancePlanHistory(persistentState, profiles, plan, { profileId = null } = {}) {
     if (plan?.status !== 'valid') return { persistentState, profiles };
     const current = projectPlanToBalance(plan.entry.values);
     const source = profiles[0]?.balanceState || persistentState;
-    // Bei der ersten Rechnung nach Übernahme gilt der bisherige Hauptprofilweg.
-    // Danach zählt ausschließlich die haushaltsweite historische Resetevidenz.
-    const legacy = source.profilverbundHouseholdInputs || source.inputs || {};
-    const previous = persistentState.balanceStateLifecycle?.planInputEvidence?.[plan.scope.key]
-        || Object.fromEntries(Object.keys(current).map(key => [key, legacy[key] ?? current[key]]));
+    // Ohne Lifecyclebeleg gelten die bisherigen Eingaben der Rechenauswahl.
+    // Eine geöffnete Außenperson liefert keine Planhistorie des Haushalts.
+    const ownInputs = profileId && profiles.length && !profiles.some(profile => profile.profileId === profileId)
+        ? {} : persistentState.inputs;
+    const legacy = { ...source.inputs, ...source.profilverbundHouseholdInputs, ...ownInputs };
+    const previous = { ...selectGuardrailPlanInputs(current), ...selectGuardrailPlanInputs(legacy),
+        ...persistentState.balanceStateLifecycle?.planInputEvidence?.[plan.scope.key] };
     const project = state => ({ ...state,
         inputs: { ...stripBalancePlanInputs(state.inputs), ...previous },
         profilverbundHouseholdInputs: { ...stripBalancePlanInputs(state.profilverbundHouseholdInputs), ...previous } });
@@ -562,7 +559,8 @@ export function persistBalanceUpdate({
             });
         }
         if (householdPlan) storageManager.saveState({ ...storageManager.loadState(),
-            [BALANCE_STATE_LIFECYCLE_KEY]: planLifecycle(persistentState, householdPlan) });
+            [BALANCE_STATE_LIFECYCLE_KEY]: buildBalancePlanLifecycle(persistentState, householdPlan,
+                { profiles: profilverbundRuns || [], advance: false }) });
         return { persisted: true, kind: BALANCE_UPDATE_MODE.PERSIST_INPUTS };
     }
 
@@ -584,11 +582,19 @@ export function persistBalanceUpdate({
     }
 
     const lifecycle = buildBalanceLifecycleMetadata(persistentState, periodId, fingerprints);
-    if (householdPlan) lifecycle.planInputEvidence = planLifecycle(persistentState, householdPlan).planInputEvidence;
+    if (householdPlan) lifecycle.planInputEvidence = buildBalancePlanLifecycle(persistentState, householdPlan).planInputEvidence;
     if (hasProfilverbundRuns) {
         profilverbundHandlers.persistProfilverbundProfileStates(profilverbundRuns, {
             lifecycle
         });
+        // Der geöffnete Außenbereich gehört nicht zwingend zu den Runs.
+        // Die haushaltsweite Planevidenz bestätigt trotzdem den beschlossenen Plan.
+        if (householdPlan) {
+            const current = storageManager.loadState();
+            storageManager.saveState({ ...current, [BALANCE_STATE_LIFECYCLE_KEY]: {
+                ...current[BALANCE_STATE_LIFECYCLE_KEY], planInputEvidence: lifecycle.planInputEvidence
+            } });
+        }
     } else {
         storageManager.saveState({
             ...persistentState,
@@ -604,13 +610,13 @@ export function persistBalanceUpdate({
     };
 }
 
-function planLifecycle(state, plan) {
+export function buildBalancePlanLifecycle(state, plan, { profiles = [], advance = true } = {}) {
     const lifecycle = state?.[BALANCE_STATE_LIFECYCLE_KEY] || {};
     if (!plan) return lifecycle;
-    const input = projectPlanToBalance(plan.entry.values);
-    const fields = ['floorBedarf', 'flexBedarf', 'minimumFlexAnnual', 'flexBudgetAnnual', 'flexBudgetYears', 'flexBudgetRecharge'];
+    const input = advance ? projectPlanToBalance(plan.entry.values)
+        : projectBalancePlanHistory(state, profiles, plan).persistentState.inputs;
     return { ...lifecycle, planInputEvidence: { ...lifecycle.planInputEvidence,
-        [plan.scope.key]: Object.fromEntries(fields.map(key => [key, input[key]])) } };
+        [plan.scope.key]: selectGuardrailPlanInputs(input) } };
 }
 
 export function calculateExpensesBudget({ fixedIncomeAnnual = 0, monthlyWithdrawal = 0 }) {

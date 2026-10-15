@@ -347,7 +347,7 @@ console.log('Personendaten: echte Kernwerte, Datumshinweise und sichere Textknot
     assert(!nodes.managerBirthSupplement.hidden, 'Aktuelles Profil ohne Geburtstag zeigt Ergänzungsband');
     renderManagerPersonData(doc, { ...profile, householdRole: 'Partnerprofil', values: { ...profile.values, genderAssumed: false } });
     assertEqual(nodes.profileGenderStatus.textContent, '', 'Explizites m zeigt keine Herkunftswarnung');
-    assert(!tax.hidden, 'Steuerquote bleibt beim wirksamen Partner sichtbar');
+    assert(tax.hidden, 'FR-11: Alte Steuerquote bleibt auch beim Partner verborgen');
 }
 
 // Ein einziger alltagssprachlicher Kalenderhinweis unter Rentenbeginn.

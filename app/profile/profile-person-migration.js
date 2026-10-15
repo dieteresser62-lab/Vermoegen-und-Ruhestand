@@ -114,8 +114,7 @@ export function buildPersonMigrationDraft(records, { referenceYear = appNow().ge
         collectCandidates(person.id === currentId ? live : person.data, person.name, P1, append);
         if (person.id === currentId) collectCandidates(originals[person.id] || {}, `${person.name} · Registry`, P1, append);
         // Der alte Profilmerge verwendete ohne eigenen kanonischen Wert 0 %.
-        // Eine abweichende gespeicherte P2-Steuerquote benötigt deshalb auch
-        // ohne weitere Quelle eine sichtbare Entscheidung gegen diese Basis.
+        // Diese Altbasis bleibt lesbar. FR-11 zeigt dafür keine Auswahl mehr.
         if (!person.candidates.renteSteuerquotePct?.length) {
             append('renteSteuerquotePct', 0, 'Bisherige wirksame Profilmerge-Basis: 0 %');
         }
@@ -255,7 +254,7 @@ export function migratePersonData({ storage = PersistenceFacade, archive = Snaps
         unchanged();
         const choices = {};
         let explicitlyAccepted = false;
-        const conflictRows = person => Object.entries(person.candidates).filter(([, candidates]) => candidates.length > 1).map(([field, candidates]) => {
+        const conflictRows = person => Object.entries(person.candidates).filter(([field, candidates]) => field !== 'renteSteuerquotePct' && candidates.length > 1).map(([field, candidates]) => {
             const preferred = preferredMigrationCandidate(person, field);
             return { id: `${person.id}:${field}`, kind: 'radio', selected: String(preferred),
                 label: (draft.people.filter(p => p.needed).length > 1 ? `${person.name} · ` : '')
@@ -274,7 +273,8 @@ export function migratePersonData({ storage = PersistenceFacade, archive = Snaps
             unchanged();
             const release = storage.blockSyncWrites?.(Object.keys(original), 'Personenübernahme läuft – bitte warten.', { prefixes: ['profile_', 'sim_'] });
             try {
-                await storage.replaceRecordsTransactional(next, { allowKey: isAllowedSnapshotCaptureKey, expectedRecords: original, navigationOperation: operation });
+                await storage.replaceRecordsTransactional(next, { probelaufDomainWrite: true,
+                    allowKey: isAllowedSnapshotCaptureKey, expectedRecords: original, navigationOperation: operation });
                 committed = true;
             } catch (error) {
                 if (error.code === 'rollback_failed') storage.blockSyncWrites?.([...Object.keys(original), ...Object.keys(next)],

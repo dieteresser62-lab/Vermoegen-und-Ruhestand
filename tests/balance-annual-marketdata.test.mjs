@@ -431,13 +431,13 @@ try {
         let net = 0;
         global.fetch = () => { net++; throw new Error('Kein Netz'); };
         for (const year of [2026, 2025]) {
-            const inflation = { year, rate: 2.5, source: 'Probelauf · synthetisch', dataAsOf: `${year}-12-31`, fetchStatus: 'ok_synthetic' };
+            const inflation = { year, rate: 2.5, source: 'Spielbereich · synthetisch', dataAsOf: `${year}-12-31`, fetchStatus: 'ok_synthetic' };
             seedAnnualState('calendar-year:2026', { inflation });
             const dom = createDom();
             const { handlers } = createHandlers(dom);
             const result = await handlers.handleNachrueckenMitETF();
             const meta = JSON.parse(localStorage.getItem(CONFIG.STORAGE.LS_KEY)).annualMarketDataMeta;
-            assertEqual(result.source, 'Probelauf · synthetisch', 'ETF-Ergebnis nennt synthetische Herkunft');
+            assertEqual(result.source, 'Spielbereich · synthetisch', 'ETF-Ergebnis nennt synthetische Herkunft');
             assertEqual(meta.source, result.source, 'ETF-Meta trägt Herkunft');
             assertEqual(meta.targetYear, 2026, 'ETF-Meta trägt Abschlussjahr');
             assertEqual(JSON.stringify(meta.inflation), year === 2026 ? JSON.stringify(inflation) : undefined, 'Nur aktuelle Inflationsmeta überlebt ETF-Neuaufbau');

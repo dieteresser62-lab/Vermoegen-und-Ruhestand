@@ -69,6 +69,8 @@ Core kopiert und normalisiert den Input. Einige fehlende Vermögenswerte werden 
 
 Ein positiver `capeRatio` hat bei der Normalisierung Vorrang vor `marketCapeRatio`. Wenn beide Felder vorliegen, prüft der Validator beide. `decumulation` wird auf `standard` oder `3_bucket_jilge` normalisiert; weitere alte Modusnamen sind Kompatibilitätseingaben.
 
+`finalizeThreeBucketAction: true` finalisiert bei `3_bucket_jilge` die vollständige Jahresaktion vor dem Steuerabschluss; Balance und Simulator setzen diese Option. Ein schlechtes Jahr wird an Kursrendite minus Inflation gemessen. Die vollständige Umschichtung wird vor der Auszahlung geplant: Geplante Anleihenverkäufe mindern den Bestand, erst danach wird der Rest auf das Ziel aufgefüllt. Der zusätzliche Aktienverkauf nutzt nur den noch freien Sparerpauschbetrag; sein Bruttobetrag wahrt die Aktienreserve. Reicht der Aktienbestand nicht, bleibt die Auffüllung begrenzt. Ein über das Kaufziel hinausgehender Nettoerlös fließt in Liquidität.
+
 `lastState` ist der explizite zweite Parameter. Er trägt unter anderem die Inflations-, Flex-, Budget-, Safety- und Steueranker. Core liest den Verlustvortrag daraus und liefert den nächsten unter `newState.taxState`. Die Engine speichert diesen State nicht. Balance entscheidet über den bestätigten Jahreswrite; Simulator und Worker reichen den State innerhalb ihres eigenen Pfads weiter. Aufrufer müssen einen passenden Vorjahresstate liefern, nicht das Ergebnis einer beliebigen Vorschau.
 
 ## Ergebnisse und Diagnose

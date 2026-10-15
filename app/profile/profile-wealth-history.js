@@ -140,6 +140,9 @@ export function projectProfileWealthHistory(registry, persons, options) {
         }
     });
     const result = evaluateWealthHistory({ ...options, profiles });
+    if (profiles.some(profile => (!options.profileId || options.profileId === profile.id)
+        && (options.profileId || profile.belongsToHousehold !== false)
+        && profile.cashHistory?.entries.some(entry => entry.source === 'spielwert'))) result.cashPlayValues = true;
     const manuallyCorrected = profiles.some(profile => (!options.profileId || options.profileId === profile.id)
         && (options.profileId || profile.belongsToHousehold !== false)
         && profile.lots.some(lot => lot.manualCorrectionAt && (!options.assetType || options.assetType === lot.tranche.type)));

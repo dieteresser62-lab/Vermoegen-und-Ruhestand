@@ -8,8 +8,9 @@ const snapshotTitles = {
     'monthly-close-pre-mutation': 'Vor dem Monatsabschluss',
     'person-data-migration-recovery': 'Vor der Umstellung der Personendaten',
     'household-plan-migration-recovery': 'Vor der Umstellung von Haushalt & Plan',
-    'probelauf-before': 'Vor dem Probelauf',
-    'new-beginning-before': 'Vor Neu beginnen'
+    'probelauf-before': 'Vor dem Spielbereich',
+    'new-beginning-before': 'Vor Neu beginnen',
+    'probelauf-transfer-before': 'Vor Übernahme aus dem Spielbereich'
 };
 export function snapshotTitle(point) {
     if (Object.hasOwn(snapshotTitles, point.kind)) {

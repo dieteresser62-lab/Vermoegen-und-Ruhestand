@@ -2,7 +2,7 @@ import { getAppTestDate } from './app-clock.js';
 import { bindInfoPopovers } from './designsystem-info-popover.js';
 
 export const PROBELAUF_PRICE_LABEL = 'Testkurse, nicht echt';
-export const PROBELAUF_PRICE_EXPLANATION = 'Der Probelauf bewertet Wertpapiere mit künstlichen Testkursen, damit er ohne Netz und für jedes Testdatum funktioniert. Stückzahlen und Tagesgeld stammen aus den Daten, mit denen der Probelauf gestartet wurde; beim Muster-Haushalt aus dem Muster.';
+export const PROBELAUF_PRICE_EXPLANATION = 'Der Spielbereich bewertet Wertpapiere mit künstlichen Testkursen, damit er ohne Netz und für jedes Testdatum funktioniert. Stückzahlen und Tagesgeld stammen aus den Daten, mit denen der Spielbereich gestartet wurde; beim Muster-Haushalt aus dem Muster.';
 
 const quoteBindings = new WeakMap();
 
@@ -21,7 +21,7 @@ export function renderProbelaufPriceInfo(doc) {
  * Die Seitenrenderer schreiben sie nach Profilwechsel und Kursaktionen neu. */
 export function bindProbelaufQuoteContext(doc, state) {
     const binding = quoteBindings.get(doc);
-    if (!state) {
+    if (!state || state.testDate === null) {
         if (!binding) return;
         binding.observer?.disconnect();
         for (const [host, original] of binding.originals) {

@@ -1,5 +1,6 @@
 // @ts-check
 
+import { PLAY_DB_NAME } from './persistence-area-storage.js';
 import { CONFIG } from '../balance/balance-config.js';
 import { isAllowedSnapshotCaptureKey, isLegacySnapshotKey } from './persistence-key-policy.js';
 
@@ -163,7 +164,7 @@ function createLegacyMigrationReport() {
 }
 
 export function createIndexedDbAdapter(options = {}) {
-    const dbName = options.dbName || DEFAULT_DB_NAME;
+    const dbName = options.dbName || (options.area === 'spiel' ? PLAY_DB_NAME : DEFAULT_DB_NAME);
     const dbVersion = options.dbVersion || DEFAULT_DB_VERSION;
     const indexedDb = options.indexedDB || globalThis.indexedDB;
     let db = null;
@@ -349,6 +350,7 @@ export function createIndexedDbAdapter(options = {}) {
             assertUsable();
             const database = await ensureOpen();
             const report = createLegacyMigrationReport();
+            if (options.skipLegacySnapshotMigration) return report;
             const migrationMarker = await this.readMetadata(LEGACY_SNAPSHOT_MIGRATION_METADATA_KEY);
             const kvStore = getStore(database, KV_STORE);
             const snapshotStore = getStore(database, SNAPSHOT_STORE);
@@ -412,7 +414,7 @@ export function createIndexedDbAdapter(options = {}) {
             }
 
             const cleanupMarker = await this.readMetadata(LEGACY_SNAPSHOT_DB_CLEANUP_METADATA_KEY);
-            if (!cleanupMarker?.completedAt && indexedDb?.deleteDatabase) {
+            if (options.area !== 'spiel' && !cleanupMarker?.completedAt && indexedDb?.deleteDatabase) {
                 try {
                     const cleanup = await deleteDatabaseToPromise(indexedDb, LEGACY_SNAPSHOT_DB_NAME);
                     if (cleanup.deleted) {

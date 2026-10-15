@@ -86,7 +86,8 @@ export function projectTrancheHistory(tranche, context, profileId) {
         const course = evaluateHistoryCourse({ tranche, ...context });
         const record = course.symbol ? context.prices.symbols[course.symbol] : null;
         const chain = reconstructHistoryShares(tranche, context.events.filter(event => event.profileId === profileId));
-        const sales = chain.changes.map(change => ({ day: change.day, shares: change.sale.actual.sharesSold }));
+        const sales = chain.changes.map(change => ({ day: change.day, shares: change.sale.actual.sharesSold,
+            ...(change.sale.source === 'spielwert' ? { source: 'spielwert' } : {}) }));
         const gaps = course.symbol ? historyGaps(course.range.start, course.range.end, record?.queried || []) : [];
         const notes = [];
         if (!course.symbol) notes.push('Kein Kursverlauf ohne Ticker.');
@@ -127,14 +128,14 @@ export function buildTrancheHistoryDetail(tranche, history) {
     }
     const coverage = states.map(part => `<span class="history-coverage-${part.state}" style="flex-grow:${part.count}" title="${date(historyDate(part.start))}–${date(historyDate(part.end))}: ${part.state === 'gap' ? 'ungeprüfte Werktage' : part.state === 'queried' ? 'geprüft' : 'Wochenende ohne Prüfung'}"></span>`).join('');
     return `<section class="pv-history-detail" aria-label="Kursverlauf ${escapeHtml(tranche.name)}">
-        <div class="pv-history-facts"><strong>${escapeHtml(tranche.name)}</strong><span>Stück heute <b>${formatDisplayNumber(tranche.shares, { fractionDigits: 3, minimumFractionDigits: 0 })}</b></span>
+        <div class="pv-history-facts"><strong>${escapeHtml(tranche.name)}${tranche.source === 'spielwert' ? ' · Spielwert' : ''}</strong><span>Stück heute <b>${formatDisplayNumber(tranche.shares, { fractionDigits: 3, minimumFractionDigits: 0 })}</b></span>
         <span>Kurs ${last?.priceDay != null ? date(historyDate(last.priceDay)) : 'nicht verfügbar'} <b>${escapeHtml(Number.isFinite(last?.value) ? formatDisplayNumber(last.value, { unit: 'price', fractionDigits: 2 }) : '—')}</b></span>
         <span>Wert des heutigen Bestands <b>${escapeHtml(money(tranche.marketValue))}</b></span><span>Tageskurse gespeichert <b>${record?.days.length || 0}</b></span></div>
         <div class="history-coverage"><span>Kursabdeckung · ${date(course.range.startDate)} bis ${date(course.range.endDate)}</span>
         ${buildHistoryMeasurementHtml(course.measurementStart, course.status, course.range.start)}
         <div class="history-coverage-bar" role="img" aria-label="${escapeHtml(history.message)}">${course.symbol ? coverage : ''}</div><p class="history-note">${escapeHtml(message)}</p></div>
         <div class="pv-course-chart" ${course.symbol ? '' : 'hidden'}>${course.symbol ? renderHistoryCourseSvg(course, { title: `Kursverlauf ${tranche.name}`, sales, purchaseDate: tranche.purchaseDate }) : ''}</div>
-        ${sales.length ? `<ul class="pv-history-sales">${sales.filter(sale => sale.day >= course.range.start && sale.day <= course.range.end).map(sale => `<li>Verkauf ${date(historyDate(sale.day))} · ${formatDisplayNumber(sale.shares, { fractionDigits: 3, minimumFractionDigits: 0 })} Stück</li>`).join('')}</ul>` : ''}
+        ${sales.length ? `<ul class="pv-history-sales">${sales.filter(sale => sale.day >= course.range.start && sale.day <= course.range.end).map(sale => `<li>Verkauf ${date(historyDate(sale.day))} · ${formatDisplayNumber(sale.shares, { fractionDigits: 3, minimumFractionDigits: 0 })} Stück${sale.source === 'spielwert' ? ' · Spielwert' : ''}</li>`).join('')}</ul>` : ''}
         <small>Schlusskurse bis ${date(course.range.endDate)} · Kaufpreislinie · Kursentwicklung unabhängig von Verkäufen.</small></section>`;
 }
 

@@ -1,8 +1,9 @@
 // @ts-check
 
+import { replaceRecordsTransactionalWith } from './persistence-transaction.js';
 import { createLocalStorageAdapter } from './persistence-adapter-localstorage.js';
-import { createIndexedDbAdapter } from './persistence-adapter-indexeddb.js';
-import { createTauriJsonFileAdapter } from './persistence-adapter-tauri.js';
+import { createPersistenceAreas } from './persistence-areas.js';
+import { AREA_CONTROL_KEY, areaSessionStorage, scopeWebStorage, setStorageArea, resolveLocalArea } from './persistence-area-storage.js';
 import { detectRuntime } from './runtime-env.js';
 import { getPageNavigationGuard } from './navigation-guard-dialog.js';
 import { createNavigationOperationLifecycle } from './navigation-guard.js';
@@ -20,6 +21,12 @@ const LOCAL_SNAPSHOT_ARCHIVE_KEY = 'rs_snapshot_archive_v1';
 const LOCAL_SNAPSHOT_ARCHIVE_SCHEMA_VERSION = 1;
 const MARKER_KEY_SET = new Set(Object.values(LEGACY_MIGRATION_MARKER_KEYS));
 
+let areaManager = null;
+let areaControl = { activeArea: 'echt' };
+let areaReloadRequired = false;
+let synchronousAreaResolved = false;
+let synchronousStorage = null;
+let synchronousControlRaw = null;
 let adapter = createLocalStorageAdapter();
 let adapterExplicitlyConfigured = false;
 let memCache = Object.create(null);
@@ -35,6 +42,7 @@ let tauriCloseBinding = null;
 let lastFlushError = null;
 let flushChain = Promise.resolve();
 let migrationWarning = null;
+let areaWarning = null;
 const syncWriteBlocks = new Map();
 let probelaufProtection = null;
 let persistenceWindow = globalThis.window;
@@ -42,6 +50,9 @@ let fallbackWriteChain = null;
 export function setProbelaufProtection(protection) { probelaufProtection = protection; }
 async function persistentWrite(execute, options = {}, needsProtection = () => true) {
     const run = async () => {
+        if (!initialized && !adapterExplicitlyConfigured) await init();
+        assertAreaWritable();
+        if (areaManager) await areaManager.assertCurrent();
         if (needsProtection() && probelaufProtection?.checkCurrent) await probelaufProtection.checkCurrent();
         // Nur der interne Folgewriter erhält diesen Flushbesitz. Ein unabhängiger
         // Lifecycleflush wartet weiter am Lock und wird niemals über eine globale
@@ -71,7 +82,7 @@ export async function withProbelaufOperation(execute, win = persistenceWindow, {
 } = {}) {
     const deadline = clock() + timeoutMs;
     const busyError = (foreign = false) => {
-        const error = new Error(foreign ? 'Eine andere Seite führt gerade eine Probelauf-Aktion aus.'
+        const error = new Error(foreign ? 'Eine andere Seite führt gerade eine Spielbereich-Aktion aus.'
             : 'Gerade wird noch gespeichert. Bitte in ein paar Sekunden erneut versuchen.');
         error.code = foreign ? 'PROBELAUF_OTHER_PAGE' : 'PROBELAUF_COMMIT_BUSY';
         return error;
@@ -264,18 +275,6 @@ async function collectAllowedLegacyRecords(storage = globalThis.localStorage) {
     return records;
 }
 
-function resolveRuntimeAdapter(options = {}) {
-    if (options.adapter) return options.adapter;
-    const runtime = detectRuntime(options.window || globalThis.window);
-    if (runtime === 'tauri') {
-        return createTauriJsonFileAdapter({ invoke: options.invoke });
-    }
-    if (runtime === 'browser' && (options.indexedDB || globalThis.indexedDB)?.open) {
-        return createIndexedDbAdapter({ indexedDB: options.indexedDB || globalThis.indexedDB });
-    }
-    return createLocalStorageAdapter();
-}
-
 function getMigrationTargetForAdapter(activeAdapter) {
     if (activeAdapter?.name === 'IndexedDB') return INDEXEDDB_MIGRATION_TARGET;
     if (activeAdapter?.name === 'Tauri JSON File') return TAURI_MIGRATION_TARGET;
@@ -294,7 +293,7 @@ async function migrateLegacyLocalStorageToTargetIfNeeded(activeAdapter, loadedRe
     const migratedTarget = storage.getItem(LEGACY_MIGRATION_MARKER_KEYS.target);
 
     if (!hasTargetRecords && storage.getItem(PROBELAUF_STATE_KEY) !== null) {
-        throw new Error('Probelauf-Recovery: Der aktive LocalStorage-Rückkehrpunkt darf nicht automatisch in einen anderen Speicher migriert werden.');
+        throw new Error('Spielbereich-Recovery: Der aktive LocalStorage-Rückkehrpunkt darf nicht automatisch in einen anderen Speicher migriert werden.');
     }
 
     if (hasTargetRecords || !hasLegacyRecords) {
@@ -348,10 +347,15 @@ export async function init(options = {}) {
     persistenceWindow = options.window || globalThis.window;
     initPromise = (async () => {
         if (!adapterExplicitlyConfigured) {
-            adapter = resolveRuntimeAdapter(options);
+            areaManager = createPersistenceAreas(options);
+            const resolved = await areaManager.resolve();
+            adapter = resolved.adapter;
+            areaControl = resolved.control;
+            areaWarning = areaWarning || resolved.warning;
+            setStorageArea(areaControl.activeArea);
         }
         let loadedRecords;
-        let skipLegacyMigration = false;
+        let skipLegacyMigration = Boolean(migrationWarning || areaWarning);
         try {
             await adapter.open?.();
             loadedRecords = toNullPrototypeRecords(await adapter.loadAll());
@@ -367,7 +371,8 @@ export async function init(options = {}) {
         }
         const migrationResult = skipLegacyMigration
             ? { records: loadedRecords, warning: null }
-            : await migrateLegacyLocalStorageToTargetIfNeeded(adapter, loadedRecords, options);
+            : await migrateLegacyLocalStorageToTargetIfNeeded(adapter, loadedRecords, { ...options,
+                localStorage: areaManager ? areaManager.localStorage(areaControl.activeArea) : options.localStorage });
         memCache = toNullPrototypeRecords(migrationResult.records);
         migrationWarning = migrationWarning || migrationResult.warning;
         initialized = true;
@@ -392,16 +397,44 @@ export function isInitialized() {
     return initialized;
 }
 
+function resolveSynchronousArea() {
+    if (initialized || adapterExplicitlyConfigured) return true;
+    // Tauri und IndexedDB warten auf init(); nur der Storage-Fallback ist synchron.
+    if (detectRuntime() === 'tauri' || globalThis.indexedDB?.open) return false;
+    const storage = globalThis.window?.localStorage || globalThis.localStorage;
+    if (synchronousAreaResolved && storage === synchronousStorage) {
+        if ((storage?.getItem(AREA_CONTROL_KEY) ?? null) !== synchronousControlRaw) throw new Error('Speicherbereich geändert. Bitte neu laden.');
+        return true;
+    }
+    const resolved = resolveLocalArea(storage);
+    areaControl = resolved.control;
+    areaWarning = resolved.warning;
+    setStorageArea(areaControl.activeArea);
+    adapter = createLocalStorageAdapter(() => storage, { area: areaControl.activeArea });
+    synchronousStorage = storage;
+    synchronousControlRaw = storage?.getItem(AREA_CONTROL_KEY) ?? null;
+    synchronousAreaResolved = true;
+    return true;
+}
+
+function assertAreaWritable() {
+    if (areaReloadRequired || !resolveSynchronousArea()) {
+        throw new Error('Speicherbereich noch nicht bereit oder geändert. Bitte neu laden.');
+    }
+}
+
 export function getItemSync(key) {
+    if (areaReloadRequired) throw new Error('Speicherbereich geändert. Bitte neu laden.');
     const normalized = String(key);
     if (initialized) {
         return hasOwn(memCache, normalized) ? memCache[normalized] : null;
     }
-    return adapter.getItemSync?.(normalized) ?? null;
+    return resolveSynchronousArea() ? adapter.getItemSync?.(normalized) ?? null : null;
 }
 
 export function setItemSync(key, value) {
     const normalized = String(key);
+    assertAreaWritable();
     assertSyncWriteAllowed(normalized);
     const stringValue = String(value);
     if (!initialized) {
@@ -417,6 +450,7 @@ export function setItemSync(key, value) {
 
 export function removeItemSync(key) {
     const normalized = String(key);
+    assertAreaWritable();
     assertSyncWriteAllowed(normalized);
     if (!initialized) {
         adapter.removeItemSync?.(normalized);
@@ -430,8 +464,9 @@ export function removeItemSync(key) {
 }
 
 export function keysSync() {
+    if (areaReloadRequired) throw new Error('Speicherbereich geändert. Bitte neu laden.');
     if (initialized) return Object.keys(memCache);
-    return adapter.keysSync?.() ?? [];
+    return resolveSynchronousArea() ? adapter.keysSync?.() ?? [] : [];
 }
 
 export function keySync(index) {
@@ -476,6 +511,9 @@ function captureRecordsByPolicy(allowKey) {
 }
 
 export async function readPersistedRecords(allowKey = () => true) {
+    if (!initialized && !adapterExplicitlyConfigured) await init();
+    assertAreaWritable();
+    if (areaManager) await areaManager.assertCurrent();
     if (typeof adapter?.loadAll !== 'function') {
         const error = new Error('Der Persistenzadapter unterstuetzt keinen verifizierenden Backend-Readback.');
         error.name = 'PersistenceBackendReadError';
@@ -495,155 +533,19 @@ export async function readPersistedRecords(allowKey = () => true) {
     return records;
 }
 
-function recordsMatch(expected, actual) {
-    const expectedKeys = Object.keys(expected).sort();
-    const actualKeys = Object.keys(actual).sort();
-    if (expectedKeys.length !== actualKeys.length) return false;
-    return expectedKeys.every((key, index) => (
-        key === actualKeys[index] &&
-        expected[key] === actual[key]
-    ));
-}
-
-function createPersistenceError(code, message) {
-    const error = new Error(message);
-    error.name = 'PersistenceError';
-    error.code = code;
-    return error;
-}
-
-function createFullReplacePlan(targetRecords, currentRecords, allowKey) {
-    const targetKeys = new Set(Object.keys(targetRecords));
-    return {
-        deleteKeys: Object.keys(currentRecords).filter(key => allowKey(key) && !targetKeys.has(key)),
-        upserts: Object.entries(targetRecords),
-        allowKey
-    };
-}
-
-function createRestoreError(cause, rollbackError = null) {
-    const error = new Error(
-        rollbackError
-            ? 'Persistenz-Restore fehlgeschlagen; auch der kompensierende Rollback konnte nicht verifiziert werden.'
-            : 'Persistenz-Restore fehlgeschlagen; der vorherige Livebestand wurde wiederhergestellt.'
-    );
-    error.name = 'PersistenceRestoreError';
-    error.code = rollbackError ? 'rollback_failed' : 'restore_rolled_back';
-    error.cause = cause;
-    error.rollbackError = rollbackError;
-    error.failureCode = cause?.code || 'persistence_transaction_write_failed';
-    error.rollbackCode = rollbackError?.code
-        || (rollbackError ? 'persistence_transaction_rollback_failed' : null);
-    return error;
-}
-
 export async function replaceRecordsTransactional(records, options = {}) {
     probelaufProtection?.mutation?.(options);
     // Fachkoordinatoren reichen ihren Besitzer explizit weiter. Bestehende
     // andere Domänen behalten ihre äußere Sperre ohne implizite Neuregistrierung.
     const lifecycle = createNavigationOperationLifecycle({ guard: options.guard ?? null });
     return lifecycle.run(options, async operation => {
-        return replaceRecordsTransactionalImpl(records, { ...options, navigationOperation: operation });
+        return replaceRecordsTransactionalWith({ flush, readPersistedRecords, captureRecordsByPolicy, replaceLiveRecords }, records, { ...options, navigationOperation: operation });
     });
 }
 
-async function replaceRecordsTransactionalImpl(records, options = {}) {
-    const allowKey = typeof options.allowKey === 'function' ? options.allowKey : () => true;
-    if (!records || typeof records !== 'object' || Array.isArray(records)) {
-        throw new Error('Restore-Records muessen ein Objekt sein.');
-    }
-
-    const targetRecords = Object.create(null);
-    Object.entries(records).forEach(([key, value]) => {
-        const normalizedKey = String(key);
-        if (!allowKey(normalizedKey)) {
-            throw new Error(`Persistenz-Key ${normalizedKey} ist fuer diesen Restore nicht erlaubt.`);
-        }
-        if (typeof value !== 'string') {
-            throw new Error(`Persistenzwert ${normalizedKey} muss als String vorliegen.`);
-        }
-        targetRecords[normalizedKey] = value;
-    });
-
-    await flush(options);
-    options.navigationOperation.check();
-    const previousRecords = await readPersistedRecords(allowKey);
-    options.navigationOperation.check();
-    // Optionaler optimistischer Vertrag: der gesicherte Rohbestand muss sowohl
-    // dauerhaft als auch im Cache noch gelten. Vor dem Commit gibt es nichts
-    // zurückzurollen; insbesondere darf ein fremder Write nicht ersetzt werden.
-    if (options.expectedRecords !== undefined
-        && (!recordsMatch(options.expectedRecords, previousRecords)
-            || !recordsMatch(options.expectedRecords, captureRecordsByPolicy(allowKey)))) {
-        throw createPersistenceError(
-            'persistence_precondition_mismatch',
-            'Der Rohbestand hat sich seit der Sicherung geändert. Bitte neu laden und erneut prüfen.'
-        );
-    }
-    const replacePlan = createFullReplacePlan(targetRecords, previousRecords, allowKey);
-
-    options.navigationOperation.commit();
-    try {
-        await replaceLiveRecords(targetRecords, {
-            ...options,
-            ...replacePlan,
-            restoreLock: true
-        });
-        const confirmedRecords = await readPersistedRecords(allowKey);
-        const confirmedCache = captureRecordsByPolicy(allowKey);
-        if (!recordsMatch(targetRecords, confirmedRecords) || !recordsMatch(targetRecords, confirmedCache)) {
-            throw createPersistenceError(
-                'persistence_readback_mismatch',
-                'Backend oder Cache stimmt nicht mit dem Restore-Ziel ueberein.'
-            );
-        }
-        if (typeof options.postValidate === 'function') {
-            const validationResult = await options.postValidate(confirmedRecords);
-            if (validationResult === false || validationResult?.ok === false) {
-                throw new Error(validationResult?.message || 'Die Post-Load-Validierung ist fehlgeschlagen.');
-            }
-        }
-        return {
-            ok: true,
-            previousRecords,
-            records: confirmedRecords,
-            deletedCount: replacePlan.deleteKeys.length,
-            upsertCount: replacePlan.upserts.length
-        };
-    } catch (cause) {
-        let rollbackError = null;
-        try {
-            const currentRecords = await readPersistedRecords(allowKey);
-            const rollbackVisibleKeys = Object.fromEntries(
-                [...new Set([
-                    ...Object.keys(currentRecords),
-                    ...Object.keys(targetRecords)
-                ])].map(key => [key, currentRecords[key] ?? targetRecords[key]])
-            );
-            const rollbackPlan = createFullReplacePlan(previousRecords, rollbackVisibleKeys, allowKey);
-            await replaceLiveRecords(previousRecords, {
-                ...options,
-                ...rollbackPlan,
-                postValidate: undefined,
-                restoreLock: true
-            });
-            const confirmedRollback = await readPersistedRecords(allowKey);
-            const confirmedRollbackCache = captureRecordsByPolicy(allowKey);
-            if (!recordsMatch(previousRecords, confirmedRollback)
-                || !recordsMatch(previousRecords, confirmedRollbackCache)) {
-                throw createPersistenceError(
-                    'persistence_rollback_readback_mismatch',
-                    'Backend oder Cache ist nach dem Rollback nicht bytegleich zum vorherigen Livebestand.'
-                );
-            }
-        } catch (error) {
-            rollbackError = error;
-        }
-        throw createRestoreError(cause, rollbackError);
-    }
-}
 
 export async function importAll(bundle, options = {}) {
+    if (!initialized && !adapterExplicitlyConfigured) await init();
     probelaufProtection?.mutation?.(options);
     const records = bundle?.records || {};
     const requestedPolicy = typeof options.allowKey === 'function' ? options.allowKey : () => true;
@@ -666,6 +568,9 @@ export async function importAll(bundle, options = {}) {
 }
 
 export async function listSnapshots() {
+    if (!initialized && !adapterExplicitlyConfigured) await init();
+    assertAreaWritable();
+    if (areaManager) await areaManager.assertCurrent();
     if (typeof adapter?.listSnapshots === 'function') {
         return adapter.listSnapshots();
     }
@@ -677,6 +582,9 @@ export async function listSnapshots() {
 }
 
 export async function readSnapshot(id) {
+    if (!initialized && !adapterExplicitlyConfigured) await init();
+    assertAreaWritable();
+    if (areaManager) await areaManager.assertCurrent();
     if (typeof adapter?.readPersistedSnapshot === 'function') return adapter.readPersistedSnapshot(String(id || ''));
     if (typeof adapter?.readSnapshot === 'function') {
         return adapter.readSnapshot(String(id || ''));
@@ -751,6 +659,9 @@ async function deleteSnapshotImpl(id, options, flushOwned) {
 }
 
 export async function migrateLegacySnapshotsIfNeeded() {
+    if (!initialized && !adapterExplicitlyConfigured) await init();
+    assertAreaWritable();
+    if (areaManager) await areaManager.assertCurrent();
     if (typeof adapter?.migrateLegacySnapshotsIfNeeded === 'function') {
         return adapter.migrateLegacySnapshotsIfNeeded();
     }
@@ -894,21 +805,31 @@ export function getDirtyState() {
 export function getPersistenceStatus() {
     return {
         initialized,
+        activeArea: areaControl.activeArea,
+        areaControl: { ...areaControl },
+        reloadRequired: areaReloadRequired,
         backend: adapter?.name || 'unknown',
-        recordCount: keysSync().length,
+        recordCount: initialized ? Object.keys(memCache).length : keysSync().length,
         migrationWarning,
+        areaWarning,
         lastFlushError
     };
 }
 
 export async function getMetadata(key) {
+    if (!initialized && !adapterExplicitlyConfigured) await init();
+    assertAreaWritable();
+    if (areaManager) await areaManager.assertCurrent();
     return adapter.readMetadata?.(key) ?? null;
 }
 
 /** Gerätepräferenzen liegen bisher direkt im Web Storage. */
 export async function captureNewBeginningPreferences(win = persistenceWindow) {
+    if (!initialized && !adapterExplicitlyConfigured) await init();
+    assertAreaWritable();
+    if (areaManager) await areaManager.assertCurrent();
     const { isSnapshotTechnicalKey } = await import('./persistence-key-policy.js');
-    const storage = win?.localStorage, result = Object.create(null);
+    const storage = scopeWebStorage(win?.localStorage, areaControl.activeArea), result = Object.create(null);
     for (let i = 0; i < (storage?.length || 0); i++) {
         const key = storage.key(i);
         if (isSnapshotTechnicalKey(key)) result[key] = storage.getItem(key);
@@ -920,11 +841,14 @@ export async function captureNewBeginningPreferences(win = persistenceWindow) {
  * Fachrecords werden ausschließlich durch den Adapter ersetzt. */
 export async function resetNewBeginningBrowserStorage({ window: win = persistenceWindow, deleteSnapshots = false,
     records = {}, navigationOperation } = {}) {
+    if (!initialized && !adapterExplicitlyConfigured) await init();
+    assertAreaWritable();
+    if (areaManager) await areaManager.assertCurrent();
     const { isAllowedPersistenceImportKey, isSnapshotTechnicalKey } = await import('./persistence-key-policy.js');
     navigationOperation?.check();
     const owned = key => isAllowedPersistenceImportKey(key) || isSnapshotTechnicalKey(key)
         || key === PROBELAUF_STATE_KEY || deleteSnapshots && key === LOCAL_SNAPSHOT_ARCHIVE_KEY;
-    const local = win?.localStorage;
+    const local = scopeWebStorage(win?.localStorage, areaControl.activeArea);
     // Der Fallback-Hauptspeicher wurde bereits transaktional geschrieben.
     if (local && !isLocalStorageFallbackAdapter()) {
         const keys = Array.from({ length: local.length }, (_, i) => local.key(i)).filter(owned);
@@ -934,7 +858,7 @@ export async function resetNewBeginningBrowserStorage({ window: win = persistenc
             if (local.getItem(key) !== (isSnapshotTechnicalKey(key) ? records[key] ?? null : null)) throw new Error('Browser-Einstellungen konnten nicht bestätigt werden.');
         }
     }
-    const session = win?.sessionStorage;
+    const session = areaSessionStorage(win?.sessionStorage);
     if (session) {
         const keys = Array.from({ length: session.length }, (_, i) => session.key(i))
             .filter(key => owned(key) || key.startsWith('rs_') || key.startsWith('balance.annual-retry.'));
@@ -957,6 +881,7 @@ export function observeInputChanges(notify, doc = globalThis.document) {
 export function bindLifecycleFlush(doc = globalThis.document, win = globalThis.window) {
     if (lifecycleBindings.length > 0) return;
     const requestFlush = () => {
+        if (areaReloadRequired) return;
         flush().catch(err => console.error('[PersistenceFacade] lifecycle flush failed:', err));
     };
     const visibilityHandler = () => {
@@ -1107,6 +1032,14 @@ export function resetPersistenceForTests(nextAdapter = createLocalStorageAdapter
     fallbackWriteChain = null;
     clearScheduledFlush();
     unbindLifecycleFlush();
+    adapter.close?.();
+    areaManager = null;
+    areaControl = { activeArea: 'echt' };
+    areaReloadRequired = false;
+    synchronousAreaResolved = false;
+    synchronousStorage = null;
+    synchronousControlRaw = null;
+    setStorageArea('echt');
     adapter = nextAdapter;
     adapterExplicitlyConfigured = true;
     memCache = Object.create(null);
@@ -1119,15 +1052,133 @@ export function resetPersistenceForTests(nextAdapter = createLocalStorageAdapter
     lastFlushError = null;
     flushChain = Promise.resolve();
     migrationWarning = null;
+    areaWarning = null;
     lifecycleBindToken += 1;
 }
 
 export function resetPersistenceRuntimeForTests() {
     resetPersistenceForTests(createLocalStorageAdapter());
     adapterExplicitlyConfigured = false;
+    setStorageArea(null);
+}
+
+/** Nur lesend, auch Migrationen und Quarantäne sind hier ausgeschlossen. */
+export async function readRealRecords() {
+    await init();
+    if (!areaManager) throw new Error('Speicherbereiche benötigen einen Laufzeitadapter.');
+    return toNullPrototypeRecords(await areaManager.readRealRecords());
+}
+
+export async function readRealSnapshots() {
+    await init();
+    if (!areaManager) throw new Error('Speicherbereiche benötigen einen Laufzeitadapter.');
+    return areaManager.readRealSnapshots();
+}
+
+/** Fundament für SB-2: Nach Aktivieren/Verwerfen ist ein Dokumentneustart nötig. */
+export async function activatePlayArea(input, options = {}) {
+    await init();
+    if (!areaManager || areaControl.activeArea !== 'echt') throw new Error('Spielbereich kann hier nicht aktiviert werden.');
+    const activate = async () => {
+        if (dirtyKeys.size || deletedKeys.size) throw new Error('Bitte zuerst die echten Eingaben speichern.');
+        areaReloadRequired = true;
+        try { await areaManager.activate(input); }
+        catch (error) { areaReloadRequired = false; throw error; }
+    };
+    return probelaufProtection?.ownsWrites?.(options) ? activate() : withProbelaufOperation(activate);
+}
+
+export async function discardPlayArea(options = {}) {
+    await init();
+    if (!areaManager || areaControl.activeArea !== 'spiel') throw new Error('Kein Spielbereich aktiv.');
+    const discard = async () => {
+        areaReloadRequired = true;
+        clearScheduledFlush();
+        dirtyKeys.clear();
+        deletedKeys.clear();
+        await areaManager.discard(adapter);
+    };
+    return probelaufProtection?.ownsWrites?.(options) ? discard() : withProbelaufOperation(discard);
+}
+
+/** Einziger Schreibweg vom Spielbereich in den echten Bestand. */
+export async function adoptPlayArea({ state, expectedPlayChecksum, now = new Date() }, options = {}) {
+    await init();
+    if (!areaManager || areaControl.activeArea !== 'spiel' || state?.version !== 2 || state.phase !== 'active'
+        || !probelaufProtection?.ownsWrites?.(options)) throw new Error('Übernehmen ist hier gesperrt.');
+    const [{ buildProbelaufTransferRecords, probelaufDomainChecksum }, { probelaufTransferability, calculateProbelaufEndReview }, { SnapshotArchive, SNAPSHOT_KINDS }] = await Promise.all([
+        import('./probelauf-records.js'), import('./probelauf-comparison.js'), import('./snapshot-archive.js')
+    ]);
+    const allowKey = key => key !== PROBELAUF_STATE_KEY && key !== LOCAL_SNAPSHOT_ARCHIVE_KEY;
+    const playRecords = await readPersistedRecords();
+    if (playRecords[PROBELAUF_STATE_KEY] !== JSON.stringify(state)
+        || expectedPlayChecksum !== probelaufDomainChecksum(playRecords)) throw new Error('Deine Spieländerungen haben sich seit der Bestätigung geändert. Bitte erneut vergleichen.');
+    const realRecords = await readRealRecords();
+    const eligibility = probelaufTransferability(state, realRecords);
+    if (!eligibility.eligible) throw new Error(eligibility.reason === 'date' ? 'Nach Zeitsprüngen nicht übernehmbar.'
+        : eligibility.reason === 'demo' ? 'Max und Erika sind nicht übernehmbar.' : 'Deine echten Daten wurden seit dem Start geändert. Bitte erneut vergleichen.');
+    const target = buildProbelaufTransferRecords(realRecords, playRecords);
+    const review = await calculateProbelaufEndReview({ state, realRecords, playRecords: target, now });
+    const transfer = await areaManager.openRealTransfer();
+    const real = transfer.adapter;
+    const read = async (policy = () => true) => Object.fromEntries(Object.entries(await (real.readPersistedRecords ? real.readPersistedRecords() : real.loadAll())).filter(([key]) => policy(key)));
+    const storage = {
+        flush: async () => true,
+        readPersistedRecords: read,
+        captureRecordsByPolicy: async policy => Object.fromEntries(Object.entries(await real.loadAll()).filter(([key]) => policy(key))),
+        async replaceLiveRecords(records, plan) {
+            const current = await read();
+            await real.saveBatch({ deletes: plan.deleteKeys, upserts: plan.upserts.filter(([key, value]) => current[key] !== value) });
+        },
+        async writeSnapshot(point) {
+            if (real.writeSnapshot) return real.writeSnapshot(point);
+            const records = await read(), archive = normalizeSnapshotListArchive(records[LOCAL_SNAPSHOT_ARCHIVE_KEY]);
+            await real.saveBatch({ deletes: [], upserts: [[LOCAL_SNAPSHOT_ARCHIVE_KEY, serializeSnapshotListArchive([...archive.snapshots, point])]] });
+        },
+        async readSnapshot(id) {
+            if (real.readPersistedSnapshot) return real.readPersistedSnapshot(id);
+            if (real.readSnapshot) return real.readSnapshot(id);
+            return normalizeSnapshotListArchive((await read())[LOCAL_SNAPSHOT_ARCHIVE_KEY]).snapshots.find(point => point.id === id);
+        }
+    };
+    let replacing = false;
+    try {
+        const before = Object.fromEntries(Object.entries(realRecords).filter(([key]) => allowKey(key)));
+        if (JSON.stringify(Object.entries(await read(allowKey)).sort()) !== JSON.stringify(Object.entries(before).sort())) throw new Error('Der echte Bestand hat sich während der Prüfung geändert.');
+        options.navigationOperation.check();
+        const snapshot = await SnapshotArchive.createSnapshot({ id: `before_play_transfer_${globalThis.crypto.randomUUID()}`,
+            kind: SNAPSHOT_KINDS.probelaufTransferBefore, label: 'Vor Übernahme aus dem Spielbereich', records: before,
+            activeProfileId: before.rs_current_profile || before.rs_active_profile || '',
+            restoreScope: { profileRegistryMode: 'replace-all-rollback', profileLiveDataMode: 'replace-all-rollback', liveKeyMode: 'play-transfer' }
+        }, { storage, navigationOperation: options.navigationOperation });
+        const confirmed = await SnapshotArchive.readSnapshot(snapshot.id, { storage });
+        if (JSON.stringify(confirmed) !== JSON.stringify(snapshot)) throw new Error('Der Wiederherstellungspunkt konnte nicht bestätigt werden.');
+        // Dieselbe Transaktion wie bei Import/Zurückholen, auf dem echten Adapter.
+        replacing = true;
+        await replaceRecordsTransactionalWith(storage, target, { ...options, allowKey, expectedRecords: before });
+        await areaManager.finishTransfer(adapter);
+        areaReloadRequired = true;
+        clearScheduledFlush(); dirtyKeys.clear(); deletedKeys.clear();
+        return { changes: review.changes, monthlyBudget: review.play.monthlyBudget, year: review.play.year,
+            snapshotId: snapshot.id, snapshotLabel: snapshot.label, savedAt: new Date().toISOString() };
+    } catch (cause) {
+        // Der Transaktionsrollback sichert Records. Dieser Schritt holt zusätzlich
+        // die Originalbytes samt Backend-Zeitstempeln zurück.
+        if (replacing && cause.code !== 'persistence_precondition_mismatch') {
+            try { await transfer.rollback(); }
+            catch (rollbackError) { throw Object.assign(new Error('Übernahme fehlgeschlagen. Der echte Bestand konnte nicht bestätigt werden; bitte Daten & Sicherung prüfen. Der Spielbereich bleibt erhalten.'), { cause, rollbackError, code: 'rollback_failed' }); }
+        }
+        if (cause.code === 'rollback_failed') throw cause;
+        throw Object.assign(new Error(`Nicht übernommen: ${cause.message} Dein echter Bestand ist unverändert. Der Spielbereich bleibt erhalten.`), { cause });
+    } finally { transfer.close(); }
 }
 
 export const PersistenceFacade = {
+    readRealRecords,
+    readRealSnapshots,
+    activatePlayArea,
+    discardPlayArea,
+    adoptPlayArea,
     setProbelaufProtection,
     withProbelaufOperation,
     readPersistedRecords,

@@ -111,16 +111,15 @@ async function fixture({ hold = null, fail = false, snapshotFail = false, readba
     };
     // Weder Store, Nachfrage noch Guardmethoden werden ersetzt.
     controls = bindOverviewMonthClose({ doc, win, getModel: () => model, refresh }); refresh();
-    let controller = createProbelaufController({ win, guard, demoLoader: null, reload() {}, restoreReload() {} });
-    await controller.initialize();
+    // Dieser kontrollierte Adapter stellt den Spielbereich des Dialogtests dar.
     if (activeProbelauf) {
-        await controller.start(() => ({ source: 'copy', testDate: '2026-10-01' }));
-        // Frisches Controller-/Facadeleben auf demselben dauerhaften Bestand.
-        guard.revokeNative(); P.resetPersistenceForTests(adapter);
-        await P.init({ window: win, installLifecycleHooks: false, installTauriCloseHook: false });
-        controller = createProbelaufController({ win, guard, demoLoader: null, reload() {}, restoreReload() {} });
-        await controller.initialize();
+        P.setItemSync('rs_probelauf_state_v1', JSON.stringify({ version: 2, active: true, phase: 'active', source: 'copy', runtime: 'browser', testDate: '2026-10-01' }));
+        await P.flush();
     }
+    const controllerPersistence = activeProbelauf ? { ...P, getPersistenceStatus: () => ({ ...P.getPersistenceStatus(), activeArea: 'spiel' }) } : P;
+    const controller = createProbelaufController({ persistence: controllerPersistence, win, guard, demoLoader: null, reload() {}, restoreReload() {} });
+    await controller.initialize();
+
     events.length = 0;
     armed = true;
     return { doc, win, guard, controller, backend, events, entered, release, refresh, navigationOpened, expensesPreviewOpened,
@@ -480,7 +479,7 @@ for (const mode of ['normal', 'cancel', 'single', 'all', 'dialog', 'dialog-cance
         await bounded(job);
         if (['normal', 'cancel', 'dialog-cancel', 'context'].includes(mode)) {
             assertEqual(storage.getItem('balance_expenses_v1'), before, 'Abbruch und verweigerter Handler bleiben schreibfrei');
-            assertEqual(confirmations, mode === 'normal' ? 0 : 1, 'Nur bestätigter aktiver Probelauf erreicht Vorschau');
+            assertEqual(confirmations, mode === 'normal' ? 0 : 1, 'Nur bestätigter aktiver Spielbereich erreicht Vorschau');
         } else {
             const saved = JSON.parse(f.backend.get('balance_expenses_v1'));
             const ids = Object.keys(saved.years[2026].months[9].profiles);

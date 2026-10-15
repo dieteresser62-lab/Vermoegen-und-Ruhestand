@@ -126,7 +126,7 @@ try {
     try {
         setAppTestDate('2028-01-01');
         const period = automaticBacktestPeriod({ bounds: { endYear: 2025 } });
-        assertEqual(period.endYear, 2025, 'Probelauf erweitert historische Daten nicht');
+        assertEqual(period.endYear, 2025, 'Spielbereich erweitert historische Daten nicht');
         assertEqual(JSON.stringify(period.missingYears), '[2026,2027]', 'UI-Vorjahr stammt aus virtueller Uhr');
     } finally { setAppTestDate(null); }
 }

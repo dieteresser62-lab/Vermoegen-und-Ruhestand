@@ -22,11 +22,14 @@ function execute(inputs, period, observer = () => {}, engine = EngineAPI) {
  return {result,states};
 }
 
-// Dieses Orakel wird ausschließlich gelesen, niemals aus dem aktuellen Code erzeugt.
+// Historisches Orakel bleibt unverändert. FR-9 hat für Drei Töpfe einen
+// getrennten Sollstand mit vollständigen Finanzbytes und Folgezuständen.
 const fixture = JSON.parse(fs.readFileSync(new URL('./fixtures/simulator-small-lot-controls-v1.json', import.meta.url), 'utf8'));
-// Nur die additive Mindest-Flex-Auswertung gehört nicht zum eingefrorenen Vertrag.
-// Alle bisherigen Felder, unbekannte neue Felder und sämtliche Folgezustände
-// bleiben im vollständigen Bytevergleich; keine Projektion über Fixture-Schlüssel.
+const personalAccountsFr10 = JSON.parse(fs.readFileSync(new URL('./fixtures/simulator-personal-accounts-fr10-v1.json', import.meta.url), 'utf8'));
+const threeBucketFr9 = JSON.parse(fs.readFileSync(new URL('./fixtures/simulator-three-bucket-fr9-v1.json', import.meta.url), 'utf8'));
+// FR-10 ersetzt die bisher unveränderten Cashkomponenten durch Personenkonten.
+// Nur diese abgelösten Felder und die benannten additiven Belege ausnehmen;
+// alle übrigen Finanzwerte und unbekannte neue Felder bleiben gepinnt.
 const additiveMinimumFlexMetricIds = new Set([
     'minimum_flex_restriction_years',
     'minimum_flex_restriction_share_pct',
@@ -36,6 +39,18 @@ const additiveMinimumFlexMetricIds = new Set([
 ]);
 function projectFrozenFinancialControls(execution) {
     const projection = structuredClone(execution);
+    // FR-12 ergänzt ausschließlich die rohe Planbasis für den nächsten Resetvergleich.
+    for (const state of projection.states) if (state) {
+        delete state.guardrailPlanInputs;
+        delete state.portfolio.personAccounts;
+        delete state.portfolio.healthBucketCashOwners;
+        delete state.portfolio.tagesgeld;
+        delete state.portfolio.geldmarktEtf;
+        for (const lot of state.portfolio.depotTranchesGeldmarkt || []) {
+            delete lot.marketValue;
+            delete lot.costBasis;
+        }
+    }
     delete projection.result.minimumFlexRestriction;
     const metrics = projection.result.metrics;
     delete metrics.minimumFlexRestriction;
@@ -45,6 +60,9 @@ function projectFrozenFinancialControls(execution) {
         delete metrics.availability[id];
     }
     for (const { row } of projection.result.rows) {
+        delete row.personalPayout;
+        delete row.personAccounts;
+        delete row.personalTaxModel;
         delete row.flex_wunsch_haushalt_nominal;
         delete row.flex_unter_mindestflex;
     }
@@ -53,7 +71,29 @@ function projectFrozenFinancialControls(execution) {
 for (const c of fixture.cases) {
     const execution = execute(c.inputs, c.period);
     assert(execution.result.minimumFlexRestriction, c.name + ': additive Mindest-Flex-Auswertung bleibt im produktiven Resultat');
-    assertEqual(JSON.stringify(projectFrozenFinancialControls(execution)), JSON.stringify(c.projection), c.name + ': vollständige Finanzbytes und Folgezustände bleiben identisch');
+    const expected = c.name === 'drei-topf' ? threeBucketFr9 : c.name === 'offene-lots' ? personalAccountsFr10 : c.projection;
+    assertEqual(JSON.stringify(projectFrozenFinancialControls(execution)), JSON.stringify(projectFrozenFinancialControls(expected)), c.name + ': vollständige Finanzbytes und Folgezustände entsprechen dem Fachvertrag');
+    if (c.name === 'offene-lots') {
+        for (const { row } of execution.result.rows) {
+            const start = row.balance_trace.find(entry => entry.phase === 'after_returns').total;
+            assertClose(row.portfolio_total_end, start - row.entnahme_effektiv - row.steuern_gesamt + row.cashInterestEarned,
+                0.01, 'FR-10: neue Kontenempfehlung erhält Vermögen abzüglich Auszahlung und Steuer zuzüglich Zins');
+        }
+    }
+    for (const state of execution.states.filter(Boolean)) {
+        assertClose(state.portfolio.tagesgeld + state.portfolio.geldmarktEtf, state.portfolio.liquiditaet, 1e-8,
+            'FR-10: fortgeschriebene Komponenten stimmen mit dem Finanzzustand überein');
+    }
+    if (c.name === 'drei-topf') {
+        for (const { row } of execution.result.rows) {
+            const trace = row.balance_trace;
+            const start = trace.find(entry => entry.phase === 'after_returns').total;
+            assertClose(row.portfolio_total_end, start - row.entnahme_effektiv - row.steuern_gesamt + row.cashInterestEarned,
+                0.01, 'FR-9: Jahresvermögen stimmt mit Auszahlung, Steuer und Zins überein');
+            assertClose(trace.find(entry => entry.phase === 'after_buys').bonds, row.bondBucketAfter,
+                0.01, 'FR-9: vollständiger Anleihenbestand bereits vor Auszahlung');
+        }
+    }
 }
 // Die gezielte Ausnahme darf weder Finanzänderungen noch unbekannte Felder verdecken.
 const control = fixture.cases[0].projection;
@@ -63,7 +103,8 @@ for (const mutate of [
     value => { value.result.metrics.values.wealth_end_nominal_eur += 1; },
     value => { value.states[0].portfolio.liquiditaet += 1; },
     value => { value.result.unexpectedField = true; },
-    value => { value.states[0].minimumFlexRestriction = true; }
+    value => { value.states[0].minimumFlexRestriction = true; },
+    value => { value.states[0].lastState.flexRate += 1; }
 ]) {
     const changed = structuredClone(control);
     mutate(changed);

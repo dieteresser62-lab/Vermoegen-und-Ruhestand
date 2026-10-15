@@ -22,6 +22,7 @@ import TransactionEngine from './transactions/TransactionEngine.mjs';
 import { settleTaxYear } from './tax-settlement.mjs';
 import {
     finalizeThreeBucketAction,
+    calculateRealEquityReturn,
     sumBondBucketValuation
 } from './transactions/three-bucket-logic.mjs';
 import { deriveVpwExpectedRealReturn } from './planners/vpw-return-policy.mjs';
@@ -747,10 +748,7 @@ function _internal_calculateModel(input, lastState, { includeFlexTrace = false }
     // 3. Marktanalyse durchführen
     // Bestimmt Marktszenario (Bär, Bulle, Seitwärts, etc.) basierend auf historischen Daten
     const marketAnalysis = MarketAnalyzer.analyzeMarket(normalizedInput);
-    const realReturnEq = (
-        (Number(marketAnalysis.perf1Y) || 0)
-        - (Number(normalizedInput.inflation) || 0)
-    ) / 100;
+    const realReturnEq = calculateRealEquityReturn(marketAnalysis.perf1Y, normalizedInput.inflation);
     const market = {
         ...marketAnalysis,
         realReturnEq

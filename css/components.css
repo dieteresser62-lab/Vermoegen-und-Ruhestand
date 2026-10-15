@@ -282,6 +282,34 @@ html:has(.close-dialog[open]) { overflow: hidden; }
 .close-dialog-foot-row > .close-dialog-status { flex: 1; }
 .close-dialog-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--space-2); }
 .close-dialog-foot .ds-info-pop { top: auto; bottom: 36px; left: 0; right: auto; }
+
+/* Spielbereich beenden: vorhandene Vergleichswerte, keine bearbeitbaren Felder. */
+.probelauf-end-dialog .close-dialog-content { display: flex; flex-direction: column; gap: var(--space-6); }
+.probelauf-end-dialog .close-dialog-subtitle, .probelauf-end-dialog small, .probelauf-end-explanation, .probelauf-end-warning, .probelauf-end-dialog .ds-info-pop { font: 400 var(--text-dense)/1.5 var(--font-sans); }
+.probelauf-end-dialog p, .probelauf-end-dialog h3 { margin: 0; }
+.probelauf-end-comparison { width: 100%; table-layout: fixed; border: 1px solid var(--border); border-radius: var(--radius-md); border-spacing: 0; font: 400 var(--text-base)/1.4 var(--font-sans); }
+.probelauf-end-comparison th, .probelauf-end-comparison td { width: 33.33%; padding: var(--space-3); text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.probelauf-end-comparison thead { background: var(--surface-sunken); color: var(--text-muted); }
+.probelauf-end-comparison tbody th { font-weight: 400; color: var(--text-muted); }
+.probelauf-end-comparison small { display: block; color: var(--text-muted); margin-top: var(--space-1); }
+.probelauf-end-value { font: 500 var(--value-md)/1.4 var(--font-sans); font-variant-numeric: tabular-nums; }
+.probelauf-end-amount { display: block; margin-top: var(--space-1); }
+.probelauf-end-comparison .ds-info { margin-left: var(--space-1); }
+.probelauf-end-comparison .ds-info-pop { left: auto; right: 0; }
+.probelauf-end-changes { padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.probelauf-end-changes summary { cursor: pointer; }
+.probelauf-end-changes summary small { display: block; color: var(--text-muted); }
+.probelauf-end-changes h3 { margin-top: var(--space-4); }
+.probelauf-end-changes ul { padding-left: var(--space-4); }
+.probelauf-end-warning { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--warn); border-radius: var(--radius-md); color: var(--warn); background: var(--warn-soft); }
+.probelauf-end-made h3 { margin-bottom: var(--space-3); }
+.probelauf-end-dialog .close-dialog-foot > small { flex-basis: 100%; color: var(--text-muted); }
+.probelauf-transfer-group, .probelauf-transfer-note { border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-4); }
+.probelauf-transfer-note { background: var(--surface-sunken); }
+.probelauf-transfer-group h3 { margin-top: 0; }
+.probelauf-transfer-group li { margin: 8px 0; }
+.probelauf-transfer-success { border: 1px solid var(--good); background: var(--good-soft); color: var(--good); border-radius: var(--radius-md); padding: var(--space-4); }
+
 .close-dialog-step { min-width: 0; padding: var(--space-3); margin-bottom: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
 .close-dialog-step[data-state="current"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .close-dialog-step-title { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto 1em; align-items: center; gap: var(--space-3); border: 0; width: 100%; padding: var(--space-2) 0; text-align: left; background: transparent; color: var(--text-main); font: inherit; font-weight: 600; cursor: pointer; }
@@ -366,7 +394,7 @@ html:has(.close-dialog[open]) { overflow: hidden; }
 .close-dialog-facts dd small { display: block; font-family: var(--font-sans); font-size: var(--text-dense); font-weight: 400; color: var(--text-muted); }
 .close-dialog-facts dd .close-dialog-result-warning { font-size: var(--text-base); }
 .annual-result-monthly-budget { font-family: var(--font-serif); font-size: var(--value-lg); }
-.annual-market-provenance, .annual-market-status, .annual-result-plan-source, .annual-action-notice, .annual-december-summary { color: var(--text-muted); font-size: var(--text-sm); }
+.annual-market-provenance, .annual-market-status, .annual-result-plan-source, .annual-action-notice, .annual-december-summary, .annual-receipt-note { color: var(--text-muted); font-size: var(--text-sm); }
 .annual-market-provenance { margin: var(--space-2) 0; }
 .annual-market-provenance .ds-info { margin-left: var(--space-1); }
 .annual-market-status { margin-bottom: var(--space-2); }
@@ -393,8 +421,9 @@ html:has(.close-dialog[open]) { overflow: hidden; }
 .annual-action-sales { width: 100%; table-layout: fixed; }
 .annual-action-sales th, .annual-action-sales td { overflow-wrap: anywhere; }
 .annual-action-sales th:last-child, .annual-action-sales td:last-child { text-align: right; }
-[data-annual-action-details], [data-annual-close-conditions], [data-annual-receipt-details] { margin-top: var(--space-3); }
-[data-annual-action-details] > summary, [data-annual-close-conditions] > summary, [data-annual-receipt-details] > summary { cursor: pointer; font-size: var(--text-sm); color: var(--text-muted); }
+[data-annual-action-details], [data-annual-close-conditions] { margin-top: var(--space-3); }
+[data-annual-action-details] > summary, [data-annual-close-conditions] > summary { cursor: pointer; font-size: var(--text-sm); color: var(--text-muted); }
+[data-annual-receipt-details] > .ds-button { margin-bottom: var(--space-3); font-size: var(--text-sm); }
 
 .page-dialog :is(button, input, select):focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .page-dialog input:not([type="radio"]) { width: 100%; box-sizing: border-box; padding: .5rem; }
@@ -471,6 +500,9 @@ html:has(.close-dialog[open]) { overflow: hidden; }
 .household-plan-more .household-plan-preset .ds-field-reason { display: none; }
 .household-plan-more .household-plan-group :is([data-plan-dynamic-presets], [data-plan-segment="dynamicFlexPreset"]) { display: flex; flex-wrap: nowrap; gap: 0; width: 100%; box-sizing: border-box; justify-self: stretch; }
 .household-plan-more .household-plan-group :is([data-plan-dynamic-presets], [data-plan-segment="dynamicFlexPreset"]) > button { flex: 1 0 auto; padding-inline: .25rem; white-space: nowrap; }
+@media (max-width: 1599px) {
+    .household-plan-more .household-plan-group :is([data-plan-dynamic-presets], [data-plan-segment="dynamicFlexPreset"]) { flex-wrap: wrap; gap: 3px; }
+}
 .household-plan-more .household-plan-used { display: none; }
 .household-plan-more .household-plan-local { border-top: 1px solid var(--border-strong); padding-top: 1rem; }
 .household-plan-more .household-plan-rows { display: block; }

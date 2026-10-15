@@ -1,3 +1,4 @@
+import { areaSessionStorage } from '../shared/persistence-area-storage.js';
 import { marketPriceAdapter, isSyntheticPriceMode } from '../shared/market-price-adapter.js';
 import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
 import { createNavigationOperationLifecycle } from '../shared/navigation-guard.js';
@@ -255,7 +256,7 @@ export function bindHistoryFetch({ doc = globalThis.document, win = globalThis.w
         try {
             await afterStartup;
             if (!valid || win?.__profileRecoveryBlocker || PersistenceFacade.getPersistenceStatus().migrationWarning) return;
-            session ||= win?.sessionStorage;
+            session ||= areaSessionStorage(win?.sessionStorage);
             if (!session || session.getItem(HISTORY_FETCH_SESSION_KEY)) return;
             session.setItem(HISTORY_FETCH_SESSION_KEY, 'started');
             const report = await coordinator({ storage, firstPlanningYear: typeof firstPlanningYear === 'function' ? firstPlanningYear() : firstPlanningYear,

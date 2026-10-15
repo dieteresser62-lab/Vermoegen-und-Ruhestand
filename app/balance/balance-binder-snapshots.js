@@ -1,3 +1,4 @@
+import { areaSessionStorage } from '../shared/persistence-area-storage.js';
 import { computeAnnualPlanUpdate } from './balance-annual-storage.js';
 import { requestPageConfirmation, requestPageInput } from '../shared/page-dialog.js';
 import { createNavigationOperationLifecycle } from '../shared/navigation-guard.js';
@@ -68,7 +69,7 @@ export function createSnapshotHandlers({
     openRecovery = () => {},
     openExpensesYear = () => {},
     getProfileId = activeProfile,
-    sessionStore = () => globalThis.sessionStorage,
+    sessionStore = () => areaSessionStorage(),
     reload = () => globalThis.location.reload(),
     decide = requestPageConfirmation,
     confirmAnnual = async ({ targetYear, label, plan, signal }) => await requestPageConfirmation({

@@ -92,7 +92,8 @@ export function projectSimulatorPlanForm(values, doc) {
 /** Keine neuen Planwertkopien; Altbestände bleiben bis zum nächsten Write lesbar. */
 export function stripBalancePlanInputs(inputs) {
     if (!inputs) return inputs;
-    return Object.fromEntries(Object.entries(inputs).filter(([key]) => !BALANCE_PLAN_INPUT_KEYS.includes(key)));
+    return Object.fromEntries(Object.entries(inputs).filter(([key]) => !BALANCE_PLAN_INPUT_KEYS.includes(key)
+        && !['guardrailPlanHorizonYears', 'longevityHorizonDiagnostics'].includes(key)));
 }
 
 /** Synchroner Balance-Write im vorhandenen entprellten/periodengebundenen Besitzer.

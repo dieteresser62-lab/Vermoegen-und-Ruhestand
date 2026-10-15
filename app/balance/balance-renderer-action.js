@@ -12,6 +12,9 @@ import { UIUtils } from './balance-utils.js';
 import { bindInfoPopovers, createInfoPopover } from '../shared/designsystem-info-popover.js';
 import { displayDiagnosisText } from './balance-diagnosis-transaction.js';
 import { describeBalanceActionSummary, hasMeaningfulFlow, materialProfileActions, summarizeBalanceAction } from './balance-action-summary.js';
+import { renderBalancePlayExecution } from './balance-play-execution-ui.js';
+import { splitPlayLiquidity } from './balance-play-execution.js';
+import { persistenceStorage } from '../shared/persistence-facade.js';
 
 /**
  * Renderer für Handlungsempfehlungen und interne Rebalancing-Hinweise.
@@ -88,6 +91,7 @@ export class ActionRenderer {
         if (purpose) purpose.textContent = summary.note;
         if (outputs.balanceActionTransfer) outputs.balanceActionTransfer.textContent = summary.extraTransfer > 0
             ? `plus interne Umschichtung von ${UIUtils.formatBalanceCurrency(summary.extraTransfer)}` : '';
+        renderBalancePlayExecution(globalThis.document, this._playExecutionEntries(uiAction, input, spending, targetLiquidity, internalRebalance));
         return summary;
     }
 
@@ -95,6 +99,7 @@ export class ActionRenderer {
 
     clearAction() {
         this.copyText = '';
+        renderBalancePlayExecution(globalThis.document, []);
         const outputs = this.dom?.outputs || {};
         const host = outputs.handlungsanweisung;
         if (host) [...host.children].filter(node => node.id !== 'copyAction').forEach(node => node.remove());
@@ -290,6 +295,29 @@ export class ActionRenderer {
         return materialProfileActions(globalThis.window?.__profilverbundActionResults);
     }
 
+    _playExecutionEntries(action, input, spending, targetLiquidity, rebalance) {
+        const material = this._materialProfileActions();
+        const profiles = globalThis.window?.__profilverbundProfileSummaries;
+        // Bei einer reinen Cashumschichtung gibt es keine materiellen Engine-
+        // Profilaktionen. Dieselben Bestandsgewichte wie in der Detailtabelle
+        // verteilen dann den ergänzten Transfer auf die Haushaltspersonen.
+        if (!material && rebalance && profiles?.length > 1) {
+            const buy = rebalance.to === 'Geldmarkt-ETF';
+            const total = profiles.reduce((sum, profile) => sum + (buy ? profile.tagesgeld : profile.geldmarkt), 0);
+            if (total > 0) return profiles.map(profile => {
+                const amount = rebalance.amount * (buy ? profile.tagesgeld : profile.geldmarkt) / total;
+                const original = globalThis.window?.__profilverbundActionResults?.find(entry => entry.profileId === profile.profileId);
+                return { profileId: profile.profileId, input: original?.input,
+                    action: { quellen: [{ kind: buy ? 'liquiditaet' : 'geldmarkt', brutto: amount }],
+                        verwendungen: buy ? { geldmarkt: amount } : { liquiditaet: amount } },
+                    cashSplit: buy ? { fromTagesgeld: amount, fromGeldmarkt: 0 } : null };
+            });
+        }
+        const entries = material || [{ profileId: persistenceStorage.getItem('rs_current_profile'), action, input, spending, targetLiquidity }];
+        return entries.map(entry => ({ ...entry,
+            cashSplit: this._splitLiquiditySource(entry.input, entry.action, entry.spending, entry.targetLiquidity) }));
+    }
+
     _summarizeAction(action, uiAction) {
         return summarizeBalanceAction(action, uiAction, globalThis.window?.__profilverbundActionResults);
     }
@@ -363,25 +391,7 @@ export class ActionRenderer {
     }
 
     _splitLiquiditySource(input, action, spending, targetLiquidity) {
-        if (!input || typeof input.tagesgeld !== 'number' || typeof input.geldmarktEtf !== 'number') {
-            return null;
-        }
-        const zielTagesgeld = this._resolveZielTagesgeld(spending, targetLiquidity);
-        const liquidityOutflow = (Array.isArray(action?.quellen) ? action.quellen : [])
-            .filter(q => q.kind === 'liquiditaet' || q.source === 'Liquidität')
-            .reduce((sum, q) => sum + (q.brutto || 0), 0);
-        if (!isFinite(liquidityOutflow) || liquidityOutflow <= 0) {
-            return null;
-        }
-        const availableFromTagesgeld = Math.max(0, input.tagesgeld - zielTagesgeld);
-        const fromTagesgeld = Math.min(liquidityOutflow, availableFromTagesgeld);
-        const fromGeldmarkt = Math.max(0, liquidityOutflow - fromTagesgeld);
-        return {
-            zielTagesgeld,
-            fromTagesgeld,
-            fromGeldmarkt,
-            totalOutflow: liquidityOutflow
-        };
+        return splitPlayLiquidity(input, action, spending, targetLiquidity);
     }
 
     /**

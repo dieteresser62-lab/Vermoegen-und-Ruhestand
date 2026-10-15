@@ -10,7 +10,7 @@ Die App bleibt bei getrennten HTML-Seiten mit gemeinsamem Kopf und Seitenleiste.
 
 Tokens, Markup und Renderer gemeinsam pflegen. Kein CSS-Overlay aus einem Prototyp übernehmen. Schriften und Symbole bleiben lokal. DOM-Reihenfolge, echte Gruppenüberschriften und benannte Symbolknöpfe erhalten die Grundbedienung. Zahlenkolonnen nutzen Ziffern fester Breite; Serifenschrift bleibt Überschriften und einzelnen großen Kennzahlen vorbehalten. Vollständige Erklärungen bleiben bedienbar erreichbar, statt nur in `title` oder abgeschnittenem Text zu stehen. Die jeweiligen Bausteine und begrenzten Bestandsausnahmen stehen weiter unten.
 
-Die Hauptaufgabe bekommt den Platz. Expertenfelder bilden thematische Gruppen mit höchstens drei bis vier Feldern je Zeile. Die Wahl „Alle Parameter zeigen“ gehört zur Oberfläche, nicht zum Profil. Übernommene, bearbeitbare und nicht anwendbare Felder erhalten ihren Zustand samt Grund über `app/shared/field-state.js`; Sperren und Rohwerte bleiben erhalten. Weitere Planwerte und Alle Parameter teilen `household-plan-more`, die Karten und Zeilen in `css/components.css` sowie die Zusammenfassung aus `app/shared/household-plan-presentation.js`. Übernommene Kästen haben einen gestrichelten Rand ohne weiße Füllung; auch Gold aus steht rechtsbündig in diesem Kasten und verwendet die Textskala der Parameterwerte. Alle Segmentoptionen bleiben sichtbar und gesperrt; die gewählte Option ist hervorgehoben. Die fünf Dynamikoptionen stehen bei 1920×1080 und 2560×1440 mit vollständigen Texten in einer Zeile. Im Versuch erscheinen die normalen Eingabekästen und bedienbaren Segmente.
+Die Hauptaufgabe bekommt den Platz. Expertenfelder bilden thematische Gruppen mit höchstens drei bis vier Feldern je Zeile. Die Wahl „Alle Parameter zeigen“ gehört zur Oberfläche, nicht zum Profil. Übernommene, bearbeitbare und nicht anwendbare Felder erhalten ihren Zustand samt Grund über `app/shared/field-state.js`; Sperren und Rohwerte bleiben erhalten. Weitere Planwerte und Alle Parameter teilen `household-plan-more`, die Karten und Zeilen in `css/components.css` sowie die Zusammenfassung aus `app/shared/household-plan-presentation.js`. Übernommene Kästen haben einen gestrichelten Rand ohne weiße Füllung; auch Gold aus steht rechtsbündig in diesem Kasten und verwendet die Textskala der Parameterwerte. Alle Segmentoptionen bleiben sichtbar und gesperrt; die gewählte Option ist hervorgehoben. Die fünf Dynamikoptionen stehen bei 1920×1080 und 2560×1440 mit vollständigen Texten in einer Zeile. Unter 1600 Pixel Fensterbreite dürfen sie mit vollständigen Beschriftungen umbrechen. Im Versuch erscheinen die normalen Eingabekästen und bedienbaren Segmente.
 
 Jede Finanzzahl nennt Bezug, Zeitraum und Einheit. Null, fehlend und nicht anwendbar bleiben unterscheidbar. Ohne fachliche Bewertung bleibt eine Zahl neutral, auch Floor-Deckung und Monate ohne Ausgabendaten. Deutsches Anzeigeformat und Eingabeparsing haben getrennte Verträge. Kernaussagen und Details stammen aus demselben Ergebnis; fehlende Kennzahlen erzeugen keine Behauptung. Für die Einschränkungsanzeige gilt FR-6.
 
@@ -672,7 +672,8 @@ Messing für Überschreitung, Schraffur für Teilbelegung sowie getrennte fehlen
 und offene Zustände werden zusätzlich als Text benannt. Die gestrichelte
 Budgetlinie erscheint nur mit passendem gespeichertem Jahres-/Umfangsrecord.
 `ds-sr-only` liefert Textalternativen; schmale Container erhalten horizontales
-Diagrammscrollen und zwei Kennzahlspalten. Geldwerte folgen dem bestehenden
+Diagrammscrollen. Bis 85 rem Inhaltsbreite stehen die Kennzahlen in zwei Spalten;
+ihre ⓘ-Knöpfe und Popups bleiben im Fenster. Geldwerte folgen dem bestehenden
 Anzeigeformatter und lokale Schriftrollen bleiben unverändert.
 
 Willkommen verwendet dasselbe 7/5-Raster mit zwei Karten, zwei vorhandenen
@@ -1268,7 +1269,11 @@ Die Parameterzeilen verwenden `household-plan-field` mit `ds-input`, `ds-select`
 
 Backtest zeigt links die Zeitraumkarte über vier und rechts die Kennzahlen
 über acht der zwölf Spalten. Startjahr und Endjahr stehen nebeneinander,
-Neu rechnen darunter. Daten 1929–2025 und die Feldbeschriftungen verwenden
+Neu rechnen darunter. Beide Karten strecken sich auf dieselbe Höhe; die
+Bedienung bleibt oben. Die Zusatzwerte stehen anfangs geschlossen unter
+Weitere Kennzahlen mit `ds-disclosure-toggle`, damit das Kartenpaar kompakt
+bleibt. Unterzeilen der Hauptkacheln verwenden `summary-description` und
+stehen mit 14 px unter dem Wert. Daten 1929–2025 und die Feldbeschriftungen verwenden
 16 px in dunkler Schrift, die Jahreszahlen `--value-md` (17 px Newsreader).
 Die Felder sind wie die Planwertkästen 38 px hoch. Revision und Lookback
 stehen im ⓘ am Datenhinweis. Die drei Hauptkacheln behalten vollständige
@@ -1283,7 +1288,7 @@ Ruin und unvollständige Läufe zeigen ihren Ergebnisstatus im Hinweisband
 über beiden Karten in voller Breite; der Statuschip bleibt in der Zeitraumkarte.
 Rolling Cohorts entfallen auf Nutzerentscheid vom 14.10.2026.
 
-MC-Einstellungen liegen in der nativen Klappe `mcSetupDisclosure` im Monte-Carlo-Reiter. Einstellungen anzeigen öffnet und schließt sie ohne Reiterwechsel. Simulation, Zeitraum & Daten und Stresstest sind ungerahmte Parametergruppen mit Seriftiteln ohne Hintergrundfläche. Alle Gruppen nutzen ein Raster mit fünf gleich breiten Feldspalten bei 1920 und 2560 Pixeln. Zeitraum & Daten und das Start-Szenario stehen nebeneinander auf denselben Feldspalten. Breite Auswahlen belegen mehrere Spalten; die Simulationsmethode belegt nur eine. Dauer, Blockgröße, Schocks, Mindestabstand und Rechenzeit zeigen die Einheit im Feld. Die Extremereignisse des Stresstests bilden darunter eine eigene Gruppe über die volle Breite. Die fünf Werte stehen in einer Zeile, Titel und Kontrollkästchen direkt darüber. Kontrollkästchen stehen in eigenen Zeilen, bündig mit dem Raster. Hinweise bleiben kurz; die Erklärungen zu Gewichtung und Stresstest liegen im ⓘ am Gruppentitel. Rechenlast steht als kurze Zeile am Ende von Simulation. Seed bleibt ohne Tausenderpunkt; Blockgröße bleibt im Eingabekasten.
+MC-Einstellungen liegen in der nativen Klappe `mcSetupDisclosure` im Monte-Carlo-Reiter. Einstellungen anzeigen öffnet und schließt sie ohne Reiterwechsel. Simulation, Zeitraum & Daten und Stresstest sind ungerahmte Parametergruppen mit Seriftiteln ohne Hintergrundfläche. Alle Gruppen nutzen ein Raster mit fünf gleich breiten Feldspalten bei 1920 und 2560 Pixeln. Zeitraum & Daten und das Start-Szenario stehen nebeneinander auf denselben Feldspalten. Breite Auswahlen belegen mehrere Spalten; die Simulationsmethode belegt nur eine. Unter 1600 Pixel Fensterbreite erhält ihre Spalte das 1,6-Fache der übrigen Simulationsfelder, damit die vollständige Auswahl lesbar bleibt. Dauer, Blockgröße, Schocks, Mindestabstand und Rechenzeit zeigen die Einheit im Feld. Die Extremereignisse des Stresstests bilden darunter eine eigene Gruppe über die volle Breite. Die fünf Werte stehen in einer Zeile, Titel und Kontrollkästchen direkt darüber. Kontrollkästchen stehen in eigenen Zeilen, bündig mit dem Raster. Hinweise bleiben kurz; die Erklärungen zu Gewichtung und Stresstest liegen im ⓘ am Gruppentitel. Rechenlast steht als kurze Zeile am Ende von Simulation. Seed bleibt ohne Tausenderpunkt; Blockgröße bleibt im Eingabekasten.
 
 Erweitert nutzt `ds-disclosure` und dieselbe Schriftgröße wie Details zur Person und Annahmen zeigen. Das ⓘ steht direkt hinter der Zusammenfassung. Zufallsgenerator, parallele Rechenprozesse und Zeitbudget stehen im selben Feldraster; Laufzeitvergleich und Worker-Diagnose bleiben bedienbar. Die Entwicklerkarte steht darin am Ende. Echte Controls, Optionswerte, Ressourcenbestätigung und Laufzustände bleiben erhalten. Die Zusammenfassung zeigt Läufe, Dauer, Methode, Seed,
 Stresspreset und Tail-Risk aus den aktuellen Eingaben. Vier Ergebnisansichten

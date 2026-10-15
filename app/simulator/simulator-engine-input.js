@@ -28,6 +28,7 @@ export function buildSimulatorEngineInput({
     const engineInput = {
         ...inputsCtx,
         aktuelleLiquiditaet: liquiditaet,
+        ...(inputs.decumulation?.mode === '3_bucket_jilge' ? { finalizeThreeBucketAction: true } : {}),
         aktuellesAlter: inputs.startAlter + yearIndex,
         inflation: yearData.inflation,
 
@@ -57,7 +58,7 @@ export function buildSimulatorEngineInput({
         endeVJ_2: marketDataCurrentYear.endeVJ_2 || 0,
         endeVJ_3: marketDataCurrentYear.endeVJ_3 || 0,
         ath: marketDataCurrentYear.ath || marketDataHist.ath || 0,
-        jahreSeitAth: marketDataCurrentYear.jahreSeitAth || marketDataHist.jahreSeitAth || 0
+        jahreSeitAth: marketDataCurrentYear.jahreSeitAth ?? marketDataHist.jahreSeitAth ?? 0
     };
 
     // Eine leere aktuelle Liste ersetzt ebenfalls das ursprüngliche Startinventar.

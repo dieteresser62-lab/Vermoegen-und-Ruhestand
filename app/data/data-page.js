@@ -23,7 +23,7 @@ export function dataBackupStatus(doc) {
             if (detail) detail.textContent = raw;
             const technical = /IndexedDB|localStorage|UTF-8|Quota|\bSHA(?:-256)?\b|Fingerabdruck|serialisiert|\b(?:kv|metadata|snapshots|ruhestand-suite)\b|(?:rs_|profile_|snapshot_|overview_|balance_)[\w-]+|\b[A-Z]+(?:_[A-Z]+)+\b|Store|Browser-Dateidialog/i.test(raw);
             if (host.dataset.kind === 'error') {
-                host.textContent = /Probelauf/.test(raw) ? 'Im Probelauf ist diese Sicherungsaktion gesperrt. Bitte zuerst den Probelauf beenden.'
+                host.textContent = /Spielbereich/.test(raw) ? 'Im Spielbereich ist diese Sicherungsaktion gesperrt. Bitte zuerst den Spielbereich beenden.'
                     : !technical && /Wiederherstellungspunkt|wiederherstellen|erneut|nicht bestätigt/.test(raw) ? raw
                         : 'Die Sicherungsaktion konnte nicht abgeschlossen werden. Weitere Hinweise findest du unter „Technische Details“.';
             } else if (/Komplettes fachliches Backup erstellt/.test(raw)) host.textContent = 'Vollsicherung erstellt. Wähle einen sicheren Ablageort.';

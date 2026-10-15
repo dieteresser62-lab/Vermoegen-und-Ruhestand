@@ -41,7 +41,7 @@ try {
     assertEqual(createPreview(), true, 'Cashvorschau im Normalmodus erfolgreich');
     assertEqual(reconciliationState.reconciliationPreview.action.cashConfirmedAt, new Date().toISOString(), 'Cashbestätigung verwendet im Normalmodus die Systemzeit');
     setAppTestDate('2027-01-02');
-    assertEqual(createPreview(), true, 'Cashvorschau im Probelauf erfolgreich');
+    assertEqual(createPreview(), true, 'Cashvorschau im Spielbereich erfolgreich');
     assertEqual(reconciliationState.reconciliationPreview.action.cashConfirmedAt, appNow().toISOString(), 'Produktiver Vorschaupfad übergibt die fachliche Uhr an den Cashreader');
     setAppTestDate('2027-02-03');
     assertEqual(createPreview(), true, 'Cashvorschau nach Datumssprung erfolgreich');

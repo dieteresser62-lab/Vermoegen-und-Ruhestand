@@ -1,3 +1,5 @@
+import { ensurePersonalAccounts, applyPersonalInterest, syncPersonalLiquidity, debitPersonalLiquidity,
+    personalProfiles, personalWithdrawalPlan } from './simulator-personal-accounts.js';
 import { calculateHouseholdPensionForYear } from './simulator-household-pension.js';
 import { buyGold, buyStocksNeu, sumDepot } from './simulator-portfolio.js';
 import {
@@ -7,6 +9,7 @@ import {
 } from './simulator-engine-direct-utils.js';
 import { buildNextMarketDataHist } from './simulator-year-portfolio.js';
 import { sumBondBucketValuation } from '../../engine/transactions/three-bucket-logic.mjs';
+import { beginPersonalTaxYear, settlePersonalTaxYear } from './simulator-personal-tax.js';
 import {
     applyHealthBucketInterest,
     buildHealthBucketDiagnostics
@@ -49,6 +52,8 @@ export function simulateAccumulationYear({
     householdCtx,
     isBadYear
 }) {
+    ensurePersonalAccounts(portfolio, inputs);
+    const personalTaxBook = beginPersonalTaxYear(portfolio);
     const cumulativeInflationFactor = resolveSimulatorCumulativeInflationFactor(currentState);
     const nextCumulativeInflationFactor = advanceSimulatorCumulativeInflationFactor(
         cumulativeInflationFactor,
@@ -59,21 +64,22 @@ export function simulateAccumulationYear({
         + sumDepot({ depotTranchesGold: portfolio.depotTranchesGold })
         + euros(initialLiqStart)
     );
-    let cashZinsen = signedEuros(euros(liquiditaet) * Number(rC));
+    const personalInterest = applyPersonalInterest(portfolio, Number(rC), { additive: true });
+    let cashZinsen = personalInterest.interest;
     let liqNachZins = initialLiqStart;
 
-    let sparrateThisYear = inputs.accumulationPhase.sparrate * 12;
+    let sparrateThisYear = (Number(inputs.accumulationPhase.sparrate) || 0) * 12;
     if (inputs.accumulationPhase.sparrateIndexing === 'inflation' && currentState.accumulationState) {
         const priorAnnualSavings = Number(currentState.accumulationState.sparrateThisYear);
         const lastYearSparrate = Number.isFinite(priorAnnualSavings)
             ? priorAnnualSavings
-            : (inputs.accumulationPhase.sparrate * 12);
+            : ((Number(inputs.accumulationPhase.sparrate) || 0) * 12);
         sparrateThisYear = lastYearSparrate * (1 + yearData.inflation / 100);
     } else if (inputs.accumulationPhase.sparrateIndexing === 'wage' && currentState.accumulationState) {
         const priorAnnualSavings = Number(currentState.accumulationState.sparrateThisYear);
         const lastYearSparrate = Number.isFinite(priorAnnualSavings)
             ? priorAnnualSavings
-            : (inputs.accumulationPhase.sparrate * 12);
+            : ((Number(inputs.accumulationPhase.sparrate) || 0) * 12);
         const hasWageGrowth = yearData.lohn !== null && yearData.lohn !== undefined;
         const wageGrowthValue = Number(yearData.lohn);
         const wageGrowth = hasWageGrowth && Number.isFinite(wageGrowthValue) ? wageGrowthValue : 2.0;
@@ -84,9 +90,11 @@ export function simulateAccumulationYear({
     const nextP1 = (currentState.currentAnnualPension || 0) * (1 + rentAdjPct / 100);
     const nextP2 = (currentState.currentAnnualPension2 || 0) * (1 + rentAdjPct / 100);
 
-    liquiditaet += cashZinsen;
+    liquiditaet = portfolio.liquiditaet;
     liqNachZins = euros(liquiditaet);
-    liquiditaet += sparrateThisYear;
+    portfolio.personAccounts[0].tagesgeld += sparrateThisYear;
+    syncPersonalLiquidity(portfolio);
+    liquiditaet = portfolio.liquiditaet;
     const healthBucketInterest = applyHealthBucketInterest({ inputs, portfolio, rC });
     const healthBucketDiagnostics = buildHealthBucketDiagnostics({
         inputs,
@@ -120,19 +128,23 @@ export function simulateAccumulationYear({
         const goldBetrag = inputs.goldAktiv ? Math.min(ueberschuss, Math.max(0, goldTarget - goldValue)) : 0;
         const aktienBetrag = Math.max(0, ueberschuss - goldBetrag);
 
-        if (goldBetrag > 0) {
-            buyGold(portfolio, goldBetrag);
-            liquiditaet -= goldBetrag;
-            kaufGldTotal = goldBetrag;
+        const funding = debitPersonalLiquidity(portfolio, goldBetrag + aktienBetrag,
+            personalWithdrawalPlan(personalProfiles(portfolio, inputs), goldBetrag + aktienBetrag, inputs.householdWithdrawalMode));
+        for (const row of funding.items) {
+            const share = row.amount / (goldBetrag + aktienBetrag);
+            if (goldBetrag > 0) buyGold(portfolio, goldBetrag * share, row.profileId);
+            if (aktienBetrag > 0) buyStocksNeu(portfolio, aktienBetrag * share, row.profileId);
         }
-        if (aktienBetrag > 0) {
-            buyStocksNeu(portfolio, aktienBetrag);
-            liquiditaet -= aktienBetrag;
-            kaufAktTotal = aktienBetrag;
-        }
+        liquiditaet = portfolio.liquiditaet;
+        kaufGldTotal = goldBetrag;
+        kaufAktTotal = aktienBetrag;
     }
 
-    portfolio.liquiditaet = euros(liquiditaet);
+    const taxAction = {};
+    const taxResult = personalTaxBook ? settlePersonalTaxYear({ portfolio, book: personalTaxBook,
+        personalInterest, actionResult: taxAction, plannedActionFlow: null, regularSaleScale: 0,
+        forcedTaxReserved: 0, spendingNewState: {}, didForcedSale: false, inputs }) : { totalTaxesThisYear: 0, taxCashAdjustment: 0 };
+    liquiditaet = portfolio.liquiditaet;
 
     const newAccumulationState = currentState.accumulationState ? {
         yearsSaved: currentState.accumulationState.yearsSaved + 1,
@@ -148,6 +160,7 @@ export function simulateAccumulationYear({
         portfolioActiveBeforeFlows
         + signedEuros(cashZinsen)
         + euros(sparrateThisYear)
+        + taxResult.taxCashAdjustment
     );
     const healthBucketWarnings = Array.isArray(portfolio.healthBucketMeta?.warnings)
         ? portfolio.healthBucketMeta.warnings
@@ -172,7 +185,8 @@ export function simulateAccumulationYear({
             accumulationState: newAccumulationState,
             transitionYear: currentState.transitionYear
         },
-        totalTaxesThisYear: 0,
+        totalTaxesThisYear: taxResult.totalTaxesThisYear,
+        ...(taxResult.taxShortfall > 1e-8 ? { taxReconciliation: taxResult } : {}),
         logData: {
             jahr: yearIndex + 1,
             histJahr: yearData.jahr,
@@ -198,7 +212,8 @@ export function simulateAccumulationYear({
             RealReturnEquityPct: ((1 + rA) / (1 + yearData.inflation / 100) - 1),
             RealReturnGoldPct: ((1 + rG) / (1 + yearData.inflation / 100) - 1),
             entnahmequote: 0,
-            steuern_gesamt: 0,
+            steuern_gesamt: taxResult.totalTaxesThisYear,
+            ...(personalTaxBook ? { tax_funding_sale_gross: taxAction.personalAnnualTaxes.reduce((sum, row) => sum + row.taxFundingGross, 0) } : {}),
             vk: { vkAkt: 0, vkGld: 0, vkBnd: 0, stAkt: 0, stGld: 0, stBnd: 0, vkGes: 0, stGes: 0 },
             kaufAkt: euros(kaufAktTotal),
             kaufGld: euros(kaufGldTotal),
@@ -206,6 +221,7 @@ export function simulateAccumulationYear({
             wertGold: euros(wertGold),
             liquiditaet: euros(portfolio.liquiditaet),
             liqStart: euros(initialLiqStart),
+            personAccounts: portfolio.personAccounts.map(person => ({ ...person })),
             cashInterestEarned: signedEuros(cashZinsen),
             liqEnd: euros(liqNachZins),
             liq_post_accumulation_end_of_year: euros(portfolio.liquiditaet),
@@ -223,7 +239,7 @@ export function simulateAccumulationYear({
             health_bucket_warning: healthBucketWarnings.join(' | '),
             portfolio_total_end: euros(wertAktien + wertGold + portfolio.liquiditaet + healthBucketDiagnostics.currentAmount),
             aktionUndGrund: `Sparrate: ${euros(sparrateThisYear)}€ / Kauf A: ${euros(kaufAktTotal)}€ / Kauf G: ${euros(kaufGldTotal)}€`,
-            usedSPB: 0,
+            usedSPB: taxAction.taxSettlement?.spbUsedThisYear || 0,
             floor_brutto: 0,
             pension_annual: 0,
             rente1: 0,

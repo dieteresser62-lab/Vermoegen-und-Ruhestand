@@ -158,11 +158,23 @@ function reduceBucketTranches(portfolio, drawAmount) {
     }
 
     portfolio.healthBucketTranches = kept;
+    const consumedCash = [];
+    const cashAmount = Math.min(remaining, euros(portfolio.healthBucketCashAmount));
+    if (cashAmount > 0) {
+        const total = euros(portfolio.healthBucketCashAmount);
+        for (const row of portfolio.healthBucketCashOwners || []) {
+            const take = cashAmount * row.amount / total;
+            row.amount -= take;
+            consumedCash.push({ profileId: row.profileId, amount: take });
+        }
+        portfolio.healthBucketCashAmount = total - cashAmount;
+    }
     if (remaining > 0) {
         portfolio.healthBucketCashAmount = euros((Number(portfolio.healthBucketCashAmount) || 0) - remaining);
     }
 
     return {
+        consumedCash,
         consumedTranches: consumed,
         realizedGainRaw
     };
@@ -187,7 +199,7 @@ export function applyHealthBucketCoverage({
     });
     const used = trigger.triggered ? Math.min(startAmount, eligibleNeed) : 0;
     const uncoveredNeed = euros(eligibleNeed - used);
-    let trancheSettlement = { consumedTranches: [], realizedGainRaw: 0 };
+    let trancheSettlement = { consumedTranches: [], consumedCash: [], realizedGainRaw: 0 };
 
     if (used > 0) {
         trancheSettlement = reduceBucketTranches(portfolio, used);
@@ -206,6 +218,7 @@ export function applyHealthBucketCoverage({
         endAmount: euros(portfolio.healthBucketGeldmarkt),
         taxModel: 'money_market_tranches_track_raw_gain_no_tax_settlement_yet',
         realizedGainRaw: trancheSettlement.realizedGainRaw,
+        consumedCash: trancheSettlement.consumedCash,
         consumedTranches: trancheSettlement.consumedTranches
     };
 }
@@ -231,6 +244,8 @@ function distributeInterestAcrossBucketSources(portfolio, interest) {
     if (cashAmount > 0 || tranches.length === 0) {
         const cashShare = tranches.length === 0 ? 1 : cashAmount / total;
         portfolio.healthBucketCashAmount = euros(cashAmount + amount * cashShare);
+        for (const row of portfolio.healthBucketCashOwners || []) row.amount *= cashAmount > 0
+            ? portfolio.healthBucketCashAmount / cashAmount : 1;
     }
 }
 

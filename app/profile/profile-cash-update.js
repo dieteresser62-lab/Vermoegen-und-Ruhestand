@@ -2,7 +2,7 @@ import { loadProfileAssetValues, saveProfileAssetValues } from './profile-asset-
 import { appendCashHistory, assertCashHistory, PROFILE_CASH_HISTORY_KEY } from './profile-wealth-history.js';
 import { requireHistoryRecord, localHistoryDate, historyDay } from '../tranches/tranchen-history-store.js';
 import { canonicalDecimalInput } from '../tranches/tranchen-manager-decimal-input.js';
-import { persistenceStorage } from '../shared/persistence-facade.js';
+import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
 import { PROFILE_SCOPED_FIXED_KEYS, PROFILE_CASH_CONFIRMED_DATE_KEY } from './profile-state.js';
 import { CONFIG } from '../balance/balance-config.js';
 
@@ -91,6 +91,20 @@ export function prepareHouseholdCash({ storage = persistenceStorage, activeId, i
             throw new Error('Der Tagesgeld-Stand wurde seit der Rückfrage verändert.');
         }
         const changes = prepareCashRecords(data, cash.values[source.id], date);
+        const playValue = cash.playValues?.[source.id];
+        if (playValue) {
+            if (PersistenceFacade.getPersistenceStatus().activeArea !== 'spiel' || playValue.source !== 'spielwert'
+                || playValue.value !== cash.values[source.id]) throw new Error('Tagesgeld-Spielwerte dürfen nur im Spielbereich gespeichert werden.');
+            const historyRaw = changes[PROFILE_CASH_HISTORY_KEY] ?? data[PROFILE_CASH_HISTORY_KEY];
+            if (historyRaw) {
+                const history = assertCashHistory(JSON.parse(historyRaw));
+                const entry = history.entries.find(entry => entry.date === date);
+                if (entry) {
+                    entry.source = 'spielwert';
+                    changes[PROFILE_CASH_HISTORY_KEY] = JSON.stringify(history);
+                }
+            }
+        }
         // Die Abschlussbestätigung datiert die Prüfung, ohne den Wertverlauf zu ergänzen.
         if (recordConfirmation && data[PROFILE_CASH_CONFIRMED_DATE_KEY] !== date) changes[PROFILE_CASH_CONFIRMED_DATE_KEY] = date;
         total += parseCashInput(cash.values[source.id]);

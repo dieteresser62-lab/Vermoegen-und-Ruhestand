@@ -795,7 +795,7 @@ for (const outcome of ['later', 'accepted', 'readback', 'flush']) {
     PersistenceFacade.resetPersistenceForTests();
 }
 
-// Ein vorhandener Commitbesitzer (auch Probelauf) wird vom Wiederholungsweg nicht überholt.
+// Ein vorhandener Commitbesitzer (auch Spielbereich) wird vom Wiederholungsweg nicht überholt.
 {
     const { retryDeferredPersonMigration, profileMigrationDisplayState, completeProfilePageReadiness } = await import('../app/profile/profile-navigation.js');
     const { getPageNavigationGuard } = await import('../app/shared/navigation-guard-dialog.js');

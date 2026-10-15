@@ -84,7 +84,7 @@ export const IMAGE_FILES = Object.freeze([
     'simulator-ergebnis', 'simulator-annahmen', 'simulator-backtest',
     'monte-carlo-einstellungen', 'monte-carlo-ueberblick', 'monte-carlo-risiko-verteilung',
     'monte-carlo-pflege', 'monte-carlo-szenario-logs', 'werkstatt', 'werkstatt-replay',
-    'werkstatt-sweep', 'werkstatt-auto-optimize', 'daten-sicherung', 'probelauf-band',
+    'werkstatt-sweep', 'werkstatt-auto-optimize', 'daten-sicherung', 'probelauf-band', 'spielbereich-vergleich',
     'handbuch-start',
     ...['01-faellig', '02-kurse', '03-ausgaben', '04-budget', '05-tagesgeld', '06-ergebnis']
         .map(name => `monatsabschluss/${name}`),

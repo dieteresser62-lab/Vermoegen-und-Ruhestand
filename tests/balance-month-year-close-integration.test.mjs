@@ -398,7 +398,7 @@ try {
             assertEqual(JSON.stringify(Object.fromEntries(records)), baseline, 'Fehlgeschlagene Dateiausgabe setzt keinen Erfolgsbeleg');
             assert(root.querySelector('[data-annual-backup-status]').textContent.includes('DOWNLOAD_INJECTED'), 'Vollbackupfehler bleibt im Dialog sichtbar');
             setAppTestDate('2026-01-02'); await backup.fire('click');
-            assert(root.querySelector('[data-annual-backup-status]').textContent.includes('während des Probelaufs gesperrt'), 'Bestehende Probelaufsperre bleibt am Dialogknopf sichtbar');
+            assert(root.querySelector('[data-annual-backup-status]').textContent.includes('während des Spielbereichs gesperrt'), 'Bestehende Probelaufsperre bleibt am Dialogknopf sichtbar');
             assertEqual(downloads, 1, 'Probelaufsperre verhindert jede Dateiausgabe');
             assertEqual(JSON.stringify(Object.fromEntries(records)), baseline, 'Probelaufsperre schreibt keinen Sicherungsbeleg');
             setAppTestDate(null); failDownload = false; await backup.fire('click');

@@ -289,7 +289,7 @@ export function refreshExpensesTableValues({ host, yearData, profileIds, monthly
             monthTotal += spent;
 
             const cell = host.querySelector(`[data-month="${month}"][data-profile="${profileId}"] [data-role="value"]`);
-            if (cell) cell.textContent = imported ? formatCurrency(spent) + (profileData?.source === 'probelauf-example' ? ' · Beispieldaten (Probelauf)' : '') : month <= dueMonth ? missingLabel : '—';
+            if (cell) cell.textContent = imported ? formatCurrency(spent) + (profileData?.source === 'probelauf-example' ? ' · Beispieldaten (Spielbereich)' : '') : month <= dueMonth ? missingLabel : '—';
             const deleteButton = host.querySelector(`[data-month="${month}"][data-profile="${profileId}"] [data-action="delete"]`);
             if (deleteButton) {
                 const hasProfileData = Boolean(profileData);
@@ -327,7 +327,7 @@ export function renderExpensesDetails({ refs, monthName, profileName, categories
     const entries = sortExpenseEntries(categories);
 
     if (refs.detailTitle) {
-        refs.detailTitle.textContent = `${monthName} · ${profileName}${source === 'probelauf-example' ? ' · Beispieldaten (Probelauf)' : ''}`;
+        refs.detailTitle.textContent = `${monthName} · ${profileName}${source === 'probelauf-example' ? ' · Beispieldaten (Spielbereich)' : ''}`;
     }
 
     if (refs.detailBody) {

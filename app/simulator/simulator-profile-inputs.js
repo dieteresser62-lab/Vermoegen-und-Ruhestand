@@ -16,7 +16,8 @@ import {
     PROFILE_VALUE_KEYS,
     parseProfileHealthBucketFromData,
     parseProfileOverridesFromData,
-    parseStoredBalanceInputsFromData
+    parseStoredBalanceInputsFromData,
+    parseStoredBalanceStateFromData
 } from '../profile/profile-state.js';
 import { LONGEVITY_DEFAULTS, normalizeLongevityMode } from './dynamic-flex-longevity-contract.js';
 import { classifyTranche } from '../../types/tranche-contract.js';
@@ -312,6 +313,7 @@ export function buildSimulatorInputsFromProfileData(profileData, { referenceYear
         startAlter: p1StartAlter,
         geschlecht: p1Geschlecht,
         startSPB: person.startSPB,
+        taxState: { lossCarry: Math.max(0, Number(parseStoredBalanceStateFromData(profileData)?.lastState?.taxState?.lossCarry) || 0) },
         kirchensteuerSatz: p1KirchensteuerPct / 100,
         renteMonatlich: person.renteMonatlich,
         renteStartOffsetJahre: person.renteStartOffsetJahre,
@@ -691,6 +693,12 @@ export function combineSimulatorProfiles(profileInputs, primaryProfileId, { plan
         flexBudgetYears: minFlexBudgetYears || 0,
         detailledTranches: inputsList.some(i => Array.isArray(i.detailledTranches)) ? mergedTranches : null,
         simulationSourceProfileId: primaryEntry.profileId || 'simulation',
+        simulationPeople: orderedEntries.map(entry => ({ profileId: entry.profileId, name: entry.name || entry.profileId,
+            tagesgeld: Math.max(0, Number(entry.inputs.tagesgeld) || 0),
+            sparerPauschbetrag: Math.max(0, Number(entry.inputs.startSPB) || 0),
+            taxState: { lossCarry: Math.max(0, Number(entry.inputs.taxState?.lossCarry) || 0) },
+            kirchensteuerSatz: Number(entry.inputs.kirchensteuerSatz) || 0,
+            liquidityRunwayYears: resolveLiquidityRunwayYears(entry.inputs).years })),
         startSPB: sumNumbers(inputsList, i => i.startSPB || 0),
         kirchensteuerSatz: weightedAverage(inputsList, i => i.kirchensteuerSatz || 0, i => i.startVermoegen || 0, primaryInputs.kirchensteuerSatz || 0),
         maxSkimPctOfEq: Math.round(weightedAverage(inputsList, i => i.maxSkimPctOfEq || 0, i => i.startVermoegen || 0, primaryInputs.maxSkimPctOfEq || 0)),

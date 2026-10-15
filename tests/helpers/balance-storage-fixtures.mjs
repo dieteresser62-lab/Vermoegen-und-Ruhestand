@@ -2,6 +2,7 @@ import { createMusterHaushaltRecords } from '../../app/demo/muster-haushalt.js';
 import { CONFIG } from '../../app/balance/balance-config.js';
 import { PLAN_DEFAULTS, HOUSEHOLD_PLAN_KEY, planScope, buildPlanRecord, projectPlanToBalance } from '../../app/profile/household-plan.js';
 import { UIReader, initUIReader } from '../../app/balance/balance-reader.js';
+import { ANNUAL_PLAN_RECORD_KEY } from '../../app/profile/annual-plan-record.js';
 
 export const STORAGE_FIXTURE_KINDS = ['Muster-Haushalt', 'Einzelprofil', 'Haushalt mit Außenperson',
     'aktive Außenperson', 'synthetische Echtform', 'Altbestand'];
@@ -10,6 +11,8 @@ export function recordStorage(records) {
 }
 export function balanceStorageFixture(kind, strategy = 'standard', cape = 25) {
     const records = createMusterHaushaltRecords('2026-10-09');
+    // Diese unabhängigen Fachfixtures ändern Plan und Umfang und beginnen ohne Beleg.
+    delete records[ANNUAL_PLAN_RECORD_KEY];
     const registry = JSON.parse(records.rs_profiles_v1);
     const values = { ...structuredClone(PLAN_DEFAULTS), floorBedarf: 30000, flexBedarf: 30000,
         minimumFlexAnnual: 7500, dynamicFlex: true, cape: { value: cape, asOf: null, source: null } };

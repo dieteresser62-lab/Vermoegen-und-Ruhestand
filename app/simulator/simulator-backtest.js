@@ -4,6 +4,7 @@ import { personDataContextFor, readDocumentPersonInputs } from './simulator-pers
 import { createProtocolPersonContext } from './protocol-columns.js';
 import { projectMinimumFlexDisplay } from './results-metrics.js';
 import { renderProtocolSummary } from './protocol-renderer.js';
+import { renderBacktestAnalysis } from './backtest-log-analysis.js';
 "use strict";
 
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
@@ -155,8 +156,8 @@ function renderBacktestSummary(result) {
     summaryElement.innerHTML = `<div class="summary-grid sim-backtest-primary">
         ${summaryItem({ label: 'Endvermögen', displayValue: currencyOrDash(metrics.wealth_end_nominal_eur), rawValue: metrics.wealth_end_nominal_eur, metricId: 'wealth_end_nominal_eur' })}
         ${summaryItem({ label: 'Gesamte Entnahmen', displayValue: currencyOrDash(metrics.withdrawal_total_nominal_eur), rawValue: metrics.withdrawal_total_nominal_eur, metricId: 'withdrawal_total_nominal_eur' })}
-        <div class="summary-item ds-card ds-metric"><strong>${escapeBacktestHtml(restriction.title)}</strong><span>${escapeBacktestHtml(restrictionValue)}</span><small>${escapeBacktestHtml(restriction.legacy ? restriction.basisNote : restriction.valid ? '' : restriction.reason)}</small></div>
-    </div><div class="sim-metric-list sim-backtest-supplementary">
+        <div class="summary-item ds-card ds-metric"><strong>${escapeBacktestHtml(restriction.title)}</strong><span>${escapeBacktestHtml(restrictionValue)}</span><small class="summary-description">${escapeBacktestHtml(restriction.legacy ? restriction.basisNote : restriction.valid ? '' : restriction.reason)}</small></div>
+    </div><details class="ds-disclosure sim-backtest-more-metrics"><summary class="ds-disclosure-toggle"><span>Weitere Kennzahlen</span><span class="ds-slider" aria-hidden="true"></span></summary><div class="sim-metric-list sim-backtest-supplementary">
         ${summaryItem({ label: 'Ergebnis', displayValue: outcomeLabel, rawValue: outcome, resultField: 'outcome', compact: true })}
         ${summaryPair('Startjahr · Endjahr', [
             { field: 'period_start', display: result.request?.startYear ?? '—', raw: result.request?.startYear, title: 'Startjahr' },
@@ -176,7 +177,7 @@ function renderBacktestSummary(result) {
             { field: 'health_bucket_coverage_pct', display: healthCoverage, raw: healthBucket.realCoveragePct, title: 'Pflegebucket-Zieldeckung' },
             { field: 'health_bucket_target_gap', display: currencyOrDash(healthBucket.targetGap), raw: healthBucket.targetGap, title: 'Pflegebucket-Ziellücke' }
         ])}
-    </div>`;
+    </div></details>`;
 }
 
 function setBacktestResultsVisible(visible) {
@@ -192,6 +193,7 @@ function setBacktestExportEnabled(enabled) {
 }
 
 function clearBacktestResultProjection() {
+    renderBacktestAnalysis(document, null);
     const summary = document.getElementById('simulationSummary');
     const log = document.getElementById('simulationLog');
     const chart = document.getElementById('portfolioCompositionChart');
@@ -351,6 +353,7 @@ function executeBacktest(options = {}) {
             renderBacktestSummary(backtestResult);
             renderHistoricalBacktestContext(document, backtestResult);
             renderBacktestLog();
+            renderBacktestAnalysis(document, window.globalBacktestData);
             completeOverviewRun('backtest', overviewToken, backtestResult);
             if (generation === backtestGeneration && simulatorRunAssumptions.read('backtest').last?.metadata === overviewToken.metadata) {
                 void (dependencies.completeSimulationSummary || completeSimulationSummary)(summaryContext, backtestResult, {},
@@ -475,7 +478,8 @@ export function renderBacktestLog() {
     const chartContainer = document.getElementById('portfolioCompositionChart');
     if (chartContainer) {
         chartContainer.style.display = 'block';
-        renderThreeBucketPortfolioChart(chartContainer, logRows);
+        renderThreeBucketPortfolioChart(chartContainer, logRows, { analysisData: window.globalBacktestData,
+            annotationToggle: document.getElementById('backtestChartAnnotations') });
     }
 }
 

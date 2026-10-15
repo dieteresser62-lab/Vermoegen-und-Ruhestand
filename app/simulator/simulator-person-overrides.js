@@ -84,6 +84,7 @@ export function createPersonOverrides(entries, primaryId, referenceYear) {
         reset() { active = false; draft = {}; },
         set(profileId, key, value) {
             if (!active || !ordered.some(entry => entry.profileId === profileId)) return false;
+            if (key === 'profile_rente_steuerquote_pct') return false;
             if (!Object.values(editable).includes(key)) throw new Error('Unbekannte Personenabweichung.');
             draft[profileId] ||= {};
             draft[profileId][key] = numeric.has(key) ? (value === '' ? NaN : Number(value)) : value;
@@ -179,7 +180,6 @@ function render(state, doc) {
             ['Kirchensteuer', `${germanNumber((person.kirchensteuerSatz ?? 0) * 100)} %`]
         ];
         if (offset > 0) rows.splice(3, 0, ['Rentenbeginn in', `${germanNumber(offset)} Jahren`]);
-        if (index > 0) rows.push(['Steuerquote · bisherige Rentenbasis', `${germanNumber(person.steuerquotePct ?? 0)} %`]);
         const active = state.controller.active && Boolean(entry);
         showPersonValues(doc, `${role}PersonValues`, `${role}EssentialEditors`, essentialRows, active);
         showPersonValues(doc, `${role}PersonDetailValues`, `${role}PersonEditors`, rows, active);
@@ -201,7 +201,7 @@ function render(state, doc) {
         if (!field) continue;
         const entry = entries[id.startsWith('r2') ? 1 : 0];
         const key = editable[id];
-        const inactive = id === 'rentAdjPct' && combined.rentAdjMode !== 'fix';
+        const inactive = id === 'r2Steuerquote' || id === 'rentAdjPct' && combined.rentAdjMode !== 'fix';
         const unlocked = state.controller.active && key && entry && !inactive && !globalThis.window?.__profileRecoveryBlocker;
         field.setCustomValidity?.('');
         field.dataset.noPersist = 'true';

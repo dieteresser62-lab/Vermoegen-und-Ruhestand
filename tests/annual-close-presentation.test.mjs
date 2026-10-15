@@ -48,7 +48,8 @@ for (let i = 0; i < 30; i++) await Promise.resolve();
 const root = doc.getElementById('balanceAnnualClose');
 const text = element => dialogElements(element).map(node => node.textContent || '').join(' ').replaceAll('\u00a0', ' ');
 const market = root.querySelector('[data-annual-market-report]');
-assert(text(market).includes('ETF-Schlusskurs') && text(market).includes('141,00 €'), 'Vorbereitung zeigt bereits den ganzzahligen Kurs des gespeicherten Abschlusses');
+assert(text(market).includes('ETF-Schlusskurs') && text(market).includes('140,78 €'), 'FR-14: Vorbereitung zeigt den Quellkurs in Euro und Cent');
+assert(!text(market).includes('auf ganze Euro gerundet'), 'Vorbereitung verspricht keine Rundung des gespeicherten Kurses');
 assertEqual(market.querySelectorAll('.close-dialog-tile').length, 3, 'Marktdaten zeigen drei Kacheln');
 assert(text(market).includes('Manuell · für das Jahr 2026') && text(market).includes('am 31.12.2026'), 'Manuelle Herkunft und Datenzeitraum stehen knapp an den Werten');
 assert(text(market.querySelector('[data-annual-market-provenance]')).includes('gespeichert mit dem Abschluss'), 'Gemeinsame Herkunft erklärt den Speicherzeitpunkt');
@@ -90,7 +91,7 @@ const savedModel = projectAnnualClosePreparation({ ...model, summary: { year: 20
     annual: { year: 2027, complete: false, months: [] }, occasion: { ...model.occasion, kind: 'monthly', annualState: 'done' } }, { store, annualBudgetSummary });
 assertEqual(savedModel.annual.year, 2026, 'Monatsphase nach Jahreswrite behält den Rückblick auf das Abschlussjahr');
 ui.showUpdateResultModal({ targetYear: 2026, confirmed: true, showProtocol: true,
-    inflation: { year: 2026, rate: 2.5, source: 'Probelauf · synthetisch' }, etf: { price: 141, source: 'Probelauf · synthetisch' }, cape: { capeRatio: 28.5, source: 'Probelauf · synthetisch' },
+    inflation: { year: 2026, rate: 2.5, source: 'Spielbereich · synthetisch' }, etf: { price: 141, source: 'Spielbereich · synthetisch' }, cape: { capeRatio: 28.5, source: 'Spielbereich · synthetisch' },
     actionResult: { year: 2027, targetYear: 2026, action: { type: 'NONE', steuer: 0 }, needs: [] },
     monthSession: { model: savedModel, request: { cash: accepted.cash }, result: { monthSnapshotId: 'test' }, phase: 'done' } });
 const receipt = root.querySelector('[data-annual-expense-status]');
@@ -99,15 +100,18 @@ assert(text(receipt).includes('Dezember vollständig') && text(receipt).includes
 assert(!text(receipt).includes('Jahr 2027'), 'Neues Planjahr ersetzt nicht das Ausgabenjahr im Beleg');
 assert(text(root).includes('Monatsinformation aus dem festgeschriebenen Plan 2027'), 'Jahreserfolg nennt die festgeschriebene Quelle des Januarbetrags');
 const protocolText = text(doc.getElementById('annualResults'));
-assert(protocolText.includes('Inflation 2026: 2,50 % · Probelauf · synthetisch'), 'Jahresprotokoll nennt die Inflation in Prozent');
-assert(protocolText.includes('ETF-Schlusskurs: 141,00 € · Probelauf · synthetisch'), 'ETF-Schlusskurs behält Euro als Einheit');
-assert(protocolText.includes('US Shiller CAPE: 28,50 · Probelauf · synthetisch'), 'CAPE bleibt ohne Einheit');
+assert(protocolText.includes('Inflation 2026: 2,50 % · Spielbereich · synthetisch'), 'Jahresprotokoll nennt die Inflation in Prozent');
+assert(protocolText.includes('ETF-Schlusskurs: 141,00 € · Spielbereich · synthetisch'), 'ETF-Schlusskurs behält Euro als Einheit');
+assert(protocolText.includes('US Shiller CAPE: 28,50 · Spielbereich · synthetisch'), 'CAPE bleibt ohne Einheit');
 assert(text(root.querySelector('.close-dialog-success')).includes('Dezember und 2026 sind abgeschlossen, Plan 2027 ist festgeschrieben.'), 'Erfolgsblock bestätigt Dezember, Abschlussjahr und festgeschriebenen Plan');
 const derivation = root.querySelector('[data-annual-plan-derivation]'), december = root.querySelector('[data-annual-december]');
 assert(!derivation.open && !december.open && !root.querySelector('[data-annual-action-details]').open, 'Herleitung, Dezember und Anweisungsdetails beginnen geschlossen');
 assert(derivation.querySelector('[data-annual-expense-status]') === receipt && text(derivation).includes('6 Bezugsmonate'), 'Renten und vollständiger Ausgabenstatus bleiben unter Herleitung erreichbar');
 assert(text(december.children[0]).includes('Tagesgeld Max Mustermann') && text(december.children[0]).includes('Budget'), 'Dezember-Zusammenfassung nennt Budgetvergleich und Tagesgeld je Person');
 assert(doc.getElementById('annualShowLog').parent !== footer && root.querySelector('[data-annual-receipt-details]').parent === binding.content.children[0], 'Protokoll und Belegerläuterung liegen im scrollbaren Inhalt');
+const receiptCard = root.querySelector('[data-annual-receipt-details]');
+assert(!receiptCard.open && receiptCard.className === derivation.className && receiptCard.children[0].textContent === 'Abschlussbeleg', 'Abschlussbeleg beginnt als dritte Karte im Stil der Herleitung geschlossen');
+assert(doc.getElementById('annualShowLog').parent === receiptCard && doc.getElementById('annualShowLog').className.includes('ds-button-quiet'), 'Protokollknopf bleibt mit seinem Anker zurückhaltend innerhalb des Abschlussbelegs');
 assert(root.querySelector('.close-dialog-footnote').hidden && root.querySelector('[data-close-dialog-status]').textContent === 'Nächster Monatsabschluss: 1. Februar.', 'Ergebnisfuß nennt links den nächsten Termin; Belegerläuterung bleibt im Inhalt');
 await doc.getElementById('annualConfirmBtn').fire('click');
 const completeStore = structuredClone(store); completeStore.years[2026].months[7].profiles.b = { categories: {} };

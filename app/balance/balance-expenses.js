@@ -390,6 +390,9 @@ function refreshTableValues() {
 }
 
 function renderTable() {
+    const probelauf = getProbelaufController(globalThis.document);
+    if (probelauf?.busy || probelauf?.blocked
+        || PersistenceFacade.isInitialized() && PersistenceFacade.getPersistenceStatus().reloadRequired) return;
     // Auch gemeinsame Observer ersetzen die Matrix außerhalb des Seitenrefreshs.
     // Der Seitenadapter schützt den Fokus bereits vor dem nativen focusout.
     if (adapters.preserveMatrixFocus) return adapters.preserveMatrixFocus(renderTableContent);

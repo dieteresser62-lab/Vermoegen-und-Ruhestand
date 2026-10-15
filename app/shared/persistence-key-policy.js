@@ -2,6 +2,7 @@ import { PERSON_VALUE_KEYS } from '../profile/profile-person-data.js';
 // @ts-check
 
 import { CONFIG } from '../balance/balance-config.js';
+import { WEALTH_CAPTURES_KEY } from '../../types/wealth-capture-contract.js';
 
 const PROFILE_STORAGE_KEYS = Object.freeze({
     registry: 'rs_profiles_v1',
@@ -48,6 +49,7 @@ export const LEGACY_MIGRATION_MARKER_KEYS = Object.freeze({
 export const STRESS_REPLAY_ACTIVE_STORAGE_KEY = 'sim.stressReplay.active.v1';
 
 const EXACT_KEYS = new Set([
+    WEALTH_CAPTURES_KEY,
     'overview_last_full_backup_v1',
     'rs_data_backup_summary_v1',
     'rs_wealth_history_start_v1',
@@ -71,6 +73,7 @@ const EXACT_KEYS = new Set([
 ]);
 
 const SNAPSHOT_CAPTURE_EXACT_KEYS = new Set([
+    WEALTH_CAPTURES_KEY,
     'household_plan_v1',
     'annual_plan_record_v1',
     CONFIG.STORAGE.LS_KEY,

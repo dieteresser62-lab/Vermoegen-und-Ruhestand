@@ -19,6 +19,8 @@ import { createAnnualWealthHistoryEntry, readWealthHistory, upsertAnnualWealthHi
 import { buildBalanceOverviewSummary } from '../overview/overview-model.js';
 import { overviewScope, OVERVIEW_SUMMARY_KEY, readOverviewSummaries, summaryEntryKey } from '../overview/overview-storage.js';
 import { sourceFingerprint } from '../overview/overview-simulation-summary.js';
+import { prepareWealthCapture } from '../profile/profile-wealth-captures.js';
+import { WEALTH_CAPTURES_KEY } from '../../types/wealth-capture-contract.js';
 
 /** Beide Rechnungen verwenden dieselbe historische Basis, niemals den Empfehlungs-Neustate. */
 export function evaluateAnnualDraft(draft, { engineApi, adoptedPlanPatch, now = appNow } = {}) {
@@ -37,8 +39,8 @@ export function evaluateAnnualDraft(draft, { engineApi, adoptedPlanPatch, now = 
     if (modelResult?.error) throw modelResult.error;
     if (!modelResult?.newState || !modelResult?.ui) throw new Error('Die Jahresrechnung liefert keinen vollständigen Kandidaten.');
     const monthlyWithdrawal = modelResult.ui.spending.monatlicheEntnahme;
-    // Der normale Balance-Pfad übernimmt denselben festen Einkommensjahresstand.
-    const monthlyBudget = monthlyWithdrawal + Math.round(inputData.renteMonatlich * 12) / 12;
+    // Wie in der Vorschau bleibt die Einkommensprojektion ungerundet (FR-14).
+    const monthlyBudget = monthlyWithdrawal + inputData.renteMonatlich;
     const outcome = { monthlyWithdrawal, monthlyBudget, liquidityBefore: modelResult.ui.liquiditaet?.deckungVorher,
         liquidityAfter: modelResult.ui.liquiditaet?.deckungNachher, marketPhase: modelResult.ui.market?.szenarioText,
         flexRate: modelResult.diagnosis?.keyParams?.aktuelleFlexRate ?? modelResult.newState.flexRate,
@@ -97,6 +99,8 @@ export function prepareAnnualCommitRecords(draft, { engineApi, adoptedPlanPatch,
     if (draft.targetYear >= 2026) {
         const entry = createAnnualWealthHistoryEntry({ ...inputData, ...(cashUpdate ? { tagesgeld: cashUpdate.total } : {}) }, draft.targetYear);
         state.wealthHistory = upsertAnnualWealthHistory(readWealthHistory(state), entry);
+        adapter.setItem(WEALTH_CAPTURES_KEY, prepareWealthCapture({ storage: adapter, registry: nextRegistry,
+            activeId: draft.profileId, entry, inputData, cashRecords: cashUpdate?.records, now: clock }));
     }
     manager.saveState(state);
     nextRegistry.profiles[draft.profileId].data[stateKey] = JSON.stringify(state);

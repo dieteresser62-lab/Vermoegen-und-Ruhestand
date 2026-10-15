@@ -24,6 +24,9 @@ const UPSTREAM_TIMEOUT_SECONDS: u64 = 4;
 enum StateTarget {
   Live,
   Snapshots,
+  Spiel,
+  SpielSnapshots,
+  Control,
 }
 
 // Kennung, Phase und Freigabe teilen denselben Lock; keine Timerfreigabe
@@ -146,14 +149,14 @@ fn state_filename(target: Option<StateTarget>) -> &'static str {
   match target.unwrap_or(StateTarget::Live) {
     StateTarget::Live => APP_STATE_FILENAME,
     StateTarget::Snapshots => SNAPSHOT_STATE_FILENAME,
+    StateTarget::Spiel => "ruhestand_suite_spiel_data.json",
+    StateTarget::SpielSnapshots => "ruhestand_suite_spiel_snapshots.json",
+    StateTarget::Control => "ruhestand_suite_area_control.json",
   }
 }
 
 fn corrupt_state_filename(target: Option<StateTarget>, timestamp: u64) -> String {
-  let stem = match target.unwrap_or(StateTarget::Live) {
-    StateTarget::Live => "ruhestand_suite_data",
-    StateTarget::Snapshots => "ruhestand_suite_snapshots",
-  };
+  let stem = state_filename(target).trim_end_matches(".json");
   format!("{}.corrupt.{}.json", stem, timestamp)
 }
 
@@ -239,6 +242,26 @@ fn quarantine_app_state(app: tauri::AppHandle, target: Option<StateTarget>) -> R
   let quarantine_path = file_path.with_file_name(corrupt_state_filename(target, timestamp));
   fs::rename(&file_path, &quarantine_path).map_err(|e| e.to_string())?;
   Ok(quarantine_path.to_string_lossy().to_string())
+}
+
+// Ausschließlich Spielziele, einschließlich abgebrochener Schreibdateien.
+fn delete_play_files(directory: &Path) -> Result<(), String> {
+  for target in [StateTarget::Spiel, StateTarget::SpielSnapshots] {
+    let path = directory.join(state_filename(Some(target)));
+    for file in [path.clone(), path.with_extension("json.tmp"), path.with_extension("json.bak")] {
+      match fs::remove_file(file) {
+        Ok(()) => {},
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {},
+        Err(error) => return Err(error.to_string()),
+      }
+    }
+  }
+  Ok(())
+}
+
+#[tauri::command]
+fn delete_play_state(app: tauri::AppHandle) -> Result<(), String> {
+  delete_play_files(&app_data_directory(&app)?)
 }
 
 #[tauri::command]
@@ -689,6 +712,7 @@ pub fn run() {
       load_app_state,
       save_app_state,
       quarantine_app_state,
+      delete_play_state,
       get_app_data_directory,
       open_app_data_directory,
       confirm_app_close
@@ -1157,4 +1181,39 @@ mod tests {
       "ruhestand_suite_snapshots.corrupt.123.json"
     );
   }
+  #[test]
+  fn play_targets_and_quarantine_are_separate() {
+    assert_eq!(state_filename(Some(StateTarget::Spiel)), "ruhestand_suite_spiel_data.json");
+    assert_eq!(state_filename(Some(StateTarget::SpielSnapshots)), "ruhestand_suite_spiel_snapshots.json");
+    assert_eq!(state_filename(Some(StateTarget::Control)), "ruhestand_suite_area_control.json");
+    for (name, target) in [("spiel", StateTarget::Spiel), ("spielsnapshots", StateTarget::SpielSnapshots), ("control", StateTarget::Control)] {
+      assert_eq!(serde_json::from_str::<StateTarget>(&format!("\"{}\"", name)).unwrap(), target);
+      assert!(corrupt_state_filename(Some(target), 123).contains(".corrupt.123.json"));
+      assert_ne!(corrupt_state_filename(Some(target), 123), corrupt_state_filename(None, 123));
+    }
+  }
+
+  #[test]
+  fn deleting_play_files_preserves_real_files_and_metadata() {
+    let directory = std::env::temp_dir().join(format!("rs-play-test-{}-{}", std::process::id(), close_clock_ms()));
+    fs::create_dir_all(&directory).unwrap();
+    let real = directory.join(APP_STATE_FILENAME);
+    let snapshots = directory.join(SNAPSHOT_STATE_FILENAME);
+    fs::write(&real, b"real data").unwrap();
+    fs::write(&snapshots, b"real snapshots").unwrap();
+    let modified = fs::metadata(&real).unwrap().modified().unwrap();
+    for target in [StateTarget::Spiel, StateTarget::SpielSnapshots] {
+      let path = directory.join(state_filename(Some(target)));
+      fs::write(&path, b"play").unwrap();
+      fs::write(path.with_extension("json.tmp"), b"partial").unwrap();
+    }
+    delete_play_files(&directory).unwrap();
+    delete_play_files(&directory).unwrap();
+    assert_eq!(fs::read(&real).unwrap(), b"real data");
+    assert_eq!(fs::read(&snapshots).unwrap(), b"real snapshots");
+    assert_eq!(fs::metadata(&real).unwrap().modified().unwrap(), modified);
+    assert_eq!(fs::read_dir(&directory).unwrap().count(), 2);
+    fs::remove_dir_all(directory).unwrap();
+  }
+
 }

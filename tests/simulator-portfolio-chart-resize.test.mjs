@@ -15,13 +15,17 @@ export function createPortfolioFixture({ observer = true } = {}) {
     };
     const doc = { defaultView: view, nodes: [], querySelectorAll: () => [], getElementById: id => doc.nodes.find(node => node.id === id) || null };
     doc.createElement = tag => {
-        const node = { tag, ownerDocument: doc, children: [], attributes: {}, style: {}, isConnected: true, clientWidth: 0,
+        const node = { tag, ownerDocument: doc, children: [], attributes: {}, style: {}, isConnected: true, clientWidth: 0, listeners: new Map(),
             textContent: '', setAttribute(key, value) { this.attributes[key] = String(value); },
             getAttribute(key) { return this.attributes[key] ?? null; },
             get firstChild() { return this.children[0] || null; },
             get innerHTML() { return ''; }, set innerHTML(_value) { this.children = []; },
             appendChild(child) { this.children.push(child); return child; },
-            replaceChild(child, old) { this.children[this.children.indexOf(old)] = child; return old; }
+            replaceChild(child, old) { this.children[this.children.indexOf(old)] = child; return old; },
+            addEventListener(type, fn) { if (!this.listeners.has(type)) this.listeners.set(type, new Set()); this.listeners.get(type).add(fn); },
+            removeEventListener(type, fn) { this.listeners.get(type)?.delete(fn); },
+            dispatch(type, event = {}) { [...(this.listeners.get(type) || [])].forEach(fn => fn(event)); },
+            contains(child) { return this.children.includes(child) || this.children.some(node => node.contains(child)); }
         };
         doc.nodes.push(node); return node;
     };
@@ -36,6 +40,52 @@ const rows = [
 ];
 const previous = globalThis.document, previousWindow = globalThis.window;
 try {
+    {
+        const f = createPortfolioFixture(); globalThis.document = f.doc;
+        const toggle = f.doc.createElement('input'); toggle.checked = true;
+        const calendarRows = [2000, 2001, 2002, 2003].map((jahr, i) => ({ ...rows[i % 2], jahr,
+            row: { recordType: 'financial_year', financiallyEvaluable: true, bondBucketAfter: 40,
+                entscheidung: { kuerzungProzent: i === 2 ? 0 : 20 },
+                minimumFlexAnnual: 100, flex_wunsch_haushalt_nominal: 200, flex_haushalt_erfuellt: 100,
+                portfolio_total_end: i === 1 ? 100 : 500, inflation: 0, inflation_factor_cum: 1 } }));
+        const data = { rows: calendarRows, outcome: { kind: 'completed' } }, bytes = JSON.stringify(data);
+        const options = { analysisData: data, annotationToggle: toggle };
+        const svg = () => f.host.children[0];
+        const byClass = name => svg().children.filter(node => node.getAttribute('class') === name);
+        const axes = () => svg().children.filter(node => node.tag === 'text').map(node => [node.attributes, node.textContent]);
+        const paths = () => svg().children.filter(node => node.tag === 'path').map(node => node.attributes);
+        renderThreeBucketPortfolioChart(f.host, calendarRows);
+        const baseAxes = JSON.stringify(axes()), basePaths = JSON.stringify(paths());
+        renderThreeBucketPortfolioChart(f.host, calendarRows, options);
+        assertEqual(byClass('backtest-chart-cut-band').length, 2, 'Belegte Kürzungsphasen stehen unter dem Chart');
+        assert(byClass('backtest-chart-marker').length > 0 && byClass('backtest-chart-marker').length <= 5, 'Ereignismarken sichtbar und auf fünf begrenzt');
+        assertEqual(JSON.stringify(axes()), baseAxes, 'Mit Marken bleiben sämtliche Zahlenachsen und Krisenbeschriftungen gleich');
+        assertEqual(JSON.stringify(paths()), basePaths, 'Mit Bändern bleiben sämtliche Portfolioflächen gleich');
+        assert(Number(svg().getAttribute('height')) > 320, 'Bänder erweitern nur den Platz unterhalb der Zahlenachse');
+        const oldMarker = byClass('backtest-chart-marker')[0], year = Number(oldMarker.getAttribute('data-backtest-chart-year'));
+        const target = f.doc.createElement('tr'); target.id = `backtest-year-${year}`;
+        const classes = new Set(); target.classList = { add: name => classes.add(name), remove: name => classes.delete(name) };
+        target.scrollIntoView = () => { target.scrolled = true; }; target.focus = () => { target.focused = true; };
+        let prevented = false;
+        f.host.dispatch('click', { target: { closest: () => oldMarker }, preventDefault() { prevented = true; } });
+        assert(prevented && target.scrolled && target.focused && classes.has('backtest-analysis-highlight'), 'Markenklick verwendet die vorhandene Protokollnavigation samt Hervorhebung');
+        toggle.checked = false; toggle.dispatch('change');
+        assertEqual(byClass('backtest-chart-marker').length + byClass('backtest-chart-cut-band').length, 0, 'Schalter blendet ausschließlich Laufmarken und Kürzungsbänder aus');
+        assertEqual(svg().getAttribute('height'), '320', 'Ausgeblendete Bänder benötigen keinen Zusatzplatz');
+        assertEqual(JSON.stringify(axes()), baseAxes, 'Ausblenden erhält Zahlen und historische Krisen');
+        f.host.clientWidth = 1920; f.observe();
+        assertEqual(byClass('backtest-chart-marker').length, 0, 'Resize erhält ausgeschaltete Auffälligkeiten');
+        renderThreeBucketPortfolioChart(f.host, calendarRows, options);
+        assertEqual(byClass('backtest-chart-marker').length, 0, 'Tabellenneuaufbau erhält den Schalterzustand');
+        assert(!classes.has('backtest-analysis-highlight'), 'Neuer Chartauftrag räumt die alte Hervorhebung auf');
+        assertEqual(toggle.listeners.get('change').size, 1, 'Tabellenneuaufbau verdoppelt keine Schalterbindung');
+        toggle.checked = true; toggle.dispatch('change');
+        assert(byClass('backtest-chart-marker').length > 0, 'Wiedereinblenden zeichnet Marken an aktueller Breite');
+        assertEqual(JSON.stringify(data), bytes, 'Klick, Toggle und Resize verändern den Lauf nicht');
+        renderThreeBucketPortfolioChart(f.host, []);
+        assertEqual(toggle.listeners.get('change').size, 0, 'Leerer Folgeauftrag beendet die Schalterbindung');
+        toggle.dispatch('change'); assertEqual(f.host.children.length, 0, 'Schalter kann keinen verworfenen Lauf wiederherstellen');
+    }
     {
         const f = createPortfolioFixture(); globalThis.document = f.doc;
         const calendarRows = [2000, 2001, 2002].map((year, i) => ({ ...rows[i % 2], jahr: year }));

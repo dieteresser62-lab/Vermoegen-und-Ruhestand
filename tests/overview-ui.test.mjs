@@ -421,7 +421,7 @@ assert(html.includes('href="depot-tranchen-manager.html#personen"') && html.incl
 {
     const card = html.match(/<section[^>]*aria-labelledby="overviewWelcomeTitle">([\s\S]*?)<\/section>/)[1];
     assertEqual((card.match(/class="overview-welcome-option"/g) || []).length, 3, 'Linke Erststartkarte bietet drei Optionen im selben Stil');
-    assert(card.includes('Mit Muster-Haushalt ausprobieren') && /id="overviewWelcomeDemo"[^>]*hidden[^>]*disabled/.test(card), 'Musteroption wartet auf sichere Probelaufbindung');
+    assert(card.includes('Erst ausprobieren – mit Max und Erika') && /id="overviewWelcomeDemo"[^>]*hidden[^>]*disabled/.test(card), 'Musteroption wartet auf sichere Probelaufbindung');
     const trialDoc = createPresentationTestDocument();
     const option = trialDoc.createElement('button'); option.id = 'overviewWelcomeDemo'; trialDoc.body.appendChild(option);
     option.click = () => option.events.get('click')?.({ currentTarget: option, target: option });
@@ -433,7 +433,7 @@ assert(html.includes('href="depot-tranchen-manager.html#personen"') && html.incl
     option.click(); option.click();
     await Promise.resolve(); await Promise.resolve();
     assertEqual(starts, 1, 'Musteroption teilt Doppelklicks über den vorhandenen Startablauf');
-    assertEqual(JSON.stringify(choice), JSON.stringify({ source: 'demo', testDate: '2026-10-12' }), 'Erststartklick wählt Muster und das heutige Datum des Controllers');
+    assertEqual(JSON.stringify(choice), JSON.stringify({ source: 'demo', testDate: null }), 'Erststartklick wählt Muster mit Stand heute ohne Testdatum');
     assertEqual(dialogs, 0, 'Erststartklick öffnet keinen Startdialog');
     for (const flag of ['busy', 'waiting', 'blocked']) {
         trial[flag] = true; renderProbelaufUI(trialDoc, trial);
@@ -448,8 +448,8 @@ assert(html.includes('href="depot-tranchen-manager.html#personen"') && html.incl
     trial.demoAvailable = true;
     for (const phase of ['active', 'starting', 'restoring']) {
         trial.state = { phase, testDate: '2026-10-12' }; renderProbelaufUI(trialDoc, trial);
-        assert(option.hidden, `${phase}: vorhandener Probelauf verbirgt die Musteroption`);
-        option.click(); assertEqual(starts, 1, `${phase}: vorhandener Probelauf wird nicht neu gestartet`);
+        assert(option.hidden, `${phase}: vorhandener Spielbereich verbirgt die Musteroption`);
+        option.click(); assertEqual(starts, 1, `${phase}: vorhandener Spielbereich wird nicht neu gestartet`);
     }
 }
 doc.getElementById('overviewWelcomeImport').click();
@@ -959,7 +959,8 @@ assertEqual(doc.getElementById('overviewLiquidity').textContent, '103,1\u00a0% d
         liveData: records, now: new Date(2027, 6, 1, 12) });
     renderOverview(doc, model);
     assertEqual(model.occasion.kind, 'play', 'Echter Musterstart rendert ruhigen Anlass');
-    assertEqual(doc.getElementById('overviewPlanStatus').textContent, '', 'Muster-Abschlussmetadaten allein ergeben keinen festgeschriebenen Beleg');
+    assertEqual(doc.getElementById('overviewPlanStatus').textContent, 'festgeschrieben', 'Muster-Jahresbeleg zeigt den festgeschriebenen Plan');
+    assert(doc.getElementById('overviewPlanComparison').innerHTML.includes('Plan 2027 · festgeschrieben am 01.01.2027'), 'Musterstart zeigt den Planvergleich mit Abschlussdatum');
     assert(!focus.innerHTML.includes('overview-play') && !focus.className.includes('ds-card'), 'Frischer Musterstart hat keine Durchspielen-Karte');
     assert(!focus.innerHTML.includes('data-overview-month-confirm') && !focus.innerHTML.includes('Abschluss starten'), 'Keine Abschlussaktion am Start');
     assertEqual(doc.getElementById('overviewHouseholdNames').textContent, 'Max + Erika', 'Musterkopf nennt beide Vornamen');
@@ -1027,7 +1028,7 @@ for (const now of [new Date(2027, 0, 15, 12), new Date(2027, 9, 15, 12)]) {
 renderOverview(doc, { ...focusBase, exampleExpensesAllowed: false });
 assert(!focus.innerHTML.includes('data-overview-example'), 'Normalbetrieb erzeugt keine Beispielaktionen');
 renderOverview(doc, { ...focusBase, occasion: { ...focusBase.occasion, annualState: 'unclear' }, exampleExpensesAllowed: true });
-assert(!focus.innerHTML.includes('data-overview-example') && !focus.innerHTML.includes('Beispiele für alle'), 'Ungeklärter Jahresstatus bietet auch im Probelauf keine Ausgabenaktionen an');
+assert(!focus.innerHTML.includes('data-overview-example') && !focus.innerHTML.includes('Beispiele für alle'), 'Ungeklärter Jahresstatus bietet auch im Spielbereich keine Ausgabenaktionen an');
 
 renderOverview(doc, monthly);
 assertEqual((focus.innerHTML.match(/Rund 5 Minuten/g) || []).length, 1, 'Monatskarte enthält genau einen Dauerhinweis');

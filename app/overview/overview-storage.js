@@ -37,7 +37,7 @@ async function storeMonthWithCash(request, { storage, flush, now, guard, navigat
         // der gemeinsame Cashwriter prüft weiter Profil und sämtliche Rohwerte.
         const prepared = prepareHouseholdCash({ storage, registry, activeId: expectedProfileId, ids: scope.ids,
             checkMembership: scope.kind === 'household', cash, date: localHistoryDate(date), recordConfirmation: true });
-        const record = { month, scope, completedAt: date.toISOString() };
+        const record = { month, scope, completedAt: date.toISOString(), ...(cash.playValues ? { playValues: structuredClone(cash.playValues) } : {}) };
         for (const id of scope.ids) {
             const data = prepared.registry.profiles[id].data;
             const raw = id === expectedProfileId ? storage.getItem(OVERVIEW_MONTH_KEY) : data[OVERVIEW_MONTH_KEY];

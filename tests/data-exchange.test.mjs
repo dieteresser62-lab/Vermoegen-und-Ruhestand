@@ -238,7 +238,7 @@ for (const exchangeText of ['', 'Vorhandene Austauschmeldung']) {
                 assertEqual(status.textContent, 'Das Archiv hat sich geändert. Bitte erneut prüfen.', 'Archivänderung fordert eine neue Prüfung');
                 assert(archive.has('old'), 'Archivänderung erhält den ausgewählten Punkt');
             }
-            if (mode === 'probelauf') assertEqual(status.textContent, 'Beende bitte zuerst den Probelauf.', 'Probelaufsperre bleibt handlungsfähig');
+            if (mode === 'probelauf') assertEqual(status.textContent, 'Beende bitte zuerst den Spielbereich.', 'Probelaufsperre bleibt handlungsfähig');
             if (mode === 'delete-error') assert(technical.textContent.includes('SYNTHETIC_DELETE_FAILED'), 'Deletefehler steht in Restoredetails');
             if (mode === 'readback-error') assert(technical.textContent.includes('SYNTHETIC_READBACK_FAILED'), 'Readbackfehler steht in Restoredetails');
             if (mode === 'retained') assert(technical.textContent.includes('nicht bestätigt'), 'Unbestätigtes Delete meldet fehlenden Readback');

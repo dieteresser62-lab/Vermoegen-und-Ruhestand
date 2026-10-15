@@ -81,7 +81,11 @@ export function assertWealthHistoryEntry(entry, path = 'wealthHistory.entry') {
     }
     const equities = entry.depotwertAlt + entry.depotwertNeu;
     assertSum(entry.aktienEtf, equities, `${path}.aktienEtf`);
-    assertSum(entry.total, entry.tagesgeld + entry.geldmarktEtf + entry.aktienEtf, `${path}.total`);
+    for (const field of ['goldWert', 'anleihen']) {
+        if (Object.hasOwn(entry, field)) assertAmount(entry[field], `${path}.${field}`);
+    }
+    assertSum(entry.total, entry.tagesgeld + entry.geldmarktEtf + entry.aktienEtf
+        + (entry.goldWert ?? 0) + (entry.anleihen ?? 0), `${path}.total`);
     return entry;
 }
 

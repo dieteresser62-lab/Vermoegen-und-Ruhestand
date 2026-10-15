@@ -1,3 +1,4 @@
+import { projectBalancePlanningHorizon } from './balance-planning-horizon.js';
 import { registeredPlanTrial, planTrialPatch, planTrialDifferences } from '../shared/plan-trial.js';
 import { readBalanceInflationSource, renderBalanceInflationSource } from './balance-inflation-source.js';
 import { BALANCE_STORAGE_FIELD_IDS, buildBalanceEngineInputFromStorage } from './balance-input-storage.js';
@@ -567,7 +568,7 @@ export const UIReader = {
         }
         const trial = registeredPlanTrial(globalThis.document);
         if (trial?.read().active && trial.localValues().rebalancingBand !== undefined) output.rebalancingBand = trial.localValues().rebalancingBand;
-        return output;
+        return projectBalancePlanningHorizon(output, readiness);
     },
 
     /**

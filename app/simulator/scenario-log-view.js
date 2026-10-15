@@ -2,8 +2,11 @@ import { escapeProtocolHtml as escape } from './protocol-renderer.js';
 import { formatCurrency } from './simulator-utils.js';
 import { formatChartEuro } from './results-formatting.js';
 import { buildScenarioEntries, renderScenarioWealthChart, scenarioEndWealth } from './scenario-wealth-chart.js';
+import { COMPARISON_DEFAULT, COMPARISON_EXTREMES, comparisonEntries, comparisonLabel, renderScenarioComparison } from './scenario-comparison.js';
+import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 
 const bindings = new WeakMap();
+const comparisonSelections = new WeakMap();
 const groups = [['wealth', 'Endvermögen'], ['care', 'Pflege'], ['risk', 'Risiko'], ['sample', 'Stichprobe']];
 
 function scenarioLabel(scenario) {
@@ -73,7 +76,7 @@ export function renderScenarioList(entries, selectedId, mode, options = {}) {
 }
 
 /** Ein Binder als einzige Auswahlquelle für Liste, SVG, Navigation und Protokoll. */
-export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, chartOptions = {} }) {
+export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, chartOptions = {}, comparisonContext }) {
     disposeScenarioLogView(doc);
     const entries = buildScenarioEntries(logs).map(entry => {
         const person = { earliestCareP1: 1, earliestCareP2: 2 }[entry.scenario.key];
@@ -85,6 +88,9 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
     const groupHost = doc.getElementById('scenarioGroups');
     const disclosure = doc.getElementById('scenarioSelectionDisclosure');
     const chart = doc.getElementById('scenarioWealthChart');
+    const comparison = doc.getElementById('scenarioComparison');
+    const comparisonChart = doc.getElementById('scenarioComparisonChart');
+    let comparisonSelection = [...(comparisonSelections.get(doc) || COMPARISON_DEFAULT)];
     let selectedId = entries.some(entry => entry.id === 'char_worst') ? 'char_worst' : entries[0]?.id || '';
     let activeGroup = entries.find(entry => entry.id === selectedId)?.group || 'wealth';
     let focusedId = selectedId;
@@ -97,10 +103,10 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
         element.addEventListener(type, handler);
         cleanup.push(() => element.removeEventListener(type, handler));
     };
-    const contentWidth = () => {
-        if (!chart) return 0;
-        const style = doc.defaultView?.getComputedStyle?.(chart);
-        return Math.max(0, (chart?.clientWidth || 0) - (parseFloat(style?.paddingLeft) || 0) - (parseFloat(style?.paddingRight) || 0));
+    const contentWidth = (host = chart) => {
+        if (!host) return 0;
+        const style = doc.defaultView?.getComputedStyle?.(host);
+        return Math.max(0, (host.clientWidth || 0) - (parseFloat(style?.paddingLeft) || 0) - (parseFloat(style?.paddingRight) || 0));
     };
     const drawChart = () => {
         if (!chart) return;
@@ -111,6 +117,30 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
             displayWidth: width > 0 ? Math.max(narrow ? 760 : 300, width) : undefined });
         if (focusedId) Array.from(chart.querySelectorAll?.('[data-scenario-id]') || [])
             .find(element => element.getAttribute('data-scenario-id') === focusedId && element.tagName?.toLowerCase() === 'button')?.focus();
+    };
+    const drawComparisonChart = () => {
+        if (!comparisonChart) return;
+        const available = comparisonEntries(entries);
+        const colors = ['var(--warn)', 'var(--text-main)', 'var(--good)'];
+        const paths = comparisonSelection.map((id, index) => {
+            const entry = available.find(item => item.id === id);
+            return entry ? { ...entry, color: colors[index] } : null;
+        }).filter(Boolean);
+        const width = contentWidth(comparisonChart);
+        comparisonChart.innerHTML = renderScenarioWealthChart(paths, { ...chartOptions, mode, selectedId, comparison: true,
+            displayWidth: width > 0 ? Math.max(300, width) : undefined })
+            + `<div class="scenario-comparison-legend">${paths.map(entry => `<button type="button" class="ds-button ds-button-secondary" data-scenario-id="${escape(entry.id)}" aria-pressed="${selectedId === entry.id}"><span class="scenario-swatch" style="--scenario-color:${entry.color}" aria-hidden="true"></span>${escape(comparisonLabel(entry))}</button>`).join('')}</div>`;
+        const basis = doc.getElementById('scenarioComparisonChartBasis');
+        if (basis) basis.textContent = mode === 'nominal' ? 'Nominale Euro' : 'Heutige Euro · Kaufkraft zum Laufstart';
+    };
+    const drawComparison = () => {
+        if (comparison) {
+            const focusId = comparison.contains?.(doc.activeElement) ? doc.activeElement?.id : null;
+            comparison.innerHTML = renderScenarioComparison(entries, comparisonSelection, { context: comparisonContext, selectedId });
+            bindInfoPopovers(doc, { root: comparison });
+            if (focusId) doc.getElementById(focusId)?.focus?.({ preventScroll: true });
+        }
+        drawComparisonChart();
     };
     const options = () => Array.from(list?.querySelectorAll?.('[role="option"]') || []);
     const focusOption = (id, { preventScroll = true } = {}) => {
@@ -168,6 +198,7 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
             button.setAttribute('aria-label', neighbor ? `${direction}: ${neighbor.scenario.label}` : direction);
         }
         drawChart();
+        drawComparison();
         const control = doc.getElementById('mcWealthMode');
         if (control) control.hidden = false;
         for (const button of control?.querySelectorAll?.('[data-wealth-mode]') || []) button.setAttribute('aria-pressed', String(button.getAttribute('data-wealth-mode') === mode));
@@ -176,21 +207,25 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
     let lastSingle = (doc.defaultView?.innerWidth || 1920) <= 1100;
     if (disclosure) disclosure.open = !lastSingle;
     let lastWidth = contentWidth();
+    let lastComparisonWidth = contentWidth(comparisonChart);
     let lastNarrow = (doc.defaultView?.innerWidth || 1920) < 768;
     const resize = () => {
         const width = contentWidth();
+        const comparisonWidth = contentWidth(comparisonChart);
         const narrow = (doc.defaultView?.innerWidth || 1920) < 768;
         const single = (doc.defaultView?.innerWidth || 1920) <= 1100;
         if (single !== lastSingle && disclosure) disclosure.open = !single;
         lastSingle = single;
-        if (width === lastWidth && narrow === lastNarrow) return;
-        lastWidth = width; lastNarrow = narrow;
+        if (width === lastWidth && comparisonWidth === lastComparisonWidth && narrow === lastNarrow) return;
+        lastWidth = width; lastComparisonWidth = comparisonWidth; lastNarrow = narrow;
         drawChart();
+        drawComparisonChart();
     };
     const Observer = doc.defaultView?.ResizeObserver;
     if (Observer && chart) {
         const observer = new Observer(resize);
         observer.observe(chart);
+        if (comparisonChart) observer.observe(comparisonChart);
         cleanup.push(() => observer.disconnect());
     }
     listen(doc.defaultView, 'resize', resize);
@@ -240,6 +275,37 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
     };
     listen(list, 'click', pick);
     listen(chart, 'click', pick);
+    listen(comparisonChart, 'click', event => {
+        const id = event.target?.closest?.('[data-scenario-id]')?.getAttribute('data-scenario-id');
+        if (id) choose(id);
+    });
+    const setComparison = selection => {
+        comparisonSelection = [...selection];
+        comparisonSelections.set(doc, [...selection]);
+    };
+    listen(comparison, 'change', event => {
+        const column = event.target?.getAttribute?.('data-comparison-column');
+        if (!['0', '1', '2'].includes(column) || !comparisonEntries(entries).some(entry => entry.id === event.target.value)) return;
+        const selection = [...comparisonSelection]; selection[Number(column)] = event.target.value;
+        setComparison(selection);
+        choose(event.target.value);
+    });
+    listen(comparison, 'click', event => {
+        const preset = event.target?.closest?.('[data-comparison-preset]')?.getAttribute('data-comparison-preset');
+        if (['default', 'extremes'].includes(preset)) {
+            setComparison(preset === 'default' ? COMPARISON_DEFAULT : COMPARISON_EXTREMES);
+            choose(comparisonSelection[0]);
+            return;
+        }
+        const inspect = event.target?.closest?.('[data-comparison-inspect]')?.getAttribute('data-comparison-inspect');
+        const id = inspect || event.target?.closest?.('[data-scenario-id]')?.getAttribute('data-scenario-id');
+        if (!id) return;
+        event.preventDefault(); choose(id);
+        if (inspect) {
+            const target = doc.getElementById('scenarioLogAnalysis') || doc.getElementById('scenarioSelectedHeading');
+            target?.scrollIntoView?.({ block: 'start' });
+        }
+    });
     for (const id of ['mcWealthMode']) listen(doc.getElementById(id), 'click', event => {
         const next = event.target?.closest?.('[data-wealth-mode]')?.getAttribute('data-wealth-mode');
         if (!['real', 'nominal'].includes(next) || next === mode) return;
@@ -252,6 +318,7 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
         get focusedId() { return focusedId; },
         get selectedId() { return selectedId; },
         get mode() { return mode; },
+        get comparisonSelection() { return [...comparisonSelection]; },
         dispose: () => cleanup.forEach(remove => remove())
     };
     bindings.set(doc, binding);

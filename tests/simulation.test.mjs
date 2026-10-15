@@ -66,13 +66,22 @@ try {
     });
     assertClose(nextHist.endeVJ, 110, 1e-9, 'Next market history should advance endeVJ');
     assert(nextHist.jahreSeitAth === 3, 'Years since ATH should increase below ATH');
+    for (const [rA, ath, years] of [[.1, 110, 0], [0, 100, 0], [-.1, 100, 3]]) {
+        const hist = { endeVJ: 100, endeVJ_1: 95, endeVJ_2: 90, endeVJ_3: 85, ath: 100, jahreSeitAth: 2 };
+        const current = buildCurrentYearMarketData({ yearData: { inflation: 2 }, inputs: {}, marketDataHist: hist, rA }).marketDataCurrentYear;
+        assertClose(current.ath, ath, 1e-9, 'FR-15: Hoch, Gleichstand und Rückgang zählen im Entscheidungsjahr');
+        assertEqual(current.jahreSeitAth, years, 'FR-15: Abstand wird vor der Entscheidung aktualisiert');
+        assertEqual(hist.jahreSeitAth, 2, 'Vorjahresbeleg bleibt unverändert');
+        const next = buildNextMarketDataHist({ marketDataHist: hist, yearData: { inflation: 2 }, rA });
+        assertEqual(next.jahreSeitAth, current.jahreSeitAth, 'Jahresende erhöht den Abstand nur einmal');
+    }
     console.log('✅ Extracted portfolio progression helpers passed');
 } catch (e) {
     console.error('Test 0a Failed', e);
     throw e;
 }
 
-// Test 0b: extracted pension helper preserves offsets, partner tax and widow benefits
+// Test 0b: net pensions preserve offsets and widow benefits
 try {
     const pension = calculateHouseholdPensionForYear({
         inputs: {
@@ -94,10 +103,10 @@ try {
         temporaryFlexFactor: 0.5
     });
     assertClose(pension.rente1, 15000, 1e-9, 'P1 pension should include widow benefit');
-    assertClose(pension.rente2, 5400, 1e-9, 'P2 pension should apply tax quote');
-    assertClose(pension.pensionAnnual, 20400, 1e-9, 'Household pension should sum both persons');
+    assertClose(pension.rente2, 6000, 1e-9, 'FR-11: P2 net pension has no additional deduction');
+    assertClose(pension.pensionAnnual, 21000, 1e-9, 'Household pension should sum both persons');
     assertClose(pension.inflatedFloor, 0, 1e-9, 'Pension should cover floor');
-    assertClose(pension.inflatedFlex, 4600, 1e-9, 'Pension surplus should reduce flex');
+    assertClose(pension.inflatedFlex, 4000, 1e-9, 'Pension surplus should reduce flex');
     assertClose(pension.nextAnnualPension, 12240, 1e-9, 'P1 next pension should index');
     assertClose(pension.nextWidowPensionP1, 3060, 1e-9, 'Widow pension should index while active');
     console.log('✅ Extracted household pension helper passed');
@@ -317,7 +326,7 @@ try {
     const { engineInput: zeroLiquidityInput } = buildSimulatorEngineInput({
         inputs: { startAlter: 65, goldAktiv: false, targetEq: 70 },
         portfolio: { depotTranchesAktien: [], depotTranchesGold: [], liquiditaet: 999 },
-        marketDataCurrentYear: { endeVJ: 110, endeVJ_1: 100, endeVJ_2: 90, endeVJ_3: 80, ath: 120, jahreSeitAth: 2 },
+        marketDataCurrentYear: { endeVJ: 110, endeVJ_1: 100, endeVJ_2: 90, endeVJ_3: 80, ath: 110, jahreSeitAth: 0 },
         marketDataHist: { ath: 100, jahreSeitAth: 1 },
         yearData: { inflation: 2 },
         yearIndex: 0,
@@ -332,6 +341,7 @@ try {
     });
     assert(typeof zeroLiquidityInput.aktuelleLiquiditaet === 'number', 'Zero liquidity override should remain a number');
     assertEqual(zeroLiquidityInput.aktuelleLiquiditaet, 0, 'Zero liquidity override should be preserved');
+    assertEqual(zeroLiquidityInput.jahreSeitAth, 0, 'FR-15: Neuer Nullabstand erreicht die Engine trotz altem Abstand 1');
     console.log('✅ Extracted EngineAPI input mapping passed');
 } catch (e) {
     console.error('Test 0c Failed', e);

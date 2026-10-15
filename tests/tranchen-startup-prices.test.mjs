@@ -854,7 +854,7 @@ try {
     try {
         installClock(); setAppTestDate('2027-07-01');
         await setup([lot('muster-direkt', 'VWCE.DE'), lot('muster-isin', '', { isin: 'IE00BK5BQT80' })]);
-        globalThis.fetch = () => { network++; throw new Error('Kursnetz im Probelauf verboten'); };
+        globalThis.fetch = () => { network++; throw new Error('Kursnetz im Spielbereich verboten'); };
         const result = await startCoordinator().task;
         assertEqual(result.status, 'complete', 'Synthetische Startautomatik bestätigt alle Gruppen');
         const saved = JSON.parse(persistenceStorage.getItem('depot_tranchen'));

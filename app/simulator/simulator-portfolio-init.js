@@ -7,6 +7,7 @@
  */
 "use strict";
 
+import { ensurePersonalAccounts, syncPersonalLiquidity } from './simulator-personal-accounts.js';
 import { normalizeProfileHealthBucket } from '../profile/profile-state.js';
 import { classifyTranche } from '../../types/tranche-contract.js';
 
@@ -124,6 +125,7 @@ export function carveOutHealthBucketFromPortfolio(portfolio, inputs = {}) {
     portfolio.healthBucketGeldmarkt = 0;
     portfolio.healthBucketTranches = [];
     portfolio.healthBucketCashAmount = 0;
+    portfolio.healthBucketCashOwners = [];
     portfolio.healthBucketMeta = meta;
 
     if (!config.enabled || requested <= 0) {
@@ -165,6 +167,15 @@ export function carveOutHealthBucketFromPortfolio(portfolio, inputs = {}) {
     const usedFromCash = Math.min(remaining, initialCash);
     remaining -= usedFromCash;
 
+    if (Array.isArray(portfolio.personAccounts)) {
+        let cashRemaining = usedFromCash;
+        for (const account of portfolio.personAccounts) {
+            const take = Math.min(account.tagesgeld, cashRemaining);
+            account.tagesgeld -= take;
+            portfolio.healthBucketCashOwners.push({ profileId: account.profileId, amount: take });
+            cashRemaining -= take;
+        }
+    }
     const used = requested - remaining;
     portfolio.healthBucketGeldmarkt = used;
     portfolio.healthBucketCashAmount = usedFromCash;
@@ -172,6 +183,7 @@ export function carveOutHealthBucketFromPortfolio(portfolio, inputs = {}) {
     portfolio.tagesgeld = Math.max(0, initialCash - usedFromCash);
     portfolio.liquiditaet = Math.max(0, initialLiquiditaet - used);
 
+    syncPersonalLiquidity(portfolio);
     meta.used = used;
     meta.usedFromMoneyMarket = usedFromMoneyMarket;
     meta.usedFromCash = usedFromCash;
@@ -185,6 +197,7 @@ export function carveOutHealthBucketFromPortfolio(portfolio, inputs = {}) {
 }
 
 function withHealthBucketCarveOut(portfolio, inputs) {
+    ensurePersonalAccounts(portfolio, inputs);
     carveOutHealthBucketFromPortfolio(portfolio, inputs);
     return portfolio;
 }

@@ -307,7 +307,7 @@ console.log('--- Tranchen Price Service Tests Completed ---');
     try {
         setAppTestDate('2026-01-10'); globalThis.fetch = () => { network++; throw new Error('Netz verboten'); };
         const host = { textContent: '' }; await checkProxyHealth(host);
-        assert(host.textContent.includes('synthetische'), 'Alter Textverbraucher bleibt im Probelauf korrekt');
-        assertEqual(network, 0, 'Dienstprüfung im Probelauf erreicht kein Kursnetz');
+        assert(host.textContent.includes('synthetische'), 'Alter Textverbraucher bleibt im Spielbereich korrekt');
+        assertEqual(network, 0, 'Dienstprüfung im Spielbereich erreicht kein Kursnetz');
     } finally { setAppTestDate(null); globalThis.fetch = previousFetch; }
 }

@@ -129,7 +129,7 @@ for (const condition of ['trial','recovery','corrupt','unreadable','pending']) {
     if(condition==='corrupt') { P.setItemSync('rs_profiles_v1','{'); await P.flush(); }
     if(condition==='unreadable') a.fail='read';
     if(condition==='pending') { const state=JSON.parse(P.getItemSync(CONFIG.STORAGE.LS_KEY)); state.annualPeriodMetadata={ schemaVersion:1,lastCommittedPeriod:null,pendingCommit:{ periodId:'calendar-year:2026',phase:'writes_started',snapshotId:'point' } }; P.setItemSync(CONFIG.STORAGE.LS_KEY,JSON.stringify(state)); await P.flush(); }
-    await mustReject(()=>assertNewBeginningAllowed(opts),'Sperre bei Probelauf/Recovery/Speicherfehler: ' + condition);
+    await mustReject(()=>assertNewBeginningAllowed(opts),'Sperre bei Spielbereich/Recovery/Speicherfehler: ' + condition);
     a.events.length=0;
     const result=await make(undefined,{ recovery:()=>condition==='recovery' }).execute(confirmed);
     assertEqual(result.status,'failed',condition + ': auch API vor Löschung gesperrt'); assert(!a.events.includes('batch'),condition + ': kein Löschwrite');

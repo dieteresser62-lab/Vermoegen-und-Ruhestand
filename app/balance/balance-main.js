@@ -38,7 +38,6 @@ import { syncTranchenToInputs } from '../tranches/depot-tranchen-status.js';
 import { loadProfilverbundProfiles } from '../profile/profilverbund-balance.js';
 import { createProfilverbundHandlers } from './balance-main-profilverbund.js';
 import { createProfileSyncHandlers } from './balance-main-profile-sync.js';
-import { UIUtils } from './balance-utils.js';
 import { initDynamicFlexControls, syncDynamicFlexPresetSelection, refreshDynamicFlexControls } from '../simulator/simulator-main-dynamic-flex.js';
 import { PersistenceFacade, getPersistenceStatus, init as initPersistence, persistenceStorage } from '../shared/persistence-facade.js';
 import { PROFILE_VALUE_KEYS } from '../profile/profile-state.js';
@@ -63,6 +62,7 @@ import {
     createUpdateSuccessResult,
     enrichBalanceDiagnosisPayload,
     persistBalanceUpdate,
+    buildBalancePlanLifecycle,
     resolveBalanceUpdateRequest,
     validateBalanceInputs
 } from './balance-update-pipeline.js';
@@ -274,6 +274,8 @@ export function update(options = {}) {
                 patch: draft.patch, navigationOperation: options.navigationOperation });
             StorageManager.saveState({ ...StorageManager.loadState(),
                 inputs: draft.plan.status === 'valid' ? stripBalancePlanInputs(inputData) : inputData,
+                ...(draft.plan.status === 'valid' ? { balanceStateLifecycle: buildBalancePlanLifecycle(
+                    engineHistory.persistentState, draft.plan, { advance: false }) } : {}),
                 balanceInputFields: draft.fields });
             calculation = buildBalanceEngineInputFromStorage({ scope: draft.plan.scope, storage: persistenceStorage });
         }
@@ -300,7 +302,8 @@ export function update(options = {}) {
         const { profilverbundRuns, modelResult } = options.confirmedAnnualResult
             ? { profilverbundRuns: options.confirmedAnnualResult.profilverbundRuns, modelResult: options.confirmedAnnualResult.modelResult } : evaluateBalanceFileInputs({ inputData: calculation.inputData,
             persistentState: history.persistentState, profiles: history.profiles, profileId: summaryProfileId,
-            profilverbundHandlers: calculationHandlers, engineApi: displayEngineApi, publish: !trialActive });
+            profilverbundHandlers: calculationHandlers, engineApi: displayEngineApi, publish: !trialActive,
+            planInputs: householdPlan.status === 'valid' ? householdPlan.entry.values : inputData });
 
         if (options.confirmedAnnualResult && typeof window !== 'undefined') {
             // Erst nach Readback die bestätigte Profilattribution veröffentlichen.
@@ -362,7 +365,7 @@ export function update(options = {}) {
 
         // Budget bleibt Teil der Plan-Zusammenfassung, ohne Ausgabenansicht zu initialisieren.
         const { monthlyBudget } = calculateExpensesBudget({
-            fixedIncomeAnnual: UIUtils.parseCurrency(dom.inputs.fixedIncomeAnnual?.value || 0),
+            fixedIncomeAnnual: inputData.renteMonatlich * 12,
             monthlyWithdrawal: modelResult.ui?.spending?.monatlicheEntnahme
         });
         const fingerprints = {
@@ -660,6 +663,13 @@ export async function init() {
 
     // Erhaltene Tranchen-Synchronisierung ohne Badgehost oder Badgetimer.
     if (!tranchenStorageBound) {
+        document.addEventListener?.('balance-play-booked', () => {
+            profileSyncHandlers.syncProfileDerivedInputs();
+            syncTranchenToInputs({ silent: true });
+            profilverbundHandlers.refreshProfilverbundBalance();
+            refreshBalanceWealthHistory(dom.wealthHistory);
+            update({ mode: BALANCE_UPDATE_MODE.PREVIEW });
+        });
         window.addEventListener('storage', event => {
             if (event.key === 'depot_tranchen') syncTranchenToInputs({ silent: true });
             if (event.key === HOUSEHOLD_PLAN_KEY) UIReader.applyHouseholdPlanInputs();

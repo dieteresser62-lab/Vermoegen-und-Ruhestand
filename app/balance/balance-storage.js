@@ -1,3 +1,4 @@
+import { getStorageArea } from '../shared/persistence-area-storage.js';
 import { stripBalancePersonInputs } from '../profile/profile-person-data.js';
 /**
  * Module: Balance Storage (StorageManager)
@@ -172,6 +173,7 @@ export const StorageManager = {
             }
         },
         async open() {
+            if (getStorageArea() === 'spiel') throw new Error('Snapshot-Ordner im Spielbereich nicht verfügbar.');
             if (!this.openPromise) {
                 this.openPromise = this._openDatabase(SNAPSHOT_HANDLE_DB_NAME, { createHandleStore: true })
                     .then(database => {
@@ -411,6 +413,8 @@ export const StorageManager = {
      * @returns {Promise<void>}
      */
     async initSnapshots() {
+        await PersistenceFacade.init();
+        if (getStorageArea() === 'spiel') { if (connectFolderBtn) connectFolderBtn.style.display = 'none'; return; }
         if (!('showDirectoryPicker' in window)) {
             if (connectFolderBtn) connectFolderBtn.style.display = 'none';
             return;
@@ -458,6 +462,8 @@ export const StorageManager = {
      * @throws {StorageError} Wenn Zugriff verweigert oder Verbindung fehlschlägt
      */
     async connectFolder() {
+        await PersistenceFacade.init();
+        if (getStorageArea() === 'spiel') throw new StorageError('Snapshot-Ordner im Spielbereich nicht verfügbar.');
         try {
             const handle = await window.showDirectoryPicker();
             if ((await handle.requestPermission({ mode: 'readwrite' })) !== 'granted') {

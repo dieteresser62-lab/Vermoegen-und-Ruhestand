@@ -1042,9 +1042,9 @@ try {
         assert(button && button.ariaLabel.includes('Oktober') && button.ariaLabel.includes('Person A') && button.title === button.ariaLabel, 'Beispielknopf benennt Person und echten Zellenmonat im vollständigen Tooltip');
         assert(button.className.includes('ds-icon-button') && !button.textContent && button.children[0].innerHTML.includes('data-designsystem-icon="copy"'), 'Beispielknopf ist kompakt und trägt das gemeinsame Kopiersymbol');
         refreshExpensesTableValues({ host: refs.expenses.table, yearData: { months: { '10': { profiles: { a: { categories: { Wohnen: 100 }, source: 'probelauf-example' } } } } }, profileIds: ['a'], monthlyBudget: 100, formatCurrency: UIUtils.formatBalanceCurrency });
-        assert(refs.expenses.table.querySelector('[data-month="10"][data-profile="a"] [data-role="value"]').textContent.includes('Beispieldaten (Probelauf)'), 'Monatsrecord weist Beispielherkunft aus');
+        assert(refs.expenses.table.querySelector('[data-month="10"][data-profile="a"] [data-role="value"]').textContent.includes('Beispieldaten (Spielbereich)'), 'Monatsrecord weist Beispielherkunft aus');
         renderExpensesDetails({ refs: refs.expenses, monthName: 'Oktober', profileName: 'Person A', categories: { Reisen: -40, Alltag: -80, Wohnen: -100, Sonstiges: -10 }, source: 'probelauf-example', formatCurrency: UIUtils.formatBalanceCurrency });
-        assert(refs.expenses.detailTitle.textContent.includes('Beispieldaten (Probelauf)'), 'Monatsdetails weisen Beispielherkunft aus');
+        assert(refs.expenses.detailTitle.textContent.includes('Beispieldaten (Spielbereich)'), 'Monatsdetails weisen Beispielherkunft aus');
         assert(!findFirst(refs.expenses.detailBody, node => node.classList.contains('expense-top')), 'Details enthalten keinen Top-3-Block');
         assertEqual(refs.expenses.detailBody.children.length, 1, 'Details zeigen ausschließlich die vollständige Kategorientabelle');
         const detailTable = refs.expenses.detailBody.children[0];

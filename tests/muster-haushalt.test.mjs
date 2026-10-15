@@ -1,7 +1,10 @@
 import { createMusterHaushaltRecords, rebuildSyntheticPriceRecords, MUSTER_PROFILE_IDS } from '../app/demo/muster-haushalt.js';
 import { HOUSEHOLD_PLAN_KEY, BALANCE_PLAN_INPUT_KEYS, assertHouseholdPlanRecord } from '../app/profile/household-plan.js';
 import { analyzeHouseholdPlanMigration } from '../app/profile/household-plan-migration.js';
-import { ANNUAL_PLAN_RECORD_KEY } from '../app/profile/annual-plan-record.js';
+import { ANNUAL_PLAN_RECORD_KEY, assertAnnualPlanRecord, readAnnualPlanRecord } from '../app/profile/annual-plan-record.js';
+import { projectHouseholdPlanComparison, householdPlanComparisonHtml } from '../app/profile/household-plan-comparison.js';
+import { projectBalanceActionOrigin } from '../app/balance/balance-action-origin.js';
+import { deriveAnnualCloseEvidence } from '../app/shared/annual-close-evidence.js';
 import { validatePersistenceDomainRecords } from '../app/shared/persistence-backup.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
 import { projectOverview } from '../app/overview/overview-model.js';
@@ -144,8 +147,23 @@ try {
             assertEqual(currentPlan[0].values[key], expected, 'Direkter Musterplan übernimmt Haushaltsbedarf einmal: ' + key);
         }
         assertEqual(analyzeHouseholdPlanMigration(records).analyses.length, 0, 'Musterstart benötigt keine Planumstellung oder Rückfrage');
-        assertEqual(records[ANNUAL_PLAN_RECORD_KEY], undefined, 'Beispielzusammenfassung wird nicht zum Jahresbeleg erklärt');
         const storage = { getItem: key => records[key] ?? null };
+        assertEqual(Object.keys(assertAnnualPlanRecord(records[ANNUAL_PLAN_RECORD_KEY]).entries).length, 1, 'Genau ein gültiger Muster-Jahresbeleg');
+        const receipt = readAnnualPlanRecord({ year, scope: currentPlan[0].scope, storage });
+        assertEqual(receipt.periodId, `calendar-year:${year - 1}`, 'Musterbeleg schließt das Vorjahr des Starts ab');
+        assertEqual(receipt.committedAt, new Date(year, 0, 1, 12).toISOString(), 'Abschlussdatum liegt auch am ersten Januartag nicht in der Zukunft');
+        assertEqual(JSON.stringify(receipt.adopted), JSON.stringify(receipt.recommended), 'Muster übernimmt die vollständige Jahresrechnung ohne Anpassung');
+        assertEqual(JSON.stringify(receipt.adopted.snapshot.plan), JSON.stringify(currentPlan[0].values), 'Beleg verwendet denselben Bedarf und dieselbe Strategie wie der Musterplan');
+        assertEqual(receipt.adopted.snapshot.inflation, 2, 'Beleg und gespeicherte Inflation stimmen überein');
+        assertEqual(JSON.stringify(receipt.adopted.snapshot.ageByPerson), JSON.stringify({ muster_a: 67, muster_b: 64 }), 'Beleg hält das Januaralter beider Personen fest');
+        assertEqual(receipt.adopted.snapshot.source, 'Beispieldaten (Spielbereich)', 'Musterherkunft bleibt im Beleg erhalten');
+        const comparison = projectHouseholdPlanComparison({ year, scope: currentPlan[0].scope, storage, now: new Date(`${date}T12:00:00`) });
+        const html = householdPlanComparisonHtml(comparison);
+        assertEqual(comparison.recordStatus, 'valid', 'Gemeinsamer Planvergleich liest den Musterbeleg');
+        assert(html.includes(`Plan ${year} · festgeschrieben am 01.01.${year}`) && html.includes('Beispieldaten (Spielbereich)'), 'Planvergleich zeigt festen Plan und sichtbare Musterherkunft');
+        assert(projectBalanceActionOrigin({ comparison, year, scope: currentPlan[0].scope }).confirmed, 'Balance erkennt die festgeschriebene Musteranweisung');
+        const evidence = deriveAnnualCloseEvidence({ targetYear: year - 1, scope: currentPlan[0].scope, activeId: records.rs_active_profile, records });
+        assertEqual(evidence.status, 'already_committed', 'Belegprüfung bestätigt den vorbereiteten Vorjahresabschluss');
         assertEqual(JSON.stringify(createMusterHaushaltRecords(date)), JSON.stringify(records), 'Fixture ist reproduzierbar');
         assert(validatePersistenceDomainRecords(records, { requireProfileContext: true }).ok, 'Vollständige echte Domainprüfung akzeptiert Records');
         assertEqual(readProfileContext(storage).status, 'ready', 'Echter Profilleser ohne Bootstrap/Recovery');
@@ -170,6 +188,7 @@ try {
         for (const [key, value] of Object.entries(registry.profiles.muster_a.data)) assertEqual(records[key], value, 'Alle Live-A-Spiegelkeys bytegleich: ' + key);
         assertEqual(model.occasion.annualState, 'done', 'Vorjahr bestätigt ohne Recovery');
         assertEqual(model.summary.status, 'fest', 'Haushaltsplan des Startjahres ist fest');
+        assertEqual(model.planComparison.recordStatus, 'valid', 'Startseite zeigt den festgeschriebenen Musterplan');
         assertEqual(JSON.parse(records.rs_wealth_history_start_v1).startDate, `${year - 1}-01-01`, 'Verlauf startet am Vorjahresbeginn');
         assertDailyPrices(JSON.parse(records.rs_daily_prices_v1));
         const simulatorNeeds = readHouseholdSimulatorNeedsState(storage);
@@ -221,6 +240,8 @@ try {
             assertEqual(new Set(cashHistory.entries.map(entry => entry.date)).size, cashHistory.entries.length, 'Keine doppelten Cashpunkte');
             const summary = readOverviewSummary(data.overview_balance_summary_v1, year, model.scope);
             assertEqual(summary.status, 'fest', 'Persistierter Startjahrplan fest');
+            assertEqual(summary.monthlyWithdrawal, receipt.adopted.monthlyWithdrawal, 'Monatsinformation entspricht dem Jahresbeleg');
+            assertEqual(summary.monthlyBudget, receipt.adopted.monthlyBudget, 'Budgetinformation entspricht dem Jahresbeleg');
             assertWealthHistory(state.value.wealthHistory);
             assertEqual(state.value.wealthHistory.entries.length, year === 2026 ? 1 : 2, 'Kein unzulässiger Jahresstand 2025');
             for (const entry of state.value.wealthHistory.entries) {
@@ -255,8 +276,17 @@ try {
         const equity = model.household.assets - model.household.allocation.cash - model.household.allocation.geldmarkt;
         assert(equity >= 650000 && equity <= 750000, 'Aktien im realistischen Zielbereich');
         assert(model.household.assets >= 750000 && model.household.assets <= 850000, 'Gesamtvermögen im realistischen Zielbereich');
-        assertEqual(model.summary.monthlyBudget, 5000, 'Festes Budget passt zu Jahresbedarf');
-        assertEqual(model.summary.monthlyWithdrawal, 2700, 'Relativer Start bleibt in erster Entnahmestufe');
+        assertEqual(model.summary.monthlyBudget, receipt.adopted.monthlyBudget, 'Festes Budget stammt aus der echten Jahresrechnung');
+        assertEqual(model.summary.monthlyWithdrawal, receipt.adopted.monthlyWithdrawal, 'Jahresentnahme stammt aus der echten Jahresrechnung');
+        assertClose(model.summary.monthlyBudget, (30000 + 30000 * receipt.adopted.flexRate / 100) / 12, 0.01,
+            'Festes Budget berücksichtigt die Flex-Kürzung der echten Jahresrechnung');
+        assertEqual(model.summary.monthlyBudget - model.summary.monthlyWithdrawal, 2300, 'Budget enthält nur die im Startjahr laufende Max-Rente');
+        const januaryLiquidity = Object.values(registry.profiles).reduce((sum, profile) => {
+            const entry = loadStoredBalanceStateFromData(profile.data).value.wealthHistory.entries.find(item => item.asOf === `${year}-01-01`);
+            return sum + entry.tagesgeld + entry.geldmarktEtf;
+        }, 0);
+        assertClose(receipt.adopted.liquidityBefore, januaryLiquidity / receipt.adopted.action.zielLiquiditaet * 100, 1e-8,
+            'Beleg bewertet die vorhandenen Stücke und Cashstände wie der Januar-Verlauf');
         const expenses = JSON.parse(records.balance_expenses_v1);
         assertEqual(expenses.activeYear, year, 'Ausgaben aktives Startjahr');
         assertEqual(Object.keys(expenses.years[year].months).length, Number(date.slice(5, 7)) - 1, 'Nur abgelaufene Startjahrmonate befüllt');
@@ -268,7 +298,7 @@ try {
             assertEqual(JSON.stringify(curve[1].closes), JSON.stringify(chart.closes), 'Tägliche Kurse aus API');
         }
         for (const period of Object.values(expenses.years)) for (const month of Object.values(period.months)) {
-            assertEqual(Object.values(month.profiles).reduce((sum, profile) => sum - Object.values(profile.categories).reduce((a, b) => a + b, 0), 0), 5000, 'Ausgaben entsprechen Haushaltsbudget');
+            assertEqual(Object.values(month.profiles).reduce((sum, profile) => sum - Object.values(profile.categories).reduce((a, b) => a + b, 0), 0), 5000, 'Ausgaben entsprechen dem Wunschbedarf vor Flex-Kürzung');
         }
         if (['2026-06-15', '2027-06-15', '2031-11-02', '2060-06-15'].includes(date)) await verifyBalance(date);
     }
@@ -287,6 +317,7 @@ try {
         ['2026-12-15', '2027-01-02', 'annual', '2026-12'],
         ['2026-12-31', '2027-01-01', 'annual', '2026-12']]) {
         const original = createMusterHaushaltRecords(start), moved = rebuildSyntheticPriceRecords(original, later);
+        assertEqual(moved[ANNUAL_PLAN_RECORD_KEY], original[ANNUAL_PLAN_RECORD_KEY], 'Datumssprung erhält den Muster-Jahresbeleg bytegleich');
         const model = projectOverview({ registry: JSON.parse(moved.rs_profiles_v1), activeId: moved.rs_active_profile,
             liveData: moved, now: new Date(`${later}T12:00:00`) });
         assertEqual(model.occasion.kind, kind, 'Gleicher Bestand folgt Kalenderwechsel');

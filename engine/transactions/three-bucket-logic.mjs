@@ -12,6 +12,11 @@ import { calculateSaleAndTax } from './sale-engine.mjs';
 
 const THREE_BUCKET_CFG = CONFIG.SPENDING_MODEL?.THREE_BUCKET || {};
 
+// FR-8: Prozentwerte am Eingang, Renditeverhältnis am Ausgang.
+export function calculateRealEquityReturn(nominalReturnPct, inflationPct) {
+    return ((Number(nominalReturnPct) || 0) - (Number(inflationPct) || 0)) / 100;
+}
+
 /**
  * Checks if an asset type or category is considered a bond.
  */
@@ -345,12 +350,6 @@ export function applyThreeBucketLogic(
             // No sales requested
             updatedAction.quellen = [];
         }
-
-    } else {
-        // Good year -> Normal behavior. Engine handles standard sales.
-        // We do NOT override the action here. Replenishing bond bucket happens 
-        // outside of the engine action, usually in the calling wrapper via buy orders
-        // if liquidity is excess relative to Target Liquidität.
     }
 
     return { updatedAction, threeBucketState };
@@ -391,15 +390,20 @@ export function appendBondReplenishment(
     let addedActionDelta = null;
 
     if (!isBadYear && threeBucketInput.bondTargetFactor > 0) {
+        const remainingTranches = reservePlannedLotInventory(detailedTranches, pendingAction);
+        const plannedBondSales = nonLiquidSaleSources(pendingAction).reduce((sum, source) => (
+            isBondCategory(source.kind) || isBondCategory(source.category)
+                ? sum + source.brutto : sum
+        ), 0);
+        const remainingBonds = Math.max(0, currentBondValuation - plannedBondSales);
         const bondTarget = Math.max(0, threeBucketInput.bondTargetFactor * jahresEntnahmeTarget);
-        const bondDeficit = Math.max(0, bondTarget - currentBondValuation);
+        const bondDeficit = Math.max(0, bondTarget - remainingBonds - (Number(pendingAction.verwendungen?.bonds) || 0));
         const refillThreshold = Number.isFinite(threeBucketInput.bondRefillThresholdPct)
             ? (bondTarget * (threeBucketInput.bondRefillThresholdPct / 100))
             : 0;
 
         if (bondDeficit > refillThreshold) {
-            const remainingTranches = reservePlannedLotInventory(detailedTranches, pendingAction);
-            const equityOnly = remainingTranches.reduce((sum, t) => sum + (!(isBondCategory(t.type) || isBondCategory(t.category)) ? (Number(t.marketValue) || 0) : 0), 0);
+            const equityOnly = remainingTranches.reduce((sum, t) => sum + (t.category === 'equity' ? (Number(t.marketValue) || 0) : 0), 0);
             const netFloorYear = Math.max(0, engineInput.floorBedarf - (engineInput.renteAktiv ? (engineInput.renteMonatlich * 12) : 0));
             const equityGuardMin = Math.max(jahresEntnahmeTarget, netFloorYear);
             const maxRefillNet = Math.max(0, equityOnly - equityGuardMin);
@@ -409,24 +413,29 @@ export function appendBondReplenishment(
                 const refillTranches = remainingTranches.filter(t => !(isBondCategory(t.type) || isBondCategory(t.category)) && String(t.category || '') === 'equity');
 
                 if (requestedNet > 0 && refillTranches.length > 0) {
+                    const spbUsed = nonLiquidSaleSources(pendingAction)
+                        .reduce((sum, source) => sum + (Number(source.spbUsed) || 0), 0);
                     const refillSale = calculateSaleAndTax(requestedNet, {
                         ...engineInput,
+                        sparerPauschbetrag: Math.max(0, (Number(engineInput.sparerPauschbetrag) || 0) - spbUsed),
                         detailledTranches: refillTranches,
                         depotwertAlt: 0,
                         depotwertNeu: 0,
                         goldWert: 0
-                    }, { minGold: 0 }, market, false);
+                    }, { minGold: 0, maxEquityBudgetTotal: maxRefillNet }, market, false);
 
                     const refillNet = Math.max(0, refillSale.achievedRefill || 0);
+                    const bondPurchase = Math.min(requestedNet, refillNet);
+                    const excessCash = refillNet - bondPurchase;
 
                     if ((refillSale.bruttoVerkaufGesamt || 0) > 0 && refillNet > 0) {
-                        bondReplenishmentAmount = refillNet;
+                        bondReplenishmentAmount = bondPurchase;
 
                         addedActionDelta = {
                             nettoErlös: refillNet,
                             steuer: refillSale.steuerGesamt,
                             quellen: Array.isArray(refillSale.breakdown) ? refillSale.breakdown : [],
-                            verwendungen: { bonds: refillNet },
+                            verwendungen: { bonds: bondPurchase, liquiditaet: excessCash },
                             taxRawAggregate: {
                                 sumRealizedGainSigned: Number(refillSale.taxRawAggregate?.sumRealizedGainSigned) || 0,
                                 sumTaxableAfterTqfSigned: Number(refillSale.taxRawAggregate?.sumTaxableAfterTqfSigned) || 0
@@ -440,10 +449,10 @@ export function appendBondReplenishment(
                             updatedAction.nettoErlös = refillNet;
                             updatedAction.steuer = refillSale.steuerGesamt;
                             updatedAction.verwendungen = {
-                                liquiditaet: 0,
+                                liquiditaet: excessCash,
                                 gold: 0,
                                 aktien: 0,
-                                bonds: refillNet
+                                bonds: bondPurchase
                             };
                             updatedAction.quellen = Array.isArray(refillSale.breakdown) ? refillSale.breakdown : [];
                             updatedAction.taxRawAggregate = {
@@ -461,7 +470,8 @@ export function appendBondReplenishment(
                             updatedAction.steuer = existingSteuer + refillSale.steuerGesamt;
 
                             updatedAction.verwendungen = updatedAction.verwendungen || {};
-                            updatedAction.verwendungen.bonds = (updatedAction.verwendungen.bonds || 0) + refillNet;
+                            updatedAction.verwendungen.bonds = (updatedAction.verwendungen.bonds || 0) + bondPurchase;
+                            updatedAction.verwendungen.liquiditaet = (updatedAction.verwendungen.liquiditaet || 0) + excessCash;
 
                             if (Array.isArray(refillSale.breakdown)) {
                                 updatedAction.quellen = mergeLotSaleSources([

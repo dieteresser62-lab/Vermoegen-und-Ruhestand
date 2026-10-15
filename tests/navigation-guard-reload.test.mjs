@@ -12,6 +12,39 @@ function fixture(decide = () => true) {
         mutate: () => { steps.push('mutate'); }, flush: () => { steps.push('flush'); return true; }, ...options });
     return { guard, reload, steps, statuses, listeners, win };
 }
+// Nach bestätigtem Bereichswechsel ist der alte Dokumentkontext verbraucht.
+// Seitenprovider und Subscriber würden jetzt auf den gesperrten Speicher zugreifen.
+{
+    const f = fixture();
+    let switched = false, lateReads = 0, lateNotifications = 0;
+    f.guard.register('page', { read: () => {
+        if (switched) { lateReads++; throw new Error('Alter Speicher gesperrt'); }
+        return { dirty: true };
+    } });
+    f.guard.subscribe(() => { if (switched) lateNotifications++; });
+    const result = await f.reload({ finalizeDocument: true, returnResult: true, flush: undefined,
+        mutate() {
+            switched = true;
+            f.listeners.get('input')();
+            return true;
+        } });
+    assertEqual(result.status, 'reloaded', 'Bestätigter Bereichswechsel navigiert auch nach später Eingabe');
+    assertEqual(lateReads, 0, 'Nach Bereichswechsel keine Providerabfrage');
+    assertEqual(lateNotifications, 0, 'Nach Bereichswechsel keine Seitenbenachrichtigung');
+    let saves = 0, prevented = false;
+    f.guard.registerBeforeLeave(() => { saves++; });
+    f.guard.beforeUnload({ preventDefault() { prevented = true; } });
+    assert(!prevented && saves === 0, 'Kein später Saver oder nativer Navigationsstopp');
+    assertEqual(await f.guard.prepare(), null, 'Alte Seite startet keine weitere Aktion');
+}
+for (const mutation of [() => false, () => { throw new Error('Wechsel fehlgeschlagen'); }]) {
+    const f = fixture();
+    const result = await f.reload({ finalizeDocument: true, returnResult: true, mutate: mutation });
+    assertEqual(result.status, 'failed', 'Unbestätigter Wechsel bleibt ein Fehler');
+    const attempt = await f.guard.prepare();
+    assert(Boolean(attempt), 'Fehlgeschlagener Wechsel beendet das Dokument nicht');
+    f.guard.end(attempt);
+}
 {
     const f = fixture(() => false);
     f.guard.register('result', { read: () => ({ result: true }) });

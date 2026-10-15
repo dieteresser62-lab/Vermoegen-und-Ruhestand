@@ -10,6 +10,8 @@ import { BALANCE_UPDATE_MODE } from './balance-update-pipeline.js';
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
 import { prepareHouseholdCash } from '../profile/profile-cash-update.js';
 import { localHistoryDate } from '../tranches/tranchen-history-store.js';
+import { prepareWealthCapture } from '../profile/profile-wealth-captures.js';
+import { WEALTH_CAPTURES_KEY } from '../../types/wealth-capture-contract.js';
 import {
     createAnnualWealthHistoryEntry,
     createManualWealthHistoryEntry,
@@ -168,7 +170,7 @@ export function createBalanceWealthHistoryService({
         return result;
     }
 
-    async function persistEntry({ context, entry, metadata, expectedPending, validateSource = () => {}, navigationOperation, cash, annualInput, targetYear }) {
+    async function persistEntry({ context, entry, metadata, expectedPending, validateSource = () => {}, navigationOperation, cash, inputData, targetYear }) {
         const check = () => { navigationOperation.check(); assertContext(context); validateSource(); };
         check();
         if (await persistence.flush() === false) throw new Error('PERSISTENCE_FLUSH_FAILED');
@@ -187,7 +189,9 @@ export function createBalanceWealthHistoryService({
         const members = Object.keys(registry.profiles).filter(id => registry.profiles[id].meta.belongsToHousehold !== false);
         const cashUpdate = cash ? prepareHouseholdCash({ storage, registry, activeId: context.current,
             ids: members.length ? members : [context.current], checkMembership: members.length > 0, cash, date: localHistoryDate(), recordConfirmation: true }) : null;
-        if (cashUpdate && targetYear >= 2026) entry = createAnnualWealthHistoryEntry({ ...annualInput, tagesgeld: cashUpdate.total }, targetYear);
+        if (cashUpdate && targetYear >= 2026) entry = createAnnualWealthHistoryEntry({ ...inputData, tagesgeld: cashUpdate.total }, targetYear);
+        const captureRaw = entry ? prepareWealthCapture({ storage, registry: cashUpdate?.registry || registry,
+            activeId: context.current, entry, inputData, cashRecords: cashUpdate?.records }) : null;
         const nextState = {
             ...state,
             ...(entry ? { wealthHistory: entry.reason === 'manual'
@@ -207,7 +211,8 @@ export function createBalanceWealthHistoryService({
                 }
             }
         };
-        const records = { ...(cashUpdate?.records || {}), [stateKey]: serialized, [registryKey]: JSON.stringify(nextRegistry) };
+        const records = { ...(cashUpdate?.records || {}), [stateKey]: serialized, [registryKey]: JSON.stringify(nextRegistry),
+            ...(captureRaw ? { [WEALTH_CAPTURES_KEY]: captureRaw } : {}) };
         const keys = new Set(Object.keys(records));
         const previous = Object.fromEntries([...keys].map(key => [key, storage.getItem(key)]));
         // Die Facade wartet intern erneut. Ihre Key-Prüfung prüft deshalb auch unmittelbar
@@ -231,7 +236,7 @@ export function createBalanceWealthHistoryService({
             postValidate: confirmed => {
                 assertContext(context);
                 validateSource({ state: nextState, registry: nextRegistry });
-                if (confirmed[stateKey] !== serialized || confirmed[registryKey] !== records[registryKey]) {
+                if (Object.keys(records).some(key => confirmed[key] !== records[key])) {
                     throw new Error('Der Vermögensverlauf konnte nicht dauerhaft bestätigt werden.');
                 }
                 return true;
@@ -320,7 +325,7 @@ export function createBalanceWealthHistoryService({
             const entry = targetYear >= 2026 ? createAnnualWealthHistoryEntry(result.inputData, targetYear) : null;
             const owner = navigationOperation || coordinator.annualOperation;
             if (!owner || owner !== coordinator.annualOperation) throw new Error('WEALTH_HISTORY_OPERATION_INVALID');
-            return persistEntry({ context, entry, metadata, expectedPending, navigationOperation: owner, cash, annualInput: result.inputData, targetYear });
+            return persistEntry({ context, entry, metadata, expectedPending, navigationOperation: owner, cash, inputData: result.inputData, targetYear });
         },
         captureManual({ result, asOf, context = captureContext(), validateSource, navigationOperation }) {
             if (coordinator.annual) return Promise.reject(new Error('Der Jahresabschluss läuft bereits.'));
@@ -329,9 +334,9 @@ export function createBalanceWealthHistoryService({
             const entry = createManualWealthHistoryEntry(result.inputData, asOf);
             if (navigationOperation) {
                 if (!coordinator.operations.has(navigationOperation)) throw new Error('WEALTH_HISTORY_OPERATION_INVALID');
-                return persistEntry({ context, entry, validateSource, navigationOperation });
+                return persistEntry({ context, entry, inputData: result.inputData, validateSource, navigationOperation });
             }
-            return enqueue(owner => persistEntry({ context, entry, validateSource, navigationOperation: owner }));
+            return enqueue(owner => persistEntry({ context, entry, inputData: result.inputData, validateSource, navigationOperation: owner }));
         }
     };
 }

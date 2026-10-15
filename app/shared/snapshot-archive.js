@@ -16,6 +16,7 @@ export const SNAPSHOT_KINDS = Object.freeze({
     personDataMigrationRecovery: 'person-data-migration-recovery',
     householdPlanMigrationRecovery: 'household-plan-migration-recovery',
     probelaufBefore: 'probelauf-before',
+    probelaufTransferBefore: 'probelauf-transfer-before',
     newBeginningBefore: 'new-beginning-before',
     monthlyClosePreMutation: 'monthly-close-pre-mutation',
     beforeRestoreRecovery: 'before-restore-recovery',
@@ -186,7 +187,7 @@ export function toSnapshotIndexEntry(snapshot) {
         activeProfileName: source.activeProfileName ? String(source.activeProfileName) : '',
         recordCount: Number(source.recordCount) || 0,
         restoreScope: normalizeRestoreScope(source.restoreScope),
-        standardRestorable: source.kind === SNAPSHOT_KINDS.newBeginningBefore || (source.kind !== SNAPSHOT_KINDS.probelaufBefore && Boolean(source.activeProfileId))
+        standardRestorable: source.kind === SNAPSHOT_KINDS.newBeginningBefore || source.kind === SNAPSHOT_KINDS.probelaufTransferBefore || (source.kind !== SNAPSHOT_KINDS.probelaufBefore && Boolean(source.activeProfileId))
     };
 }
 

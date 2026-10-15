@@ -116,7 +116,7 @@ Der Haushaltsweg kann eine nachgelagerte profilweise Steuerattribution benötige
 
 ## Drei Töpfe
 
-[three-bucket-logic.mjs](../../engine/transactions/three-bucket-logic.mjs) ergänzt eine vorhandene Aktion. `decumulation.mode = 3_bucket_jilge` aktiviert den Pfad; Aktienrendite und `drawdownTrigger` bestimmen das schlechte Jahr.
+[three-bucket-logic.mjs](../../engine/transactions/three-bucket-logic.mjs) ergänzt eine vorhandene Aktion. `decumulation.mode = 3_bucket_jilge` aktiviert den Pfad. `calculateRealEquityReturn` berechnet Kursrendite minus Inflation; der Vergleich mit `drawdownTrigger` bestimmt das schlechte Jahr.
 
 Das Diagramm zeigt den Quellenersatz in `applyThreeBucketLogic`; der anschließende Refill hat einen eigenen Aufruf.
 
@@ -134,13 +134,13 @@ flowchart TD
 
 Quelle: [three-bucket-logic.mjs](../../engine/transactions/three-bucket-logic.mjs), Funktion `applyThreeBucketLogic`.
 
-`applyThreeBucketLogic` ersetzt im schlechten Jahr die betroffenen Verkaufsquellen durch Anleihen. Reichen sie nicht, wird `unmetLiquidity` ausgewiesen. Die Funktion selbst lässt im normalen/guten Jahr den Refill einem anderen Schritt. `appendBondReplenishment` und `finalizeThreeBucketAction` führen die ergänzende Auffüllung und finale Prüfung aus.
+`applyThreeBucketLogic` ersetzt im schlechten Jahr die betroffenen Verkaufsquellen durch Anleihen. Reichen sie nicht, wird `unmetLiquidity` ausgewiesen. Die Funktion selbst lässt im normalen/guten Jahr den Refill einem anderen Schritt. `appendBondReplenishment` zieht geplante Verkäufe vom Anleihenbestand ab und füllt den Rest aufs Ziel auf. Bereits reservierte Lots und der verbrauchte Sparerpauschbetrag stehen dafür nicht erneut bereit. Die Bruttogrenze schützt die verbleibende Aktienreserve. `finalizeThreeBucketAction` prüft die vollständige Aktion vor dem jährlichen Steuerabschluss.
 
-Die Diagnose hält Modus, schlechtes Jahr, Anleihebestand vor/nach der Aktion, Verkäufe, Refill und ungedeckte Liquidität fest. Balance zeigt die bereits finalisierte Aktion und attribuiert sie im Haushalt; der Simulator hat nach der Auszahlung einen eigenen Refillanschluss. Die jeweilige Modulreferenz legt fest, wer den Schritt ausführt.
+Die Diagnose hält Modus, schlechtes Jahr, Anleihebestand vor/nach der Aktion, Verkäufe, Refill und ungedeckte Liquidität fest. Balance zeigt die bereits finalisierte Aktion und attribuiert sie im Haushalt; der Simulator führt denselben Vorschlag einschließlich Anleihenkauf vor der Auszahlung aus. Die jeweilige Modulreferenz legt fest, wer den Schritt ausführt.
 
 ## Nachgelagerte Simulator- und Balancepfade
 
-[simulator-engine-direct.js](../../app/simulator/simulator-engine-direct.js) prüft und führt den Vorschlag auf seinem kopierten Portfolio aus. Die finale Jahresentnahme und ein zusätzlicher Netto-Floormonat bilden die Liquiditätsdeckung vor der Auszahlung. Erst wird ein zulässiger Pflegebucketbeitrag geprüft, dann ein Forced Sale. Ein weiterer Verkaufspfad kann einen Auszahlungsausfall behandeln. Anleihe-Refill, Cashzinsen und Steuerabgleich folgen danach.
+[simulator-engine-direct.js](../../app/simulator/simulator-engine-direct.js) prüft und führt den Vorschlag auf seinem kopierten Portfolio aus. Die finale Jahresentnahme und ein zusätzlicher Netto-Floormonat bilden die Liquiditätsdeckung vor der Auszahlung. Erst wird ein zulässiger Pflegebucketbeitrag geprüft, dann ein Forced Sale. Ein weiterer Verkaufspfad kann einen Auszahlungsausfall behandeln. Geplante Anleihenkäufe gehören zu den Käufen vor Auszahlung. Cashzinsen und Steuerabgleich folgen danach.
 
 Forced Sales besitzen eigene Quellenregeln. Ohne Drei-Topf-Sonderfall können Aktien und Gold dienen; im schlechten Drei-Topf-Jahr arbeitet der Deckungspfad mit Anleihen. Das ist nicht dieselbe Quellenfolge wie im regulären Standardverkauf. Der Jahrespfad unterscheidet technischen Fehler von finanzieller Zahlungsunfähigkeit. Details stehen in der [Simulatorreferenz](SIMULATOR_MODULES_README.md#ein-simulatorjahr).
 

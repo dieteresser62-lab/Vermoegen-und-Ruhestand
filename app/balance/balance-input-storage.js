@@ -1,3 +1,4 @@
+import { projectBalancePlanningHorizon } from './balance-planning-horizon.js';
 import { readBalanceInflationSource } from './balance-inflation-source.js';
 /** DOM-freier, ausschließlich lesender Eingabebau. Der UIReader bleibt das DOM-Orakel. */
 import { readBalancePersonStatus, projectParticipatingPerson } from '../shared/person-data-status.js';
@@ -278,7 +279,7 @@ function readStoredInputValues({ fields, storage, status, trancheSource, plan })
         output.dynamicFlex = plan.entry.values.dynamicFlex && plan.entry.values.cape.value > 0;
     }
     validateBalanceInputs(output);
-    return output;
+    return projectBalancePlanningHorizon(output, readiness);
 }
 
 /** Fachliche Ergänzungen aus dem bisherigen updateProfilverbundGlobals ohne Fensterquellen. */
@@ -363,14 +364,15 @@ export function buildBalanceEngineInputFromStorage({ scope, storage, referenceYe
     const readerInputData = readStoredInputValues({ fields, storage, status, trancheSource, plan });
     const inputData = projectStoredHouseholdInputs(profiles, cloneBalanceState(readerInputData));
     if (Object.hasOwn(persistentState.inputs || {}, 'depotLastUpdate')) inputData.depotLastUpdate = persistentState.inputs.depotLastUpdate;
-    const history = projectBalancePlanHistory(persistentState, profiles, plan);
     const profileId = storage.getItem('rs_current_profile');
+    const history = projectBalancePlanHistory(persistentState, profiles, plan, { profileId });
+    const planInputs = plan.status === 'valid' ? projectPlanToBalance(plan.entry.values) : inputData;
     const multi = profiles.length > 1 || profiles.length === 1 && profiles[0].profileId !== profileId;
     const source = history.profiles.find(entry => entry.balanceState?.profilverbundHouseholdLastState)?.balanceState || history.persistentState;
     const lastState = prepareEngineLastState({ ...history.persistentState,
-        inputs: { ...history.persistentState.inputs, ...history.persistentState.personInputEvidence } }, inputData);
-    const householdLastState = multi ? profiles.length === 1 ? prepareEngineLastState(history.profiles[0].balanceState || {}, inputData)
-        : prepareEngineLastState({ inputs: source.profilverbundHouseholdInputs, lastState: source.profilverbundHouseholdLastState }, inputData) : null;
+        inputs: { ...history.persistentState.inputs, ...history.persistentState.personInputEvidence } }, inputData, planInputs);
+    const householdLastState = multi ? profiles.length === 1 ? prepareEngineLastState(history.profiles[0].balanceState || {}, inputData, planInputs)
+        : prepareEngineLastState({ inputs: source.profilverbundHouseholdInputs, lastState: source.profilverbundHouseholdLastState }, inputData, planInputs) : null;
     const engineInput = { ...(multi && profiles.length === 1 ? buildStoredProfileEngineInput(inputData, history.profiles[0]) : inputData), finalizeThreeBucketAction: true, ...(multi && profiles.length > 1 ? { deferTaxSettlement: true } : {}) };
     const baseStateFingerprint = createBalanceCommitBaseFingerprint({ persistentState, profilverbundProfiles: multi ? profiles : [],
         householdPlan: plan.status === 'valid' ? { scope: plan.scope, values: plan.entry.values } : null });

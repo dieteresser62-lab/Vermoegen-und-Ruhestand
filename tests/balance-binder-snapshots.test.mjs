@@ -27,6 +27,7 @@ const prevSetTimeout = global.setTimeout;
 
 try {
     global.localStorage = createLocalStorageMock();
+    resetPersistenceForTests(); // Explizites synchrones Backend für die direkten Fixture-Schreibzugriffe.
     let lastConfirmMessage = '';
 
     global.location = { reload: () => {} };

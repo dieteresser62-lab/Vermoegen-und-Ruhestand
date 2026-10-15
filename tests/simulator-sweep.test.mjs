@@ -463,7 +463,8 @@ console.log('Test 14: extractP2Invariants - Basis');
     assertEqual(invariants.brutto, 1500, 'brutto sollte 1500 sein');
     assertEqual(invariants.startAlter, 63, 'startAlter sollte 63 sein');
     assertEqual(invariants.startInJahren, 2, 'startInJahren sollte 2 sein');
-    assertEqual(invariants.steuerquotePct, 20, 'steuerquotePct sollte 20 sein');
+    assertEqual(invariants.steuerquotePct, 0, 'FR-11: Alte Steuerquote ist in Sweep-Invarianten neutral');
+    assert(areP2InvariantsEqual(invariants, { ...invariants, steuerquotePct: 80 }), 'FR-11: Alte Referenzquote erzeugt keine P2-Abweichungswarnung');
     assertEqual(invariants.rentAdjPct, 1.5, 'rentAdjPct sollte 1.5 sein');
     console.log('✓ extractP2Invariants Basis OK');
 }

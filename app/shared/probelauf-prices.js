@@ -1,10 +1,10 @@
 /** Reine EUR-Testkurve; Epoche, Symbolhash und UTC-Kalender sind unveränderlich. */
-export const SYNTHETIC_PRICE_SOURCE = 'Probelauf · synthetische EUR-Kurse';
-export const SYNTHETIC_MARKET_SOURCE = 'Probelauf · synthetisch';
+export const SYNTHETIC_PRICE_SOURCE = 'Spielbereich · synthetische EUR-Kurse';
+export const SYNTHETIC_MARKET_SOURCE = 'Spielbereich · synthetisch';
 const aliases = Object.freeze({ IE00BK5BQT80: 'VWCE.DE', IE00B3RBWM25: 'VWRL.DE', LU0290358497: 'XEON.DE' });
 export function syntheticSymbol(value) {
     const symbol = String(value ?? '').trim().toUpperCase();
-    if (!/^[A-Z0-9.^=-]{1,32}$/.test(symbol)) throw new Error('Ungültige Instrumentkennung im Probelauf.');
+    if (!/^[A-Z0-9.^=-]{1,32}$/.test(symbol)) throw new Error('Ungültige Instrumentkennung im Spielbereich.');
     return aliases[symbol] || symbol;
 }
 export function syntheticDay(value) {
@@ -54,7 +54,7 @@ export function syntheticAnnualQuote(symbol, year, testDate) {
 }
 
 function assertSyntheticYear(year) {
-    if (!Number.isInteger(year) || year < 1900 || year > 9999) throw new Error('Ungültiges Abschlussjahr im Probelauf.');
+    if (!Number.isInteger(year) || year < 1900 || year > 9999) throw new Error('Ungültiges Abschlussjahr im Spielbereich.');
 }
 function completedYearEnd(year, testDate) {
     assertSyntheticYear(year);

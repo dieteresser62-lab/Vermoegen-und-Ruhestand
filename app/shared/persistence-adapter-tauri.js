@@ -20,7 +20,6 @@ const DEFAULT_SNAPSHOT_ARCHIVE = Object.freeze({
     schemaVersion: 1,
     snapshots: []
 });
-const SNAPSHOT_TARGET = 'snapshots';
 
 function getInvoke(options = {}) {
     if (typeof options.invoke === 'function') return options.invoke;
@@ -174,6 +173,8 @@ function createLegacyMigrationReport() {
 }
 
 export function createTauriJsonFileAdapter(options = {}) {
+    const liveTarget = options.area === 'spiel' ? { target: 'spiel' } : {};
+    const snapshotTarget = options.area === 'spiel' ? 'spielsnapshots' : 'snapshots';
     let invoke = null;
     let state = { ...DEFAULT_STATE, records: Object.create(null), metadata: Object.create(null) };
     let snapshotArchive = { ...DEFAULT_SNAPSHOT_ARCHIVE, snapshots: [] };
@@ -181,20 +182,31 @@ export function createTauriJsonFileAdapter(options = {}) {
     let snapshotsOpened = false;
 
     async function persist() {
-        await invoke('save_app_state', { content: serializeState(state) });
+        await invoke('save_app_state', { ...liveTarget, content: serializeState(state) });
+    }
+
+    async function loadSnapshotArchive() {
+        if (!invoke) invoke = getInvoke(options);
+        const raw = await invoke('load_app_state', { target: snapshotTarget });
+        try { return normalizeSnapshotArchive(raw); }
+        catch (cause) {
+            if (options.area !== 'spiel') throw cause;
+            const quarantinePath = await invoke('quarantine_app_state', { target: snapshotTarget });
+            const error = new Error('Sicherungspunkte konnten nicht gelesen werden. Die beschädigte Datei wurde gesichert.');
+            Object.assign(error, { code: 'tauri-snapshots-corrupt', quarantinePath, cause });
+            throw error;
+        }
     }
 
     async function ensureSnapshotsOpen() {
         if (snapshotsOpened) return;
-        if (!invoke) invoke = getInvoke(options);
-        const raw = await invoke('load_app_state', { target: SNAPSHOT_TARGET });
-        snapshotArchive = normalizeSnapshotArchive(raw);
+        snapshotArchive = await loadSnapshotArchive();
         snapshotsOpened = true;
     }
 
     async function persistSnapshots() {
         await invoke('save_app_state', {
-            target: SNAPSHOT_TARGET,
+            target: snapshotTarget,
             content: serializeSnapshotArchive(snapshotArchive)
         });
     }
@@ -203,13 +215,13 @@ export function createTauriJsonFileAdapter(options = {}) {
         name: 'Tauri JSON File',
         async open() {
             invoke = getInvoke(options);
-            const raw = await invoke('load_app_state');
+            const raw = await invoke('load_app_state', liveTarget);
             try {
                 state = normalizeState(raw);
             } catch (err) {
                 let quarantinePath = '';
                 try {
-                    quarantinePath = await invoke('quarantine_app_state');
+                    quarantinePath = await invoke('quarantine_app_state', liveTarget);
                 } catch (quarantineErr) {
                     const wrapped = new Error(`Tauri-Daten konnten nicht gelesen und nicht quarantiniert werden: ${quarantineErr?.message || quarantineErr}`);
                     wrapped.code = 'tauri-state-corrupt';
@@ -229,12 +241,11 @@ export function createTauriJsonFileAdapter(options = {}) {
         },
         async readPersistedRecords() {
             if (!invoke) invoke = getInvoke(options);
-            return normalizeState(await invoke('load_app_state')).records;
+            return normalizeState(await invoke('load_app_state', liveTarget)).records;
         },
         async readPersistedSnapshot(id) {
             if (!invoke) invoke = getInvoke(options);
-            const read = async () => normalizeSnapshotArchive(await invoke('load_app_state', { target: SNAPSHOT_TARGET }))
-                .snapshots.find(entry => entry.id === getCanonicalLegacySnapshotId(id));
+            const read = async () => (await loadSnapshotArchive()).snapshots.find(entry => entry.id === getCanonicalLegacySnapshotId(id));
             let point = await read();
             if (!point) { await this.migrateLegacySnapshotsIfNeeded(); point = await read(); }
             if (!point) throw new Error(`Snapshot ${id} wurde nicht gefunden.`);
@@ -301,6 +312,7 @@ export function createTauriJsonFileAdapter(options = {}) {
             if (!opened) await this.open();
             await ensureSnapshotsOpen();
             const report = createLegacyMigrationReport();
+            if (options.skipLegacySnapshotMigration) return report;
             const legacyKeys = Object.keys(state.records || {}).filter(isLegacySnapshotKey);
             const nextSnapshots = [...snapshotArchive.snapshots];
             const migratedLegacyKeys = [];
@@ -345,7 +357,7 @@ export function createTauriJsonFileAdapter(options = {}) {
         },
         async quarantine() {
             if (!invoke) invoke = getInvoke(options);
-            return invoke('quarantine_app_state');
+            return invoke('quarantine_app_state', liveTarget);
         }
     };
 }

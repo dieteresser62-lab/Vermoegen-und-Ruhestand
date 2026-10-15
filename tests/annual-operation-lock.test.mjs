@@ -44,10 +44,10 @@ try {
     for (const action of [() => probelauf.start(async () => ({ source: 'copy', testDate: '2027-01-02' })),
         () => probelauf.end(async () => true)]) {
         const result = await action(); assertEqual(result.status, 'cancelled', 'Probelaufbeginn/-ende umgehen Jahresbesitz nicht');
-        assertEqual(result.error.code, 'ANNUAL_OPERATION_BUSY', 'Probelauf zeigt denselben Sperrgrund');
+        assertEqual(result.error.code, 'ANNUAL_OPERATION_BUSY', 'Spielbereich zeigt denselben Sperrgrund');
     }
-    assertEqual(env.snapshots.size, snapshots, 'Gesperrter Probelauf erzeugt keinen Snapshot');
-    assertEqual(env.batches.length, batches, 'Gesperrter Probelauf erzeugt keinen Backendwrite');
+    assertEqual(env.snapshots.size, snapshots, 'Gesperrter Spielbereich erzeugt keinen Snapshot');
+    assertEqual(env.batches.length, batches, 'Gesperrter Spielbereich erzeugt keinen Backendwrite');
     gate.resolve(null); assertEqual((await running).status, 'cancelled', 'Abbruch löst den Jahresbesitz');
     assertEqual((await second.close()).status, 'already_committed', 'Neuer bewusster Start nach Abbruch bestätigt die Periode');
     assertEqual(env.snapshots.size, 1, 'Genau ein konkurrierender Start erreicht Snapshot und Fachwrite');

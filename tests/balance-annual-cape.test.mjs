@@ -154,7 +154,7 @@ try {
         const result = await handlers.handleFetchCapeAuto();
         assertEqual(result.capeRatio, 28.5, 'Synthetischer CAPE verdrängt realen gespeicherten Stand');
         assertEqual(result.capeAsOf, '2026-12-31', 'Datenstand stammt aus Abschlussjahr');
-        assertEqual(result.capeSource, 'Probelauf · synthetisch', 'Persistierte Herkunft');
+        assertEqual(result.capeSource, 'Spielbereich · synthetisch', 'Persistierte Herkunft');
         assertEqual(result.sourceLabel, result.capeSource, 'Rendererlabel ist synthetisch statt Stored');
         assertEqual(result.capeFetchStatus, 'ok_synthetic', 'Synthetische Daten erhalten keinen Stalestatus');
         assertEqual(JSON.parse(localStorage.getItem(CONFIG.STORAGE.LS_KEY)).capeMeta.capeRatio, 28.5, 'Produktiver Persistenzpfad');

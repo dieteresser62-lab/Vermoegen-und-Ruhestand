@@ -1,52 +1,57 @@
-import { addDirectHouseholdPlans } from '../profile/household-plan-migration.js';
+import { rebuildSyntheticPriceRecords, validateMusterTestDate } from './muster-haushalt-prices.js';
+export { rebuildSyntheticPriceRecords, validateMusterTestDate } from './muster-haushalt-prices.js';
 import { buildPlanRecord, planScope, projectPlanToBalance } from '../profile/household-plan.js';
 import { CONFIG } from '../balance/balance-config.js';
 import { parseCalendarDate } from '../shared/app-clock.js';
-import { syntheticQuote, syntheticChart, syntheticDay, syntheticAnnualQuote } from '../shared/probelauf-prices.js';
+import { syntheticQuote, syntheticAnnualQuote } from '../shared/probelauf-prices.js';
 import { normalizeTrancheCollection } from '../../types/tranche-contract.js';
 import { createManualWealthHistoryEntry, createAnnualWealthHistoryEntry } from '../../types/wealth-history-contract.js';
 import { captureWealthLots } from '../profile/profile-wealth-history.js';
 import { overviewScope, summaryEntryKey } from '../overview/overview-storage.js';
 import { previousOverviewMonth } from '../overview/overview-model.js';
 import { validatePersistenceDomainRecords } from '../shared/persistence-backup.js';
-import { isProbelaufRecordKey } from '../shared/persistence-key-policy.js';
+import { ANNUAL_PLAN_RECORD_KEY, buildAnnualPlanRecord } from '../profile/annual-plan-record.js';
+import { projectPerson } from '../profile/profile-person-data.js';
+import { evaluateAnnualDraft } from '../balance/balance-annual-storage-commit.js';
+import { EngineAPI } from '../../engine/index.mjs';
 
 export const MUSTER_PROFILE_IDS = Object.freeze(['muster_a', 'muster_b']);
-export function validateMusterTestDate(testDate) {
-    const now = parseCalendarDate(testDate);
-    if (testDate < '2026-01-01') throw new Error('Der Muster-Haushalt ist ab 01.01.2026 verfügbar.');
-    return now;
-}
 
-/** Neue Kursgeneration für Kopie/Datumssprung; keine Veränderung bestätigter Abschlüsse. */
-export function rebuildSyntheticPriceRecords(records, testDate) {
-    const next = { ...records };
-    const registry = records.rs_profiles_v1 ? JSON.parse(records.rs_profiles_v1) : null;
-    const active = records.rs_active_profile;
-    const start = records.rs_wealth_history_start_v1 ? JSON.parse(records.rs_wealth_history_start_v1).startDate : null;
-    const prices = { version: 1, symbols: {} };
-    const projectLots = raw => JSON.stringify(normalizeTrancheCollection(JSON.parse(raw || '[]'), { mode: 'persisted' }).map(lot => {
-        if (!lot.ticker && !lot.isin) { const copy = { ...lot, currentPrice: lot.purchasePrice }; delete copy.asOf; return copy; }
-        let quote;
-        try { quote = syntheticQuote(lot.ticker || lot.isin, testDate); }
-        catch { const copy = { ...lot, currentPrice: lot.purchasePrice }; delete copy.asOf; return copy; }
-        if (start && start <= testDate && !prices.symbols[quote.symbol]) {
-            const chart = syntheticChart(quote.symbol, [syntheticDay(start), syntheticDay(testDate)], testDate);
-            prices.symbols[quote.symbol] = { currency: 'EUR', days: chart.days, closes: chart.closes,
-                queried: [chart.interval], failures: 0, lastError: null };
-        }
-        return { ...lot, ticker: quote.symbol, currentPrice: quote.price, asOf: quote.asOf };
-    }));
-    if (registry) {
-        for (const [id, profile] of Object.entries(registry.profiles)) {
-            const raw = id === active ? records.depot_tranchen : profile.data.depot_tranchen;
-            if (raw !== undefined) profile.data.depot_tranchen = projectLots(raw);
-            if (id === active && raw !== undefined) next.depot_tranchen = profile.data.depot_tranchen;
-        }
-        next.rs_profiles_v1 = JSON.stringify(registry);
-    } else if (records.depot_tranchen !== undefined) next.depot_tranchen = projectLots(records.depot_tranchen);
-    next.rs_daily_prices_v1 = JSON.stringify(prices);
-    return addDirectHouseholdPlans(next, { now: () => parseCalendarDate(testDate) });
+/** Musterbeleg aus derselben Jahresrechnung wie im Abschluss, nur in privaten Records. */
+function addMusterAnnualPlan(records, year, values) {
+    const asOf = `${year}-01-01`, committedAt = parseCalendarDate(asOf).toISOString();
+    const registry = JSON.parse(records.rs_profiles_v1), historical = { ...records };
+    for (const profile of Object.values(registry.profiles)) {
+        const lots = JSON.parse(profile.data.depot_tranchen).map(lot => {
+            const quote = syntheticQuote(lot.ticker, asOf);
+            return { ...lot, currentPrice: quote.price, asOf: quote.asOf };
+        });
+        profile.data.depot_tranchen = JSON.stringify(lots);
+    }
+    historical.rs_profiles_v1 = JSON.stringify(registry);
+    historical.depot_tranchen = registry.profiles[records.rs_active_profile].data.depot_tranchen;
+    const scope = planScope('household', MUSTER_PROFILE_IDS);
+    const ageByPerson = Object.fromEntries(Object.entries(registry.profiles)
+        .map(([id, profile]) => [id, projectPerson(profile.data, year).startAlter]));
+    const { outcome } = evaluateAnnualDraft({ records: historical, planningYear: year, scope, values, ageByPerson },
+        { engineApi: EngineAPI, now: () => parseCalendarDate(asOf) });
+    outcome.snapshot.source = 'Beispieldaten (Spielbereich)';
+    outcome.snapshot.asOf = asOf;
+    outcome.action.title += ' · Beispieldaten (Spielbereich)';
+    records[ANNUAL_PLAN_RECORD_KEY] = buildAnnualPlanRecord(null, { targetYear: year - 1, scope,
+        committedAt, recommended: outcome }).raw;
+    // Die vorbereiteten Monatsinformationen verwenden denselben festen Jahresbetrag.
+    const currentRegistry = JSON.parse(records.rs_profiles_v1);
+    for (const [id, profile] of Object.entries(currentRegistry.profiles)) {
+        const raw = profile.data.overview_balance_summary_v1, summaries = JSON.parse(raw);
+        Object.assign(summaries.entries[summaryEntryKey(year, scope)], {
+            monthlyWithdrawal: outcome.monthlyWithdrawal, monthlyBudget: outcome.monthlyBudget, createdAt: committedAt
+        });
+        profile.data.overview_balance_summary_v1 = JSON.stringify(summaries);
+        if (id === records.rs_active_profile) records.overview_balance_summary_v1 = profile.data.overview_balance_summary_v1;
+    }
+    records.rs_profiles_v1 = JSON.stringify(currentRegistry);
+    return records;
 }
 
 /** Reproduzierbare Records, ohne echte Daten, Migration, Netzwerk oder Schreibzugriff. */
@@ -143,12 +148,8 @@ export function createMusterHaushaltRecords(testDate) {
         ...registry.profiles[MUSTER_PROFILE_IDS[0]].data, rs_wealth_history_start_v1: JSON.stringify({ version: 1, startDate }), balance_expenses_v1: JSON.stringify(expenses),
         household_simulator_needs_v1: JSON.stringify({ schemaVersion: 1, mode: 'override', source: 'manual', overriddenFields: ['startFloorBedarf', 'startFlexBedarf', 'minimumFlexAnnual'],
             values: { startFloorBedarf: '30000', startFlexBedarf: '30000', minimumFlexAnnual: '7500' } }) }, testDate);
+    addMusterAnnualPlan(records, year, planValues);
     const validation = validatePersistenceDomainRecords(records, { requireProfileContext: true });
     if (!validation.ok) throw new Error(`Muster-Haushalt ungültig: ${validation.message}`);
     return records;
-}
-export async function loadMusterHaushalt({ persistence, testDate, ...options }) {
-    const records = createMusterHaushaltRecords(testDate);
-    await persistence.replaceRecordsTransactional(records, { ...options, allowKey: isProbelaufRecordKey,
-        postValidate: actual => { const validation = validatePersistenceDomainRecords(actual, { requireProfileContext: true }); if (!validation.ok) throw new Error(validation.message); } });
 }

@@ -778,6 +778,7 @@ async function runBalanceUiOrchestrationTests() {
             const source = { tagesgeld: 123, geldmarktEtf: 0, depotwertAlt: 0, depotwertNeu: outcome === 'none' ? 0 : 200 };
             const asOf = outcome === 'unknown' ? undefined : Math.floor(Date.now() / 1000) - (outcome === 'old' ? 604801 : 10);
             const inputData = { ...source, detailledTranches: outcome === 'none' ? [] : [{
+                schemaVersion: 2, trancheId: 'muster-aktien', name: 'Muster Aktien', purchasePrice: 90, purchaseDate: '2026-01-02', tqf: 0.3, taxExempt: false,
                 category: 'equity', type: 'aktien_neu', shares: 2, currentPrice: 100, marketValue: 200, asOf
             }] };
             let previews = 0; const messages = [], errors = [];

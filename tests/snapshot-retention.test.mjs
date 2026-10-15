@@ -49,7 +49,7 @@ for (const outcome of ['success', 'archive-change', 'failure', 'partial', 'mid-c
     if (outcome === 'trial') records.rs_probelauf_state_v1 = 'active';
     let preview, error;
     try { preview = await previewSnapshotRetention({ persistence, now }); } catch (caught) { error = caught; }
-    if (outcome === 'trial') { assert(error, 'Probelauf verhindert Aufräumen'); continue; }
+    if (outcome === 'trial') { assert(error, 'Spielbereich verhindert Aufräumen'); continue; }
     if (outcome.includes('reference')) {
         assert(!preview.remove.some(item => item.id === 'jan-old'), outcome + ': Referenzprojektion schützt Stand');
         if (outcome === 'invalid-reference') assertEqual(preview.remove.length, 0, 'Beschädigte Referenzquelle bleibt konservativ ohne Löschung');

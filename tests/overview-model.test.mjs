@@ -340,13 +340,13 @@ assertEqual(overviewPricesDone(successfulQuotes), true, 'Umbenennung erhält Erl
         setAppTestDate('2026-10-06');
         for (const model of [successfulQuotes, { ...successfulQuotes, quoteDate: null },
             { ...successfulQuotes, priceReport: { status: 'offline', updated: 0 } }]) {
-            assertEqual(overviewQuoteLabel(model), 'Testkurse, nicht echt', 'Probelauf kennzeichnet den Kursstand');
-            assertEqual(overviewPriceLabel(model), 'Testkurse, nicht echt', 'Probelauf kennzeichnet auch den Kopfbericht');
+            assertEqual(overviewQuoteLabel(model), 'Testkurse, nicht echt', 'Spielbereich kennzeichnet den Kursstand');
+            assertEqual(overviewPriceLabel(model), 'Testkurse, nicht echt', 'Spielbereich kennzeichnet auch den Kopfbericht');
         }
         assertEqual(overviewPricesDone(successfulQuotes), true, 'Testkurskennzeichnung verändert den Abschlusshaken nicht');
         assertEqual(JSON.stringify(successfulQuotes), before, 'Kennzeichnung verändert keine Kurs- oder Vermögensdaten');
     } finally { setAppTestDate(previousDate); }
-    assertEqual(overviewPriceLabel(successfulQuotes), 'Kurse aktualisiert · heute 09:12', 'Nach Probelauf gilt wieder der echte Kursbericht');
+    assertEqual(overviewPriceLabel(successfulQuotes), 'Kurse aktualisiert · heute 09:12', 'Nach Spielbereich gilt wieder der echte Kursbericht');
 }
 for (const retrievedAt of [undefined, null, 'ungültig']) {
     const withoutTime = { ...successfulQuotes, priceReport: { ...successfulQuotes.priceReport, retrievedAt } };

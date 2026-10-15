@@ -1,5 +1,6 @@
 // @ts-check
 import { HOUSEHOLD_PLAN_KEY, assertHouseholdPlanRecord } from '../profile/household-plan.js';
+import { WEALTH_CAPTURES_KEY, readWealthCaptures } from '../../types/wealth-capture-contract.js';
 import { ANNUAL_PLAN_RECORD_KEY, assertAnnualPlanRecord } from '../profile/annual-plan-record.js';
 import { DATA_BACKUP_SUMMARY_KEY, assertBackupSummary, buildBackupSummary } from '../data/data-backup-summary.js';
 import { requestPageConfirmation } from './page-dialog.js';
@@ -45,8 +46,8 @@ export const FULL_BACKUP_APP_ID = 'ruhestand-suite';
 export const FULL_BACKUP_LEGACY_SCHEMA_VERSION = 1;
 export const FULL_BACKUP_SCHEMA_VERSION = 2;
 export const FULL_BACKUP_RECOVERY_KIND = SNAPSHOT_KINDS.fullBackupImportRecovery;
-export const PROBELAUF_BACKUP_MESSAGE = 'Vollsicherung und Import sind während des Probelaufs gesperrt. Bitte zuerst den Probelauf beenden.';
-const PROBELAUF_BACKUP_STATE_UNAVAILABLE_MESSAGE = 'Vollsicherung und Import gesperrt: Probelauf-Zustand konnte nicht sicher gelesen werden. Bitte neu laden.';
+export const PROBELAUF_BACKUP_MESSAGE = 'Vollsicherung und Import sind während des Spielbereichs gesperrt. Bitte zuerst den Spielbereich beenden.';
+const PROBELAUF_BACKUP_STATE_UNAVAILABLE_MESSAGE = 'Vollsicherung und Import gesperrt: Spielbereich-Zustand konnte nicht sicher gelesen werden. Bitte neu laden.';
 
 // Nur der lokale Bestandsvergleich darf diesen Hinweis auslösen, keine Backendmeldung.
 class FullBackupLiveChangedError extends Error {
@@ -60,7 +61,8 @@ export async function assertFullBackupAllowed(options = {}) {
     const persistence = options.persistence || PersistenceFacade;
     const check = () => {
         const coordinator = options.probelaufController;
-        if (getAppTestDate() !== null || coordinator?.state || coordinator?.busy || coordinator?.blocked
+        if (persistence.getPersistenceStatus?.().activeArea === 'spiel'
+            || getAppTestDate() !== null || coordinator?.state || coordinator?.busy || coordinator?.blocked
             || persistence.getItemSync(PROBELAUF_STATE_KEY) !== null) {
             const error = new Error(PROBELAUF_BACKUP_MESSAGE);
             error.code = 'probelauf_backup_blocked';
@@ -304,6 +306,7 @@ export function validatePersistenceDomainRecords(records, options = {}) {
         return invalidDomain('records_invalid', 'Persistenz-Records muessen ein Objekt sein.');
     }
     try {
+        if (hasOwn(records, WEALTH_CAPTURES_KEY)) readWealthCaptures(records[WEALTH_CAPTURES_KEY]);
         Object.entries(records).forEach(([key, value]) => {
             if (BLOCKED_BACKUP_KEYS.has(key) || !isAllowedPersistenceImportKey(key)) {
                 throw new Error(`Persistenz-Key ${key} ist nicht erlaubt.`);
@@ -670,7 +673,7 @@ function showBackupError(status, error, doc) {
     if (!status) return;
     status.dataset.kind = error?.name === 'AbortError' ? '' : 'error';
     status.textContent = error?.name === 'AbortError' ? 'Import abgebrochen.' : error?.message || 'Backupaktion fehlgeschlagen.';
-    if (status.textContent.includes('Probelauf')) {
+    if (status.textContent.includes('Spielbereich')) {
         const card = doc.getElementById?.('daten-sicherung');
         if (card) card.open = true;
     }

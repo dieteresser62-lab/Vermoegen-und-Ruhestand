@@ -61,3 +61,6 @@ scratch/
 .obsidian/
 *.log
 node_modules/
+
+# Ausgaben der Paritätsprobe (Beispiele in tests/README.md)
+.paritaet/

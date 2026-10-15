@@ -118,7 +118,7 @@ try {
     assertEqual(writes, 0, 'Sitzungserzeugung allein schreibt keinen Monat; der Seitenbinder finalisiert automatisch');
     const { doc } = createDialogFixture(); const old = globalThis.document; globalThis.document = doc;
     let action = 0;
-    const results = { targetYear: 2026, confirmed: true, monthSession: session, inflation: { year: 2026, rate: 2.5, source: 'Probelauf · synthetisch' }, etf: { price: 160, source: 'Probelauf · synthetisch' }, cape: { capeRatio: 28, capeSource: 'Probelauf · synthetisch' }, openAction: () => { action++; } };
+    const results = { targetYear: 2026, confirmed: true, monthSession: session, inflation: { year: 2026, rate: 2.5, source: 'Spielbereich · synthetisch' }, etf: { price: 160, source: 'Spielbereich · synthetisch' }, cape: { capeRatio: 28, capeSource: 'Spielbereich · synthetisch' }, openAction: () => { action++; } };
     const modal = createAnnualModalHandlers({ getLastUpdateResults: () => results, getModel: () => model, isCommitActive: () => false });
     modal.showAnnualContinuation({ targetYear: 2026 });
     const root = doc.getElementById('balanceAnnualClose'); modal.showUpdateResultModal(results);
@@ -131,7 +131,7 @@ try {
         await doc.getElementById('annualShowLog').fire('click');
         assert(!protocol.parent.hidden && doc.getElementById('annualResults') === protocol, 'Protokoll erhält sichtbare Ergebnisidentität ohne Neuaufbau');
         const text = dialogElements(protocol).map(node => node.textContent).join(' ');
-        assert(text.includes('Inflation 2026') && text.includes('ETF-Schlusskurs') && text.includes('CAPE') && text.split('Probelauf · synthetisch').length === 4, 'Sichtbares Protokoll enthält alle drei Jahresquellen genau einmal');
+        assert(text.includes('Inflation 2026') && text.includes('ETF-Schlusskurs') && text.includes('CAPE') && text.split('Spielbereich · synthetisch').length === 4, 'Sichtbares Protokoll enthält alle drei Jahresquellen genau einmal');
         assertEqual(writes, 0, 'Protokoll startet keine Monatsbereitstellung');
     }
     await doc.getElementById('annualCloseBtn').fire('click'); modal.handleShowUpdateLog();

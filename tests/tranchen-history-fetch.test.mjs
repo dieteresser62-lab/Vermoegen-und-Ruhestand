@@ -237,10 +237,10 @@ assertEqual(jobsStarted, 1, 'Reload mit derselben Sitzung startet keinen zweiten
     try {
         const data = source([lot('TEST.DE', '2025-12-15')]);
         const result = await runHistoryFetch({ firstPlanningYear: 2026, storage: data, today: '2026-01-10', flush: async () => true,
-            fetchImpl: () => { network++; throw new Error('Kursnetz im Probelauf verboten'); } });
+            fetchImpl: () => { network++; throw new Error('Kursnetz im Spielbereich verboten'); } });
         assertEqual(result.status, 'complete', 'Synthetischer Historyjob bestätigt vollständigen Zeitraum');
         const saved = JSON.parse(data.getItem(DAILY_PRICES_KEY)).symbols['TEST.DE'];
-        assertEqual(saved.queried.at(-1)[1], day('2026-01-10'), 'Probelauf bestätigt Wochenende einschließlich Testdatum');
+        assertEqual(saved.queried.at(-1)[1], day('2026-01-10'), 'Spielbereich bestätigt Wochenende einschließlich Testdatum');
         assertEqual(saved.days.at(-1), day('2026-01-09'), 'Wochenende enthält keinen erfundenen Kurspunkt');
         assertEqual(network, 0, 'Historyjob erreicht werfende Netzwerkfunktion nie');
     } finally { setAppTestDate(null); }

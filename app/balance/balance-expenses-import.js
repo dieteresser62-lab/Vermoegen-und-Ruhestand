@@ -82,7 +82,7 @@ export function importExpenses({ targets, confirm, storage = persistenceStorage,
         check();
         if (controller) {
             const persisted = await PersistenceFacade.readPersistedRecords(key => key === PROBELAUF_STATE_KEY);
-            if ((persisted[PROBELAUF_STATE_KEY] ?? null) !== session) throw expensesImportHint('EXPENSES_CONTEXT', 'Import abgebrochen: Probelauf geändert. Bitte neu laden.');
+            if ((persisted[PROBELAUF_STATE_KEY] ?? null) !== session) throw expensesImportHint('EXPENSES_CONTEXT', 'Import abgebrochen: Spielbereich geändert. Bitte neu laden.');
         }
         check();
     };
@@ -199,7 +199,7 @@ export function requestExpensesPreview(targets, { doc = globalThis.document, sig
         for (const target of targets) {
             const section = doc.createElement('section'); section.dataset.expensesPreviewTarget = '';
             const heading = doc.createElement('h3'); heading.dataset.expensesPreviewPerson = ''; heading.textContent = `${target.name || target.profileId} · ${target.month}/${target.year}`; section.appendChild(heading);
-            const origin = doc.createElement('p'); origin.dataset.expensesPreviewOrigin = ''; origin.textContent = (target.source === EXAMPLE_SOURCE ? 'Beispieldaten (Probelauf)' : 'CSV-Datei')
+            const origin = doc.createElement('p'); origin.dataset.expensesPreviewOrigin = ''; origin.textContent = (target.source === EXAMPLE_SOURCE ? 'Beispieldaten (Spielbereich)' : 'CSV-Datei')
                 + (target.replacing ? ' · Vorhandene Monatsdaten werden ersetzt.' : ' · Neuer Monatsimport.'); section.appendChild(origin);
             for (const [name, value] of Object.entries(target.categories)) { const row = doc.createElement('p'); row.dataset.expensesPreviewCategory = ''; row.textContent = `${name}: ${formatCurrency(Math.abs(value))}`; section.appendChild(row); }
             const sum = doc.createElement('p'); sum.dataset.expensesPreviewSum = ''; sum.textContent = `Summe: ${formatCurrency(target.total)}`; section.appendChild(sum); dialog.appendChild(section);

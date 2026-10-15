@@ -6,6 +6,7 @@ import { createManagerHouseholdPlan } from './tranchen-manager-household-plan.js
 let personManagementPending = false;
 
 import { appNow } from '../shared/app-clock.js';
+import { recordTrancheCollection } from './tranchen-recording.js';
 import { captureCashPeople } from '../profile/profile-cash-update.js';
 import { showPersonDataStatus, readHouseholdPersonStatus } from '../shared/person-data-status.js';
 import { bindManagerPersonCards } from './tranchen-manager-person-cards.js';
@@ -15,7 +16,7 @@ import { bindHistoryRecoveryUI, bindTrancheHistoryUI, bindManagerHistoryStartUI,
 import { prepareHistoryRecovery, commitHistoryRecovery } from './tranchen-history-recovery.js';
 import { assertHistoryStart } from './tranchen-history-store.js';
 import { loadProfileRegistry } from '../profile/profile-registry.js';
-import { PROFILE_CASH_HISTORY_KEY, PROFILE_WEALTH_LOTS_KEY, captureWealthLots } from '../profile/profile-wealth-history.js';
+import { PROFILE_CASH_HISTORY_KEY, PROFILE_WEALTH_LOTS_KEY } from '../profile/profile-wealth-history.js';
 import { readDecimalInput, canonicalDecimalInput, bindDecimalInputDisplay, isEditableDecimalInput } from './tranchen-manager-decimal-input.js';
 import { parseOverviewTarget } from '../overview/overview-model.js';
 import { getManagerView, renderManagerView } from './tranchen-manager-renderer.js';
@@ -64,7 +65,6 @@ import {
     loadReconciliationRegistryFromStorage,
     loadTranchesFromStorage,
     normalizeTranches,
-    saveTranchesToStorage
 } from './tranchen-manager-state.js';
 import {
     ensureReconciliationCashControls,
@@ -1355,9 +1355,7 @@ async function persistTranchen(nextTranches, options = {}) {
 
     try {
         options.navigationOperation.commit();
-        const lots = captureWealthLots(JSON.stringify(captureWealthLots(previousLotsRaw, state.confirmedTranches)), normalized);
-        persistenceStorage.setItem(PROFILE_WEALTH_LOTS_KEY, JSON.stringify(lots));
-        const persisted = saveTranchesToStorage(normalized);
+        const persisted = recordTrancheCollection(normalized, persistenceStorage, { previousTranches: state.confirmedTranches });
         if (!saveCurrentProfileFromLocalStorage()) {
             throw new Error('PROFILE_SAVE_FAILED');
         }

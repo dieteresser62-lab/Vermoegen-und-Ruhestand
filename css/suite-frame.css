@@ -76,6 +76,7 @@ html[data-suite-page] .ds-page-head > .ds-page-actions { grid-column: 2; grid-ro
 }
 .probelauf-band[hidden] { display: none; }
 .probelauf-band .ds-actions { flex-wrap: wrap; }
+#probelaufTimeLapseProgress { font: 400 var(--text-base)/1.5 var(--font-sans); }
 .probelauf-band button:focus-visible { outline: 2px solid var(--warn); outline-offset: 3px; }
 @media print {
     html[data-suite-page] .suite-content > .probelauf-band { display: block; border: 2px solid currentColor; print-color-adjust: exact; }

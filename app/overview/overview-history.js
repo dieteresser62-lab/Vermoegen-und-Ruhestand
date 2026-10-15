@@ -57,7 +57,8 @@ export function renderOverviewHistory(doc, model) {
     const period = ready && Number.isInteger(history.measurementStart) ? `seit ${day(history.measurementStart)} bis ${day(history.range.end)} · ` : 'Noch keine bewertbare Vergleichsbasis · ';
     if (metrics) metrics.innerHTML = historyMetric('Letzter Tagesabschluss', money(history?.end?.total), ready ? `am ${day(history.range.end)} · aus Beständen und Tageskursen` : 'Nicht verfügbar')
         + historyMetric('Veränderung', signed(m.change), period + percent(m.percent) + ' · nach Entnahmen' + qualifier, m.change ?? null);
-    set('overviewHistorySource', 'Schlusskurse und bestätigte Bestände; Tagesgeld aus erfassten Ständen.');
+    set('overviewHistorySource', 'Schlusskurse und bestätigte Bestände; Tagesgeld aus erfassten Ständen.'
+        + (history?.cashPlayValues ? ' Enthält Tagesgeld-Spielwerte aus dem Spielbereich.' : ''));
 }
 
 const bindings = new WeakMap();

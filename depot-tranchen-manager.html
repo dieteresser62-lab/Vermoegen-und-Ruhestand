@@ -672,7 +672,7 @@
         <header class="suite-header">
             <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
             <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span class="pv-context-pill pv-quote-context"><span id="managerQuoteContext">Kurse: Datum unbekannt</span><span aria-hidden="true">·</span><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Details zu Kursständen und Speicherung" aria-describedby="managerQuoteInfo">ⓘ</button><span id="managerQuoteInfo" class="ds-info-pop" role="tooltip"><span id="managerQuoteDetails"></span><span>Profilwerte speichern automatisch · Tranchen beim Bestätigen.</span></span></span></span></div>
-            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Probelauf …</button>
+            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Spielbereich starten …</button>
         </header>
         <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
         <div id="suiteNavigationStatus" class="suite-navigation-status" role="alert" hidden></div>
@@ -690,13 +690,13 @@
                 <a href="Daten-Sicherung.html" data-profile-handoff data-suite-backup aria-label="Daten &amp; Sicherung" title="Daten &amp; Sicherung"><span data-suite-icon="landmark" aria-hidden="true"></span><span>Daten &amp; Sicherung</span></a>
             </nav>
             <main class="suite-content" id="suiteMain" tabindex="-1">
-                <aside id="probelaufBand" class="probelauf-band" aria-label="Probelauf" hidden>
+                <aside id="probelaufBand" class="probelauf-band" aria-label="Spielbereich" hidden>
                     <strong id="probelaufBandText"></strong>
                     <div class="ds-actions">
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="day">+1 Tag</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="month">+1 Monat</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="date">Datum wählen …</button>
-                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Probelauf beenden</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Spielbereich beenden</button>
                     </div>
                 </aside>
 
@@ -839,7 +839,7 @@
 
 </div><div class="pv-person-group"><h4>Steuern</h4><div class="form-group" data-person-field="profileKirchensteuerPct"><label for="profileKirchensteuerPct">Kirchensteuer (%)</label><input id="profileKirchensteuerPct" type="hidden" class="ds-input" placeholder="0" inputmode="decimal" lang="de"><div id="profileChurchSegments" class="pv-person-segments" role="group" aria-label="Kirchensteuer"></div></div>
 <div class="form-group" data-person-field="profileSparerPauschbetrag"><label for="profileSparerPauschbetrag">Sparer-Pauschbetrag (€ pro Person)</label><input id="profileSparerPauschbetrag" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de" data-money-input></div>
-<div class="form-group" data-person-field="profileRenteSteuerquotePct"><label for="profileRenteSteuerquotePct">Steuerquote der Rente (%)</label><input id="profileRenteSteuerquotePct" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de"></div>
+<div class="form-group" data-person-field="profileRenteSteuerquotePct" hidden><label for="profileRenteSteuerquotePct">Steuerquote der Rente (%)</label><input id="profileRenteSteuerquotePct" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de" disabled></div>
 </div></div><p>Änderungen werden automatisch gespeichert.</p><p class="ds-help">Im Haushalt wirken Rentenanpassung und Pflegekonfiguration des Hauptprofils.</p><button type="button" id="profileManagePeopleBtn" class="ds-button ds-button-secondary" aria-label="Aktive Person verwalten" aria-haspopup="dialog" aria-controls="managerPeopleModal">Person verwalten …</button></div></section><section class="ds-card pv-profile-card pv-assets-disclosure"><div class="pv-supplement-header"><button id="managerAssetsToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerAssetsBody"><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="6" width="18" height="13" rx="2"></rect><path d="M3 10h18"></path></svg></span><span class="pv-supplement-copy"><strong>Gold</strong><span id="managerAssetsSummary" class="ds-help"></span></span><span id="managerAssetsAction" class="pv-disclosure-action">▸ zeigen</span></button><div class="pv-supplement-switch">
                     <label class="ds-toggle" for="profileGoldAktivToggle"><input type="checkbox" class="ds-checkbox" role="switch" id="profileGoldAktivToggle" aria-controls="profileGoldAktiv"><span class="ds-slider" aria-hidden="true"></span><span>Gold-Strategie aktiv</span></label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Hinweis zu Gold-Strategie" aria-describedby="managerFieldHelp5">i</button><span id="managerFieldHelp5" class="ds-info-pop" role="tooltip">Steuert, ob Gold in der Planung aktiv ist.</span></span>
                     <select id="profileGoldAktiv" class="ds-select" hidden>
@@ -943,13 +943,14 @@
         <section id="managerWealthHistory" class="ds-plan-card manager-wealth-history" aria-labelledby="managerWealthTitle">
             <header class="ds-plan-card-head"><div class="ds-card-title"><h2 id="managerWealthTitle">Vermögensverlauf</h2><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Erläuterung zum Vermögensverlauf" aria-expanded="false" aria-describedby="managerWealthInfo" aria-controls="managerWealthInfo">ⓘ</button><span id="managerWealthInfo" class="ds-info-pop" role="tooltip">
             <span id="managerWealthContext"></span>
-            <span>Die Tageslinie zeigt die Entwicklung aus Beständen und Tageskursen. Rauten zeigen unverändert erfasste Stände, die davon abweichen können. Die Gruppe „Aus erfassten Ständen“ und die Tabelle enthalten Tagesgeld, Geldmarkt-ETF und Aktien-ETF (Alt- und Neu-Depot), ohne Gold und separate Anleihen. Die Gruppe „Aus Tageskursen“ und die Tageslinie behalten alle ihre Anlageformen.</span>
+            <span>Die Tageslinie zeigt die Entwicklung aus Beständen und Tageskursen. Rauten zeigen erfasste Stände, die davon abweichen können. Jede neue Erfassung speichert den Haushalt und jedes Haushaltsmitglied mit Aktien, Geldmarkt, Gold, Anleihen und Tagesgeld. Bei Personen erscheinen nur eigene Stände. Ältere Haushaltsstände bleiben in ihrer bisherigen Bewertung erhalten, ohne Gold und mit Anleihen im Neu-Depot. Die Gruppe „Aus Tageskursen“ und die Tageslinie behalten alle ihre Anlageformen.</span>
             <span>Automatische Erfassung nach Ausgabenimport, wenn die Kurse höchstens sieben Tage alt sind. „Stand jetzt erfassen“ verwendet dieselbe Kursgrenze; ohne kursabhängige Bestände ist die Erfassung ebenfalls möglich.</span>
             <span id="managerWealthDailyNote"></span></span></span></div>
                 <button id="managerCaptureWealthBtn" type="button" class="ds-button ds-button-secondary">Stand jetzt erfassen</button></header>
             <div id="managerHistorySwitch" class="manager-history-switch" aria-label="Verlauf für Haushalt oder Person"></div>
-            <h3 class="manager-history-group-title">Aus erfassten Ständen</h3>
+            <h3 id="managerWealthCapturedTitle" class="manager-history-group-title">Aus erfassten Ständen</h3>
             <div id="managerWealthMetrics" class="wealth-metrics ds-kpi-strip ds-metric"></div>
+            <p id="managerWealthPersonHint" hidden><span id="managerWealthPersonHintText">Erfasste Stände gibt es für den Haushalt</span> <span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Erfasste Stände in der Haushaltsansicht" aria-expanded="false" aria-describedby="managerWealthPersonInfo" aria-controls="managerWealthPersonInfo">ⓘ</button><span id="managerWealthPersonInfo" class="ds-info-pop" role="tooltip">Ältere Stände enthalten Haushaltswerte ohne verlässliche Aufteilung je Person. Neue Erfassungen speichern immer den Haushalt und alle Haushaltsmitglieder, unabhängig von der gewählten Ansicht. <a class="ds-text-link" href="#verlauf" data-manager-view="history" data-manager-history-scope="household">Zur Haushaltsansicht →</a></span></span></p>
             <p id="managerWealthStatus" role="status"></p><p id="managerWealthHint"></p>
             <p id="managerWealthBasis" class="manager-wealth-basis"></p>
             <div id="managerWealthChart" class="ds-chart-surface manager-wealth-chart"></div>

@@ -79,6 +79,9 @@
 .overview-year-metric-label > span:first-child { white-space: nowrap; }
 .overview-year-metric .ds-info-pop { top: auto; bottom: calc(100% + var(--space-2)); }
 .overview-year-metric strong { margin-top: auto; font-family: var(--font-serif); font-size: var(--value-md); font-weight: 500; line-height: 1.12; white-space: nowrap; }
+@container suite-content (max-width: 85rem) {
+    .overview-year-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .overview-welcome { display: grid; grid-template-columns: minmax(0,7fr) minmax(0,5fr); gap: 24px; }
 .overview-welcome-card { padding: 28px; display: flex; flex-direction: column; gap: 22px; min-width: 0; }
 .overview-welcome-option { display: flex; flex-direction: column; align-items: start; gap: 8px; border: 1px solid var(--border); border-radius: 16px; padding: 22px; background: var(--surface); text-decoration: none; text-align: left; color: var(--text-main); font: inherit; cursor: pointer; }

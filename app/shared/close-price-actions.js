@@ -1,3 +1,4 @@
+import { areaSessionStorage } from './persistence-area-storage.js';
 import { captureStartupPriceSource, runStartupPriceRefresh, waitStartupPriceRefresh, publishStartupPriceReport, readStartupPriceReport } from '../tranches/tranchen-startup-prices.js';
 import { createNavigationOperationLifecycle } from './navigation-guard.js';
 import { getPageNavigationGuard } from './navigation-guard-dialog.js';
@@ -9,7 +10,7 @@ const settledReport = report => ['waiting', 'started', 'loading', 'running'].inc
 export function createClosePriceActions({ doc = globalThis.document, win = globalThis.window,
     guard = getPageNavigationGuard(doc, win), getModel, onReport = () => {},
     source = captureStartupPriceSource, coordinator = runStartupPriceRefresh,
-    waitStartup = () => waitStartupPriceRefresh(doc), publish = report => publishStartupPriceReport(report, win?.sessionStorage) } = {}) {
+    waitStartup = () => waitStartupPriceRefresh(doc), publish = report => publishStartupPriceReport(report, areaSessionStorage(win?.sessionStorage)) } = {}) {
     const lifecycle = createNavigationOperationLifecycle({ guard, message: 'Kurse werden dauerhaft gespeichert – bitte warten.' });
     let running = false;
     return {
@@ -42,7 +43,7 @@ export function createClosePriceActions({ doc = globalThis.document, win = globa
                 // Ein inzwischen bestätigter Sitzungsabruf hat Vorrang vor dem vorherigen Stand.
                 if (!valid()) {
                     let restoredReport = previousReport;
-                    try { restoredReport = settledReport(readStartupPriceReport(win?.sessionStorage)) ?? previousReport; }
+                    try { restoredReport = settledReport(readStartupPriceReport(areaSessionStorage(win?.sessionStorage))) ?? previousReport; }
                     catch { /* Ohne Sitzungszugriff bleibt der vorherige bestätigte Stand verfügbar. */ }
                     onReport(restoredReport);
                 }

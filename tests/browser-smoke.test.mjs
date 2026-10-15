@@ -147,6 +147,16 @@ function createBrowserProfileStorage(profiles, currentProfileId) {
     };
 }
 
+// FR-10: Rechenproben brauchen denselben Bestand in Personenrecords und Anzeige.
+export function createNavigationCalculationFixture() {
+    return createBrowserProfileStorage({ 'suite-a': {
+        name: 'Rahmenprofil', tagesgeld: '20000',
+        tranchesRaw: JSON.stringify([createBrowserTranche({ trancheId: 'navigation-lot',
+            type: 'aktien_alt', shares: 5000, purchasePrice: 80, currentPrice: 100,
+            marketValue: 500000, costBasis: 400000 })])
+    } }, 'suite-a');
+}
+
 export function createOverviewFirstPlanningFixture() {
     const state = JSON.parse(createBalanceStorage(2026)[BALANCE_STATE_KEY]);
     delete state.annualPeriodMetadata;
@@ -521,7 +531,7 @@ async function openSmokePage(browser, baseUrl, entry, options) {
 
 async function readIndexedDb(page, storeName, key) {
     return page.evaluate(({ storeName, key }) => new Promise((resolve, reject) => {
-        const request = indexedDB.open('ruhestand-suite');
+        const request = indexedDB.open(JSON.parse(localStorage.getItem('rs_storage_area_control_v1') || 'null')?.activeArea === 'spiel' ? 'ruhestand-suite-spiel' : 'ruhestand-suite');
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
             const db = request.result;
@@ -536,7 +546,7 @@ async function readIndexedDb(page, storeName, key) {
 /** Zusammengehörige Byteorakel lesen denselben bestätigten Transaktionsstand. */
 async function readIndexedDbValues(page, keys) {
     return page.evaluate(keys => new Promise((resolve, reject) => {
-        const open = indexedDB.open('ruhestand-suite');
+        const open = indexedDB.open(JSON.parse(localStorage.getItem('rs_storage_area_control_v1') || 'null')?.activeArea === 'spiel' ? 'ruhestand-suite-spiel' : 'ruhestand-suite');
         open.onerror = () => reject(open.error);
         open.onsuccess = () => {
             const db = open.result;
@@ -621,7 +631,7 @@ async function runIndexSmoke(browser, baseUrl) {
     await page.locator('#overviewPrices').focus(); await page.locator('#overviewPrices').press('Enter');
     assert(await host.isVisible() && await host.textContent() === statusBeforeToggle, 'Erneutes Öffnen erhält vorhandenen Kursbericht');
     await page.locator('#kursdetails > summary').click();
-    // Seit dem Probelauf-Paket löst derselbe Sprungpunkt nicht doppelt aus; zwischen beiden Hashwechseln das Ereignis abwarten.
+    // Seit dem Spielbereich-Paket löst derselbe Sprungpunkt nicht doppelt aus; zwischen beiden Hashwechseln das Ereignis abwarten.
     await page.evaluate(() => new Promise(resolve => { location.hash = ''; setTimeout(() => { location.hash = '#kursdetails'; resolve(); }, 50); }));
     await host.waitFor({ state: 'visible' });
     assert(quoteRequests === settledRequestCount && await page.evaluate(() => JSON.stringify(Object.entries(localStorage).sort())) === toggleRecords, 'Pille und direkter Hash öffnen ohne Kursrequest oder Fachwrite');
@@ -5699,6 +5709,25 @@ async function runSimulatorSmoke(browser, baseUrl) {
     const { page } = smoke;
     await page.locator('#simulatorResultQuestion').waitFor({ state: 'visible' });
     await waitForSimulatorOpening(page, 'Simulator.html');
+    const taxLiquidity = await page.evaluate(async () => {
+        const { initializePortfolio, sumDepot } = await import('./app/simulator/simulator-portfolio.js');
+        const { beginPersonalTaxYear, settlePersonalTaxYear } = await import('./app/simulator/simulator-personal-tax.js');
+        const portfolio = initializePortfolio({ simulationSourceProfileId: 'a', tagesgeld: 1000,
+            simulationPeople: ['a', 'b'].map(profileId => ({ profileId, tagesgeld: profileId === 'b' ? 1000 : 0,
+                sparerPauschbetrag: 0, kirchensteuerSatz: 0, taxState: { lossCarry: 0 } })),
+            detailledTranches: [{ schemaVersion: 2, sourceProfileId: 'a', trancheId: 'equity',
+                marketValue: 10000, costBasis: 5000, shares: 10000, purchasePrice: .5, currentPrice: 1,
+                purchaseDate: '2020-01-01', tqf: 0, taxExempt: false, category: 'equity', type: 'aktien_neu' }] });
+        const book = beginPersonalTaxYear(portfolio), actionResult = {};
+        book[0].rawAggregate.sumTaxableAfterTqfSigned = 1000;
+        const result = settlePersonalTaxYear({ portfolio, book, personalInterest: { items: [] }, actionResult,
+            regularSaleScale: 0, forcedTaxReserved: 0, spendingNewState: {}, didForcedSale: false });
+        return { tax: result.totalTaxesThisYear, depot: sumDepot(portfolio),
+            partnerCash: portfolio.personAccounts[1].tagesgeld, taxpayer: actionResult.personalAnnualTaxes[0] };
+    });
+    assert(taxLiquidity.tax === 263.75 && taxLiquidity.depot === 10000 && taxLiquidity.partnerCash === 736.25
+        && taxLiquidity.taxpayer.taxFundingGross === 0 && taxLiquidity.taxpayer.householdTaxFunding[0].profileId === 'b',
+        'FR-16: Browser nutzt Partner-Liquidität vor eigenem Notverkauf und erhält das Depot');
     const tabStripLayout = await page.locator('.tab-buttons').evaluate(strip => {
         const tabs = [...strip.querySelectorAll('.tab-btn')];
         return {
@@ -9582,16 +9611,23 @@ async function runDesignsystemRecoveryBanner(browser, baseUrl) {
     const { page } = smoke;
     await page.addInitScript(() => {
         window.__recoveryCommands = [];
-        let appState = '{synthetic-corrupt-state';
+        const files = { live: '{synthetic-corrupt-state', control: null,
+            snapshots: '{"schemaVersion":1,"snapshots":[]}', spiel: null, spielsnapshots: null };
         window.__TAURI__ = { core: { invoke: async (command, args = {}) => {
             window.__recoveryCommands.push(command);
-            if (command === 'load_app_state') return args.target === 'snapshots' ? '{"schemaVersion":1,"snapshots":[]}' : appState;
+            const target = args.target || 'live';
+            if (command === 'load_app_state') return files[target];
             if (command === 'quarantine_app_state') {
-                appState = null;
+                if (target !== 'live') throw new Error(`Unerwartete Quarantäne: ${target}`);
+                files.live = null;
                 return 'synthetic-quarantine.json';
             }
             if (command === 'save_app_state') {
-                if (args.target !== 'snapshots') appState = args.content;
+                files[target] = args.content;
+                return null;
+            }
+            if (command === 'delete_play_state') {
+                files.spiel = null; files.spielsnapshots = null;
                 return null;
             }
             if (command === 'confirm_app_close') return null;
@@ -10637,8 +10673,8 @@ export async function confirmSimulatorOpeningNavigation(page, source) {
     }), 'Automatisches Öffnungsergebnis meldet keinen Ergebnisverlustgrund');
 }
 
-async function createSuiteProbe(browser, baseUrl, source, { disabled = false, viewport } = {}) {
-    const storage = createBrowserProfileStorage({ 'suite-a': { name: 'Rahmenprofil', tranchesRaw: '[]' } }, 'suite-a');
+async function createSuiteProbe(browser, baseUrl, source, { disabled = false, viewport,
+    storage = createBrowserProfileStorage({ 'suite-a': { name: 'Rahmenprofil', tranchesRaw: '[]' } }, 'suite-a') } = {}) {
     const smoke = await createPage(browser, `Suite frame ${source}`, { storage });
     const { page, context } = smoke;
     try {
@@ -11604,7 +11640,7 @@ async function runNavigationGuardWaitCounterprobe(browser, baseUrl) {
 
 // Echte Handler; nur Vorbereitung und MC-UI-Cleanup werden kontrolliert gehalten.
 async function runNavigationGuardCalculations(browser, baseUrl) {
-    const smoke = await createSuiteProbe(browser, baseUrl, 'Simulator.html');
+    const smoke = await createSuiteProbe(browser, baseUrl, 'Simulator.html', { storage: createNavigationCalculationFixture() });
     const { page } = smoke;
     try {
         await page.locator('.tab-btn[data-tab="montecarlo"]').click();
@@ -12765,7 +12801,7 @@ async function assertReplaceCommitOwner(page, probeKey, stage) {
 // Sortierte Schlüssel; sämtliche gespeicherten Werte bleiben unnormalisierte Strings.
 async function readLiveRecordBytes(page) {
     return page.evaluate(() => new Promise((resolve, reject) => {
-        const request = indexedDB.open('ruhestand-suite');
+        const request = indexedDB.open(JSON.parse(localStorage.getItem('rs_storage_area_control_v1') || 'null')?.activeArea === 'spiel' ? 'ruhestand-suite-spiel' : 'ruhestand-suite');
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
             const db = request.result;
@@ -13026,8 +13062,8 @@ async function runNavigationGuardImports(browser, baseUrl) {
             await initializeBrowserSmokeNavigationGuard(page);
             await page.waitForFunction(() => window.__browserSmokeNavigationGuard.reasons().length === 0);
             const status = page.locator('#fullBackupStatus'), text = await status.textContent();
-            assert(await status.isVisible() && text.includes('Probelauf') && text.includes('Probelauf beenden')
-                && !text.includes('erneut versuchen'), 'Sichtbarer Binderstatus nennt Probelauf beenden mit Fehlerstatus');
+            assert(await status.isVisible() && text.includes('Spielbereich') && text.includes('Spielbereich beenden')
+                && !text.includes('erneut versuchen'), 'Sichtbarer Binderstatus nennt Spielbereich beenden mit Fehlerstatus');
             assert(!text.includes(recovery.snapshot.id) && !/probelauf_backup_|\[|wurde angelegt/.test(text),
                 'Frühe Dienstsperre ohne übernommene Kennung behauptet keine Anlage und zeigt keine technischen Details');
             const probe = await page.evaluate(() => ({ mutations: window.__importNavigationProbe.mutations,
@@ -14290,18 +14326,24 @@ async function runPensionCalendarBudget(browser, baseUrl) {
                     }
                     assert(Math.abs(row.cashInterestEarned - row.liqStart * .01) < .05,
                         'Browser: Cashzins entspricht kontrollierter Jahresrate');
-                    assert(Math.abs(row.liquiditaet - (row.liqStart + row.cashInterestEarned + 6000 - row.kaufAkt - row.kaufGld)) < .05,
-                        'Browser: Cashrechnung enthält nur Cashzins, Sparrate und Käufe');
-                    assert(Math.abs(row.portfolio_active_end - row.portfolio_total_before_accumulation - row.cashInterestEarned - 6000) < .05
+                    assert(Math.abs(row.steuern_gesamt - row.cashInterestEarned * .26375) < .05
+                        && row.tax_funding_sale_gross === 0,
+                        'Browser: FR-10 versteuert Zinsen ohne Freibetrag; vorhandenes Haushaltscash deckt die Steuer (FR-16)');
+                    // FR-10: persönliche Jahressteuer; FR-16: Partnercash vor steuerfinanzierendem Notverkauf.
+                    assert(Math.abs(row.liquiditaet - (row.liqStart + row.cashInterestEarned + 6000 - row.kaufAkt - row.kaufGld
+                        - row.steuern_gesamt + row.tax_funding_sale_gross)) < .05,
+                        'Browser: Cashrechnung enthält Cashzins, Sparrate, Käufe, Jahressteuer und Steuerdeckungsverkäufe');
+                    assert(Math.abs(row.portfolio_active_end - row.portfolio_total_before_accumulation - row.cashInterestEarned - 6000
+                        + row.steuern_gesamt) < .05
                         && Math.abs(row.portfolio_flow_delta) < .05, 'Browser: Ansparportfolio enthält keine Rentengutschrift');
                 }
                 const factor = (1 + accumulation.adjustment / 100) ** 3;
                 const transition = accumulation.rows[3];
                 assert(Math.abs(transition.rente1 - accumulation.p1 * factor) < .05
-                    && Math.abs(transition.rente2 - accumulation.p2 * factor * .8) < .05
-                    && Math.abs(transition.renteSum - (accumulation.p1 + accumulation.p2 * .8) * factor) < .05
+                    && Math.abs(transition.rente2 - accumulation.p2 * factor) < .05
+                    && Math.abs(transition.renteSum - (accumulation.p1 + accumulation.p2) * factor) < .05
                     && transition.pension_annual === transition.renteSum,
-                    'Browser: erster Entnahmejahrlauf zahlt volle fortgeschriebene Basis mit Partnerquote');
+                    'Browser: erster Entnahmejahrlauf zahlt beide Nettorenten ohne weiteren Abzug (FR-11)');
                 assert(accumulation.personBefore === accumulation.personAfter, 'Browser: lokale Ansparprobe verändert keine gespeicherten Personen oder Profilrecords');
             }
             smoke.assertNoErrors();
@@ -14410,9 +14452,9 @@ async function runManagerCurrentIncome(browser, baseUrl) {
         await page.locator('#probelaufStart').click();
         const dialog = page.locator('[data-probelauf-dialog]');
         await dialog.getByLabel('Datenquelle').selectOption('copy');
-        await dialog.getByLabel('Testdatum').fill('2026-10-08');
-        await dialog.getByRole('button', { name: 'Probelauf starten', exact: true }).click();
-        await page.locator('#probelaufBandText').filter({ hasText: '08.10.2026' }).filter({ hasNotText: /wird gestartet/ }).waitFor();
+        await dialog.getByLabel('Kursmodus').selectOption('today');
+        await dialog.getByRole('button', { name: 'Spielbereich starten', exact: true }).click();
+        await page.locator('#probelaufBandText').filter({ hasText: 'echte Kurse von heute' }).filter({ hasNotText: /wird gestartet/ }).waitFor();
         await page.goto(`${baseUrl}/depot-tranchen-manager.html`);
         await page.waitForFunction(() => window.__rsProfileSubpageLifecycleInitialized === true);
         await page.locator('#managerPlanTab').click();
@@ -15567,13 +15609,13 @@ async function main() {
             ['Household annual source', runHouseholdAnnualSource],
             ['First planning year', runFirstPlanningYear],
             ['Stabiler Planungsbeginn nach Balanceöffnung', runStablePlanningStart],
-            ['Probelauf Muster-Haushalt', runProbelaufMuster],
-            ['Probelauf Jahresabschluss ohne Netz', runProbelaufAnnualOffline],
+            ['Spielbereich Muster-Haushalt', runProbelaufMuster],
+            ['Spielbereich Jahresabschluss ohne Netz', runProbelaufAnnualOffline],
             ['Jahresabschluss Jahr und Dezember', (browser, baseUrl) => runAnnualCombinedClose(browser, baseUrl, 'demo')],
             ['Jahresabschluss Altdaten ohne Popup', (browser, baseUrl) => runAnnualCombinedClose(browser, baseUrl, 'copy')],
             ['Jahresabschluss Vorabpunkt nach Kurswrite', (browser, baseUrl) => runAnnualCombinedClose(browser, baseUrl, 'prepoint')],
             ['Jahresabschluss abgebrochener Vorabpunkt auf derselben Seite', (browser, baseUrl) => runAnnualCombinedClose(browser, baseUrl, 'attempt')],
-            ['Probelauf Beispielausgaben', runProbelaufExampleExpenses],
+            ['Spielbereich Beispielausgaben', runProbelaufExampleExpenses],
             ['Designsystem foundation', runDesignsystemFoundation],
             ['Designsystem components', runDesignsystemComponents],
             ['Designsystem Balance', runDesignsystemBalance],
@@ -15883,7 +15925,8 @@ async function observeProbelaufRestore(page, beforeNavigation = () => {}) {
         const guard = getPageNavigationGuard(document, window);
         const reload = guard.reload.bind(guard);
         guard.reload = options => reload({ ...options, reload: async () => {
-            await window.__probelaufRestoreReadback(await P.readPersistedRecords(isProbelaufRecordKey));
+            const real = await P.readRealRecords();
+            await window.__probelaufRestoreReadback(Object.fromEntries(Object.entries(real).filter(([key]) => isProbelaufRecordKey(key))));
             return options.reload();
         } });
     });
@@ -15919,22 +15962,23 @@ async function runProbelaufMuster(browser, baseUrl) {
             const { buildFullPersistenceBackup, normalizeFullPersistenceBackup } = await import('./app/shared/persistence-backup.js');
             await P.flush();
             const payload = buildFullPersistenceBackup();
-            if (!normalizeFullPersistenceBackup(payload).ok) throw new Error('Browser-Probelauf: Importpayload vor Start ungültig.');
+            if (!normalizeFullPersistenceBackup(payload).ok) throw new Error('Browser-Spielbereich: Importpayload vor Start ungültig.');
             return payload;
         });
         await page.locator('#probelaufStart').click();
         const dialog = page.locator('[data-probelauf-dialog]');
         await dialog.waitFor();
         const initial = await page.evaluate(async () => {
-            const { SnapshotArchive: A } = await import('./app/shared/snapshot-archive.js');
-            const point = (await A.listSnapshots()).find(point => point.label === 'Vor Probelauf');
-            return (await A.readSnapshot(point.id)).records;
+            const { PersistenceFacade: P } = await import('./app/shared/persistence-facade.js');
+            const { isProbelaufRecordKey } = await import('./app/shared/persistence-key-policy.js');
+            return P.readPersistedRecords(isProbelaufRecordKey);
         });
         await dialog.getByLabel('Datenquelle').selectOption('demo');
+        await dialog.getByLabel('Kursmodus').selectOption('date');
         await dialog.getByLabel('Testdatum').fill('2027-07-01');
-        await dialog.getByRole('button', { name: 'Probelauf starten', exact: true }).click();
-        // Das Band erscheint schon während des Starts („Probelauf wird gestartet …“). Erst nach dem Neuladen mit
-        // aktivem Probelauf ist der Start abgeschlossen; ein vorheriger Seitenwechsel bräche ihn ab.
+        await dialog.getByRole('button', { name: 'Spielbereich starten', exact: true }).click();
+        // Das Band erscheint schon während des Starts („Spielbereich wird gestartet …“). Erst nach dem Neuladen mit
+        // aktivem Spielbereich ist der Start abgeschlossen; ein vorheriger Seitenwechsel bräche ihn ab.
         await page.locator('#probelaufBandText').filter({ hasText: '01.07.2027' }).filter({ hasNotText: /Wiederherstellung|wird gestartet|wird umgestellt/ }).waitFor();
         await page.waitForFunction(() => document.getElementById('overviewHouseholdNames')?.textContent === 'Max + Erika');
         assert(await page.locator('#overviewHouseholdNames').textContent() === 'Max + Erika', 'Muster-Haushaltskopf nennt Max und Erika');
@@ -15943,9 +15987,8 @@ async function runProbelaufMuster(browser, baseUrl) {
             assert((await person.textContent()).includes(name), 'Echte Musterperson sichtbar: ' + name);
             assert(await person.locator('.overview-avatar').textContent() === initial, name + ': unterscheidbare nicht leere Initiale');
         }
-        // Seit Haushalt & Plan Teil 2 zeigt die Startseite „festgeschrieben“ nur mit Planbeleg aus einem Jahresabschluss;
-        // der frische Muster-Haushalt hat keinen und rechnet als Vorschau.
-        assert(await page.locator('#overviewPlanStatus').isHidden() && (await page.locator('#overviewPlanningYearValue').textContent()).includes('Vorschau'), 'Frischer Start zeigt Vorschau ohne Planbeleg');
+        assert(await page.locator('#overviewPlanStatus').isVisible() && !(await page.locator('#overviewPlanningYearValue').textContent()).includes('Vorschau'), 'Frischer Musterstart zeigt den festen Jahresplan');
+        assert((await page.locator('#overviewPlanComparison').textContent()).includes('Plan 2027 · festgeschrieben am 01.01.2027'), 'Mustervergleich liest den Beleg des Vorjahresabschlusses');
         assert(await page.locator('[data-overview-month-confirm]').count() === 0 && await page.locator('a[href*="#jahresabschluss"]').count() === 0, 'Frischer Start ohne Abschlussaufforderung');
         assert(await page.locator('#overviewFocus .overview-play').count() === 0 && await page.locator('#overviewFocus.ds-card').count() === 0, 'Frischer Start ohne Durchspielen-Karte');
         const networks = [];
@@ -15954,11 +15997,11 @@ async function runProbelaufMuster(browser, baseUrl) {
             await page.goto(`${baseUrl}/${entry}`, { waitUntil: 'load' });
             await page.locator('#probelaufBand').waitFor({ state: 'visible' });
             assert(await page.locator('.suite-header #probelaufStart').count() === 1 && await page.locator('#probelaufStart').isHidden(), 'Aktiver Lauf ersetzt den einzigen Kopfstart durch das Band');
-            assert((await page.locator('#probelaufBandText').textContent()).includes('01.07.2027'), 'Alle sieben Seiten setzen den bestätigten Browser-Probelauf ohne Parameter fort');
+            assert((await page.locator('#probelaufBandText').textContent()).includes('01.07.2027'), 'Alle sieben Seiten setzen den bestätigten Browser-Spielbereich ohne Parameter fort');
             if (entry === 'Simulator.html') {
                 await waitForSimulatorOpening(page, entry);
                 assert(await simulatorEuroFieldIs(page, 'startFloorBedarf', 30000)
-                    && await simulatorEuroFieldIs(page, 'minimumFlexAnnual', 7500), 'Probelauf rechnet den Musterplan genau einmal');
+                    && await simulatorEuroFieldIs(page, 'minimumFlexAnnual', 7500), 'Spielbereich rechnet den Musterplan genau einmal');
             }
             if (entry === 'Balance.html') {
                 await page.waitForFunction(() => document.getElementById('profilName')?.value === 'Max');
@@ -16015,21 +16058,21 @@ async function runProbelaufMuster(browser, baseUrl) {
                     document.getElementById('fullBackupStatus').textContent = '';
                 });
                 await page.locator(selector).first().click();
-                await page.waitForFunction(() => document.getElementById('fullBackupStatus').textContent.includes('Probelauf'));
+                await page.waitForFunction(() => document.getElementById('fullBackupStatus').textContent.includes('Spielbereich'));
                 assert(await page.locator('#fullBackupStatus').isVisible(), `${selector}: Browser zeigt sichtbare Probelaufsperre`);
                 assert(await page.locator('#fullBackupStatus').getAttribute('data-kind') === 'error', `${selector}: kein normaler Backup-Erfolg`);
             }
             await page.evaluate(() => document.getElementById('fullBackupStatus').textContent = '');
             await page.locator('#fullBackupImportFile').setInputFiles({ name: 'gueltiger-vollimport.json', mimeType: 'application/json',
                 buffer: Buffer.from(JSON.stringify(importPayload)) });
-            await page.waitForFunction(() => document.getElementById('fullBackupStatus').textContent.includes('Probelauf')
+            await page.waitForFunction(() => document.getElementById('fullBackupStatus').textContent.includes('Spielbereich')
                 && document.getElementById('fullBackupImportFile').value === '');
             assert(await page.locator('#fullBackupStatus').isVisible(), 'Programmatisches Dateievent zeigt die Importsperre');
             const afterBackup = await backupState();
-            assert(JSON.stringify(afterBackup) === JSON.stringify(beforeBackup), 'Browser-Probelauf: Sicherungszeit in Cache/IndexedDB und vollständige Archivpunkte bytegleich; keine Recovery-Snapshots');
+            assert(JSON.stringify(afterBackup) === JSON.stringify(beforeBackup), 'Browser-Spielbereich: Sicherungszeit in Cache/IndexedDB und vollständige Archivpunkte bytegleich; keine Recovery-Snapshots');
             assert(downloads === 0, 'Gesperrte Vollbackup-/Importaktionen erzeugen keine Browserdownloads');
             assert(choosers === 0, 'Gesperrter Importknopf öffnet keine Dateiauswahl');
-            assert(await page.evaluate(() => window.__probelaufBackupSuccesses === 0), 'Kein overview-backup-changed-Erfolgsereignis im Browser-Probelauf');
+            assert(await page.evaluate(() => window.__probelaufBackupSuccesses === 0), 'Kein overview-backup-changed-Erfolgsereignis im Browser-Spielbereich');
         } finally { page.off('download', countDownload); page.off('filechooser', countChooser); }
         // Der Datumssprung endet mit einem Neuladen; erst danach ist das Band wieder bedienbar.
         const dayReload = page.waitForEvent('load');
@@ -16037,21 +16080,21 @@ async function runProbelaufMuster(browser, baseUrl) {
         await dayReload;
         await page.locator('#probelaufBandText').filter({ hasText: '03.01.2028' }).filter({ hasNotText: /Wiederherstellung|wird gestartet|wird umgestellt/ }).waitFor();
         // Startschreiber der Seite (z. B. Kursverlauf) halten kurz einen Commitgrund; währenddessen weist der
-        // Probelauf jede Aktion ab. Beenden erst danach über das Band.
+        // Spielbereich jede Aktion ab. Beenden erst danach über das Band.
         await waitForPageCondition(page, async () => {
             const { getPageNavigationGuard } = await import('./app/shared/navigation-guard-dialog.js');
             const guard = getPageNavigationGuard(document, window);
             return !guard.isBusy() && !guard.reasons().some(reason => reason.phase === 'commit');
         });
         const restoration = await observeProbelaufRestore(page, () => {
-            assert(networks.length === 0, 'Aktiver Browser-Probelauf verwendet keine Kursnetzanfragen');
+            assert(networks.length === 0, 'Aktiver Browser-Spielbereich verwendet keine Kursnetzanfragen');
         });
         await page.locator('#probelaufBand [data-probelauf-action="end"]').click();
         const returnNavigation = page.waitForNavigation({ waitUntil: 'load' });
-        await page.locator('.page-choice-dialog[open]').getByRole('button', { name: 'Probelauf beenden', exact: true }).click();
+        await page.locator('.probelauf-end-dialog[open]').getByRole('button', { name: 'Spielbereich beenden', exact: true }).click();
         const restored = await restoration.readback;
         await returnNavigation;
-        assert(new URL(page.url()).pathname.endsWith('/index.html'), 'Probelauf-Ende öffnet die Übersicht');
+        assert(new URL(page.url()).pathname.endsWith('/index.html'), 'Spielbereich-Ende öffnet die Übersicht');
         const bytes = records => JSON.stringify(Object.entries(records).sort());
         assert(bytes(initial) === bytes(restored), 'Browser-Ende stellt sämtliche ursprünglichen Rohrecords bytegleich wieder her');
         assert(await page.locator('#probelaufBand').isHidden(), 'Beenden verbirgt Band auf der Übersicht');
@@ -16538,7 +16581,7 @@ async function runProbelaufExampleExpenses(browser, baseUrl) {
         const read = () => page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).PersistenceFacade.readPersistedRecords());
         const confirmPreview = async ({ concurrent = false } = {}) => {
             await page.locator('#expensesImportPreview').waitFor();
-            assert((await page.locator('#expensesImportPreview').textContent()).includes('Beispieldaten (Probelauf)'), 'Vorschau benennt Beispielherkunft');
+            assert((await page.locator('#expensesImportPreview').textContent()).includes('Beispieldaten (Spielbereich)'), 'Vorschau benennt Beispielherkunft');
             const liveExpenses = async () => (await import('./app/shared/persistence-facade.js')).persistenceStorage.getItem('balance_expenses_v1');
             const before = await page.evaluate(liveExpenses);
             if (concurrent) await holdLocalWriter();
@@ -16603,7 +16646,7 @@ async function runProbelaufExampleExpenses(browser, baseUrl) {
             assert(await page.locator('[data-expenses-example]').count() === 0, 'Ausgaben im Normalbetrieb bietet auch mit URL-Parameter keine Beispielimporte');
             await page.goto(`${baseUrl}/index.html?probelauf=1`);
             // Ausgangsbestand vor dem Start mit derselben Schlüsselpolitik wie nach dem Ende lesen
-            // (der Wiederherstellungspunkt „Vor Probelauf“ entsteht erst beim Start).
+            // (der Wiederherstellungspunkt entfällt beim getrennten Spielbereich).
             const initial = await page.evaluate(async () => {
                 const { PersistenceFacade: P } = await import('./app/shared/persistence-facade.js');
                 const { isProbelaufRecordKey } = await import('./app/shared/persistence-key-policy.js');
@@ -16611,9 +16654,9 @@ async function runProbelaufExampleExpenses(browser, baseUrl) {
             });
             await page.locator('#probelaufStart').click();
             await page.locator('[data-probelauf-dialog]').getByLabel('Datenquelle').selectOption(source);
-            await page.locator('[data-probelauf-dialog]').getByLabel('Testdatum').fill('2026-11-02');
-            await waitForProbelaufReload(page, () => page.locator('[data-probelauf-dialog]').getByRole('button', { name: 'Probelauf starten', exact: true }).click(), '2026-11-02');
-            await page.locator('#probelaufBandText').filter({ hasText: '02.11.2026', hasNotText: /wird gestartet|wird umgestellt/ }).waitFor();
+            await page.locator('[data-probelauf-dialog]').getByLabel('Kursmodus').selectOption('today');
+            await waitForProbelaufReload(page, () => page.locator('[data-probelauf-dialog]').getByRole('button', { name: 'Spielbereich starten', exact: true }).click(), null);
+            await page.locator('#probelaufBandText').filter({ hasText: 'echte Kurse von heute', hasNotText: /wird gestartet|wird umgestellt/ }).waitFor();
             await idle();
             assert(await page.locator('#overviewFocus .overview-play').count() === 0 && await page.locator('#overviewFocus.ds-card').count() === 0, `${source}: ruhiger Novemberstart`);
             assert(await page.locator('[data-overview-month-confirm]').count() === 0, `${source}: Oktober bereits bestätigt`);
@@ -16666,13 +16709,13 @@ async function runProbelaufExampleExpenses(browser, baseUrl) {
             await prepareBrowserClose(page);
             await page.locator('[data-overview-month-accept]').click();
             await page.locator('[data-overview-month-result]').waitFor();
-            assert((await page.locator('#overviewMonthStatus').textContent()) === 'November abgeschlossen ✓', 'Probelauf bestätigt November ausdrücklich');
+            assert((await page.locator('#overviewMonthStatus').textContent()) === 'November abgeschlossen ✓', 'Spielbereich bestätigt November ausdrücklich');
             await prepareBrowserClose(page);
             await page.locator('[data-overview-month-accept]').filter({ hasText: 'Fertig' }).click();
             await page.locator('#overviewMonthStatus').filter({ hasText: 'November abgeschlossen ✓' }).waitFor();
             await page.goto(`${baseUrl}/Ausgaben.html?year=2026#ausgaben`); await waitExpensesBrowser(page);
             await page.locator('[data-action="details"][data-month="11"][data-profile="muster_a"]').click();
-            assert((await page.locator('#expensesDetailTitle').textContent()).includes('Beispieldaten (Probelauf)'), 'Ausgaben-Monatsdetails weisen Herkunft nach Reload aus');
+            assert((await page.locator('#expensesDetailTitle').textContent()).includes('Beispieldaten (Spielbereich)'), 'Ausgaben-Monatsdetails weisen Herkunft nach Reload aus');
             await page.locator('#expensesDetailClose').click();
             // Frühen Bandklick nach Modellbereitschaft zulassen.
             await page.goto(`${baseUrl}/index.html`);
@@ -16712,10 +16755,10 @@ async function runProbelaufExampleExpenses(browser, baseUrl) {
             const restoration = await observeProbelaufRestore(page);
             await page.locator('#probelaufBand [data-probelauf-action="end"]').click();
             const returnNavigation = page.waitForNavigation({ waitUntil: 'load' });
-            await page.locator('.page-choice-dialog[open]').getByRole('button', { name: 'Probelauf beenden', exact: true }).click();
+            await page.locator('.probelauf-end-dialog[open]').getByRole('button', { name: 'Spielbereich beenden', exact: true }).click();
             const restored = await restoration.readback;
             await returnNavigation;
-            assert(new URL(page.url()).pathname.endsWith('/index.html'), 'Probelauf-Ende öffnet die Übersicht');
+            assert(new URL(page.url()).pathname.endsWith('/index.html'), 'Spielbereich-Ende öffnet die Übersicht');
             assert(JSON.stringify(Object.entries(initial).sort()) === JSON.stringify(Object.entries(restored).sort()), `${source}: vollständige bytegleiche Rückkehr nach Beispielimporten und Abschlüssen`);
             smoke.assertNoErrors();
         } finally { await releaseLocalWriter().catch(() => {}); await smoke.close(); }
@@ -16780,10 +16823,11 @@ async function runProbelaufAnnualOffline(browser, baseUrl) {
         await page.locator('#probelaufStart').click();
         const dialog = page.locator('[data-probelauf-dialog]');
         await dialog.getByLabel('Datenquelle').selectOption('demo');
-        await dialog.getByLabel('Testdatum').fill('2026-12-15');
+        await dialog.getByLabel('Kursmodus').selectOption('date');
+        await dialog.getByLabel('Testdatum').fill('2026-12-14');
         blockMarketData.active = true;
-        await waitForProbelaufReload(page, () => dialog.getByRole('button', { name: 'Probelauf starten', exact: true }).click(), '2026-12-15');
-        await page.locator('#probelaufBandText').filter({ hasText: '15.12.2026', hasNotText: /wird gestartet|Wiederherstellung/ }).waitFor();
+        await waitForProbelaufReload(page, () => dialog.getByRole('button', { name: 'Spielbereich starten', exact: true }).click(), '2026-12-14');
+        await page.locator('#probelaufBandText').filter({ hasText: '14.12.2026', hasNotText: /wird gestartet|Wiederherstellung/ }).waitFor();
         await idle();
         await page.locator('#probelaufBand [data-probelauf-action="date"]').click();
         await page.locator('[data-probelauf-dialog]').getByLabel('Testdatum').fill('2027-01-02');
@@ -16827,7 +16871,7 @@ async function runProbelaufAnnualOffline(browser, baseUrl) {
             assert(await page.locator('[data-annual-combined-result="C"]').isVisible(), 'Protokoll bleibt im kombinierten Ergebnis sichtbar');
             const content = await page.locator('#annualResults').textContent();
             assert(content.includes('Inflation 2026: 2,50 %') && content.includes('CAPE'), 'Protokoll zeigt Jahresinflation in Prozent und CAPE');
-            assert(content.split('Probelauf · synthetisch').length - 1 === 3, 'Alle drei Jahreswerte zeigen dieselbe Herkunft');
+            assert(content.split('Spielbereich · synthetisch').length - 1 === 3, 'Alle drei Jahreswerte zeigen dieselbe Herkunft');
         };
         await assertSources(); await page.locator('#annualShowLog').click(); await assertSources();
         assert(JSON.stringify(await read()) === protocolRecords && await readIndexedDb(page, 'snapshots', null) === protocolSnapshots
@@ -16856,9 +16900,9 @@ async function runProbelaufAnnualOffline(browser, baseUrl) {
         const records = await read(), state = JSON.parse(records[BALANCE_STATE_KEY]);
         assert(state.annualPeriodMetadata.lastCommittedPeriod === 'calendar-year:2026' && state.annualPeriodMetadata.pendingCommit === null, 'Backend bestätigt Abschluss ohne Recoverymarker');
         assert(state.wealthHistory.entries.filter(entry => entry.id === 'annual:2026').length === 1, 'Genau ein neuer Jahresstand');
-        assert(state.annualMarketDataMeta.targetYear === 2026 && state.annualMarketDataMeta.source === 'Probelauf · synthetisch', 'ETF-Meta dauerhaft bestätigt');
-        assert(state.annualMarketDataMeta.inflation.year === 2026 && state.annualMarketDataMeta.inflation.rate === 2.5 && state.annualMarketDataMeta.inflation.source === 'Probelauf · synthetisch', 'Inflationsmeta nach ETF-Aufbau dauerhaft bestätigt');
-        assert(state.capeMeta.capeAsOf === '2026-12-31' && state.capeMeta.capeSource === 'Probelauf · synthetisch' && state.capeMeta.capeFetchStatus === 'ok_synthetic', 'CAPE-Meta dauerhaft bestätigt');
+        assert(state.annualMarketDataMeta.targetYear === 2026 && state.annualMarketDataMeta.source === 'Spielbereich · synthetisch', 'ETF-Meta dauerhaft bestätigt');
+        assert(state.annualMarketDataMeta.inflation.year === 2026 && state.annualMarketDataMeta.inflation.rate === 2.5 && state.annualMarketDataMeta.inflation.source === 'Spielbereich · synthetisch', 'Inflationsmeta nach ETF-Aufbau dauerhaft bestätigt');
+        assert(state.capeMeta.capeAsOf === '2026-12-31' && state.capeMeta.capeSource === 'Spielbereich · synthetisch' && state.capeMeta.capeFetchStatus === 'ok_synthetic', 'CAPE-Meta dauerhaft bestätigt');
         const closedRegistry = JSON.parse(records.rs_profiles_v1), closeScope = overviewScope('household', ['muster_a', 'muster_b']);
         const readDecember = raw => JSON.parse(raw || '{}').entries?.[JSON.stringify(['2026-12', closeScope.key])];
         assert(Object.values(JSON.parse(records.annual_plan_record_v1 || '{}').entries || {}).filter(receipt => receipt.periodId === 'calendar-year:2026').length === 1,
@@ -16889,17 +16933,17 @@ async function runProbelaufAnnualOffline(browser, baseUrl) {
         await page.goto(`${baseUrl}/index.html`);
         await waitForPageCondition(page, () => document.querySelector('#overviewPlanComparison [data-plan-record-status="valid"]'));
         const overviewHtml = await page.locator('#overviewPlanComparison').innerHTML();
-        assert(await page.locator('#overviewPlanComparison [data-preview-status="current"]').count() === 1, 'Probelauf: heutige Balancevorschau bleibt nach Abschluss aktuell');
+        assert(await page.locator('#overviewPlanComparison [data-preview-status="current"]').count() === 1, 'Spielbereich: heutige Balancevorschau bleibt nach Abschluss aktuell');
         await page.goto(`${baseUrl}/depot-tranchen-manager.html#haushalt-plan`);
         await waitForPageCondition(page, () => document.querySelector('#managerPlanComparison [data-plan-record-status="valid"]'));
-        assert(await page.locator('#managerPlanComparison').innerHTML() === overviewHtml, 'Probelauf: Vergleichskarte und Startseite zeigen nach echtem Abschluss dieselbe heutige Vorschau');
-        assert((await read()).annual_plan_record_v1 === receiptBytes, 'Probelauf: beide Vergleichsanzeigen erhalten den Jahresbeleg bytegleich');
+        assert(await page.locator('#managerPlanComparison').innerHTML() === overviewHtml, 'Spielbereich: Vergleichskarte und Startseite zeigen nach echtem Abschluss dieselbe heutige Vorschau');
+        assert((await read()).annual_plan_record_v1 === receiptBytes, 'Spielbereich: beide Vergleichsanzeigen erhalten den Jahresbeleg bytegleich');
         for (const width of [1366, 1920, 390]) {
             await page.setViewportSize({ width, height: 1200 });
-            assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Probelauf: Vergleichskarte ohne Seitenüberlauf ' + width);
+            assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Spielbereich: Vergleichskarte ohne Seitenüberlauf ' + width);
             await capturePageDialogImage(page, `probelauf-planvergleich-nach-abschluss-${width}`);
         }
-        assert(blockMarketData.requests.length === 0, 'Bestätigter Probelauf erreicht keinen einzigen Inflations-/CAPE-/ETF-/Proxy-Datenabruf');
+        assert(blockMarketData.requests.length === 0, 'Bestätigter Spielbereich erreicht keinen einzigen Inflations-/CAPE-/ETF-/Proxy-Datenabruf');
         smoke.assertNoErrors();
     } finally { await smoke.close(); }
 }
@@ -18218,6 +18262,7 @@ async function runHouseholdPlanMigrationSmoke(browser, baseUrl, mode) {
     // Synthetischer Altbestand: Personenumstellung abgeschlossen, Plan noch nicht vorhanden.
     const records = createMusterHaushaltRecords('2026-10-09');
     delete records.household_plan_v1;
+    delete records.annual_plan_record_v1;
     if (mode === 'coupled') {
         const registry = JSON.parse(records.rs_profiles_v1);
         for (const profile of Object.values(registry.profiles)) {
@@ -18838,12 +18883,12 @@ async function runExpensesPageSmoke(browser, baseUrl) {
                 await page.locator('#probelaufStart').click();
                 const trial = page.locator('[data-probelauf-dialog]');
                 await trial.getByLabel('Datenquelle').selectOption('demo');
-                await trial.getByLabel('Testdatum').fill('2026-10-10');
-                await trial.getByRole('button', { name: 'Probelauf starten', exact: true }).click();
-                await page.locator('#probelaufBandText').filter({ hasText: '10.10.2026', hasNotText: /wird gestartet|wird umgestellt/ }).waitFor();
+                await trial.getByLabel('Kursmodus').selectOption('today');
+                await trial.getByRole('button', { name: 'Spielbereich starten', exact: true }).click();
+                await page.locator('#probelaufBandText').filter({ hasText: 'echte Kurse von heute', hasNotText: /wird gestartet|wird umgestellt/ }).waitFor();
                 await waitForPageCondition(page, () => document.documentElement.dataset.expensesReady === 'true');
                 await page.locator('[data-expenses-example][data-month="10"]').first().click();
-                await page.locator('[data-expenses-preview-origin]').filter({ hasText: 'Beispieldaten (Probelauf)' }).waitFor();
+                await page.locator('[data-expenses-preview-origin]').filter({ hasText: 'Beispieldaten (Spielbereich)' }).waitFor();
                 await page.locator('[data-expenses-preview-accept]').click();
                 await waitForPageCondition(page, async () => {
                     const { persistenceStorage: ps } = await import('./app/shared/persistence-facade.js');
@@ -18936,7 +18981,7 @@ async function runExpensesMonthlyGeometry(browser, baseUrl) {
                     && measured.categoryValues.some(value => value.text.includes('Erstattung · Erstattung')),
                     `${width}/${probelauf}: positive Kleinstanteile, echte Null und Erstattungen behalten ihre Bedeutung`);
                 assert(!measured.overflow && (width !== 390 || measured.mobileTracksBelow), `${width}/${probelauf}: kein äußerer Überlauf und bedienbarer Handyumbruch`);
-                assert(measured.examples === (probelauf ? 24 : 0), `${width}/${probelauf}: Beispiele ausschließlich im echten Probelauf`);
+                assert(measured.examples === (probelauf ? 24 : 0), `${width}/${probelauf}: Beispiele ausschließlich im echten Spielbereich`);
                 // Details bedienen auch den intern scrollenden zweiten Personenbereich am Handy.
                 await page.locator('#expensesTable button[data-action="details"][data-month="1"][data-profile="muster_b"]').click();
                 assert(await page.locator('#expensesDetailDialog').isVisible(), `${width}/${probelauf}: Monatsdetails tatsächlich bedienbar`);
@@ -19089,8 +19134,13 @@ async function startCloseProbelauf(page, startDate, testDate) {
     await page.locator('#probelaufStart').click();
     let dialog = page.locator('[data-probelauf-dialog]');
     await dialog.getByLabel('Datenquelle').selectOption('demo');
-    await dialog.getByLabel('Testdatum').fill(startDate);
-    await waitForProbelaufReload(page, () => dialog.getByRole('button', { name: 'Probelauf starten', exact: true }).click(), startDate);
+    await dialog.getByLabel('Kursmodus').selectOption('date');
+    // Ein echter Datumssprung aktiviert Spielkurse auch bei festgehaltener Systemuhr.
+    const { parseCalendarDate, localCalendarDate } = await import('../app/shared/app-clock.js');
+    const previous = parseCalendarDate(startDate); previous.setDate(previous.getDate() - 1);
+    const initialDate = localCalendarDate(previous);
+    await dialog.getByLabel('Testdatum').fill(initialDate);
+    await waitForProbelaufReload(page, () => dialog.getByRole('button', { name: 'Spielbereich starten', exact: true }).click(), initialDate);
     await page.locator('#probelaufBand [data-probelauf-action="date"]').click();
     dialog = page.locator('[data-probelauf-dialog]');
     await dialog.getByLabel('Testdatum').fill(testDate);
@@ -19110,7 +19160,7 @@ async function waitForProbelaufReload(page, action, testDate) {
         if (!await whenProfileDisplayReady(document)) return false;
         const controller = getProbelaufController(document), guard = getPageNavigationGuard(document, window);
         return controller?.state?.phase === 'active' && controller.state.testDate === date
-            && localCalendarDate(appNow()) === date && !controller.busy && !controller.blocked
+            && (date === null || localCalendarDate(appNow()) === date) && !controller.busy && !controller.blocked
             && !guard.isBusy() && !guard.reasons().length;
     }, testDate);
     await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).PersistenceFacade.flush());
@@ -19236,9 +19286,10 @@ async function runAnnualCombinedClose(browser, baseUrl, source) {
             await page.locator('#probelaufStart').click();
             let trial = page.locator('[data-probelauf-dialog]');
             await trial.getByLabel('Datenquelle').selectOption(['prepoint', 'attempt'].includes(source) ? 'copy' : source);
-            await trial.getByLabel('Testdatum').fill('2026-12-15');
-            await trial.getByRole('button', { name: 'Probelauf starten', exact: true }).click();
-            await page.locator('#probelaufBandText').filter({ hasText: '15.12.2026', hasNotText: /wird gestartet|Wiederherstellung/ }).waitFor();
+            await trial.getByLabel('Kursmodus').selectOption('date');
+            await trial.getByLabel('Testdatum').fill('2026-12-14');
+            await trial.getByRole('button', { name: 'Spielbereich starten', exact: true }).click();
+            await page.locator('#probelaufBandText').filter({ hasText: '14.12.2026', hasNotText: /wird gestartet|Wiederherstellung/ }).waitFor();
             await page.locator('#probelaufBand [data-probelauf-action="date"]').click();
             trial = page.locator('[data-probelauf-dialog]');
             await trial.getByLabel('Testdatum').fill('2027-01-02');

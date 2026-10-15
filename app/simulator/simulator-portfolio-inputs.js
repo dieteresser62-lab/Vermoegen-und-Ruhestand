@@ -103,6 +103,9 @@ export function getCommonInputs() {
     }
 
     const personInputs = readDocumentPersonInputs();
-    if (personInputs) bindPersonDataContext(result, personInputs.context);
+    if (personInputs) {
+        bindPersonDataContext(result, personInputs.context);
+        result.simulationPeople = personInputs.combined.simulationPeople.map(person => ({ ...person }));
+    }
     return result;
 }

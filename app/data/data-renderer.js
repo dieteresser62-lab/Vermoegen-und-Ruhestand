@@ -77,7 +77,7 @@ export function renderDataPage(doc, model) {
         button.disabled = Boolean(reason);
         if (reason && reason !== 'archive') {
             const hint = doc.createElement('span'); hint.className = 'data-muted data-point-blocked';
-            hint.textContent = reason === 'probelauf' ? 'Nur über „Probelauf beenden“ zurückholbar.'
+            hint.textContent = reason === 'probelauf' ? 'Nur über „Spielbereich beenden“ zurückholbar.'
                 : reason === 'unassigned' ? 'Personenzuordnung fehlt. Hier nicht zurückholbar.' : 'Person nicht mehr im Bestand. Hier nicht zurückholbar.';
             if (reason !== 'probelauf') {
                 const info = doc.createElement('span'); info.className = 'ds-info';

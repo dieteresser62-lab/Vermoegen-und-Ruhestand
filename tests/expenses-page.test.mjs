@@ -13,6 +13,7 @@ import { projectExpenses } from '../app/expenses/expenses-model.js';
 import { renderExpensesPage } from '../app/expenses/expenses-renderer.js';
 import { refreshExpensesView } from '../app/balance/balance-expenses.js';
 import { applyExpensesTarget } from '../app/shared/expenses-navigation.js';
+import { getProbelaufController } from '../app/shared/probelauf-state.js';
 
 const html = fs.readFileSync(new URL('../Ausgaben.html', import.meta.url), 'utf8');
 const css = fs.readFileSync(new URL('../css/expenses.css', import.meta.url), 'utf8');
@@ -73,11 +74,18 @@ const previousDate = getAppTestDate();
 const rawStore = JSON.stringify({ version: 1, activeYear: 2025, years: { 2025: { months: { 1: { profiles: { muster_a: { categories: { Wohnen: -80 } } } } } } } });
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 let fixture, service;
+const previousObserver = Object.getOwnPropertyDescriptor(globalThis, 'MutationObserver');
 const faults = {};
 try {
     setAppTestDate('2026-10-10');
     fixture = createBalancePageFixture({ storage: { getItem: () => null }, url: 'http://localhost/Ausgaben.html?year=2025&month=1#ausgaben-import' });
     const { doc, win } = fixture;
+    const bandObservers = [];
+    win.MutationObserver = globalThis.MutationObserver = class {
+        constructor(callback) { this.callback = callback; }
+        observe(target) { if (target?.id === 'probelaufBand') bandObservers.push(this.callback); }
+        disconnect() {}
+    };
     doc.htmlIds = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
     for (const [, tag, id] of html.matchAll(/<(\w+)[^>]*\bid="([^"]+)"/g)) doc.getElementById(id).tagName = tag.toUpperCase();
     doc.documentElement = doc.createElement('html'); doc.documentElement.dataset.suitePage = 'expenses';
@@ -116,9 +124,9 @@ try {
         }
     } });
     assert(controller !== false, 'Eigenständiger Einstieg startet mit echten Persistenz-/Profilquellen');
-    // Der echte Seitenstart initialisiert den Probelauf und setzt ohne aktiven
+    // Der echte Seitenstart initialisiert den Spielbereich und setzt ohne aktiven
     // Versuch die Fachuhr zurück. Erst danach das Datum des Testfalls binden.
-    assertEqual(getAppTestDate(), null, 'Seitenstart ohne Probelauf stellt die echte Fachuhr her');
+    assertEqual(getAppTestDate(), null, 'Seitenstart ohne Spielbereich stellt die echte Fachuhr her');
     setAppTestDate('2026-10-10');
     assertEqual(doc.documentElement.dataset.expensesReady, 'true', 'Bereitschaft wird erst nach Controllerstart gemeldet');
     assertEqual(storage.getItem('balance_expenses_v1'), rawStore, 'Direktstart schreibt keinen Ausgabenrecord und keine Auswahl');
@@ -343,7 +351,7 @@ try {
     assertEqual(controller.close.read().occasion.closingYear, 2026, 'Januarwechsel verwendet gemeinsames Abschlussjahr statt Anzeigefilter');
     assertEqual(controller.close.read().expenses.month, 12, 'Januarabschluss importiert Dezember');
     setAppTestDate('2026-10-10'); controller.refresh();
-    assertEqual(table.querySelectorAll('[data-expenses-example]').length, 0, 'Ohne freigegebenen Probelauf keine Beispielaktionen');
+    assertEqual(table.querySelectorAll('[data-expenses-example]').length, 0, 'Ohne freigegebenen Spielbereich keine Beispielaktionen');
     assertEqual(getPageNavigationGuard(doc, win).reasons().length, 0, 'Importbesitzer werden vollständig freigegeben');
     controller.selectYear(2025); await personButtons[1].fire('click');
     const showDetails = async () => {
@@ -409,8 +417,23 @@ try {
     resetAllowed = true; await recoveryAction('reset').fire('click');
     assertEqual(Object.keys(JSON.parse(storage.getItem('balance_expenses_v1')).years).length, 0, 'Bestätigter Reset leert alle Jahre und Personen');
     assertEqual(doc.getElementById('expensesHistoryTable').innerHTML, '', 'Leerer Bestand lässt keine veralteten Jahreswerte stehen');
+    const probelauf = getProbelaufController(doc);
+    probelauf.invalidate();
+    const getItem = storage.getItem, setItem = storage.setItem;
+    let lateAccesses = 0;
+    try {
+        storage.getItem = storage.setItem = () => { lateAccesses++; throw new Error('Seite beendet'); };
+        assertEqual(bandObservers.length, 2, 'Ausgaben bindet Seiten- und Matrixbeobachter an das Spielbereichsband');
+        for (const callback of bandObservers) callback();
+        controller.refresh();
+        const lease = getPageNavigationGuard(doc, win).register('after-area-change', { read: () => ({}) });
+        lease.unregister();
+        assertEqual(lateAccesses, 0, 'Beide Bandbeobachter, Seitenrefresh und Guardnachlauf lesen oder schreiben nach dem Wechsel nicht mehr');
+    } finally { storage.getItem = getItem; storage.setItem = setItem; }
 } finally {
     P.resetPersistenceForTests(); fixture?.restore(); setAppTestDate(previousDate);
+    if (previousObserver) Object.defineProperty(globalThis, 'MutationObserver', previousObserver);
+    else delete globalThis.MutationObserver;
 }
 
 // Auch der echte Seitenstart mit normalem Monatsziel respektiert die neue

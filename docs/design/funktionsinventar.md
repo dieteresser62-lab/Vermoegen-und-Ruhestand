@@ -21,11 +21,12 @@ Quelle: `index.html`
 | Kennung | Seite | Bereich | Bezeichnung | Zustand | Speicherwirkung | Testabdeckung | Paket | Handbuch |
 |---|---|---|---|---|---|---|---|---|
 | I01 | index.html | Profile und Übersicht | Startseite: Vermögen, Alter heute, Plan, Abschlüsse, Musterstart | sichtbar, bedingt sichtbar | keine; persistent: ui\_suite\_sidebar\_collapsed; persistent: overview\_balance\_summary\_v1; persistent: overview\_… | Node 15; Browser 6; Risiko 1; Schuld 0 | 1, 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
+| I25 | index.html | Spielbereich | Ein Jahr durchspielen mit Beispielausgaben und normalen Abschlüssen | bedingt sichtbar | nur Sitzung: probelauf.timelapse.v1; persistent: balance\_expenses\_v1, overview\_month\_provision\_v1, annual\_pla… | Node 1; Browser 0; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
 | I24 | index.html | Jahresabschluss | Gemeinsame Dynamic-Flex-Voreinstellungen im Abschlussentwurf | bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 0; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#jahr-abschliessen) |
 | I23 | index.html | Monats- und Jahresabschluss | Jahresabschluss und Plananpassung direkt auf der Startseite | bedingt sichtbar, sichtbar | nur Sitzung; nur Sitzung: balance.annual-retry.once; persistent: profile\_tagesgeld, profile\_cash\_history\_v1, … | Node 5; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#jahr-abschliessen) |
 | I22 | index.html | Haushalt & Plan | Einmalige sichere Zusammenführung der Planungsdaten | bedingt sichtbar | nur Sitzung; persistent: household\_plan\_v1, annual\_plan\_record\_v1 | Node 5; Browser 4; Risiko 0; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#erste-schritte) |
 | I21 | index.html | Ausgaben im Abschlussdialog | CSV, Beispielausgaben, Vorschau und bestätigte Vermögenserfassung | bedingt sichtbar | persistent: balance\_expenses\_v1.years\[year\].months\[month\].profiles\[profileId\] | Node 5; Browser 1; Risiko 0; Schuld 0 | 1 | [Kapitel](../../Handbuch.html#ausgaben) |
-| I20 | index.html | Monatsabschluss | Tagesgeld je Haushaltsperson, einzelne Bestätigung und Frischehinweis | bedingt sichtbar, sichtbar | persistent: overview\_month\_provision\_v1, profile\_tagesgeld, profile\_cash\_his… | Node 9; Browser 2; Risiko 1; Schuld 0 | 1, 6.3 | [Kapitel](../../Handbuch.html#monat-abschliessen) |
+| I20 | index.html | Monatsabschluss | Tagesgeld je Haushaltsperson, einzelne Bestätigung und Frischehinweis | bedingt sichtbar, sichtbar | persistent: overview\_month\_provision\_v1, profile\_tagesgeld, profile\_cash\_his… | Node 10; Browser 2; Risiko 1; Schuld 0 | 1, 6.3 | [Kapitel](../../Handbuch.html#monat-abschliessen) |
 | I19 | index.html | Personenumstellung | Aufschub und sichere Wiederholung der Personenübernahme | bedingt sichtbar | nur Sitzung; persistent: profile\_person\_schema\_version, profile\_person\_migration\_v1, rs\_p… | Node 5; Browser 2; Risiko 0; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#erste-schritte) |
 | I17 | index.html | Arbeitsstand und letzte Ergebnisse | Gemeinsame offene Pflichtschritte und gespeicherte Simulationsbelege | bedingt sichtbar | persistent: overview\_simulation\_summary\_v1, rs\_profiles\_v1 | Node 5; Browser 1; Risiko 0; Schuld 0 | 6.3 | [Kapitel](../../Handbuch.html#erste-schritte) |
 | I16 | index.html | Vermögensverlauf | Tagesverlauf mit Nullstartstapeln oder Gesamtfläche, gleichmäßigem Raster und Originaltagesanzeige | bedingt sichtbar | keine | Node 13; Browser 1; Risiko 1; Schuld 0 | 6.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
@@ -43,14 +44,14 @@ Quelle: `index.html`
 | I13 | index.html | Profile und Übersicht | Profilkontext beim Zurückkehren aus Browsercache erneuern | sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 1, 2 | [Kapitel](../../Handbuch.html#erste-schritte) |
 | I14 | index.html | Profile und Übersicht | Einmaliger sitzungsweiter Kursabruf nach Appstart | sichtbar, bedingt sichtbar | nur Sitzung: rs\_startup\_prices\_session\_v1; persistent: depot\_tranchen, rs\_profiles\_v1 | Node 11; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#erste-schritte) |
 | I15 | index.html | Profile und Übersicht | Persistente Verlaufsdatengrundlage und fortsetzbarer Tageskursjob | bedingt sichtbar | nur Sitzung: rs\_history\_fetch\_session\_v1; persistent: rs\_wealth\_history\_start\_v1, profile\_wealth\_history\_lots… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
-| I18 | index.html | Kopfzeile und Probelaufband | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 13; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+| I18 | index.html | Kopfzeile und Probelaufband | Spielbereich: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 13; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
 
 #### Seitenzusätze
 
 - **Tastatur:** Suite-Rahmenlinks und zentrale Sicherungseinstiege mit geschütztem Handoff und Flush. Native Tab-/Enter-/details-Bedienung; alte Sicherungs-/Importhashes führen zur zentralen Seite, \#probelaufControls nutzt nach sicherer Bindung denselben geschützten Kopfstartdialog. (I02, I05, I06, I08, I12)
 - **Druck:** css/suite-frame.css @media print blendet Kopf, Hauptnavigation, Sprunglink und Fehlerhost aus und löst Rahmencontainerzwänge. Kein eigener Druckknopf; Seiteninhalt ohne zusätzliche Drucköffnung. Geschlossene Erweitert-Klappe und Devtools werden nicht für Druck geöffnet; Browserdruck bleibt ungeprüft. (I01, I12, I11, I05)
 - **Meldungen:** Oberer Profil-/Speicher-Recoveryhost und fullBackupStatus; vier ruhige Kopfpillen. Speichertechnik ausschließlich auf Daten & Sicherung (D02). (I02, I03, I04, I07, I08, I09, I10)
-- **Dialoge:** Vollimportdialoge liegen auf Daten & Sicherung; Profil-Recoveryreset und Personenumstellung behalten ihre Seitendialoge. Probelaufende verwendet Probelauf beenden/Weiter testen. Personenverwaltung liegt im Manager. (I04, I07, I09, I11)
+- **Dialoge:** Vollimportdialoge liegen auf Daten & Sicherung; Profil-Recoveryreset und Personenumstellung behalten ihre Seitendialoge. Probelaufende verwendet Spielbereich beenden/Weiter testen. Personenverwaltung liegt im Manager. (I04, I07, I09, I11)
 - **Handbuchanker:** Handbuch bleibt über den Suite-Rahmen mit bestehendem Handoff und Flush erreichbar. (I06, I05)
 
 ### Balance
@@ -67,9 +68,9 @@ Quelle: `Balance.html`
 | B05 | Balance.html | Bedarf & Strategie → Übernommen | Lesende Kachelreihe für Einkünfte und Bestände; verborgene Wertträger | technisch verborgen, bedingt sichtbar | keine | Node 3; Browser 2; Risiko 1; Schuld 0 | 3.1, 3.2, 5 | [Kapitel](../../Handbuch.html#balance) |
 | B07 | Balance.html | Jahresprozess | Lesende Jahresinflation und Fortschreibung im Jahresabschluss | bedingt sichtbar, bewusst gesperrt | keine | Node 4; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#jahr-abschliessen) |
 | B08 | Balance.html | Jahresprozess | Jahresprozess: transaktionaler Speicherabschluss über vorhandene Zugänge | sichtbar, bedingt sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails.inputs, ruhestandsmodellVa…; persistent: ruhestandsmodellVa… | Node 14; Browser 9; Risiko 2; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
-| B09 | Balance.html | Monats- und Jahresabschluss | Jahresdialog, lokale Prüfschritte und Plananpassung | bedingt sichtbar | nur Sitzung; nur Sitzung: balance.annual-retry.once; persistent: profile\_tagesgeld, profile\_cash\_history\_v1, … | Node 18; Browser 7; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#jahr-abschliessen) |
+| B09 | Balance.html | Monats- und Jahresabschluss | Jahresdialog, lokale Prüfschritte und Plananpassung | bedingt sichtbar | nur Sitzung; nur Sitzung: balance.annual-retry.once; persistent: profile\_tagesgeld, profile\_cash\_history\_v1, … | Node 15; Browser 7; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#jahr-abschliessen) |
 | B12 | Balance.html | Marktdaten | Lesende Marktdatenkacheln, Korrekturfelder und Provenienz | bedingt sichtbar, sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails.inputs.endeVJ, ruhestandsm… | Node 4; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
-| B13 | Balance.html | Bedarf und Strategie | Drei offene Bedarfswerte und gemeinsamer lokaler Versuch mit Auswahlübernahme | bedingt sichtbar, sichtbar | persistent: household\_plan\_v1 | Node 7; Browser 5; Risiko 2; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
+| B13 | Balance.html | Bedarf und Strategie | Drei offene Bedarfswerte und gemeinsamer lokaler Versuch mit Auswahlübernahme | bedingt sichtbar, sichtbar | persistent: household\_plan\_v1 | Node 8; Browser 5; Risiko 2; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
 | B14 | Balance.html | Bedarf & Strategie → Alle Parameter | Flex-Krisenbudget | bedingt sichtbar | persistent: household\_plan\_v1 | Node 0; Browser 0; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#warum-gekuerzt) |
 | B15 | Balance.html | Bedarf & Strategie → Alle Parameter | CAPE, Dynamic-Flex-Preset und technische Detailansicht | bedingt sichtbar, sichtbar, technisch verborgen | persistent: household\_plan\_v1 | Node 7; Browser 2; Risiko 2; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#warum-gekuerzt) |
 | B16 | Balance.html | Bedarf & Strategie → Alle Parameter | VPW-Horizont | bedingt sichtbar, bewusst gesperrt | persistent: household\_plan\_v1 | Node 1; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
@@ -95,7 +96,7 @@ Quelle: `Balance.html`
 | B45 | Balance.html | Meldungen | Unabhängige Erfolg-, Hinweis- und Fehlertoasts | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 3.1, 3.3 | [Kapitel](../../Handbuch.html#balance) |
 | B46 | Balance.html | Meldungen | Aktionsmeldungen: Jahresvorprüfung im offenen Dialog, sonst bestehender Seitenkanal | bedingt sichtbar, sichtbar | nur Sitzung | Node 6; Browser 3; Risiko 1; Schuld 0 | 1, 3.1, 3.2, 3.3 | [Kapitel](../../Handbuch.html#balance) |
 | B47 | Balance.html | Überblick → Und jetzt? | Offene manuelle Cashbuchungen und Cashstatus-Auditwarnung | bedingt sichtbar | keine | Node 2; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
-| B48 | Balance.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+| B48 | Balance.html | Spielbereich | Spielbereich: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1, depot\_tranchen, profile\_wealth\_history\_lots\_v1, …; persistent: rs\_probelauf\_state… | Node 12; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
 
 #### Seitenzusätze
 
@@ -113,7 +114,7 @@ Quelle: `Ausgaben.html`
 |---|---|---|---|---|---|---|---|---|
 | B25 | Ausgaben.html | Ausgaben | Jahr, Personen und vier Kennzahlen im gemeinsamen Anzeigebereich | bedingt sichtbar | nur Sitzung | Node 5; Browser 3; Risiko 2; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
 | B26 | Ausgaben.html | Ausgaben | Monats-/Profilmatrix als alleiniger CSV-Importweg, Details und Löschen | bedingt sichtbar | persistent: balance\_expenses\_v1.years\[year\].months\[month\].profiles\[profileId… | Node 8; Browser 4; Risiko 1; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
-| B50 | Ausgaben.html | Ausgaben im Probelauf | Beispielausgaben, Vorschau und bestätigter Fachimport | bedingt sichtbar | persistent: balance\_expenses\_v1.years\[year\].months\[month\].profiles\[profileId… | Node 4; Browser 1; Risiko 0; Schuld 0 | 1 | [Kapitel](../../Handbuch.html#probelauf) |
+| B50 | Ausgaben.html | Ausgaben im Spielbereich | Beispielausgaben, Vorschau und bestätigter Fachimport | bedingt sichtbar | persistent: balance\_expenses\_v1.years\[year\].months\[month\].profiles\[profileId… | Node 4; Browser 1; Risiko 0; Schuld 0 | 1 | [Kapitel](../../Handbuch.html#probelauf) |
 | B27 | Ausgaben.html | Ausgaben-Check | Native Ausgabendetails und Top-3-Kategorien | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
 | B28 | Ausgaben.html | Ausgaben | Ausgaben-Recovery mit Export vor Reset | bedingt sichtbar | keine; persistent: balance\_expenses\_v1.activeYear, balance\_expenses\_v1.years | Node 2; Browser 1; Risiko 2; Schuld 0 | 1, 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
 | B43 | Ausgaben.html | Ausgaben | Ausgaben je Jahr: Diagramm, Tabelle und sichere Zustände | bedingt sichtbar | keine | Node 5; Browser 2; Risiko 3; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#ausgaben) |
@@ -175,6 +176,7 @@ Quelle: `Simulator.html`
 | S39 | Simulator.html | Monte-Carlo | Pflege-KPIs je Person | bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
 | S40 | Simulator.html | Monte-Carlo | Pflege-KPIs Haushalt und Reserve | bedingt sichtbar | nur Sitzung | Node 2; Browser 0; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
 | S41 | Simulator.html | Monte-Carlo | Szenarioauswahl, Vermögensverläufe und Endwertverteilung | bedingt sichtbar | nur Sitzung | Node 15; Browser 6; Risiko 3; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
+| S76 | Simulator.html | Monte-Carlo | Pfade vergleichen und Auffälligkeiten des gewählten Pfads | bedingt sichtbar | nur Sitzung | Node 3; Browser 0; Risiko 0; Schuld 1 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
 | S42 | Simulator.html | Monte-Carlo | Detailliert und Pflege-Spalten | bedingt sichtbar | persistent: showCareDetails, worstLogDetailLevel | Node 7; Browser 3; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
 | S43 | Simulator.html | Monte-Carlo | Szenarioexport und Replay-Wechsel | bedingt sichtbar | nur Sitzung | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
 | S44 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Auswahl, Status und Pfadfixierung | sichtbar, bedingt sichtbar, bewusst gesperrt | persistent: sim.stressReplay.active.v1 | Node 3; Browser 1; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
@@ -186,9 +188,9 @@ Quelle: `Simulator.html`
 | S50 | Simulator.html | Werkstatt / Stresspfad-Replay | Replay-Kernaussage und drei Vergleichsansichten | sichtbar, bedingt sichtbar | nur Sitzung; persistent: overview\_simulation\_summary\_v1, rs\_profiles\_v1 | Node 4; Browser 2; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
 | S51 | Simulator.html | Historischer Backtest | Backtestperiode, Validierung und Datenhinweis | sichtbar, bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#simulator) |
 | S53 | Simulator.html | Historischer Backtest | Backtest starten, Status und Hinweise | sichtbar, bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 4; Browser 2; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#simulator) |
-| S54 | Simulator.html | Historischer Backtest | Backtest-Kennzahlen, Portfoliochart und Krisenübersicht | bedingt sichtbar | nur Sitzung | Node 12; Browser 2; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#simulator) |
+| S54 | Simulator.html | Historischer Backtest | Backtest-Kennzahlen, Auffälligkeiten, Portfoliochart und Krisenübersicht | bedingt sichtbar, sichtbar | nur Sitzung | Node 15; Browser 2; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#simulator) |
 | S55 | Simulator.html | Historischer Backtest | Backtestlog, Detailmodus und Raw-Exporte | bedingt sichtbar | persistent: backtestLogDetailLevel | Node 13; Browser 4; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#daten-sicherung) |
-| S56 | Simulator.html | Historischer Backtest | Engine-/Parity-Diagnose | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#simulator) |
+| S56 | Simulator.html | Historischer Backtest | Engine-/Parity-Diagnose | bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 3; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#simulator) |
 | S57 | Simulator.html | Werkstatt / Parameter-Sweep | Sweep-Laufzahl und Arbeitslast | sichtbar | persistent: sim.sweep.runs | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
 | S58 | Simulator.html | Werkstatt / Parameter-Sweep | Sieben Sweep-Ranges und Anwendbarkeit | sichtbar, bedingt sichtbar | persistent: sim.sweep.liquidityRunwayYears, sim.sweep.goldRebalancingBand, s… | Node 3; Browser 2; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
 | S59 | Simulator.html | Werkstatt / Parameter-Sweep | Sweep starten/abbrechen und Status | sichtbar, bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 4; Browser 4; Risiko 2; Schuld 0 | 4.3 | [Kapitel](../../Handbuch.html#werkstatt) |
@@ -206,7 +208,7 @@ Quelle: `Simulator.html`
 | S71 | Simulator.html | Übergreifende Bedienung | Tastatur und Druck | sichtbar, bedingt sichtbar | nur Sitzung | Node 3; Browser 2; Risiko 2; Schuld 0 | 2 | [Kapitel](../../Handbuch.html#simulator) |
 | S72 | Simulator.html | Übergreifende Bedienung | Worker-Telemetrie | bedingt sichtbar | persistent: enableWorkerTelemetry | Node 0; Browser 0; Risiko 2; Schuld 0 | 2 | [Kapitel](../../Handbuch.html#simulator) |
 | S73 | Simulator.html | Profilkontext und Navigation | Profil-Lifecycle: Bootstrap, Handoff, Hintergrundspeicherung und BFCache | sichtbar | persistent: rs\_profiles\_v1.profiles\[profileId\].data | Node 6; Browser 2; Risiko 2; Schuld 0 | 2 | [Kapitel](../../Handbuch.html#simulator) |
-| S74 | Simulator.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 12; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+| S74 | Simulator.html | Spielbereich | Spielbereich: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 12; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
 
 #### Seitenzusätze
 
@@ -225,11 +227,11 @@ Quelle: `depot-tranchen-manager.html`
 | V01 | depot-tranchen-manager.html | Personen & Vermögen | Vermögen & Ruhestand: Zurücknavigation, interner Profilkontext und Kartenalter | sichtbar, bedingt sichtbar | keine; persistent: ui\_suite\_sidebar\_collapsed | Node 12; Browser 16; Risiko 2; Schuld 0 | 2, 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V27 | depot-tranchen-manager.html | Personenumstellung | Aufschub und sichere Wiederholung der Personenübernahme | bedingt sichtbar | nur Sitzung; persistent: profile\_person\_schema\_version, profile\_person\_migration\_v1, rs\_p… | Node 5; Browser 2; Risiko 0; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V02 | depot-tranchen-manager.html | Personen & Vermögen | Tagesgeld separat von Tranchen | bedingt sichtbar, bewusst gesperrt | persistent: profile\_tagesgeld, rs\_profiles\_v1.profiles\[profileId\].data.profi…; persistent: profile\_cash\_histo… | Node 10; Browser 0; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
-| V03 | depot-tranchen-manager.html | Personen & Vermögen | Personendaten: heutiges Alter, Januarplanung und Herkunft | bedingt sichtbar, bewusst gesperrt, sichtbar | persistent: profile\_rente\_aktiv, profile\_rente\_monatlich, profile\_sonstige\_e…; keine | Node 16; Browser 6; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V03 | depot-tranchen-manager.html | Personen & Vermögen | Personendaten: heutiges Alter, Januarplanung und Herkunft | bedingt sichtbar, bewusst gesperrt, sichtbar, technisch verborgen | persistent: profile\_rente\_aktiv, profile\_rente\_monatlich, profile\_sonstige\_e…; keine | Node 16; Browser 6; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V04 | depot-tranchen-manager.html | Personen & Vermögen | Goldstrategie: Aktivierung, Ziel, Floor, Band und Steuerfreiheit | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: profile\_gold\_aktiv, profile\_gold\_ziel\_pct, profile\_gold\_floor\_pc… | Node 3; Browser 0; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V05 | depot-tranchen-manager.html | Personen & Vermögen | Pflegebucket: Aktivierung, Betrag, Quelle und Pflegegrad | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: profile\_health\_bucket, rs\_profiles\_v1.profiles\[profileId\].data.p… | Node 3; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V06 | depot-tranchen-manager.html | Personen & Vermögen | Pflegebucket-Policies: Trigger, Deckung, Rendite und Inflationssicht | bedingt sichtbar, bewusst gesperrt | persistent: profile\_health\_bucket, rs\_profiles\_v1.profiles\[profileId\].data.p… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
-| V07 | depot-tranchen-manager.html | Personen & Vermögen | Profil- und Planvalidierung, Autosave, bestätigte Writes und Warteschlange | bedingt sichtbar, bewusst gesperrt | persistent: profile\_tagesgeld, profile\_rente\_aktiv, profile\_rente\_monatlich,…; persistent: household\_plan\_v1 | Node 7; Browser 1; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
+| V07 | depot-tranchen-manager.html | Personen & Vermögen | Profil- und Planvalidierung, Autosave, bestätigte Writes und Warteschlange | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: profile\_tagesgeld, profile\_rente\_aktiv, profile\_rente\_monatlich,…; persistent: household\_plan\_v1 | Node 7; Browser 1; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V07.1 | depot-tranchen-manager.html | Haushalt & Plan | Gemeinsame Dynamic-Flex-Voreinstellungen im Manager | bedingt sichtbar | persistent: household\_plan\_v1 | Node 2; Browser 1; Risiko 0; Schuld 0 | 1 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V08 | depot-tranchen-manager.html | Tranchen und Kurse | Kauf eintragen: neue Tranche öffnen | sichtbar, bewusst gesperrt | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
 | V09 | depot-tranchen-manager.html | Tranchen und Kurse | Zeilenaktionen bearbeiten/löschen und gesamten Bestand löschen | sichtbar, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 4; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
@@ -249,9 +251,9 @@ Quelle: `depot-tranchen-manager.html`
 | V23 | depot-tranchen-manager.html | Cashdialog | Cashbestätigung und lineare Korrektur mit Grund, Fokus und Konfliktprüfung | bedingt sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1.trancheReconciliation.actions, rs\_profiles\_v1.tra… | Node 9; Browser 4; Risiko 2; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V24 | depot-tranchen-manager.html | Hilfen und Bedienung | Feldhilfen, Labels und Tabellen-/Dialogzugänglichkeit | bedingt sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 2, 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V25 | depot-tranchen-manager.html | Kurszeit-Datenvertrag | asOf: Lokales Kursdatum im Depot, Provenienz und Balance-Kursfrische | sichtbar, bewusst gesperrt, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 11; Browser 3; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
-| V26 | depot-tranchen-manager.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
-| B29 | depot-tranchen-manager.html | Vermögensverlauf | Stand jetzt erfassen mit bestätigten Quellen und Sieben-Tage-Kursgate | sichtbar | persistent: ruhestandsmodellValues\_v29\_guardrails, rs\_profiles\_v1 | Node 2; Browser 0; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
-| B30 | depot-tranchen-manager.html | Vermögensverlauf | Tageslinie und Tageskennzahlen getrennt von erfassten Ständen, Abschlussrauten und Tabelle | sichtbar | keine | Node 2; Browser 0; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
+| V26 | depot-tranchen-manager.html | Spielbereich | Spielbereich: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+| B29 | depot-tranchen-manager.html | Vermögensverlauf | Stand jetzt erfassen mit bestätigten Quellen und Sieben-Tage-Kursgate | sichtbar | persistent: rs\_household\_wealth\_captures\_v1, ruhestandsmodellValues\_v29\_guar… | Node 2; Browser 0; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
+| B30 | depot-tranchen-manager.html | Vermögensverlauf | Tageslinie und Tageskennzahlen getrennt von erfassten Ständen, Abschlussrauten und Tabelle | bedingt sichtbar, sichtbar | keine | Node 2; Browser 0; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
 
 #### Seitenzusätze
 
@@ -281,7 +283,7 @@ Quelle: `Handbuch.html`
 | H12 | Handbuch.html | Handbuchartikel | Datenquellen, Versionen, Dokumente und Support | bedingt sichtbar | keine | Node 0; Browser 0; Risiko 1; Schuld 1 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#haeufige-fragen) |
 | H13 | Handbuch.html | Handbuchartikel | App-Bilder, Tabellen und Hinweise | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 2; Schuld 0 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#haeufige-fragen) |
 | H14 | Handbuch.html | Navigation | Querverweise öffnen Kapitel und Abschnitte | bedingt sichtbar | nur Sitzung | Node 0; Browser 0; Risiko 1; Schuld 0 | 1, 2, 6.3 | [Kapitel](../../Handbuch.html#haeufige-fragen) |
-| H15 | Handbuch.html | Probelauf | Probelauf: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+| H15 | Handbuch.html | Spielbereich | Spielbereich: Vergleich, Verwerfen und vollständige Übernahme mit Rückkehrpunkt | bedingt sichtbar, sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 13; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
 
 #### Seitenzusätze
 
@@ -336,11 +338,11 @@ Quelle: `Daten-Sicherung.html`
 
 ### Dynamische Schutzstatistik
 
-192 Funktionseinträge; 397 dynamische Belege:
+194 Funktionseinträge; 414 dynamische Belege:
 
-- geschützt: **375**
+- geschützt: **389**
 - ungeschützt (Anker fehlt): **6**
-- ungeschützt (Erzeugungsform vom Prüfer nicht unterstützt): **16**
+- ungeschützt (Erzeugungsform vom Prüfer nicht unterstützt): **19**
 
 Gemischte Einträge sind nur für ihre einzeln als geschützt ausgewiesenen Belege geschützt. Beide ungeschützten Kategorien zählen separat.
 
@@ -602,7 +604,7 @@ Paketbezug: 4.3.
 - **S55:** Nicht jede Eingabe-, Fehler-, Fokus- und Druckkombination ist gezielt getestet — vorläufig – wird in der Paket-Idee eingeordnet
 - **S55:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
 - **S56:** Nicht jede Eingabe-, Fehler-, Fokus- und Druckkombination ist gezielt getestet — vorläufig – wird in der Paket-Idee eingeordnet
-- **S56:** Paket 4.3: .dev-on besitzt im aktuellen Quellbestand keinen Setzer; ?dev=true allein öffnet nur Telemetrie. Echte Paritykarten-Erreichbarkeit separat klären. — vorläufig – wird in der Paket-Idee eingeordnet
+- **S56:** Paket 4.3: .dev-on hat keinen Setzer; ?dev=true öffnet nur Telemetrie. Erreichbarkeit der Paritykarte bleibt offen. — vorläufig – wird in der Paket-Idee eingeordnet
 - **S56:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
 - **S57:** Nicht jede Eingabe-, Fehler-, Fokus- und Druckkombination ist gezielt getestet — vorläufig – wird in der Paket-Idee eingeordnet
 - **S57:** Finale fünf Hauptreiter und drei Werkzeuge mit eindeutigen Hosts. Browser-/Bild-/Druckprüfung extern ausstehend; Bestandsbelege sind keine erneute Laufzeitabnahme. — Produktgestaltung abgeschlossen; externe Steuerung prüft zehn Grundbedienungsfälle, Referenzen 16–18 bei 1920/2560 px und Gesamtvergleich 1920/3440 px. Weitere Browserfälle bleiben ausdrücklich separat offen.
@@ -725,15 +727,22 @@ Paketbezug: 3.2.
 
 - **B42:** tests/worker-telemetry.test.mjs existiert nicht; echte Toggle-/Clipboard-/Reportbedienung ohne gezielten Nachweis. — Entwicklertelemetrie bleibt fachlich unverändert; fehlender Bediennachweis ist Testschuld.
 
+#### Zuordnung 4.2
+
+Paketbezug: 4.2.
+
+- **S76:** Manuelle Kandidaten-EXE-Prüfung offen. — Node und Bilder ersetzen keine EXE-Prüfung.
+
 #### Zuordnung 6.3
 
 Paketbezug: 6.3.
 
+- **I25:** Manuelle Browser-/EXE-Abnahme des Zeitraffers offen. — Neue Browserfälle sind im Auftrag ausgeschlossen.
 - **I11:** Telemetrie-UI einschließlich Reload und alert; eine tests/worker-telemetry.test.mjs existiert nicht und wird nicht als Nachweis geführt. — Entwicklertelemetrie bleibt fachlich unverändert; fehlender Bediennachweis ist Testschuld.
-- **I18:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Echte Reload-/Seiten-/Darstellungsprüfung erfolgt durch die Steuerung; Node-Workflow deckt Muster und synthetische Kurswege ab. Fortschritt und Fremdcommit-Ablehnung sind in Node regressionsgesichert; echte Browserabnahme dieser beiden Befunde bleibt offen.
-- **B48:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Echte Reload-/Seiten-/Darstellungsprüfung erfolgt durch die Steuerung; Node-Workflow deckt Muster und synthetische Kurswege ab. Fortschritt und Fremdcommit-Ablehnung sind in Node regressionsgesichert; echte Browserabnahme dieser beiden Befunde bleibt offen.
-- **S74:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Echte Reload-/Seiten-/Darstellungsprüfung erfolgt durch die Steuerung; Node-Workflow deckt Muster und synthetische Kurswege ab. Fortschritt und Fremdcommit-Ablehnung sind in Node regressionsgesichert; echte Browserabnahme dieser beiden Befunde bleibt offen.
-- **V26:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Echte Reload-/Seiten-/Darstellungsprüfung erfolgt durch die Steuerung; Node-Workflow deckt Muster und synthetische Kurswege ab. Fortschritt und Fremdcommit-Ablehnung sind in Node regressionsgesichert; echte Browserabnahme dieser beiden Befunde bleibt offen.
+- **I18:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Browser- und EXE-Abnahme durch die Steuerung offen; Node prüft Produktionsadapter, Abschlüsse und bytegleiche echte Speicherbereiche.
+- **B48:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Browser- und EXE-Abnahme durch die Steuerung offen; Node prüft Produktionsadapter, Abschlüsse und bytegleiche echte Speicherbereiche.
+- **S74:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Browser- und EXE-Abnahme durch die Steuerung offen; Node prüft Produktionsadapter, Abschlüsse und bytegleiche echte Speicherbereiche.
+- **V26:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Browser- und EXE-Abnahme durch die Steuerung offen; Node prüft Produktionsadapter, Abschlüsse und bytegleiche echte Speicherbereiche.
 - **H04:** architecture-evidence.test.mjs prüft Architektur-Evidenzregister, nicht diese Handbuchkapitel; Ausgangsbezug ist korrigiert. — Vorhandene Nachweislücke; kein durch dieses Designpaket geändertes Verhalten.
 - **H05:** longevity-optimizer-docs.test.mjs prüft Optimizer-/Sweepverträge und liest Handbuch.html nicht; kein Inhaltsnachweis. — Vorhandene Nachweislücke; kein durch dieses Designpaket geändertes Verhalten.
 - **H05:** P10: Kein kapitelbezogener Browser-Inhalts- oder TOC-/Fokusnachweis für \#simulator-renten. — Der registrierte neue Personenkapitel-Schritt bedient nur \#profilverbund-personendaten (H09); gezielter Node-Inhaltsnachweis ist vorhanden.
@@ -741,7 +750,7 @@ Paketbezug: 6.3.
 - **H07:** P10: Kein kapitelbezogener Browser-Inhalts- oder TOC-/Fokusnachweis für \#balance-jahresupdate / \#balance-snapshots. — Der registrierte neue Personenkapitel-Schritt bedient nur \#profilverbund-personendaten (H09); gezielter Node-Inhaltsnachweis ist vorhanden.
 - **H09:** architecture-evidence.test.mjs prüft Architektur-Evidenzregister, nicht diese Handbuchkapitel; Ausgangsbezug ist korrigiert. — Vorhandene Nachweislücke; kein durch dieses Designpaket geändertes Verhalten.
 - **H12:** architecture-evidence.test.mjs prüft Architektur-Evidenzregister, nicht diese Handbuchkapitel; Ausgangsbezug ist korrigiert. — Vorhandene Nachweislücke; kein durch dieses Designpaket geändertes Verhalten.
-- **H15:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Echte Reload-/Seiten-/Darstellungsprüfung erfolgt durch die Steuerung; Node-Workflow deckt Muster und synthetische Kurswege ab. Fortschritt und Fremdcommit-Ablehnung sind in Node regressionsgesichert; echte Browserabnahme dieser beiden Befunde bleibt offen.
+- **H15:** Browser-/Druck-/WebView-/Kandidaten-EXE-Abnahme extern offen. — Browser- und EXE-Abnahme durch die Steuerung offen; Node prüft Produktionsadapter, Abschlüsse und bytegleiche echte Speicherbereiche.
 
 ### Prüfergrenzen
 
@@ -752,8 +761,11 @@ Nicht unterstützte Erzeugungsformen sind kein automatischer Auftrag zur Produkt
 - **S35 · .drawdown-pair-heading:** app/simulator/results-renderers.js / renderKpiDashboard — Markupakkumulator mit nichtlokalen map-Rückgaben und bedingten Ergänzungen; kein allgemeiner Datenfluss.
 - **S36 · .mc-more-metrics:** app/simulator/results-renderers.js / renderKpiDashboard — Markupakkumulator mit nichtlokalen map-Rückgaben und bedingten Ergänzungen; kein allgemeiner Datenfluss.
 - **S36 · .reporting-reference-note:** app/simulator/results-renderers.js / renderKpiDashboard — Markupakkumulator mit nichtlokalen map-Rückgaben und bedingten Ergänzungen; kein allgemeiner Datenfluss.
+- **S76 · \#scenarioLogAnalysisHeading:** app/simulator/log-analysis-view.js / logAnalysisHtml — Betriebsartabhängiges gemeinsames Template; Ausgabe durch Node-Tests und Playwright geprüft.
+- **S76 · \[data-scenario-analysis-protocol\]:** app/simulator/log-analysis-view.js / logAnalysisHtml — Betriebsartabhängiges gemeinsames Template; Ausgabe durch Node-Tests und Playwright geprüft.
 - **S49 · \[data-stress-replay-action="recompute"\]:** app/simulator/stress-replay-renderer.js / renderStressReplayVariantListV1 — Aktionsbuttons liegen im bedingten verschachtelten Template; der Prüfer löst dessen Zweige nicht auf.
 - **S49 · \[data-stress-replay-action="remove"\]:** app/simulator/stress-replay-renderer.js / renderStressReplayVariantListV1 — Aktionsbuttons liegen im bedingten verschachtelten Template; der Prüfer löst dessen Zweige nicht auf.
+- **S54 · \#backtestAnalysisHeading:** app/simulator/log-analysis-view.js / logAnalysisHtml — Betriebsartabhängiges gemeinsames Template; Ausgabe durch Node-Tests und Playwright geprüft.
 - **S61 · \#applyOptimalParams:** app/simulator/simulator-optimizer.js / displayBestParameters — Markupakkumulator mit berechneten Fremdaufrufen und Rückgabezweigen; kein allgemeiner Datenfluss.
 - **S63 · \#applyMultiObjectiveParams:** app/simulator/simulator-optimizer.js / displayMultiObjectiveOptimization — Markupakkumulator mit berechneten Fremdaufrufen; kein allgemeiner Datenfluss.
 - **S63 · \#applyConstraintParams:** app/simulator/simulator-optimizer.js / displayConstraintBasedOptimization — Markupakkumulator mit berechneten Fremdaufrufen; kein allgemeiner Datenfluss.

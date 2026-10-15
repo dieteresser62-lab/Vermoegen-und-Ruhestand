@@ -818,6 +818,7 @@ function* iterateSweepChunk({
                     capeRatio: resolvedCapeRatio,
                     marketCapeRatio: resolvedCapeRatio,
                     horizonYears: dynamicHorizonYears,
+                    guardrailPlanHorizonYears: inputs.horizonYears,
                     ...(horizonResolution.diagnostics?.longevityMode !== 'none'
                         ? { longevityHorizonDiagnostics: horizonResolution.diagnostics }
                         : {})

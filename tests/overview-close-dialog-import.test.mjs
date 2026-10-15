@@ -79,12 +79,16 @@ export async function overviewImportFixture({ quoteAge = 0, single = false, unse
         const node = doc.createElement(id.includes('Dialog') ? 'dialog' : 'div'); node.id = id; doc.body.append(node);
     }
     const guard = getPageNavigationGuard(doc, win);
-    let controller = createProbelaufController({ doc, win, guard, demoLoader: null, reload() {}, restoreReload() {} }); await controller.initialize(); setAppTestDate(referenceDate);
+    // Dieser kontrollierte Adapter stellt den Spielbereich des Dialogtests dar.
     if (probelauf) {
-        await controller.start(() => ({ source: 'copy', testDate: referenceDate })); guard.revokeNative();
-        P.resetPersistenceForTests(adapter); await P.init({ window: win, installLifecycleHooks: false, installTauriCloseHook: false });
-        controller = createProbelaufController({ doc, win, guard, demoLoader: null, reload() {}, restoreReload() {} }); await controller.initialize();
+        P.setItemSync('rs_probelauf_state_v1', JSON.stringify({ version: 2, active: true, phase: 'active', source: 'copy', runtime: 'browser', testDate: referenceDate }));
+        await P.flush();
     }
+    const controllerPersistence = probelauf ? { ...P, getPersistenceStatus: () => ({ ...P.getPersistenceStatus(), activeArea: 'spiel' }) } : P;
+    const controller = createProbelaufController({ persistence: controllerPersistence, win, guard, demoLoader: null, reload() {}, restoreReload() {} });
+    await controller.initialize();
+    setAppTestDate(referenceDate);
+
     let model, imports, months;
     const refresh = () => {
         const liveData = Object.fromEntries(Array.from({ length: storage.length }, (_, i) => [storage.key(i), storage.getItem(storage.key(i))]));
@@ -302,7 +306,7 @@ for (const target of ['muster_a', 'all']) {
         await root.querySelector('[data-close-dialog-activate="expenses"]').fire('click');
         assertEqual(root.querySelector('[data-close-dialog-activate="expenses"]').getAttribute('aria-expanded'), 'true', 'Jahresschritt 2 öffnet die erhaltenen Beispielzugänge');
         const find = () => root.querySelector(target === 'all' ? '[data-overview-example="all"]' : `[data-overview-example-target="${target}"]`);
-        assert(find() && root.querySelector('[data-overview-expenses-file="muster_a"]'), 'Personenbeispiel, Alle-Knopf und CSV bleiben im aktiven Probelauf erreichbar');
+        assert(find() && root.querySelector('[data-overview-expenses-file="muster_a"]'), 'Personenbeispiel, Alle-Knopf und CSV bleiben im aktiven Spielbereich erreichbar');
         checkExampleButtons(root, 'Dezember');
         assertEqual(JSON.stringify(Object.fromEntries(f.backend)), beforeQuotes, 'Reine Kursanzeige schreibt keine Abschluss- oder Ausgabenrecords');
         for (const accept of [false, true]) {
@@ -324,7 +328,7 @@ for (const target of ['muster_a', 'all']) {
             await f.waitPreview(job); await f.doc.querySelector('[data-expenses-preview-accept]').fire('click'); await boundedImport(job);
             assertEqual(root.querySelector('[data-close-dialog-activate="budget"]').getAttribute('aria-expanded'), 'true', 'Zweites Jahresbeispiel öffnet Budget trotz unvollständiger zwölf Monate');
         }
-        assert(root.open && f.snapshots.size === 1, 'Beispielimport hält Jahresdialog offen und erzeugt keinen Jahressnapshot neben dem Probelaufbeleg');
+        assert(root.open && f.snapshots.size === 0, 'Beispielimport hält Jahresdialog offen und erzeugt keinen Jahressnapshot');
         await f.doc.getElementById('annualCloseBtn').fire('click'); await pending;
     } finally { coordinator?.dispose(); await f.close(); }
 }

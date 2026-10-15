@@ -24,9 +24,9 @@ function monthlyDisplay(value) {
 
 /** Gemeinsam verwendete, schreibfreie und text-sichere Personenfelder. */
 export function createTagesgeldFields({ doc = document, people, title = 'Tagesgeld-Stand jetzt',
-    explanation = 'Nach der Überweisung des Monatsbetrags. Fließt in den Vermögensverlauf ein.', prefix = 'tagesgeld', monthly = false, closePresentation = false, requireConfirmation = false, asOfLabel = '' }) {
+    explanation = 'Nach der Überweisung des Monatsbetrags. Fließt in den Vermögensverlauf ein.', prefix = 'tagesgeld', monthly = false, closePresentation = false, requireConfirmation = false, asOfLabel = '', proposals = {} }) {
     const monthlyClose = monthly && closePresentation && requireConfirmation;
-    if (monthlyClose) return createCloseCashFields({ doc, people, title, explanation, prefix, asOfLabel });
+    if (monthlyClose) return createCloseCashFields({ doc, people, title, explanation, prefix, asOfLabel, proposals });
     const root = doc.createElement('section'); root.className = 'tagesgeld-fields' + (closePresentation ? ' tagesgeld-close-fields' : '');
     const heading = doc.createElement('h3'); heading.textContent = title;
     const hint = doc.createElement('p'); hint.textContent = explanation;
@@ -122,7 +122,7 @@ export function createTagesgeldFields({ doc = document, people, title = 'Tagesge
 }
 
 /** Flüchtiger Entwurf: Personen einzeln prüfen; allein der Abschlussbesitzer speichert. */
-function createCloseCashFields({ doc, people, title, explanation, prefix, asOfLabel }) {
+function createCloseCashFields({ doc, people, title, explanation, prefix, asOfLabel, proposals }) {
     const node = (tag, text, className = '') => {
         const element = doc.createElement(tag); element.className = className;
         if (text !== undefined) element.textContent = text;
@@ -162,23 +162,39 @@ function createCloseCashFields({ doc, people, title, explanation, prefix, asOfLa
         const edit = button('Ändern', 'tagesgeldEdit', person.id); edit.className = 'ds-button ds-button-ghost';
         const apply = button('Übernehmen', 'tagesgeldApply', person.id); apply.hidden = true;
         const badge = node('span', '', 'ds-badge tagesgeld-person-badge'); badge.hidden = true;
-        row.append(name, value, input, unit, confirmButton, badge, edit, apply, error); root.append(row);
-        return { person, row, input, status, error, value, unit, confirmButton, edit, apply, badge, editing: false };
+        const proposalHint = node('small'); proposalHint.dataset.tagesgeldProposal = person.id;
+        const useProposal = button('Vorschlag übernehmen', 'tagesgeldPropose', person.id);
+        useProposal.dataset.tagesgeldPropose = person.id;
+        useProposal.hidden = true; proposalHint.hidden = true;
+        name.append(proposalHint);
+        row.append(name, value, input, unit, confirmButton, badge, edit, apply, useProposal, error); root.append(row);
+        return { person, row, input, status, error, value, unit, confirmButton, edit, apply, badge, proposalHint, useProposal, proposal: proposals[person.id], playValue: null, editing: false };
     });
     const parse = field => {
         if (field.person.error) throw new Error(field.person.error);
         return parseMonthlyCashInput(field.input.value);
     };
     const sync = field => {
-        const done = confirmed.has(field.person.id), changed = done && parse(field) !== field.person.value;
+        const done = confirmed.has(field.person.id), changed = done && (field.playValue || parse(field) !== field.person.value);
         const date = [field.person.lastDate, field.person.confirmedDate].filter(Boolean).sort().at(-1);
         field.status.textContent = field.editing ? 'neuen Kontostand eintragen' : changed ? `geändert · vorher ${field.person.value === null ? '—' : monthlyDisplay(field.person.value) + ' €'}`
             : done ? `bestätigt${date ? ' · Stand vom ' + cashDateDisplay(date) : ' · kein datierter Ausgangsstand'}` : 'noch nicht bestätigt';
+        if (done && field.playValue) field.status.textContent += ' · Spielwert';
         field.input.hidden = !field.editing; field.unit.hidden = !field.editing; field.value.hidden = field.editing;
         field.confirmButton.hidden = field.editing || done; field.edit.hidden = field.editing; field.apply.hidden = !field.editing;
         field.badge.hidden = field.editing || !done; field.badge.textContent = changed ? 'geändert' : 'bestätigt';
         field.row.dataset.state = done ? 'done' : 'open';
+        field.useProposal.hidden = !field.proposal || field.editing || Boolean(field.playValue);
+        field.useProposal.disabled = Boolean(field.proposal?.error);
         if (done) field.value.textContent = `${monthlyDisplay(parse(field))} €`;
+    };
+    const showProposal = field => {
+        Array.from(field.proposalHint.children || []).forEach(child => child.remove());
+        field.proposalHint.hidden = !field.proposal;
+        field.proposalHint.textContent = !field.proposal ? '' : Number.isFinite(field.proposal.value)
+            ? `Vorschlag: ${monthlyDisplay(field.proposal.value)} € · Spielwert ` : `Spielwert nicht verfügbar: ${field.proposal.error}`;
+        if (field.proposal?.explanation) field.proposalHint.append(createInfoPopover(doc, `Herleitung des Tagesgeld-Vorschlags für ${field.person.name}`,
+            field.proposal.explanation + (field.proposal.error ? ' ' + field.proposal.error : '')));
     };
     const validate = field => {
         try { parse(field); field.error.textContent = ''; field.input.setAttribute('aria-invalid', 'false'); return true; }
@@ -188,20 +204,42 @@ function createCloseCashFields({ doc, people, title, explanation, prefix, asOfLa
         }
     };
     const api = { root, inputs: fields.map(field => field.input), confirmationButtons: fields.map(field => field.confirmButton),
+        get hasChanges() { return fields.some(field => Boolean(field.playValue)); },
+        updateProposals(next) {
+            for (const field of fields) {
+                if (JSON.stringify(field.proposal) === JSON.stringify(next[field.person.id])) continue;
+                if (field.playValue) {
+                    confirmed.delete(field.person.id); field.playValue = null;
+                    field.input.value = field.person.value === null ? '' : monthlyDisplay(field.person.value);
+                    field.value.textContent = field.person.value === null ? '—' : `${monthlyDisplay(field.person.value)} €`;
+                }
+                field.proposal = next[field.person.id]; showProposal(field); sync(field);
+            }
+        },
         get openPeople() { return fields.filter(field => field.editing || !confirmed.has(field.person.id)).map(field => field.person.name); },
         get ready() { return fields.length > 0 && fields.every(field => {
             try { parse(field); return !field.editing && confirmed.has(field.person.id); } catch { return false; }
         }); },
         bind(listen, onChange = () => {}) {
             for (const field of fields) {
-                listen(field.edit, 'click', () => { confirmed.delete(field.person.id); field.editing = true; sync(field); onChange(); field.input.focus(); });
-                listen(field.input, 'input', () => { confirmed.delete(field.person.id); field.editing = true; validate(field); sync(field); onChange(); });
+                listen(field.edit, 'click', () => {
+                    if (field.proposal && !field.proposal.error && (field.playValue || field.input.value === monthlyDisplay(field.person.value))) field.input.value = monthlyDisplay(field.proposal.value);
+                    confirmed.delete(field.person.id); field.playValue = null; field.editing = true; sync(field); onChange(); field.input.focus();
+                });
+                listen(field.input, 'input', () => { confirmed.delete(field.person.id); field.playValue = null; field.editing = true; validate(field); sync(field); onChange(); });
                 const accept = () => {
-                    if (validate(field)) { confirmed.add(field.person.id); field.editing = false; }
+                    if (validate(field)) {
+                        if (field.editing && field.proposal && !field.proposal.error && parse(field) === field.proposal.value) field.playValue = structuredClone(field.proposal);
+                        confirmed.add(field.person.id); field.editing = false;
+                    }
                     sync(field); onChange();
                     if (field.editing) field.input.focus(); else field.edit.focus();
                 };
                 listen(field.confirmButton, 'click', accept); listen(field.apply, 'click', accept);
+                listen(field.useProposal, 'click', () => {
+                    if (!field.proposal || field.proposal.error) return;
+                    field.input.value = monthlyDisplay(field.proposal.value); field.playValue = structuredClone(field.proposal); accept();
+                });
                 listen(field.input, 'keydown', event => { if (event.key === 'Enter') { event.preventDefault(); accept(); } });
             }
         },
@@ -217,8 +255,9 @@ function createCloseCashFields({ doc, people, title, explanation, prefix, asOfLa
                 if (validate(field)) values[field.person.id] = parse(field); else invalid ||= field.input;
             }
             if (invalid) { invalid.focus(); throw new Error('Bitte die markierten Tagesgeldfelder prüfen.'); }
-            return { people: structuredClone(people), values };
+            const playValues = Object.fromEntries(fields.filter(field => field.playValue).map(field => [field.person.id, structuredClone(field.playValue)]));
+            return { people: structuredClone(people), values, ...(Object.keys(playValues).length ? { playValues } : {}) };
         }
     };
-    fields.forEach(sync); return api;
+    fields.forEach(field => { showProposal(field); sync(field); }); return api;
 }

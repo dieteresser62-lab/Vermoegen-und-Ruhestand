@@ -17,7 +17,7 @@ const rules = '# Schreibregeln\n\n## Verbotene Muster\n- Floskeln: „Im Folgend
 
 try {
     assertEqual(ACTIVE_FILES.length, 45, 'Zielstruktur enthält 42 Dokumente, Bildmanifest und zwei Ablaufseiten');
-    assertEqual(IMAGE_FILES.length, 40, 'Bilderliste enthält die 40 geplanten Aufnahmen');
+    assertEqual(IMAGE_FILES.length, 41, 'Bilderliste enthält die 41 geplanten Aufnahmen');
     for (const file of ACTIVE_FILES) {
         assert(FINISHED_FILES.includes(file), file + ': volle Dokuprüfung einschließlich Handbuch und Bildern');
     }

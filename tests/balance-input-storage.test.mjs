@@ -29,6 +29,8 @@ try {
             assert(migrated.status === 'migrated' || migrated.status === 'unchanged', `Bestätigte Altmigration (${process.env.ALT || '0'})`);
         }
         const state = StorageManager.loadState();
+        // Beide Orakel lesen denselben bestätigten Stand nach der Einmalmigration.
+        StorageManager.saveState(state);
         const dom = installBalanceStorageForm(state.inputs, values);
         const handlers = createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' } });
         const profiles = loadProfilverbundProfiles();
@@ -44,7 +46,7 @@ try {
         } };
         window.EngineAPI = engineApi;
         const legacy = evaluateBalanceFileInputs({ inputData, persistentState: history.persistentState, profiles: history.profiles,
-            profileId: storage.getItem('rs_current_profile'), profilverbundHandlers: handlers, engineApi });
+            profileId: storage.getItem('rs_current_profile'), profilverbundHandlers: handlers, engineApi, planInputs: plan.entry.values });
         const oldCalls = json(calls); calls.length = 0;
         const snapshot = P.exportAllSync().records, bytes = json(snapshot);
         delete globalThis.window; delete globalThis.document;
@@ -53,14 +55,14 @@ try {
         assertEqual(json(built.readerInputData), json(reader), label + ': komplette Readerausgabe');
         assertEqual(json(built.inputData), json(inputData), label + ': komplette Haushaltseingaben');
         const fresh = evaluateBalanceFileInputs({ inputData: built.inputData, persistentState: built.history.persistentState,
-            profiles: built.profiles, profileId: built.profileId, engineApi,
+            profiles: built.profiles, profileId: built.profileId, engineApi, planInputs: built.householdPlan.entry.values,
             profilverbundHandlers: { runProfilverbundProfileSimulations: (...args) => handlers.runProfilverbundProfileSimulations(...args,
                 { engineApi, withdrawalMode: built.householdPlan.entry.values.householdWithdrawalMode }) } });
         assertEqual(json(calls), oldCalls, label + ': sämtliche Engineargumente einschließlich LastState und Extras');
         assertEqual(json({ input: built.engineInput, lastState: built.engineLastState }), json(calls[0]), label + ': direkter vollständiger Aufrufvertrag des Speicherlesers');
         assertEqual(json(fresh.modelResult), json(legacy.modelResult), label + ': Ergebnis einschließlich Leitplanken');
         assertEqual(json(snapshot), bytes, label + ': Rohrecords unverändert');
-        assertEqual(json(prepareEngineLastState({ ...built.history.persistentState, inputs: { ...built.history.persistentState.inputs, ...built.history.persistentState.personInputEvidence } }, built.inputData)), json(built.lastState), label + ': isolierter Basis-LastState');
+        assertEqual(json(prepareEngineLastState({ ...built.history.persistentState, inputs: { ...built.history.persistentState.inputs, ...built.history.persistentState.personInputEvidence } }, built.inputData, built.householdPlan.entry.values)), json(built.lastState), label + ': isolierter Basis-LastState');
         globalThis.window = { __profilverbundTranchenOverride: [], __profilverbundPersonSPB: 99999 };
         assertEqual(json(buildBalanceEngineInputFromStorage({ scope, storage: recordStorage(snapshot) })), json(built), label + ': Fensteraggregate ohne Einfluss');
         assert(fail(() => buildBalanceEngineInputFromStorage({ scope: { ...scope, key: 'falsch' }, storage: recordStorage(snapshot) })), 'Ungültiger Umfang wird abgewiesen');

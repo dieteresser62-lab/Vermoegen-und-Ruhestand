@@ -134,7 +134,7 @@ export function extractP2Invariants(inputs) {
         startAlter: Number(inputs.partner.startAlter) || 0,
         startInJahren: Number(inputs.partner.startInJahren) || 0,
         renteStartMonate: inputs.partner.renteStartMonate ?? 12,
-        steuerquotePct: Number(inputs.partner.steuerquotePct) || 0,
+        steuerquotePct: 0, // FR-11: Altquote ist kein wirksamer Sweep-Parameter mehr.
         rentAdjPct: Number(inputs.rentAdjPct) || 0
     };
 }
@@ -147,7 +147,9 @@ export function extractP2Invariants(inputs) {
  */
 export function areP2InvariantsEqual(inv1, inv2) {
     if (!inv1 || !inv2) return false;
-    return JSON.stringify(inv1) === JSON.stringify(inv2);
+    const { steuerquotePct: ignored1, ...effective1 } = inv1;
+    const { steuerquotePct: ignored2, ...effective2 } = inv2;
+    return JSON.stringify(effective1) === JSON.stringify(effective2);
 }
 
 /**

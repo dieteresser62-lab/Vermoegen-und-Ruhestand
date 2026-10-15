@@ -7,8 +7,9 @@ const equal = (a, b) => ['phase', 'revision', 'operationId', 'dirty', 'result'].
 
 export function createNavigationGuard({ decide = async () => false, status = () => {}, schedule = setTimeout, unschedule = clearTimeout } = {}) {
     const providers = new Map(), listeners = new Set(), beforeLeave = new Set();
-    let active = null, sequence = 0, permit = null, timer = null;
-    const snapshot = () => new Map(Array.from(providers, ([owner, provider]) => [owner, stateOf(provider.read())]));
+    let active = null, sequence = 0, permit = null, timer = null, finishedDocument = null;
+    const snapshot = () => finishedDocument ? new Map()
+        : new Map(Array.from(providers, ([owner, provider]) => [owner, stateOf(provider.read())]));
     const reasons = () => Array.from(snapshot(), ([owner, state]) => ({ owner, ...state })).filter(hasReason);
     function revokeNative() {
         // Ohne tatsächlichen Dokumentwechsel (z. B. BFCache-Rückkehr oder
@@ -42,6 +43,7 @@ export function createNavigationGuard({ decide = async () => false, status = () 
         return true;
     }
     function changed() {
+        if (finishedDocument) return;
         revokeNative();
         if (active && !compatible(active, snapshot())) active.invalid = true;
         for (const listener of listeners) listener(reasons());
@@ -66,6 +68,7 @@ export function createNavigationGuard({ decide = async () => false, status = () 
             : 'Navigation abgebrochen: Die Seite konnte nicht neu geladen werden. Bitte erneut versuchen.';
     }
     function validate(attempt) {
+        if (attempt && active === attempt && finishedDocument === attempt) return true;
         if (!attempt || active !== attempt || attempt.invalid || !compatible(attempt, snapshot())) {
             status(attempt?.writeStarted
                 ? attempt.writeConfirmed
@@ -83,7 +86,7 @@ export function createNavigationGuard({ decide = async () => false, status = () 
         changed();
     }
     async function prepare({ opener = null, decide: decision = decide, owners = null, intent = 'navigate', signal } = {}) {
-        if (signal?.aborted) return null;
+        if (signal?.aborted || finishedDocument) return null;
         if (active) {
             const commit = reasons().find(state => state.phase === 'commit');
             if (commit) status(intent === 'close' && commit.annualPhase ? 'Jahresabschluss schreibt – bitte warten' : commit.message || 'Daten werden geschrieben – bitte warten.');
@@ -147,6 +150,7 @@ export function createNavigationGuard({ decide = async () => false, status = () 
         try { navigate(); return true; } catch (error) { end(attempt); throw error; }
     }
     function beforeUnload(event) {
+        if (finishedDocument) return;
         if (permit !== null && permit === active?.id && validate(active)) { permit = null; return; }
         if (!active && !reasons().some(reason => reason.phase === 'commit')) {
             // Der Writer beginnt synchron. Der anschließende Commitgrund hält
@@ -162,7 +166,7 @@ export function createNavigationGuard({ decide = async () => false, status = () 
     }
     /** Wiederverwendbarer Reloadweg; Mutation beginnt erst nach der Entscheidung. */
     async function reload({ opener, ready, mutate, flush, reload: navigate, subscribeChanges,
-        returnResult = false, completionMessage }) {
+        returnResult = false, completionMessage, finalizeDocument = false }) {
         const result = (status, error) => returnResult ? { status, ...(error ? { error } : {}) } : status === 'reloaded';
         if (active) return result('cancelled');
         let inputChanged = false;
@@ -211,6 +215,10 @@ export function createNavigationGuard({ decide = async () => false, status = () 
             if (flush && await flush() === false) throw new Error('PERSISTENCE_FLUSH_FAILED');
             confirmed = true;
             attempt.writeConfirmed = true;
+            // Der bestätigte Bereichs-/Datumswechsel beendet die alte Seite.
+            // Ihre Provider und Beobachter dürfen den alten Speicher nicht mehr
+            // lesen oder die nun erforderliche Navigation erneut ablehnen.
+            if (finalizeDocument && attempt.mutationStarted) finishedDocument = attempt;
             if (inputChanged) attempt.invalid = true;
             if (!validate(attempt)) return result('reload_required');
             release();
@@ -225,7 +233,7 @@ export function createNavigationGuard({ decide = async () => false, status = () 
 
     return { register, reasons, prepare, validate, end, commitNavigation, beforeUnload, reload,
         registerBeforeLeave(save) { beforeLeave.add(save); return () => beforeLeave.delete(save); },
-        revokeNative, restoreDocument, isBusy: () => active !== null,
+        revokeNative, restoreDocument, isBusy: () => active !== null || finishedDocument !== null,
         subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); } };
 }
 

@@ -19,7 +19,7 @@
         <header class="suite-header">
             <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
             <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span class="data-context-chip"><svg class="data-context-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"></path></svg><span id="dataHouseholdContext">Haushalt wird gelesen</span></span><span id="dataBackupContextChip" class="data-context-chip"><svg class="data-context-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg><span id="dataBackupContext">Sicherung wird gelesen</span></span></div>
-            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Probelauf …</button>
+            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Spielbereich starten …</button>
         </header>
         <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
         <div id="suiteNavigationStatus" class="suite-navigation-status" role="alert" hidden></div>
@@ -37,13 +37,13 @@
                 <a href="Daten-Sicherung.html" data-profile-handoff data-suite-backup aria-current="page" aria-label="Daten &amp; Sicherung" title="Daten &amp; Sicherung"><span data-suite-icon="landmark" aria-hidden="true"></span><span>Daten &amp; Sicherung</span></a>
             </nav>
             <main class="suite-content" id="suiteMain" tabindex="-1">
-                <aside id="probelaufBand" class="probelauf-band" aria-label="Probelauf" hidden>
+                <aside id="probelaufBand" class="probelauf-band" aria-label="Spielbereich" hidden>
                     <strong id="probelaufBandText"></strong>
                     <div class="ds-actions">
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="day">+1 Tag</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="month">+1 Monat</button>
                         <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="date">Datum wählen …</button>
-                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Probelauf beenden</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Spielbereich beenden</button>
                     </div>
                 </aside>
 

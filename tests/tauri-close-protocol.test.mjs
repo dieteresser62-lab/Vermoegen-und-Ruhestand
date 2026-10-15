@@ -404,7 +404,7 @@ try {
     }
     const rust = fs.readFileSync(new URL('../src-tauri/src/lib.rs', import.meta.url), 'utf8');
     const commands = rust.match(/tauri::generate_handler!\[([\s\S]*?)\]/)[1].split(',').map(name => name.trim()).filter(Boolean);
-    assertEqual(commands.join(','), 'load_app_state,save_app_state,quarantine_app_state,get_app_data_directory,open_app_data_directory,confirm_app_close', 'Commandinventar enthält exakt die Persistenz-, Ordner- und Close-Kommandos');
+    assertEqual(commands.join(','), 'load_app_state,save_app_state,quarantine_app_state,delete_play_state,get_app_data_directory,open_app_data_directory,confirm_app_close', 'Commandinventar enthält exakt die Persistenz-, Ordner- und Close-Kommandos');
     assert(rust.includes('protocol: Mutex<CloseProtocol>'), 'Native Phase und Freigabe stehen unter einem gemeinsamen Lock');
     for (const name of ['close_unclaimed_timeout_is_once_and_not_early', 'close_hold_and_timeout_both_lock_orders',
         'close_hold_timeout_race_has_exactly_one_winner', 'close_reject_and_old_responses_cannot_release_next_attempt',

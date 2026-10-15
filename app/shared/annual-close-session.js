@@ -143,7 +143,7 @@ export async function createAnnualMonthSession({ targetYear, annualSnapshotId, c
     }
     // Neue Rohbelege nach dem Jahreswrite, dieselben einmal bestätigten Zahlen.
     const request = { month: model.occasion.month, scope: structuredClone(model.scope), expectedProfileId: model.activeId,
-        cash: { people: structuredClone(people), values: { ...cash.values } } };
+        cash: { people: structuredClone(people), values: { ...cash.values }, ...(cash.playValues ? { playValues: structuredClone(cash.playValues) } : {}) } };
     const context = JSON.stringify(readContext()), summary = JSON.stringify(model.summary);
     const same = () => {
         const next = readModel();

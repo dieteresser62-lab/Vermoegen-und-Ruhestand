@@ -421,7 +421,7 @@ const deps = { document: { getElementById: () => null }, getBalancePlanTrial: ()
     stripBalancePlanInputs: input => input, persistenceStorage: { getItem: () => null }, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' },
     buildBalanceEngineInputFromStorage: () => {
         const householdPlan = deps.readBalanceHouseholdPlan();
-        return { inputData: { aktuellesAlter: blocked ? 0 : 67 }, persistentState: financial, householdPlan, scope: householdPlan.scope,
+        return { inputData: { aktuellesAlter: blocked ? 0 : 67, renteMonatlich: 12000.028 / 12 }, persistentState: financial, householdPlan, scope: householdPlan.scope,
             profiles: members, history: { persistentState: financial, profiles: members },
             baseStateFingerprint: pipeline.createBalanceFingerprint(householdPlan), sourceFingerprint: pipeline.createBalanceFingerprint(householdPlan) };
     }, prepareEngineLastState: () => ({}),
@@ -444,7 +444,7 @@ assertEqual(await preview.overviewPersistence, true, 'Main liefert den gesondert
 assertEqual(saved.length, 1, 'Erfolgreicher Einzelpreview schreibt genau einen Anzeigeeintrag');
 assertEqual(saved[0].summary.scope.key, overviewScope('single', ['a']).key, 'Einzelplan bindet die aktive Profilidentität');
 assertEqual(saved[0].summary.monthlyWithdrawal, 700, 'Summary verwendet die vorhandene Entnahme');
-assertEqual(saved[0].summary.monthlyBudget, 1700, 'Budget enthält feste Einkünfte getrennt von Entnahme');
+assertEqual(saved[0].summary.monthlyBudget, 700 + 12000.028 / 12, 'FR-14: Budget verwendet ungerundetes Einkommen statt gerundeter Feldanzeige');
 assertEqual(saved[0].summary.status, 'vorläufig', 'Erfolgreicher Preview allein ist kein fester Plan');
 assertEqual(fachwrites, 0, 'Preview ergänzt keine Fachpersistenz');
 assertEqual(JSON.stringify(financial), financialBytes, 'Preview erhält Inputs, Enginezustand und Jahresmetadaten bytegleich');

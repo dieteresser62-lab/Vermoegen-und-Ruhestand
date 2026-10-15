@@ -127,13 +127,13 @@ export function bindDataRestoration(doc, { refresh = async () => {}, ...options 
     let opener, opening = false, retentionBusy = false;
     const allowed = () => {
         const trial = getProbelaufController(doc);
-        if (trial?.state || trial?.blocked || trial?.busy) throw new Error('Zurückholen und Aufräumen sind im Probelauf gesperrt. Beende ihn zuerst über das Probelaufband.');
+        if (trial?.state || trial?.blocked || trial?.busy) throw new Error('Zurückholen und Aufräumen sind im Spielbereich gesperrt. Beende ihn zuerst über das Spielbereichsband.');
         if (controller.blocked) throw new Error('Bitte die Seite neu laden. Der angezeigte Stand ist veraltet.');
     };
     const report = error => {
         const message = /seit der Vorschau geändert|während der Sicherung geändert/.test(error.message)
             ? 'Der Stand hat sich geändert. Bitte öffne die Vorschau erneut.'
-            : /Probelauf/.test(error.message) ? 'Beende bitte zuerst den Probelauf.'
+            : /Spielbereich/.test(error.message) ? 'Beende bitte zuerst den Spielbereich.'
                 : controller.blocked ? 'Bitte lade die Seite neu, bevor du weiterarbeitest.'
                     : 'Die Aktion konnte nicht abgeschlossen werden. Weitere Hinweise findest du unter „Technische Details“.';
         reportDataRestoration(doc, { message, technical: error.message });

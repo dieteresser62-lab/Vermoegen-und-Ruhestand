@@ -1,3 +1,4 @@
+import { areaSessionStorage } from '../shared/persistence-area-storage.js';
 import { createClosePriceActions } from '../shared/close-price-actions.js';
 import { bindOverviewAnnualClose } from './overview-annual-close.js';
 import { consumeAnnualRetry } from '../shared/annual-coordinator.js';
@@ -14,6 +15,7 @@ import { loadProfileRegistry, getCurrentProfileId } from '../profile/profile-reg
 import { renderProfileRecovery } from '../profile/profile-recovery-ui.js';
 import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
 import { getProbelaufController } from '../shared/probelauf-state.js';
+import { resumeTimeLapse } from '../shared/probelauf-timelapse-ui.js';
 import { bindStartupPrices } from '../tranches/tranchen-startup-prices.js';
 import { projectOverviewWithAnnualArchive } from './overview-model.js';
 import { readLastFullBackup, storeMonthProvision } from './overview-storage.js';
@@ -28,10 +30,10 @@ export function initOverview(doc = document, win = window) {
     return initializedOverview.get(doc);
 }
 async function initializeOverview(doc, win) {
-    const annualRetry = consumeAnnualRetry(win.sessionStorage);
     bindOverviewBackupTargets(doc, win);
     const ready = await initializeProfilePage({ doc, win, kind: 'index' });
     if (!ready) return false;
+    const annualRetry = consumeAnnualRetry(areaSessionStorage(win.sessionStorage));
     showPersonDataStatus(readHouseholdPersonStatus({ win }), doc);
     if (win.__personMigrationDeferred) return true;
     renderOverviewPersistenceRecovery(doc, PersistenceFacade.getPersistenceStatus().migrationWarning);
@@ -45,6 +47,8 @@ async function initializeOverview(doc, win) {
     let model = null;
     let monthControls, historyControls, exampleControls, annualControls;
     const refresh = () => {
+        // Nach einem Bereichswechsel lädt die Seite gleich neu; bis dahin nichts mehr lesen.
+        if (PersistenceFacade.getPersistenceStatus().reloadRequired) return;
         const liveData = {};
         for (let index = 0; index < persistenceStorage.length; index++) {
             const key = persistenceStorage.key(index); liveData[key] = persistenceStorage.getItem(key);
@@ -72,10 +76,12 @@ async function initializeOverview(doc, win) {
     if (annualRetry) await annualControls.resume(annualRetry);
     doc.addEventListener('overview-backup-changed', refresh);
     const startup = bindStartupPrices({ doc, win, onReport: report => { priceReport = report; refresh(); } });
+    let historyTask;
     if (available && !win.__profileRecoveryBlocker) {
-        const historyTask = bindHistoryFetch({ doc, win, afterStartup: startup, firstPlanningYear: () => model.firstPlanningYear });
+        historyTask = bindHistoryFetch({ doc, win, afterStartup: startup, firstPlanningYear: () => model.firstPlanningYear });
         historyControls.watch(historyTask);
     }
+    void resumeTimeLapse(doc, { ready: () => Promise.all([startup, historyTask]), refresh });
     return true;
 }
 

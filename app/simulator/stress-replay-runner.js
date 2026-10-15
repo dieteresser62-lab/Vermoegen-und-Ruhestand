@@ -363,6 +363,7 @@ export function runStressReplayPathV1({
             capeRatio: record.capeRatio,
             marketCapeRatio: record.capeRatio,
             horizonYears: horizonResolution.horizonYears,
+            guardrailPlanHorizonYears: inputs.horizonYears,
             ...(horizonResolution.diagnostics?.longevityMode !== 'none'
                 ? { longevityHorizonDiagnostics: horizonResolution.diagnostics }
                 : {})

@@ -215,7 +215,8 @@ export function normalizeReconciliationAction(raw, expectedProfileId = null) {
     const sharesSold = normalizeNumber(raw.sharesSold, 'sharesSold', { greaterThan: 0 });
     const grossProceeds = normalizeNumber(raw.grossProceeds, 'grossProceeds', { greaterThan: 0 });
     const fees = normalizeNumber(raw.fees ?? 0, 'fees', { min: 0 });
-    if (fees > grossProceeds) {
+    const taxes = hasOwn(raw, 'taxes') ? normalizeNumber(raw.taxes, 'taxes', { min: 0 }) : 0;
+    if (fees + taxes > grossProceeds) {
         fail(
             'RECONCILIATION_FEES_EXCEED_PROCEEDS',
             'Gebühren dürfen den tatsächlichen Bruttoerlös nicht übersteigen.',
@@ -250,7 +251,9 @@ export function normalizeReconciliationAction(raw, expectedProfileId = null) {
         sharesSold,
         grossProceeds,
         fees,
-        netProceeds: grossProceeds - fees,
+        ...(hasOwn(raw, 'taxes') ? { taxes } : {}),
+        ...(raw.source === 'spielwert' ? { source: 'spielwert' } : {}),
+        netProceeds: grossProceeds - fees - taxes,
         recommendation: normalizeRecommendation(raw.recommendation),
         cashStatus,
         ...cashFields
@@ -320,7 +323,8 @@ function normalizeSaleHistoryRecord(record, { legacy }) {
     const grossProceeds = normalizeNumber(actual.grossProceeds, 'actual.grossProceeds', { greaterThan: 0 });
     const fees = normalizeNumber(actual.fees, 'actual.fees', { min: 0 });
     const netProceeds = normalizeNumber(actual.netProceeds, 'actual.netProceeds');
-    if (fees > grossProceeds || !sameEuroCent(netProceeds, grossProceeds - fees)) {
+    const taxes = hasOwn(actual, 'taxes') ? normalizeNumber(actual.taxes, 'actual.taxes', { min: 0 }) : 0;
+    if (fees + taxes > grossProceeds || !sameEuroCent(netProceeds, grossProceeds - fees - taxes)) {
         fail(
             'RECONCILIATION_HISTORY_INVALID',
             `Verkauf ${actionId} besitzt einen inkonsistenten Nettoerlös.`,
@@ -644,6 +648,9 @@ function comparableAction(action) {
             grossProceeds: action.grossProceeds ?? action.actual?.grossProceeds,
             fees: action.fees ?? action.actual?.fees
         },
+        ...(hasOwn(action, 'taxes') || hasOwn(action.actual, 'taxes')
+            ? { taxes: action.taxes ?? action.actual?.taxes } : {}),
+        ...(action.source === 'spielwert' ? { source: 'spielwert' } : {}),
         recommendation: action.recommendation || null
     };
 }
@@ -669,10 +676,12 @@ function createAuditRecord(action, before, after) {
         profileId: action.profileId,
         trancheId: action.trancheId,
         executedAt: action.executedAt,
+        ...(action.source === 'spielwert' ? { source: 'spielwert' } : {}),
         actual: {
             sharesSold: action.sharesSold,
             grossProceeds: action.grossProceeds,
             fees: action.fees,
+            ...(hasOwn(action, 'taxes') ? { taxes: action.taxes } : {}),
             netProceeds: action.netProceeds
         },
         cashStatus: action.cashStatus,
@@ -850,6 +859,9 @@ export async function commitTrancheReconciliation(request, options = {}) {
         clock: options.clock || (() => appNow().toISOString())
     };
     const profileId = normalizeRequiredId(request?.profileId, 'profileId');
+    if (request?.action?.source === 'spielwert' && PersistenceFacade.getPersistenceStatus().activeArea !== 'spiel') {
+        fail('RECONCILIATION_PLAY_AREA_REQUIRED', 'Spielwerte dürfen nur im Spielbereich gespeichert werden.');
+    }
     assertProfileContext(profileId, dependencies);
 
     const previousTranchesRaw = storage.getItem(PROFILE_TRANCHES_KEY);
@@ -1011,6 +1023,7 @@ export function previewCashPostingConfirmation(request) {
         confirmationActionId,
         targetActionId,
         profileId,
+        ...(sale.source === 'spielwert' ? { source: 'spielwert' } : {}),
         confirmedNetProceedsEur: sale.actual.netProceeds,
         cashBalanceAfterPostingEur: normalizeNumber(
             request?.cashBalanceAfterPostingEur,

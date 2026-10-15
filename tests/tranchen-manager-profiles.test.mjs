@@ -16,7 +16,8 @@ const lot = { schemaVersion: 2, trancheId: 'person-a-lot', name: 'Synthetischer 
 async function setup({ outside = false, extraData = {} } = {}) {
     const doc = createTranchenPageDom();
     addManagerDialogDom(doc);
-    for (const id of ['managerWealthHistory', 'managerWealthTitle', 'managerWealthChart', 'managerWealthContext', 'managerWealthMetrics', 'managerWealthTable', 'managerWealthHint', 'managerWealthLegend', 'managerWealthDailyNote', 'managerWealthStatus', 'managerCaptureWealthBtn']) doc.register(new MockElement(id));
+    for (const id of ['managerWealthHistory', 'managerWealthTitle', 'managerWealthChart', 'managerWealthContext', 'managerWealthMetrics', 'managerWealthTable', 'managerWealthHint', 'managerWealthPersonHint', 'managerWealthLegend', 'managerWealthDailyNote', 'managerWealthStatus', 'managerCaptureWealthBtn']) doc.register(new MockElement(id));
+    doc.getElementById('managerWealthPersonHint').innerHTML = '<a href="#verlauf" data-manager-view="history" data-manager-history-scope="household">Zur Haushaltsansicht →</a>';
     for (const id of ['managerProfileRecovery', 'suiteProfileContext']) doc.register(new MockElement(id));
     doc.getElementById('managerProfileRecovery').hidden = true;
     for (const id of ['managerBirthSupplement', 'managerBirthDate', 'managerBirthApply', 'managerBirthSuggestion', 'managerBirthError', 'profilePersonDateStatus', 'managerPensionStatus', 'managerPersonSummary', 'managerAssetsSummary', 'managerCareSummary', 'managerCardsToggleAll', ...['Person', 'Assets', 'Care'].flatMap(card => [`manager${card}Toggle`, `manager${card}Body`])]) doc.register(new MockElement(id));
@@ -121,7 +122,7 @@ try {
         assertEqual(resolveManagerTarget(globalThis.window.location).profileId, 'b', 'Verlaufsziel übernimmt aktives Profil statt Standardperson');
         await startTranchenManagerPage();
         assertEqual(getManagerView(doc).profileId, 'b', 'Frischer Verlaufseinstieg erhält übergebenes Profil B');
-        assert(doc.getElementById('managerWealthContext').textContent.includes('bei Béla'), 'Verlaufskarte erneuert den tatsächlichen Profilbezug');
+        assert(doc.getElementById('managerWealthContext').textContent.includes('Béla'), 'Verlaufskarte erneuert den tatsächlichen Profilbezug');
         assertEqual(doc.getElementById('managerCaptureWealthBtn').listeners.click.length, 1, 'Produktiver Seitenstart bindet den Captureknopf genau einmal');
         globalThis.window.location.hash = '';
         await startTranchenManagerPage();
@@ -215,6 +216,10 @@ try {
         assertEqual(getManagerView(doc).historyScope, 'household', 'Haushaltswahl zeigt die Haushaltslinie');
         assertEqual(doc.getElementById('managerWealthStatus').textContent, '', 'Ansichtswechsel leert die Statusmeldung');
         assertEqual(backend.get('rs_current_profile'), 'b', 'Haushaltswahl erhält das aktive Profil');
+        await chooseHistory(doc, 'b');
+        await chooseHistory(doc, null, 'managerWealthPersonHint');
+        assertEqual(getManagerView(doc).historyScope, 'household', 'Verweis im Personenhinweis öffnet die Haushaltsansicht');
+        assertEqual(backend.get('rs_current_profile'), 'b', 'Hinweislink erhält das aktive Profil');
         for (const id of ['a', 'b', null]) {
             await selectManagerView({ kind: 'plan', profileId: 'b' });
             await chooseHistory(doc, id, 'managerHousehold');

@@ -11,6 +11,7 @@ import { createNavigationGuard, createNavigationOperationLifecycle } from '../ap
 import { completedComparisonFixture } from './household-plan-comparison.test.mjs?fixture';
 import { projectOverview } from '../app/overview/overview-model.js';
 import { householdPlanComparisonHtml } from '../app/profile/household-plan-comparison.js';
+import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 
 
 const html = fs.readFileSync(new URL('../depot-tranchen-manager.html', import.meta.url), 'utf8');
@@ -313,6 +314,17 @@ for (const options of [{}, { adjusted: true }, { receipt: false }, { preview: 'm
     assert(host.innerHTML.includes('data-plan-record-status="missing"') && host.innerHTML.includes('data-preview-status="missing"'), 'Außenperson übernimmt weder Haushaltsbeleg noch Haushaltsvorschau');
     assertEqual(writes, 0, 'Lesender Vergleich startet keinen Write');
     assertEqual(JSON.stringify([...records]), before, 'Plan, Beleg und übrige Records bleiben bytegleich');
+    controller.dispose();
+}
+
+for (const date of ['2026-10-15', '2026-01-01', '2027-01-02']) {
+    const records = createMusterHaushaltRecords(date), before = JSON.stringify(records), doc = dom();
+    const storage = { getItem: key => records[key] ?? null, key: i => Object.keys(records)[i], length: Object.keys(records).length };
+    const controller = createManagerHouseholdPlan({ doc, storage, getProfileId: () => 'muster_a', now: () => new Date(`${date}T12:00:00`) });
+    const year = date.slice(0, 4), comparison = doc.getElementById('managerPlanComparison').innerHTML;
+    assert(comparison.includes(`Plan ${year} · festgeschrieben am 01.01.${year}`) && comparison.includes('Beispieldaten (Spielbereich)'), 'Personen & Vermögen zeigt den festen Musterplan samt Herkunft');
+    assert(doc.getElementById('managerPlanInflation').textContent.includes(String(Number(year) - 1)), 'Personen & Vermögen liest das passende Abschlussjahr aus dem Musterbeleg');
+    assertEqual(JSON.stringify(records), before, 'Mustervergleich im Manager bewahrt alle Records bytegleich');
     controller.dispose();
 }
 

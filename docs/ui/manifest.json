@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "imageCount": 40,
-  "totalBytes": 4389772,
-  "durationSeconds": 42.41,
+  "imageCount": 41,
+  "totalBytes": 4382982,
+  "durationSeconds": 53.52,
   "images": [
     {
       "path": "docs/ui/uebersicht.png",
@@ -22,14 +22,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 142756,
-      "sha256": "6fff0273310316ce15a696453e99ccfef347b78b8ac758a8e0de46403560dcdd",
+      "bytes": 142540,
+      "sha256": "1db5110849df2c3995cb39255242cbe8f2df2466b53b7c75bd24dcedc54ff08e",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "Übersicht",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -56,14 +56,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 137942,
-      "sha256": "12602e303fe6c564f51c2554832aea4bc21d27d96f56494e6fc7ed87764ef765",
+      "bytes": 140096,
+      "sha256": "bbb9e1707cf96791838de74da50253e084b7c690665dc27eb80a7cf5e31a10ab",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "depot-tranchen-manager.html",
         "state": "Haushalt & Plan",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -90,14 +90,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 120949,
-      "sha256": "20ddc5591bf63ddf31fb41ff53312de277c7a6f6ab53915553e85f75dd7ab4dc",
+      "bytes": 122990,
+      "sha256": "14917a1d5e9ddb6baa31b050d1a99027a3f87159eeb2a3ff6c333987d748a850",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "depot-tranchen-manager.html",
         "state": "Person max · Auf einen Blick · Person, Rente & Steuern geöffnet",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -124,14 +124,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 119522,
-      "sha256": "03dfbc1a4b5907117faa890ccef987370a613a7a010f1a37f0a52c629bdde441",
+      "bytes": 124013,
+      "sha256": "6b99cf9175efc054ea63ca9b386de18c260f7906eaf10049608ca894817309a5",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "depot-tranchen-manager.html",
         "state": "Person erika · Auf einen Blick · Person, Rente & Steuern geschlossen",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -158,14 +158,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 100756,
-      "sha256": "64d3caa229eb4ee696c4c79def69761d42da81149d081baf23becfc4df6374cd",
+      "bytes": 102686,
+      "sha256": "2e3c0dcbff9f792e7bbcef17d6975abd070353dbf25d64d62c0218ba4ff6f7e2",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "depot-tranchen-manager.html",
         "state": "Vermögensverlauf haushalt",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -192,14 +192,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 98051,
-      "sha256": "1ed8dec2b5e5c205ca643d1f6f939508038a25cdd74c331339bc209a9db1cce5",
+      "bytes": 100547,
+      "sha256": "2b6c7c47ccb91c78e42b500854eed61c9d8464bc4fe6854d2bfed345817375fd",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "depot-tranchen-manager.html",
         "state": "Vermögensverlauf max",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -226,14 +226,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 96787,
-      "sha256": "502c395c62be88620452a305612c75ff16dffaf17c3e297829eb7f89611d8afb",
+      "bytes": 100007,
+      "sha256": "ef19a4e2d24f9756c6177337f2c07bd6153b7869e12fa754db6853321d1f04ca",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "depot-tranchen-manager.html",
         "state": "Vermögensverlauf erika",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -260,14 +260,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 107553,
-      "sha256": "7fc270e97eae821cce1faf31aad36a32185c723351f3dffa8841af25ef2ac4e4",
+      "bytes": 115852,
+      "sha256": "db216573ebf0efbccc54dfcae149b2dfb2f39d4381484ccf39eb382871a151fc",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Ausgaben.html",
         "state": "Ausgaben 2026",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -294,14 +294,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 238007,
-      "sha256": "4a7c20dbb336333c7e943621af8f5b61b37464e41786d040549d62c934812830",
+      "bytes": 304229,
+      "sha256": "050a5434d094b8162ba2ce93fb8527451439ae691e9ad0676b26a8ae0c91a472",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Balance.html",
         "state": "Balance ueberblick",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -328,14 +328,14 @@
       },
       "width": 1596,
       "height": 946,
-      "bytes": 92849,
-      "sha256": "67da5497a12a4b04c85a2d9ddee82f101b84ed5bb67751432f5c2b1ceceb846e",
+      "bytes": 92271,
+      "sha256": "1c392a56516ff81b609fd22e687d08e2b2962fd2016c6b2703d662a7fdf318d2",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Balance.html",
         "state": "Balance bedarf-strategie · Alle Parameter geschlossen",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -362,14 +362,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 137990,
-      "sha256": "1cd82471f779cebf73a0d0fdce22b831e0890b53af0520a1a42dca3d86638f52",
+      "bytes": 140230,
+      "sha256": "2f6a598d29ee58c1168f9ba52a07a5d8a7bf166687e786cfa5341dcf8cc3f2e0",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Balance.html",
         "state": "Balance diagnose",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -396,14 +396,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 159521,
-      "sha256": "1e4b659af269e474e870f083337f4807c8f69e805807f9b77fd6b9759d08a2f3",
+      "bytes": 161234,
+      "sha256": "2cc1337ccbe8d61ee0a680e7415a7777ddbcd88e4386f35695f983e2a9504aea",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Simulator.html",
         "state": "Simulator ergebnis nach Backtest und Monte-Carlo",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -437,7 +437,7 @@
       "source": {
         "page": "Simulator.html",
         "state": "Simulator annahmen nach Backtest und Monte-Carlo · Alle Parameter, Personen- und Pflegedetails geschlossen",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -448,7 +448,7 @@
     },
     {
       "path": "docs/ui/simulator-backtest.png",
-      "caption": "Backtest zeigt Zeitraum links neben Kennzahlen und Einordnung im ⓘ.",
+      "caption": "Was im Lauf auffällt zeigt drei Backtest-Karten und Jahreslinks; Weitere bleibt geschlossen.",
       "household": "Max und Erika Mustermann",
       "date": "2026-10-20",
       "viewport": {
@@ -458,24 +458,24 @@
       "scale": 1,
       "crop": {
         "x": 216,
-        "y": 72,
+        "y": 0,
         "width": 1696,
-        "height": 1008
+        "height": 382
       },
       "width": 1696,
-      "height": 1008,
-      "bytes": 135153,
-      "sha256": "b17ec9ff5b4dd1e888a771c6b93a9b0613513f5cfa49108ab115d12b5a46970a",
+      "height": 382,
+      "bytes": 45030,
+      "sha256": "111c46743bcf77d80b6526f08ab1a13c5edf6c2e8f9d4d5161eded5074728550",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Simulator.html",
-        "state": "Simulator backtest nach Backtest und Monte-Carlo · Einordnung im ⓘ geöffnet",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "state": "Simulator backtest nach Backtest und Monte-Carlo · Was im Lauf auffällt · Weitere geschlossen",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
-          "y": 0,
+          "y": 728,
           "closeDialogContent": 0
         }
       }
@@ -505,7 +505,7 @@
       "source": {
         "page": "Simulator.html",
         "state": "Monte-Carlo · Einstellungen und Erweitert geöffnet · 10.000 Läufe · Seed 12345",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -532,14 +532,14 @@
       },
       "width": 1696,
       "height": 1080,
-      "bytes": 121245,
-      "sha256": "56fc5f91e867461165ec0bb09de6f83002bdc857a2cca1ecb738fc3ef2299cbd",
+      "bytes": 121433,
+      "sha256": "d55834badccd96d82f5d40de60337c21d413834ffc442b3754a197f62e8cc0a9",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Simulator.html",
         "state": "Monte-Carlo ueberblick · 10.000 Läufe · Seed 12345",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -566,14 +566,14 @@
       },
       "width": 1696,
       "height": 1080,
-      "bytes": 80355,
-      "sha256": "095a3497b1b809c7028da81a2e6ad7753276d39bf45c044b4ac8eb90ab666d47",
+      "bytes": 80770,
+      "sha256": "f78a99954a6add8aac35067f7aca4bca206e49b7b188c05193fa528857753649",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Simulator.html",
         "state": "Monte-Carlo risiko-verteilung · 10.000 Läufe · Seed 12345",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -600,14 +600,14 @@
       },
       "width": 1696,
       "height": 1080,
-      "bytes": 105561,
-      "sha256": "fcec38a5d33fbed2ef613996f69e74ac2f35853a386fa62499027c40fb6c0128",
+      "bytes": 105136,
+      "sha256": "db451c22e2e72fd4f35a41d6c23c8d3406096cbdb3fb0667c9b0b8e5b3c70bcf",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Simulator.html",
         "state": "Monte-Carlo pflege · 10.000 Läufe · Seed 12345",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -618,7 +618,7 @@
     },
     {
       "path": "docs/ui/monte-carlo-szenario-logs.png",
-      "caption": "Einzelne Pfade lassen sich in Szenario-Logs nachlesen.",
+      "caption": "Pfade vergleichen zeigt P10, Median und P90 mit Gesamtanteilen und Kennzahlen der Einzelpfade.",
       "household": "Max und Erika Mustermann",
       "date": "2026-10-20",
       "viewport": {
@@ -630,22 +630,22 @@
         "x": 216,
         "y": 0,
         "width": 1696,
-        "height": 1080
+        "height": 589
       },
       "width": 1696,
-      "height": 1080,
-      "bytes": 154533,
-      "sha256": "75bfcdbca305744a03d1d59ca6ee8c3e1e43f031171ee82260ef6a34276816ee",
+      "height": 589,
+      "bytes": 54322,
+      "sha256": "7526621def4e4fdc3d76e9936f072cbbae9e0464c01353878e99cf822a540ef4",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Simulator.html",
-        "state": "Monte-Carlo szenario-logs · 10.000 Läufe · Seed 12345",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "state": "Monte-Carlo szenario-logs · 10.000 Läufe · Seed 12345 · Pfade vergleichen · P10, Median, P90",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
-          "y": 1526,
+          "y": 776,
           "closeDialogContent": 0
         }
       }
@@ -668,14 +668,14 @@
       },
       "width": 1696,
       "height": 805,
-      "bytes": 77245,
-      "sha256": "7058d9f44ad08c4a961c7a8e3e680cf137616d20874211fc9eab862f790ee10a",
+      "bytes": 79404,
+      "sha256": "d8aba68890de7b57fe3ec8da506ace6c4352cbbc2730ac59fe03f1595cd32c7b",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Simulator.html",
         "state": "Werkstatt · Werkzeugauswahl",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -702,14 +702,14 @@
       },
       "width": 1696,
       "height": 1080,
-      "bytes": 77390,
-      "sha256": "31afacb1eadf16a773d1f2d71129c8d9848481ba324b26bd4b1dfdc1d5752211",
+      "bytes": 79803,
+      "sha256": "46fcbf1514e83f5b624d41c246e741505ff2b1603e8a649ebd7d10a63260c4cf",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Simulator.html",
         "state": "Werkstatt replay · Eingaben",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -743,7 +743,7 @@
       "source": {
         "page": "Simulator.html",
         "state": "Werkstatt sweep · Eingaben",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -777,7 +777,7 @@
       "source": {
         "page": "Simulator.html",
         "state": "Werkstatt auto-optimize · Eingaben",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -804,14 +804,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 178086,
-      "sha256": "21389ae8f170d8729a5927b6c491a56b50eae9b5c4c24111effad5d355fe3aae",
+      "bytes": 169423,
+      "sha256": "8f129245f64689b6b4e87c65cb0b891e9fc943f5f5f53e005c1af52ddd231463",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Daten-Sicherung.html",
         "state": "Daten & Sicherung",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -822,7 +822,7 @@
     },
     {
       "path": "docs/ui/probelauf-band.png",
-      "caption": "Das Band zeigt Datum und Rückkehr.",
+      "caption": "Das Band zeigt Testdatum und Kursmodus; Ein Jahr durchspielen steht links von Spielbereich beenden.",
       "household": "Max und Erika Mustermann",
       "date": "2026-10-20",
       "viewport": {
@@ -838,14 +838,48 @@
       },
       "width": 1696,
       "height": 80,
-      "bytes": 9515,
-      "sha256": "a6ad0248bb34c074e2ab2bb46ec191d64e633f4cb56df02a25285a53fef46a66",
+      "bytes": 11718,
+      "sha256": "a2c192f88803ed34ff7728ff5425eb1e0ff2d8934a6471095c8d5185810973c6",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "index.html",
-        "state": "Probelauf · Datum und Rückkehr",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "state": "Spielbereich · Testdatum, Kursmodus und Beenden",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/spielbereich-vergleich.png",
+      "caption": "Eine Kopie ohne Datumssprung zeigt beim Beenden den Vergleich Echt / Spielbereich.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-15",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 1240,
+        "y": 0,
+        "width": 680,
+        "height": 1080
+      },
+      "width": 680,
+      "height": 1080,
+      "bytes": 67115,
+      "sha256": "0f82d19ef5ce4b00edd679c4c345301fc6dc793e2ae4d63a55c83d3a54075cb2",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "Spielbereich beenden · frische Vorschau heute mit höherem Monatsbudget und Goldkauf",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -872,14 +906,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 139224,
-      "sha256": "eae739a9a105eaf632290547cf54f3c4632f3e9d07237bca735553adace9d385",
+      "bytes": 141685,
+      "sha256": "768446f9e07fc4f417e78291bf4b7c227e6341d3a5f9f88e12b015a87e682d07",
       "group": "masken",
       "seed": 12345,
       "source": {
         "page": "Handbuch.html",
         "state": "Handbuchstart mit Aufgaben, Kapitelnavigation und Suche",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -906,14 +940,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 246862,
-      "sha256": "732a83de5a45085b6d6a5d8d3ea6d7620174c99f7aa17fbd25edc5440406d936",
+      "bytes": 243845,
+      "sha256": "dfd512785ff6dbb50b5a30663452edcc06305a72a9deef8e170db9b4347f6048",
       "group": "monatsabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "monatsabschluss fällig",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -940,14 +974,14 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 64226,
-      "sha256": "6b17c1698e83522da082b61b4aec50c6c03be894f83d0d32f1e624a9714fd250",
+      "bytes": 64304,
+      "sha256": "5a60f0bdf96360024e6569bc76c00b1fdb817dd1b6e2fc5777e3e710a1a39ba6",
       "group": "monatsabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "monatsabschluss · prices",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -974,14 +1008,14 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 68686,
-      "sha256": "155133a51ac747221950c41b197d2864dde2358203ebc6cba5bf1f42db145adc",
+      "bytes": 70967,
+      "sha256": "286c524276922cf9f6e32d9b537bbdb5ccab9ab0d629debc2ac1b81bfc5bef51",
       "group": "monatsabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "monatsabschluss · expenses",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -1008,14 +1042,14 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 68687,
-      "sha256": "ed04d76740deb853f378eb7480fca9fb3814492ad985eebbe80279ee29b0d9d2",
+      "bytes": 70983,
+      "sha256": "865102147b0f40cf765e7aeb750ad10c3610806d8fe098628177ecd853aceb70",
       "group": "monatsabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "monatsabschluss · budget",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -1042,14 +1076,14 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 81244,
-      "sha256": "123905e624515fbfec744b2666153b6999bdfd61d08a42c8c32eb325a6ffdb9c",
+      "bytes": 95483,
+      "sha256": "d4050b58e19880b43679fc5ab0dc96e9cb2a22eb9d0fa3292ce6c90e08d5323d",
       "group": "monatsabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "monatsabschluss · cash",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -1076,14 +1110,14 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 40649,
-      "sha256": "d7534237d47ece59c29e7ddb96c8a58a0c11889adf0584fa7b58af114b87f1e3",
+      "bytes": 41285,
+      "sha256": "be80ef1bc1664560b5b9141b7f0a788657d4c7f3f27cc4cfc03698a40871c2cd",
       "group": "monatsabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "monatsabschluss · bestätigtes Ergebnis",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -1110,14 +1144,14 @@
       },
       "width": 1696,
       "height": 1008,
-      "bytes": 250596,
-      "sha256": "c2e944eaf09858c2f86485c92553316f91f1e2c481862126f51abe6405cfce6b",
+      "bytes": 251637,
+      "sha256": "9f1f8bb10fff916eded93a6cca63be324cfec7f425484aeb8925c64b3cab0ccd",
       "group": "jahresabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "jahresabschluss fällig",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -1144,14 +1178,14 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 76547,
-      "sha256": "4119a6b9ff758bb56a5a90a5522c67b2a1ee6beb68a38d071ad1437443b3080c",
+      "bytes": 76694,
+      "sha256": "0466ae6a0a0d1fbb1240fe2906296ccd6f1d0c71d31cfd638924a803d9870286",
       "group": "jahresabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "jahresabschluss · prices",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -1178,14 +1212,14 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 88901,
-      "sha256": "6c4765894a6f780613461d7cd09b38776a480c6b9d42ad26e516c6eafc6a0020",
+      "bytes": 90228,
+      "sha256": "1313b90716bc0513d09bbd340e826c4a169688820b213670b920e3bd8e31119d",
       "group": "jahresabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "jahresabschluss · expenses",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -1212,14 +1246,14 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 88898,
-      "sha256": "5aafd812e1b878c17c461c520edf7ae7bf099d5161607d28ac2af783e0f855c0",
+      "bytes": 90222,
+      "sha256": "562680caf9c9157f30f3325d6f5c7a605ccca67bce65588b010b4ae05bbd78c4",
       "group": "jahresabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "jahresabschluss · budget",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -1246,19 +1280,19 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 93573,
-      "sha256": "92034365eec8bb41c9c79038ce0aa8b44b983847c0431fcbd9925b23604e75b8",
+      "bytes": 98502,
+      "sha256": "2abf349696f403f7bcf141496752c10495f472df6fc0e0c93b1573c3c42bb10c",
       "group": "jahresabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "jahresabschluss · cash",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
           "y": 0,
-          "closeDialogContent": 0
+          "closeDialogContent": 116
         }
       }
     },
@@ -1280,19 +1314,19 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 93553,
-      "sha256": "129b1e7f2c7a92ba348f351bac1eb7007b4df6fd9afb3cf7e247c693b2b39544",
+      "bytes": 90367,
+      "sha256": "04c7ea819454e7c9547bfbeeacd82e9b85ede72a5ad277e12a216701dfa6330d",
       "group": "jahresabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "jahresabschluss · market",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
           "y": 0,
-          "closeDialogContent": 0
+          "closeDialogContent": 58
         }
       }
     },
@@ -1314,14 +1348,14 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 90570,
-      "sha256": "dbbe2a82cd1896b87eef710b3ceb459a2291e62bb30ab9347960284efea8922f",
+      "bytes": 90967,
+      "sha256": "19011c2fd8c6fc1d90c092924a0abbf15e0e6c24aa99fc0b1368f1bf1123ee0b",
       "group": "jahresabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "jahresabschluss · preview",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,
@@ -1348,14 +1382,14 @@
       },
       "width": 680,
       "height": 1080,
-      "bytes": 75895,
-      "sha256": "c9e14168bf91088e6c95f94392a03ac9bffdf4201e822d58e307f68c7c6e1459",
+      "bytes": 75069,
+      "sha256": "3f6d08d1e846b2df33965cf994267156364c9259c1004676d0cf37652cbbe687",
       "group": "jahresabschluss",
       "seed": 12345,
       "source": {
         "page": "index.html",
         "state": "jahresabschluss · bestätigtes Ergebnis",
-        "commit": "036f667e31c45007a5d24f797aea88581ac37f7a",
+        "commit": "36a1601a0bb4228872adeca2f4a3ac01c2a4013c",
         "treeStatus": "clean",
         "scroll": {
           "x": 0,

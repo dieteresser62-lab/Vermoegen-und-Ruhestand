@@ -1,3 +1,4 @@
+import { areaSessionStorage } from '../shared/persistence-area-storage.js';
 import { appNow } from '../shared/app-clock.js';
 import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
 import { createNavigationOperationLifecycle } from '../shared/navigation-guard.js';
@@ -86,7 +87,7 @@ export function bindDataPrices(doc, { win = doc.defaultView, storage = persisten
     const fetchButton = doc.getElementById('dataPriceFetch'), checkButton = doc.getElementById('dataPriceCheck');
     const reportOptions = () => {
         let startupReport = null;
-        try { startupReport = readStartupPriceReport(win?.sessionStorage); } catch { /* unbekannter Sitzungsbefund */ }
+        try { startupReport = readStartupPriceReport(areaSessionStorage(win?.sessionStorage)); } catch { /* unbekannter Sitzungsbefund */ }
         return { startupReport, serviceReport };
     };
     const cancel = () => { controller?.abort(); if (active?.phase !== 'commit') active?.controller.abort(); };

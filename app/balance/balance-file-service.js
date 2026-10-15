@@ -5,13 +5,13 @@ import { HOUSEHOLD_PLAN_KEY, readBalanceHouseholdPlan } from '../profile/househo
 import { prepareEngineLastState } from './balance-update-pipeline.js';
 
 /** Gemeinsamer Rechenpfad der Balance-Maske und des Dateidienstes. */
-export function evaluateBalanceFileInputs({ inputData, persistentState, profiles, profileId, profilverbundHandlers, engineApi, publish = true }) {
-    const lastState = prepareEngineLastState({ ...persistentState, inputs: { ...persistentState.inputs, ...persistentState.personInputEvidence } }, inputData);
+export function evaluateBalanceFileInputs({ inputData, persistentState, profiles, profileId, profilverbundHandlers, engineApi, publish = true, planInputs = inputData }) {
+    const lastState = prepareEngineLastState({ ...persistentState, inputs: { ...persistentState.inputs, ...persistentState.personInputEvidence } }, inputData, planInputs);
     const multi = profiles.length > 1 || profiles.length === 1 && profiles[0].profileId !== profileId;
     const source = profiles.find(entry => entry?.balanceState?.profilverbundHouseholdLastState)?.balanceState || persistentState;
     const householdLastState = multi ? profiles.length === 1
-        ? prepareEngineLastState(profiles[0].balanceState || {}, inputData)
-        : prepareEngineLastState({ inputs: source.profilverbundHouseholdInputs, lastState: source.profilverbundHouseholdLastState }, inputData) : null;
+        ? prepareEngineLastState(profiles[0].balanceState || {}, inputData, planInputs)
+        : prepareEngineLastState({ inputs: source.profilverbundHouseholdInputs, lastState: source.profilverbundHouseholdLastState }, inputData, planInputs) : null;
     const profilverbundRuns = multi ? profilverbundHandlers.runProfilverbundProfileSimulations(inputData, profiles, householdLastState) : null;
     if (publish && !profilverbundRuns && typeof window !== 'undefined') window.__profilverbundActionResults = null;
     const modelResult = profilverbundRuns?.householdResult || engineApi.simulateSingleYear({ ...inputData, finalizeThreeBucketAction: true }, lastState);

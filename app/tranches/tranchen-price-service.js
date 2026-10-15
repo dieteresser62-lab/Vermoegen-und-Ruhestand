@@ -340,7 +340,7 @@ export async function checkProxyHealth(statusEl, proxyBase = LOCAL_YAHOO_PROXY) 
     statusEl.textContent = `Proxy-Check laeuft... (${proxyBase.replace(/\/$/, '')})`;
     const report = await probeProxyHealth({ proxyBase });
     const stamp = new Date(report.attemptedAt).toLocaleString('de-DE');
-    statusEl.textContent = report.synthetic ? 'Probelauf: synthetische Kursquelle bereit; kein Netzwerkabruf.'
+    statusEl.textContent = report.synthetic ? 'Spielbereich: synthetische Kursquelle bereit; kein Netzwerkabruf.'
         : report.status === 'available' ? `Proxy OK (${stamp}) - Antwort in ${report.durationMs} ms, Treffer: ${report.count}.`
             : `Proxy FEHLER (${stamp}) nach ${report.durationMs} ms - ${report.error}`;
     return report;

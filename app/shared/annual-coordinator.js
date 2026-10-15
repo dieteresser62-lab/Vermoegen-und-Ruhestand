@@ -1,3 +1,4 @@
+import { areaSessionStorage } from './persistence-area-storage.js';
 import { deriveAnnualCloseEvidence, readAnnualCloseSnapshots } from './annual-close-evidence.js';
 import { appNow } from './app-clock.js';
 import { PersistenceFacade, persistenceStorage } from './persistence-facade.js';
@@ -121,8 +122,8 @@ function assertRetryShape(request, now) {
     createManualAnnualQuote(request.price, request.periodId);
 }
 
-/** Synchron konsumieren, bevor Seiteninitialisierung erstmals wartet. */
-export function consumeAnnualRetry(storage = globalThis.sessionStorage, now = Date.now()) {
+/** Synchron im bereits aufgelösten Speicherbereich konsumieren. */
+export function consumeAnnualRetry(storage = areaSessionStorage(), now = Date.now()) {
     try {
         const raw = storage?.getItem(ANNUAL_RETRY_SESSION_KEY);
         const proof = storage?.getItem(RETRY_PROOF_KEY);
@@ -205,7 +206,7 @@ export function createAnnualCoordinator({ storage = persistenceStorage, persiste
     createSnapshot = createAnnualSnapshot, snapshotId,
     commit = options => commitAnnualPlanUpdate({ ...options, storage, persistence, now }),
     projectAnnualState = () => {}, reportError = () => {}, clearError = () => {}, showPlanningStart = () => {},
-    sessionStore = () => globalThis.sessionStorage, reload = () => globalThis.location.reload(),
+    sessionStore = () => areaSessionStorage(), reload = () => globalThis.location.reload(),
     confirmRestore = async () => false,
     restoreSnapshot = async () => { throw new Error('Der geschützte Snapshotrestore ist nicht konfiguriert.'); }
 } = {}) {

@@ -62,7 +62,7 @@ function frameErrors(html, page) {
     if (!html.includes('href="#suiteMain"') || !html.includes('id="suiteMain" tabindex="-1"')) errors.push('Sprungziel');
     if (!html.includes('id="suiteProfileContext"') || !html.includes('aria-live="polite" hidden></span>')) errors.push('Profilanzeige');
     const header = html.match(/<header class="suite-header">([\s\S]*?)<\/header>/)?.[1] || '';
-    const start = header.match(/<button\b[^>]*id="probelaufStart"[^>]*>Probelauf …<\/button>/)?.[0];
+    const start = header.match(/<button\b[^>]*id="probelaufStart"[^>]*>Spielbereich starten …<\/button>/)?.[0];
     if (!start || !start.includes('disabled') || !start.includes('aria-describedby="probelaufStatus"')
         || (html.match(/id="probelaufStart"/g) || []).length !== 1
         || header.indexOf('id="probelaufStart"') < Math.max(header.indexOf('id="suiteProfileContext"'), header.indexOf('id="suiteHouseholdContext"'))) errors.push('Probelaufkopf');

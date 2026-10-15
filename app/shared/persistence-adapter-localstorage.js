@@ -1,5 +1,7 @@
 // @ts-check
 
+import { scopeWebStorage } from './persistence-area-storage.js';
+
 function resolveStorage(storageProvider) {
     try {
         return typeof storageProvider === 'function' ? storageProvider() : storageProvider;
@@ -8,8 +10,9 @@ function resolveStorage(storageProvider) {
     }
 }
 
-export function createLocalStorageAdapter(storageProvider = () => globalThis.localStorage) {
-    const getStorage = () => resolveStorage(storageProvider);
+export function createLocalStorageAdapter(storageProvider = () => globalThis.localStorage, options = {}) {
+    const getStorage = () => scopeWebStorage(resolveStorage(storageProvider), options.area);
+    const isPrivateMetadata = key => options.area === 'spiel' && key === 'metadata.playAreaReady';
 
     return {
         name: 'localStorage',
@@ -26,7 +29,7 @@ export function createLocalStorageAdapter(storageProvider = () => globalThis.loc
             }
             for (let i = 0; i < storage.length; i += 1) {
                 const key = storage.key(i);
-                if (!key) continue;
+                if (!key || isPrivateMetadata(key)) continue;
                 const value = storage.getItem(key);
                 if (value !== null && value !== undefined) records[key] = String(value);
             }
@@ -59,16 +62,17 @@ export function createLocalStorageAdapter(storageProvider = () => globalThis.loc
         async saveBatch({ upserts = [], deletes = [] } = {}) {
             const storage = getStorage();
             if (!storage) return;
+            if ([...deletes, ...upserts.map(([key]) => key)].some(isPrivateMetadata)) throw new Error('Spielbereich-Fertigmarker ist geschützt.');
             deletes.forEach(key => storage.removeItem(String(key)));
             upserts.forEach(([key, value]) => storage.setItem(String(key), String(value)));
         },
 
         async readMetadata(key) {
-            return this.getItemSync(`metadata.${key}`);
+            return getStorage()?.getItem(`metadata.${key}`) ?? null;
         },
 
         async writeMetadata(key, value) {
-            this.setItemSync(`metadata.${key}`, JSON.stringify(value));
+            getStorage()?.setItem(`metadata.${key}`, JSON.stringify(value));
         }
     };
 }

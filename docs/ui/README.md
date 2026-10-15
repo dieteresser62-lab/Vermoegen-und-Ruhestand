@@ -6,9 +6,11 @@ Die Bilder zeigen Max und Erika Mustermann mit synthetischen Daten. Öffne [Mona
 
 Führe im Repository `npm run docs:bilder` aus. Du brauchst die installierten npm-Abhängigkeiten und Playwright Chromium. Fehlt der Browser, installiere ihn einmal mit `npx playwright install chromium`.
 
-Das Werkzeug startet denselben lokalen Server wie `npm run serve`, ohne Kursproxy. Es nutzt einen freien Port und drei frische Browserkontexte für Ansichten, Monat und Jahr. Vorhandene Browserprofile werden nicht geöffnet. Kurse und Marktdaten stammen aus festen lokalen Stubs oder dem Probelauf; externe Abrufe werden blockiert.
+Das Werkzeug startet denselben lokalen Server wie `npm run serve`, ohne Kursproxy. Es nutzt einen freien Port und vier frische Browserkontexte für Ansichten, Monat, Jahr und Vergleich. Vorhandene Browserprofile werden nicht geöffnet. Kurse und Marktdaten stammen aus festen lokalen Stubs oder dem Spielbereich; externe Abrufe werden blockiert.
 
-Die Ansichten verwenden den 20.10.2026. Für Oktober springt der Probelauf vom 20.10. auf den 10.11.2026. Für den Jahresabschluss springt ein eigener Probelauf vom 15.12.2026 auf den 02.01.2027. Der Simulator rechnet einmal 10.000 Monte-Carlo-Läufe mit Seed 12345; die Werkstatt zeigt Eingaben.
+Im Startdialog wählt das Werkzeug „Max und Erika“ und den Kursmodus „Testdatum wählen“, trägt das Datum ein und bestätigt mit „Spielbereich starten“. Die Ansichten verwenden den 20.10.2026. Für Oktober springt der Spielbereich vom 20.10. auf den 10.11.2026. Für den Jahresabschluss springt ein eigener Spielbereich vom 15.12.2026 auf den 02.01.2027. Der Simulator rechnet einmal 10.000 Monte-Carlo-Läufe mit Seed 12345; die Werkstatt zeigt Eingaben. Die Backtestaufnahme zeigt „Was im Lauf auffällt“ mit drei Karten und geschlossenem „Weitere“. Die Aufnahme aus Szenario-Logs zeigt „Pfade vergleichen“ mit P10, Median und P90.
+
+Mit `npm run docs:bilder -- --spielbereich` erneuerst du Band und Vergleich und behältst die übrigen Aufnahmen. Das Band zeigt den Zeitraffer links von Spielbereich beenden. Bei Max und Erika prüft das Werkzeug danach die kurze Beenden-Bestätigung ohne Vergleich und Übernehmen. Für das Vergleichsbild legt es Max und Erika als erfundenen echten Bestand in einem frischen Browserkontext an, startet eine Kopie ohne Datumssprung und ändert Gold, Flex und Tagesgeld. Es öffnet keine Balance und wartet auf die frisch gerechnete Vorschau mit höherem Monatsbudget und Goldkauf.
 
 Haushalt & Plan, Balance und Simulator zeigen ihre zunächst geschlossenen Planbereiche. Bei Max wird Person, Rente & Steuern vor der Aufnahme geöffnet. Für die Monte-Carlo-Einstellungen öffnet Einstellungen anzeigen den Bereich Alle Parameter unter Annahmen; die Aufnahme zeigt gezielt die Monte-Carlo-Karte. Danach schließt das Werkzeug den Bereich und wechselt zum Rechnen zurück zu Monte Carlo.
 
@@ -31,18 +33,19 @@ Nach dem Lauf siehst du dir einige PNGs und beide Abläufe an. Prüfe den Zustan
 - [balance-diagnose.png](balance-diagnose.png): Diagnose erklärt die Empfehlung.
 - [simulator-ergebnis.png](simulator-ergebnis.png): Ergebnis zeigt Backtest und MC.
 - [simulator-annahmen.png](simulator-annahmen.png): Annahmen zeigt Bedarf, Personen und Pflege; Alle Parameter fasst dieselben Planwerte wie Haushalt & Plan zusammen.
-- [simulator-backtest.png](simulator-backtest.png): Backtest zeigt Zeitraum links neben Kennzahlen und Einordnung im ⓘ.
+- [simulator-backtest.png](simulator-backtest.png): Was im Lauf auffällt zeigt drei Backtest-Karten und Jahreslinks; Weitere bleibt geschlossen.
 - [monte-carlo-einstellungen.png](monte-carlo-einstellungen.png): Simulation, Zeitraum & Daten und Stresstest stehen in Einstellungen; Erweitert zeigt die technischen Optionen.
 - [monte-carlo-ueberblick.png](monte-carlo-ueberblick.png): Überblick zeigt den Musterlauf.
 - [monte-carlo-risiko-verteilung.png](monte-carlo-risiko-verteilung.png): Die Verteilung macht die Streuung sichtbar.
 - [monte-carlo-pflege.png](monte-carlo-pflege.png): Pflege zeigt das Modellrisiko.
-- [monte-carlo-szenario-logs.png](monte-carlo-szenario-logs.png): Einzelne Pfade lassen sich in Szenario-Logs nachlesen.
+- [monte-carlo-szenario-logs.png](monte-carlo-szenario-logs.png): Pfade vergleichen zeigt P10, Median und P90 mit Gesamtanteilen und Kennzahlen der Einzelpfade.
 - [werkstatt.png](werkstatt.png): Drei Werkzeuge stehen in der Werkstatt bereit.
 - [werkstatt-replay.png](werkstatt-replay.png): Replay zeigt die Pfadeingaben.
 - [werkstatt-sweep.png](werkstatt-sweep.png): Parameter-Sweep zeigt die Eingaben.
 - [werkstatt-auto-optimize.png](werkstatt-auto-optimize.png): Auto-Optimize zeigt die Sucheingaben.
 - [daten-sicherung.png](daten-sicherung.png): Der Datenstatus steht in Daten & Sicherung.
-- [probelauf-band.png](probelauf-band.png): Das Band zeigt Datum und Rückkehr.
+- [probelauf-band.png](probelauf-band.png): Das Band zeigt Testdatum und Kursmodus; Ein Jahr durchspielen steht links von Spielbereich beenden.
+- [spielbereich-vergleich.png](spielbereich-vergleich.png): Eine Kopie ohne Datumssprung zeigt beim Beenden den Vergleich Echt / Spielbereich.
 - [handbuch-start.png](handbuch-start.png): Die Startseite zeigt die Aufgaben im aktuellen Handbuch.
 
 ## Monat abschließen

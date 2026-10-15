@@ -1,3 +1,4 @@
+import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import { bindOverviewExampleExpenses } from '../app/overview/overview-example-expenses.js';
 import { getPageNavigationGuard } from '../app/shared/navigation-guard-dialog.js';
 import { PersistenceFacade as P, persistenceStorage as storage } from '../app/shared/persistence-facade.js';
@@ -20,28 +21,29 @@ const assert = {
 };
 
 const oldDate = getAppTestDate();
-const records = {}, points = new Map(); let writes = 0;
-const adapter = { name: 'example-expenses-memory', async loadAll() { return { ...records }; },
-    async saveBatch({ deletes, upserts }) { writes++; deletes.forEach(key => delete records[key]); upserts.forEach(([key, value]) => records[key] = value); },
-    async listSnapshots() { return [...points.values()].map(({ records, ...point }) => point); },
-    async readSnapshot(id) { return structuredClone(points.get(id)); }, async writeSnapshot(point) { points.set(point.id, structuredClone(point)); }, async deleteSnapshot(id) { points.delete(id); } };
-const controller = () => createProbelaufController({ win: { location: { href: 'http://localhost/index.html?probelauf=1' } }, session: null, reload() {}, restoreReload() {} });
+const f = await playFixture('tauri');
+const records = new Proxy({}, { get: (_, key) => f.values[key], set: (_, key, value) => { f.values[key] = value; return true; }, ownKeys: () => Reflect.ownKeys(f.values), getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }) });
+let writes = 0;
+const invoke = f.options.invoke;
+f.options.invoke = async (...args) => { if (args[0] === 'save_app_state') writes++; return invoke(...args); };
+const boot = async () => { P.resetPersistenceRuntimeForTests(); await P.init(f.options); };
+const controller = () => createProbelaufController({ win: f.win, reload() {}, restoreReload() {} });
 const deferred = () => { let resolve; const promise = new Promise(done => resolve = done); return { resolve, promise }; };
 const sum = csv => Object.values(parseCategoryCsv(csv)).reduce((a, b) => a + Math.abs(b), 0);
 const key = 'balance_expenses_v1';
 try {
-    P.resetPersistenceForTests(adapter); await P.init({ installLifecycleHooks: false });
+    await boot();
     let c = controller(); await c.initialize();
     const input = { controller: c, ids: ['muster_a', 'muster_b'], profileId: 'muster_a', year: 2026, month: 10, basis: 5000 };
     assert.equal(canGenerateExampleExpenses(c), false, 'URL allein erlaubt keine Beispiele');
-    assert.throws(() => generateExampleExpensesCsv(input), /Probelauf/);
-    assert.throws(() => generateExampleExpensesCsv({ ...input, controller: true }), /Probelauf/);
+    assert.throws(() => generateExampleExpensesCsv(input), /Spielbereich/);
+    assert.throws(() => generateExampleExpensesCsv({ ...input, controller: true }), /Spielbereich/);
     const baselineWrites = writes;
-    await assert.rejects(importExpenses({ targets: [{ ...input, source: EXAMPLE_SOURCE, text: async () => 'Kategorie;Betrag\nTest;1,00' }], controller: c, confirm: async () => true }), /Probelauf/);
+    await assert.rejects(importExpenses({ targets: [{ ...input, source: EXAMPLE_SOURCE, text: async () => 'Kategorie;Betrag\nTest;1,00' }], controller: c, confirm: async () => true }), /Spielbereich/);
     assert.equal(writes, baselineWrites, 'Verweigerung ist schreibfrei');
     await c.start(async () => ({ source: 'demo', testDate: '2026-11-02' }));
-    assert.throws(() => generateExampleExpensesCsv(input), /Probelauf/, 'Alter Koordinator ist nach Start gesperrt');
-    P.resetPersistenceForTests(adapter); await P.init({ installLifecycleHooks: false }); c = controller(); await c.initialize(); input.controller = c;
+    assert.throws(() => generateExampleExpensesCsv(input), /Spielbereich/, 'Alter Koordinator ist nach Start gesperrt');
+    await boot(); c = controller(); await c.initialize(); input.controller = c;
     assert.equal(canGenerateExampleExpenses(c), true);
     const csv = generateExampleExpensesCsv(input);
     assert.equal(csv, generateExampleExpensesCsv({ ...input, ids: ['muster_b', 'muster_a'] }), 'Reihenfolge verändert CSV nicht');

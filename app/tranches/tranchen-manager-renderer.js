@@ -1,3 +1,4 @@
+import { areaSessionStorage } from '../shared/persistence-area-storage.js';
 import { appNow } from '../shared/app-clock.js';
 import { householdPlanComparisonHtml } from '../profile/household-plan-comparison.js';
 import { bindInfoPopovers, createInfoPopover } from '../shared/designsystem-info-popover.js';
@@ -245,7 +246,7 @@ export function renderManagerQuoteContext(doc, tranchen) {
     const uniform = tranchen.length > 0 && tranchen.every(t => quoteDate(t) && t.asOf === tranchen[0].asOf);
     let automatic = false;
     try {
-        const session = doc.defaultView?.sessionStorage || globalThis.window?.sessionStorage;
+        const session = areaSessionStorage(doc.defaultView?.sessionStorage || globalThis.window?.sessionStorage);
         const report = JSON.parse(session?.getItem(STARTUP_PRICE_SESSION_KEY) || 'null');
         const profileId = doc.getElementById('suiteProfileContext')?.dataset?.profileId;
         automatic = uniform && !stale && report?.status === 'complete' && report.updated > 0
@@ -454,7 +455,7 @@ export function buildReconciliationCashStatusesHtml(statuses = [], { errorMessag
         return `
             <article data-cash-status="${escapeHtml(status.cashStatus)}" class="ds-note ${status.isPending ? 'ds-note-warning' : ''}" style="margin-top: var(--space-2);">
                 <div><strong>${label}</strong></div>
-                <div><strong>Verkauf vom ${escapeHtml(status.executedAt || 'unbekannt')}:</strong> ${escapeHtml(status.trancheId || 'Tranche unbekannt')}</div>
+                <div><strong>Verkauf vom ${escapeHtml(status.executedAt || 'unbekannt')}${status.saleRecord?.source === 'spielwert' ? ' · Spielwert' : ''}:</strong> ${escapeHtml(status.trancheId || 'Tranche unbekannt')}</div>
                 <div><strong>Zielverkauf:</strong> ${targetActionId}</div>
                 <div><strong>Nettoerlös:</strong> ${net}\u00a0€ · <strong>bestätigter Cashstand:</strong> ${cashBalance}</div>
                 <details class="pv-cash-evidence"><summary><span class="pv-disclosure-action"><span>▸ Exakte Beträge zeigen</span><span>▾ Exakte Beträge ausblenden</span></span></summary><p>Nettoerlös: ${formatDisplayNumber(status.confirmedNetProceedsEur, { fractionDigits: 2 })} € · bestätigter Cashstand: ${status.cashBalanceAfterPostingEur === null ? '-' : `${formatDisplayNumber(status.cashBalanceAfterPostingEur, { fractionDigits: 2 })} €`}</p></details>
@@ -517,7 +518,7 @@ export function renderManagerPersonData(doc, profile) {
     } else text('profilePersonDateStatus', dates?.hint || 'Geburtsdatum einmal ergänzen');
     text('managerRenteHelp', '');
     const tax = doc.querySelector?.('[data-person-field="profileRenteSteuerquotePct"]');
-    if (tax) tax.hidden = profile.householdRole !== 'Partnerprofil';
+    if (tax) tax.hidden = true; // FR-11: Altwert bleibt erhalten, ist aber keine Eingabe mehr.
     const confirmGender = doc.getElementById('profileGenderConfirm');
     if (confirmGender) confirmGender.hidden = !v.genderAssumed;
     text('managerPensionStatus', profile.currentIncome?.pensionStatus || '');

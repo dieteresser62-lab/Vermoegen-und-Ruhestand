@@ -421,7 +421,7 @@ export function renderWealthHistorySvg(history, { title = 'Vermögensverlauf', d
         const point = points.find(point => point.day === event.day);
         if (!Number.isFinite(point?.total)) continue;
         const xx = n(px(event.day)), yy = n(y(point.total)), buy = event.kind === 'buy';
-        const label = `${buy ? 'Kauf' : 'Verkauf'} ${event.name || event.symbol || ''} · ${event.shares.toLocaleString('de-DE')} Stück · ${dateLabel(event.day)}`;
+        const label = `${buy ? 'Kauf' : 'Verkauf'} ${event.name || event.symbol || ''} · ${event.shares.toLocaleString('de-DE')} Stück · ${dateLabel(event.day)}${event.source === 'spielwert' ? ' · Spielwert' : ''}`;
         marks += `<g class="history-event history-${buy ? 'buy' : 'sell'}"><title>${escapeHtml(label)}</title><circle cx="${xx}" cy="${yy}" r="4"/>`;
         if (xx - lastLabel > 180) {
             const anchor = xx > right - 150 ? 'end' : 'start';
@@ -485,7 +485,7 @@ export function renderHistoryCourseSvg(course, { title = 'Kursverlauf', sales = 
         const point = pointsByDay.get(sale.day);
         if (!Number.isFinite(point?.value)) return '';
         const xx = px(sale.day), anchor = xx > (left + right) / 2 ? 'end' : 'start';
-        return `<g class="history-sell history-event"><title>Verkauf ${escapeHtml(String(sale.shares))} Stück · ${escapeHtml(dateLabel(sale.day))}</title><circle cx="${xx}" cy="${y(point.value)}" r="5"/><text x="${xx}" y="${30 + i % 2 * 18}" text-anchor="${anchor}">▼ ${escapeHtml(sale.shares.toLocaleString('de-DE'))} Stück</text></g>`;
+        return `<g class="history-sell history-event"><title>Verkauf ${escapeHtml(String(sale.shares))} Stück · ${escapeHtml(dateLabel(sale.day))}${sale.source === 'spielwert' ? ' · Spielwert' : ''}</title><circle cx="${xx}" cy="${y(point.value)}" r="5"/><text x="${xx}" y="${30 + i % 2 * 18}" text-anchor="${anchor}">▼ ${escapeHtml(sale.shares.toLocaleString('de-DE'))} Stück</text></g>`;
     }).join('');
     const gaps = course.points.filter(p => p.gap).map(p => `<rect class="history-gap" x="${x(p.day)}" y="${top}" width="${n((right - left) / span)}" height="${bottom - top}" fill="url(#${id}-hatch)"/>`).join('');
     const axes = Number.isFinite(courseMin) ? `<text class="history-axis" x="${left - 12}" y="${y(courseMax) + 4}" text-anchor="end">${escapeHtml(price(courseMax))} €</text>${courseMin !== courseMax ? `<text class="history-axis" x="${left - 12}" y="${y(courseMin) + 4}" text-anchor="end">${escapeHtml(price(courseMin))} €</text>` : ''}` : '';

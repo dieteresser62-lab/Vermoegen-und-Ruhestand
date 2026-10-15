@@ -66,7 +66,10 @@ export function buildCurrentYearMarketData({ yearData, inputs, marketDataHist, r
             endeVJ_3: marketDataHist.endeVJ_2,
             endeVJ_2: marketDataHist.endeVJ_1,
             endeVJ_1: marketDataHist.endeVJ,
-            endeVJ: marketEnd
+            endeVJ: marketEnd,
+            ath: Math.max(marketDataHist.ath ?? marketDataHist.endeVJ, marketEnd),
+            jahreSeitAth: marketEnd >= (marketDataHist.ath ?? marketDataHist.endeVJ)
+                ? 0 : (marketDataHist.jahreSeitAth ?? 0) + 1
         }
     };
 }

@@ -2,6 +2,8 @@ import { cloneWorkshopInputsForDisplay } from './simulator-overview-summary.js';
 import { freezePersonDataContext, personDataContextFor } from './simulator-person-overrides.js';
 import { renderPersonDataNotice } from './protocol-renderer.js';
 import { bindScenarioLogView, disposeScenarioLogView } from './scenario-log-view.js';
+import { buildComparisonContext } from './scenario-comparison.js';
+import { renderScenarioAnalysis } from './scenario-log-analysis.js';
 import { buildWealthDistribution, renderWealthDistribution } from './wealth-distribution.js';
 import { formatChartEuro } from './results-formatting.js';
 import { renderWealthFanChart } from './wealth-fan-chart.js';
@@ -153,6 +155,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
     // Invalidate the previous UI selection only when this renderer owns the
     // scenario surface. Hostless callers may already have published their state.
     if (scenarioContainer) {
+        renderScenarioAnalysis(document, null);
         projectStressReplayScenario(null);
         selectStressReplayScenario(null);
         window.globalCurrentScenarioData = null;
@@ -200,6 +203,8 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
         let currentId = '', currentScenario = null;
         const output = document.getElementById('scenarioLogOutput');
         const exportButtons = document.getElementById('scenarioExportButtons');
+        const analysisOptions = { inputs, initialWealth: portfolioTotal(initializePortfolio(inputs || {})),
+            startYear: displayContext.startYear, personDisplayContext };
 
         // Funktion zum Rendern des ausgewählten Szenarios
         const renderSelectedScenario = (val = currentId, scenario = currentScenario) => {
@@ -207,6 +212,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
             // Invalidate the previous selection before any rendering work. A
             // render failure must never leave an older path exportable.
             window.globalCurrentScenarioData = null;
+            renderScenarioAnalysis(document, null);
             exportButtons.style.display = 'none';
             output.style.display = 'none';
             output.innerHTML = '';
@@ -245,6 +251,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                         caR_Threshold: caR
                     };
                     exportButtons.style.display = 'flex';
+                    renderScenarioAnalysis(document, scenario, analysisOptions);
                 } else {
                     projectStressReplayScenario(null);
                     selectStressReplayScenario(null);
@@ -253,6 +260,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                 }
             } catch (error) {
                 window.globalCurrentScenarioData = null;
+                renderScenarioAnalysis(document, null);
                 exportButtons.style.display = 'none';
                 projectStressReplayScenario(null);
                 selectStressReplayScenario(null);
@@ -341,6 +349,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
 
         bindScenarioLogView({
             document, logs: scenarioLogs,
+            comparisonContext: buildComparisonContext({ results, totalRuns: anzahl, failCount, inputs }),
             chartOptions: { initialWealth: portfolioTotal(initializePortfolio(inputs || {})), startYear: displayContext.startYear, startAge: inputs?.startAlter, realByRun: results?.wealthView?.realByRun, wealthFan: results?.wealthFan, personDisplayContext },
             onSelect: renderSelectedScenario,
             onMode: renderDistribution

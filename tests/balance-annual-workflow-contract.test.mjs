@@ -400,7 +400,7 @@ try {
             assert(await validateAnnualRetry(request, { dom: env.dom, getReferenceDate: () => new Date('2027-01-02') }), 'Wiederhergestellte Quellen passen zum Fortsetzungsauftrag');
             fail = false;
             assertEqual((await env.handlers.handleJahresabschluss({ resume: request })).status, 'already_committed', 'Handkurs-Wiederaufnahme bestätigt den Jahresabschluss');
-            assertEqual(env.dom.inputs.floorBedarf.value, '30642', 'Bedarf wird nach Restore genau einmal inflationiert');
+            assertEqual(env.dom.inputs.floorBedarf.value, String(30000 * 1.0214), 'Bedarf wird nach Restore genau einmal inflationiert');
             assertEqual(env.dom.inputs.endeVJ_1.value, '143', 'Nachrückkette wird nach Restore genau einmal gedreht');
             assertEqual(StorageManager.loadState().annualMarketDataMeta.source, 'Manueller Schlusskurs', 'Marktherkunft weist den Handkurs aus');
             assertEqual((await SnapshotArchive.listSnapshots()).length, 1, 'Wiederaufnahme verwendet denselben Vorabschluss-Snapshot');
