@@ -9,13 +9,14 @@ import { PROBELAUF_STATE_KEY, STRESS_REPLAY_ACTIVE_STORAGE_KEY, isProbelaufRecor
 import { resolveProbelaufRuntime } from './probelauf-runtime.js';
 import { probelaufDomainChecksum, projectProbelaufDomain } from './probelauf-records.js';
 import { calculateProbelaufEndReview, probelaufMonteCarloRuns, probelaufEndNeedsComparison } from './probelauf-comparison.js';
+import { musterHaushalt } from '../demo/muster-haushalte.js';
 
 export { PROBELAUF_STATE_KEY };
 export const PROBELAUF_SESSION_KEYS = ['rs_startup_prices_session_v1', 'rs_history_fetch_session_v1', 'balance.annual-retry.once'];
 // Die Jahresrechnung des Musters lädt die Engine erst bei bestätigter Musterwahl.
-const loadMusterHaushaltRecords = async testDate => {
+const loadMusterHaushaltRecords = async (testDate, householdId) => {
     const { createMusterHaushaltRecords } = await import('../demo/muster-haushalt.js');
-    return createMusterHaushaltRecords(testDate);
+    return createMusterHaushaltRecords(testDate, householdId);
 };
 const RELOAD_MESSAGE = 'Spielbereich-Zustand geändert. Bitte neu laden; Eingaben werden bis dahin nicht gespeichert.';
 const sameRecords = (a, b) => {
@@ -38,6 +39,8 @@ export function validateProbelaufState(raw) {
         || state.hasDateJump === true && state.testDate === null || state.hasDateJump === false && state.testDate !== null)) {
         throw new Error('Beschädigter Kursmodus im Spielbereich. Bitte den Spielbereich beenden.');
     }
+    // Fehlend bedeutet Max und Erika. Alte Rohbytes bleiben für Readback und Rückweg erhalten.
+    if (state.householdId !== undefined) musterHaushalt(state.householdId);
     return state;
 }
 
@@ -181,13 +184,16 @@ export function createProbelaufController({ persistence = PersistenceFacade, arc
                 const today = localCalendarDate(appNow());
                 const testDate = selection.testDate == null || selection.testDate === today ? null : selection.testDate;
                 if (testDate !== null) parseCalendarDate(testDate);
-                if (!['copy', 'demo'].includes(selection.source) || selection.source === 'demo' && !demoLoader) throw new Error('Max und Erika sind noch nicht verfügbar.');
+                if (!['copy', 'demo'].includes(selection.source)) throw new Error('Unbekannte Datenquelle im Spielbereich.');
+                const household = selection.source === 'demo' ? musterHaushalt(selection.householdId) : null;
+                if (household && !demoLoader) throw new Error(`Beispielhaushalt ${household.name} ist noch nicht verfügbar.`);
                 if (selection.source === 'demo') validateMusterTestDate(testDate || today);
                 await assertCurrent();
                 const realRecords = await persistence.readRealRecords();
-                let records = selection.source === 'demo' ? await demoLoader(testDate || today)
+                let records = selection.source === 'demo' ? await demoLoader(testDate || today, household.id)
                     : realRecords;
                 const next = { version: 2, active: true, phase: 'active', source: selection.source,
+                    ...(household ? { householdId: household.id } : {}),
                     testDate, hasDateJump: testDate !== null, runtime: runtime.kind,
                     startedAt: new Date(clock()).toISOString(), realDomainChecksum: probelaufDomainChecksum(realRecords),
                     initialMonteCarloRuns: probelaufMonteCarloRuns(records), initialDomain: projectProbelaufDomain(records) };

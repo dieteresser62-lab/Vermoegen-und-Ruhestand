@@ -1,4 +1,4 @@
-import { HOUSEHOLD_PLAN_KEY, PLAN_FIELDS, assertHouseholdPlanRecord, projectPlanToBalance, planScope, SIMULATOR_LEGACY_PLAN_FIELDS } from '../profile/household-plan.js';
+import { HOUSEHOLD_PLAN_KEY, PLAN_FIELDS, assertHouseholdPlanRecord, projectPlanToBalance, memberPlanScope, SIMULATOR_LEGACY_PLAN_FIELDS } from '../profile/household-plan.js';
 import { readHouseholdSimulatorNeedsState } from '../simulator/simulator-household-needs-persistence.js';
 import { canonicalizeHistoricalContractValue as canonical, sha256Hex } from '../simulator/historical-backtest-contract.js';
 import { CONFIG } from '../balance/balance-config.js';
@@ -122,10 +122,9 @@ export function sourceFingerprint({ registry, activeId, liveData = {}, scope, ki
     try {
         if (!validScope(scope) || !registry?.profiles?.[activeId]) return null;
         const planRecord = liveData[HOUSEHOLD_PLAN_KEY] == null ? null : assertHouseholdPlanRecord(liveData[HOUSEHOLD_PLAN_KEY]);
-        // Die bestehende Anzeige nennt einen Ein-Personen-Haushalt weiterhin single.
-        // Sein aktueller Plan gehört dennoch zum bestätigten Haushaltsbereich.
+        // Einpersonenpläne können aus älteren Haushaltsbereichen stammen.
         const membersScope = scope.kind === 'single' && registry.profiles[scope.ids[0]]?.meta.belongsToHousehold !== false
-            ? planScope('household', Object.keys(registry.profiles).filter(id => registry.profiles[id].meta.belongsToHousehold !== false))
+            ? memberPlanScope(Object.keys(registry.profiles).filter(id => registry.profiles[id].meta.belongsToHousehold !== false), { getItem: key => liveData[key] ?? null })
             : scope;
         const plan = planRecord?.entries[membersScope.key]?.values;
         const members = scope.ids.map(id => {

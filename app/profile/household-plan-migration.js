@@ -7,7 +7,7 @@ import { createNavigationOperationLifecycle } from '../shared/navigation-guard.j
 import { resolveLiquidityRunwayYears } from '../../types/liquidity-runway-contract.js';
 import { readHouseholdSimulatorNeedsState } from '../simulator/simulator-household-needs-persistence.js';
 import { HOUSEHOLD_PLAN_KEY, PLAN_DEFAULTS, PLAN_FIELD_PATHS, assertPlanValues, assertHouseholdPlanRecord,
-    buildPlanRecord, canonicalPlan, planScope, plain } from './household-plan.js';
+    buildPlanRecord, canonicalPlan, planScope, memberPlanScope, plain } from './household-plan.js';
 
 const own = (value, key) => Object.hasOwn(value || {}, key);
 export function getPlanField(values, path) { return path.split('.').reduce((value, key) => value?.[key], values); }
@@ -108,7 +108,7 @@ export function analyzeHouseholdPlanMigration(records) {
     const activeId = records.rs_active_profile || records.rs_current_profile;
     const ids = Object.keys(registry.profiles);
     const members = ids.filter(id => registry.profiles[id].meta.belongsToHousehold !== false);
-    const scopes = [...(members.length ? [planScope('household', members)] : []), ...ids.filter(id => !members.includes(id)).map(id => planScope('single', [id]))];
+    const scopes = [...(members.length ? [memberPlanScope(members, { getItem: key => records[key] ?? null })] : []), ...ids.filter(id => !members.includes(id)).map(id => planScope('single', [id]))];
     const existing = records[HOUSEHOLD_PLAN_KEY] == null ? { version: 1, entries: {} } : assertHouseholdPlanRecord(records[HOUSEHOLD_PLAN_KEY]);
     const override = readHouseholdSimulatorNeedsState({ getItem: key => records[key] ?? null });
     const analyses = [];

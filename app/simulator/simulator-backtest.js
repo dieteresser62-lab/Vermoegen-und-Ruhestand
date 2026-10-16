@@ -384,7 +384,7 @@ function executeBacktest(options = {}) {
     } catch (error) {
         window.globalBacktestData = null;
         clearBacktestResultProjection();
-        const isInputValidation = error?.name === 'SimulatorValidationError';
+        const isInputValidation = error?.name === 'SimulatorValidationError' || error?.name === 'ValidationError';
         failOverviewRun('backtest', isInputValidation ? 'invalid' : 'technical_error', error);
         renderHistoricalBacktestStatus(document, createBacktestUiStatus(
             isInputValidation ? 'validation_error' : 'technical_error',

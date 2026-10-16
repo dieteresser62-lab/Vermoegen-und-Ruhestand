@@ -22,6 +22,13 @@ export const PLAN_FIELD_PATHS = Object.freeze(PLAN_FIELDS.flatMap(key =>
 export const BALANCE_PLAN_INPUT_KEYS = Object.freeze([...PLAN_FIELDS, 'capeRatio', 'marketCapeRatio',
     'entnahmeStrategie', 'bondTargetFactor', 'drawdownTrigger', 'bondRefillThreshold']);
 
+/** Explizite Einzelpläne lesen; vorhandene Einpersonen-Haushaltspläne behalten ihren Bereich. */
+export function memberPlanScope(ids, storage, belongsToHousehold = true) {
+    const single = ids.length === 1 ? planScope('single', ids) : null;
+    return single && readHouseholdPlan({ scope: single, storage }).status === 'valid'
+        ? single : planScope(belongsToHousehold ? 'household' : 'single', ids);
+}
+
 /** Gemeinsame Bereichsauswahl; der Aufrufer entscheidet über ungültige Pläne. */
 function readSelectedHouseholdPlan({ storage = persistenceStorage, profileId = null } = {}) {
     const loaded = loadProfileRegistry(storage);
@@ -31,7 +38,7 @@ function readSelectedHouseholdPlan({ storage = persistenceStorage, profileId = n
     const current = profileId || storage.getItem('rs_current_profile');
     const scope = profileId && profiles[profileId]?.meta?.belongsToHousehold === false
         ? planScope('single', [profileId])
-        : members.length ? planScope('household', members) : current ? planScope('single', [current]) : null;
+        : members.length ? memberPlanScope(members, storage) : current ? planScope('single', [current]) : null;
     const plan = readHouseholdPlan({ scope, storage });
     return { ...plan, scope };
 }

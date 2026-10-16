@@ -132,7 +132,48 @@ export const SIMULATOR_CONTRACT_ERROR_MESSAGES_DE = Object.freeze({
     SIMULATOR_REGIME_POOL_EMPTY: 'Regime-Sampling abgebrochen: Im wirksamen Jahresbereich fehlt das gezogene Marktregime. Setze die Startjahrgrenze früher oder wähle eine andere Sampling-Methode.'
 });
 
+const ENGINE_FIELD_LABELS = Object.freeze({
+    aktuellesAlter: 'Alter', inflation: 'Inflation', floorBedarf: 'Grundbedarf (Floor)',
+    flexBedarf: 'Wunschbedarf (Flex)', minimumFlexAnnual: 'Mindest-Flex',
+    tagesgeld: 'Tagesgeld', geldmarktEtf: 'Geldmarkt-ETF', depotwertAlt: 'Altbestand',
+    depotwertNeu: 'Neubestand', goldWert: 'Goldbestand', costBasisAlt: 'Einstand Altbestand',
+    costBasisNeu: 'Einstand Neubestand', goldCost: 'Einstand Gold', sparerPauschbetrag: 'Sparer-Pauschbetrag',
+    aktuelleLiquiditaet: 'Aktuelle Liquidität', renteAktiv: 'Rentenstatus', renteMonatlich: 'Monatsrente',
+    goldZielProzent: 'Gold-Zielanteil', goldFloorProzent: 'Gold-Untergrenze',
+    rebalancingBand: 'Gold-Umschichtungsband', liquidityRunwayYears: 'Liquiditätsreserve in Jahren',
+    flexBudgetAnnual: 'Flex-Budget pro Jahr', flexBudgetYears: 'Flex-Budget in Jahren',
+    flexBudgetRecharge: 'Flex-Budget auffüllen', maxSkimPctOfEq: 'Maximal abschöpfen',
+    maxBearRefillPctOfEq: 'Maximal auffüllen im Bärenmarkt',
+    dynamicFlex: 'Dynamic Flex', goGoActive: 'Go-Go aktiv', horizonMethod: 'Horizontmethode',
+    horizonYears: 'Planungshorizont', survivalQuantile: 'Überlebensquantil', goGoMultiplier: 'Go-Go-Faktor',
+    longevityMode: 'Langlebigkeitsmodus', longevityQuantileShift: 'Quantilverschiebung',
+    longevityRelativePct: 'Relativer Horizontpuffer', longevityBufferYears: 'Jahrespuffer',
+    capeRatio: 'CAPE', marketCapeRatio: 'CAPE', ath: 'Allzeithoch',
+    endeVJ: 'Kurs Vorjahr', endeVJ_1: 'Kurs vor zwei Jahren', endeVJ_2: 'Kurs vor drei Jahren',
+    endeVJ_3: 'Kurs vor vier Jahren', 'lastState.taxState.lossCarry': 'Verlustvortrag',
+    shares: 'Stückzahl', purchasePrice: 'Kaufkurs', currentPrice: 'Aktueller Kurs',
+    marketValue: 'Marktwert', costBasis: 'Einstandswert', purchaseDate: 'Kaufdatum',
+    trancheId: 'Tranchenkennung', name: 'Tranchname', category: 'Anlageklasse', type: 'Anlagetyp',
+    tqf: 'Teilfreistellung', taxExempt: 'Steuerfreiheit'
+});
+
+export function findSimulatorEngineValidationError(error) {
+    if (error?.name === 'ValidationError' && Array.isArray(error.errors)) return error;
+    return error?.cause && error.cause !== error ? findSimulatorEngineValidationError(error.cause) : null;
+}
+
 export function formatSimulatorValidationError(error) {
+    const validation = findSimulatorEngineValidationError(error);
+    if (validation?.errors.length) {
+        return validation.errors.map(entry => {
+            const field = entry.fieldId || entry.field || '';
+            const label = ENGINE_FIELD_LABELS[field] || field || 'Eingabe';
+            const message = String(entry.message || 'Ungültiger Wert.').split(field || '\0').join(label);
+            const tranche = entry.trancheId ? ` (Tranche ${entry.trancheId})` : '';
+            const value = Object.hasOwn(entry, 'value') ? ` Wert: ${String(entry.value)}.` : '';
+            return `${label}${tranche}: ${message}${value}`;
+        }).join('\n');
+    }
     if (error instanceof SimulatorValidationError) return error.message;
     if (error?.code && SIMULATOR_CONTRACT_ERROR_MESSAGES_DE[error.code]) {
         return SIMULATOR_CONTRACT_ERROR_MESSAGES_DE[error.code];

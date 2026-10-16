@@ -1,4 +1,6 @@
 import { createMusterHaushaltRecords, rebuildSyntheticPriceRecords, MUSTER_PROFILE_IDS } from '../app/demo/muster-haushalt.js';
+import { MUSTER_HAUSHALTE } from '../app/demo/muster-haushalte.js';
+import { evaluateAnnualDraft } from '../app/balance/balance-annual-storage-commit.js';
 import { HOUSEHOLD_PLAN_KEY, BALANCE_PLAN_INPUT_KEYS, assertHouseholdPlanRecord } from '../app/profile/household-plan.js';
 import { analyzeHouseholdPlanMigration } from '../app/profile/household-plan-migration.js';
 import { ANNUAL_PLAN_RECORD_KEY, assertAnnualPlanRecord, readAnnualPlanRecord } from '../app/profile/annual-plan-record.js';
@@ -31,6 +33,22 @@ import { prepareEngineLastState } from '../app/balance/balance-update-pipeline.j
 import { EngineAPI } from '../engine/index.mjs';
 import { buildBalanceOverviewSummary } from '../app/overview/overview-model.js';
 import { createSelectionDocument, addField } from './designsystem-selection-dom.mjs';
+import { createHash } from 'node:crypto';
+
+// Vollständige Records vor BH-3, einschließlich Reihenfolge und verschachtelter Rohbytes.
+const previousTimezone = process.env.TZ;
+try {
+    process.env.TZ = 'Europe/Berlin';
+    for (const [date, expected] of Object.entries({
+        '2026-01-01': '13f4457f43030d73f241c1676e50f31828ab29e0e46e7f71afa964dc54efec58',
+        '2026-10-16': '5cb9cea90369022152d075a9b2d31a44be0d05c2cc6d6f7f56e805f39615be42',
+        '2031-06-15': 'd7096e3f4b269c4d12c667184463468022dd9fed49b384edd490ebfbfda8494b',
+        '2060-06-15': '9e0e47eae2c3fe8ec69e47accf1ff8f1cffc8fa70c1df315ce0921dab04fcfba'
+    })) assertEqual(createHash('sha256').update(JSON.stringify(createMusterHaushaltRecords(date))).digest('hex'), expected,
+        `${date}: Max und Erika behalten sämtliche bisherigen Recordbytes`);
+} finally {
+    if (previousTimezone === undefined) delete process.env.TZ; else process.env.TZ = previousTimezone;
+}
 
 // Nur DOM und Backend-I/O ersetzen; Leser, Synchronisierung, Engine und Attribution sind produktiv.
 async function verifyBalance(date, startDate = date) {
@@ -121,6 +139,102 @@ async function verifyBalance(date, startDate = date) {
 }
 
 try {
+    const allIds = new Set();
+    for (const household of MUSTER_HAUSHALTE) {
+        const first = createMusterHaushaltRecords('2026-01-01', household.id);
+        const ids = Object.keys(JSON.parse(first.rs_profiles_v1).profiles);
+        for (const id of ids) { assert(!allIds.has(id), `${household.name}: eindeutige Profil-ID ${id}`); allIds.add(id); }
+        for (const date of ['2026-01-01', '2026-10-16', '2031-06-15']) {
+            setAppTestDate(date);
+            const records = createMusterHaushaltRecords(date, household.id), year = Number(date.slice(0, 4));
+            const registry = JSON.parse(records.rs_profiles_v1), storage = { getItem: key => records[key] ?? null };
+            assert(validatePersistenceDomainRecords(records, { requireProfileContext: true }).ok, `${household.name}/${date}: gültige Records`);
+            const [entry] = Object.values(assertHouseholdPlanRecord(records[HOUSEHOLD_PLAN_KEY]).entries);
+            assertEqual(Object.keys(assertHouseholdPlanRecord(records[HOUSEHOLD_PLAN_KEY]).entries).length, 1, 'Genau ein Plan ohne zusätzliche Migration');
+            assertEqual(entry.scope.kind, household.id === 'renate' ? 'single' : 'household', `${household.name}: richtiger Planbereich`);
+            assertEqual(entry.values.decumulation.mode, household.id === 'helga-werner' ? '3_bucket_jilge' : 'standard', `${household.name}: richtige Entnahmestrategie`);
+            assertEqual(entry.values.dynamicFlex, household.id === 'jan-lena', `${household.name}: Dynamic Flex nur für Jan und Lena`);
+            const allocation = { equity: 0, bonds: 0, gold: 0, money_market: 0 };
+            for (const profile of Object.values(registry.profiles)) {
+                const data = profile.data;
+                for (const lot of normalizeTrancheCollection(JSON.parse(data.depot_tranchen), { mode: 'persisted' })) {
+                    allocation[lot.category] += lot.shares * lot.currentPrice;
+                    if (lot.category === 'bonds') assertEqual(lot.type, 'anleihe', 'Anleihenfonds bleibt als Anleihe klassifiziert');
+                    if (lot.category === 'gold') {
+                        assertEqual(lot.type, 'gold', 'Gold bleibt als Gold klassifiziert');
+                        assert(lot.taxExempt && lot.tqf === 0 && lot.isin === 'DE000A0S9GB0' && lot.purchaseDate < `${year - 1}-01-01`, 'Physisch hinterlegtes Gold-ETC mit abgelaufener Jahresfrist');
+                    }
+                }
+                assert(!Object.keys(data).some(key => key.startsWith('sim_')), 'Keine vorbelegten Simulator-Einstellungen');
+                const history = loadStoredBalanceStateFromData(data).value.wealthHistory;
+                assertWealthHistory(history);
+                for (const point of history.entries) {
+                    const historicalLots = JSON.parse(data.depot_tranchen).filter(lot => lot.purchaseDate <= point.asOf);
+                    const amount = category => historicalLots.filter(lot => lot.category === category)
+                        .reduce((sum, lot) => sum + lot.shares * syntheticQuote(lot.ticker, point.asOf).price, 0);
+                    assertClose(point.total, point.tagesgeld + Object.keys(allocation).reduce((sum, category) => sum + amount(category), 0), 1e-6,
+                        'Historischer Musterstand enthält jede Anlageklasse genau einmal');
+                    if (household.id !== 'max-erika') {
+                        assertClose(point.anleihen || 0, amount('bonds'), 1e-6, 'Historischer Anleihentopf separat bewertet');
+                        assertClose(point.goldWert || 0, amount('gold'), 1e-6, 'Historisches Gold separat bewertet');
+                    }
+                }
+                const gold = ['jan-lena', 'helga-werner'].includes(household.id);
+                assertEqual(data.profile_gold_aktiv, String(gold), 'Goldbeimischung ist im Profil schaltbar');
+                if (gold) {
+                    assertEqual(data.profile_gold_ziel_pct, household.id === 'jan-lena' ? '10' : '20', 'Goldziel folgt der Anlagephilosophie');
+                    assert(Number(data.profile_gold_floor_pct) > 0 && Number(data.profile_gold_floor_pct) < Number(data.profile_gold_ziel_pct), 'Sinnvolle Golduntergrenze');
+                    assertEqual(data.profile_gold_rebal_band, '20', 'Gold-Rebalancing-Band im Profil');
+                    assertEqual(data.profile_gold_steuerfrei, 'true', 'Goldsteuervertrag im Profil aktiv');
+                }
+                if (household.id === 'helga-werner') {
+                    assertEqual(data.profile_kirchensteuer_pct, '9', 'Beide Personen mit 9 % Kirchensteuer');
+                    const care = JSON.parse(data.profile_health_bucket);
+                    assert(care.enabled && care.initialAmount === 30000 && care.triggerMinGrade === 4, 'Je Person 30.000 € Pflegeabsicherung ab Pflegegrad 4');
+                }
+            }
+            const depot = allocation.equity + allocation.bonds + allocation.gold;
+            const target = { 'max-erika': [100, 0, 0], renate: [50, 50, 0], 'jan-lena': [90, 0, 10], 'helga-werner': [50, 30, 20] }[household.id];
+            ['equity', 'bonds', 'gold'].forEach((category, index) => assertClose(allocation[category] / depot * 100, target[index], 2,
+                `${household.name}: ${category}-Anteil im Depot ohne separaten Liquiditätspuffer`));
+            assertEqual(analyzeHouseholdPlanMigration(records).analyses.length, 0, `${household.name}: kein Umstellungsdialog`);
+            const model = projectOverview({ registry, activeId: records.rs_active_profile, liveData: records, now: new Date(`${date}T12:00:00`) });
+            assert(model.complete && model.planComparison.recordStatus === 'valid' && model.summary.status === 'fest', `${household.name}: Übersicht liest festen Plan`);
+            assertEqual(model.scope.kind, entry.scope.kind, `${household.name}: Übersicht und Jahresplan haben denselben Bereich`);
+            const receipt = readAnnualPlanRecord({ year, scope: entry.scope, storage });
+            const january = rebuildSyntheticPriceRecords(records, `${year}-01-01`);
+            const annual = evaluateAnnualDraft({ records: january, planningYear: year, scope: entry.scope, values: entry.values,
+                ageByPerson: receipt.adopted.snapshot.ageByPerson }, { engineApi: EngineAPI, now: () => new Date(`${year}-01-01T12:00:00`) });
+            assertEqual(annual.outcome.monthlyBudget, receipt.adopted.monthlyBudget, `${household.name}: Beleg entspricht der Jahresrechnung`);
+            assertEqual(model.summary.monthlyBudget, receipt.adopted.monthlyBudget, `${household.name}: Anzeige übernimmt das errechnete Budget`);
+            const needs = readHouseholdSimulatorNeedsState(storage);
+            assertEqual(needs.status, 'valid', `${household.name}: gültiger Simulatorbedarf`);
+            for (const [key, planKey] of [['startFloorBedarf', 'floorBedarf'], ['startFlexBedarf', 'flexBedarf'], ['minimumFlexAnnual', 'minimumFlexAnnual']]) {
+                assertEqual(Number(JSON.parse(records.household_simulator_needs_v1).values[key]), entry.values[planKey], `${household.name}: Simulator und Plan stimmen überein`);
+            }
+            if (household.id === 'renate') {
+                assertEqual(annual.inputData.renteMonatlich, 1400, 'Renate erhält ihre seit 2025 laufende Rente');
+                assert(annual.outcome.monthlyBudget * 12 >= entry.values.floorBedarf, 'Renates Floor bleibt gedeckt');
+                assert(annual.outcome.monthlyBudget * 12 < entry.values.floorBedarf + entry.values.flexBedarf, 'Renates Flex wird sichtbar gekürzt');
+                assert(annual.modelResult.ui.spending.kuerzungProzent > 0 && annual.modelResult.ui.spending.kuerzungQuelle, 'Warum gekürzt erhält eine belegte Kürzung');
+                assertEqual(model.household.assets, 350000, 'Renate besitzt 350.000 € einschließlich 15.000 € Tagesgeld');
+            } else if (household.id === 'jan-lena') {
+                assertEqual(annual.inputData.renteMonatlich, 0, 'Jan und Lena erhalten im Startjahr keine Rente');
+                assertEqual(annual.outcome.monthlyWithdrawal, annual.outcome.monthlyBudget, 'Jan und Lena entnehmen alles aus dem Vermögen');
+                assert(annual.outcome.monthlyBudget * 12 >= entry.values.floorBedarf + entry.values.flexBedarf, 'Jan und Lena starten ohne Kürzung ihres Planbudgets');
+                assert(annual.inputData.dynamicFlex, 'Dynamic Flex ist in der Jahresrechnung aktiv');
+                assert(annual.modelResult.ui.spending.kuerzungProzent < 0.001, 'Auch der dynamische Wunsch-Flex bleibt bis auf Rundungsreste ungekürzt');
+                assertEqual(annual.outcome.monthlyBudget * 12, 63000, 'Jan und Lena erhalten das volle Startbudget von 63.000 €');
+                assert(model.household.assets > 1100000 && model.household.assets < 1300000, 'Jan und Lena besitzen rund 1,2 Mio. € einschließlich Tagesgeld');
+            } else if (household.id === 'helga-werner') {
+                assertEqual(annual.inputData.renteMonatlich, 2800, 'Beide Renten laufen vollständig');
+                assertClose(model.household.assets, 600000, 0.01, 'Helga und Werner besitzen 600.000 € einschließlich Liquidität und Pflegereserve');
+                assertEqual(annual.inputData.decumulation.mode, '3_bucket_jilge', 'Jahresrechnung verwendet Drei Töpfe');
+                assert(annual.outcome.monthlyBudget * 12 >= entry.values.floorBedarf + entry.values.minimumFlexAnnual, 'Floor und Mindest-Flex bleiben gedeckt');
+                assert(annual.outcome.monthlyWithdrawal > 0 && annual.outcome.action, 'Gültige Jahresentnahme und Handlungsanweisung');
+            }
+        }
+    }
     // Ein kopierter Altbestand mit ungültiger Kopplung bleibt beim Kursneuaufbau
     // startfähig; der Seitenstart übernimmt später die ausdrückliche Auflösung.
     const invalidCopy = createMusterHaushaltRecords('2026-10-09');

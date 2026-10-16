@@ -3,11 +3,31 @@ import { marketPriceAdapter } from '../app/shared/market-price-adapter.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
 import { fetchProxyPrice, fetchProxySymbol, checkProxyHealth } from '../app/tranches/tranchen-price-service.js';
 import { fetchHistoryChart } from '../app/tranches/tranchen-history-fetch.js';
+import { createHash } from 'node:crypto';
 
 const fetchBefore = globalThis.fetch;
 let requests = 0;
 globalThis.fetch = () => { requests++; throw new Error('Kursnetz ist im Spielbereich verboten.'); };
 try {
+    const existing = ['VWCE.DE', 'VWRL.DE', 'XEON.DE', 'UNBEKANNT.DE'].map(symbol =>
+        syntheticChart(symbol, [syntheticDay('2025-01-01'), syntheticDay('2027-12-31')], '2027-12-31'));
+    assertEqual(createHash('sha256').update(JSON.stringify(existing)).digest('hex'),
+        'ff193f5f79a450509deaf16ee3948715afe3a07ca5cdb64e1ab8942a4437d821', 'Alle bisherigen Tageskurven bleiben bytegleich');
+    const dailyVolatility = symbol => {
+        const { closes } = syntheticChart(symbol, [syntheticDay('2026-01-01'), syntheticDay('2026-12-31')], '2026-12-31');
+        const returns = closes.slice(1).map((close, index) => Math.log(close / closes[index]));
+        const mean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
+        return Math.sqrt(returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) / returns.length);
+    };
+    assert(dailyVolatility('EUNH.DE') < dailyVolatility('VWCE.DE') / 3, 'Anleihen schwanken deutlich weniger als Aktien');
+    for (const [symbol, isin, minTrend, maxTrend] of [['EUNH.DE', 'IE00B4WXJJ64', 0.005, 0.02], ['4GLD.DE', 'DE000A0S9GB0', 0.02, 0.05]]) {
+        const trend = (syntheticPrice(symbol, '2026-01-01') / syntheticPrice(symbol, '2016-01-01')) ** 0.1 - 1;
+        assert(trend > minTrend && trend < maxTrend, `${symbol}: eigener plausibler Langfristtrend`);
+        assertEqual(JSON.stringify(syntheticQuote(isin, '2026-10-16')), JSON.stringify(syntheticQuote(symbol, '2026-10-16')), 'Neue ISIN und Ticker liefern dieselben Spielkurse');
+        const ownReturn = syntheticPrice(symbol, '2026-10-16') / syntheticPrice(symbol, '2026-10-01');
+        const equityReturn = syntheticPrice('VWCE.DE', '2026-10-16') / syntheticPrice('VWCE.DE', '2026-10-01');
+        assert(Math.abs(ownReturn - equityReturn) > 0.001, 'Neue Anlageklasse folgt einer anderen Welle als Aktien');
+    }
     const first = syntheticPrice('vwce.de', '2027-07-01');
     assertEqual(first, 144.304481, 'Fester bestehender ETF-Referenzkurs');
     for (const symbol of ['VWRL.DE', 'XEON.DE', 'UNBEKANNT.DE']) {

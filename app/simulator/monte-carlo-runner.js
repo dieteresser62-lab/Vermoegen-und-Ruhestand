@@ -20,6 +20,7 @@ import { buildMonteCarloAggregates } from './monte-carlo-aggregates.js';
 import { createMinimumFlexTracker, recordMinimumFlexYear, finalizeMinimumFlexPath } from './minimum-flex-metrics.js';
 import { createMonteCarloRunContext } from './mc-run-context.js';
 import { normalizeMonteCarloParametersV1 } from './monte-carlo-parameters.js';
+import { findSimulatorEngineValidationError, formatSimulatorValidationError } from './simulator-input-validation.js';
 import {
     assertSimulatorHorizonAgeContract,
     createMonteCarloPostRuinLifeState,
@@ -295,7 +296,9 @@ function normalizeTechnicalPathError(result, runIdx, simulationsJahr) {
     const code = typeof sourceError?.code === 'string' && sourceError.code.trim()
         ? sourceError.code.trim()
         : fallbackCode;
-    const sourceMessage = typeof sourceError?.message === 'string' ? sourceError.message.trim() : '';
+    const validation = findSimulatorEngineValidationError(sourceError);
+    const sourceMessage = validation ? `${formatSimulatorValidationError(validation)} (${code})`
+        : typeof sourceError?.message === 'string' ? sourceError.message.trim() : '';
     return {
         runIndex: runIdx,
         simulationYearIndex: simulationsJahr,
@@ -977,6 +980,7 @@ export async function runMonteCarloChunk({
                     depotErschoepfungAlterGesetzt = true;
                 }
                 if (currentRunLog) currentRunLog.push(buildMonteCarloRuinLogRow({
+                    result,
                     simulationsJahr,
                     yearData,
                     inputs,

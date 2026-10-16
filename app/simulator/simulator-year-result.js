@@ -94,6 +94,7 @@ export function buildSimulatorYearResult({
     );
     if (totalGoldKauf > 0) aktionText += " / Rebal.(G+)";
     if (kaufAktTotal > 0) aktionText += " / Rebal.(A+)";
+    if (actionResult.personalTaxFunding) aktionText += ` / ${actionResult.personalTaxFunding.reason}`;
 
     const inflFactorThisYear = 1 + (yearData.inflation / 100);
     const cumulativeInflationFactor = resolveSimulatorCumulativeInflationFactor(currentState);

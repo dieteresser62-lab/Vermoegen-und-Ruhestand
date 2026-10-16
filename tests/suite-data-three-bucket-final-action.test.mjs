@@ -4,12 +4,24 @@ import { calculateSaleAndTax } from '../engine/transactions/sale-engine.mjs';
 import {
     appendBondReplenishment,
     applyThreeBucketLogic,
+    reconcileUsesToAchievedNet,
     reservePlannedLotInventory
 } from '../engine/transactions/three-bucket-logic.mjs';
 import { trySurplusRebalance } from '../engine/transactions/transaction-surplus.mjs';
 import { attributeHouseholdAction } from '../app/profile/profilverbund-action-attribution.js';
 
 console.log('--- Suite Data Slice 02 Final Action Tests ---');
+
+// BH-3: gerundeter Mehrerlös aus dem Anleihentopf muss vollständig zugeordnet sein.
+{
+    const requested = { liquiditaet: 10000, gold: 5000, aktien: 0 };
+    const achieved = 15466.369644380742;
+    const uses = reconcileUsesToAchievedNet(requested, achieved);
+    assertClose(Object.values(uses).reduce((sum, value) => sum + value, 0), achieved, 1e-9, 'Anleihen-Mehrerlös erhält den Action-Flow');
+    assertEqual(uses.gold, requested.gold, 'Goldkauf bleibt trotz Mehrerlös unverändert');
+    assertClose(uses.liquiditaet, 10466.369644380742, 1e-9, 'Mehrerlös bleibt in Liquidität');
+    assertEqual(requested.liquiditaet, 10000, 'Ursprünglicher Plan bleibt unverändert');
+}
 
 function equityLot(overrides = {}) {
     return {

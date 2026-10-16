@@ -83,6 +83,39 @@ try {
         P.resetPersistenceForTests();
     }
 
+    for (const householdId of ['renate', 'jan-lena', 'helga-werner']) {
+        const f = await playFixture('tauri', createMusterHaushaltRecords('2026-11-02'));
+        let controller = await f.boot();
+        const realBefore = f.realBytes();
+        await controller.start(() => ({ source: 'demo', householdId, testDate: '2026-11-02' }));
+        controller = await f.boot();
+        const runnerForPage = () => createTimeLapse({ controller, session: areaSessionStorage(f.session),
+            services: createTimeLapseServices({ controller, win: f.win }), yieldStep: async () => {} });
+        let runner = runnerForPage(); runner.start({ start: '2026-11-02', end: '2027-11-02' });
+        for (let attempt = 0; attempt < 15; attempt++) {
+            await runner.run();
+            assertEqual(f.realBytes(), realBefore, `${householdId}: Jahreslauf erhält echte Daten bytegleich`);
+            if (runner.state.status !== 'running') break;
+            controller = await f.boot(); runner = runnerForPage(); runner.restore();
+        }
+        assertEqual(runner.state.status, 'done', `${householdId}: Ganzjahreslauf mit Spielkursen abgeschlossen: ${runner.state.message}`);
+        assertEqual(localCalendarDate(), '2027-11-02', 'Ganzjahreslauf erreicht das gewählte Ende');
+        assertEqual(controller.state.householdId, householdId, 'Haushaltswahl überlebt alle Datumssprünge');
+        const records = await P.readPersistedRecords(), ids = Object.keys(JSON.parse(records.rs_profiles_v1).profiles);
+        const mode = ids.length === 1 ? 'single' : 'household', scope = overviewScope(mode, ids);
+        assert(readAnnualPlanRecord({ year: 2027, scope: planScope(mode, ids) })?.adopted, 'Folgejahresplan im richtigen Bereich festgeschrieben');
+        for (const [year, month] of [[2026, 11], [2026, 12], ...Array.from({ length: 10 }, (_, index) => [2027, index + 1])]) {
+            const key = `${year}-${String(month).padStart(2, '0')}`;
+            assert(readMonthProvision(records[OVERVIEW_MONTH_KEY], key, scope), `${householdId}: ${key} abgeschlossen`);
+            for (const id of ids) assertEqual(loadExpensesStore().years[year].months[month].profiles[id].source, 'probelauf-example', 'Beispielausgaben über den normalen Importweg');
+        }
+        assertEqual(pendingPlayActions().length, 0, 'Jahresanweisung vollständig ausgeführt');
+        assert(!probelaufTransferability(controller.state, {}).eligible, 'Neuer Beispielhaushalt bleibt nicht übernehmbar');
+        await controller.end(() => true); await f.boot();
+        assertEqual(f.realBytes(), realBefore, 'Verwerfen nach dem Jahreslauf erhält echte Daten');
+        P.resetPersistenceForTests();
+    }
+
     // Anhalten zwischen echten Finanzschritten: importierte Daten bleiben manuell nutzbar.
     const f = await playFixture('tauri', createMusterHaushaltRecords('2026-11-02'));
     let controller = await f.boot();

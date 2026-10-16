@@ -90,6 +90,8 @@ Ein positiver `capeRatio` hat bei der Normalisierung Vorrang vor `marketCapeRati
 
 Der normale Steuerabschluss steht in `ui.action.taxSettlement`, der resultierende Verlustvortrag in `newState.taxState`. `deferTaxSettlement: true` unterstützt eine nachgelagerte Finalisierung, etwa für die Haushaltsattribution. Ein aufgeschobener Abschluss ist kein fertig abgerechneter Simulatorjahresvorschlag.
 
+Im Drei-Topf-Pfad bleibt ein gerundeter Mehrerlös aus einem Anleihenverkauf in der Liquidität. Bei Mindererlös werden die Verwendungen anteilig gekürzt.
+
 Core prüft die geplante Entnahme und die Quellen-/Verwendungsflüsse. Inkonsistente Aktionen erzeugen `FinancialCalculationError` mit Vertragskontext. Aufrufer dürfen eine fehlerhafte Aktion nicht durch null oder einen Zahlungsunfähigkeitsfall ersetzen.
 
 ### Optionaler Flex-Trace

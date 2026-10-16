@@ -2,6 +2,7 @@ import { bindInfoPopovers, createInfoPopover } from './designsystem-info-popover
 import { formatDisplayNumber, formatDisplayDate } from './designsystem-number-format.js';
 import { buildProbelaufEndReview, probelaufEndNeedsComparison } from './probelauf-comparison.js';
 import { summarizeBalanceAction } from '../balance/balance-action-summary.js';
+import { musterHaushalt } from '../demo/muster-haushalte.js';
 
 const money = value => formatDisplayNumber(value, { unit: 'currency', fractionDigits: 2 });
 const percent = value => formatDisplayNumber(value, { unit: 'percent', fractionDigits: 1, minimumFractionDigits: 0 });
@@ -82,10 +83,11 @@ function openEndDialog({ doc, opener, review, loadReview }) {
         const state = review.state || {};
         const comparison = probelaufEndNeedsComparison(state);
         const title = node('h2', comparison ? 'Spielbereich beenden' : 'Spielbereich beenden?'); title.id = 'probelaufEndTitle';
-        const source = state.source === 'demo' ? 'Max und Erika' : 'Kopie deiner Daten';
+        const source = state.source === 'demo' ? musterHaushalt(state.householdId).name : 'Kopie deiner Daten';
         const mode = state.testDate == null ? 'echte Kurse von heute' : `Testdatum ${formatDisplayDate(state.testDate)} · Spielkurse`;
         head.append(node('span', 'SPIELBEREICH', 'close-dialog-eyebrow'), title);
         if (comparison) head.append(node('div', `${source} · gestartet ${dateTime(state.startedAt)} · ${mode}`, 'close-dialog-subtitle'));
+        else if (state.source === 'demo') head.append(node('div', source, 'close-dialog-subtitle'));
         const cross = node('button', '×', 'close-dialog-cross'); cross.type = 'button'; cross.setAttribute('aria-label', 'Schließen'); head.append(cross);
         const content = node('div', undefined, 'close-dialog-content');
         const appendMade = () => {

@@ -3,7 +3,7 @@ import { showPageAlert } from '../shared/page-dialog.js';
 
 import { STATIONARY_BOOTSTRAP_METHOD } from './stationary-bootstrap-contract.js';
 import { getCommonInputs } from './simulator-portfolio.js';
-import { validateSimulatorInputs, simulatorValidationFieldId } from './simulator-input-validation.js';
+import { validateSimulatorInputs, simulatorValidationFieldId, findSimulatorEngineValidationError, formatSimulatorValidationError } from './simulator-input-validation.js';
 import { revealAssumptionControl } from './simulator-assumptions-ui.js';
 import { activateSimulatorTab } from './simulator-main-tabs.js';
 import { buildMonteCarloRunHint, renderMonteCarloRunHint, getMonteCarloHintMeasurement, monteCarloHintComparableKey } from './monte-carlo-run-hint.js';
@@ -421,7 +421,9 @@ export function createMonteCarloUI() {
             if (!running || !publishedDuringRun) this.clearRunExport();
             const messageEl = document.getElementById('mc-error-message');
             if (errorContainer && messageEl) {
-                const msg = error instanceof Error ? `${error.message}\n${error.stack || ''}` : String(error);
+                const msg = findSimulatorEngineValidationError(sourceError)
+                    ? formatSimulatorValidationError(sourceError)
+                    : error instanceof Error ? `${error.message}\n${error.stack || ''}` : String(error);
                 messageEl.textContent = msg;
                 errorContainer.style.display = 'block';
                 setRunStatus(`Fehler: ${error instanceof Error ? error.message : String(error)}`);

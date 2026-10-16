@@ -1262,6 +1262,15 @@ const emptyLists = {
     assertEqual(full.technicalInventory.errors[0].code, SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_ERROR, 'MC preserves the direct adapter technical code');
     assert(!full.technicalInventory.errors[0].message.includes('C:\\private'), 'MC user message hides internal paths');
 
+    const validationChunk = await runMonteCarloChunk({ inputs, monteCarloParams,
+        widowOptions: { mode: 'stop', percent: 0, marriageOffsetYears: 0, minMarriageYears: 0 },
+        useCapeSampling: false, runRange: { start: 0, count: 1 },
+        engine: { simulateSingleYear: () => ({ error: { name: 'ValidationError', errors: [
+            { fieldId: 'goldFloorProzent', message: 'Zulässig sind 0 bis 20 %.' }
+        ] } }) } });
+    assert(validationChunk.technicalInventory.errors[0].message.includes('Gold-Untergrenze: Zulässig sind 0 bis 20 %.'),
+        'MC-Inventur erhält konkrete Felder zurückgegebener Enginefehler für die Anzeige');
+
     const splitA = await runChunk(0, 1);
     const splitB = await runChunk(1, 2);
     const mergedInventory = createMonteCarloTechnicalInventory(3);

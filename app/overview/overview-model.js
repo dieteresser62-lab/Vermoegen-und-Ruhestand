@@ -3,7 +3,7 @@ import { annualCloseArchiveReader, deriveAnnualCloseEvidence } from '../shared/a
 import { readExpensesBudget } from '../expenses/expenses-model.js';
 import { HOUSEHOLD_OWNED_BALANCE_STATE_KEYS } from '../profile/profile-storage.js';
 import { readAnnualPlanRecord } from '../profile/annual-plan-record.js';
-import { planScope, readHouseholdPlan } from '../profile/household-plan.js';
+import { memberPlanScope, readHouseholdPlan } from '../profile/household-plan.js';
 import { projectHouseholdPlanComparison } from '../profile/household-plan-comparison.js';
 import { projectBalanceActionOrigin } from '../balance/balance-action-origin.js';
 import { derivePlanningStart, resolvePlanningPeriodSource } from '../shared/planning-start.js';
@@ -149,8 +149,9 @@ export function projectOverview({ registry, activeId, liveData = {}, now = appNo
     const beforePlanning = expenseYear < planning.firstPlanningYear;
     const expenses = beforePlanning ? { year: expenseYear, month: expenseMonth, rows: [], missingMonths: [],
         complete: false, spent: null, beforePlanning: true } : projectFocusExpenses(expenseResult.store, scope, expenseYear, expenseMonth);
-    const budgetContext = { registry: projectedRegistry, activeId, liveData: { ...liveData },
-        scope, receiptScope: planScope(members.some(person => person.belongs) ? 'household' : 'single', memberIds) };
+    const comparisonStorage = { getItem: key => liveData[key] ?? null };
+    const planArea = memberPlanScope(memberIds, comparisonStorage, members.some(person => person.belongs));
+    const budgetContext = { registry: projectedRegistry, activeId, liveData: { ...liveData }, scope, receiptScope: planArea };
     const expenseBudgetSource = overviewExpenseBudget(budgetContext, expenseYear, beforePlanning);
     const expenseBudgetSources = { [expenseYear]: expenseBudgetSource,
         [occasion.previousYear]: overviewExpenseBudget(budgetContext, occasion.previousYear, occasion.previousYear < planning.firstPlanningYear) };
@@ -176,8 +177,6 @@ export function projectOverview({ registry, activeId, liveData = {}, now = appNo
     const history = projectOverviewHistory({ registry: projectedRegistry, profiles: projection.profiles, liveData, today: localHistoryDate(now), period: historyPeriod });
     const fingerprintContext = { registry: projectedRegistry, activeId, liveData, scope };
     const source = sourceFingerprint({ ...fingerprintContext, kind: 'balance' });
-    const planArea = planScope(members.some(person => person.belongs) ? 'household' : 'single', members.map(person => person.id));
-    const comparisonStorage = { getItem: key => liveData[key] ?? null };
     const planEntry = readHouseholdPlan({ scope: planArea, storage: comparisonStorage }).entry;
     const planComparison = projectHouseholdPlanComparison({ year, scope: planArea, storage: comparisonStorage,
         preview: summary, sourceFingerprint: source, planUpdatedAt: planEntry?.updatedAt, now });

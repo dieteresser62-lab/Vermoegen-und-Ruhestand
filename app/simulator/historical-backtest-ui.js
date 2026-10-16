@@ -1,6 +1,7 @@
 import { PROTOCOL_COLUMNS, protocolRowFlags, readProtocolValue, formatProtocolValue } from './protocol-columns.js';
 import { renderProtocolTable } from './protocol-renderer.js';
 import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
+import { findSimulatorEngineValidationError, formatSimulatorValidationError } from './simulator-input-validation.js';
 "use strict";
 
 const PERIOD_FIELDS = Object.freeze({
@@ -198,11 +199,12 @@ export function describeHistoricalBacktestResult(result) {
         });
     }
     const code = stableCode(result?.error?.code ?? result?.outcome?.error?.code, 'BACKTEST_TECHNICAL_ERROR');
+    const validation = findSimulatorEngineValidationError(result?.diagnostics?.cause);
     return Object.freeze({
         kind: 'technical_error',
         code,
         title: 'Backtest technisch abgebrochen',
-        cause: 'Der Lauf konnte technisch nicht vollständig verarbeitet werden.',
+        cause: validation ? formatSimulatorValidationError(validation) : 'Der Lauf konnte technisch nicht vollständig verarbeitet werden.',
         action: 'Prüfe die Eingaben und starte den Backtest erneut. Bleibt der Code bestehen, melde ihn zur Diagnose.'
     });
 }

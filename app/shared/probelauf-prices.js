@@ -1,7 +1,8 @@
 /** Reine EUR-Testkurve; Epoche, Symbolhash und UTC-Kalender sind unveränderlich. */
 export const SYNTHETIC_PRICE_SOURCE = 'Spielbereich · synthetische EUR-Kurse';
 export const SYNTHETIC_MARKET_SOURCE = 'Spielbereich · synthetisch';
-const aliases = Object.freeze({ IE00BK5BQT80: 'VWCE.DE', IE00B3RBWM25: 'VWRL.DE', LU0290358497: 'XEON.DE' });
+const aliases = Object.freeze({ IE00BK5BQT80: 'VWCE.DE', IE00B3RBWM25: 'VWRL.DE', LU0290358497: 'XEON.DE',
+    IE00B4WXJJ64: 'EUNH.DE', DE000A0S9GB0: '4GLD.DE' });
 export function syntheticSymbol(value) {
     const symbol = String(value ?? '').trim().toUpperCase();
     if (!/^[A-Z0-9.^=-]{1,32}$/.test(symbol)) throw new Error('Ungültige Instrumentkennung im Spielbereich.');
@@ -18,6 +19,14 @@ const weekday = day => ![0, 6].includes(new Date(day * 86400000).getUTCDay());
 export function syntheticPrice(symbol, date) {
     symbol = syntheticSymbol(symbol);
     const day = syntheticDay(date), years = (day - syntheticDay('2016-01-01')) / 365.2425;
+    // Eigene Kurven nur für die neuen Instrumente; bestehende Symbolkurse bleiben unverändert.
+    if (symbol === 'EUNH.DE' || symbol === '4GLD.DE') {
+        const bond = symbol === 'EUNH.DE';
+        const base = bond ? 100 : 32, trend = bond ? 0.012 : 0.035;
+        const wave = bond ? 0.004 * Math.sin(day / 93) + 0.002 * Math.cos(day / 31)
+            : 0.045 * Math.sin(day / 71 + 2) + 0.018 * Math.cos(day / 23 + 1);
+        return Math.max(0.000001, Number((base * Math.exp(trend * years + wave)).toFixed(6)));
+    }
     let hash = 2166136261;
     for (const char of symbol) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0;
     const moneyMarket = symbol === 'XEON.DE';

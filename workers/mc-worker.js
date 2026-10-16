@@ -1,6 +1,7 @@
 "use strict";
 
 import { EngineAPI } from '../engine/index.mjs';
+import { formatSimulatorValidationError } from '../app/simulator/simulator-input-validation.js';
 import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
 import { runSweepChunk } from '../app/simulator/sweep-runner.js';
 import { prepareHistoricalDataOnce } from '../app/simulator/simulator-engine-helpers.js';
@@ -167,7 +168,7 @@ self.onmessage = async event => {
             send('error', {
                 jobId,
                 generationId,
-                message: error?.message || 'Worker job failed',
+                message: error ? formatSimulatorValidationError(error) : 'Worker job failed',
                 stack: error?.stack || ''
             });
         }

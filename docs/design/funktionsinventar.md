@@ -44,7 +44,7 @@ Quelle: `index.html`
 | I13 | index.html | Profile und Übersicht | Profilkontext beim Zurückkehren aus Browsercache erneuern | sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 1, 2 | [Kapitel](../../Handbuch.html#erste-schritte) |
 | I14 | index.html | Profile und Übersicht | Einmaliger sitzungsweiter Kursabruf nach Appstart | sichtbar, bedingt sichtbar | nur Sitzung: rs\_startup\_prices\_session\_v1; persistent: depot\_tranchen, rs\_profiles\_v1 | Node 11; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#erste-schritte) |
 | I15 | index.html | Profile und Übersicht | Persistente Verlaufsdatengrundlage und fortsetzbarer Tageskursjob | bedingt sichtbar | nur Sitzung: rs\_history\_fetch\_session\_v1; persistent: rs\_wealth\_history\_start\_v1, profile\_wealth\_history\_lots… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
-| I18 | index.html | Kopfzeile und Probelaufband | Spielbereich: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 13; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+| I18 | index.html | Kopfzeile und Probelaufband | Spielbereich: Kopie oder vier Beispielhaushalte, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 14; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
 
 #### Seitenzusätze
 
@@ -96,7 +96,7 @@ Quelle: `Balance.html`
 | B45 | Balance.html | Meldungen | Unabhängige Erfolg-, Hinweis- und Fehlertoasts | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 3.1, 3.3 | [Kapitel](../../Handbuch.html#balance) |
 | B46 | Balance.html | Meldungen | Aktionsmeldungen: Jahresvorprüfung im offenen Dialog, sonst bestehender Seitenkanal | bedingt sichtbar, sichtbar | nur Sitzung | Node 6; Browser 3; Risiko 1; Schuld 0 | 1, 3.1, 3.2, 3.3 | [Kapitel](../../Handbuch.html#balance) |
 | B47 | Balance.html | Überblick → Und jetzt? | Offene manuelle Cashbuchungen und Cashstatus-Auditwarnung | bedingt sichtbar | keine | Node 2; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
-| B48 | Balance.html | Spielbereich | Spielbereich: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1, depot\_tranchen, profile\_wealth\_history\_lots\_v1, …; persistent: rs\_probelauf\_state… | Node 12; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+| B48 | Balance.html | Spielbereich | Spielbereich: Kopie oder vier Beispielhaushalte, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1, depot\_tranchen, profile\_wealth\_history\_lots\_v1, …; persistent: rs\_probelauf\_state… | Node 12; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
 
 #### Seitenzusätze
 
@@ -208,7 +208,7 @@ Quelle: `Simulator.html`
 | S71 | Simulator.html | Übergreifende Bedienung | Tastatur und Druck | sichtbar, bedingt sichtbar | nur Sitzung | Node 3; Browser 2; Risiko 2; Schuld 0 | 2 | [Kapitel](../../Handbuch.html#simulator) |
 | S72 | Simulator.html | Übergreifende Bedienung | Worker-Telemetrie | bedingt sichtbar | persistent: enableWorkerTelemetry | Node 0; Browser 0; Risiko 2; Schuld 0 | 2 | [Kapitel](../../Handbuch.html#simulator) |
 | S73 | Simulator.html | Profilkontext und Navigation | Profil-Lifecycle: Bootstrap, Handoff, Hintergrundspeicherung und BFCache | sichtbar | persistent: rs\_profiles\_v1.profiles\[profileId\].data | Node 6; Browser 2; Risiko 2; Schuld 0 | 2 | [Kapitel](../../Handbuch.html#simulator) |
-| S74 | Simulator.html | Spielbereich | Spielbereich: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 12; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+| S74 | Simulator.html | Spielbereich | Spielbereich: Kopie oder vier Beispielhaushalte, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 12; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
 
 #### Seitenzusätze
 
@@ -251,7 +251,7 @@ Quelle: `depot-tranchen-manager.html`
 | V23 | depot-tranchen-manager.html | Cashdialog | Cashbestätigung und lineare Korrektur mit Grund, Fokus und Konfliktprüfung | bedingt sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1.trancheReconciliation.actions, rs\_profiles\_v1.tra… | Node 9; Browser 4; Risiko 2; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V24 | depot-tranchen-manager.html | Hilfen und Bedienung | Feldhilfen, Labels und Tabellen-/Dialogzugänglichkeit | bedingt sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 2, 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V25 | depot-tranchen-manager.html | Kurszeit-Datenvertrag | asOf: Lokales Kursdatum im Depot, Provenienz und Balance-Kursfrische | sichtbar, bewusst gesperrt, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 11; Browser 3; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
-| V26 | depot-tranchen-manager.html | Spielbereich | Spielbereich: Kopie oder ruhiger Muster-Haushalt Max/Erika, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
+| V26 | depot-tranchen-manager.html | Spielbereich | Spielbereich: Kopie oder vier Beispielhaushalte, relative Zeitachse und Rückkehr | bedingt sichtbar, bewusst gesperrt | persistent: rs\_probelauf\_state\_v1 | Node 11; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
 | B29 | depot-tranchen-manager.html | Vermögensverlauf | Stand jetzt erfassen mit bestätigten Quellen und Sieben-Tage-Kursgate | sichtbar | persistent: rs\_household\_wealth\_captures\_v1, ruhestandsmodellValues\_v29\_guar… | Node 2; Browser 0; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
 | B30 | depot-tranchen-manager.html | Vermögensverlauf | Tageslinie und Tageskennzahlen getrennt von erfassten Ständen, Abschlussrauten und Tabelle | bedingt sichtbar, sichtbar | keine | Node 2; Browser 0; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
 

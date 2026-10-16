@@ -3,6 +3,7 @@ import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { createProbelaufController, PROBELAUF_STATE_KEY as KEY, PROBELAUF_SESSION_KEYS, validateProbelaufState } from '../app/shared/probelauf-state.js';
 import { SnapshotArchive as A, SNAPSHOT_KINDS } from '../app/shared/snapshot-archive.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
+import { MUSTER_HAUSHALTE, musterHaushalt } from '../app/demo/muster-haushalte.js';
 import { getAppTestDate, setAppTestDate, localCalendarDate } from '../app/shared/app-clock.js';
 import { ANNUAL_PLAN_RECORD_KEY, readAnnualPlanRecord } from '../app/profile/annual-plan-record.js';
 import { planScope } from '../app/profile/household-plan.js';
@@ -196,5 +197,31 @@ for (const releaseWriter of [true, false]) {
     lease?.unregister();
 }
 assertEqual(validateProbelaufState(null), null, 'Leerer Zustand');
+for (const household of MUSTER_HAUSHALTE) for (const date of [null, '2026-11-02']) {
+    const f = await playFixture('tauri', realRecords);
+    let c = await f.boot(); const before = f.realBytes();
+    await c.start(() => ({ source: 'demo', householdId: household.id, testDate: date })); c = await f.boot();
+    assertEqual(c.state.householdId, household.id, 'Gewählter Haushalt bleibt beim Neustart erhalten');
+    assertEqual(c.state.testDate, date, 'Jeder Beispielhaushalt unterstützt Stand heute und Spielkurse');
+    const review = await c.readEndReview();
+    const transferError = await reject(() => c.end(() => ({ action: 'transfer', review })), 'Kein Beispielhaushalt darf übernommen werden');
+    assert(transferError.message.includes(household.name), 'Übernahmesperre nennt den gewählten Haushalt');
+    if (date === null) assertEqual(P.getItemSync('rs_daily_prices_v1'), null, 'Stand heute behält keinen synthetischen Verlauf');
+    if (household.id === 'max-erika') {
+        // Rohzustand der Produktiv-EXE ohne neues Haushaltsfeld.
+        const old = JSON.parse(f.values[KEY]); delete old.householdId; f.values[KEY] = JSON.stringify(old);
+        c = await f.boot();
+        assertEqual(musterHaushalt(validateProbelaufState(f.values[KEY]).householdId).name, 'Max und Erika', 'Fehlendes Feld wird als Max und Erika gelesen');
+        await c.changeDate('2027-01-02'); c = await f.boot();
+        assertEqual(musterHaushalt(c.state.householdId).id, 'max-erika', 'Alter Zustand bleibt nach Datumssprung fortsetzbar');
+    }
+    await c.end(() => true); await f.boot();
+    assertEqual(f.realBytes(), before, 'Auch alte Zustände und neue Haushalte werden bytegleich beendet');
+}
+for (const householdId of ['unbekannt', null, 7]) {
+    const error = await reject(() => validateProbelaufState({ version: 2, active: true, phase: 'active',
+        source: 'demo', runtime: 'tauri', testDate: null, householdId }), 'Unbekannter Haushalt wird abgewiesen');
+    assert(error.message.includes('Beschädigter Spielbereich-Zustand'), 'Unbekannter Wert meldet beschädigten Zustand');
+}
 assert(!(KEY in buildFullPersistenceBackup({ storage: { keysSync: () => [KEY], getItemSync: () => '{}' } }).records), 'Steuerung bleibt außerhalb Backups');
 P.resetPersistenceForTests(); setAppTestDate(null);

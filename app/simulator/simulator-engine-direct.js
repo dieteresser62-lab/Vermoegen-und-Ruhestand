@@ -256,7 +256,8 @@ function buildRuinOutcome({
     coveredFloorNominal,
     effectiveWithdrawalNominal,
     depotValueNominal,
-    taxReconciliation = null
+    taxReconciliation = null,
+    personalTaxFunding = null
 }) {
     const terminalPortfolio = { ...portfolio, liquiditaet: euros(liquiditaet) };
     const normalizedRequiredFloor = euros(Math.max(0, Number(requiredFloorNominal) || 0));
@@ -275,7 +276,7 @@ function buildRuinOutcome({
     return {
         kind: SIMULATOR_YEAR_OUTCOME_KINDS.RUIN,
         isRuin: true,
-        reason,
+        reason: personalTaxFunding ? `${reason} / ${personalTaxFunding.reason}` : reason,
         ruinDetails: {
             requiredFloorNominal: normalizedRequiredFloor,
             coveredFloorNominal: normalizedCoveredFloor,
@@ -293,6 +294,8 @@ function buildRuinOutcome({
             entnahme_effektiv: normalizedEffectiveWithdrawal,
             depotwert_gesamt: normalizedDepotValue,
             terminal_ruin_year: true,
+            ...(personalTaxFunding ? { personal_tax_funding_reason: personalTaxFunding.reason,
+                personal_tax_funding_shortfall: personalTaxFunding.shortfall } : {}),
             ...(taxReconciliation ? { terminal_reason: 'personal_tax_shortfall',
                 tax_shortfall: taxReconciliation.taxShortfall } : {})
         },
@@ -1041,6 +1044,7 @@ export function simulateOneYear(currentState, inputs, yearData, yearIndex, pfleg
             liquiditaet,
             marketDataCurrentYear,
             reason: `Gesamtvermögen (${formatInteger(totalWealthAvailable)}) < Floor (${formatInteger(netFloorYear)})`,
+            personalTaxFunding: actionResult.personalTaxFunding,
             requiredFloorNominal: netFloorYear,
             coveredFloorNominal: totalWealthAvailable,
             // D-14 measures the amount actually paid out. This ruin branch
@@ -1091,6 +1095,7 @@ export function simulateOneYear(currentState, inputs, yearData, yearIndex, pfleg
             liquiditaet: payoutFallback.liquiditaet,
             marketDataCurrentYear,
             reason: payoutFallback.reason,
+            personalTaxFunding: actionResult.personalTaxFunding,
             requiredFloorNominal: netFloorYear,
             coveredFloorNominal: jahresEntnahmeEffektiv + equityAfterBuys + goldAfterBuys,
             // Assets that remain after the partial payout are coverage
@@ -1192,6 +1197,7 @@ export function simulateOneYear(currentState, inputs, yearData, yearIndex, pfleg
     if (taxReconciliation.taxShortfall > 1e-8) {
         return buildRuinOutcome({ currentState, portfolio, liquiditaet, marketDataCurrentYear,
             reason: `Steuer im Haushalt ungedeckt (${euros(taxReconciliation.taxShortfall)} EUR)`,
+            personalTaxFunding: actionResult.personalTaxFunding,
             requiredFloorNominal: netFloorYear, coveredFloorNominal: Math.min(netFloorYear, jahresEntnahmeEffektiv),
             effectiveWithdrawalNominal: jahresEntnahmeEffektiv, depotValueNominal: depotwertGesamt,
             taxReconciliation });

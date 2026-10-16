@@ -9,12 +9,27 @@ import {
     readDynamicFlexInputs,
     readStrategyInputs
 } from '../app/simulator/simulator-input-strategy.js';
-import { SimulatorValidationError, validateSimulatorInputs } from '../app/simulator/simulator-input-validation.js';
+import { SimulatorValidationError, validateSimulatorInputs, formatSimulatorValidationError } from '../app/simulator/simulator-input-validation.js';
+import { ValidationError } from '../engine/errors.mjs';
 import { readTrancheInputs, SimulatorTrancheInputError } from '../app/simulator/simulator-input-tranches.js';
 import { getCommonInputs } from '../app/simulator/simulator-portfolio-inputs.js';
 import { STRATEGY_OPTIONS } from '../types/strategy-options.js';
 
 console.log('--- Simulator Input Reader Tests ---');
+
+{
+    const error = new ValidationError([
+        { fieldId: 'goldFloorProzent', message: 'Floor-Prozent unrealistisch (0-20%).' },
+        { fieldId: 'minimumFlexAnnual', message: 'Mindest-Flex p.a. darf nicht größer als Flex Bedarf p.a. sein.' },
+        { field: 'shares', trancheId: 'synthetic-bond', value: 0, message: 'shares muss größer als 0 sein.' }
+    ]);
+    const text = formatSimulatorValidationError(error);
+    assert(text.includes('Gold-Untergrenze: Floor-Prozent unrealistisch (0-20%).'), 'Enginefehler nennt unsichtbares Goldfeld in Klartext');
+    assert(text.includes('Mindest-Flex:'), 'Alle betroffenen Felder werden angezeigt');
+    assert(text.includes('Stückzahl (Tranche synthetic-bond): Stückzahl muss größer als 0 sein. Wert: 0.'), 'Tranchenfehler nennt Feld, Bestand, Regel und Nullwert');
+    assertEqual(formatSimulatorValidationError({ cause: error }), text, 'Fehlerdetails bleiben auch hinter der Enginegrenze lesbar');
+    assertEqual(formatSimulatorValidationError(new Error('Andere Ursache')), 'Andere Ursache', 'Andere Fehlermeldungen bleiben erhalten');
+}
 
 function createDocumentMock(values = {}) {
     values = { startAlter: '67', ...values };

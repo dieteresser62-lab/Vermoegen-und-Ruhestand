@@ -69,7 +69,7 @@ function nonLiquidSaleSources(action) {
         .filter(source => source?.kind && !isLiquiditySource(source) && (Number(source.brutto) || 0) > 0);
 }
 
-function reconcileUsesToAchievedNet(verwendungen, achievedNet) {
+export function reconcileUsesToAchievedNet(verwendungen, achievedNet, tolerance = 0.01) {
     if (!verwendungen || typeof verwendungen !== 'object' || Array.isArray(verwendungen)) {
         return verwendungen;
     }
@@ -79,7 +79,11 @@ function reconcileUsesToAchievedNet(verwendungen, achievedNet) {
     }
     const target = Math.max(0, Number(achievedNet) || 0);
     const requested = entries.reduce((total, [, value]) => total + value, 0);
-    if (requested <= target + 0.01) return { ...verwendungen };
+    // Gerundete Anleihenverkäufe können mehr Netto liefern als angefordert.
+    // Der Rest bleibt als Liquidität erhalten und gehört zum selben Action-Flow.
+    if (target > requested + tolerance) return { ...verwendungen,
+        liquiditaet: (verwendungen.liquiditaet || 0) + target - requested };
+    if (requested <= target + tolerance) return { ...verwendungen };
     if (target === 0) {
         return Object.fromEntries(entries.map(([key]) => [key, 0]));
     }

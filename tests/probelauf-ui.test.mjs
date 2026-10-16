@@ -7,6 +7,7 @@ import { createProbelaufController, PROBELAUF_SESSION_KEYS } from '../app/shared
 import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { setAppTestDate, getAppTestDate, localCalendarDate } from '../app/shared/app-clock.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
+import { MUSTER_HAUSHALTE, DEFAULT_MUSTER_HAUSHALT } from '../app/demo/muster-haushalte.js';
 import { PROBELAUF_PRICE_LABEL, PROBELAUF_PRICE_EXPLANATION, renderProbelaufPriceInfo } from '../app/shared/probelauf-price-ui.js';
 import { renderManagerQuoteContext } from '../app/tranches/tranchen-manager-renderer.js';
 import { buildProbelaufEndReview, calculateProbelaufEndReview } from '../app/shared/probelauf-comparison.js';
@@ -367,7 +368,7 @@ for (const phase of ['starting', 'restoring', 'active']) {
 }
 
 // Beide Quellen nutzen denselben Startdialog; Abbruch legt keinen Spielbereich an.
-for (const selectedSource of ['copy', 'demo']) for (const accepted of [false, true]) {
+for (const selectedSource of ['copy', 'demo', 'renate', 'jan-lena']) for (const accepted of [false, true]) {
     const f = await playFixture('tauri', { profile_tagesgeld: '00123' });
     const env = documentDouble(); let finish, open, started = false;
     const done = new Promise(resolve => finish = resolve), opened = new Promise(resolve => open = resolve);
@@ -383,14 +384,26 @@ for (const selectedSource of ['copy', 'demo']) for (const accepted of [false, tr
     assertEqual(env.nodes.filter(node => node.tagName === 'dialog').length, 1, 'Ein Dialog bei Doppelklick');
     assert(env.nodes.some(node => node.textContent?.includes('Deine echten Daten bleiben unverändert.')), 'Start erklärt getrennte Daten');
     const select = env.nodes.find(node => node.attributes['aria-label'] === 'Datenquelle');
-    assertEqual(select.children.map(o => o.textContent).join(','), 'Kopie meiner Daten,Max und Erika', 'Beide Quellen benannt');
+    assertEqual(select.children.map(o => o.textContent).join('|'), ['Kopie meiner Daten', ...MUSTER_HAUSHALTE.map(h => h.label)].join('|'), 'Kopie und vier Haushalte benannt');
     select.value = selectedSource; env.nodes.find(node => node.tagName === 'input').value = '2027-07-01';
     env.dialog().children.find(node => node.className === 'ds-actions').children[accepted ? 1 : 0].fire('click');
     await done;
     assert(f.realBytes() === before, 'Dialog und Start erhalten echte Bytes');
-    await f.boot();
+    const active = await f.boot();
     assertEqual(P.getPersistenceStatus().activeArea, accepted ? 'spiel' : 'echt', 'Quelle erst nach Bestätigung aktiv');
     if (accepted && selectedSource === 'copy') assertEqual(P.getItemSync('profile_tagesgeld'), '00123', 'Kopie erhält Rohwert');
+    if (accepted && selectedSource !== 'copy') {
+        const householdId = selectedSource === 'demo' ? DEFAULT_MUSTER_HAUSHALT : selectedSource;
+        const name = MUSTER_HAUSHALTE.find(h => h.id === householdId).name;
+        assertEqual(active.state.householdId, householdId, 'Dialogwahl bleibt nach Neustart erhalten');
+        renderProbelaufUI(env.doc, active);
+        assert(env.doc.getElementById('probelaufBandText').textContent.includes(name), 'Band nennt den gewählten Haushalt');
+        assert(env.doc.getElementById('probelaufBandInfo').children[1].textContent.includes(name), 'Bandhinweis nennt den gewählten Haushalt');
+        const pending = requestProbelaufEnd({ doc: env.doc, state: active.state });
+        assert(env.nodes.some(node => node.className === 'close-dialog-subtitle' && node.textContent === name), 'Ende-Dialog nennt den gewählten Haushalt');
+        assert(!env.nodes.some(node => node.parentNode && node.textContent === 'Übernehmen …'), 'Kein Beispielhaushalt ist übernehmbar');
+        env.nodes.findLast(node => node.dataset.pageChoiceCancel === '').fire('click'); await pending;
+    }
     if (!accepted) assertEqual(f.points.size, 0, 'Abbruch erzeugt keinen Sicherungspunkt');
     P.resetPersistenceForTests(); setAppTestDate(null);
 }

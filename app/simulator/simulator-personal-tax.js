@@ -5,6 +5,7 @@ import { personalProfiles, personalWithdrawalPlan, debitAccount, syncPersonalLiq
 import { attachExecutedTaxContract, buildTaxRawAggregate, addTaxRawAggregate } from './simulator-tax-recompute.js';
 import { calculateSaleAndTax } from '../../engine/transactions/sale-engine.mjs';
 import { applySaleToPortfolio } from './simulator-portfolio-tranches.js';
+import { buildDetailedTranchesFromPortfolio } from './simulator-engine-direct-utils.js';
 
 const books = new WeakMap();
 const sum = (rows, key) => rows.reduce((total, row) => total + (Number(row[key]) || 0), 0);
@@ -87,7 +88,12 @@ function fundPersonalCash(portfolio, row, need, market = {}, bondsOnly = false, 
         .filter(lot => (lot.sourceProfileId || portfolio.simulationSourceProfileId) === row.profileId
             && lot.marketValue > 1e-9 && (!bondsOnly || lot.category === 'bonds'));
     if (!lots.length) return 0;
-    let sale = calculateSaleAndTax(Math.max(2, need), { detailledTranches: lots, sparerPauschbetrag: 0,
+    // Wieder aufgefüllte Anleihen können nur aggregierte Werte besitzen.
+    // Dieselbe Engineprojektion wie im Jahresaufruf; die Ausführung nutzt die Originallots.
+    const detailledTranches = buildDetailedTranchesFromPortfolio({
+        depotTranchesAktien: lots, simulationSourceProfileId: portfolio.simulationSourceProfileId
+    });
+    let sale = calculateSaleAndTax(Math.max(2, need), { detailledTranches, sparerPauschbetrag: 0,
         kirchensteuerSatz: row.kirchensteuerSatz, goldAktiv: true }, { minGold: 0 }, market, true);
     if (sale.bruttoVerkaufGesamt > 0) {
         const action = attributeSimulatorAction(portfolio, { type: 'TRANSACTION', quellen: sale.breakdown,

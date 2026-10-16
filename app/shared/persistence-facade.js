@@ -7,6 +7,7 @@ import { AREA_CONTROL_KEY, areaSessionStorage, scopeWebStorage, setStorageArea, 
 import { detectRuntime } from './runtime-env.js';
 import { getPageNavigationGuard } from './navigation-guard-dialog.js';
 import { createNavigationOperationLifecycle } from './navigation-guard.js';
+import { musterHaushalt } from '../demo/muster-haushalte.js';
 
 const PROBELAUF_STATE_KEY = 'rs_probelauf_state_v1';
 const DEFAULT_DEBOUNCE_MS = 250;
@@ -1116,7 +1117,7 @@ export async function adoptPlayArea({ state, expectedPlayChecksum, now = new Dat
     const realRecords = await readRealRecords();
     const eligibility = probelaufTransferability(state, realRecords);
     if (!eligibility.eligible) throw new Error(eligibility.reason === 'date' ? 'Nach Zeitsprüngen nicht übernehmbar.'
-        : eligibility.reason === 'demo' ? 'Max und Erika sind nicht übernehmbar.' : 'Deine echten Daten wurden seit dem Start geändert. Bitte erneut vergleichen.');
+        : eligibility.reason === 'demo' ? `Die Beispieldaten von ${musterHaushalt(state.householdId).name} sind nicht übernehmbar.` : 'Deine echten Daten wurden seit dem Start geändert. Bitte erneut vergleichen.');
     const target = buildProbelaufTransferRecords(realRecords, playRecords);
     const review = await calculateProbelaufEndReview({ state, realRecords, playRecords: target, now });
     const transfer = await areaManager.openRealTransfer();

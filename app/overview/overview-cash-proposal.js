@@ -5,7 +5,7 @@ import { appNow, localCalendarDate } from '../shared/app-clock.js';
 import { projectPersonPension, validateIsoDate } from '../profile/profile-person-data.js';
 import { liveCashData } from '../profile/profile-cash-update.js';
 import { readAnnualPlanRecord } from '../profile/annual-plan-record.js';
-import { planScope } from '../profile/household-plan.js';
+import { memberPlanScope } from '../profile/household-plan.js';
 import { loadExpensesStoreResult } from '../balance/balance-expenses-storage.js';
 import { computeSpent } from '../balance/balance-expenses-metrics.js';
 import { readOverviewSummary, OVERVIEW_SUMMARY_KEY } from './overview-storage.js';
@@ -69,7 +69,7 @@ export function createCashProposals({ doc = globalThis.document, model, people, 
         const registry = JSON.parse(storage.getItem('rs_profiles_v1'));
         const expenseResult = loadExpensesStoreResult(storage);
         if (expenseResult.status === 'corrupt') throw new Error('Ausgaben sind nicht sicher lesbar.');
-        const area = planScope(model.members?.some(person => person.belongs) ? 'household' : model.scope.kind, model.scope.ids);
+        const area = memberPlanScope(model.scope.ids, storage, model.members?.some(person => person.belongs) || model.scope.kind === 'household');
         const withdrawalForYear = year => {
             const record = readAnnualPlanRecord({ year, scope: area, storage });
             if (record?.status === 'invalid') throw new Error('Jahresplan ist nicht sicher lesbar.');

@@ -64,6 +64,7 @@ function buildMonteCarloLifeLogFields({
 }
 
 export function buildMonteCarloRuinLogRow({
+    result = null,
     simulationsJahr,
     yearData,
     inputs,
@@ -77,7 +78,12 @@ export function buildMonteCarloRuinLogRow({
         histJahr: yearData.jahr,
         inflation: yearData.inflation,
         ...buildTailRiskLogFields(tailRiskOverlay),
-        aktionUndGrund: '>>> RUIN <<<',
+        aktionUndGrund: result?.logData?.personal_tax_funding_reason
+            ? `>>> RUIN <<< / ${result.logData.personal_tax_funding_reason}` : '>>> RUIN <<<',
+        ...(result?.logData?.personal_tax_funding_reason ? {
+            personal_tax_funding_reason: result.logData.personal_tax_funding_reason,
+            personal_tax_funding_shortfall: result.logData.personal_tax_funding_shortfall
+        } : {}),
         wertAktien: 0,
         wertGold: 0,
         liquiditaet: 0,

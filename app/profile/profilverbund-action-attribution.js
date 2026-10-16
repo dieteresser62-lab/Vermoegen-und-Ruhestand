@@ -9,6 +9,7 @@ import { settleTaxYear } from '../../engine/tax-settlement.mjs';
 import { classifyTranche } from '../../types/tranche-contract.js';
 import { buildProfileOwnedTranches } from './profilverbund-balance.js';
 import { resolveLiquidityRunwayYears } from '../../types/liquidity-runway-contract.js';
+import { reconcileUsesToAchievedNet } from '../../engine/transactions/three-bucket-logic.mjs';
 
 const TOLERANCE_EUR = 0.01;
 const EPSILON = 1e-9;
@@ -515,11 +516,69 @@ function selectAssetSourcesAtScale({ candidates, blueprint, profiles, mode, scal
     return {
         sources,
         tax,
-        net: sum(sources.map(source => source.brutto)) - tax
+        net: sum(sources.map(source => source.brutto)) - tax,
+        selected
     };
 }
 
-function planAssetSources(plannedSources, profiles, mode, targetNet) {
+/** Only the previously infeasible plan enters this funding path. */
+function coverAttributionGap({ maxPlan, maxScale, candidates, profiles, mode, targetNet, cashSources }) {
+    // Use uncommitted Tagesgeld first. Money market stays in the ordinary
+    // liquidity/payout path, where its disposal is recorded in the annual tax book.
+    const cashProfiles = profiles.map(profile => ({ ...profile, inputs: { ...profile.inputs,
+        tagesgeld: Math.floor(Math.max(0, finiteNumber(profile.inputs?.tagesgeld)
+            - sum(cashSources.filter(source => source.sourceProfileId === profile.profileId).map(source => source.brutto))) * 100) / 100,
+        geldmarktEtf: 0 } }));
+    const cashCapacity = sum(cashProfiles.map(profile => profile.inputs.tagesgeld));
+    const cashToUse = Math.min(targetNet - maxPlan.net, cashCapacity);
+    const extraCash = allocateLiquiditySources(Math.min(cashCapacity, Math.ceil(cashToUse * 100) / 100), cashProfiles, mode);
+    // Keep the established cent allocation order, but fund the unrounded tax
+    // amount exactly so the simulator's action-flow contract remains balanced.
+    if (extraCash.length) {
+        const last = extraCash.at(-1);
+        last.brutto -= sum(extraCash.map(source => source.brutto)) - cashToUse;
+        last.netto = last.brutto;
+    }
+    const cashNet = sum(extraCash.map(source => source.netto));
+    const remainingTarget = targetNet - cashNet;
+    let plan = maxPlan;
+    if (plan.net < remainingTarget - EPSILON) {
+        // A saturated bucket must not cap still available lots in another bucket
+        // or another person's depot. Settle the combined sale, never each part.
+        const remainingCandidates = candidates.map(candidate => ({ ...candidate,
+            capacity: Math.max(0, candidate.capacity - (maxPlan.selected.get(candidate.key)?.gross || 0))
+        })).filter(candidate => candidate.capacity > EPSILON);
+        const capacity = sum(remainingCandidates.map(candidate => candidate.capacity));
+        const selectAdditional = gross => {
+            const selected = new Map(maxPlan.selected);
+            const rawByProfile = new Map(profiles.map(profile => [profile.profileId,
+                rawAggregateForSources(maxPlan.sources.filter(source => source.sourceProfileId === profile.profileId))]));
+            if (mode === 'tax_optimized') {
+                selectTaxOptimizedGross(remainingCandidates, gross, selected, rawByProfile);
+            } else {
+                selectWeightedGross(remainingCandidates, profiles, gross, mode, selected, rawByProfile);
+            }
+            const sources = [...selected.values()].map(entry => sourceFromCandidate(entry.candidate, entry.gross));
+            const tax = sum(profiles.map(profile => previewTaxDueForScale(profile, rawByProfile.get(profile.profileId), 1)));
+            return { sources, net: sum(sources.map(source => source.brutto)) - tax };
+        };
+        plan = selectAdditional(capacity);
+        if (plan.net >= remainingTarget) {
+            let lower = 0, upper = capacity;
+            for (let iteration = 0; iteration < 80; iteration += 1) {
+                const middle = (lower + upper) / 2;
+                if (selectAdditional(middle).net < remainingTarget) lower = middle;
+                else upper = middle;
+            }
+            plan = selectAdditional(upper);
+        }
+    }
+    return { sources: plan.sources, scale: maxScale, extraCash,
+        fundingGap: targetNet - maxPlan.net,
+        shortfall: Math.max(0, targetNet - plan.net - cashNet) };
+}
+
+function planAssetSources(plannedSources, profiles, mode, targetNet, cashSources) {
     if (targetNet <= TOLERANCE_EUR) return { sources: [], scale: 0 };
     if (!plannedSources.length) {
         throw new Error(`Profilverbund: ${targetNet.toFixed(2)} EUR Netto-Verwendung besitzen keine attribuierbare Verkaufsquelle.`);
@@ -537,7 +596,7 @@ function planAssetSources(plannedSources, profiles, mode, targetNet) {
     }
     const maxPlan = selectAssetSourcesAtScale({ candidates, blueprint, profiles, mode, scale: maxScale });
     if (maxPlan.net < targetNet - TOLERANCE_EUR) {
-        throw new Error(`Profilverbund: Finale Profilsteuern unterdecken die Haushaltsverwendung um ${(targetNet - maxPlan.net).toFixed(2)} EUR.`);
+        return coverAttributionGap({ maxPlan, maxScale, candidates, profiles, mode, targetNet, cashSources });
     }
     let lower = 0;
     let upper = maxScale;
@@ -615,8 +674,8 @@ export function attributeHouseholdAction({ householdAction, profiles, mode = 'ta
         throw new Error('Profilverbund: Profile besitzen keine eindeutige Profil-ID.');
     }
 
-    const uses = normalizeUses(householdAction?.verwendungen || {});
-    const targetNet = sumUses(uses);
+    let uses = normalizeUses(householdAction?.verwendungen || {});
+    let targetNet = sumUses(uses);
     const originalSources = Array.isArray(householdAction?.quellen) ? householdAction.quellen : [];
     originalSources.forEach(source => {
         if (!hasFiniteValue(source?.brutto) || Number(source.brutto) < -TOLERANCE_EUR) {
@@ -649,7 +708,25 @@ export function attributeHouseholdAction({ householdAction, profiles, mode = 'ta
     if (targetNet <= TOLERANCE_EUR && assetSources.some(source => source.brutto > TOLERANCE_EUR)) {
         throw new Error('Profilverbund: Verkaufsquellen besitzen keine verbindliche Haushaltsverwendung.');
     }
-    const assetPlan = planAssetSources(assetSources, profileList, mode, Math.max(0, assetTargetNet));
+    const assetPlan = planAssetSources(assetSources, profileList, mode, Math.max(0, assetTargetNet), cashSources);
+    const additionalCash = sum((assetPlan.extraCash || []).map(source => source.brutto));
+    // Existing cash already belongs to liquidity: cancel that part of the
+    // requested top-up instead of inventing a cash-funded liquidity inflow.
+    let liquidityOffset = Math.min(uses.liquiditaet, additionalCash);
+    uses.liquiditaet -= liquidityOffset;
+    targetNet -= liquidityOffset;
+    for (const source of assetPlan.extraCash || []) {
+        const offset = Math.min(liquidityOffset, source.brutto);
+        liquidityOffset -= offset;
+        if (source.brutto > offset) cashSources.push({ ...source,
+            brutto: source.brutto - offset, netto: source.netto - offset });
+    }
+    if (assetPlan.shortfall > EPSILON) {
+        // Same capped-use reconciliation as the Engine's limited bond sale.
+        // Simulator payout/floor checks then handle the remaining financial gap.
+        uses = reconcileUsesToAchievedNet(uses, Math.max(0, targetNet - assetPlan.shortfall), 0);
+        targetNet = sumUses(uses);
+    }
     const assetScale = assetPlan.scale;
     const scaledAssetSources = assetPlan.sources;
     const scaledByProfile = new Map(profileList.map(profile => [profile.profileId, []]));
@@ -770,6 +847,13 @@ export function attributeHouseholdAction({ householdAction, profiles, mode = 'ta
             details: settlement.details
         })),
         ...(transactionDiagnostics ? { transactionDiagnostics } : {}),
+        ...(assetPlan.fundingGap > TOLERANCE_EUR ? { personalTaxFunding: {
+            gap: assetPlan.fundingGap, cash: additionalCash,
+            shortfall: assetPlan.shortfall,
+            reason: assetPlan.shortfall > EPSILON
+                ? 'Profilsteuern: Verfügbare Mittel reichen nicht; Auffüllung und Käufe begrenzt.'
+                : 'Profilsteuern: Zusätzliche Deckung aus vorhandenen Haushaltsmitteln.'
+        } } : {}),
         attributionMode: mode
     };
 

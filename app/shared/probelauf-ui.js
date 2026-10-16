@@ -4,6 +4,7 @@ import { bindProbelaufQuoteContext } from './probelauf-price-ui.js';
 import { bindInfoPopovers, createInfoPopover } from './designsystem-info-popover.js';
 import { requestProbelaufEndDialog, showProbelaufTransferred } from './probelauf-end-dialog.js';
 import { renderTimeLapseUI } from './probelauf-timelapse-ui.js';
+import { MUSTER_HAUSHALTE, DEFAULT_MUSTER_HAUSHALT, musterHaushalt } from '../demo/muster-haushalte.js';
 
 const bindings = new WeakMap();
 const queuedStarts = new WeakSet();
@@ -46,7 +47,7 @@ export function requestProbelaufDate({ doc, testDate, starting = false, demoAvai
         if (starting && demoAvailable) {
             sourceLabel = doc.createElement('label'); sourceLabel.textContent = 'Datenquelle';
             source = doc.createElement('select'); source.setAttribute('aria-label', 'Datenquelle');
-            for (const [value, text] of [['copy', 'Kopie meiner Daten'], ['demo', 'Max und Erika']]) {
+            for (const [value, text] of [['copy', 'Kopie meiner Daten'], ...MUSTER_HAUSHALTE.map(household => [household.id === DEFAULT_MUSTER_HAUSHALT ? 'demo' : household.id, household.label])]) {
                 const option = doc.createElement('option'); option.value = value; option.textContent = text; source.appendChild(option);
             }
             source.value = 'copy'; sourceLabel.appendChild(source);
@@ -67,7 +68,9 @@ export function requestProbelaufDate({ doc, testDate, starting = false, demoAvai
         const accepted = () => {
             const date = starting && mode.value === 'today' ? null : input.value;
             try { if (date !== null) parseCalendarDate(date); } catch (cause) { error.textContent = cause.message; input.focus(); return; }
-            finish(starting ? { source: source?.value || 'copy', testDate: date } : date);
+            const selected = source?.value || 'copy';
+            finish(starting ? { source: selected === 'copy' ? 'copy' : 'demo',
+                ...(selected === 'copy' ? {} : { householdId: selected === 'demo' ? DEFAULT_MUSTER_HAUSHALT : selected }), testDate: date } : date);
         };
         const keys = event => {
             if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); finish(null); }
@@ -85,6 +88,7 @@ export function requestProbelaufDate({ doc, testDate, starting = false, demoAvai
 
 export function renderProbelaufUI(doc, controller, error = null) {
     const state = controller.state;
+    const householdName = state?.source === 'demo' ? musterHaushalt(state.householdId).name : null;
     bindProbelaufQuoteContext(doc, state);
     const progress = controller.waiting ? 'Speichert noch …' : controller.busy && progressMessages[controller.action];
     const band = doc.getElementById('probelaufBand');
@@ -97,10 +101,10 @@ export function renderProbelaufUI(doc, controller, error = null) {
     if (band) band.hidden = !state || !allowed;
     if (text && state && allowed) text.textContent = state.version === 1
         ? `Alter Spielbereich · Rückkehr zum Ausgangsbestand erforderlich${progress ? ` · ${progress}` : ''}`
-        : `Spielbereich · ${state.testDate === null ? 'echte Kurse von heute' : `Testdatum ${state.testDate.split('-').reverse().join('.')} · Spielkurse`}${state.source === 'demo' ? ' · Beispieldaten' : ''}${progress ? ` · ${progress}` : state.phase !== 'active' ? ' · Bitte Spielbereich beenden' : ''}`;
+        : `Spielbereich · ${state.testDate === null ? 'echte Kurse von heute' : `Testdatum ${state.testDate.split('-').reverse().join('.')} · Spielkurse`}${householdName ? ` · ${householdName} · Beispieldaten` : ''}${progress ? ` · ${progress}` : state.phase !== 'active' ? ' · Bitte Spielbereich beenden' : ''}`;
     if (band && state && allowed) {
         const details = state.version === 1 ? 'Der alte Spielbereich muss zuerst über seinen Rückkehrpunkt beendet werden.'
-            : `${state.testDate === null ? 'Stand heute: Startkurse, Kursverlauf und Jahresmarktdaten werden wie im echten Betrieb abgerufen. Alle gespeicherten Abrufe bleiben im Spielbereich.' : 'Spielkurse: Kurse, Inflation und CAPE sind synthetisch. Es gibt keine Kursnetzanfragen. Der Datumssprung lässt sich bis zum Beenden nicht zurücknehmen.'} Bis zur bestätigten Übernahme bleiben deine echten Daten und Sicherungspunkte unverändert. Verwerfen löscht alles im Spielbereich.${state.source === 'demo' ? ' Max und Erika verwenden Beispieldaten. Eigene Daten kannst du nach dem Beenden anlegen.' : ''}`;
+            : `${state.testDate === null ? 'Stand heute: Startkurse, Kursverlauf und Jahresmarktdaten werden wie im echten Betrieb abgerufen. Alle gespeicherten Abrufe bleiben im Spielbereich.' : 'Spielkurse: Kurse, Inflation und CAPE sind synthetisch. Es gibt keine Kursnetzanfragen. Der Datumssprung lässt sich bis zum Beenden nicht zurücknehmen.'} Bis zur bestätigten Übernahme bleiben deine echten Daten und Sicherungspunkte unverändert. Verwerfen löscht alles im Spielbereich.${householdName ? ` Beispieldaten von ${householdName}. Eigene Daten kannst du nach dem Beenden anlegen.` : ''}`;
         let info = doc.getElementById('probelaufBandInfo');
         if (!info) { info = createInfoPopover(doc, 'Spielbereich und Kursmodus erklären', details); info.id = 'probelaufBandInfo'; (band.querySelector?.('.ds-actions') || band).appendChild(info); }
         else info.children[1].textContent = details;

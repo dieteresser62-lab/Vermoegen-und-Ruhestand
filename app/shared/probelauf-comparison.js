@@ -1,6 +1,6 @@
 import { overviewScope } from '../overview/overview-storage.js';
 import { readSimulationRecord, simulationEntryKey, OVERVIEW_SIMULATION_KEY, fingerprint } from '../overview/overview-simulation-summary.js';
-import { planScope } from '../profile/household-plan.js';
+import { memberPlanScope } from '../profile/household-plan.js';
 import { readAnnualPlanRecord } from '../profile/annual-plan-record.js';
 import { annualEngineLoader } from './annual-engine-loader.js';
 import { probelaufRecordContext, probelaufDomainChecksum, summarizeProbelaufChanges } from './probelauf-records.js';
@@ -41,7 +41,7 @@ export function projectProbelaufComparison(records, { now = new Date(), state = 
     // deshalb auch dort überlagern, ausschließlich in dieser privaten Kopie.
     const sources = { ...records, ...(records.rs_profiles_v1 ? { rs_profiles_v1: JSON.stringify(registry) } : {}) };
     const storage = { getItem: key => sources[key] ?? null };
-    const receiptScope = scope && planScope(ids.some(id => registry.profiles[id].meta?.belongsToHousehold !== false) ? 'household' : 'single', ids);
+    const receiptScope = scope && memberPlanScope(ids, storage, ids.some(id => registry.profiles[id].meta?.belongsToHousehold !== false));
     const receipt = receiptScope ? readAnnualPlanRecord({ year, scope: receiptScope, storage }) : null;
     const runs = scope ? ids.map(id => readSimulationRecord(data(id)[OVERVIEW_SIMULATION_KEY]).entries[simulationEntryKey(scope, 'montecarlo')]) : [];
     let monteCarlo = runs.length && runs.every(entry => entry && fingerprint(entry) === fingerprint(runs[0])) ? runs[0] : null;

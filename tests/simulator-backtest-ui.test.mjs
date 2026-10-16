@@ -236,6 +236,16 @@ console.log('Test 7: trade cells keep plain text, sign semantics and whitelisted
 
 console.log('Simulator Backtest UI contract tests passed');
 
+{
+    const doc = new MockDocument(['backtestStatus', 'backtestPeriodStatus', 'backtestResultHeading']);
+    const cause = { name: 'ValidationError', errors: [{ fieldId: 'goldFloorProzent', message: 'Zulässig sind 0 bis 20 %.' }] };
+    renderHistoricalBacktestStatus(doc, describeHistoricalBacktestResult({
+        outcome: { kind: 'technical_error' }, diagnostics: { cause }
+    }));
+    assert(doc.getElementById('backtestStatus').innerHTML.includes('Gold-Untergrenze: Zulässig sind 0 bis 20 %.'),
+        'Backtest zeigt konkrete Felder eines zurückgegebenen Enginefehlers');
+}
+
 // Vollständiges DOM und reduzierte Hosts durchlaufen dieselben Statuswechsel.
 for (const shape of ['vollständig', 'ohne dataset', 'ohne optionale Hosts', 'ohne Statusregion']) {
     const doc = new MockDocument(['backtestStatus', 'backtestPeriodStatus', 'backtestResultHeading']);

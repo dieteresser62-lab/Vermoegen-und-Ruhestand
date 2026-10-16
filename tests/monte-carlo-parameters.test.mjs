@@ -11,6 +11,7 @@ import {
     resolveMonteCarloWorkerCountV1
 } from '../app/simulator/monte-carlo-parameters.js';
 import { SimulatorValidationError } from '../app/simulator/simulator-input-validation.js';
+import { ValidationError } from '../engine/errors.mjs';
 import { runMonteCarloSimulation } from '../app/simulator/monte-carlo-runner.js';
 import { runMonteCarlo } from '../app/simulator/simulator-monte-carlo.js';
 import {
@@ -447,6 +448,9 @@ class MockDocument {
         assertEqual(confirmationRow.hidden, false, 'large-run confirmation becomes visible above 100,000 runs');
 
         const ui = createMonteCarloUI();
+        ui.showError(new ValidationError([{ fieldId: 'goldFloorProzent', message: 'Zulässig sind 0 bis 20 %.' }]));
+        assert(documentRef.getElementById('mc-error-message').textContent.includes('Gold-Untergrenze: Zulässig sind 0 bis 20 %.'),
+            'Fehlerkasten nennt übernommene Gold-Untergrenze auch ohne sichtbares Eingabefeld');
         expectRejected(() => ui.requireLargeRunConfirmation(uiParameters), 'UI blocks a large run without explicit confirmation');
         assert(confirmation.focusCalls > 0, 'missing large-run confirmation receives focus');
         confirmation.checked = true;
