@@ -1,0 +1,379 @@
+{
+  "compatibility": {
+    "before": {
+      "date": "2026-10-23",
+      "parameters": {
+        "anzahl": 8,
+        "maxDauer": 35,
+        "blockSize": 5,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "cases": {
+        "max-erika/grund": {
+          "inputs": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+          "mc": "ea7dd077a4c072c26de55b71c4bf6e98ed2ac266c4f16b0e6e85e11956097492",
+          "backtest": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295"
+        },
+        "renate/grund": {
+          "inputs": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+          "mc": "a4eee4ee50ce85c37ad9ec613bcc5fa5acb30a571c861f06e08725da4434f9fc",
+          "backtest": "373ed483058841c431e98cb8bb6659c37561d6ce7ed3077211baf51879df18c0"
+        },
+        "renate/klein": {
+          "inputs": "7f8fefe0aca3909ba632b8cbe0932a99aaff39be854cc14b67a49327832d82e5",
+          "mc": "cec8713f87aa8ef575003395000415087d609cb54e70622522d66f5e20305721",
+          "backtest": "c56dc6f5ae499999b91b433169811b7d0f31d23250f0180360a4e1f31b440a35"
+        },
+        "jan-lena/grund": {
+          "inputs": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+          "mc": "7ac09acad964c12428122c3c1c2da0600e3eeedf652a2d1d2be1cc00b4f33ace",
+          "backtest": "dc7dea48fe3f6397bd9dc8d7c91cd40a5764b33dc36a7ba9960af6917b8c306b"
+        },
+        "jan-lena/halten": {
+          "inputs": "ab9b9d059adf07739776fec57454e61c14ab402611bd38066ba78c3f57d79d0c",
+          "mc": "d95e18a0e992e50ab6ff0e41b1159df5ef8d05c9326a84818840df03281e0569",
+          "backtest": "57f93b224b6a018c8e4d66baccde178a541ca78819b6c84a1abce5c5df33379f"
+        },
+        "helga-werner/grund": {
+          "inputs": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+          "mc": "51fba6acb5a3371e97b62883912ceb296e644da7099e05c58e81de0b1c2bc81e",
+          "backtest": "92ea9bdd5ccaa84cc57f0460ec89f5f02718e4a3c2944c7a68a3f9a719f58499"
+        },
+        "helga-werner/haus-pg3": {
+          "inputs": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+          "mc": "7236736758cd3444ddbc91fb5704a567382b41035786a39cabb43b3b552fc81d",
+          "backtest": "261937d98630f35e4e6ff2b645a2ecd2faeb8d44af6285a918e351f8bddac94e"
+        },
+        "sophie/grund": {
+          "inputs": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+          "mc": "829f403c8cbdf7b1d32946e0ca62b20790633a3b5a93377da1219080e17f7e16",
+          "backtest": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341"
+        },
+        "sophie/teilzeit": {
+          "inputs": "0ccb65c20a976ec95aa91f5c1f0b244d7fe8ba32c14c4c85487a5936327f8b2e",
+          "mc": "f03cf432738e2bb53043d858fefe84728a628775b13076562a28f1ec7a36ec1f",
+          "backtest": "76554554fbe16e45e241ae065390332b337eef4f4c912b3c4e487948a8e1eed4"
+        },
+        "martin-petra/grund": {
+          "inputs": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+          "mc": "59a6ffcbef09ec012f6ab2eba81c48b0bbff3fc79d08c8ee5320c8a0091357b6",
+          "backtest": "322b411d84c6ff3429ea5f58209d5e36d407d214326c714ff680ebd914cbc0a9"
+        },
+        "martin-petra/hundert": {
+          "inputs": "ddfdcbd5100334422050d27f28d9f3a0cd7aca977b06753c29a84bfa253c351e",
+          "mc": "d032b498e584abe8c77403d6ad7040148b26be26a3be350bfbfa90c7aa0b1174",
+          "backtest": "c96e3ce33c72e095a96e4ec6d0fe713f39c129547503eee0c72a02b0518cf7c6"
+        },
+        "martin-petra/ehe": {
+          "inputs": "b01b07df59e0ae874a6142da5c0e447a0940e73369044272fbd5c482ba06d0f4",
+          "mc": "f7d0a2ac95c7eb93b7ea646fbb4604e23638186625b79ae05a8af520c5d0188d",
+          "backtest": "d33f64a2d43423cc346ece4bbeb6ebf983987e8802452603ec7ba28a768c6aa0"
+        }
+      }
+    },
+    "after": {
+      "date": "2026-10-23",
+      "parameters": {
+        "anzahl": 8,
+        "maxDauer": 35,
+        "blockSize": 5,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "cases": {
+        "max-erika/grund": {
+          "inputs": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+          "mc": "ea7dd077a4c072c26de55b71c4bf6e98ed2ac266c4f16b0e6e85e11956097492",
+          "backtest": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295"
+        },
+        "renate/grund": {
+          "inputs": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+          "mc": "a4eee4ee50ce85c37ad9ec613bcc5fa5acb30a571c861f06e08725da4434f9fc",
+          "backtest": "373ed483058841c431e98cb8bb6659c37561d6ce7ed3077211baf51879df18c0"
+        },
+        "renate/klein": {
+          "inputs": "7f8fefe0aca3909ba632b8cbe0932a99aaff39be854cc14b67a49327832d82e5",
+          "mc": "cec8713f87aa8ef575003395000415087d609cb54e70622522d66f5e20305721",
+          "backtest": "c56dc6f5ae499999b91b433169811b7d0f31d23250f0180360a4e1f31b440a35"
+        },
+        "jan-lena/grund": {
+          "inputs": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+          "mc": "7ac09acad964c12428122c3c1c2da0600e3eeedf652a2d1d2be1cc00b4f33ace",
+          "backtest": "dc7dea48fe3f6397bd9dc8d7c91cd40a5764b33dc36a7ba9960af6917b8c306b"
+        },
+        "jan-lena/halten": {
+          "inputs": "ab9b9d059adf07739776fec57454e61c14ab402611bd38066ba78c3f57d79d0c",
+          "mc": "d95e18a0e992e50ab6ff0e41b1159df5ef8d05c9326a84818840df03281e0569",
+          "backtest": "57f93b224b6a018c8e4d66baccde178a541ca78819b6c84a1abce5c5df33379f"
+        },
+        "helga-werner/grund": {
+          "inputs": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+          "mc": "51fba6acb5a3371e97b62883912ceb296e644da7099e05c58e81de0b1c2bc81e",
+          "backtest": "92ea9bdd5ccaa84cc57f0460ec89f5f02718e4a3c2944c7a68a3f9a719f58499"
+        },
+        "helga-werner/haus-pg3": {
+          "inputs": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+          "mc": "7236736758cd3444ddbc91fb5704a567382b41035786a39cabb43b3b552fc81d",
+          "backtest": "261937d98630f35e4e6ff2b645a2ecd2faeb8d44af6285a918e351f8bddac94e"
+        },
+        "sophie/grund": {
+          "inputs": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+          "mc": "829f403c8cbdf7b1d32946e0ca62b20790633a3b5a93377da1219080e17f7e16",
+          "backtest": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341"
+        },
+        "sophie/teilzeit": {
+          "inputs": "0ccb65c20a976ec95aa91f5c1f0b244d7fe8ba32c14c4c85487a5936327f8b2e",
+          "mc": "f03cf432738e2bb53043d858fefe84728a628775b13076562a28f1ec7a36ec1f",
+          "backtest": "76554554fbe16e45e241ae065390332b337eef4f4c912b3c4e487948a8e1eed4"
+        },
+        "martin-petra/grund": {
+          "inputs": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+          "mc": "59a6ffcbef09ec012f6ab2eba81c48b0bbff3fc79d08c8ee5320c8a0091357b6",
+          "backtest": "322b411d84c6ff3429ea5f58209d5e36d407d214326c714ff680ebd914cbc0a9"
+        },
+        "martin-petra/hundert": {
+          "inputs": "ddfdcbd5100334422050d27f28d9f3a0cd7aca977b06753c29a84bfa253c351e",
+          "mc": "d032b498e584abe8c77403d6ad7040148b26be26a3be350bfbfa90c7aa0b1174",
+          "backtest": "c96e3ce33c72e095a96e4ec6d0fe713f39c129547503eee0c72a02b0518cf7c6"
+        },
+        "martin-petra/ehe": {
+          "inputs": "b01b07df59e0ae874a6142da5c0e447a0940e73369044272fbd5c482ba06d0f4",
+          "mc": "f7d0a2ac95c7eb93b7ea646fbb4604e23638186625b79ae05a8af520c5d0188d",
+          "backtest": "d33f64a2d43423cc346ece4bbeb6ebf983987e8802452603ec7ba28a768c6aa0"
+        }
+      }
+    }
+  },
+  "parity": {
+    "cases": 208,
+    "excludedFields": [
+      "sourceHash",
+      "logHash",
+      "caseHash"
+    ],
+    "different": []
+  },
+  "measurement": {
+    "testDate": "2026-10-23",
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "metricBasis": "Petras letztes Geldvermögen vor ihrem Tod bzw. Horizontende, real in Startkaufkraft; nur Martin-zuerst-Pfade, bei Ruin 0. Steuer nominal über alle Erbfälle. Notverkäufe zählen Immobilien.",
+    "multipliers": {
+      "60": 13.220909582654896,
+      "70": 10.55009042208528,
+      "80": 7.146403932751326
+    },
+    "results": {
+      "33-prozent": {
+        "inputHash": "1bf16cc407b1e6a37e66915e18c7e106cb03f3fbd53db5d6fcf6615cb11eb7e9",
+        "chunks": [
+          "4177a2bd0ca41b746747daa6f76b2f4a4d126228ea38fdfacf886dcce5ba31db",
+          "26f8f1430984a8ac74f234810cf60ac3140cf2cb26bc51866d4f3c665d0c39f5",
+          "b9ed92603e7be5ce66431cff3e5ffeb112cf03a6d45b1366c4891d0a53c11aaa",
+          "13c3d88ea9506bb4e0e5dd9fa8c34f10fc59c29f7c1a0ec896ef5a6d3fb76c1f",
+          "a4025ca9dab257d0661f4b9d347e640f712a0f56a52723e9b1d2657a14d42634",
+          "e2aaeec02b134f7d1ec9df2e4a78822c35bbc02008df7fe205697d1eb0bc7c83",
+          "434c3d4c04affc071e17b12ec9096f9b44cfbd80fe8324992c573a38c64af824",
+          "108f8b79ce79e9ec9c56c40f857e34fe4ea9c686aad5e6377f64b014f15dbf74",
+          "c0d6b02516cbd8abd837c1f5ea8e81a50f947b5489cb25d2aa51411643eab5a4",
+          "f28a1382fa57742063fe84dba3acaf394303df9eabbe4560f9dd7f2cb1ada132",
+          "de71f00bb36d6aa0b9d66122f2bff7f78e2ac13c46a0e66697fee7c720736dda",
+          "caae29c1018ea5e36b8cbb5a496db0c831d7091d9fde2302e90490a100002bea",
+          "b407eb18af4d08cf5bbae2fad17383b3f81ca06a5e9b463fcd5b0db2f18ad536",
+          "d66623d52832255d1261725d193b9ff0ff43c96b8560044aaf9fa515c1b686d6",
+          "795fb0d7725c6196710550737bd8d9e8537d826db4067ca74f853929d97206da",
+          "41d7b871a6345b9114d02b0dbc6f6588f57479990a1f6016fdd8e7ad64c7f7f6",
+          "985371d12065356d64d9fe200e632206200fe2deaab0e519f46abd67a2659a25",
+          "e29a778b269b72f2b1bf8df4a6718589d00935803cbc68526dfcc0441a63b82f",
+          "b1b90d0ccccb45812f3eff020663f577e24ac7719c1cb93085a3e8fe4f719143",
+          "b494287cf28b7357b2c9afcfe3f0fbd21457dd16e4972da918504e9e65d1b1b6"
+        ],
+        "evaluable": 2000,
+        "technical": 0,
+        "coveredPct": 99.6,
+        "ruin": 8,
+        "petraAfterMartinPaths": 1461,
+        "petraEndRealP10": 374491.7816840712,
+        "petraEndRealMedian": 1519184.6298991987,
+        "inheritanceEvents": 1934,
+        "meanInheritanceTaxNominal": 291298.77124941413,
+        "emergencyHomeSales": 12,
+        "zeroHomeDeath": {
+          "runIndex": 154,
+          "year": 11
+        }
+      },
+      "testament": {
+        "inputHash": "0eddfcaa4c2e65f69188e6dc44875584659abcc4936a7cd43ae57f9d34036154",
+        "chunks": [
+          "a1a575878f40ab74bde5f5b043beb4c34aa8b140292b8bcf2dbd2cb97ab82df3",
+          "6384a282577a3aeea27c38d6d1ce57a3e73268b93290e0f4522ef14e245b6d58",
+          "11a06bae4dba10ace28e64c00bb9189424a2f71c4e32cfe953a47d7147105446",
+          "2d3b4aac85d510b1b34517996f72889b99d859807c8585c4d99743c7d48e049a",
+          "5c24e5096cdacf1ea30e11a9564617d12fdc35f9174e6239885d9d76f4a264e2",
+          "9e9f4a271772649808ce15be2e4ae50dcedc72516305efde22ced1a9da168ddb",
+          "78b962f4f44fc6cb528a25ad0d7a181e5add9436e281767e4b1de9a3ea2a1681",
+          "895865a1354a7793eabfdad08af333b7015b0edd232a4879c3ec0d2ca49f6292",
+          "87f8e3281b49b3b225e34bca82ccba81d0e2cb5f4b6d6a6ac4302700527e16b6",
+          "2bcecfc8e8cac55522a71697dc98b35778b1ea8ffd8bb0176b5bbf6c4b5d4cce",
+          "f0e5598f286f4945714bea039be5d53dd689eef3236a09d20d6b77a0e85a205c",
+          "7aa344278d359d7894df9958edbeb0b1d8a5d76c2b9b44c35ae2fc65db99eb86",
+          "916ca7a89b9765f6a6a16d44591373d2a3ff03506829fae1d756d555db663012",
+          "1fb630fd15dc2bec64d58feadef74bf1735effc6e63e8d6eaef6cee989427d6c",
+          "ab278b8bc5037e3446477e889ac23a4d0188952c6409239c394405f18378077f",
+          "e3efcca2d56873b84f7f55c5d883829d4f62f768865edbefec1f41a595c2cb3d",
+          "6c0a9c0127f3bd40f81ae148ca6f3b1691c0db6b14e641742e52dd780354f3cd",
+          "8e362bf2a8323465fa9d4edf448de69e2e7b055ebdbbc8cdb52d2568b63a56af",
+          "801449992b66ed787ecb5da2f7bbc70d8a94a37598d7e74fd8bcc7ea044bceff",
+          "840d890a8e81108fabec1c2e4a13273f5acf1a1bd522ca5d20ee66f256c31958"
+        ],
+        "evaluable": 2000,
+        "technical": 0,
+        "coveredPct": 99.2,
+        "ruin": 16,
+        "petraAfterMartinPaths": 1461,
+        "petraEndRealP10": 360909.22350891895,
+        "petraEndRealMedian": 1477211.9900488365,
+        "inheritanceEvents": 1934,
+        "meanInheritanceTaxNominal": 299258.5901862263,
+        "emergencyHomeSales": 8,
+        "zeroHomeDeath": {
+          "runIndex": 154,
+          "year": 11
+        }
+      },
+      "minus30": {
+        "inputHash": "fc0dd3b539fa919619dc77e8cf5cab37bdbc5ca81ee5b0e757f85c532244ff86",
+        "chunks": [
+          "572db6a15362afec5498c63b83a299bc6114f5376ab39079dedffed3f718c68b",
+          "41bc60fbec241494b3912d16f63f07915320a9cddb4b8aebc1cc5ef49e96e841",
+          "627899382fa58fd703042e8609738a0b3a48d55aad5884d2bf75f8e556501eb4",
+          "7da7e967abb7a686a02066b57955cdbbfad6d7f18b1b4e58daa385c9ac120d91",
+          "0685da1d35fa10901c03025991fdcec3caa71893d400243d4b7db7a58630b580",
+          "12317be0412c5bb8baedca10a1081c248765920729b39a70b34ac89250ec31ad",
+          "264885bc6f94ab05121ef1e5b763e01dd65da5b62c379ae3ea917de899124505",
+          "59b08f6ca8130286e26ed49fddba57f4e112cbe253afc91cf141bf8dcb3efa2f",
+          "fa1e498852e07edf5d016de933679cb4136fbc51818252d052bd285f0a126a23",
+          "4780aa944d80a8a4cbdb21825e2a00e97f08cf6a4b0ef698d48a7ef6a10f90f8",
+          "20965e68d06c1211795b578b50822f1d919dbedd1eba790125ca10f9961f0f91",
+          "d17778d5c94136dec4cc54c305ce18b3278818068743864b317d8eb3babe3279",
+          "b4168801848a01c226871c177beda4b43eb31e9384128b5333a58108b3cb25e8",
+          "d5744ce6cdd7d71632e0051ffe04e9261c7de571f647e89c8f59633499e8a400",
+          "16718e566541357067ce23239fd7144c4466eb2296cb6d448be6288aebde0a9e",
+          "ab1c26075771d7f5415c924bfc627daf04a8fd4379f03112f735d33059725972",
+          "1bd959d257a721ccd958e67aa18af2b67a05af9814475d3d3df3735987c89f36",
+          "7b2b2bbb2bef8be5901e94d8d279e6839ed1de3ecbc9b767804a24eea0a0cd0c",
+          "d3fb36c5eff64bc88ca44157087d78d03c71adca191559db580fe80283f5e848",
+          "64457aab6e537c5a4de4aa3f2ddb7f80821e5e4c686ba2f11a5e1513faf6e645"
+        ],
+        "evaluable": 2000,
+        "technical": 0,
+        "coveredPct": 99.2,
+        "ruin": 16,
+        "petraAfterMartinPaths": 1461,
+        "petraEndRealP10": 326230.06672728126,
+        "petraEndRealMedian": 1463981.283680039,
+        "inheritanceEvents": 1934,
+        "meanInheritanceTaxNominal": 297749.36907834036,
+        "emergencyHomeSales": 12,
+        "zeroHomeDeath": {
+          "runIndex": 154,
+          "year": 11
+        }
+      },
+      "plus30": {
+        "inputHash": "6b95c6ad341fd434c7d4fb3f740f9230c7e97782c5e06229b025aecd60133af3",
+        "chunks": [
+          "34eed84637cf178aa4969e3b0286e006ace2a4dff71116236cee4753bb509072",
+          "9c2cd86af8bcd93e06b54c1af55c18638d90af508cc99720e0c223a76a625899",
+          "27250d7b100ce91239a5a54b9b61ddc95208ccb88641ecac8e5101e94fbb1b43",
+          "dde61b30be008ad3abcbae1e2e89d8fc7fccc2aedd74e1c9c7d6b513fb735853",
+          "9a448ec605d56921f56ef8847cbe12b537d93a67f96bf3a30b6c25ddae4a1e78",
+          "9efeb7fbd1e5ab89b7094f9351fc340599d82f77db11ad627698df07a85e94ba",
+          "6492f5885f353c155c1cae7941df99d1634e8b77baa0e47b73d27c4fa534c6b2",
+          "6f8069754a6c814b7bbf0926fceb3381788348341df5aa57f7ac1269692f8783",
+          "dfbf760774b35f9c50ea2cfe19c101186be36b3ebcae383b836dd84764c75d73",
+          "e50118e2393f71bd92d4702f072465f898365c3b560a6b73bc62c3a2217448f4",
+          "24d1f450e5f3dbb8c50af29fd6c5bbc8bbefa9f8359a1f495553b3deacde6cc3",
+          "bcd83d56ee6b14e43aa6f992722cdb33eed1b9b5f695c0abe56b58ca8777e0b8",
+          "f0f8c01807c74d30493ec07d1ccc8d80e4b2a2688578dbc4a09222bf86dd08c5",
+          "720385a87328060f7547b458f6557adcbe1a92fd1cab6aa0ec8f241778f237dc",
+          "a28aa95716550f67fe3b674d66a867c57bb74083a873565431f44d54ebbdaef1",
+          "0924a67fc84e2f8fcfc1faf3e308e21c000a258f04c0f32e0de6334277d4977e",
+          "242d1f88ac8bf087d3e5abb3f27e1d26d54a4328c262837bf8d21ac79724a1a6",
+          "3f70bdf863c93f7bdf00b01132357f0d0b944288a0eba9a2c8c97be9e9629abf",
+          "17537cae21113874923d627a3a215b67936917367f91f4c69ec8afd8b79afd1d",
+          "578ff7f421a3e1156d9cade8a16d098af36055ba531656db949d8abc06f1be68"
+        ],
+        "evaluable": 2000,
+        "technical": 0,
+        "coveredPct": 99.3,
+        "ruin": 14,
+        "petraAfterMartinPaths": 1461,
+        "petraEndRealP10": 398654.6976090758,
+        "petraEndRealMedian": 1494799.666593458,
+        "inheritanceEvents": 1934,
+        "meanInheritanceTaxNominal": 302482.00822705927,
+        "emergencyHomeSales": 5,
+        "zeroHomeDeath": {
+          "runIndex": 154,
+          "year": 11
+        }
+      }
+    },
+    "counterchecks": [
+      {
+        "mode": "33-prozent",
+        "period": "2000-2025",
+        "deathYear": 2010,
+        "outcome": "completed",
+        "rowCount": 26,
+        "finalMoney": 732967.1521624946,
+        "tax": 120608.0104125874,
+        "hash": "96070a48e12415b172ddbde2ec6fe7ef96c7be5a0d95c01a1faeb5fafe22732f"
+      },
+      {
+        "mode": "testament",
+        "period": "2000-2025",
+        "deathYear": 2010,
+        "outcome": "completed",
+        "rowCount": 26,
+        "finalMoney": 785543.1869962107,
+        "tax": 151812.05096228252,
+        "hash": "f8d130b8b85329b00a1f6f6875068a55dc1a6f2d00c6580f3db09f0479691d89"
+      },
+      {
+        "mode": "33-prozent",
+        "period": "1930-1964",
+        "deathYear": 1940,
+        "outcome": "completed",
+        "rowCount": 35,
+        "finalMoney": 12434865.600528589,
+        "tax": 130871.27050835777,
+        "hash": "d6a0f7006b725c6937972093564243aeb9661c3e42f0516e5f7c9873361fa10a"
+      },
+      {
+        "mode": "testament",
+        "period": "1930-1964",
+        "deathYear": 1940,
+        "outcome": "completed",
+        "rowCount": 35,
+        "finalMoney": 12150825.361087047,
+        "tax": 143848.21398506904,
+        "hash": "bd00453027dfc5a0b6669c98c73f8c23feac0f73bf45076a5b96966b493c70b6"
+      }
+    ]
+  }
+}

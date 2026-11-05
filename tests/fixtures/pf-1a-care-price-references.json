@@ -1,0 +1,26 @@
+{
+  "baseRevision": "cd34b374",
+  "reason": "FR-38: Pflegekosten und maximaler Pflege-Floor folgen kumulierter Inflation und Kostendrift ab Simulationsstart. Erste Abweichung in allen vier synthetischen Pfaden beim Pflegeeintritt in Jahr 2; Backtest und Pfade ohne Pflege bytegleich. Vollständige JSON.stringify({rows,path0})-Ausgaben, keine ausgeblendeten Felder.",
+  "presets": {
+    "Vorgabe": {
+      "before": "c58ed9c86f7ebb7650e0e301fb0643bb2bc0502e21198fdaa43826aaa52e850e",
+      "after": "5d90af273b2586e3d68c6993e792ff5f2f61a3e1f9af1d18b3a04ddc1729ef25",
+      "withoutCare": "ac4f83a06251939b6e3b6386f4b59b1cc9792c6b54a0e8d0b9b7ced61fa68351"
+    },
+    "konservativ": {
+      "before": "b215da016c32a90b2eb75296c176e81df44c8b0834d68096d244f9b0e96f8f65",
+      "after": "38322b49112284d31f5bee92d1af602267d995165ec9d4c1302a3d3c72053b4e",
+      "withoutCare": "87e305fef4795bba0259ed6cd47dd8f8b9d0b46b2bad97074388e0c24df6bd3e"
+    },
+    "ausgewogen": {
+      "before": "0946608dbe877bdd0e4fbe31c62417e009d1c076d52d64307bcc5657d28e2c2c",
+      "after": "76049e332d50da12551e2846166ff4ddbbba1a8e85f0551928d24e6bbad55863",
+      "withoutCare": "a2853c1768dea244f4eab575327c44bdf9bcba57d880a3b8571114637b018d12"
+    },
+    "offensiv": {
+      "before": "3a6f7401ac44d85ddd26104de662c08c7c3d85d874c44d5b93b15ad64fcd579b",
+      "after": "1e7927e4a96d07952b9e3a5511ab29f924b949ba1bdc3e6fb8925307105144f7",
+      "withoutCare": "bc9f9c4d72e14686fec1a5431482d66ff1a636fe2617c3954eb3218a95c70e0e"
+    }
+  }
+}

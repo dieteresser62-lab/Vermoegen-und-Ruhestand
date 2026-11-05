@@ -1,0 +1,457 @@
+{
+  "synthetic": true,
+  "date": "2026-10-15",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 5,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM",
+    "excludeEstimatedHistory": false
+  },
+  "dynamicFlex": "ausgewogen",
+  "care": true,
+  "gross": "EP-3: 3 Mio. EUR Geld 90/10, Haus 800000 EUR bei Max, Erika PG2 üblich; unverheiratet, Haus + Steuer, 0 Prozent weiteres Erbe.",
+  "measurements": {
+    "before": {
+      "max-erika": {
+        "coveredPct": 99.7,
+        "ruins": 6,
+        "medianRealEnd": 1776068.7164114662
+      },
+      "sophie": {
+        "coveredPct": 94.8,
+        "ruins": 104,
+        "medianRealEnd": 735849.9912221131
+      },
+      "renate": {
+        "coveredPct": 93.45,
+        "ruins": 131,
+        "medianRealEnd": 317668.1257735267
+      },
+      "gross": {
+        "coveredPct": 95.7,
+        "ruins": 86,
+        "medianRealEnd": 3208236.0617158525
+      }
+    },
+    "after": {
+      "max-erika": {
+        "coveredPct": 99.7,
+        "ruins": 6,
+        "medianRealEnd": 1777148.6136988252
+      },
+      "sophie": {
+        "coveredPct": 94.65,
+        "ruins": 107,
+        "medianRealEnd": 733094.5977801315
+      },
+      "renate": {
+        "coveredPct": 93.55,
+        "ruins": 129,
+        "medianRealEnd": 320630.35090341803
+      },
+      "gross": {
+        "coveredPct": 95.7,
+        "ruins": 86,
+        "medianRealEnd": 3208236.0617158525
+      }
+    },
+    "sensitivity-0.7": {
+      "max-erika": {
+        "coveredPct": 99.7,
+        "ruins": 6,
+        "medianRealEnd": 1873349.7550420845
+      },
+      "sophie": {
+        "coveredPct": 95.05,
+        "ruins": 99,
+        "medianRealEnd": 751645.92010596
+      },
+      "renate": {
+        "coveredPct": 93.65,
+        "ruins": 127,
+        "medianRealEnd": 343189.8883176388
+      },
+      "gross": {
+        "coveredPct": 95.75,
+        "ruins": 85,
+        "medianRealEnd": 3238653.526223666
+      }
+    },
+    "sensitivity-1.3": {
+      "max-erika": {
+        "coveredPct": 99.7,
+        "ruins": 6,
+        "medianRealEnd": 1718843.7612716923
+      },
+      "sophie": {
+        "coveredPct": 94.6,
+        "ruins": 108,
+        "medianRealEnd": 730071.3186101869
+      },
+      "renate": {
+        "coveredPct": 92.3,
+        "ruins": 154,
+        "medianRealEnd": 275757.18508535274
+      },
+      "gross": {
+        "coveredPct": 95.7,
+        "ruins": 86,
+        "medianRealEnd": 3208236.0617158525
+      }
+    }
+  },
+  "counterPeriod": "1965–1999; viermal 35 Jahre außerhalb des MO-1-Herleitungszeitraums 2000–2025.",
+  "countercheck": {
+    "before": {
+      "max-erika": {
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 1999
+        },
+        "rows": 35,
+        "realEnd": 5197425.685209468,
+        "minimumFlexYears": 0
+      },
+      "sophie": {
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 1999
+        },
+        "rows": 35,
+        "realEnd": 2393006.021297264,
+        "minimumFlexYears": 0
+      },
+      "renate": {
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 1999
+        },
+        "rows": 35,
+        "realEnd": 464037.0713535944,
+        "minimumFlexYears": 0
+      },
+      "gross": {
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 1999
+        },
+        "rows": 35,
+        "realEnd": 33234842.652312357,
+        "minimumFlexYears": 0
+      }
+    },
+    "after": {
+      "max-erika": {
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 1999
+        },
+        "rows": 35,
+        "realEnd": 5170238.583072478,
+        "minimumFlexYears": 0
+      },
+      "sophie": {
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 1999
+        },
+        "rows": 35,
+        "realEnd": 2393006.021297264,
+        "minimumFlexYears": 0
+      },
+      "renate": {
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 1999
+        },
+        "rows": 35,
+        "realEnd": 562572.5542138295,
+        "minimumFlexYears": 0
+      },
+      "gross": {
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 1999
+        },
+        "rows": 35,
+        "realEnd": 33234842.652312357,
+        "minimumFlexYears": 0
+      }
+    }
+  },
+  "target": {
+    "elapsedSeconds": 206.162471773,
+    "monthly": 4750,
+    "finalVerification": {
+      "status": "confirmed",
+      "runs": 10000,
+      "searchMonthly": 4950,
+      "attempts": [
+        {
+          "monthly": 4950,
+          "metrics": {
+            "coveragePct": 98.82,
+            "affectedPct": 3.52,
+            "affectedYears": 2,
+            "budgetP10": 52117.480062415336,
+            "budgetP50": 82986.4504963318,
+            "wealthP10": 386812.7393405184,
+            "wealthP50": 1483922.3244310068
+          }
+        },
+        {
+          "monthly": 4900,
+          "metrics": {
+            "coveragePct": 98.87,
+            "affectedPct": 3.52,
+            "affectedYears": 2,
+            "budgetP10": 51819.31825029661,
+            "budgetP50": 82755.4290229732,
+            "wealthP10": 395488.6386599606,
+            "wealthP50": 1503159.2966681481
+          }
+        },
+        {
+          "monthly": 4800,
+          "metrics": {
+            "coveragePct": 98.95,
+            "affectedPct": 3.36,
+            "affectedYears": 2,
+            "budgetP10": 51222.71156865007,
+            "budgetP50": 81706.70273452364,
+            "wealthP10": 412638.48181452206,
+            "wealthP50": 1552260.032734137
+          }
+        },
+        {
+          "monthly": 4600,
+          "metrics": {
+            "coveragePct": 99.21,
+            "affectedPct": 3.3000000000000003,
+            "affectedYears": 2,
+            "budgetP10": 50036.170422903386,
+            "budgetP50": 79896.3318879645,
+            "wealthP10": 449920.2428366195,
+            "wealthP50": 1651006.5800069128
+          }
+        },
+        {
+          "monthly": 4700,
+          "metrics": {
+            "coveragePct": 99.08,
+            "affectedPct": 3.34,
+            "affectedYears": 2,
+            "budgetP10": 50632.29406516151,
+            "budgetP50": 80735.62190451263,
+            "wealthP10": 430988.70862801815,
+            "wealthP50": 1597754.4021322043
+          }
+        },
+        {
+          "monthly": 4750,
+          "metrics": {
+            "coveragePct": 99.00999999999999,
+            "affectedPct": 3.34,
+            "affectedYears": 2,
+            "budgetP10": 50927.22967374147,
+            "budgetP50": 80999.39939939941,
+            "wealthP10": 423188.60197353346,
+            "wealthP50": 1579316.524271701
+          }
+        }
+      ]
+    },
+    "metrics": {
+      "coveragePct": 99.00999999999999,
+      "affectedPct": 3.34,
+      "affectedYears": 2,
+      "budgetP10": 50927.22967374147,
+      "budgetP50": 80999.39939939941,
+      "wealthP10": 423188.60197353346,
+      "wealthP50": 1579316.524271701
+    },
+    "baselineMetrics": {
+      "coveragePct": 99.72,
+      "affectedPct": 2.01,
+      "affectedYears": 2,
+      "budgetP10": 37500,
+      "budgetP50": 59737.86103245412,
+      "wealthP10": 827720.50134581,
+      "wealthP50": 2665681.270638217
+    },
+    "observations": [
+      {
+        "monthly": 2500,
+        "metrics": {
+          "coveragePct": 99.7,
+          "affectedPct": 1.7999999999999998,
+          "affectedYears": 2,
+          "budgetP10": 37500,
+          "budgetP50": 59749.96401118754,
+          "wealthP10": 839065.7809951026,
+          "wealthP50": 2684222.6471136855
+        }
+      },
+      {
+        "monthly": 2750,
+        "metrics": {
+          "coveragePct": 99.7,
+          "affectedPct": 2,
+          "affectedYears": 1.5,
+          "budgetP10": 39000,
+          "budgetP50": 62637.85964967114,
+          "wealthP10": 793159.3019890236,
+          "wealthP50": 2551730.904099037
+        }
+      },
+      {
+        "monthly": 3000,
+        "metrics": {
+          "coveragePct": 99.7,
+          "affectedPct": 2.1,
+          "affectedYears": 1,
+          "budgetP10": 40500,
+          "budgetP50": 65543.58643569847,
+          "wealthP10": 734474.1811815408,
+          "wealthP50": 2431911.3920516474
+        }
+      },
+      {
+        "monthly": 3500,
+        "metrics": {
+          "coveragePct": 99.6,
+          "affectedPct": 2.1,
+          "affectedYears": 2,
+          "budgetP10": 43499.99999999999,
+          "budgetP50": 70950.63763540995,
+          "wealthP10": 643808.6894596427,
+          "wealthP50": 2162847.3324120175
+        }
+      },
+      {
+        "monthly": 4500,
+        "metrics": {
+          "coveragePct": 99.4,
+          "affectedPct": 2.7,
+          "affectedYears": 1,
+          "budgetP10": 49478.94866284196,
+          "budgetP50": 79509.4563043492,
+          "wealthP10": 502197.5031409702,
+          "wealthP50": 1703501.9893222675
+        }
+      },
+      {
+        "monthly": 6500,
+        "metrics": {
+          "coveragePct": 93.7,
+          "affectedPct": 4.1000000000000005,
+          "affectedYears": 2,
+          "budgetP10": 61254.51404088428,
+          "budgetP50": 92973.75463112262,
+          "wealthP10": 109486.74377294187,
+          "wealthP50": 883582.0037375177
+        }
+      },
+      {
+        "monthly": 5500,
+        "metrics": {
+          "coveragePct": 97.6,
+          "affectedPct": 3.5999999999999996,
+          "affectedYears": 2,
+          "budgetP10": 55405.34289846264,
+          "budgetP50": 87788.27278336024,
+          "wealthP10": 307361.3817282553,
+          "wealthP50": 1216452.3855431473
+        }
+      },
+      {
+        "monthly": 5000,
+        "metrics": {
+          "coveragePct": 98.9,
+          "affectedPct": 3.3000000000000003,
+          "affectedYears": 1,
+          "budgetP10": 52443.30852572165,
+          "budgetP50": 83973.58475499143,
+          "wealthP10": 401043.213433125,
+          "wealthP50": 1466813.0228917543
+        }
+      },
+      {
+        "monthly": 4750,
+        "metrics": {
+          "coveragePct": 99.1,
+          "affectedPct": 3,
+          "affectedYears": 1,
+          "budgetP10": 50958.0042168611,
+          "budgetP50": 81167.36489611951,
+          "wealthP10": 463957.0192857392,
+          "wealthP50": 1584662.2942914087
+        }
+      },
+      {
+        "monthly": 4850,
+        "metrics": {
+          "coveragePct": 99,
+          "affectedPct": 3,
+          "affectedYears": 1.5,
+          "budgetP10": 51565.273910806456,
+          "budgetP50": 82107.61692209888,
+          "wealthP10": 446962.0660144945,
+          "wealthP50": 1549962.151614388
+        }
+      },
+      {
+        "monthly": 4900,
+        "metrics": {
+          "coveragePct": 99,
+          "affectedPct": 3.2,
+          "affectedYears": 1,
+          "budgetP10": 51845.36516958408,
+          "budgetP50": 82887.72246498612,
+          "wealthP10": 432697.1568841378,
+          "wealthP50": 1523851.6334154545
+        }
+      },
+      {
+        "monthly": 4950,
+        "metrics": {
+          "coveragePct": 99.1,
+          "affectedPct": 3.3000000000000003,
+          "affectedYears": 1,
+          "budgetP10": 52133.055078324294,
+          "budgetP50": 83213.58442325622,
+          "wealthP10": 420555.99550847756,
+          "wealthP50": 1504843.8277278193
+        }
+      }
+    ],
+    "nextMonthly": 4800,
+    "nextMetrics": {
+      "coveragePct": 98.95,
+      "affectedPct": 3.36,
+      "affectedYears": 2,
+      "budgetP10": 51222.71156865007,
+      "budgetP50": 81706.70273452364,
+      "wealthP10": 412638.48181452206,
+      "wealthP50": 1552260.032734137
+    },
+    "params": {
+      "anzahl": 1000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM",
+      "startYearFilter": 1970,
+      "startYearHalfLife": 20,
+      "excludeEstimatedHistory": false,
+      "standardRuns": 10000
+    }
+  },
+  "targetTimingNote": "206 s; keine Fachtests parallel, Referenzabgleich lief teilweise nebenher."
+}

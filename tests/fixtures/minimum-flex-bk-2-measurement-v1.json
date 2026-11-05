@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "MinimumFlexBK2MeasurementV1",
+  "baseRevision": "94db2031",
+  "reviewStatus": "pending_external_review",
+  "personalReplayDataIncluded": false,
+  "cause": "FR-20/33/34",
+  "before": {
+    "schemaVersion": "MinimumFlexSevereAffordabilityMonteCarloMeasurementV1",
+    "sourceReference": "post-abschlusshaertung-03-v1",
+    "sourceFixtureSha256": "0fee747dd7b946c18d58f95eb7dc76cdd4f55c8b15ed128cde36cc2fbbb5bd97",
+    "targetResultDocument": "docs/internal/MINDEST_FLEX_NOTFALLGATE_TRAGFAEHIGKEIT.md",
+    "reviewStatus": "pending_external_review",
+    "sourceProjectionHashes": {
+      "carResultSha256": "9021e165213f1f2bd08442708ae77fee356428715f5305d4f13ca3d676feee40",
+      "autoOptimizeResultSha256": "3db5ace7731b003911ba533875ea8594d170f8ba7de21fe032c7f3edce308955",
+      "finalResultSha256": "6ecf663ab4551b399ea9823652250dbae6f52cfc956c380d286091567e317707"
+    },
+    "targetProjectionHashes": {
+      "carResultSha256": "54a62568d4450e9dfa3206132bdb91c37f67a941dae444cadc9ee1e8ba603e17",
+      "autoOptimizeResultSha256": "9ebbe99e4dd29fb87ad6c0ec626d96213ce1c9cad2947e8f564981d99f66cf33",
+      "finalResultSha256": "7280ef9f6883ba437f515c04b539bdcc47557f58ad5b9a0e085aaea0eca051b6"
+    },
+    "changedProjectionCount": 3,
+    "measuredProjectionCount": 3,
+    "technicalErrorCount": 0,
+    "requestedRuns": 8,
+    "financiallyEvaluableRuns": 8,
+    "cause": "protected_withdrawal_capacity_changes_financial_paths_without_changing_sampling_or_worker_contracts"
+  },
+  "monteCarlo": {
+    "schemaVersion": "MinimumFlexSevereAffordabilityMonteCarloMeasurementV1",
+    "sourceReference": "post-abschlusshaertung-03-v1",
+    "sourceFixtureSha256": "0fee747dd7b946c18d58f95eb7dc76cdd4f55c8b15ed128cde36cc2fbbb5bd97",
+    "targetResultDocument": "docs/internal/MINDEST_FLEX_NOTFALLGATE_TRAGFAEHIGKEIT.md",
+    "reviewStatus": "pending_external_review",
+    "sourceProjectionHashes": {
+      "carResultSha256": "9021e165213f1f2bd08442708ae77fee356428715f5305d4f13ca3d676feee40",
+      "autoOptimizeResultSha256": "3db5ace7731b003911ba533875ea8594d170f8ba7de21fe032c7f3edce308955",
+      "finalResultSha256": "6ecf663ab4551b399ea9823652250dbae6f52cfc956c380d286091567e317707"
+    },
+    "targetProjectionHashes": {
+      "carResultSha256": "dee6402b79a594ffac593b7f38aad07294da68b63e8fca08a70d6cccfaa4cb3b",
+      "autoOptimizeResultSha256": "94128d07186adbb54fd164645d0ed4781d48988a2dfc6ea8d4920f7e2a20161f",
+      "finalResultSha256": "0e762cb4c142e35e777deb1e09e3902be8ed1a2ce13cd8b9845c50c64758d510"
+    },
+    "changedProjectionCount": 3,
+    "measuredProjectionCount": 3,
+    "technicalErrorCount": 0,
+    "requestedRuns": 8,
+    "financiallyEvaluableRuns": 8,
+    "cause": "protected_withdrawal_capacity_changes_financial_paths_without_changing_sampling_or_worker_contracts"
+  }
+}

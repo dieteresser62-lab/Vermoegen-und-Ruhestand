@@ -1,0 +1,95 @@
+{
+  "rule": "QS-B: nur bestätigte Rechen- und Protokollfehler. Keine Ergebnisfelder ausgeblendet; Ausgangsreferenzen am unveränderten Stand bestätigt.",
+  "hashes": {
+    "c09fcdca3a10def90591027f9a7d892bdcb1d3bdc4718d3953d15fd49d4c4388": "024f2a2eae89d472db6c6a4c26b6f12ae63d3f5d1c9343ba666caaadb310c3aa",
+    "eae8fc48212b5b623fa3a4c4dae1ee1abc72d97e4618d5e5e2e1149a792ecfa6": "f3d9dc97cfde77dca76b33f3017d92a9d4136d60ed986d22cfa3145cf1b2fbf9",
+    "b184412ce91a646639570868f05d6d3e5763f8b65f767a27c6daeea81a6c4cc4": "fb45ab0656076c52088b0f84fadb73d1849f0bb2a7349b74768e72a8b8544373",
+    "b894b381a2f84b17ed849a370086d65097d5d4f69ebc04f54a896c795f6724ff": "25eae35b5b95abb8bf75617f3eb2997ca51c506269282388f2f4421a5744a0ea",
+    "208dad107ac768e52931ee071a8355e902a9143c92c15524be83fc282ca2d920": "33c29b816476152b1c3567c4c0d4293e42df6c395cd977620bfeffe4d6aea55a",
+    "8c2974d45a5a97413d32c889629e89e6ada05b2083b2a5330ec5de16fd7f301f": "1c5daecbda57601346944ee9ac2857984bb8fe38f9c7dac1f2d0e9ca525ffd4b"
+  },
+  "evidence": [
+    {
+      "file": "tests/ff-g-regression.test.mjs",
+      "reason": "Befund 8: negative Rücklagenzinsen im Jahresprotokoll",
+      "baselineMatched": true,
+      "changes": [
+        {
+          "label": "Helga/Werner: vollständiger Backtest nach FR-63, Tagesgeld zuerst in Anleihen und keine Auffüllung im Bärenmarkt",
+          "expected": "c09fcdca3a10def90591027f9a7d892bdcb1d3bdc4718d3953d15fd49d4c4388",
+          "actual": "024f2a2eae89d472db6c6a4c26b6f12ae63d3f5d1c9343ba666caaadb310c3aa"
+        }
+      ],
+      "causeControl": "Nur simulator-year-result.js und mc-run-metrics.js auf den Ausgangsstand zurückgeführt: ursprüngliche volle Ergebnisprüfsummen wiederhergestellt."
+    },
+    {
+      "file": "tests/profile-person-data.test.mjs",
+      "reason": "Befund 8: vorzeichenbehaftete Zinsen einschließlich null für alle aktivierten Rücklagen",
+      "baselineMatched": true,
+      "changes": [
+        {
+          "label": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen BK-2-Referenz mit korrigierter Kirchensteuer: fehlender Beginn",
+          "expected": "eae8fc48212b5b623fa3a4c4dae1ee1abc72d97e4618d5e5e2e1149a792ecfa6",
+          "actual": "f3d9dc97cfde77dca76b33f3017d92a9d4136d60ed986d22cfa3145cf1b2fbf9"
+        },
+        {
+          "label": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen BK-2-Referenz mit korrigierter Kirchensteuer: 2026-01-01",
+          "expected": "eae8fc48212b5b623fa3a4c4dae1ee1abc72d97e4618d5e5e2e1149a792ecfa6",
+          "actual": "f3d9dc97cfde77dca76b33f3017d92a9d4136d60ed986d22cfa3145cf1b2fbf9"
+        },
+        {
+          "label": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen BK-2-Referenz mit korrigierter Kirchensteuer: 2024-07-15",
+          "expected": "eae8fc48212b5b623fa3a4c4dae1ee1abc72d97e4618d5e5e2e1149a792ecfa6",
+          "actual": "f3d9dc97cfde77dca76b33f3017d92a9d4136d60ed986d22cfa3145cf1b2fbf9"
+        },
+        {
+          "label": "Vollständiger alter Offset-/Ansparrequest gegen BK-2-Referenz mit korrigierter Kirchensteuer",
+          "expected": "b184412ce91a646639570868f05d6d3e5763f8b65f767a27c6daeea81a6c4cc4",
+          "actual": "fb45ab0656076c52088b0f84fadb73d1849f0bb2a7349b74768e72a8b8544373"
+        }
+      ],
+      "causeControl": "Nur simulator-year-result.js und mc-run-metrics.js auf den Ausgangsstand zurückgeführt: ursprüngliche volle Ergebnisprüfsummen wiederhergestellt."
+    },
+    {
+      "file": "tests/simulator-unmarried-parity.test.mjs",
+      "reason": "Befund 4: persönliche Zahlungswege auch im ereignislosen Backtest",
+      "baselineMatched": true,
+      "changes": [
+        {
+          "label": "Nicht verheiratet 0/100: vollständiger Backtest bytegleich zum Kopf vor UP-1b/0",
+          "expected": "b894b381a2f84b17ed849a370086d65097d5d4f69ebc04f54a896c795f6724ff",
+          "actual": "25eae35b5b95abb8bf75617f3eb2997ca51c506269282388f2f4421a5744a0ea"
+        },
+        {
+          "label": "Nicht verheiratet 0/100: vollständiger Backtest bytegleich zum Kopf vor UP-1b/100",
+          "expected": "208dad107ac768e52931ee071a8355e902a9143c92c15524be83fc282ca2d920",
+          "actual": "33c29b816476152b1c3567c4c0d4293e42df6c395cd977620bfeffe4d6aea55a"
+        }
+      ]
+    },
+    {
+      "file": "tests/muster-max-erika-parity.test.mjs",
+      "reason": "Befund 3: zeitanteilige Anrechnung der im Juli des zweiten Planjahrs beginnenden eigenen Rente auf die Hinterbliebenenrente.",
+      "baselineMatched": true,
+      "changes": [
+        {
+          "label": "Max/Erika MC 2.000 Läufe, Seed 12345, 23.10.2026 mit belegten PA-1-Folgen",
+          "expected": "8c2974d45a5a97413d32c889629e89e6ada05b2083b2a5330ec5de16fd7f301f",
+          "actual": "1c5daecbda57601346944ee9ac2857984bb8fe38f9c7dac1f2d0e9ca525ffd4b"
+        }
+      ]
+    },
+    {
+      "file": "tests/muster-max-erika-parity.test.mjs",
+      "reason": "Befund 3: zeitanteilige Anrechnung der im Juli des zweiten Planjahrs beginnenden eigenen Rente auf die Hinterbliebenenrente.",
+      "baselineMatched": true,
+      "changes": [
+        {
+          "label": "Max/Erika MC 2.000 Läufe, Seed 12345, 23.10.2026 mit belegten PA-1-Folgen",
+          "expected": "8c2974d45a5a97413d32c889629e89e6ada05b2083b2a5330ec5de16fd7f301f",
+          "actual": "1c5daecbda57601346944ee9ac2857984bb8fe38f9c7dac1f2d0e9ca525ffd4b"
+        }
+      ]
+    }
+  ]
+}

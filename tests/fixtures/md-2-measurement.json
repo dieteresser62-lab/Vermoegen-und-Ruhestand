@@ -1,0 +1,1149 @@
+{
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "linux"
+  },
+  "inputSource": "tests/fixtures/pe-1-max-erika.json; MD-1 household() variants",
+  "params": {
+    "anzahl": 5000,
+    "maxDauer": 35,
+    "blockSize": 5,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "seeds": [
+    12345,
+    12346,
+    12347,
+    12348,
+    12349,
+    12350,
+    12351,
+    12352,
+    12353,
+    12354
+  ],
+  "selection": "Median nominal equity CAGR over financial_year only, ties by absolute run index",
+  "batches": [
+    {
+      "household": "muster",
+      "method": "regime_markov",
+      "seed": 12345,
+      "count": 5000,
+      "successPct": 99.64,
+      "typicalIndex": 1044,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.879493023679041,
+      "financialYears": 22,
+      "wealthMedianIndex": 2835,
+      "wealthMedianReturnRankPct": 85.22999999999999,
+      "hashes": {
+        "totals": "629a7272accd780301cc4429d97acf32d88f1a21c3e90e3b6f10dbe327054a82",
+        "lists": "d09527533d929bb0e3d5287c55b99bd2a11659ffa995310b5754ee78fbb22fa6",
+        "pathSummaries": "ac8a1875a22b9b40243d498a50b6357c361956fcfe246384cb00f622d444b9a8",
+        "heatmap": "ab377f883eee3609d5b9e062c9de145f96b7af2330a5776a362257e301b9dd1e"
+      }
+    },
+    {
+      "household": "muster",
+      "method": "regime_markov",
+      "seed": 12346,
+      "count": 5000,
+      "successPct": 99.83999999999999,
+      "typicalIndex": 3161,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.787160159323623,
+      "financialYears": 24,
+      "wealthMedianIndex": 1363,
+      "wealthMedianReturnRankPct": 36.61,
+      "hashes": {
+        "totals": "c46b66dd1e793a56f9dfd5578e1488f45e212b4d237e28e9dfd3a02b8513525f",
+        "lists": "ca56e347e577e47423c3039a1b66d56c5b712f5917e72960e1f0db1237a8177c",
+        "pathSummaries": "24f2f52f3d8573f15100d3c0b887f1dbb75595488e96494272e344f5801b2ace",
+        "heatmap": "df55128b480c05b5c9fb0e4ef3cfeca574ff93df2884bb33593cd974db5b2d32"
+      }
+    },
+    {
+      "household": "muster",
+      "method": "regime_markov",
+      "seed": 12347,
+      "count": 5000,
+      "successPct": 99.68,
+      "typicalIndex": 4105,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.888113448209939,
+      "financialYears": 27,
+      "wealthMedianIndex": 2684,
+      "wealthMedianReturnRankPct": 39.31,
+      "hashes": {
+        "totals": "0e3ed36b649da6e9f5a8a14ba07397ee23e680211f9527384b0edeb230436a02",
+        "lists": "3e7da6b2ad5a35f3fabc464976616a5c978b3e364eccba3a5de22c986001549a",
+        "pathSummaries": "f5e0774c94723c3e2cfbeea0b867ce99d4ac2a7b2df2d2879cb057acec7e27d3",
+        "heatmap": "89d59bfc1e404539f502b3d49d9cc1c5bac4da4c92897a666c33a3e651806ed9"
+      }
+    },
+    {
+      "household": "muster",
+      "method": "regime_markov",
+      "seed": 12348,
+      "count": 5000,
+      "successPct": 99.78,
+      "typicalIndex": 2423,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.84095986194463,
+      "financialYears": 23,
+      "wealthMedianIndex": 1274,
+      "wealthMedianReturnRankPct": 36.91,
+      "hashes": {
+        "totals": "1354894ddaa2c934fa3a2194968e165351acb30a8761eb4dd9302a13b8b441d6",
+        "lists": "b096214b25c100db36b3177e45af53eb14eb65b8b76759da08fae86b7cd3eaca",
+        "pathSummaries": "3b260d9c784407acb1cdbdefe79ed0b5069eb3d07e928b4c45c63aafcc493494",
+        "heatmap": "ef52c9d27f39786f587b2fed32d93d115e344d5a189f016e0fae905019e8ac2d"
+      }
+    },
+    {
+      "household": "muster",
+      "method": "regime_markov",
+      "seed": 12349,
+      "count": 5000,
+      "successPct": 99.66000000000001,
+      "typicalIndex": 3258,
+      "typicalReturnRankPct": 50,
+      "typicalCagrPct": 9.832712350502609,
+      "financialYears": 10,
+      "wealthMedianIndex": 2914,
+      "wealthMedianReturnRankPct": 48.85977195439088,
+      "hashes": {
+        "totals": "d4d8ac0a920661e88d161bfd344e26be376eb3c444b6bd9f5142b5aff0743e1d",
+        "lists": "74bc417a03ed55a1cf27ce6c54058a73f94fa1e0e9e916b9157497a2bf0320f0",
+        "pathSummaries": "5d3f23637008aa6deb8d7fa5d682a8f902ba20d01b11582df64794bd80de3818",
+        "heatmap": "1d99c78670457364b3a8ea5e4fe875e2a53e06299ece2a1b3a3d93286b74c634"
+      }
+    },
+    {
+      "household": "muster",
+      "method": "regime_markov",
+      "seed": 12350,
+      "count": 5000,
+      "successPct": 99.78,
+      "typicalIndex": 1366,
+      "typicalReturnRankPct": 50,
+      "typicalCagrPct": 9.826944071660543,
+      "financialYears": 22,
+      "wealthMedianIndex": 1481,
+      "wealthMedianReturnRankPct": 69.74394878975795,
+      "hashes": {
+        "totals": "f8b778b0f727737bce6d55a9245f8e3cab771251eeb5779f667270a4bfef1554",
+        "lists": "69e9bfd893e70ba510e74dd814b5b1645cedbbdcc8d3cc3bbb6aeb2d240178a7",
+        "pathSummaries": "8abd7492b62c6741173e11948e885d594ce61190e81c2ddbd0c05db4e70a7965",
+        "heatmap": "63246f208195332e4fd68a53701fce3c7a8fac1c515d54df95204d76c3ef4726"
+      }
+    },
+    {
+      "household": "muster",
+      "method": "regime_markov",
+      "seed": 12351,
+      "count": 5000,
+      "successPct": 99.72,
+      "typicalIndex": 1332,
+      "typicalReturnRankPct": 50.01000400160064,
+      "typicalCagrPct": 9.88461853700126,
+      "financialYears": 24,
+      "wealthMedianIndex": 1254,
+      "wealthMedianReturnRankPct": 45.04801920768307,
+      "hashes": {
+        "totals": "5557035f90e516f37a8138a033782284249fdc6ce11a0b24286279d3039f052f",
+        "lists": "784fd5b538bb13f128def118f1a550c54ad5f9c181fa0ce5a7c0c91eaca2c87e",
+        "pathSummaries": "92be4ab6ebcd80eb1b5aae71daa71f16af2e3a174508dad4deb0dce4c4d57044",
+        "heatmap": "37b9eaad2b73324f79f0a6428128c07a3eb70bad0b9e7c4055de076089317f5a"
+      }
+    },
+    {
+      "household": "muster",
+      "method": "regime_markov",
+      "seed": 12352,
+      "count": 5000,
+      "successPct": 99.72,
+      "typicalIndex": 4105,
+      "typicalReturnRankPct": 50.01000400160064,
+      "typicalCagrPct": 9.925926553031267,
+      "financialYears": 22,
+      "wealthMedianIndex": 2348,
+      "wealthMedianReturnRankPct": 41.40656262505002,
+      "hashes": {
+        "totals": "5956c4f7835e6489b82f94f658698768f8659e0bf63c64164500ed90a5d61db0",
+        "lists": "a15e9f8bbcf26899ae50aa1dbf018527b02d8e374e8cf8a24b01bd2d12eedca7",
+        "pathSummaries": "75a2f61c81f3452bc0e2d999029dad1fd1fb351dc1f956f531193c418d425cf6",
+        "heatmap": "3500a699af08ead3d0111dd7a68927b2ede19c6ac13520c0834b080ee13fdb9a"
+      }
+    },
+    {
+      "household": "muster",
+      "method": "regime_markov",
+      "seed": 12353,
+      "count": 5000,
+      "successPct": 99.86,
+      "typicalIndex": 3489,
+      "typicalReturnRankPct": 50,
+      "typicalCagrPct": 9.931509197733375,
+      "financialYears": 25,
+      "wealthMedianIndex": 2119,
+      "wealthMedianReturnRankPct": 38.79775955191038,
+      "hashes": {
+        "totals": "8e2fdb07cdd5760cb1a4d0b8e240a2c8d9575eaca956f206e9cac9d326ca0c7c",
+        "lists": "7d82c496d3184cccc12a43cbfbe06c06b8c2d5a6e2ff694c1cd665a2722b3e9e",
+        "pathSummaries": "5f1027197d442eb65cc49440b33e3e71b6d7d82e0a79cd915586005e5ad29ddf",
+        "heatmap": "f78e9d4ad8a512de2c46745fe83f27ccffcc072e818917a21fa956724fee9b0b"
+      }
+    },
+    {
+      "household": "muster",
+      "method": "regime_markov",
+      "seed": 12354,
+      "count": 5000,
+      "successPct": 99.76,
+      "typicalIndex": 3973,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.8465242538853,
+      "financialYears": 14,
+      "wealthMedianIndex": 2803,
+      "wealthMedianReturnRankPct": 78.83,
+      "hashes": {
+        "totals": "8349a7fc2e360a325dceb6bbbb21a90d1480a03b6b2529735ac9efee00222d98",
+        "lists": "06438fdde9ef791d6e88f0a0e101694c063ab5ebb1da6890417682734c595e4f",
+        "pathSummaries": "754dae03615395c3e402dc780cbe2bb2ffbf542d2a360605ed719fe5f9d6c72c",
+        "heatmap": "558b695b309dfac5a5d1a86ebfc1afe22f123df9ed6d145723e08dc47bf436c8"
+      }
+    },
+    {
+      "household": "married50",
+      "method": "regime_markov",
+      "seed": 12345,
+      "count": 5000,
+      "successPct": 99.6,
+      "typicalIndex": 1044,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.879493023679041,
+      "financialYears": 22,
+      "wealthMedianIndex": 4856,
+      "wealthMedianReturnRankPct": 65.97,
+      "hashes": {
+        "totals": "cfe9434bbc0e353793d65fe9efdfebaf58c4b983d2b1d72fe5cbb23b1770a39e",
+        "lists": "1beea7d9a470e90660e154ee10fa41601787a4cd35801432e7e4a54ef6adc8d3",
+        "pathSummaries": "9edc29ab09475d41f33a4e187469405f60ba2f43fc12fc92d83df18046cc0362",
+        "heatmap": "a88edd3277f64b34aec1884cd5ba194e362f69e8227c1f758cc0557bd286e662"
+      }
+    },
+    {
+      "household": "married50",
+      "method": "regime_markov",
+      "seed": 12346,
+      "count": 5000,
+      "successPct": 99.74,
+      "typicalIndex": 3161,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.787160159323623,
+      "financialYears": 24,
+      "wealthMedianIndex": 2014,
+      "wealthMedianReturnRankPct": 48.59,
+      "hashes": {
+        "totals": "bbe2df0c6f0d76fb52de9a8c3673e004ba5032331a3cfbae86c9c8b5789f8be6",
+        "lists": "5aad611a152192870d72ca434b452d546059a40902c99380efe7d5b168ba6456",
+        "pathSummaries": "3c51405ac627de612c2ec7cb95575ad430ca213a3bdb97b38b16ede30dc8d16e",
+        "heatmap": "18fb559e6fb2057e1d311ce5cb681fa1bff2ae7a5ed86957c3aef7181d21a1d1"
+      }
+    },
+    {
+      "household": "married50",
+      "method": "regime_markov",
+      "seed": 12347,
+      "count": 5000,
+      "successPct": 99.56,
+      "typicalIndex": 4105,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.888113448209939,
+      "financialYears": 27,
+      "wealthMedianIndex": 1484,
+      "wealthMedianReturnRankPct": 65.89,
+      "hashes": {
+        "totals": "6fa5b237b56d41f22ae58cb454b96ff5c10302209503567aa53076e950744171",
+        "lists": "7d537903cbb7555900dcf74293477fa59b1b4a44790b26163d61f3a7022d5ad1",
+        "pathSummaries": "58f2cd032eb93ddbc78c7f18816e66ddf77f94f490f69787961fd88a0ccd094b",
+        "heatmap": "5c09286f1b8a2fc10143722037161e57aca1c5995a00b72bd265e27d7bcf2d53"
+      }
+    },
+    {
+      "household": "married50",
+      "method": "regime_markov",
+      "seed": 12348,
+      "count": 5000,
+      "successPct": 99.66000000000001,
+      "typicalIndex": 2423,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.84095986194463,
+      "financialYears": 23,
+      "wealthMedianIndex": 520,
+      "wealthMedianReturnRankPct": 87.91,
+      "hashes": {
+        "totals": "6fd4d25ef4bbec2098e13b8cf33cbffbe82c2b18b26c5b3f148fe15a9e1ca7e1",
+        "lists": "602ef19b8f2c82bf30b5388ef59fc371c39b3a0610f9e9956ace27c033280227",
+        "pathSummaries": "3187d46af227ca422ef209fd8c697dd7ae852bde5261e192ebf100a77778b831",
+        "heatmap": "f99bbbb90e4af9cc9d8752561b6d36142c29f25a60afbef6a8ecd22c147732b8"
+      }
+    },
+    {
+      "household": "married50",
+      "method": "regime_markov",
+      "seed": 12349,
+      "count": 5000,
+      "successPct": 99.53999999999999,
+      "typicalIndex": 3258,
+      "typicalReturnRankPct": 50,
+      "typicalCagrPct": 9.832712350502609,
+      "financialYears": 10,
+      "wealthMedianIndex": 3140,
+      "wealthMedianReturnRankPct": 28.815763152630524,
+      "hashes": {
+        "totals": "499e9d7238683723734374ec51b065ffa5b992fe48bbef16a329ac4867070394",
+        "lists": "3bd38a44fe759ea800c5d70a6968f729a375229d80456a3ec1767a1a6e37c101",
+        "pathSummaries": "e0eb80ca6979ea057c21378417d736b085c6347103e1ab6b58e1626f8fe1f3bf",
+        "heatmap": "44074d3aa66c59fdca13d4bc0f0a3b7327f83a3b57d48efec635f7337c2a35b9"
+      }
+    },
+    {
+      "household": "married50",
+      "method": "regime_markov",
+      "seed": 12350,
+      "count": 5000,
+      "successPct": 99.72,
+      "typicalIndex": 2097,
+      "typicalReturnRankPct": 50,
+      "typicalCagrPct": 9.824004072170602,
+      "financialYears": 25,
+      "wealthMedianIndex": 2961,
+      "wealthMedianReturnRankPct": 33.076615323064615,
+      "hashes": {
+        "totals": "9d0091391655ac9285cffe3f8130070fa60588469cd246eee8d1b571b7fcf6d6",
+        "lists": "e2f5f1504bfa477434a535dff192761d80aee662c090553da2b57821bb57b61a",
+        "pathSummaries": "1820c033f8216ebdf670115858c875f47498de552c5ed22a1fe113b3e8b6b542",
+        "heatmap": "57f0ff7f40d3e19d7768da8c8b266cf1700d11e72392375a58b49b087ca2e519"
+      }
+    },
+    {
+      "household": "married50",
+      "method": "regime_markov",
+      "seed": 12351,
+      "count": 5000,
+      "successPct": 99.7,
+      "typicalIndex": 1332,
+      "typicalReturnRankPct": 50.01000400160064,
+      "typicalCagrPct": 9.88461853700126,
+      "financialYears": 24,
+      "wealthMedianIndex": 2648,
+      "wealthMedianReturnRankPct": 22.338935574229694,
+      "hashes": {
+        "totals": "1051ca1a405a06cea5a3e9e7d6ed5af5262977b5bcca8a8f0eb5486b70b65f9e",
+        "lists": "4b082d58846d08d148c0eb2c8cc3d7239ac94491af875c486a5fd71b0af62f45",
+        "pathSummaries": "492a077b2c187e320ae39134661cffbeb455cee241e3e09fa3e4e2cfd8463e6b",
+        "heatmap": "5a70f2e7754072fc5d4ece08f54058345adf003a23d9ac1d816ee8f746265b55"
+      }
+    },
+    {
+      "household": "married50",
+      "method": "regime_markov",
+      "seed": 12352,
+      "count": 5000,
+      "successPct": 99.64,
+      "typicalIndex": 4105,
+      "typicalReturnRankPct": 50.01000400160064,
+      "typicalCagrPct": 9.925926553031267,
+      "financialYears": 22,
+      "wealthMedianIndex": 4021,
+      "wealthMedianReturnRankPct": 49.20968387354942,
+      "hashes": {
+        "totals": "cfdf33b937b798494652d4c64cab66a3b8b959d817c59618d61360b736f3d63b",
+        "lists": "3492a4f0e952792c5806f941ef5fbcf04ab4bbe1158ac5a26f4611afa5d289c7",
+        "pathSummaries": "e3b885714eb57d7be79d5c3bb51128bf5d4fb01ead69d1e117609cbc7adeb3e5",
+        "heatmap": "2e8bc7201c6fb9ea4a4504df28821c2d047177b8d06d46e1876b7dfb22cb4e98"
+      }
+    },
+    {
+      "household": "married50",
+      "method": "regime_markov",
+      "seed": 12353,
+      "count": 5000,
+      "successPct": 99.76,
+      "typicalIndex": 3489,
+      "typicalReturnRankPct": 50,
+      "typicalCagrPct": 9.931509197733375,
+      "financialYears": 25,
+      "wealthMedianIndex": 368,
+      "wealthMedianReturnRankPct": 29.73594718943789,
+      "hashes": {
+        "totals": "c15130f870d6856a77fce9e165418966aab4d884cf82ca836ab1ec603659b95d",
+        "lists": "311596089df179c8ee67d5b42225c9390846a6443a2c6d6980cbc38f90076f7d",
+        "pathSummaries": "8e681a6310809733c47bc327698250feafc1567afb36207a54a0348a373d1b86",
+        "heatmap": "f0d11f8feec73024f56ddd27638ef936ed7a9d1e0482f2f8f2a509f8c3a78e9a"
+      }
+    },
+    {
+      "household": "married50",
+      "method": "regime_markov",
+      "seed": 12354,
+      "count": 5000,
+      "successPct": 99.6,
+      "typicalIndex": 2267,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.844746538905447,
+      "financialYears": 29,
+      "wealthMedianIndex": 1393,
+      "wealthMedianReturnRankPct": 22.770000000000003,
+      "hashes": {
+        "totals": "208e5e5902b2738f27d71f642b4cbad35817467cf7222f66e0fd7c74e22515f2",
+        "lists": "3ffc9d9bc4e7aa40478da0e433ba3117702c799a0c2147063698770af906f63c",
+        "pathSummaries": "8b3a026901a7e01b767668579401127a77e51d5ba58df3e264436a2c8ba30c25",
+        "heatmap": "747c7bbe85e2c36096ec3889837ca3cc7c4aa3b0b567b3f33c939ca1b6843e16"
+      }
+    },
+    {
+      "household": "gross",
+      "method": "regime_markov",
+      "seed": 12345,
+      "count": 5000,
+      "successPct": 99.94,
+      "typicalIndex": 3091,
+      "typicalReturnRankPct": 50,
+      "typicalCagrPct": 9.9582104558808,
+      "financialYears": 13,
+      "wealthMedianIndex": 1170,
+      "wealthMedianReturnRankPct": 85.82716543308662,
+      "hashes": {
+        "totals": "46324e4c56e86bda7a52c31f3819a4805249a302931aa864ee90df0af334e9ca",
+        "lists": "e7a95b403c158db1b667f9ee9b7f2bb7f0e0a5498b7b400cfbc113bc349e2692",
+        "pathSummaries": "e95bada666a3e986893c633d554d9c2ad35e31b65b93a2961362723b18c03169",
+        "heatmap": "17e23fc932b5d875b4f7f577272d551a58aa9860188d42830470792dded61180"
+      }
+    },
+    {
+      "household": "gross",
+      "method": "regime_markov",
+      "seed": 12346,
+      "count": 5000,
+      "successPct": 100,
+      "typicalIndex": 2830,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.844352086695062,
+      "financialYears": 13,
+      "wealthMedianIndex": 197,
+      "wealthMedianReturnRankPct": 17.79,
+      "hashes": {
+        "totals": "a6ff4f4a7a10b55d3963409aa0ea992b37f0cd89af144c52e14c7c4d1129fcc9",
+        "lists": "22ecaf224a9d1a0032a8d1ae76234b861b99c4957dc82de237ff4931b51b9af8",
+        "pathSummaries": "5f8a16d85f6b007effdb327ba957025f72260c94c37cabb6380f258494f1b2e3",
+        "heatmap": "1ca920b56ca273ce9b3a54c4c0bae33ada9a0753874fe4ebad01d839089e4623"
+      }
+    },
+    {
+      "household": "gross",
+      "method": "regime_markov",
+      "seed": 12347,
+      "count": 5000,
+      "successPct": 99.88,
+      "typicalIndex": 4634,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.82948390778169,
+      "financialYears": 11,
+      "wealthMedianIndex": 3136,
+      "wealthMedianReturnRankPct": 59.35,
+      "hashes": {
+        "totals": "ee7c016463fc5688a0be9aebc338e63e0b291f5bdb14e875f25c7506ed13cfe0",
+        "lists": "a8f9eeec86401ddb56872a49b1bf6ccccd884cf7f9cd29754e8bcdc6f09b639d",
+        "pathSummaries": "80193157d3726eaf224383bc57285b8acb5b37de6a297b21ccd760c8a134507b",
+        "heatmap": "772fe0074a7c4fc03ec573e85274e0120e02ba46bf92fc161f0994ff1cf298fc"
+      }
+    },
+    {
+      "household": "gross",
+      "method": "regime_markov",
+      "seed": 12348,
+      "count": 5000,
+      "successPct": 100,
+      "typicalIndex": 1106,
+      "typicalReturnRankPct": 50.01000400160064,
+      "typicalCagrPct": 9.887268563141186,
+      "financialYears": 14,
+      "wealthMedianIndex": 4895,
+      "wealthMedianReturnRankPct": 49.40976390556223,
+      "hashes": {
+        "totals": "9c254e2256dd9f78cecaccb5ba2bca3c34577cdb5e45b19ec16b86da21560b4f",
+        "lists": "defa9df2216131775fa4b6f6849dddec51e7a31d8a4f6110937d23a74bf8f0f4",
+        "pathSummaries": "d08c9ea8acd98f06d01cf4a39d171a9370c16eb36c6b6b0a0e8a1f789d6ee62c",
+        "heatmap": "a39e6c97cd783fe4b11e4e35bacfcbfcf3a49f0fb3f88d56d8c7ae139969dbc7"
+      }
+    },
+    {
+      "household": "gross",
+      "method": "regime_markov",
+      "seed": 12349,
+      "count": 5000,
+      "successPct": 99.98,
+      "typicalIndex": 1771,
+      "typicalReturnRankPct": 50,
+      "typicalCagrPct": 9.893037854670881,
+      "financialYears": 13,
+      "wealthMedianIndex": 2304,
+      "wealthMedianReturnRankPct": 56.901380276055214,
+      "hashes": {
+        "totals": "9b5c0632e923cb4d85be0ff2b12f603b73e4c488fb10f907db66dc495cc030ee",
+        "lists": "81044eab38432c6eeaa848ddc0b6c4d29699d4e83f4984a05b68832542adfbee",
+        "pathSummaries": "54c660f1ecba2da3a2ba655ff40ce21025bde13687e279cae94f0ed782e14bec",
+        "heatmap": "427a9d6d4cd84249df4bad512452dfca23c6e4608fee88e73c375372aec17a06"
+      }
+    },
+    {
+      "household": "gross",
+      "method": "regime_markov",
+      "seed": 12350,
+      "count": 5000,
+      "successPct": 99.96000000000001,
+      "typicalIndex": 2500,
+      "typicalReturnRankPct": 50.01000400160064,
+      "typicalCagrPct": 9.968709773878091,
+      "financialYears": 12,
+      "wealthMedianIndex": 4035,
+      "wealthMedianReturnRankPct": 71.27851140456183,
+      "hashes": {
+        "totals": "19722f8f2624a3b908920c774df63640e817e26b7bdebe6a1c33b2cde7d8d30a",
+        "lists": "fa48491c0ef0e23c4c68a72b694b5754e29468e5375f7e482fc54aa4aca07f87",
+        "pathSummaries": "7484d103106ee07b5388c1a19ef131a05fb6994de215bf551d1833ac73d321b9",
+        "heatmap": "5de92b706344440df42069366aa3ad1be0d845d04828450f2ef367a8e83a97b4"
+      }
+    },
+    {
+      "household": "gross",
+      "method": "regime_markov",
+      "seed": 12351,
+      "count": 5000,
+      "successPct": 100,
+      "typicalIndex": 3271,
+      "typicalReturnRankPct": 50.01000400160064,
+      "typicalCagrPct": 9.879104550321728,
+      "financialYears": 22,
+      "wealthMedianIndex": 2275,
+      "wealthMedianReturnRankPct": 60.97438975590236,
+      "hashes": {
+        "totals": "e85001e38f64d507f9799478f854eb03ef701fa739a21aa7ea75c913b6f98d98",
+        "lists": "fa529f8aad84dcf51ad9e02b71dc99337ad9e90c64399d27906755b1694d055a",
+        "pathSummaries": "50940583c4c0937ad68350fbc40d441a0b756e41e75b3900c867bd89044a66c6",
+        "heatmap": "0b3a6e8344c46766004ddb47f50712864b2d1e5dfa426a8c187ad793cf47976f"
+      }
+    },
+    {
+      "household": "gross",
+      "method": "regime_markov",
+      "seed": 12352,
+      "count": 5000,
+      "successPct": 99.98,
+      "typicalIndex": 3657,
+      "typicalReturnRankPct": 50,
+      "typicalCagrPct": 9.860720343013165,
+      "financialYears": 15,
+      "wealthMedianIndex": 2266,
+      "wealthMedianReturnRankPct": 37.232339403642186,
+      "hashes": {
+        "totals": "f1f0d85653f4c1b8bc1e79b88b90ac2799bb6f553b0e5e4d740f8bc990f13c64",
+        "lists": "3b5847b43f2486bf3feafa8392dda06da6db24cbd49326feeffda9e27f814f54",
+        "pathSummaries": "49cd9851adc421cb296ddc218308a0f8df4d58b335d89272ed887a234bb84dd6",
+        "heatmap": "b4cf6c8a76d1666bcb63569b4b8423699d12e613f7c6b41b2b59ed9e66f2ca10"
+      }
+    },
+    {
+      "household": "gross",
+      "method": "regime_markov",
+      "seed": 12353,
+      "count": 5000,
+      "successPct": 100,
+      "typicalIndex": 2602,
+      "typicalReturnRankPct": 50.01000400160064,
+      "typicalCagrPct": 9.980552475271038,
+      "financialYears": 13,
+      "wealthMedianIndex": 226,
+      "wealthMedianReturnRankPct": 23.01920768307323,
+      "hashes": {
+        "totals": "edeb81337b71dc635c175eb759e74a1c432d4e8575a8a2bfce44e34ab5459335",
+        "lists": "dc027e90a6ace425a854fefeceb6434627ca1938aa2ae64949e7dca09a2c64de",
+        "pathSummaries": "6831110b0440ac30b3ebf55118b58b2a831da235d9dd9802b6e57a9db4adc7fe",
+        "heatmap": "b3137538ca6ed0d31b844bc550c259269deb99922b4fcbcf59285e512a977bd4"
+      }
+    },
+    {
+      "household": "gross",
+      "method": "regime_markov",
+      "seed": 12354,
+      "count": 5000,
+      "successPct": 99.96000000000001,
+      "typicalIndex": 810,
+      "typicalReturnRankPct": 50.01,
+      "typicalCagrPct": 9.886946908023564,
+      "financialYears": 16,
+      "wealthMedianIndex": 3162,
+      "wealthMedianReturnRankPct": 14.430000000000001,
+      "hashes": {
+        "totals": "3bcfd0bbe4f58dc671b025318d7a385fbdfc76260f456dee863dcd5ae4f9f4c3",
+        "lists": "66d651f868d198b492585bef97b951a30ab91ff393340717c443fc82337cec8d",
+        "pathSummaries": "63fc57e6648b64a10447a58186b99267fece5573b993d0eca785e63f11ae1e41",
+        "heatmap": "661a77064458a0c0901ad11ef3a262a1883c237e04cee9392c0e776f334812e5"
+      }
+    },
+    {
+      "household": "gross",
+      "method": "stationary",
+      "seed": 12345,
+      "count": 5000,
+      "successPct": 100,
+      "typicalIndex": 3868,
+      "typicalReturnRankPct": 50,
+      "typicalCagrPct": 9.802764220739405,
+      "financialYears": 15,
+      "wealthMedianIndex": 1675,
+      "wealthMedianReturnRankPct": 43.55871174234847,
+      "hashes": {
+        "totals": "0d6bbe0fa43cc484136c2e5d01025cb4f2009aec50ae3aebb54efde71070da60",
+        "lists": "ddbcdcff99811ef135d09dcc9fcea6207b727462e490e8fbf5d14754018d5f8b",
+        "pathSummaries": "bb05c72c1a32109a388aa43092bbd016c45a1463d6dfd33ab9204bd407e22050",
+        "heatmap": "1a2d58ecf85351cfd382ecd6c89f07d13b38b177b06c9b7e0f3bab616cdd249d"
+      }
+    }
+  ],
+  "complete": true,
+  "latestSessionDurationMs": 98722.047544,
+  "changedFiles": [
+    "README.md",
+    "Simulator.html",
+    "andbuch.html",
+    "app/simulator/mc-run-metrics.js",
+    "app/simulator/mc-year-sampling.js",
+    "app/simulator/monte-carlo-runner.js",
+    "app/simulator/scenario-analyzer.js",
+    "app/simulator/scenario-comparison.js",
+    "app/simulator/scenario-log-view.js",
+    "app/simulator/scenario-wealth-chart.js",
+    "app/simulator/simulator-results.js",
+    "app/simulator/stationary-bootstrap-sampler.js",
+    "auftrag/ERGEBNIS-MD-2.md",
+    "auftrag/md1-ergebnis/common.mjs",
+    "auftrag/md1-ergebnis/measure.mjs",
+    "docs/design/funktionsinventar.json",
+    "docs/design/funktionsinventar.md",
+    "docs/reference/DATENVERTRAEGE.md",
+    "docs/reference/SIMULATION_LESEN.md",
+    "docs/reference/TECHNICAL.md",
+    "docs/ui/README.md",
+    "docs/ui/manifest.json",
+    "docs/ui/monte-carlo-szenario-logs.png",
+    "scripts/docs-bilder.mjs",
+    "scripts/measure-md2-deltas.mjs",
+    "scripts/measure-md2.mjs",
+    "tests/README.md",
+    "tests/annual-care-values.test.mjs",
+    "tests/care-price-continuation.test.mjs",
+    "tests/care-today.test.mjs",
+    "tests/cut-reason-bytegleich.test.mjs",
+    "tests/fixtures/md-2-expectation-deltas.json",
+    "tests/fixtures/md-2-measurement.json",
+    "tests/fixtures/md-2-parity-before.json",
+    "tests/helpers/md-2-expectations.mjs",
+    "tests/helpers/md-2-parity.mjs",
+    "tests/immobilien-empty-bytegleich.test.mjs",
+    "tests/md-2-scenarios.test.mjs",
+    "tests/muster-max-erika-parity.test.mjs",
+    "tests/plan-view-income.test.mjs",
+    "tests/profile-person-data.test.mjs",
+    "tests/run-tests.mjs",
+    "tests/scenario-analyzer.test.mjs",
+    "tests/scenario-log-view.test.mjs",
+    "tests/simulator-unmarried-parity.test.mjs",
+    "tests/slice-02-risk-display-copy-contract.test.mjs",
+    "tests/stationary-bootstrap-sampler.test.mjs"
+  ],
+  "baselineCommit": "2ef2b6e51d324e3264a04f71a4d1adc374caf976",
+  "md1Limitation": "Die MD-1-Eingabedatei eingaben-max-erika.json fehlt im Auftragspaket. Die Haushaltsvarianten verwenden deshalb die versionierte synthetische Fixture pe-1-max-erika.json; alte MD-1-Haushaltskennzahlen sind damit nicht exakt reproduziert.",
+  "parityChecks": {
+    "block/no-home": {
+      "before": {
+        "totals": "75e1f56246bee1a972a1a697d1e2c237be07baa3ef6aa60721aaec073e2ed483",
+        "lists": "26c4a3b22064ff6d28ef93a75d727dcfe1eb43cb513e94165464ed3799c6a08a",
+        "pathSummaries": "314b9a6cf03df9f710903af03ae588a1123daaa553cb89597102678f3c422c98",
+        "heatmap": "02703fc4ec9224774f8182028d727c232ceec648f83c3153d018e8eaf09b5366",
+        "combined": "c6be4b46d4c51b5674b4fc2f621fa441840c76d3331d68991498d796405f1f1f"
+      },
+      "after": {
+        "totals": "75e1f56246bee1a972a1a697d1e2c237be07baa3ef6aa60721aaec073e2ed483",
+        "lists": "26c4a3b22064ff6d28ef93a75d727dcfe1eb43cb513e94165464ed3799c6a08a",
+        "pathSummaries": "314b9a6cf03df9f710903af03ae588a1123daaa553cb89597102678f3c422c98",
+        "heatmap": "02703fc4ec9224774f8182028d727c232ceec648f83c3153d018e8eaf09b5366",
+        "combined": "c6be4b46d4c51b5674b4fc2f621fa441840c76d3331d68991498d796405f1f1f"
+      },
+      "equal": true,
+      "previousLogIndices": [
+        10,
+        18,
+        38,
+        23,
+        49,
+        26,
+        39,
+        31,
+        27,
+        30,
+        22,
+        29
+      ],
+      "currentLogIndices": [
+        10,
+        18,
+        38,
+        23,
+        49,
+        26,
+        39,
+        31,
+        27,
+        7,
+        30,
+        22,
+        29
+      ]
+    },
+    "regime_markov/no-home": {
+      "before": {
+        "totals": "341ee9f1187555d72a4b005ba0974f9ea9f64570567244e7659caee11802d45d",
+        "lists": "af377b60011de2473162cf294bb1fe9a1b59458efbe37b18ee15080e25372153",
+        "pathSummaries": "8650288cf6735024bc3c0152f93ab72ab1c572628c7cd075d3ce127aab335bc4",
+        "heatmap": "91683524ba55cdc27c4d0c6f2c1b44097e7ac6f63ede9fedebd51cd64c44e1d7",
+        "combined": "36916e7ca1c729d7c32ff87d14b0532cbfbf26fa27be9917fbd165a6ef5a1af6"
+      },
+      "after": {
+        "totals": "341ee9f1187555d72a4b005ba0974f9ea9f64570567244e7659caee11802d45d",
+        "lists": "af377b60011de2473162cf294bb1fe9a1b59458efbe37b18ee15080e25372153",
+        "pathSummaries": "8650288cf6735024bc3c0152f93ab72ab1c572628c7cd075d3ce127aab335bc4",
+        "heatmap": "91683524ba55cdc27c4d0c6f2c1b44097e7ac6f63ede9fedebd51cd64c44e1d7",
+        "combined": "36916e7ca1c729d7c32ff87d14b0532cbfbf26fa27be9917fbd165a6ef5a1af6"
+      },
+      "equal": true,
+      "previousLogIndices": [
+        31,
+        6,
+        34,
+        1,
+        18,
+        23,
+        43,
+        17,
+        35,
+        22,
+        47
+      ],
+      "currentLogIndices": [
+        31,
+        6,
+        34,
+        1,
+        18,
+        23,
+        43,
+        17,
+        35,
+        48,
+        22,
+        47
+      ]
+    },
+    "regime_iid/no-home": {
+      "before": {
+        "totals": "b765738a15a04ad6cd7ab738997bda1e3f98f1e58f42b031a696de9fe7a1efcc",
+        "lists": "4bfe45608cf5df85bf8a0abef26b82184d60b16aa70d1fb70debdbc4050f7557",
+        "pathSummaries": "9958dd1ff879ee8d10354d5e95332d08776ab23b7e69b2b8d42459f62f76cd0c",
+        "heatmap": "5b5396a38adecf0867e2c80178ea776ecad15d82e58f6cfc1738409828dbf702",
+        "combined": "7e67ae2496b104b36127abaa41be8910bbe8f42bbc23ef9c499daa7aa8d9bd1e"
+      },
+      "after": {
+        "totals": "b765738a15a04ad6cd7ab738997bda1e3f98f1e58f42b031a696de9fe7a1efcc",
+        "lists": "4bfe45608cf5df85bf8a0abef26b82184d60b16aa70d1fb70debdbc4050f7557",
+        "pathSummaries": "9958dd1ff879ee8d10354d5e95332d08776ab23b7e69b2b8d42459f62f76cd0c",
+        "heatmap": "5b5396a38adecf0867e2c80178ea776ecad15d82e58f6cfc1738409828dbf702",
+        "combined": "7e67ae2496b104b36127abaa41be8910bbe8f42bbc23ef9c499daa7aa8d9bd1e"
+      },
+      "equal": true,
+      "previousLogIndices": [
+        29,
+        49,
+        31,
+        4,
+        26,
+        45,
+        35,
+        43,
+        17,
+        22,
+        47,
+        39
+      ],
+      "currentLogIndices": [
+        29,
+        49,
+        31,
+        4,
+        26,
+        45,
+        35,
+        43,
+        17,
+        36,
+        22,
+        47,
+        39
+      ]
+    },
+    "stationary/no-home": {
+      "before": {
+        "totals": "aa9cc3a81bf83c28fdd3b1983f6729acd2ba2b91214f02c05996b41f95989e2f",
+        "lists": "526f4e9d7782dc0c99ce5e87a0ff88e6fd5f4dd0b541aa7866c7ee1c71f66c50",
+        "pathSummaries": "29d1a955a7a4cfd01ef4484a3f35501d88afbe86d2077102838db375ab601ef4",
+        "heatmap": "0d0135d57fc93f4b71a858336bf28c7c81c11105e9e41cabd1026764a253fa70",
+        "combined": "5a2d32c3a61bb538222be23462c36c3cd6ecbd75564e55807d81df04861f5e07"
+      },
+      "after": {
+        "totals": "aa9cc3a81bf83c28fdd3b1983f6729acd2ba2b91214f02c05996b41f95989e2f",
+        "lists": "526f4e9d7782dc0c99ce5e87a0ff88e6fd5f4dd0b541aa7866c7ee1c71f66c50",
+        "pathSummaries": "29d1a955a7a4cfd01ef4484a3f35501d88afbe86d2077102838db375ab601ef4",
+        "heatmap": "0d0135d57fc93f4b71a858336bf28c7c81c11105e9e41cabd1026764a253fa70",
+        "combined": "5a2d32c3a61bb538222be23462c36c3cd6ecbd75564e55807d81df04861f5e07"
+      },
+      "equal": true,
+      "previousLogIndices": [
+        30,
+        29,
+        2,
+        34,
+        14,
+        32,
+        5,
+        13,
+        21,
+        15,
+        22,
+        49
+      ],
+      "currentLogIndices": [
+        30,
+        29,
+        2,
+        34,
+        14,
+        32,
+        5,
+        13,
+        21,
+        16,
+        15,
+        22,
+        49
+      ]
+    },
+    "block/home": {
+      "before": {
+        "totals": "172842930ed19a12f296337d450aad4e9f525c7ef4590855b43539e6cb1766a5",
+        "lists": "913810f0777ff23b75c70280a6cf7b0684c23b96d39c37524d36bc6c9415c5aa",
+        "pathSummaries": "67816ad7d43f90d3eb36ae358a92dc9f2378ef5662d6300bcafaf765a5e5abad",
+        "heatmap": "02703fc4ec9224774f8182028d727c232ceec648f83c3153d018e8eaf09b5366",
+        "combined": "9fa6e0ab43e785aa171a0d99badfb85658bb300b17db585700fcbcae3aea06de"
+      },
+      "after": {
+        "totals": "172842930ed19a12f296337d450aad4e9f525c7ef4590855b43539e6cb1766a5",
+        "lists": "913810f0777ff23b75c70280a6cf7b0684c23b96d39c37524d36bc6c9415c5aa",
+        "pathSummaries": "67816ad7d43f90d3eb36ae358a92dc9f2378ef5662d6300bcafaf765a5e5abad",
+        "heatmap": "02703fc4ec9224774f8182028d727c232ceec648f83c3153d018e8eaf09b5366",
+        "combined": "9fa6e0ab43e785aa171a0d99badfb85658bb300b17db585700fcbcae3aea06de"
+      },
+      "equal": true,
+      "previousLogIndices": [
+        10,
+        46,
+        34,
+        0,
+        49,
+        26,
+        39,
+        31,
+        27,
+        30,
+        22,
+        29
+      ],
+      "currentLogIndices": [
+        10,
+        46,
+        34,
+        0,
+        49,
+        26,
+        39,
+        31,
+        27,
+        7,
+        30,
+        22,
+        29
+      ]
+    },
+    "regime_markov/home": {
+      "before": {
+        "totals": "341ee9f1187555d72a4b005ba0974f9ea9f64570567244e7659caee11802d45d",
+        "lists": "d83d2448c61165db083483cbf7837275ef0d07fec9606c28d93eba3441c0720a",
+        "pathSummaries": "3a060ec7011b6d0390d573833f952edacb290749ed0ceebe1127bf845288ae3e",
+        "heatmap": "91683524ba55cdc27c4d0c6f2c1b44097e7ac6f63ede9fedebd51cd64c44e1d7",
+        "combined": "d1aba53eee14c195fba2b69c5558b04ca1913a06eadfa06a849c2f85e828a8f4"
+      },
+      "after": {
+        "totals": "341ee9f1187555d72a4b005ba0974f9ea9f64570567244e7659caee11802d45d",
+        "lists": "d83d2448c61165db083483cbf7837275ef0d07fec9606c28d93eba3441c0720a",
+        "pathSummaries": "3a060ec7011b6d0390d573833f952edacb290749ed0ceebe1127bf845288ae3e",
+        "heatmap": "91683524ba55cdc27c4d0c6f2c1b44097e7ac6f63ede9fedebd51cd64c44e1d7",
+        "combined": "d1aba53eee14c195fba2b69c5558b04ca1913a06eadfa06a849c2f85e828a8f4"
+      },
+      "equal": true,
+      "previousLogIndices": [
+        31,
+        6,
+        34,
+        1,
+        20,
+        23,
+        11,
+        17,
+        35,
+        22,
+        47
+      ],
+      "currentLogIndices": [
+        31,
+        6,
+        34,
+        1,
+        20,
+        23,
+        11,
+        17,
+        35,
+        48,
+        22,
+        47
+      ]
+    },
+    "regime_iid/home": {
+      "before": {
+        "totals": "1ea7747ff709e66abaa16ecc91bae6196b4bcf466130b6e1019e031030a7ef7a",
+        "lists": "4e4f817798ed34571cd104d2a963d1ca0acb4f942ee07056b3a46cbcdf3adc43",
+        "pathSummaries": "89ff45c6a819cb92b473ba32d84cf1da2d5680e661872d7f8ee6acdcac1fe3ff",
+        "heatmap": "5b5396a38adecf0867e2c80178ea776ecad15d82e58f6cfc1738409828dbf702",
+        "combined": "8b8470bd84d78a39a77469220e7227d4ff160b7c74bcdceffb0554b6408be655"
+      },
+      "after": {
+        "totals": "1ea7747ff709e66abaa16ecc91bae6196b4bcf466130b6e1019e031030a7ef7a",
+        "lists": "4e4f817798ed34571cd104d2a963d1ca0acb4f942ee07056b3a46cbcdf3adc43",
+        "pathSummaries": "89ff45c6a819cb92b473ba32d84cf1da2d5680e661872d7f8ee6acdcac1fe3ff",
+        "heatmap": "5b5396a38adecf0867e2c80178ea776ecad15d82e58f6cfc1738409828dbf702",
+        "combined": "8b8470bd84d78a39a77469220e7227d4ff160b7c74bcdceffb0554b6408be655"
+      },
+      "equal": true,
+      "previousLogIndices": [
+        29,
+        49,
+        31,
+        4,
+        40,
+        46,
+        28,
+        43,
+        17,
+        22,
+        47,
+        39
+      ],
+      "currentLogIndices": [
+        29,
+        49,
+        31,
+        4,
+        40,
+        46,
+        28,
+        43,
+        17,
+        36,
+        22,
+        47,
+        39
+      ]
+    }
+  },
+  "performance": {
+    "command": "npm run perf:mc",
+    "initialBefore": {
+      "samplesMsPerRun": [
+        11.15,
+        11.28,
+        10.99
+      ],
+      "medianMsPerRun": 11.15
+    },
+    "pairedBefore": {
+      "trials": [
+        {
+          "samplesMsPerRun": [
+            9.11,
+            9.05,
+            9.3
+          ],
+          "medianMsPerRun": 9.11
+        },
+        {
+          "samplesMsPerRun": [
+            9.21,
+            8.8,
+            8.97
+          ],
+          "medianMsPerRun": 8.97
+        },
+        {
+          "samplesMsPerRun": [
+            9.09,
+            9,
+            8.93
+          ],
+          "medianMsPerRun": 9
+        },
+        {
+          "samplesMsPerRun": [
+            9.14,
+            9.26,
+            9.13
+          ],
+          "medianMsPerRun": 9.14
+        }
+      ],
+      "samplesMsPerRun": [
+        9.11,
+        9.05,
+        9.3,
+        9.21,
+        8.8,
+        8.97,
+        9.09,
+        9,
+        8.93,
+        9.14,
+        9.26,
+        9.13
+      ],
+      "medianMsPerRun": 9.1
+    },
+    "after": {
+      "trials": [
+        {
+          "samplesMsPerRun": [
+            9.07,
+            9.59,
+            9.39
+          ],
+          "medianMsPerRun": 9.39
+        },
+        {
+          "samplesMsPerRun": [
+            8.98,
+            9.04,
+            9.2
+          ],
+          "medianMsPerRun": 9.04
+        },
+        {
+          "samplesMsPerRun": [
+            9.04,
+            9.05,
+            9.33
+          ],
+          "medianMsPerRun": 9.05
+        },
+        {
+          "samplesMsPerRun": [
+            9.22,
+            8.96,
+            8.95
+          ],
+          "medianMsPerRun": 8.96
+        }
+      ],
+      "samplesMsPerRun": [
+        9.07,
+        9.59,
+        9.39,
+        8.98,
+        9.04,
+        9.2,
+        9.04,
+        9.05,
+        9.33,
+        9.22,
+        8.96,
+        8.95
+      ],
+      "medianMsPerRun": 9.06
+    },
+    "deltaPct": -0.4395604395604269,
+    "maximumRegressionPct": 1,
+    "firstPair": {
+      "before": {
+        "samplesMsPerRun": [
+          9.11,
+          9.05,
+          9.3
+        ],
+        "medianMsPerRun": 9.11
+      },
+      "after": {
+        "samplesMsPerRun": [
+          9.07,
+          9.59,
+          9.39
+        ],
+        "medianMsPerRun": 9.39
+      }
+    },
+    "trialOrder": "AB, BA, AB, BA (A = Originalmodule, B = neuer Stand); vier Aufrufe je Stand, je drei frische Prozesse mit je 1000 Pfaden",
+    "baselineMethod": "Originalmodule aus baselineCommit, per NODE_OPTIONS vor dem unveränderten perf-mc.mjs geladen; danach regulärer Aufruf ohne Loader und ohne weitere Rechenjobs.",
+    "baselineLoader": "import { register } from 'node:module';\nimport { readFileSync } from 'node:fs';\nconst files = ['mc-run-metrics.js', 'monte-carlo-runner.js', 'mc-year-sampling.js', 'stationary-bootstrap-sampler.js', 'scenario-analyzer.js', 'scenario-wealth-chart.js', 'scenario-comparison.js', 'scenario-log-view.js', 'simulator-results.js'];\nconst originals = Object.fromEntries(files.map(file => ['app/simulator/' + file, readFileSync('/tmp/md2-before-source/app/simulator/' + file, 'utf8')]));\nregister(`data:text/javascript,${encodeURIComponent(`\n const originals=${JSON.stringify(originals)};\n export async function load(url,context,nextLoad) {\n  const result=await nextLoad(url,context);\n  for(const [file,source] of Object.entries(originals)) if(url.endsWith('/'+file)) return {...result,source};\n  return result;\n }` )}`);\n"
+  },
+  "validation": {
+    "npmTest": {
+      "passedAssertions": 140727,
+      "failedAssertions": 0,
+      "failedFiles": 0,
+      "separateGates": 4
+    },
+    "docs": {
+      "errors": 0,
+      "warnings": 6
+    },
+    "newBrowserCases": 0,
+    "images": [
+      "docs/ui/monte-carlo-szenario-logs.png"
+    ],
+    "reviewWidths": [
+      1920,
+      2560
+    ]
+  }
+}

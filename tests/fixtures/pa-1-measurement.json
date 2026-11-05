@@ -1,0 +1,736 @@
+{
+  "date": "2026-10-23",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 5,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "units": "Kosten und Pflegegeld: mittlere reale Euro je Lauf über den vollständigen Lebenspfad einschließlich Schattenjahren nach Ruin. Wechsel: gewichtete Personenjahre bei Grad 1–3, im eigenen Sterbejahr halb. Notverkäufe: Anzahl Ereignisse über alle Läufe.",
+  "before": {
+    "grund": {
+      "inputsHash": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+      "chunks": [
+        "274dff9f09eb9bb5ec2a74f4c292706a28b49586c767a22fa43693e2af9fa585",
+        "2d30830dc0a600af0cf5768fc115ec97eaf5bf880423baa7f9c2bf4c5eac9da8",
+        "5f54382cb2b1c430f1f65a0c666c7f8661fcd3992f8756e2e6bd804566781182",
+        "55192b54a948d606d50a7981187cce8786e681ae347bd90a4dcd8d0c4eca8b0a",
+        "7b09e099b17e487ce9875f82643e636cf12a75aad94e2f762fd44536181b03a4",
+        "8a1a7b8a9e8a3483eb90ab1fb0d059a8f59906c5fa8329dfe7aea7bed3f2fb02",
+        "d6ece3997ac9453f77a5af3678ec22767374ef78b0e7b60b52275a5c2c75cdb8",
+        "d9774a9aa2dc17b70e0e52663dc8292e6a1a58e29ac42b524c3cda3b7a181645",
+        "d76fee1cbce78df7afb7d53e5d094439fc98a07b3c4d08cd460b9c487116a624",
+        "56b02d12d25aff1496b9b92ad86b2d5610bf7b304323931ec7416cc2f49a246c",
+        "c22d579b11f4410702ff153af4928cac668c7db8fc5b15f83a644d493611359a",
+        "2fd24707554059a1776f4e8a53fdabb48622a3751e888122af8f9c67e200468a",
+        "e92a6ed35105f21f216ee47f71eed1ba83df1ad09abc88525d8afd6ab5507593",
+        "60203ea1d2a3cf63cfe16c73a9a55bf410a8a06649eb00087cea771b2e5e3192",
+        "f0eb87689d602105633e9d715df22949406826fcc3c17bb28564553e61653245",
+        "9ee3ea611fb036cc810a6347cad4ba0f6bc2e43f9c70f33f9ef1293d988d53d1",
+        "2cf72cfa191ee1230255bbda6e4049c55f4f6c300c8b301356b973813657101c",
+        "aec825da78c8246c3ae4a83119c68b45451525dd03f888f82ae88babf8544ab6",
+        "758ff71b0d8ef18ff2a937d136e17a447452873f19ac831eaee55223d2fd74c3",
+        "bb7d9744a5b80498e7c185dc9f979b1d4dbfc6f13f0b48943a087a2e625f82fe"
+      ],
+      "coveredPct": 99.75,
+      "ruin": 5,
+      "technical": 0,
+      "meanCareCostReal": 116301.01427188254,
+      "meanCareAllowanceReal": 11328.162,
+      "switchedPersonYears": 0,
+      "emergencySales": 0,
+      "counterchecks": [
+        {
+          "period": "2000-2025",
+          "hash": "92ea9bdd5ccaa84cc57f0460ec89f5f02718e4a3c2944c7a68a3f9a719f58499",
+          "outcome": "completed"
+        },
+        {
+          "period": "1965-1999",
+          "hash": "6c2b7406002765c74a21c243b93b8a192822b1336e1890aed88b72c5aeb854ec",
+          "outcome": "completed"
+        }
+      ]
+    },
+    "haus-pg3": {
+      "inputsHash": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+      "chunks": [
+        "b2f46bafb6842d159fc3814ba70c3ea9292c35c36b477f56f93543d1b77c163a",
+        "e0b196a5e7c5a04e6cf98bcb89110b68b0ee89dcce7d4eed53acf4081e12e3dd",
+        "a2b9b56934b9e797acfa4f612d592081010459cfb25c26d4edbf789af43a7a4b",
+        "a27960d9741ed10b0980b2657ca4ce9d1543f77cb4f92b29fce05f6a8c875f0a",
+        "4064a1023ef3b7f83d35b3399b29d5f7008a9ccdebf501fcc83f89e5925b2f44",
+        "ab34a5f252b4b197824ce692c3aed8b1710df93c7df0ac2dfe140f1c7897a991",
+        "8ea5f58a6b2806b39e5739749c72d1a787eaf41840626f86782b23b181c1b915",
+        "c772cd47615b2e82976cd6de260b82b442ab71b2038c21b5b5b005def2a46815",
+        "dac8e8d1e92558936374085f673110e34882ef8e88e90f616db3875c47ea0719",
+        "3193e053a577ee0b49faabe46b22580262b873cb48bac9811885ad981cea9f68",
+        "5f3283c605d8f649dfef0e1fd4085d8f6dbebfb021632cd8df762b1f554279e9",
+        "b53c34694fe443da71ef8f2a1f1fe767f7e2c9cd907471fd462f897bb8edf2a2",
+        "01d589a7ebb5a42f78979d124ae0a6f2dad4b93e8c0eeeb2276ae5d6b5361f0c",
+        "62e573e49d052f383658f8d3dde65c5a7157f57227be40c0cf4896a66a33ac9e",
+        "1ec7fbd356952de8b19d1efc8e79c7d8321ddd2c5af4960302434eeb882bf3db",
+        "5901763ae408aef25c46ac2febc82677958ca3c082c866c57f81fabf85b913d0",
+        "4711ad1249cd95d8ceb3c1a8ae340b00ebbe70ba07612fd8a4a48b0bf4e0d994",
+        "827690fd2ee602669545c28c2414e418b8f52e4922c6f11d51e2af9b38d9afa7",
+        "e4729572c74f6fc9d10cf94832bcbf418b951b15757b2c28ae05e17ee4d6af25",
+        "c1ec57cfa5487d4772caa8a774b0f784ac1c2f81d9c351e157754c8374c35ecd"
+      ],
+      "coveredPct": 99.85,
+      "ruin": 3,
+      "technical": 0,
+      "meanCareCostReal": 142787.17714633155,
+      "meanCareAllowanceReal": 30902.076,
+      "switchedPersonYears": 0,
+      "emergencySales": 52,
+      "counterchecks": [
+        {
+          "period": "2000-2025",
+          "hash": "c3f86e78f521b563b7c74fa3f3bb03ad777bb8a2d51deb6a415a226eb01d0ecc",
+          "outcome": "completed"
+        },
+        {
+          "period": "1965-1999",
+          "hash": "5c1a79f881a7363a7ae871ddd70c4fbfb1b88d1c78052b80192bd7606fc840ee",
+          "outcome": "completed"
+        }
+      ]
+    },
+    "paar-pg2": {
+      "inputsHash": "0ba2ca3b0408a5974682212b6e986fcf89774027e99ecffb04e365125223430c",
+      "chunks": [
+        "d4ad0e21df15d02fd3b227ea3cd000a0f7a0634d9f135089647b7598207216da",
+        "f086f4f97056e04bcaf774e65adb8b46edb33691d3382a4f65645b9bd0646e23",
+        "470e86b4c16e38bc45d090f6911225f22a5ac91fd18b983a5e91058486358c21",
+        "8a64da9a2b0a8fe06fbc0f31e3129f7974582db9e26e0695086e38bdbc4aae04",
+        "135fd832b3046fced2d03ea9bfc15c028b790973fc23408e80085f903f93179d",
+        "36d7753bd677b0fd92d6d0e0278581066e9fe2e5014bb2407d3a70357f34d8f5",
+        "4b677df9486f6706a34fda19aa3672bb5b7b7b21e891fcb98390329c5ba03145",
+        "f01be4d39df628c5f30621eeb38aab5753286601c7bd892d01c4141115e7fea0",
+        "99d23662558c520a52384074b4f3524ac78ca1deb1cbff3962a496a8bdcdf8e8",
+        "2a9d1335bb345dcf440cf37e9cc3b7bf4a262e4d5412c42b5ea1c53177bd1262",
+        "4558b99ecc60a4ca8af128769b735a6011df145bf6fd7adec07a65be8fdb8f84",
+        "ab0824d168faca0009906f1d41d9eb4dd2c5281849d9e95b589c0d00374d25ec",
+        "c435f79e661118a39ff484d2def1f778f794ce8c9facb5f2e2b8c0633e1956bc",
+        "84a45cccee4f3578d5585f62387298f9c827ac51a50e22977f2a9095d66ec48a",
+        "17ffa1c61e3ee2faac0a5c6c930048beff628bf2c74cf241d6a9c0bf09aaa4dc",
+        "9db298927554b4b349a26e04dcf471b26675447cbc165a402b87ccc69190f665",
+        "6717586f71517e055b400f71b4b7d6b4f9b158e23deb95290b689f5a4c585a73",
+        "0c0f2d949df7b02d1b554745ab38e35ee3aaff634dc41612b840ad0446ba9e9f",
+        "63ed081b63390532608203949396ceceaa137d7f97bd5c06a5a40797c96bbe54",
+        "7fa71c40580cc325efcc3f41f1c7ebbd1272771f827cfa80eb30e5d0871804a5"
+      ],
+      "coveredPct": 99.55,
+      "ruin": 9,
+      "technical": 0,
+      "meanCareCostReal": 154877.17190127322,
+      "meanCareAllowanceReal": 18843.141,
+      "switchedPersonYears": 0,
+      "emergencySales": 0,
+      "counterchecks": [
+        {
+          "period": "2000-2025",
+          "hash": "635437afaf6bb31d62b0c14be91a5490b2b5352dbe91494e198a9fd7dc8fe7bf",
+          "outcome": "completed"
+        },
+        {
+          "period": "1965-1999",
+          "hash": "14cb5a356855272be4929647b8359b02a45d8433f4ce69d4d32567211dddadf3",
+          "outcome": "completed"
+        }
+      ]
+    },
+    "haus-pg3-4-4": {
+      "inputsHash": "de01794cef1e96b4536e3a0fc9cd02e7858af78a016091c5c526177fddef96d8",
+      "chunks": [
+        "dbc7145a3bfc5ef5a8ac7724799d5daa35ab4f3689287f470ee575cedc0a2781",
+        "215f8659e0a6e1de7a98d078bbf023d469a4b02074cac5634cfc997349cb9549",
+        "8b3c98a5c226813d677bd19323f3f7bc0bdb1d960fe7e340b8162f30c0cf1747",
+        "f8fd9efcc68060bf586a483557efebd2a007cccda15bd4124629811e4fda3f65",
+        "b4afffd4034ee01630af71b90d4101d72a3a3a089adec34c37ab052a71f23cea",
+        "783cacab53878c1e101de2076220d327b6dadf42f49b6abd1f3fedf2bccb50ea",
+        "cbd53222fabccd1b173436325755f803dbe5e00978ca90b709224637b215a924",
+        "f87522ab690d970746a615d68b84d431ad8b8e284abdf29197cdc68fef883b14",
+        "7618cbf57f3350dad1cbad8d08eb89a8f51b4447f27157f29595147516e921d8",
+        "ff80e9e02d256093aa51f1b9b28526c2913746f1b67daa5ff90a5bf9c17a47b6",
+        "02615a9cc90f9f22bb825e412ff5f22357b969ada65a2e554e2a9c58da3fbdf8",
+        "952fe504e29e524f8e0ee11757ffb49852d2220a400684121d7a282780865bea",
+        "fa551992bbb5a70b9a5bcee28aad3230255214063c6ed4c4908c004a28b52deb",
+        "510eaef2bf6b1e549a545f2e66cbccb77cd72a5738578d7ffc8d5ede965b5041",
+        "ed2edc90c51edaabb24361b8a343b5f9394a149176a683053e55674cbbdc7b2e",
+        "2ae913b76cb854e720c3ffc39f00dacae178696237c2b86b2310b625a24df25f",
+        "07aaf6e01e67e3afb485a53e3c8a647f0a31112a75cfa4261ff30942d05915fb",
+        "305050381e57b7f79dba8f9dbb4f68f8bef23e9da76652a27d5723c0c39ccba5",
+        "57c8564edd53da25edfd4438ce56dad620bd2372e6c577eaefea084d22a82ad5",
+        "fc19534a07632fd5fe85e57a2d712ddd8b972e27ba2fe9870d9099151d8f5701"
+      ],
+      "coveredPct": 97.4,
+      "ruin": 52,
+      "technical": 0,
+      "meanCareCostReal": 229774.53077297015,
+      "meanCareAllowanceReal": 30343.2,
+      "switchedPersonYears": 0,
+      "emergencySales": 0,
+      "counterchecks": [
+        {
+          "period": "2000-2025",
+          "hash": "bc221cb99e4fe4d933fd8a8c9dc852303f261c091ea3fada14aeb828a5c24172",
+          "outcome": "completed"
+        },
+        {
+          "period": "1965-1999",
+          "hash": "6cafef2c7fd4aff28af1fa16c1c8fbbd069fa722ab43a2729ebdbe32cc75c925",
+          "outcome": "completed"
+        }
+      ]
+    }
+  },
+  "after": {
+    "grund": {
+      "inputsHash": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+      "chunks": [
+        "e5dfb213e1a63b0717de367bedae3dc4f418a865e35544e7c5f2aec61e51ea16",
+        "199ae4cde6c880113491cffb2d6cac40445a1f99625e074ef14e8d9e3498f34d",
+        "c89bbd0a60cd6abed978f9b8bbab814ee0e322c65a17ec6e5d509f5d84e9b9cb",
+        "04acb54d6980accd41d74e5279054ea34691bc0cbe91fa2b34b5b346812aafb4",
+        "7d2b4a3b0f8bdb324b07b7e31163ff24556fb1d4ffbd866cc5f6196e2af57797",
+        "deea52b4d86ce0bbd53262c20fa0480bbbb2b386d54806c5f55d819a25a989d0",
+        "b754a0e5eef669555781351767ecb7738ac65cc43e3d001c1d228670574c0aef",
+        "aa89cc3f9fcd0d37e259a1df0d9bece4e779a0ce24e6b6d7845e31f60323adcb",
+        "6eb889e8f73bd18cbe24525ea2e2f7e80574f3aacda904592f9bad8abb50a561",
+        "07981dc34d5bb88c3dbbbb159ec7d325460728424c9bdf068d97fe954f2cd67e",
+        "39561e96b308290e16a14c63f9b70464f64330248680a2d73e43d21d432f20de",
+        "a7e326a9b6b57813f1938b8cabb6edfe4d6c60a43455e9fe41380a84e723bcf3",
+        "62b038299edd7e48c68d6ceb4517a6a7cb2552b297464a3f1f83a9eb942e2406",
+        "29310b615304e287f21af4c1873663951cef665e9bad4541e1e81cec6b720eb2",
+        "cd7a4497a7cddf02f1de3a28dd376054f0a23f742b08c5ae1eb48bbd0fa89f0e",
+        "74914b7edcd16d402201d93309082adda048c1534d11ebe4a64a325d2fa69864",
+        "68b61c7fe5237647de18b7da5395e90f2f1fe38ad31c2280da1b4b050246ad69",
+        "8ba7f52da6db08b8d5f4b1757e75097057f5a5eaa4ab1713dfe6276f5edfbd8b",
+        "7b4863c1220955c767eebac730140365422d39c1078532bb0f2c043dd3ced0d7",
+        "9174e0b0cef2428171fa2b118d54881265855e3dc9e4ef0c4ac56f047cb6fa4f"
+      ],
+      "coveredPct": 99.75,
+      "ruin": 5,
+      "technical": 0,
+      "meanCareCostReal": 116259.6507725707,
+      "meanCareAllowanceReal": 5074.875,
+      "switchedPersonYears": 5330.5,
+      "emergencySales": 0,
+      "counterchecks": [
+        {
+          "period": "2000-2025",
+          "hash": "92ea9bdd5ccaa84cc57f0460ec89f5f02718e4a3c2944c7a68a3f9a719f58499",
+          "outcome": "completed"
+        },
+        {
+          "period": "1965-1999",
+          "hash": "6c2b7406002765c74a21c243b93b8a192822b1336e1890aed88b72c5aeb854ec",
+          "outcome": "completed"
+        }
+      ]
+    },
+    "haus-pg3": {
+      "inputsHash": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+      "chunks": [
+        "10c838cc0cc052af810c8209f86ed097bd96b2979f335773a3d52a67e527760c",
+        "87f42048bfa6f5076c78c72d0be5b5b3ea36501a76b05a766ca1e3e7259aba8d",
+        "4a6b68c4ccd120ad0988999d7709c8b95ff048c57294a18fc546059bffc98fc2",
+        "e87d08a89f7e66b17669e8b44b8bcea980c447ae51cc2f7ec9f4205dd24fd01d",
+        "a2055b3c5fb162f45d55b278370dbe89e1cb4fe10aec6448923a1df5ba554381",
+        "db5a4e0c76b9a7f96e6427422a6480510320455bb43c51a4079f1259fbf1fbe0",
+        "f56f3bbe2d082ea46394d2b9ed529163184652f9116ca6d2693b7271e871048f",
+        "e98ea2122ab449e30567063dec911a15794b4e02ce52ba6a4de6f239df2d8c6c",
+        "a099650cbd45859ef5d46c1e9111c460eab10f7f252d70bc02da46ce4af9bdb6",
+        "f241b4869a99d7835bd5b0a0634d59ab1354e112942787b141e1c5b514772cb5",
+        "0a6589b5a340ba43869f885b1756a6ea53451423a81a6d47dce3c83f6269ae18",
+        "24f644fa24ddffd86c2d53d82c16bfba5bf5ac8775c3f17efe18c6a402c0afb1",
+        "99a2e22321efae98806c2c208464b2bf0694e4ea1df8836710af0eae86952506",
+        "82de0b57bb3e126b0692fb1be5c34680f3eee2beabb5e2618ad9585d87c2102a",
+        "ecff86132e467980307dd99cc2d9dc3d5c732ef525e1fd71382cf72f56664fa3",
+        "71abafc69568e2d14dc11cda3b1789e8a1b5857cc30588de0d978b37b0a21edf",
+        "39b4a02dfe00ec83c751f27e17311c35a6d0969d285ef9da9d816a8b208a67c1",
+        "4c969825bbb0b433c83e0d65ef4cba3462822539475d0fcf780f52bcbc053347",
+        "24f40752d6e6ddfb63f85a1d320f0a5209b93538d76f5591bd7696a7242151e1",
+        "2bab709f5c7c57641995189b7095181fce5d9439c43528b89cbfb85bde0a9367"
+      ],
+      "coveredPct": 99.8,
+      "ruin": 4,
+      "technical": 0,
+      "meanCareCostReal": 149177.51343259838,
+      "meanCareAllowanceReal": 21714.948,
+      "switchedPersonYears": 7171,
+      "emergencySales": 61,
+      "counterchecks": [
+        {
+          "period": "2000-2025",
+          "hash": "c3f86e78f521b563b7c74fa3f3bb03ad777bb8a2d51deb6a415a226eb01d0ecc",
+          "outcome": "completed"
+        },
+        {
+          "period": "1965-1999",
+          "hash": "5c1a79f881a7363a7ae871ddd70c4fbfb1b88d1c78052b80192bd7606fc840ee",
+          "outcome": "completed"
+        }
+      ]
+    },
+    "paar-pg2": {
+      "inputsHash": "0ba2ca3b0408a5974682212b6e986fcf89774027e99ecffb04e365125223430c",
+      "chunks": [
+        "70d9094b366145e864439f4faa7f1d9d94749e9282144446572356158b1577d9",
+        "bcde54b2c66156d69338fe1a97c6d4d36d9abd6305d31cf9df22257afd70f3bb",
+        "7fb2ded9734643cc5272dbfeaf753fb3e94b96d13b5021a315e318d68ad1ef17",
+        "5982d5cc98306fda22d170e74d3dbcfc87aa128da333042f1128234c9ef5e332",
+        "f35e983945b594124fba3b6d58a34d5ef1e75cee10832d5dadf7550251d7991a",
+        "8cb6318b9afbd20e1b38912880822741212184d1d4d79308bf40c7535e8807d8",
+        "79876b7d4624d5fb539fef504d77c531f790a59c9ccb59f8895afe15a2990e59",
+        "84302d868671352f20eb78cc89066b35ebf9c0f9239ba9de76935107d319034f",
+        "26615f9043292a96a31963a094f5dd37113b486f5110fdcc0b08b76957103775",
+        "8b7ab1e1c8e554fd8a30e163522501ecd45847f73d66ca0d3e4693f8cc1cd4ee",
+        "0bca7b8883822a834475d7df28afc1d24aac5996303c185824b5e9d5ac774689",
+        "39802feb07d8f83ca112dd213f97a3da24939df949d681c9bbdcdf916e52dbdc",
+        "834a9c1df270b10550d07a0e85c2da58c49e8362bb022a57bba18a85ed5b68b2",
+        "b420a876fae835d79c58a645e673389adaa02ba4c84054c17be2908e9dfc680b",
+        "c7601e2e8c2b0627d6729c17b43274ba304f0f317a8b520d2b4606fce9f8a9cd",
+        "df4a9aff66fef2339d1a39758a42d4ccd5397f500a583b8ef10cf3792d1d4211",
+        "7bad34b463c3a75709016bbd79026d1bf39740156336e0cd12cf3bb99a8222e0",
+        "bec33f73de0d3bf8507311f431441f92d0a3d7993b2b2fb9d41c2d9db9708003",
+        "8190377ef20e1d3edabd02cebe610fa55f2112b20b958d51a9f91de6f824ac52",
+        "a6ca61bb78d4a8eccb6e740a7e4a4065f7e417324ede86c14050a1ed2df42a85"
+      ],
+      "coveredPct": 99.6,
+      "ruin": 8,
+      "technical": 0,
+      "meanCareCostReal": 157855.66332601316,
+      "meanCareAllowanceReal": 11351.064,
+      "switchedPersonYears": 6806,
+      "emergencySales": 0,
+      "counterchecks": [
+        {
+          "period": "2000-2025",
+          "hash": "635437afaf6bb31d62b0c14be91a5490b2b5352dbe91494e198a9fd7dc8fe7bf",
+          "outcome": "completed"
+        },
+        {
+          "period": "1965-1999",
+          "hash": "14cb5a356855272be4929647b8359b02a45d8433f4ce69d4d32567211dddadf3",
+          "outcome": "completed"
+        }
+      ]
+    },
+    "haus-pg3-4-4": {
+      "inputsHash": "de01794cef1e96b4536e3a0fc9cd02e7858af78a016091c5c526177fddef96d8",
+      "chunks": [
+        "dbc7145a3bfc5ef5a8ac7724799d5daa35ab4f3689287f470ee575cedc0a2781",
+        "215f8659e0a6e1de7a98d078bbf023d469a4b02074cac5634cfc997349cb9549",
+        "8b3c98a5c226813d677bd19323f3f7bc0bdb1d960fe7e340b8162f30c0cf1747",
+        "f8fd9efcc68060bf586a483557efebd2a007cccda15bd4124629811e4fda3f65",
+        "b4afffd4034ee01630af71b90d4101d72a3a3a089adec34c37ab052a71f23cea",
+        "783cacab53878c1e101de2076220d327b6dadf42f49b6abd1f3fedf2bccb50ea",
+        "cbd53222fabccd1b173436325755f803dbe5e00978ca90b709224637b215a924",
+        "f87522ab690d970746a615d68b84d431ad8b8e284abdf29197cdc68fef883b14",
+        "7618cbf57f3350dad1cbad8d08eb89a8f51b4447f27157f29595147516e921d8",
+        "ff80e9e02d256093aa51f1b9b28526c2913746f1b67daa5ff90a5bf9c17a47b6",
+        "02615a9cc90f9f22bb825e412ff5f22357b969ada65a2e554e2a9c58da3fbdf8",
+        "952fe504e29e524f8e0ee11757ffb49852d2220a400684121d7a282780865bea",
+        "fa551992bbb5a70b9a5bcee28aad3230255214063c6ed4c4908c004a28b52deb",
+        "510eaef2bf6b1e549a545f2e66cbccb77cd72a5738578d7ffc8d5ede965b5041",
+        "ed2edc90c51edaabb24361b8a343b5f9394a149176a683053e55674cbbdc7b2e",
+        "2ae913b76cb854e720c3ffc39f00dacae178696237c2b86b2310b625a24df25f",
+        "07aaf6e01e67e3afb485a53e3c8a647f0a31112a75cfa4261ff30942d05915fb",
+        "305050381e57b7f79dba8f9dbb4f68f8bef23e9da76652a27d5723c0c39ccba5",
+        "57c8564edd53da25edfd4438ce56dad620bd2372e6c577eaefea084d22a82ad5",
+        "fc19534a07632fd5fe85e57a2d712ddd8b972e27ba2fe9870d9099151d8f5701"
+      ],
+      "coveredPct": 97.4,
+      "ruin": 52,
+      "technical": 0,
+      "meanCareCostReal": 229774.53077297015,
+      "meanCareAllowanceReal": 30343.2,
+      "switchedPersonYears": 0,
+      "emergencySales": 0,
+      "counterchecks": [
+        {
+          "period": "2000-2025",
+          "hash": "bc221cb99e4fe4d933fd8a8c9dc852303f261c091ea3fada14aeb828a5c24172",
+          "outcome": "completed"
+        },
+        {
+          "period": "1965-1999",
+          "hash": "6cafef2c7fd4aff28af1fa16c1c8fbbd069fa722ab43a2729ebdbe32cc75c925",
+          "outcome": "completed"
+        }
+      ]
+    }
+  },
+  "byteControls": {
+    "partN": true,
+    "withoutFamily": [
+      {
+        "case": "max-erika/grund",
+        "equal": true,
+        "before": {
+          "inputs": "ddc639c848ab1343b4da12c683500ee624ad70e62f5cf61f59bc3e07a01335c6",
+          "mc": "33ea0685e2a2b39945337b13fdfb80485d681ba76cc5fdd0ffeb6f2661136a08",
+          "backtest": "2810bd0a959f62602ad40f5c3f7207a4e4d689a2c04786eacc9ee7743a5719d1"
+        },
+        "after": {
+          "inputs": "ddc639c848ab1343b4da12c683500ee624ad70e62f5cf61f59bc3e07a01335c6",
+          "mc": "33ea0685e2a2b39945337b13fdfb80485d681ba76cc5fdd0ffeb6f2661136a08",
+          "backtest": "2810bd0a959f62602ad40f5c3f7207a4e4d689a2c04786eacc9ee7743a5719d1"
+        }
+      },
+      {
+        "case": "max-erika/immobilien",
+        "equal": true,
+        "before": {
+          "inputs": "9a20963e9269413997e62693c331bf766bef514a8284b85c5e815ffe3210e7f6",
+          "mc": "961df974d407d39fffd06c9450c24dd9cd2c09445b3eb8dcc2244b342fc28fc1",
+          "backtest": "5382c79f52e61c6ed3e2aac04acac1973adc1e690a1fbdc0ef1667173f0cee71"
+        },
+        "after": {
+          "inputs": "9a20963e9269413997e62693c331bf766bef514a8284b85c5e815ffe3210e7f6",
+          "mc": "961df974d407d39fffd06c9450c24dd9cd2c09445b3eb8dcc2244b342fc28fc1",
+          "backtest": "5382c79f52e61c6ed3e2aac04acac1973adc1e690a1fbdc0ef1667173f0cee71"
+        }
+      },
+      {
+        "case": "renate/grund",
+        "equal": true,
+        "before": {
+          "inputs": "9b1e0d1fbd88ac8054eb5a68929fc570fb4f1b75be7895dff999cfba52d4e322",
+          "mc": "5faaae8cf43adb4b776d8214425ae2051bebf93e3a4356a61442c2e3b64a184a",
+          "backtest": "94f65f76974a05561f8988807276821d6e91a15ce40092284ebd9b797e5abbd6"
+        },
+        "after": {
+          "inputs": "9b1e0d1fbd88ac8054eb5a68929fc570fb4f1b75be7895dff999cfba52d4e322",
+          "mc": "5faaae8cf43adb4b776d8214425ae2051bebf93e3a4356a61442c2e3b64a184a",
+          "backtest": "94f65f76974a05561f8988807276821d6e91a15ce40092284ebd9b797e5abbd6"
+        }
+      },
+      {
+        "case": "renate/klein",
+        "equal": true,
+        "before": {
+          "inputs": "bb30f98c8d6cfe99053c0f9edd098b729245b791e8d6b7c7945128a2f37f6df1",
+          "mc": "510134b6c7c58c4ec46576033343d466bd7cf03471bbde03aa3d8129c4164b4c",
+          "backtest": "4028b47c0a047c3d9d08717c6255d32ed43731915b836783066b99ebf649dc5a"
+        },
+        "after": {
+          "inputs": "bb30f98c8d6cfe99053c0f9edd098b729245b791e8d6b7c7945128a2f37f6df1",
+          "mc": "510134b6c7c58c4ec46576033343d466bd7cf03471bbde03aa3d8129c4164b4c",
+          "backtest": "4028b47c0a047c3d9d08717c6255d32ed43731915b836783066b99ebf649dc5a"
+        }
+      },
+      {
+        "case": "jan-lena/grund",
+        "equal": true,
+        "before": {
+          "inputs": "a8e1f409e2412a022ddc45b806ddf76964cd02e32c741a1b62fabcd430858a20",
+          "mc": "e4336cf0e2a05a12083bba1cc9a80d2dc2b7a084c3218cafe29941a307a51b7d",
+          "backtest": "4ba47560e07fcbd17b2c6f0c461413561782bb09eaa626d5596f8077baafb465"
+        },
+        "after": {
+          "inputs": "a8e1f409e2412a022ddc45b806ddf76964cd02e32c741a1b62fabcd430858a20",
+          "mc": "e4336cf0e2a05a12083bba1cc9a80d2dc2b7a084c3218cafe29941a307a51b7d",
+          "backtest": "4ba47560e07fcbd17b2c6f0c461413561782bb09eaa626d5596f8077baafb465"
+        }
+      },
+      {
+        "case": "jan-lena/halten",
+        "equal": true,
+        "before": {
+          "inputs": "8bb6bce5a87d3ccaf9c5028b7b667240bf54d824e0c76c89eac2c5a3fe7111f7",
+          "mc": "8654155839a4d508354d50a1f1d14de73ef645e23297533e5d01b27c53134251",
+          "backtest": "9fd2a2d503de5eacbfa0b63b164ab31970f83504e4b284bde1752dbcee70bfae"
+        },
+        "after": {
+          "inputs": "8bb6bce5a87d3ccaf9c5028b7b667240bf54d824e0c76c89eac2c5a3fe7111f7",
+          "mc": "8654155839a4d508354d50a1f1d14de73ef645e23297533e5d01b27c53134251",
+          "backtest": "9fd2a2d503de5eacbfa0b63b164ab31970f83504e4b284bde1752dbcee70bfae"
+        }
+      },
+      {
+        "case": "helga-werner/grund",
+        "equal": true,
+        "before": {
+          "inputs": "6666dc22c7a9f048146194259be6acfde4e277fccce1d8a91242b388db360b59",
+          "mc": "bf4fd47f990888a7a9d95fc57c9f7218099581e994e86ca29c42e23c87f5474a",
+          "backtest": "c4aefd235a63fd6873782052941aed7638f65f482ddbfb30958d96313c9dc006"
+        },
+        "after": {
+          "inputs": "6666dc22c7a9f048146194259be6acfde4e277fccce1d8a91242b388db360b59",
+          "mc": "bf4fd47f990888a7a9d95fc57c9f7218099581e994e86ca29c42e23c87f5474a",
+          "backtest": "c4aefd235a63fd6873782052941aed7638f65f482ddbfb30958d96313c9dc006"
+        }
+      },
+      {
+        "case": "helga-werner/haus-pg3",
+        "equal": true,
+        "before": {
+          "inputs": "3d9df9b7a5ecfbbb30eaa7aa231edb9bd7b8e685edce30922a666a4c70ce4e92",
+          "mc": "709590e81cd64edafc957c3b85fb334070fe823a4e51a1672ecdb0a012a1a287",
+          "backtest": "97b076f82def21b337a612edce9cd1de577eab154e4204d936c4efbc20d01b93"
+        },
+        "after": {
+          "inputs": "3d9df9b7a5ecfbbb30eaa7aa231edb9bd7b8e685edce30922a666a4c70ce4e92",
+          "mc": "709590e81cd64edafc957c3b85fb334070fe823a4e51a1672ecdb0a012a1a287",
+          "backtest": "97b076f82def21b337a612edce9cd1de577eab154e4204d936c4efbc20d01b93"
+        }
+      },
+      {
+        "case": "sophie/grund",
+        "equal": true,
+        "before": {
+          "inputs": "496c532be3121c2a144c2beff6ef0b71c0fc35fce1b93a09cfed89ae7c31886e",
+          "mc": "349fec220cfd67895572575769cccc44383b46f2d5250610c9959b6611b492b5",
+          "backtest": "883e30dda9a743e7faddf85cce216e7eff9b41eba96e2d5e2ea223c79efbcc3e"
+        },
+        "after": {
+          "inputs": "496c532be3121c2a144c2beff6ef0b71c0fc35fce1b93a09cfed89ae7c31886e",
+          "mc": "349fec220cfd67895572575769cccc44383b46f2d5250610c9959b6611b492b5",
+          "backtest": "883e30dda9a743e7faddf85cce216e7eff9b41eba96e2d5e2ea223c79efbcc3e"
+        }
+      },
+      {
+        "case": "sophie/teilzeit",
+        "equal": true,
+        "before": {
+          "inputs": "88b21037de9e19ce36886cf2e0f64d3fb844f6ff87efaa71711c5ace79f6bf25",
+          "mc": "5286ca1c62adcc14fcda23bc67f0dec077608bcfb880e21a093ff342a2ae2b2e",
+          "backtest": "1e6af51cfe1d627ae0ecd3f5537ef8e2adb25c04d0a2eef3ed69a8e703db875b"
+        },
+        "after": {
+          "inputs": "88b21037de9e19ce36886cf2e0f64d3fb844f6ff87efaa71711c5ace79f6bf25",
+          "mc": "5286ca1c62adcc14fcda23bc67f0dec077608bcfb880e21a093ff342a2ae2b2e",
+          "backtest": "1e6af51cfe1d627ae0ecd3f5537ef8e2adb25c04d0a2eef3ed69a8e703db875b"
+        }
+      },
+      {
+        "case": "martin-petra/grund",
+        "equal": true,
+        "before": {
+          "inputs": "34405be5d91708012e6036a73e17ea3ffe2cf1cf656536558c921bac28e3ca53",
+          "mc": "eb8bbb77de73298fa1fa3ffaf84b88c9050f35eb89842627ae396d90958349fc",
+          "backtest": "856d2408c5d77ee5054184e0305f7c6a2dca957181b6b37606c22cc700585ab5"
+        },
+        "after": {
+          "inputs": "34405be5d91708012e6036a73e17ea3ffe2cf1cf656536558c921bac28e3ca53",
+          "mc": "eb8bbb77de73298fa1fa3ffaf84b88c9050f35eb89842627ae396d90958349fc",
+          "backtest": "856d2408c5d77ee5054184e0305f7c6a2dca957181b6b37606c22cc700585ab5"
+        }
+      },
+      {
+        "case": "martin-petra/hundert",
+        "equal": true,
+        "before": {
+          "inputs": "f693351a4b197dfaf8c8adc52bd60ee3ce89f3526b2240eccce731ef8b6779a8",
+          "mc": "e7e936e3d39d682b15d1668b857b12955fa9650fc68d83973d049b084dfdda00",
+          "backtest": "521b98b8ef481731b0ad36615b1863bc0383215f5871a5555d92c443b2a44e43"
+        },
+        "after": {
+          "inputs": "f693351a4b197dfaf8c8adc52bd60ee3ce89f3526b2240eccce731ef8b6779a8",
+          "mc": "e7e936e3d39d682b15d1668b857b12955fa9650fc68d83973d049b084dfdda00",
+          "backtest": "521b98b8ef481731b0ad36615b1863bc0383215f5871a5555d92c443b2a44e43"
+        }
+      },
+      {
+        "case": "martin-petra/ehe",
+        "equal": true,
+        "before": {
+          "inputs": "467901e7e8c0ba15722e13798003c1ed97af8ce38c147efcbb66f914e6b90f2f",
+          "mc": "a802a63a62d6179fa8f2746cf7392ff0466f4b662c1aee121cf96bae51377762",
+          "backtest": "9516aa8f1aa6072631e7e7761fc7afa4eb5f1c6994ca67680ee59ffbcbf344a6"
+        },
+        "after": {
+          "inputs": "467901e7e8c0ba15722e13798003c1ed97af8ce38c147efcbb66f914e6b90f2f",
+          "mc": "a802a63a62d6179fa8f2746cf7392ff0466f4b662c1aee121cf96bae51377762",
+          "backtest": "9516aa8f1aa6072631e7e7761fc7afa4eb5f1c6994ca67680ee59ffbcbf344a6"
+        }
+      },
+      {
+        "case": "martin-petra/testament",
+        "equal": true,
+        "before": {
+          "inputs": "fe84bb88fc13d59f4e85bd378065d9cff7d4571638024badcb9f319b52f64b7e",
+          "mc": "4915ee7abbe5c71163acc35e3f8fd77460b9cc9d12da1f071f9f47a327c13037",
+          "backtest": "fbdedd3a396baa72ee58fdd3f44c29d0f7d5eb00a3bcdfe86d09e919e212c3d6"
+        },
+        "after": {
+          "inputs": "fe84bb88fc13d59f4e85bd378065d9cff7d4571638024badcb9f319b52f64b7e",
+          "mc": "4915ee7abbe5c71163acc35e3f8fd77460b9cc9d12da1f071f9f47a327c13037",
+          "backtest": "fbdedd3a396baa72ee58fdd3f44c29d0f7d5eb00a3bcdfe86d09e919e212c3d6"
+        }
+      }
+    ],
+    "singles": [
+      {
+        "case": "renate/grund",
+        "equal": true,
+        "before": {
+          "inputs": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+          "mc": "a4eee4ee50ce85c37ad9ec613bcc5fa5acb30a571c861f06e08725da4434f9fc",
+          "backtest": "373ed483058841c431e98cb8bb6659c37561d6ce7ed3077211baf51879df18c0"
+        },
+        "after": {
+          "inputs": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+          "mc": "a4eee4ee50ce85c37ad9ec613bcc5fa5acb30a571c861f06e08725da4434f9fc",
+          "backtest": "373ed483058841c431e98cb8bb6659c37561d6ce7ed3077211baf51879df18c0"
+        }
+      },
+      {
+        "case": "renate/klein",
+        "equal": true,
+        "before": {
+          "inputs": "7f8fefe0aca3909ba632b8cbe0932a99aaff39be854cc14b67a49327832d82e5",
+          "mc": "cec8713f87aa8ef575003395000415087d609cb54e70622522d66f5e20305721",
+          "backtest": "c56dc6f5ae499999b91b433169811b7d0f31d23250f0180360a4e1f31b440a35"
+        },
+        "after": {
+          "inputs": "7f8fefe0aca3909ba632b8cbe0932a99aaff39be854cc14b67a49327832d82e5",
+          "mc": "cec8713f87aa8ef575003395000415087d609cb54e70622522d66f5e20305721",
+          "backtest": "c56dc6f5ae499999b91b433169811b7d0f31d23250f0180360a4e1f31b440a35"
+        }
+      },
+      {
+        "case": "sophie/grund",
+        "equal": true,
+        "before": {
+          "inputs": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+          "mc": "829f403c8cbdf7b1d32946e0ca62b20790633a3b5a93377da1219080e17f7e16",
+          "backtest": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341"
+        },
+        "after": {
+          "inputs": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+          "mc": "829f403c8cbdf7b1d32946e0ca62b20790633a3b5a93377da1219080e17f7e16",
+          "backtest": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341"
+        }
+      },
+      {
+        "case": "sophie/teilzeit",
+        "equal": true,
+        "before": {
+          "inputs": "0ccb65c20a976ec95aa91f5c1f0b244d7fe8ba32c14c4c85487a5936327f8b2e",
+          "mc": "f03cf432738e2bb53043d858fefe84728a628775b13076562a28f1ec7a36ec1f",
+          "backtest": "76554554fbe16e45e241ae065390332b337eef4f4c912b3c4e487948a8e1eed4"
+        },
+        "after": {
+          "inputs": "0ccb65c20a976ec95aa91f5c1f0b244d7fe8ba32c14c4c85487a5936327f8b2e",
+          "mc": "f03cf432738e2bb53043d858fefe84728a628775b13076562a28f1ec7a36ec1f",
+          "backtest": "76554554fbe16e45e241ae065390332b337eef4f4c912b3c4e487948a8e1eed4"
+        }
+      }
+    ]
+  },
+  "pg4Diagnostic": {
+    "beforeRuin": 52,
+    "afterRuin": 52,
+    "beforeTechnical": 0,
+    "afterTechnical": 0
+  },
+  "nonMonotonicCoverage": {
+    "explanation": "Genau Pfad 1871 wechselt von Ruin zu gedeckt. Der Pflegegeldwegfall ab Jahr 2 ändert bestehende Verkaufsbeträge und damit den Aktien-/Liquiditätsmix. Jahr 2: Anleihenverkauf 156396,78 → 45874,29 Euro; Jahr 10: alter Pfad ruiniert, neuer Pfad finanzierbar. Die Entnahmeregeln wurden nicht verändert.",
+    "before": {
+      "index": 1871,
+      "failed": true,
+      "endVermoegen": 0,
+      "rows": [
+        {
+          "jahr": 2,
+          "histJahr": 1948,
+          "recordType": "financial_year",
+          "Person1Alive": 1,
+          "Person2Alive": 1,
+          "CareP1_Grade": 2,
+          "CareP2_Grade": 3,
+          "pflegegeld": 4230.624,
+          "pflege_zusatz_floor": 31546.799999999996,
+          "liquiditaet": 165934.39149616173,
+          "wertAktien": 322410.2440564167,
+          "wertGold": 133784.46512035583,
+          "aktionUndGrund": "Profilverbund-Transaktionen / Anleihen verkauft 156396.78 €"
+        },
+        {
+          "jahr": 10,
+          "histJahr": 2013,
+          "recordType": "terminal_ruin",
+          "Person1Alive": 1,
+          "Person2Alive": 0,
+          "CareP1_Grade": 3,
+          "CareP2_Grade": 5,
+          "pflege_zusatz_floor": 92781.6507597694,
+          "liquiditaet": 0,
+          "wertAktien": 0,
+          "wertGold": 0,
+          "aktionUndGrund": ">>> RUIN <<< Gesamtvermögen (75234) < Floor (90533)"
+        }
+      ]
+    },
+    "after": {
+      "index": 1871,
+      "failed": false,
+      "endVermoegen": 52536.69857355274,
+      "rows": [
+        {
+          "jahr": 2,
+          "histJahr": 1948,
+          "recordType": "financial_year",
+          "Person1Alive": 1,
+          "Person2Alive": 1,
+          "CareP1_Grade": 2,
+          "CareP2_Grade": 3,
+          "CareP1_FamilyFallback": {
+            "reason": "care",
+            "grade": 3
+          },
+          "pflege_zusatz_floor": 31546.799999999996,
+          "liquiditaet": 52351.521679797064,
+          "wertAktien": 432932.72834460926,
+          "wertGold": 133784.46512035583,
+          "aktionUndGrund": "Profilverbund-Transaktionen / Anleihen verkauft 45874.29 €"
+        },
+        {
+          "jahr": 10,
+          "histJahr": 2013,
+          "recordType": "financial_year",
+          "Person1Alive": 1,
+          "Person2Alive": 0,
+          "CareP1_Grade": 3,
+          "CareP2_Grade": 5,
+          "CareP1_FamilyFallback": {
+            "reason": "care",
+            "grade": 3
+          },
+          "pflege_zusatz_floor": 92781.6507597694,
+          "liquiditaet": 9.094947017729282e-13,
+          "wertAktien": 52536.69857355274,
+          "wertGold": 0,
+          "aktionUndGrund": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 85935.64 € / Anleihen verkauft 4987.93 €"
+        },
+        {
+          "jahr": 11,
+          "histJahr": 1935,
+          "recordType": "terminal_death",
+          "Person1Alive": 0,
+          "Person2Alive": 0,
+          "CareP1_Grade": null,
+          "CareP2_Grade": null,
+          "pflege_zusatz_floor": 0,
+          "liquiditaet": 9.094947017729282e-13,
+          "wertAktien": 52536.69857355274,
+          "wertGold": 0,
+          "aktionUndGrund": ">>> ENDE: Alle Personen verstorben <<<"
+        }
+      ]
+    }
+  },
+  "notes": [
+    "Gegenprobe 1965–1999: für alle vier Fälle vollständig und vor/nach bytegleich. 1925–1999 ist in diesem Backtestvertrag unvollständig und wurde durch den unterstützten älteren Zeitraum ersetzt.",
+    "Keine neuen frei wählbaren Parameter; die Schwelle Pflegegrad 3 stammt aus dem Auftrag.",
+    "N1 verworfen: echter Abgleich speichert die Vermögenslose bereits vor dem Profilsave; finale Ladebasis und Absturzfenster waren im Ausgangsstand korrekt.",
+    "Balance hat keinen gespeicherten Todesstatus; ihre Rechnung mit heutigen Angaben bleibt unverändert."
+  ]
+}

@@ -1,0 +1,293 @@
+{
+  "description": "AN-1b: Überschusskauf und anschließender Notverkauf im selben auswertbaren Jahr; ausschließlich synthetische App-Muster.",
+  "versions": {
+    "beforeAN1": {
+      "revision": "4049e118",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 42,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "basis": "App-Muster am 2026-10-16; reale Endvermögensquantile; mittlere nominale Pfadsumme der Steuern.",
+      "counting": "Jahreszeile mit ausgeführtem Runway-Überschusskauf und positiver Liquiditätsdeckung in after_forced_sales, abzüglich personalPayoutCoverage; zusätzlich sämtliche Verkäufe im Kaufjahr.",
+      "scenarios": {
+        "max-erika/default": {
+          "liquidityRunwayYears": 5,
+          "inputsHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+          "chunksHash": "1159c5d65d4ca2e2f22f552c49e0f3f2aaadabf1ba3f30f67c50dd26c384fa53",
+          "technicalErrors": 0,
+          "successPct": 99.8,
+          "finalRealP10": 923596.6626604886,
+          "finalRealP50": 3053763.1413566153,
+          "taxesNominalMean": 40948.20998463573,
+          "financialYears": 39379,
+          "surplusBuyYears": 0,
+          "forcedSaleAfterBuyYears": 0,
+          "forcedSaleAfterBuyPaths": 0,
+          "anySaleAfterBuyYears": 0,
+          "maxAbsFlowDelta": 1.4901161193847656e-08,
+          "examples": []
+        },
+        "max-erika/one-year": {
+          "liquidityRunwayYears": 1,
+          "inputsHash": "5df7647fef6a3ac93b6268e8b90c44f90c607b7fbac7756024a1f290a84c587b",
+          "chunksHash": "4a77caf7da0f25625255e7bb3111637972391a41b65d344f00cd3b1bbf99d479",
+          "technicalErrors": 0,
+          "successPct": 99.85000000000001,
+          "finalRealP10": 965223.4081038428,
+          "finalRealP50": 3298402.2750975927,
+          "taxesNominalMean": 23090.881020349276,
+          "financialYears": 39384,
+          "surplusBuyYears": 0,
+          "forcedSaleAfterBuyYears": 0,
+          "forcedSaleAfterBuyPaths": 0,
+          "anySaleAfterBuyYears": 0,
+          "maxAbsFlowDelta": 1.4901161193847656e-08,
+          "examples": []
+        },
+        "sophie/default": {
+          "liquidityRunwayYears": 5,
+          "inputsHash": "89896d4d4e7e345ee3cb046798766a1b91f8b51faf31e8a5f6f93ca84a0d5d9e",
+          "chunksHash": "218c0e2e728befa9aa56886b7207fb10efa917a7a2e40db2fcc595a230f88a96",
+          "technicalErrors": 0,
+          "successPct": 97.05,
+          "finalRealP10": 220229.0818430501,
+          "finalRealP50": 875432.3704920544,
+          "taxesNominalMean": 78091.60105272465,
+          "financialYears": 51159,
+          "surplusBuyYears": 0,
+          "forcedSaleAfterBuyYears": 0,
+          "forcedSaleAfterBuyPaths": 0,
+          "anySaleAfterBuyYears": 0,
+          "maxAbsFlowDelta": 7.450580596923828e-09,
+          "examples": []
+        },
+        "sophie/one-year": {
+          "liquidityRunwayYears": 1,
+          "inputsHash": "6ee87aa84d59eedb3182a49eff1d1c8c47e7d8468094766479d7886ee1d9520a",
+          "chunksHash": "f7dc7a032f2261925c408d9c4b0247b53af7dfdf0cf7100d529d031e10b0b2a8",
+          "technicalErrors": 0,
+          "successPct": 97.65,
+          "finalRealP10": 239764.4393834884,
+          "finalRealP50": 894338.0474882876,
+          "taxesNominalMean": 60904.77070551924,
+          "financialYears": 51205,
+          "surplusBuyYears": 0,
+          "forcedSaleAfterBuyYears": 0,
+          "forcedSaleAfterBuyPaths": 0,
+          "anySaleAfterBuyYears": 0,
+          "maxAbsFlowDelta": 7.450580596923828e-09,
+          "examples": []
+        }
+      }
+    },
+    "beforeFix": {
+      "revision": "10fd135d",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 42,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "basis": "App-Muster am 2026-10-16; reale Endvermögensquantile; mittlere nominale Pfadsumme der Steuern.",
+      "counting": "Jahreszeile mit ausgeführtem Runway-Überschusskauf und positiver Liquiditätsdeckung in after_forced_sales, abzüglich personalPayoutCoverage; zusätzlich sämtliche Verkäufe im Kaufjahr.",
+      "scenarios": {
+        "max-erika/default": {
+          "liquidityRunwayYears": 5,
+          "inputsHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+          "chunksHash": "921b59208777125cb10346eef341d53aa37cd69e5514d4efba0a773e9562a507",
+          "technicalErrors": 0,
+          "successPct": 99.8,
+          "finalRealP10": 911635.5071441381,
+          "finalRealP50": 3169497.074592475,
+          "taxesNominalMean": 37958.06532879012,
+          "financialYears": 39379,
+          "surplusBuyYears": 2049,
+          "forcedSaleAfterBuyYears": 0,
+          "forcedSaleAfterBuyPaths": 0,
+          "anySaleAfterBuyYears": 0,
+          "maxAbsFlowDelta": 1.4901161193847656e-08,
+          "examples": []
+        },
+        "max-erika/one-year": {
+          "liquidityRunwayYears": 1,
+          "inputsHash": "5df7647fef6a3ac93b6268e8b90c44f90c607b7fbac7756024a1f290a84c587b",
+          "chunksHash": "bdabde4d2d317eec2b0e4ea6bd86a97317c80d9e10d9e471396c030abf9a98e2",
+          "technicalErrors": 0,
+          "successPct": 99.85000000000001,
+          "finalRealP10": 973934.7952045026,
+          "finalRealP50": 3341845.8312558807,
+          "taxesNominalMean": 20694.161813727118,
+          "financialYears": 39383,
+          "surplusBuyYears": 1458,
+          "forcedSaleAfterBuyYears": 0,
+          "forcedSaleAfterBuyPaths": 0,
+          "anySaleAfterBuyYears": 1,
+          "maxAbsFlowDelta": 1.4901161193847656e-08,
+          "examples": []
+        },
+        "sophie/default": {
+          "liquidityRunwayYears": 5,
+          "inputsHash": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+          "chunksHash": "8c221dafd1fdb29547400d29be9470fe83404de81bca9271e7a14a53b0ffe8dd",
+          "technicalErrors": 0,
+          "successPct": 97.89999999999999,
+          "finalRealP10": 264122.35893327236,
+          "finalRealP50": 1379557.2240268746,
+          "taxesNominalMean": 64676.899884266415,
+          "financialYears": 51207,
+          "surplusBuyYears": 13644,
+          "forcedSaleAfterBuyYears": 0,
+          "forcedSaleAfterBuyPaths": 0,
+          "anySaleAfterBuyYears": 0,
+          "maxAbsFlowDelta": 1.4901161193847656e-08,
+          "examples": []
+        },
+        "sophie/one-year": {
+          "liquidityRunwayYears": 1,
+          "inputsHash": "a8e8567b1a9c3a3bee1861e455b2415c3fa47dcfa6086f402ee195f9ea2d3910",
+          "chunksHash": "e57c56e643953afb59b351f8f8f223c856d4098e444a488d613171e6e26efba4",
+          "technicalErrors": 0,
+          "successPct": 98.1,
+          "finalRealP10": 277072.3924546691,
+          "finalRealP50": 1465908.8165876402,
+          "taxesNominalMean": 34675.71049622689,
+          "financialYears": 51228,
+          "surplusBuyYears": 13259,
+          "forcedSaleAfterBuyYears": 1,
+          "forcedSaleAfterBuyPaths": 1,
+          "anySaleAfterBuyYears": 1,
+          "maxAbsFlowDelta": 1.4901161193847656e-08,
+          "examples": [
+            {
+              "year": 13,
+              "forcedFunding": 1042.0569807084394,
+              "forcedShortfall": 1042.056980708454,
+              "equityBuy": 80000,
+              "goldBuy": 0
+            }
+          ]
+        }
+      }
+    },
+    "afterFix": {
+      "revision": "AN-1b",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 42,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "basis": "App-Muster am 2026-10-16; reale Endvermögensquantile; mittlere nominale Pfadsumme der Steuern.",
+      "counting": "Jahreszeile mit ausgeführtem Runway-Überschusskauf und positiver Liquiditätsdeckung in after_forced_sales, abzüglich personalPayoutCoverage; zusätzlich sämtliche Verkäufe im Kaufjahr.",
+      "scenarios": {
+        "max-erika/default": {
+          "liquidityRunwayYears": 5,
+          "inputsHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+          "chunksHash": "921b59208777125cb10346eef341d53aa37cd69e5514d4efba0a773e9562a507",
+          "technicalErrors": 0,
+          "successPct": 99.8,
+          "finalRealP10": 911635.5071441381,
+          "finalRealP50": 3169497.074592475,
+          "taxesNominalMean": 37958.06532879012,
+          "financialYears": 39379,
+          "surplusBuyYears": 2049,
+          "forcedSaleAfterBuyYears": 0,
+          "forcedSaleAfterBuyPaths": 0,
+          "anySaleAfterBuyYears": 0,
+          "maxAbsFlowDelta": 1.4901161193847656e-08,
+          "examples": []
+        },
+        "max-erika/one-year": {
+          "liquidityRunwayYears": 1,
+          "inputsHash": "5df7647fef6a3ac93b6268e8b90c44f90c607b7fbac7756024a1f290a84c587b",
+          "chunksHash": "bdabde4d2d317eec2b0e4ea6bd86a97317c80d9e10d9e471396c030abf9a98e2",
+          "technicalErrors": 0,
+          "successPct": 99.85000000000001,
+          "finalRealP10": 973934.7952045026,
+          "finalRealP50": 3341845.8312558807,
+          "taxesNominalMean": 20694.161813727118,
+          "financialYears": 39383,
+          "surplusBuyYears": 1458,
+          "forcedSaleAfterBuyYears": 0,
+          "forcedSaleAfterBuyPaths": 0,
+          "anySaleAfterBuyYears": 1,
+          "maxAbsFlowDelta": 1.4901161193847656e-08,
+          "examples": []
+        },
+        "sophie/default": {
+          "liquidityRunwayYears": 5,
+          "inputsHash": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+          "chunksHash": "8c221dafd1fdb29547400d29be9470fe83404de81bca9271e7a14a53b0ffe8dd",
+          "technicalErrors": 0,
+          "successPct": 97.89999999999999,
+          "finalRealP10": 264122.35893327236,
+          "finalRealP50": 1379557.2240268746,
+          "taxesNominalMean": 64676.899884266415,
+          "financialYears": 51207,
+          "surplusBuyYears": 13644,
+          "forcedSaleAfterBuyYears": 0,
+          "forcedSaleAfterBuyPaths": 0,
+          "anySaleAfterBuyYears": 0,
+          "maxAbsFlowDelta": 1.4901161193847656e-08,
+          "examples": []
+        },
+        "sophie/one-year": {
+          "liquidityRunwayYears": 1,
+          "inputsHash": "a8e8567b1a9c3a3bee1861e455b2415c3fa47dcfa6086f402ee195f9ea2d3910",
+          "chunksHash": "cc50f4e2ecf0dbde559166cc06f06423d1b391dd3e02743e095fa57d4df3c76e",
+          "technicalErrors": 0,
+          "successPct": 98.1,
+          "finalRealP10": 277072.3924546691,
+          "finalRealP50": 1465908.8165876402,
+          "taxesNominalMean": 34675.70960152925,
+          "financialYears": 51228,
+          "surplusBuyYears": 13259,
+          "forcedSaleAfterBuyYears": 0,
+          "forcedSaleAfterBuyPaths": 0,
+          "anySaleAfterBuyYears": 0,
+          "maxAbsFlowDelta": 1.4901161193847656e-08,
+          "examples": []
+        }
+      }
+    }
+  },
+  "sourceHashes": {
+    "engine/transactions/transaction-action.mjs": {
+      "beforeFix": "66b1cc90a6820a16a1ac745418c73e94be05795cf1200490e084c62a02725e45",
+      "afterFix": "b3632b187e87a2c7136855348733772c2dd9775f8878c8b68083e1a57c1eefbd"
+    },
+    "engine/transactions/transaction-surplus.mjs": {
+      "beforeFix": "fc33595009410c708ea040f1fbe7adb8f9d6bb5db734754c97d983705cb8a99a",
+      "afterFix": "21b3186037d32e700ce223df21444a985ca2286be57cd6f99f5ac43f4c4f9f18"
+    }
+  },
+  "unchangedChunkResults": [
+    {
+      "scenario": "max-erika/default",
+      "byteEqualChunks": true
+    },
+    {
+      "scenario": "max-erika/one-year",
+      "byteEqualChunks": true
+    },
+    {
+      "scenario": "sophie/default",
+      "byteEqualChunks": true
+    },
+    {
+      "scenario": "sophie/one-year",
+      "byteEqualChunks": false
+    }
+  ]
+}

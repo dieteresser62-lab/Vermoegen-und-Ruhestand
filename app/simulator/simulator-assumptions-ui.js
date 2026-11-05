@@ -1,0 +1,336 @@
+/** @import {BindInfoPopovers, SimulatorControl} from '../../typcheck/simulator-ui.js' */
+// Präsentation auf den bestehenden Controls; keine eigenen Parameter oder Defaults.
+import { refreshDynamicFlexControls } from './simulator-main-dynamic-flex.js';
+import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
+import { readPartnerInputs } from './simulator-input-pension.js';
+import { bindSimulatorInputFeedback } from './simulator-input-feedback.js';
+
+const bindings = new WeakSet();
+const segmentGroups = new WeakMap();
+const numberDisplays = new WeakMap();
+const observers = new WeakMap();
+
+function refreshNumberDisplay(input) {
+    const display = numberDisplays.get(input);
+    if (!display) return;
+    // Leere/ungültige Eingaben sind keine Null. BadInput bleibt im Editor sichtbar.
+    const raw = String(input.value);
+    const valid = raw.trim() !== '' && Number.isFinite(Number(raw)) && !input.validity?.badInput;
+    const projected = valid ? Number(raw).toLocaleString('de-DE', { maximumFractionDigits: 20, useGrouping: input.id !== 'mcSeed' }) : raw;
+    if (display.textContent !== projected) display.textContent = projected;
+    input.classList.toggle('sim-number-projected', valid);
+}
+
+// Wie bei der bestehenden Select-Volltextanzeige nur die gebundene Instanz
+// erweitern. Der native Setter behält Normalisierung, Validierung und Empfänger.
+function bindNumberSetters(input) {
+    for (const property of ['value', 'valueAsNumber']) {
+        let owner = input;
+        let descriptor;
+        while (owner && !descriptor) {
+            descriptor = Object.getOwnPropertyDescriptor(owner, property);
+            owner = Object.getPrototypeOf(owner);
+        }
+        if (!descriptor?.get || !descriptor?.set) continue;
+        const { get, set, enumerable } = descriptor;
+        Object.defineProperty(input, property, {
+            configurable: true, enumerable,
+            get() { return get.call(this); },
+            set(value) {
+                set.call(this, value);
+                refreshNumberDisplay(this);
+            }
+        });
+    }
+}
+
+// Nur Anzeigeprojektion; der native Editor behält Wert, Validierung und Events.
+/**
+ * @param [doc] Zugehöriges Simulatordokument.
+ * @returns {void}
+ */
+export function refreshAssumptionNumbers(doc = globalThis.document) {
+    doc?.querySelectorAll?.('#tab-annahmen input.sim-number-editor:not([type="number"]), #mcSetupDisclosure input.sim-number-editor:not([type="number"])').forEach(/** @param {HTMLElement} input */ input => {
+        numberDisplays.get(input)?.remove();
+        numberDisplays.delete(input);
+        input.classList.remove('sim-number-editor', 'sim-number-projected');
+    });
+    doc?.querySelectorAll?.('#tab-annahmen input[type="number"], #mcSetupDisclosure input[type="number"]').forEach(/** @param {SimulatorControl} input */ input => {
+        if (input.dataset.noNumberFormat === 'true') return;
+        if (!input.parentNode || !input.ownerDocument) return;
+        let display = numberDisplays.get(input);
+        if (!display) {
+            display = doc.createElement('span');
+            display.className = 'sim-number-display';
+            display.setAttribute('aria-hidden', 'true');
+            input.parentNode.insertBefore(display, input.nextSibling);
+            input.classList.add('sim-number-editor');
+            numberDisplays.set(input, display);
+            bindNumberSetters(input);
+        }
+        refreshNumberDisplay(input);
+    });
+}
+
+function refreshFieldOrigins(doc) {
+    for (const id of ['dynamicFlex', 'goGoActive']) {
+        const input = doc?.getElementById?.(id);
+        const display = doc?.getElementById?.(`${id}PlanDisplay`);
+        if (!input || !display) continue;
+        if (doc.querySelector?.(`[data-plan-toggle="${id}"]`)) {
+            display.hidden = true;
+            const toggle = /** @type {HTMLElement} */ (input.closest?.('.ds-toggle'));
+            if (toggle) toggle.hidden = true;
+            continue;
+        }
+        const hidden = input.dataset.planTrialReadonly !== 'true';
+        if (display.hidden !== hidden) display.hidden = hidden;
+        const text = input.checked ? 'Aktiv' : 'Aus';
+        if (display.textContent !== text) display.textContent = text;
+        const toggle = /** @type {HTMLElement} */ (input.closest?.('.ds-toggle'));
+        if (toggle && toggle.hidden !== !hidden) toggle.hidden = !hidden;
+    }
+    const dynamicOff = doc?.getElementById?.('simDynamicFlexOff');
+    if (dynamicOff) {
+        const hidden = /** @type {HTMLInputElement} */ (doc.getElementById('dynamicFlex'))?.checked === true
+            || doc.getElementById('dynamicFlexConfigGroup')?.style.display === 'none';
+        if (dynamicOff.hidden !== hidden) dynamicOff.hidden = hidden;
+    }
+    doc?.querySelectorAll?.('#tab-annahmen .ds-field-reason').forEach(/** @param {HTMLElement} reason */ reason => {
+        const frame = reason.parentElement;
+        if (frame?.classList.contains('ds-unit-frame')) frame.parentNode.insertBefore(reason, frame.nextSibling);
+        // Der gemeinsame Feldbesitzer setzt Gründe direkt hinter den Input.
+        // Im Schalterlabel muss dort der Slider für checked/focus bleiben.
+        if (frame?.classList.contains('ds-toggle')) frame.parentNode.insertBefore(reason, frame.nextSibling);
+    });
+    doc?.querySelectorAll?.('#tab-annahmen [data-field-state="adopted"]').forEach(/** @param {HTMLElement} input */ input => {
+        if (!input.matches('input, select')) return;
+        const label = doc.querySelector(`label[for="${input.id}"]`) ?? /** @type {HTMLElement} */ (input.closest('label'));
+        const reason = (input.getAttribute('aria-describedby') || '').split(/\s+/)
+            .map(id => /** @type {SimulatorControl} */ (doc.getElementById(id))?.textContent ?? '').filter(Boolean).join(' ');
+        if (label && reason && label.title !== reason) label.title = reason;
+    });
+}
+
+/**
+ * @param [doc] Zugehöriges Simulatordokument.
+ * @returns {void}
+ */
+export function refreshAssumptionFillStatus(doc = globalThis.document) {
+    const marriageYears = /** @type {HTMLInputElement} */ (doc?.getElementById?.('widowMinMarriageYears'));
+    const marriageUnit = /** @type {HTMLElement} */ (marriageYears?.parentElement?.querySelector?.('.ds-field-unit'));
+    if (marriageUnit) marriageUnit.textContent = Number(marriageYears.value) === 1 ? 'Jahr' : 'Jahre';
+    const partnerActive = readPartnerInputs(doc).partner?.aktiv === true;
+    const survivorSection = doc?.getElementById?.('widowPensionSection');
+    if (survivorSection && survivorSection.hidden === partnerActive) survivorSection.hidden = !partnerActive;
+    const modelSummary = doc?.getElementById?.('simPersonModelSummary');
+    if (modelSummary) {
+        const value = id => /** @type {SimulatorControl} */ (doc.getElementById(id))?.value ?? '—';
+        const pension = value('widowPensionMode') === 'stop' || !doc.getElementById('simPartnershipNotice')?.hidden
+            ? 'Rente endet vollständig' : `Witwenrente ${value('widowPensionPct')} %`;
+        const percent = id => {
+            const raw = value(id), number = Number(raw);
+            const floor = id === 'survivorFloorPercent';
+            return String(raw).trim() !== '' && Number.isFinite(number) && number >= (floor ? 40 : 0) && number <= (floor ? 200 : 100) ? raw : 'ungültig';
+        };
+        const text = partnerActive
+            ? `Nach dem Tod: ${percent('survivorFloorPercent')} / ${percent('survivorFlexPercent')} / ${percent('survivorMinimumFlexPercent')} % · ${pension} · Eheschließung in ${value('widowMarriageOffsetYears')} Jahren · Mindest-Ehedauer ${value('widowMinMarriageYears')} ${value('widowMinMarriageYears') === '1' ? 'Jahr' : 'Jahre'}`
+            : 'Einzelperson';
+        if (modelSummary.textContent !== text) modelSummary.textContent = text;
+    }
+    const goldActive = /** @type {HTMLSelectElement} */ (doc?.getElementById?.('goldAllokationAktiv'))?.value === 'true';
+    const goldOff = doc?.getElementById?.('simGoldOff');
+    const goldFrame = doc?.getElementById?.('simGoldBandFrame');
+    if (goldOff) goldOff.hidden = goldActive || /** @type {HTMLInputElement} */ (doc.getElementById('rebalancingBand'))?.dataset.planTrialReadonly === 'false';
+    if (goldFrame) goldFrame.dataset.goldActive = String(goldActive);
+    const careSummary = doc?.getElementById?.('simCareSummary');
+    if (careSummary) {
+        const active = /** @type {HTMLInputElement} */ (doc.getElementById('pflegefallLogikAktivieren'))?.checked;
+        const model = /** @type {HTMLSelectElement} */ (doc.getElementById('pflegeModellTyp'))?.value === 'akut' ? 'akut' : 'chronisch';
+        const amount = Number(/** @type {HTMLInputElement} */ (doc.getElementById('pflegeMaxFloor'))?.value);
+        const drift = Number(/** @type {HTMLInputElement} */ (doc.getElementById('pflegeKostenDrift'))?.value);
+        const number = value => Number.isFinite(value) ? value.toLocaleString('de-DE') : '—';
+        const text = active ? `${model} · bis ${number(amount)} € pro Jahr · Kostenanstieg Inflation + ${number(drift)} %`
+            : doc.getElementById('simCareTodaySummary')?.hidden === false
+                ? 'Zufällige Pflegeeintritte ausgeschaltet. Pflegegrad heute wird weiter gerechnet.'
+                : 'Pflegefälle werden nicht gerechnet.';
+        if (careSummary.textContent !== text) careSummary.textContent = text;
+    }
+    const careDetailsSummary = doc?.getElementById?.('simCareDetailsSummary');
+    if (careDetailsSummary) {
+        const value = id => /** @type {SimulatorControl} */ (doc.getElementById(id))?.value;
+        const number = raw => raw?.trim() && Number.isFinite(Number(raw)) ? Number(raw).toLocaleString('de-DE') : '—';
+        const grades = [1, 2, 3, 4, 5].map(grade => `${number(value(`pflegeStufe${grade}Zusatz`))} €`);
+        const forms = [1, 2, 3, 4, 5].map(grade => value(`pflegeStufe${grade}Form`));
+        const form = forms.every(item => item === 'family') ? 'Angehörige'
+            : forms.every(item => item === 'residential') ? 'Heim'
+                : forms.map((item, index) => `${index + 1} ${item === 'family' ? 'Angehörige' : item === 'home-support' ? 'externe Unterstützung' : item === 'residential' ? 'Heim' : '—'}`).join(', ');
+        const text = `Kosten Grad 1–5: ${grades.join(' / ')} pro Jahr${value('pflegeKostenStaffelPreset') === 'amtlich' ? '' : ` · Pflegeform ${form}`} · Drift ${number(value('pflegeKostenDrift'))} %`;
+        if (careDetailsSummary.textContent !== text) careDetailsSummary.textContent = text;
+    }
+    // Detail-Partnerfelder vor der Zählung an den bestehenden Host angleichen.
+    const partnerHost = doc?.getElementById?.('sectionRente2');
+    if (partnerHost) doc.querySelectorAll?.('.sim-partner-detail').forEach(/** @param {HTMLElement} group */ group => {
+        const hidden = partnerHost.style.display === 'none';
+        if (group.hidden !== hidden) group.hidden = hidden;
+    });
+    doc?.querySelectorAll?.('[data-assumption-step]').forEach(/** @param {HTMLElement} step */ step => {
+        const filled = [.../** @type {NodeListOf<SimulatorControl>} */ (step.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]), select'))]
+            .some(input => !input.disabled && input.value && input.value !== '0');
+        step.classList.toggle('has-data', Boolean(filled));
+        const chip = /** @type {HTMLElement} */ (step.querySelector('.sim-step-status')) ?? /** @type {HTMLElement} */ (step.querySelector('.progress-indicator'));
+        chip?.setAttribute('aria-label', filled ? 'Eingaben vorhanden' : 'Keine Eingaben');
+        if (chip) {
+            const number = step.dataset?.assumptionStep;
+            const selected = number === '1' ? /** @type {NodeListOf<HTMLInputElement>} */ (doc.querySelectorAll('#simProfileList input:checked')).length : 0;
+            const adopted = [.../** @type {NodeListOf<HTMLElement>} */ (step.querySelectorAll('[data-field-state="adopted"]'))].length;
+            const care = number === '5' ? /** @type {HTMLInputElement} */ (doc.getElementById('pflegefallLogikAktivieren')) : null;
+            const text = selected ? `${selected} ${selected === 1 ? 'Profil' : 'Profile'}` : care ? (care.checked ? 'aktiv' : 'aus')
+                : adopted ? 'teilweise aus Profilen' : filled ? 'Eingaben vorhanden' : 'Keine Eingaben';
+            if (chip.textContent !== text) chip.textContent = text;
+            chip.setAttribute('aria-label', `${text} · ${filled ? 'Eingaben vorhanden' : 'Keine Eingaben'}`);
+            chip.dataset.fill = filled ? 'filled' : 'empty';
+        }
+    });
+    doc?.querySelectorAll?.('#tab-annahmen .sim-parameters').forEach(/** @param {HTMLElement} detail */ detail => {
+        const summary = /** @type {HTMLElement} */ (detail.querySelector('summary'));
+        if (!summary) return;
+        let count = /** @type {HTMLElement} */ (summary.querySelector('.sim-parameter-count'));
+        if (!count) {
+            count = doc.createElement('span'); count.className = 'sim-parameter-count'; summary.appendChild(count);
+        }
+        const additional = [.../** @type {NodeListOf<SimulatorControl>} */ (detail.querySelectorAll('input:not([type="hidden"]), select'))]
+            .filter(input => {
+                if (input.disabled) return false;
+                // Die Klappe selbst und der Schritt dürfen geschlossen sein;
+                // fachlich/technisch verborgene Untergruppen zählen nicht mit.
+                for (let node = /** @type {HTMLElement} */ (input); node && node !== detail; node = node.parentElement ?? /** @type {HTMLElement} */ (node.parentNode)) {
+                    const style = doc.defaultView?.getComputedStyle?.(node) ?? node.style;
+                    if (node.hidden || style?.display === 'none' || style?.visibility === 'hidden') return false;
+                }
+                return true;
+            }).length;
+        const text = `${additional} weitere`;
+        if (count.textContent !== text) count.textContent = text;
+        if (detail.hidden !== (additional === 0)) detail.hidden = additional === 0;
+    });
+    const duration = doc?.getElementById?.('simCareDurationDisplay');
+    if (duration) duration.hidden = /** @type {HTMLSelectElement} */ (doc.getElementById('pflegeModellTyp'))?.value === 'akut';
+    refreshAssumptionSegments(doc);
+    refreshAssumptionNumbers(doc);
+    refreshFieldOrigins(doc);
+}
+
+/**
+ * @param [doc] Zugehöriges Simulatordokument.
+ * @returns {void}
+ */
+export function refreshAssumptionSegments(doc = globalThis.document) {
+    doc?.querySelectorAll?.('[data-select-segment]').forEach(/** @param {HTMLElement} group */ group => {
+        const select = /** @type {HTMLSelectElement} */ (doc.getElementById(group.dataset.selectSegment));
+        if (!select) return;
+        const buttons = [.../** @type {NodeListOf<HTMLButtonElement>} */ (group.querySelectorAll('button[data-value]'))];
+        if (!buttons.length) return;
+        segmentGroups.set(select, group);
+        const state = select.dataset.fieldState || 'editable';
+        if (group.dataset.fieldState !== state) group.dataset.fieldState = state;
+        select.classList.add('sim-segment-source');
+        select.setAttribute('tabindex', '-1');
+        select.setAttribute('aria-hidden', 'true');
+        group.classList.add('sim-segment-ready');
+        const label = doc.querySelector(`label[for="${select.id}"]`);
+        if (label?.textContent.trim()) group.setAttribute('aria-label', label.textContent.trim());
+        buttons.forEach(button => {
+            button.disabled = select.disabled;
+            button.setAttribute('aria-pressed', String(select.value === button.dataset.value));
+        });
+    });
+}
+
+function openStep(step) {
+    const button = /** @type {HTMLElement} */ (step?.querySelector('[data-step-toggle]'));
+    const body = /** @type {HTMLElement} */ (step?.querySelector('.sim-step-content'));
+    if (!button || !body) return;
+    body.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+}
+
+/**
+ * @param control Vorhandenes Formularelement.
+ * @returns {void}
+ */
+export function revealAssumptionControl(control) {
+    openStep(/** @type {HTMLElement} */ (control?.closest?.('[data-assumption-step]')));
+    for (let parent = control?.parentElement; parent; parent = parent.parentElement) {
+        if (parent.matches('details')) parent.open = true;
+    }
+    const group = segmentGroups.get(control);
+    const buttons = group ? [.../** @type {NodeListOf<HTMLButtonElement>} */ (group.querySelectorAll('button[data-value]'))].filter(button => !button.disabled) : null;
+    const target = buttons ? buttons.find(button => button.getAttribute('aria-pressed') === 'true') ?? buttons[0] : control;
+    target?.focus();
+}
+
+/**
+ * @param [doc] Zugehöriges Simulatordokument.
+ * @returns {void}
+ */
+export function initializeAssumptionsUI(doc = globalThis.document) {
+    const host = doc?.getElementById('tab-annahmen');
+    if (!host || bindings.has(doc)) return;
+    bindings.add(doc);
+    bindSimulatorInputFeedback(doc);
+    if (doc.addEventListener) /** @type {BindInfoPopovers} */ (bindInfoPopovers)({
+        querySelectorAll: selector => host.querySelectorAll(selector),
+        addEventListener: (...args) => doc.addEventListener(.../** @type {Parameters<Document['addEventListener']>} */ (args)),
+        get activeElement() { return doc.activeElement; }
+    });
+    host.addEventListener('click', event => {
+        const label = /** @type {HTMLElement} */ (/** @type {HTMLElement} */ (event.target).closest('label[for]'));
+        const labelledControl = label && doc.getElementById(label.getAttribute('for'));
+        if (labelledControl && segmentGroups.has(labelledControl)) {
+            event.preventDefault();
+            revealAssumptionControl(labelledControl);
+        }
+        const toggle = /** @type {HTMLElement} */ (/** @type {HTMLElement} */ (event.target).closest('[data-step-toggle]'));
+        if (toggle) {
+            const body = doc.getElementById(toggle.getAttribute('aria-controls'));
+            body.hidden = !body.hidden;
+            toggle.setAttribute('aria-expanded', String(!body.hidden));
+        }
+        const segment = /** @type {HTMLButtonElement} */ (/** @type {HTMLElement} */ (event.target).closest('[data-select-segment] button[data-value]'));
+        if (segment) {
+            const select = /** @type {HTMLSelectElement} */ (doc.getElementById(/** @type {HTMLElement} */ (segment.closest('[data-select-segment]')).dataset.selectSegment));
+            if (select && !select.disabled && select.value !== segment.dataset.value) {
+                select.value = segment.dataset.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+    });
+    // Die gemeinsame Klappe zeigt auch die bisherige Dynamik-Detailansicht.
+    /** @type {HTMLElement} */ (host.querySelector('[data-parameters="strategie"]'))?.addEventListener('toggle', () => {
+        refreshDynamicFlexControls();
+        refreshAssumptionFillStatus(doc);
+    });
+    const numberHosts = [host, /** @type {HTMLDetailsElement} */ (doc.getElementById('mcSetupDisclosure'))].filter(Boolean);
+    numberHosts.forEach(host => {
+        host.addEventListener('input', () => refreshAssumptionFillStatus(doc));
+        host.addEventListener('change', () => refreshAssumptionFillStatus(doc));
+        host.addEventListener('focusin', () => refreshAssumptionNumbers(doc));
+        host.addEventListener('focusout', () => refreshAssumptionNumbers(doc));
+    });
+    doc.addEventListener?.('simulator:tab', () => refreshAssumptionFillStatus(doc));
+    // Vorhandene Controller ändern Sperren/Herkunft auch ohne Domainereignis.
+    const Observer = doc.defaultView?.MutationObserver;
+    if (Observer) {
+        const observe = () => numberHosts.forEach(numberHost => observer.observe(numberHost,
+            { subtree: true, childList: true, attributes: true, attributeFilter: ['disabled', 'data-field-state', 'style', 'hidden'] }));
+        const observer = new Observer(() => {
+            observer.disconnect();
+            refreshAssumptionFillStatus(doc);
+            observe();
+        });
+        observe();
+        observers.set(doc, observer);
+    }
+    refreshAssumptionFillStatus(doc);
+}

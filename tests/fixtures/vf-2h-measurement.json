@@ -1,0 +1,91 @@
+{
+  "comparison": "Complete inputs, MC chunks and backtests; no field filters",
+  "before": {
+    "date": "2026-10-23",
+    "parameters": {
+      "anzahl": 8,
+      "maxDauer": 35,
+      "blockSize": 5,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "cases": {
+      "max-erika": {
+        "inputs": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+        "mc": "ea7dd077a4c072c26de55b71c4bf6e98ed2ac266c4f16b0e6e85e11956097492",
+        "backtest": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295"
+      },
+      "renate": {
+        "inputs": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+        "mc": "a4eee4ee50ce85c37ad9ec613bcc5fa5acb30a571c861f06e08725da4434f9fc",
+        "backtest": "373ed483058841c431e98cb8bb6659c37561d6ce7ed3077211baf51879df18c0"
+      },
+      "jan-lena": {
+        "inputs": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+        "mc": "7ac09acad964c12428122c3c1c2da0600e3eeedf652a2d1d2be1cc00b4f33ace",
+        "backtest": "dc7dea48fe3f6397bd9dc8d7c91cd40a5764b33dc36a7ba9960af6917b8c306b"
+      },
+      "helga-werner": {
+        "inputs": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+        "mc": "51fba6acb5a3371e97b62883912ceb296e644da7099e05c58e81de0b1c2bc81e",
+        "backtest": "92ea9bdd5ccaa84cc57f0460ec89f5f02718e4a3c2944c7a68a3f9a719f58499"
+      },
+      "sophie": {
+        "inputs": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+        "mc": "829f403c8cbdf7b1d32946e0ca62b20790633a3b5a93377da1219080e17f7e16",
+        "backtest": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341"
+      },
+      "martin-petra": {
+        "inputs": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+        "mc": "59a6ffcbef09ec012f6ab2eba81c48b0bbff3fc79d08c8ee5320c8a0091357b6",
+        "backtest": "322b411d84c6ff3429ea5f58209d5e36d407d214326c714ff680ebd914cbc0a9"
+      }
+    }
+  },
+  "after": {
+    "date": "2026-10-23",
+    "parameters": {
+      "anzahl": 8,
+      "maxDauer": 35,
+      "blockSize": 5,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "cases": {
+      "max-erika": {
+        "inputs": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+        "mc": "ea7dd077a4c072c26de55b71c4bf6e98ed2ac266c4f16b0e6e85e11956097492",
+        "backtest": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295"
+      },
+      "renate": {
+        "inputs": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+        "mc": "a4eee4ee50ce85c37ad9ec613bcc5fa5acb30a571c861f06e08725da4434f9fc",
+        "backtest": "373ed483058841c431e98cb8bb6659c37561d6ce7ed3077211baf51879df18c0"
+      },
+      "jan-lena": {
+        "inputs": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+        "mc": "7ac09acad964c12428122c3c1c2da0600e3eeedf652a2d1d2be1cc00b4f33ace",
+        "backtest": "dc7dea48fe3f6397bd9dc8d7c91cd40a5764b33dc36a7ba9960af6917b8c306b"
+      },
+      "helga-werner": {
+        "inputs": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+        "mc": "51fba6acb5a3371e97b62883912ceb296e644da7099e05c58e81de0b1c2bc81e",
+        "backtest": "92ea9bdd5ccaa84cc57f0460ec89f5f02718e4a3c2944c7a68a3f9a719f58499"
+      },
+      "sophie": {
+        "inputs": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+        "mc": "829f403c8cbdf7b1d32946e0ca62b20790633a3b5a93377da1219080e17f7e16",
+        "backtest": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341"
+      },
+      "martin-petra": {
+        "inputs": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+        "mc": "59a6ffcbef09ec012f6ab2eba81c48b0bbff3fc79d08c8ee5320c8a0091357b6",
+        "backtest": "322b411d84c6ff3429ea5f58209d5e36d407d214326c714ff680ebd914cbc0a9"
+      }
+    }
+  }
+}

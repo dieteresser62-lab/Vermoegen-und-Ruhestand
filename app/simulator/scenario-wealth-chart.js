@@ -1,0 +1,284 @@
+import { homeWealthFanModel } from './wealth-home-fan.js';
+import { lastWealthRow, rowWealthParts } from './wealth-display.js';
+import { escapeProtocolHtml as escape } from './protocol-renderer.js';
+import { buildWealthFanModel } from './wealth-fan-aggregation.js';
+import { renderWealthFanBands } from './wealth-fan-chart.js';
+import { formatWholeEuro as formatCurrency } from './results-formatting.js';
+import { WEALTH_SCENARIO_LABELS } from './scenario-analyzer.js';
+
+export const WEALTH_SCENARIO_KEYS = ['worst', 'p5', 'p10', 'p25', 'typicalMarket', 'p50', 'p75', 'p90', 'p95', 'best'];
+export const WEALTH_SCENARIO_COLORS = ['var(--bad)', 'color-mix(in srgb, var(--bad) 80%, var(--warn))', 'var(--warn)', 'var(--accent-line)', 'var(--accent)', 'var(--text-main)', 'color-mix(in srgb, var(--good) 55%, var(--surface))', 'color-mix(in srgb, var(--good) 80%, var(--surface))', 'var(--good)', 'color-mix(in srgb, var(--good) 85%, var(--text-main))'];
+// Ausschließlich Ticktexte; Pfade und Endwerte werden nicht gerundet.
+/**
+ * @param value - Zu prüfender oder darzustellender Wert.
+ * @returns {string}
+ */
+export function formatScenarioWealthTick(value) {
+    return value >= 1000000
+        ? `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format(value / 1000000)} Mio.`
+        : new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(value);
+}
+const finite = value => typeof value === 'number' && Number.isFinite(value);
+
+/** Neutrale Anzeigenamen; Rangwahl und gespeicherte Szenarien bleiben unverändert.
+ *
+ * @param scenario - Ausgewählter Pfad.
+ * @returns Ergebnis der Operation.
+ */
+export function scenarioDisplayLabel(scenario) {
+    const labels = { ...WEALTH_SCENARIO_LABELS, typicalMarket: 'Typischer Marktverlauf', highestCareNeed: 'Höchster Pflege-Mehrbedarf' };
+    if (WEALTH_SCENARIO_LABELS[scenario?.key]
+        && (!scenario.label || scenario.label === labels[scenario.key].split(' des ')[0]
+            || /nominal/i.test(scenario.label))) return labels[scenario.key];
+    if (scenario?.key === 'highestCareNeed' && scenario.label) return scenario.label.replace('realer ', '');
+    if (/nominal/i.test(scenario?.label || '')) {
+        return labels[scenario?.key] || scenario?.label;
+    }
+    return scenario?.label || labels[scenario?.key] || 'Szenario';
+}
+
+/** Reine Projektion: keine neue Finanzmessung im Todesjahr, keine Ersatzinflation.
+ *
+ * @param scenario - Ausgewählter Pfad.
+ * @param [options] - Optionen des Aufrufers.
+ * @returns Aus den übergebenen Daten abgeleitete Ergebnisform.
+ */
+export function buildScenarioWealthPath(scenario, { mode = 'real', initialWealth = null, yearEndRealBasis = false, displayHomes = false, initialHomes = 0, initialHomeSelf = initialHomes } = {}) {
+    const points = [{ year: 0, ...(displayHomes ? { money: finite(initialWealth) ? initialWealth : null, homeSelf: initialHomeSelf } : {}), value: finite(initialWealth) ? initialWealth + (displayHomes ? initialHomes : 0) : null }];
+    let endpoint = 'horizon';
+    let inflationComplete = true;
+    for (const row of scenario?.logDataRows || []) {
+        if (row.recordType === 'terminal_death') { endpoint = 'death'; break; }
+        const year = row.jahr;
+        if (!finite(year) || year < 1) continue;
+        if (row.recordType === 'terminal_ruin') {
+            const homes = displayHomes ? rowWealthParts(row, mode)?.total || 0 : 0;
+            points.push({ year, value: homes, ...(displayHomes ? { money: 0, homeSelf: rowWealthParts(row, mode)?.self || 0 } : {}) }); endpoint = 'ruin'; break;
+        }
+        const nominal = row.portfolio_total_end;
+        // Logfaktor gilt für Ausgaben am Jahresbeginn. Der Renderer verwendet
+        // unabhängig vom Fächer den Jahresendfaktor wie die Real-Drawdownmessung.
+        // Rohlogs und direkte Legacy-Helferaufrufe bleiben unverändert.
+        if (yearEndRealBasis && !finite(row.inflation)) inflationComplete = false;
+        const factor = yearEndRealBasis
+            ? inflationComplete && finite(row.inflation_factor_cum)
+                ? row.inflation_factor_cum * (1 + row.inflation / 100) : null
+            : row.inflation_factor_cum;
+        const value = mode === 'nominal' ? nominal
+            : finite(factor) && factor > 0 && finite(nominal) ? nominal / factor : null;
+        const homes = displayHomes ? rowWealthParts(row, mode, factor)?.total || 0 : 0;
+        points.push({ year, value: finite(value) ? value + homes : null, ...(displayHomes ? { money: finite(value) ? value : null, homeSelf: rowWealthParts(row, mode, factor)?.self || 0 } : {}) });
+    }
+    return { points, endpoint, missingCount: points.filter(point => point.value === null).length };
+}
+
+/**
+ * @param scenario - Ausgewählter Pfad.
+ * @param {string} [mode] - Anzeige- oder Berechnungsmodus.
+ * @param [realByRun] - Kontext für realByRun.
+ * @returns Ergebnis der Operation.
+ */
+export function scenarioEndWealth(scenario, mode = 'real', realByRun = null) {
+    if (!finite(scenario?.endVermoegen)) return null;
+    if (mode === 'nominal') return scenario.endVermoegen;
+    const sourceIndex = scenario.sourceIdentity?.absoluteRunIndex;
+    if (Array.isArray(realByRun) && Number.isSafeInteger(sourceIndex)) {
+        return finite(realByRun[sourceIndex]) ? realByRun[sourceIndex] : null;
+    }
+    if (scenario.failed === true) return 0;
+    const rows = scenario.logDataRows || [];
+    const lastFinancial = rows.filter(row => !['terminal_death', 'terminal_ruin'].includes(row.recordType)).at(-1);
+    const factor = finite(lastFinancial?.inflation_factor_cum) && finite(lastFinancial?.inflation)
+        ? lastFinancial.inflation_factor_cum * (1 + lastFinancial.inflation / 100) : null;
+    const value = finite(factor) && factor > 0 ? scenario.endVermoegen / factor : null;
+    return finite(value) ? value : null;
+}
+
+/**
+ * @param scenario - Ausgewählter Pfad.
+ * @param {string} [mode] - Anzeige- oder Berechnungsmodus.
+ * @param [realByRun] - Kontext für realByRun.
+ * @returns Ergebnis der Operation.
+ */
+export function scenarioDisplayWealth(scenario, mode = 'real', realByRun = null) {
+    const money = scenarioEndWealth(scenario, mode, realByRun);
+    const row = lastWealthRow(scenario?.logDataRows);
+    const homes = rowWealthParts(row, mode);
+    return { money, total: Number.isFinite(money) ? money + (homes?.total || 0) : null,
+        hasHomes: Number.isFinite(row.immobilien_wert_end), row };
+}
+
+/**
+ * @param logs - Ausgewählte Szenarioprotokolle.
+ * @returns Aus den übergebenen Daten abgeleitete Ergebnisform.
+ */
+export function buildScenarioEntries(logs) {
+    return [
+        ...(logs?.characteristic || []).map(scenario => {
+            const index = WEALTH_SCENARIO_KEYS.indexOf(scenario.key);
+            const group = index >= 0 ? 'wealth' : ['longestLife', 'maxCut'].includes(scenario.key) ? 'risk' : 'care';
+            return { id: `char_${scenario.key}`, scenario, group, color: index >= 0 ? WEALTH_SCENARIO_COLORS[index] : group === 'care' ? 'var(--accent)' : 'var(--text-muted)' };
+        }),
+        ...(logs?.random || []).map((scenario, index) => ({ id: `rand_${scenario.key}`, scenario, group: 'sample', sampleNumber: index + 1, color: 'var(--border-strong)' }))
+    ];
+}
+
+// Nur verbundene Beobachtungen schneiden die Plotkante. Durch Skalierung vor
+// der Subtraktion bleiben auch extreme endliche Finanzwerte numerisch stabil.
+function firstExitYear(points, limit) {
+    let previous = null;
+    for (const point of points) {
+        if (!finite(point.value)) { previous = null; continue; }
+        if (point.value > limit) {
+            if (previous && previous.value <= limit) {
+                const scale = Math.max(Math.abs(previous.value), Math.abs(point.value), limit);
+                const fraction = (limit / scale - previous.value / scale)
+                    / (point.value / scale - previous.value / scale);
+                return previous.year + fraction * (point.year - previous.year);
+            }
+            return point.year;
+        }
+        previous = point;
+    }
+    return null;
+}
+
+function renderScenarioOutliers(paths, { maximum, maxValue, x, width }) {
+    const marks = paths.filter(path => maximum(path) > maxValue).map(path => {
+        const value = maximum(path);
+        // Auch numerische Extremproben bekommen einen lesbaren Kurztext; der
+        // vollständige Betrag bleibt im Titel und zugänglichen Namen erhalten.
+        const short = value < 1e15 ? formatScenarioWealthTick(value)
+            : new Intl.NumberFormat('de-DE', { notation: 'scientific', maximumFractionDigits: 1 }).format(value);
+        const text = `↑ ${short}`;
+        return { path, value, text, desired: x(firstExitYear(path.points, maxValue)) };
+    }).sort((a, b) => a.desired - b.desired || (a.path.id < b.path.id ? -1 : a.path.id > b.path.id ? 1 : 0));
+    if (!marks.length) return '';
+    // Kompakte Reihen im vorhandenen Rand, einschließlich der seitlichen
+    // SVG-Ränder. Die konservative Breite umfasst auch den Innenabstand.
+    const left = 8, right = width - 8, gap = 4;
+    const fontSize = 14;
+    // IBM Plex Sans hat bei 14 px eine Texthöhe von 18 px. Der Rahmen
+    // lässt oben und unten Luft, ohne das Band bis zur Plotkante zu vergrößern.
+    const height = 20;
+    const place = () => {
+        const rows = Array.from({ length: Math.floor((86 - 8 + 2) / (height + 2)) }, () => []);
+        for (const mark of marks) {
+            mark.width = mark.text.length * 8 * fontSize / 11 + 8;
+            const desiredLeft = mark.desired - mark.width / 2;
+            let best = null;
+            for (let row = 0; row < rows.length; row++) {
+                const occupied = rows[row].slice().sort((a, b) => a.left - b.left);
+                let edge = left;
+                for (const next of [...occupied, { left: right + gap }]) {
+                    const end = next.left - gap - mark.width;
+                    if (edge <= end) {
+                        const position = Math.max(edge, Math.min(end, desiredLeft));
+                        const distance = Math.abs(position - desiredLeft);
+                        if (!best || distance < best.distance) best = { left: position, row, distance };
+                    }
+                    edge = next.left + (next.width || 0) + gap;
+                }
+                // Seitlich ausweichen, bevor eine weitere Reihe verwendet wird.
+                if (best) break;
+            }
+            if (!best) continue;
+            mark.left = best.left;
+            mark.top = 8 + best.row * (height + 2);
+            rows[best.row].push(mark);
+        }
+        return true;
+    };
+    // Bei Platzmangel nur die Beschriftung weglassen. Die Originalpfade und
+    // ihre Auswahl in der Szenarioliste bleiben vollständig erhalten.
+    place();
+    const visibleMarks = marks.filter(mark => Number.isFinite(mark.left));
+    const guides = visibleMarks.map(mark => {
+        const center = mark.left + mark.width / 2;
+        return Math.abs(center - mark.desired) > 4 || mark.top > 8
+            ? `<path d="M${mark.desired} 88 L${center} ${mark.top + height}" fill="none" stroke="${mark.path.color}" stroke-opacity=".35" pointer-events="none"/>` : '';
+    }).join('');
+    return `<g class="scenario-outliers">${guides}${visibleMarks.map(mark => {
+        const { path, value, text } = mark;
+        const name = `${scenarioDisplayLabel(path.scenario)} · ${formatCurrency(value)}`;
+        return `<foreignObject x="${mark.left}" y="${mark.top}" width="${mark.width}" height="${height}"><button xmlns="http://www.w3.org/1999/xhtml" type="button" class="ds-scenario-outlier" style="color:${path.color};font-size:${fontSize}px;line-height:${height}px" data-scenario-id="${escape(path.id)}" title="${escape(name)}" aria-label="${escape(name)}">${escape(text)}</button></foreignObject>`;
+    }).join('')}</g>`;
+}
+
+let clipSequence = 0;
+
+/**
+ * @param entries - Kontext für entries.
+ * @param [options] - Optionen des Aufrufers.
+ * @returns {string}
+ */
+export function renderScenarioWealthChart(entries, options = {}) {
+    const comparison = options.comparison === true;
+    const fan = options.displayHomeValueFan && !comparison ? homeWealthFanModel(options.displayHomeValueFan, options.mode || 'real', options.wealthFan) : buildWealthFanModel(comparison ? null : options.wealthFan, options.mode || 'real');
+    const paths = entries.map(entry => ({ ...entry, ...buildScenarioWealthPath(entry.scenario, { ...options, yearEndRealBasis: true, displayHomes: true }) }));
+    let maxYear = 1;
+    const maximum = path => path.points.reduce((max, point) => finite(point.value) ? Math.max(max, point.value) : max, 0);
+    const observed = path => path.points.slice(1).some(point => finite(point.value));
+    for (const path of paths) for (const point of path.points) maxYear = Math.max(maxYear, point.year);
+    if (fan.available) maxYear = Math.max(maxYear, fan.horizonYears);
+    const p95 = paths.find(path => path.id === 'char_p95' && observed(path));
+    const fallback = paths.filter(path => path.group === 'wealth' && path.id !== 'char_best' && observed(path));
+    let basis = p95 ? maximum(p95) : fallback.reduce((max, path) => Math.max(max, maximum(path)), 0);
+    if (comparison) basis = paths.reduce((max, path) => Math.max(max, maximum(path)), 0);
+    if (!p95 && !fallback.length && fan.available) {
+        for (const row of fan.years) if (finite(row.quantiles[95].value)) basis = Math.max(basis, row.quantiles[95].value);
+    }
+    const selected = paths.find(path => path.id === options.selectedId);
+    const maxValue = Math.max(1, basis, finite(options.initialWealth) ? options.initialWealth : 0, selected ? maximum(selected) : 0);
+    const width = finite(options.displayWidth) ? Math.max(300, options.displayWidth) : 1100;
+    const height = comparison ? 310 : 470;
+    const right = width - 92, top = comparison ? 20 : 88, bottom = comparison ? 250 : 410;
+    const x = year => 88 + (year / maxYear) * (right - 88);
+    // Extremwerte bleiben in den Rohpunkten erhalten. Nur weit außerhalb des
+    // Clips begrenzen wir die Zeichenkoordinate gegen numerischen Überlauf.
+    const y = value => bottom - Math.max(-1e6, Math.min(1e6, value / maxValue)) * (bottom - top);
+    const clipId = `scenarioWealthPlot-${++clipSequence}`;
+    const marks = comparison ? '' : renderScenarioOutliers(paths, { maximum, maxValue, x, width });
+    const order = [...paths.filter(path => path.id !== options.selectedId), ...paths.filter(path => path.id === options.selectedId)];
+    const areaLayers = [];
+    const lines = order.map(path => {
+        let connected = false;
+        const d = path.points.map(point => {
+            if (point.value === null) { connected = false; return ''; }
+            const command = connected ? 'L' : 'M'; connected = true;
+            return `${command}${x(point.year).toFixed(2)} ${y(point.value).toFixed(2)}`;
+        }).join(' ');
+        const active = path.id === options.selectedId;
+        let segments = [], segment = [];
+        for (const point of path.points) {
+            if (point.value === null || point.money === null) { if (segment.length) segments.push(segment); segment = []; }
+            else segment.push(point);
+        }
+        if (segment.length) segments.push(segment);
+        const areas = (comparison || active) ? segments.map(run => {
+            const top = run.map(p => `${x(p.year)},${y(p.value)}`).join('L');
+            const middle = run.map(p => `${x(p.year)},${y(p.money)}`).join('L');
+            const bottom = [...run].reverse().map(p => `${x(p.year)},${y(0)}`).join('L');
+            const reverse = [...run].reverse().map(p => `${x(p.year)},${y(p.money)}`).join('L');
+            const split = run.map(p => `${x(p.year)},${y(p.money + p.homeSelf)}`).join('L');
+            const splitReverse = [...run].reverse().map(p => `${x(p.year)},${y(p.money + p.homeSelf)}`).join('L');
+            return `<path d="M${middle}L${bottom}Z" fill="${path.color}" fill-opacity=".09"/><path d="M${split}L${reverse}Z" fill="var(--history-homeSelf)"/><path d="M${top}L${splitReverse}Z" fill="var(--history-homeRented)"/>`;
+        }).join('') : '';
+        areaLayers.push(areas);
+        const tooltips = (comparison || active) ? path.points.filter(p => p.value !== null).map(p => `<rect x="${x(p.year) - 7}" y="${y(p.value) - 7}" width="14" height="14" fill="transparent"><title>Jahr ${p.year}: Gesamtvermögen ${escape(formatCurrency(p.value))} · davon Geldvermögen ${escape(formatCurrency(p.money))}</title></rect>`).join('') : '';
+        const end = path.points.at(-1);
+        const endmark = (active || path.endpoint === 'ruin') && end?.value !== null ? `<circle cx="${x(end.year)}" cy="${y(end.value)}" r="${active ? 5 : 3}" fill="${path.endpoint === 'ruin' ? 'var(--bad)' : path.color}"/>${active ? `<text x="${x(end.year) - 8}" y="${y(end.value) - 12}" text-anchor="end">${path.endpoint === 'ruin' ? `Geldvermögen reicht nicht · ${Number.isInteger(options.startYear) ? options.startYear + end.year - 1 : `Jahr ${end.year}`}` : path.endpoint === 'death' ? 'Tod · letzte Messung' : 'Ende'}</text>` : ''}` : '';
+        return `<g data-scenario-id="${escape(path.id)}" class="scenario-line ${active ? ' is-active' : ''}" opacity="${comparison || active ? 1 : .45}"><title>${escape(scenarioDisplayLabel(path.scenario))}${path.missingCount ? ' · fehlende Messung' : ''}</title><path d="${d}" fill="none" stroke="${path.color}" stroke-width="${comparison || active ? 3.5 : path.group === 'sample' ? 1 : 1.6}"${['care', 'risk'].includes(path.group) ? ' stroke-dasharray="6 4"' : ''}/><path d="${d}" fill="none" stroke="transparent" stroke-width="10" pointer-events="stroke"/>${endmark}${tooltips}</g>`;
+    }).join('');
+    const ticks = Array.from({ length: 5 }, (_, index) => {
+        const value = maxValue * (index / 4);
+        return `<line x1="88" x2="${right}" y1="${y(value)}" y2="${y(value)}" class="wealth-grid"/><text x="78" y="${y(value) + 4}" text-anchor="end">${escape(formatScenarioWealthTick(value))}</text>`;
+    }).join('');
+    const years = Array.from({ length: 6 }, (_, index) => {
+        const year = Math.round(maxYear * (index / 5));
+        const label = Number.isInteger(options.startYear) ? `${options.startYear + year} · ${Number.isFinite(options.startAge) ? options.startAge + year : `Jahr ${year}`}` : `Jahr ${year}`;
+        return `<text x="${x(year)}" y="${height - 25}" text-anchor="middle">${escape(label)}</text>`;
+    }).join('');
+    const suffix = comparison ? 'Comparison' : '';
+    return `<svg class="scenario-wealth-svg chart-native-svg${comparison ? ' scenario-comparison-svg' : ''}" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="group" aria-labelledby="scenarioWealthTitle${suffix} scenarioWealthDescription${suffix}"><title id="scenarioWealthTitle${suffix}">${comparison ? 'Gesamtvermögen der drei Pfade' : 'Gesamtvermögensverläufe der Szenario-Logs'}</title><desc id="scenarioWealthDescription${suffix}">${options.mode === 'nominal' ? 'Nominale Euro' : 'Heutige Euro'}. ${comparison ? 'Die Achse umfasst die drei gewählten Pfade. Linie oder Legende wählen.' : 'Linien, Randmarken oder die gleichwertige Liste und Szenarioauswahl wählen. Die Basisachse folgt P95; eine Auswahl mit höherem Maximum erweitert sie.'} Lücken bedeuten fehlende Messungen; roter Endpunkt bedeutet Ruin; Tod erzeugt keinen weiteren Jahresendwert.${fan.available ? ' Blasser Hintergrund: Jahresbänder aller noch lebenden gültigen Haushalte im selben Maßstab.' : ''}</desc>${ticks}<defs><clipPath id="${clipId}"><rect x="88" y="${top}" width="${right - 88}" height="${bottom - top}"/></clipPath></defs><g clip-path="url(#${clipId})">${renderWealthFanBands(fan, { x, y, background: true })}${areaLayers.join('')}${lines}</g>${years}${marks}</svg><div class="wealth-fan-legend"><span><i class="history-total-key"></i>Geldvermögen · Pfadfarbe</span>${paths.some(path => path.points.some(p => p.homeSelf > 0)) ? '<span><i class="history-homeSelf"></i>Immobilien selbst genutzt</span>' : ''}${paths.some(path => path.points.some(p => p.value - p.money - p.homeSelf > .001)) ? '<span><i class="history-homeRented"></i>Immobilien vermietet</span>' : ''}</div>`;
+}

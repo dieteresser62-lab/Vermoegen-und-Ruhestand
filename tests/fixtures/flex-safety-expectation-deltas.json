@@ -1,0 +1,838 @@
+{
+  "schemaVersion": 1,
+  "description": "FF-B: ausschließlich synthetische Bestandsproben; Erwartungsänderungen und Vorher-Nachher-Belege.",
+  "unchanged": {
+    "serialization": "JSON.stringify ohne Projektion, Feldfilter oder Rundung",
+    "algorithm": "sha256",
+    "engineResults": 6,
+    "simulatorResults": 3,
+    "before": {
+      "engine": "6a17424123c5210a757718f92d97d16ed47babc31ae7ce0b7cd2a0301865ce36",
+      "simulator": "4585a6aae09394d3bf21d0f8ff1c5023100f6740d34ba2d2748327a764c44757"
+    },
+    "after": {
+      "engine": "6a17424123c5210a757718f92d97d16ed47babc31ae7ce0b7cd2a0301865ce36",
+      "simulator": "4585a6aae09394d3bf21d0f8ff1c5023100f6740d34ba2d2748327a764c44757"
+    },
+    "reproduce": "node tests/run-single.mjs tests/flex-safety-bytegleich.test.mjs",
+    "frozenParityEngineResults": {
+      "count": 77,
+      "excludedBoundYears": 27,
+      "before": "ca265a806871935ab2c7d539af996008332729409ae2283d696c08dea682c31a",
+      "after": "ca265a806871935ab2c7d539af996008332729409ae2283d696c08dea682c31a",
+      "differences": []
+    }
+  },
+  "parityAnnualWithdrawalDeltas": [
+    {
+      "preset": "ausgewogen",
+      "year": 2018,
+      "annualWithdrawalBefore": 56400,
+      "annualWithdrawalAfter": 34800,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "ausgewogen",
+      "year": 2019,
+      "annualWithdrawalBefore": 84000,
+      "annualWithdrawalAfter": 39600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "ausgewogen",
+      "year": 2020,
+      "annualWithdrawalBefore": 63000,
+      "annualWithdrawalAfter": 44400,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "ausgewogen",
+      "year": 2021,
+      "annualWithdrawalBefore": 48000,
+      "annualWithdrawalAfter": 44400,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "ausgewogen",
+      "year": 2022,
+      "annualWithdrawalBefore": 56400,
+      "annualWithdrawalAfter": 45600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "ausgewogen",
+      "year": 2023,
+      "annualWithdrawalBefore": 13800,
+      "annualWithdrawalAfter": 51600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "ausgewogen",
+      "year": 2024,
+      "annualWithdrawalBefore": 14400,
+      "annualWithdrawalAfter": 56400,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "ausgewogen",
+      "year": 2025,
+      "annualWithdrawalBefore": 46800,
+      "annualWithdrawalAfter": 55200,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "konservativ",
+      "year": 2016,
+      "annualWithdrawalBefore": 49200,
+      "annualWithdrawalAfter": 37200,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "konservativ",
+      "year": 2017,
+      "annualWithdrawalBefore": 60000,
+      "annualWithdrawalAfter": 42000,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "konservativ",
+      "year": 2018,
+      "annualWithdrawalBefore": 45600,
+      "annualWithdrawalAfter": 36000,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "konservativ",
+      "year": 2019,
+      "annualWithdrawalBefore": 39600,
+      "annualWithdrawalAfter": 40800,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "konservativ",
+      "year": 2020,
+      "annualWithdrawalBefore": 52800,
+      "annualWithdrawalAfter": 45600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "konservativ",
+      "year": 2021,
+      "annualWithdrawalBefore": 44400,
+      "annualWithdrawalAfter": 45600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "konservativ",
+      "year": 2022,
+      "annualWithdrawalBefore": 50400,
+      "annualWithdrawalAfter": 45600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "konservativ",
+      "year": 2023,
+      "annualWithdrawalBefore": 39600,
+      "annualWithdrawalAfter": 43200,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "konservativ",
+      "year": 2024,
+      "annualWithdrawalBefore": 63000,
+      "annualWithdrawalAfter": 51600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "konservativ",
+      "year": 2025,
+      "annualWithdrawalBefore": 50400,
+      "annualWithdrawalAfter": 55200,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2010,
+      "annualWithdrawalBefore": 18000,
+      "annualWithdrawalAfter": 16200,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2011,
+      "annualWithdrawalBefore": 22800,
+      "annualWithdrawalAfter": 21600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2012,
+      "annualWithdrawalBefore": 18000,
+      "annualWithdrawalAfter": 15600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2013,
+      "annualWithdrawalBefore": 30000,
+      "annualWithdrawalAfter": 21600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2014,
+      "annualWithdrawalBefore": 25200,
+      "annualWithdrawalAfter": 27600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2015,
+      "annualWithdrawalBefore": 6600,
+      "annualWithdrawalAfter": 32400,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2016,
+      "annualWithdrawalBefore": 7200,
+      "annualWithdrawalAfter": 37200,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2017,
+      "annualWithdrawalBefore": 21000,
+      "annualWithdrawalAfter": 30000,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2018,
+      "annualWithdrawalBefore": 49200,
+      "annualWithdrawalAfter": 34800,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2019,
+      "annualWithdrawalBefore": 60000,
+      "annualWithdrawalAfter": 39600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2020,
+      "annualWithdrawalBefore": 44400,
+      "annualWithdrawalAfter": 33600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2021,
+      "annualWithdrawalBefore": 11400,
+      "annualWithdrawalAfter": 39600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2022,
+      "annualWithdrawalBefore": 12000,
+      "annualWithdrawalAfter": 34800,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2023,
+      "annualWithdrawalBefore": 33600,
+      "annualWithdrawalAfter": 44400,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2024,
+      "annualWithdrawalBefore": 52800,
+      "annualWithdrawalAfter": 39600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    },
+    {
+      "preset": "offensiv",
+      "year": 2025,
+      "annualWithdrawalBefore": 60000,
+      "annualWithdrawalAfter": 45600,
+      "severeEmergencyAfter": false,
+      "dynamicCapAfter": true,
+      "cause": "FR-20/25/26, einschließlich Fortschreibung der geänderten Vorjahresstände"
+    }
+  ],
+  "changedExpectations": [
+    {
+      "test": "tests/survivor-bytegleich.test.mjs",
+      "assertion": "off: Backtest ohne Tod bytegleich",
+      "before": "b41ca99277f4f06a7a848a96178f0ddf9504cfd16bd5f76a882697b03252669c",
+      "after": "f1e0ad282c30c0928d670d148d97b6cb78226d8cd31a107685165366fcd0d631",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/survivor-bytegleich.test.mjs",
+      "assertion": "off: MC ohne Tod bytegleich",
+      "before": "f35ef0cce79cbc7b5b36b424769df132d18665bb5abd5a64f70242a21ac9d04b",
+      "after": "e0c56d49f44069ac6e0e8738987cd972847cd4dd224914502fb170a52019a4a5",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/survivor-bytegleich.test.mjs",
+      "assertion": "konservativ: Backtest ohne Tod bytegleich",
+      "before": "0ebe8ce46be9b6b93a74ad6c3f34d4d1e6301a998cff455a778f8df71613b614",
+      "after": "df82e5fa89a0dd7ee7b3988bb5ea72c542baf4fca6147ba642129a6f7c87c773",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/survivor-bytegleich.test.mjs",
+      "assertion": "konservativ: MC ohne Tod bytegleich",
+      "before": "b7c23ed20c7557ed88b654cdda5b34f79f6702ada9372eb6007c3061bacacc38",
+      "after": "c10e40144ccec9db1ea7fdf59abaaa1c4a2da53f2be3a2c4005b5a84f200a61d",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/survivor-bytegleich.test.mjs",
+      "assertion": "ausgewogen: Backtest ohne Tod bytegleich",
+      "before": "0ff38045a9bfeca084ca67d9473a8c6f276a882591ed85ed85417a3150b1869f",
+      "after": "1e3ca8e7b6bd03ada0fe7a86dc31bc668392e1a8f4d7484a9c3822c338ca5ad2",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/survivor-bytegleich.test.mjs",
+      "assertion": "ausgewogen: MC ohne Tod bytegleich",
+      "before": "81a159b8e96aa86ebfdb57b3dabdb8eb8e7c28b40536a10fcaa8927e9473b9e3",
+      "after": "81708689e4c8b3f34cd1ea43ed15e78d2e58c49c00766d726aef0f020a38fb8c",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/survivor-bytegleich.test.mjs",
+      "assertion": "offensiv: Backtest ohne Tod bytegleich",
+      "before": "4056a5c1d816d503ec874350eeb4e4be0dbb0fca4110c2dd9b42bcfbdd7547d1",
+      "after": "0663584f071d82a97c15645417f5ae42db58f6a90b9a242a87d92e0dac84c2b2",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/survivor-bytegleich.test.mjs",
+      "assertion": "offensiv: MC ohne Tod bytegleich",
+      "before": "6e377d5b8e3ad729fe2758a99e17c21519d05acb4ed91454bf429baa8d92b82f",
+      "after": "ad74f85ac721ed2fe54894d2e9a546d3f444454806f5137bf112e6b738ae0301",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "assertion": "off: Backtest sonst bytegleich",
+      "before": "f34400fa2d134fb70f79b49194a81979f3b12a44a2ea639ea54f6ba3f23f7cf0",
+      "after": "e1bf1da4c4667754c29a1313c79f35ce696a00965264d192dc8ba1b01cbbe93e",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "assertion": "off: MC-Pfad 0 mit FR-21–24",
+      "before": "f20cf1d7c49c365c6ed8071d46ef90f83508a1f3d7e5cb16b47ab93e3c8d36ce",
+      "after": "dd007879f88bd47ae2775bc4647dd8a3b6e802a9774959c34eb49b2dff67b60a",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "assertion": "konservativ: Backtest sonst bytegleich",
+      "before": "5d3e862b249ddbcfe00f93f71fdc37d7b73792d4f4797662e001a2212e73b665",
+      "after": "b266080f91ba9741539f1f5b905f17adac910e4ba5794d0e2a5bc03637ccefbc",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "assertion": "konservativ: MC-Pfad 0 mit FR-21–24",
+      "before": "178d2b6b51efbcf31f44210676333675fddd62e470d5a997f9f3370968839367",
+      "after": "510eb7dfa23af7c91605592df97ee80b3c5086f0f3243b5852372a1cbea4c25d",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "assertion": "ausgewogen: Backtest sonst bytegleich",
+      "before": "47f731396c75f1b9ef9d12eb6a54b06bdfb7b21eb3b3bc47cc43148fd3ad5004",
+      "after": "328f64128006f9f648a0c9a8f8195055e00054ed847c3682f432bc216f9514f9",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "assertion": "ausgewogen: MC-Pfad 0 mit FR-21–24",
+      "before": "d9e292e0803bc219c7bc6240e2c7bcdc0d1831adcb250c304b7f523795b32909",
+      "after": "901bea8148a514876c3cc0942ba53dbd5c452c65a6312b97aad4eb42e20d6670",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "assertion": "offensiv: Backtest sonst bytegleich",
+      "before": "e625ec2bc1892f2a4b4cb52ecb2cf9d4ca3cd2b4d31fcdf7f1b7888bef4f75bf",
+      "after": "1efacf013cdf6da2cb6bbf5daeb3d40e84a8463ad7617bee78fec91ace737e7e",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/rechenregeln-bytegleich.test.mjs",
+      "assertion": "offensiv: MC-Pfad 0 mit FR-21–24",
+      "before": "fbe7fd9543de1042e2408347e05555779ac627a27f12e65779510db3503c15bd",
+      "after": "c5e81228e0d3884b0ac3ea51842ef0494fab7b2fef652fb90fa76d7dda6d8a4f",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/profile-person-data.test.mjs",
+      "assertion": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad bytegleich zur Referenz mit korrigierter Kirchensteuer: fehlender Beginn",
+      "before": "fbef3c5a25d3e1796e2d180257429c63883d13b243f11dc21e46a07cf1a6ea29",
+      "after": "4fa3ad9a1bcc2c2bcfc8765237ddea48fbaaa89e50bdb0ee8a8dd1e92412dba9",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/profile-person-data.test.mjs",
+      "assertion": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad bytegleich zur Referenz mit korrigierter Kirchensteuer: 2026-01-01",
+      "before": "fbef3c5a25d3e1796e2d180257429c63883d13b243f11dc21e46a07cf1a6ea29",
+      "after": "4fa3ad9a1bcc2c2bcfc8765237ddea48fbaaa89e50bdb0ee8a8dd1e92412dba9",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/profile-person-data.test.mjs",
+      "assertion": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad bytegleich zur Referenz mit korrigierter Kirchensteuer: 2024-07-15",
+      "before": "fbef3c5a25d3e1796e2d180257429c63883d13b243f11dc21e46a07cf1a6ea29",
+      "after": "4fa3ad9a1bcc2c2bcfc8765237ddea48fbaaa89e50bdb0ee8a8dd1e92412dba9",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/profile-person-data.test.mjs",
+      "assertion": "Vollständiger alter Offset-/Ansparrequest bytegleich zur Referenz mit korrigierter Kirchensteuer",
+      "before": "4ecb71dbd31590773dee868565f98b1f66cdf3bd203c45d884a5cf64bf566a79",
+      "after": "afd3212671658cf256d9249ab0068d740e862416cb6ed1192c32c58a59bcae79",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/simulator-household-pension.test.mjs",
+      "assertion": "FR-16: Alt-Kalenderpfad nutzt Partner-Liquidität für persönliche Ansparsteuer",
+      "before": "2778cf16b7a5605d2806b3f53a6897574d5a4e266aaa0491fd11562faf8b309b",
+      "after": "b1fb0c133f57a6e7a579fd6f2c053c7dbe78cf79064f6a449b781423f06b3a29",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/simulator-household-pension.test.mjs",
+      "assertion": "PA-A7: Kontrollierter Lauf enthält persönliche Ansparsteuer",
+      "before": "9eda27c515e6ef5c75dee4f11f043b965013a9a0d68f203ea92aab198b906000",
+      "after": "e9cd970253bc43dbf12e33a4886c72445d70fce381340f1d9e59f3a4cc827d44",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/simulator-household-pension.test.mjs",
+      "assertion": "PA-A7: Entnahmebeleg enthält persönliche Steuerdiagnose",
+      "before": "2388d04cec0a3545425162c5843f3580d176fa1928abffc4026547b49267777a",
+      "after": "0e4a7091378c3d0f76b945175f266f21b9f580c8ed1147b317e02d767c77a38e",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/fixtures/planned-inflows-empty-baseline.json",
+      "assertion": "Vorgabe: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "d8738defed0a3c4018232b94b5c2b395322b556b71464b473658712ee25b6303",
+      "after": "b6eb1047293f17f7bf639b949eb0dd336e60be7b11f4a02c2d89a14ff8b4d3ed",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/fixtures/planned-inflows-empty-baseline.json",
+      "assertion": "konservativ: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "95bfa7cafb76d087cdbb5bc0e904b5cb38c2f2edef837199be541bccfb63d68c",
+      "after": "1dbaf55e814e88aa7129e7f2cc7f22128567c49e13f619f5e8ae97516ed84580",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/fixtures/planned-inflows-empty-baseline.json",
+      "assertion": "ausgewogen: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "82edf74b84c89840193234ce190de7c857352829448120616a844d87f898d703",
+      "after": "89d90931e7eccd08778a221e69cc99b18f097facc95df1adf73d0e206eda83d5",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/fixtures/planned-inflows-empty-baseline.json",
+      "assertion": "offensiv: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "a29bc7565cef0213309a820af16b47602491fabc941c19d414f9ab7c29c6ee2a",
+      "after": "df72c256dd6100ed24afdb4ccb2be807a77d248578bcc67661a6822e8c17a580",
+      "reason": "FR-20/25/26 und angeforderte Logkorrekturen; vollständige Ergebnisbytes"
+    },
+    {
+      "test": "tests/minimum-flex-restriction.test.mjs",
+      "assertion": "Backtest-Endvermögen bleibt gegenüber dem Basis-Commit unverändert",
+      "before": 763461.6973450086,
+      "after": 761821.2564427685,
+      "reason": "FR-20: Teil-Flex verändert Entnahmen und Folgesteuer"
+    },
+    {
+      "test": "tests/minimum-flex-restriction.test.mjs",
+      "assertion": "Backtest-Steuern bleiben gegenüber dem Basis-Commit unverändert",
+      "before": 4080.145762565786,
+      "after": 4066.2889368057868,
+      "reason": "FR-20: Teil-Flex verändert Entnahmen und Folgesteuer"
+    },
+    {
+      "test": "tests/minimum-flex-restriction.test.mjs",
+      "assertion": "Kurzer MC-Pfad: Vermögen des Basis-Commits bleibt erhalten",
+      "before": 1029320.9289668835,
+      "after": 1016709.0455114169,
+      "reason": "FR-20: Teil-Flex verändert Entnahmen und Folgesteuer"
+    },
+    {
+      "test": "tests/minimum-flex-restriction.test.mjs",
+      "assertion": "Kurzer MC-Pfad: Steuern des Basis-Commits bleiben erhalten",
+      "before": 7005.276385396084,
+      "after": 6749.280920025196,
+      "reason": "FR-20: Teil-Flex verändert Entnahmen und Folgesteuer"
+    },
+    {
+      "test": "tests/vpw-dynamic-flex.test.mjs",
+      "assertion": "Fixture should retain the final post-policy annual withdrawal",
+      "before": 153000,
+      "after": 31200,
+      "reason": "FR-26: begrenzte VPW-Basis verändert Entnahme, Runway und Safety"
+    },
+    {
+      "test": "tests/vpw-dynamic-flex.test.mjs",
+      "assertion": "Runway target must use final withdrawal times five years",
+      "before": 765000,
+      "after": 156000,
+      "reason": "FR-26: begrenzte VPW-Basis verändert Entnahme, Runway und Safety"
+    },
+    {
+      "test": "tests/vpw-dynamic-flex.test.mjs",
+      "assertion": "Only the quantized surplus above the corrected target should be invested",
+      "before": 35000,
+      "after": 350000,
+      "reason": "FR-26: begrenzte VPW-Basis verändert Entnahme, Runway und Safety"
+    },
+    {
+      "test": "tests/vpw-dynamic-flex.test.mjs",
+      "assertion": "Canonical pre-transaction runway must use final planned need",
+      "before": 62.745098039215684,
+      "after": 307.6923076923077,
+      "reason": "FR-26: begrenzte VPW-Basis verändert Entnahme, Runway und Safety"
+    },
+    {
+      "test": "tests/vpw-dynamic-flex.test.mjs",
+      "assertion": "Post-transaction runway must reflect the surplus cash outflow and final planned need",
+      "before": 60,
+      "after": 173.07692307692307,
+      "reason": "FR-26: begrenzte VPW-Basis verändert Entnahme, Runway und Safety"
+    },
+    {
+      "test": "tests/vpw-dynamic-flex.test.mjs",
+      "assertion": "Dynamic-Flex Safety must retain its calibrated pre-policy need basis after the surplus action",
+      "before": 191.25,
+      "after": 112.5,
+      "reason": "FR-26: begrenzte VPW-Basis verändert Entnahme, Runway und Safety"
+    },
+    {
+      "test": "tests/log-analysis-muster-backtest.test.mjs",
+      "assertion": "26 Jahre gekürzte Flex-Entnahme",
+      "before": 26,
+      "after": 8,
+      "reason": "FR-25/26 und Log 4: geänderte Finanzpfade und Wunsch-Flex-Nenner"
+    },
+    {
+      "test": "tests/log-analysis-muster-backtest.test.mjs",
+      "assertion": "Längste Kürzungsphase umfasst 26 Jahre",
+      "before": 26,
+      "after": 6,
+      "reason": "FR-25/26 und Log 4: geänderte Finanzpfade und Wunsch-Flex-Nenner"
+    },
+    {
+      "test": "tests/log-analysis-muster-backtest.test.mjs",
+      "assertion": "Durchgehende Kürzungsphase nach FR-11",
+      "before": "2000-2025",
+      "after": "2005-2006,2009-2014",
+      "reason": "FR-25/26 und Log 4: geänderte Finanzpfade und Wunsch-Flex-Nenner"
+    },
+    {
+      "test": "tests/log-analysis-muster-backtest.test.mjs",
+      "assertion": "Kürzungsphase bleibt am Laufende offen",
+      "before": true,
+      "after": false,
+      "reason": "FR-25/26 und Log 4: geänderte Finanzpfade und Wunsch-Flex-Nenner"
+    },
+    {
+      "test": "tests/log-analysis-muster-backtest.test.mjs",
+      "assertion": "Realer Endstand nach FR-11 und persönlichen Transaktionen nach FR-10 und FR-16",
+      "before": 829000,
+      "after": 881000,
+      "reason": "FR-25/26 und Log 4: geänderte Finanzpfade und Wunsch-Flex-Nenner"
+    },
+    {
+      "test": "tests/log-analysis-muster-backtest.test.mjs",
+      "assertion": "Keine Liquiditätsziel-Unterschreitung",
+      "before": 0,
+      "after": 3,
+      "reason": "FR-25/26 und Log 4: geänderte Finanzpfade und Wunsch-Flex-Nenner"
+    },
+    {
+      "test": "tests/log-analysis-muster-backtest.test.mjs",
+      "assertion": "Vier zusätzliche Deckungsverkäufe für persönliche Auszahlungen nach FR-10 und FR-16",
+      "before": 4,
+      "after": 8,
+      "reason": "FR-25/26 und Log 4: geänderte Finanzpfade und Wunsch-Flex-Nenner"
+    },
+    {
+      "test": "tests/log-analysis-muster-backtest.test.mjs",
+      "assertion": "Persönliche Deckungsverkäufe in den belegten Jahren nach FR-10 und FR-16",
+      "before": "2004,2008,2021,2023",
+      "after": "2004,2008,2016,2017,2019,2021,2022,2025",
+      "reason": "FR-25/26 und Log 4: geänderte Finanzpfade und Wunsch-Flex-Nenner"
+    },
+    {
+      "test": "tests/log-analysis-muster-backtest.test.mjs",
+      "assertion": "Steuerspitze rund 20.300 Euro",
+      "before": 20300,
+      "after": 21500,
+      "reason": "FR-25/26 und Log 4: geänderte Finanzpfade und Wunsch-Flex-Nenner"
+    },
+    {
+      "test": "tests/log-analysis-muster-backtest.test.mjs",
+      "assertion": "Musterkarte nennt längste Kürzung",
+      "before": "26 Jahre · 2000–2025",
+      "after": "6 Jahre · 2009–2014",
+      "reason": "FR-25/26 und Log 4: geänderte Finanzpfade und Wunsch-Flex-Nenner"
+    },
+    {
+      "test": "tests/log-analysis-muster-backtest.test.mjs",
+      "assertion": "Chartbänder entsprechen den belegten Musterphasen",
+      "before": "Flex gekürzt 2000–2025",
+      "after": "Flex gekürzt 2005–2006|Flex gekürzt 2009–2014",
+      "reason": "FR-25/26 und Log 4: geänderte Finanzpfade und Wunsch-Flex-Nenner"
+    },
+    {
+      "test": "tests/fixtures/minimum-flex-severe-affordability-measurement-v1.json",
+      "assertion": "Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.autoOptimizeResultSha256",
+      "before": "c9ca031dab02b8496e2a31d008a30534318ab0b8c37663aad7c4a81ce1d4a813",
+      "after": "82d071de743fd9d5117d369ae054175c9e88120cf44683eda429d576ab2dd47c",
+      "reason": "FR-26: geänderte VPW-Zahlungen in Optimierungs- und MC-Projektionen"
+    },
+    {
+      "test": "tests/fixtures/minimum-flex-severe-affordability-measurement-v1.json",
+      "assertion": "Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.finalResultSha256",
+      "before": "43df6c2aba738c0851591e6baf53196a14459df9746c3d71b92626d1d563f5e4",
+      "after": "e54037d0c9ff9296af0d306fc3b0e60e4dffcc83d6784b2da8309794e1a18ff8",
+      "reason": "FR-26: geänderte VPW-Zahlungen in Optimierungs- und MC-Projektionen"
+    },
+    {
+      "test": "tests/fixtures/simulator-small-lot-controls-v1.json",
+      "field": ".cases[0].projection.result.rows[0].row.balance_trace[1].nettoErlos",
+      "before": 30000,
+      "after": 0,
+      "reason": "Log 1: Kauf ist kein Verkaufserlös; FR-20-Begründung nennt neuen Flexbetrag"
+    },
+    {
+      "test": "tests/fixtures/simulator-small-lot-controls-v1.json",
+      "field": ".cases[1].projection.result.rows[0].row.balance_trace[1].nettoErlos",
+      "before": 50000,
+      "after": 0,
+      "reason": "Log 1: Kauf ist kein Verkaufserlös; FR-20-Begründung nennt neuen Flexbetrag"
+    },
+    {
+      "test": "tests/fixtures/simulator-small-lot-controls-v1.json",
+      "field": ".cases[2].projection.result.rows[0].row.balance_trace[1].nettoErlos",
+      "before": 25000,
+      "after": 0,
+      "reason": "Log 1: Kauf ist kein Verkaufserlös; FR-20-Begründung nennt neuen Flexbetrag"
+    },
+    {
+      "test": "tests/fixtures/simulator-small-lot-controls-v1.json",
+      "field": ".cases[5].projection.result.rows[0].row.balance_trace[1].nettoErlos",
+      "before": 30000,
+      "after": 0,
+      "reason": "Log 1: Kauf ist kein Verkaufserlös; FR-20-Begründung nennt neuen Flexbetrag"
+    },
+    {
+      "test": "tests/fixtures/simulator-small-lot-controls-v1.json",
+      "field": ".cases[5].projection.result.rows[2].entscheidung.anmerkung",
+      "before": "(Flex um 100% wg. Safety-Cap (schwere Flex-Notlage) gekürzt)",
+      "after": "(Flex um 100% wg. Safety-Cap (schwere Flex-Notlage) gekürzt) Flex nach Notlage: 0.00 € pro Jahr.",
+      "reason": "Log 1: Kauf ist kein Verkaufserlös; FR-20-Begründung nennt neuen Flexbetrag"
+    },
+    {
+      "test": "tests/fixtures/simulator-small-lot-controls-v1.json",
+      "field": ".cases[5].projection.result.rows[2].row.entscheidung.anmerkung",
+      "before": "(Flex um 100% wg. Safety-Cap (schwere Flex-Notlage) gekürzt)",
+      "after": "(Flex um 100% wg. Safety-Cap (schwere Flex-Notlage) gekürzt) Flex nach Notlage: 0.00 € pro Jahr.",
+      "reason": "Log 1: Kauf ist kein Verkaufserlös; FR-20-Begründung nennt neuen Flexbetrag"
+    },
+    {
+      "test": "tests/fixtures/simulator-small-lot-controls-v1.json",
+      "field": ".cases[6].projection.result.rows[0].row.balance_trace[1].nettoErlos",
+      "before": 30000,
+      "after": 0,
+      "reason": "Log 1: Kauf ist kein Verkaufserlös; FR-20-Begründung nennt neuen Flexbetrag"
+    },
+    {
+      "test": "tests/fixtures/simulator-small-lot-controls-v1.json",
+      "field": ".cases[6].projection.result.rows[1].entscheidung.anmerkung",
+      "before": "(Flex um 100% wg. Safety-Cap (schwere Flex-Notlage) gekürzt)",
+      "after": "(Flex um 100% wg. Safety-Cap (schwere Flex-Notlage) gekürzt) Flex nach Notlage: 0.00 € pro Jahr.",
+      "reason": "Log 1: Kauf ist kein Verkaufserlös; FR-20-Begründung nennt neuen Flexbetrag"
+    },
+    {
+      "test": "tests/fixtures/simulator-small-lot-controls-v1.json",
+      "field": ".cases[6].projection.result.rows[1].row.entscheidung.anmerkung",
+      "before": "(Flex um 100% wg. Safety-Cap (schwere Flex-Notlage) gekürzt)",
+      "after": "(Flex um 100% wg. Safety-Cap (schwere Flex-Notlage) gekürzt) Flex nach Notlage: 0.00 € pro Jahr.",
+      "reason": "Log 1: Kauf ist kein Verkaufserlös; FR-20-Begründung nennt neuen Flexbetrag"
+    },
+    {
+      "test": "tests/fixtures/simulator-personal-accounts-fr10-v1.json",
+      "field": ".result.rows[0].row.balance_trace[1].nettoErlos",
+      "before": 25000,
+      "after": 0,
+      "reason": "Log 1: Kauf ist kein Verkaufserlös; FR-20-Begründung nennt neuen Flexbetrag"
+    },
+    {
+      "test": "tests/vpw-dynamic-flex.test.mjs",
+      "case": "Test 19",
+      "field": "input.flexBedarf",
+      "before": 12000,
+      "after": 100000,
+      "reason": "VPW-Safety-Gegenprobe bleibt ohne greifende FR-26-Obergrenze; ihre ursprünglichen Safety-Erwartungen bleiben erhalten."
+    },
+    {
+      "test": "tests/simulator-monte-carlo.test.mjs",
+      "case": "Test 15",
+      "field": "inputs.dynamicFlex",
+      "before": true,
+      "after": false,
+      "reason": "Mindest-Flex-Gegenprobe isoliert die Untergrenze ohne die neue VPW-Obergrenze; beide vorhandenen Wirkungsassertionen bleiben erhalten."
+    }
+  ],
+  "parityResidual": {
+    "preset": "offensiv",
+    "year": 2024,
+    "householdAnnualWithdrawal": 39600,
+    "simulatorPerson": "muster_a",
+    "balancePerson": "muster_b",
+    "balanceTaxQuotes": [
+      0.22173771763302624,
+      0.22173771763302622
+    ],
+    "classification": "AUSZAHLUNGSREIHENFOLGE_STEUERGLEICH",
+    "explanation": "Preisumrechnung dreht eine Steuerquote um eine Gleitkommaeinheit; Haushaltsbetrag und Jahresentscheidung sind gleich; Personenplan bleibt hier getrennt ausgewiesen."
+  },
+  "sourceRevision": "f389910e60885a806bc8544ff90e19cea1c67149",
+  "changedFiles": [
+    "Handbuch.html",
+    "README.md",
+    "app/balance/parity-year-comparison.js",
+    "app/shared/household-plan-fields.js",
+    "app/simulator/mc-log-builder.js",
+    "app/simulator/planned-inflows-ui.js",
+    "app/simulator/simulation-data-inventory.js",
+    "app/simulator/simulator-care-log.js",
+    "app/simulator/simulator-engine-direct.js",
+    "app/simulator/simulator-personal-tax.js",
+    "app/simulator/simulator-tax-recompute.js",
+    "app/simulator/simulator-year-result.js",
+    "auftrag/ERGEBNIS-FF-B.md",
+    "docs/design/funktionsinventar.json",
+    "docs/reference/ENGINE_DECISION_LOGIC.md",
+    "docs/reference/FACHKONZEPT.md",
+    "docs/reference/PARITY_REPLAY.md",
+    "docs/reference/SIMULATOR_MODULES_README.md",
+    "docs/reference/TECHNICAL.md",
+    "docs/ui/README.md",
+    "docs/ui/manifest.json",
+    "docs/ui/simulator-annahmen.png",
+    "engine/README.md",
+    "engine/core.mjs",
+    "engine/planners/SpendingPlanner.mjs",
+    "engine/planners/spending-policy-pipeline.mjs",
+    "simulator.css",
+    "tests/care-death-regression.test.mjs",
+    "tests/extended/parity-comparison.mjs",
+    "tests/extended/parity-residuals.mjs",
+    "tests/fixtures/flex-safety-expectation-deltas.json",
+    "tests/fixtures/minimum-flex-severe-affordability-measurement-v1.json",
+    "tests/fixtures/planned-inflows-empty-baseline.json",
+    "tests/fixtures/simulator-personal-accounts-fr10-v1.json",
+    "tests/fixtures/simulator-small-lot-controls-v1.json",
+    "tests/flex-emergency-cap-interest.test.mjs",
+    "tests/flex-safety-bytegleich.test.mjs",
+    "tests/helpers/ff-b-bytegleich-scenarios.mjs",
+    "tests/log-analysis-muster-backtest.test.mjs",
+    "tests/minimum-flex-restriction.test.mjs",
+    "tests/planned-inflows.test.mjs",
+    "tests/profile-person-data.test.mjs",
+    "tests/rechenregeln-bytegleich.test.mjs",
+    "tests/simulator-household-pension.test.mjs",
+    "tests/simulator-monte-carlo.test.mjs",
+    "tests/simulator-tax-settlement.test.mjs",
+    "tests/spending-flex-trace.test.mjs",
+    "tests/spending-safety-cap.test.mjs",
+    "tests/survivor-bytegleich.test.mjs",
+    "tests/vpw-dynamic-flex.test.mjs"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "baseRevision": "958ca383",
+  "corrections": "RF-1 + FF-A + FF-B + FF-C: pension guarantee, care death, church tax; survivor floor, income offset, death year, inheritance; partial emergency flex, dynamic cap, negative interest, corrected logs; household liquidity first, half-year survivor needs, net pension offset",
+  "description": "BH-4 page inputs; Max/Erika; Backtest 2000–2025 and MC path 0, seed 12345, 35 years, regime_markov. SHA-256 of JSON.stringify({rows,path0}). Vorgabe = Dynamic Flex Aus.",
+  "hashes": {
+    "Vorgabe": "eccb65b04365626efbbd95f9c335a10244dd9d878408c03a84db4450d6c2360b",
+    "konservativ": "62ace684288240124cfa89a9931c5ccd1417cd573ff5bdc8d3cb1524151980af",
+    "ausgewogen": "d50b949af583a31906abe3e65b06d0e07dc9af503a5065a05675f01619f144de",
+    "offensiv": "9aa779b2b08fbbf8cfb3a23996d1c85c843dd8a7a22da40794d27d6e72349fbc"
+  },
+  "demoHashes": {
+    "max-erika": "bb070f1e1845dac2bffabd8acd4c9f70d70f5b2e5d683735aea74cb9a3db73e1",
+    "renate": "4872a9e1ebedcbdceaaa835d7f892436a45c416152512056208031656e331551",
+    "helga-werner": "06743fd6e5c68848478e13c6ec8baf3721270a8622be060ac102f6c0618590d0",
+    "jan-lena": "a0924ac00a6ad3a3f79cac5d73484e8c5a41cf9be0e25f0f1a26129cbecd0c1f"
+  }
+}

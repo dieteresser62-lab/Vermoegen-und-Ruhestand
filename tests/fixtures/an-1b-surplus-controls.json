@@ -1,0 +1,231 @@
+{
+  "baselineRevision": "10fd135d2589c9e225c7898367ddf16876d59b61",
+  "yearData": {
+    "jahr": 2000,
+    "rendite": 0,
+    "gold_eur_perf": 0,
+    "zinssatz": 0,
+    "inflation": 0,
+    "lohn": 0
+  },
+  "controls": [
+    {
+      "name": "1/0",
+      "inputs": {
+        "startAlter": 65,
+        "accumulationPhase": {
+          "enabled": false
+        },
+        "transitionYear": 0,
+        "startVermoegen": 1180000,
+        "depotwertAlt": 1000000,
+        "depotwertNeu": 0,
+        "einstandAlt": 1000000,
+        "einstandNeu": 0,
+        "tagesgeld": 180000,
+        "geldmarktEtf": 0,
+        "startFloorBedarf": 60000,
+        "startFlexBedarf": 0,
+        "minimumFlexAnnual": 0,
+        "flexBudgetAnnual": 0,
+        "flexBudgetRecharge": 0,
+        "renteMonatlich": 0,
+        "renteStartOffsetJahre": 0,
+        "rentAdjPct": 0,
+        "goldAktiv": false,
+        "goldZielProzent": 0,
+        "goldFloorProzent": 0,
+        "risikoprofil": "sicherheits-dynamisch",
+        "rebalancingBand": 20,
+        "liquidityRunwayYears": 1,
+        "minCashBufferMonths": 0,
+        "maxSkimPctOfEq": 0,
+        "maxBearRefillPctOfEq": 0,
+        "marketCapeRatio": 20,
+        "capeRatio": 20,
+        "kirchensteuerSatz": 0,
+        "startSPB": 1000,
+        "dynamicFlex": false,
+        "goGoActive": false,
+        "pflegefallLogikAktivieren": false,
+        "partner": {
+          "aktiv": false
+        },
+        "plannedExpensesReferenceYear": 2026,
+        "plannedExpenses": []
+      },
+      "beforeHash": "bf4abca63c2bc707649c7bf3bba30070e3c5151ed6587647cbd6b8a203d88769",
+      "beforeEquityBuy": 120000,
+      "beforeForcedSale": 5000,
+      "afterHash": "35688e450c8ac94e816e32bb83129fd547e917d5acb0a38ef65c4e0f3195f858"
+    },
+    {
+      "name": "1/12000",
+      "inputs": {
+        "startAlter": 65,
+        "accumulationPhase": {
+          "enabled": false
+        },
+        "transitionYear": 0,
+        "startVermoegen": 1192000,
+        "depotwertAlt": 1000000,
+        "depotwertNeu": 0,
+        "einstandAlt": 1000000,
+        "einstandNeu": 0,
+        "tagesgeld": 192000,
+        "geldmarktEtf": 0,
+        "startFloorBedarf": 60000,
+        "startFlexBedarf": 0,
+        "minimumFlexAnnual": 0,
+        "flexBudgetAnnual": 0,
+        "flexBudgetRecharge": 0,
+        "renteMonatlich": 0,
+        "renteStartOffsetJahre": 0,
+        "rentAdjPct": 0,
+        "goldAktiv": false,
+        "goldZielProzent": 0,
+        "goldFloorProzent": 0,
+        "risikoprofil": "sicherheits-dynamisch",
+        "rebalancingBand": 20,
+        "liquidityRunwayYears": 1,
+        "minCashBufferMonths": 0,
+        "maxSkimPctOfEq": 0,
+        "maxBearRefillPctOfEq": 0,
+        "marketCapeRatio": 20,
+        "capeRatio": 20,
+        "kirchensteuerSatz": 0,
+        "startSPB": 1000,
+        "dynamicFlex": false,
+        "goGoActive": false,
+        "pflegefallLogikAktivieren": false,
+        "partner": {
+          "aktiv": false
+        },
+        "plannedExpensesReferenceYear": 2026,
+        "plannedExpenses": [
+          {
+            "id": "planned",
+            "art": "einmalig",
+            "betrag": 12000,
+            "priceYear": 2026,
+            "monat": "2026-12",
+            "bezeichnung": "Synthetic"
+          }
+        ]
+      },
+      "beforeHash": "bcd82885edcd6cb8b17d18e37fff6c6bd2a35519480ea56015acc982c1a0ccde",
+      "beforeEquityBuy": 120000,
+      "beforeForcedSale": 5000,
+      "afterHash": "88b0e06214e3eebda51b8295730ec2d34c27a5d267d6797cfcfa9cf374a0e871"
+    },
+    {
+      "name": "2/0",
+      "inputs": {
+        "startAlter": 65,
+        "accumulationPhase": {
+          "enabled": false
+        },
+        "transitionYear": 0,
+        "startVermoegen": 1180000,
+        "depotwertAlt": 1000000,
+        "depotwertNeu": 0,
+        "einstandAlt": 1000000,
+        "einstandNeu": 0,
+        "tagesgeld": 180000,
+        "geldmarktEtf": 0,
+        "startFloorBedarf": 60000,
+        "startFlexBedarf": 0,
+        "minimumFlexAnnual": 0,
+        "flexBudgetAnnual": 0,
+        "flexBudgetRecharge": 0,
+        "renteMonatlich": 0,
+        "renteStartOffsetJahre": 0,
+        "rentAdjPct": 0,
+        "goldAktiv": false,
+        "goldZielProzent": 0,
+        "goldFloorProzent": 0,
+        "risikoprofil": "sicherheits-dynamisch",
+        "rebalancingBand": 20,
+        "liquidityRunwayYears": 2,
+        "minCashBufferMonths": 0,
+        "maxSkimPctOfEq": 0,
+        "maxBearRefillPctOfEq": 0,
+        "marketCapeRatio": 20,
+        "capeRatio": 20,
+        "kirchensteuerSatz": 0,
+        "startSPB": 1000,
+        "dynamicFlex": false,
+        "goGoActive": false,
+        "pflegefallLogikAktivieren": false,
+        "partner": {
+          "aktiv": false
+        },
+        "plannedExpensesReferenceYear": 2026,
+        "plannedExpenses": []
+      },
+      "beforeHash": "0d60e7153862f471747c6b410270b7be2462e1d99f33c3bb825f72a8f9b2e44a",
+      "beforeEquityBuy": 60000,
+      "beforeForcedSale": 0,
+      "afterHash": "0d60e7153862f471747c6b410270b7be2462e1d99f33c3bb825f72a8f9b2e44a"
+    },
+    {
+      "name": "2/12000",
+      "inputs": {
+        "startAlter": 65,
+        "accumulationPhase": {
+          "enabled": false
+        },
+        "transitionYear": 0,
+        "startVermoegen": 1192000,
+        "depotwertAlt": 1000000,
+        "depotwertNeu": 0,
+        "einstandAlt": 1000000,
+        "einstandNeu": 0,
+        "tagesgeld": 192000,
+        "geldmarktEtf": 0,
+        "startFloorBedarf": 60000,
+        "startFlexBedarf": 0,
+        "minimumFlexAnnual": 0,
+        "flexBudgetAnnual": 0,
+        "flexBudgetRecharge": 0,
+        "renteMonatlich": 0,
+        "renteStartOffsetJahre": 0,
+        "rentAdjPct": 0,
+        "goldAktiv": false,
+        "goldZielProzent": 0,
+        "goldFloorProzent": 0,
+        "risikoprofil": "sicherheits-dynamisch",
+        "rebalancingBand": 20,
+        "liquidityRunwayYears": 2,
+        "minCashBufferMonths": 0,
+        "maxSkimPctOfEq": 0,
+        "maxBearRefillPctOfEq": 0,
+        "marketCapeRatio": 20,
+        "capeRatio": 20,
+        "kirchensteuerSatz": 0,
+        "startSPB": 1000,
+        "dynamicFlex": false,
+        "goGoActive": false,
+        "pflegefallLogikAktivieren": false,
+        "partner": {
+          "aktiv": false
+        },
+        "plannedExpensesReferenceYear": 2026,
+        "plannedExpenses": [
+          {
+            "id": "planned",
+            "art": "einmalig",
+            "betrag": 12000,
+            "priceYear": 2026,
+            "monat": "2026-12",
+            "bezeichnung": "Synthetic"
+          }
+        ]
+      },
+      "beforeHash": "b2a2660597ada9d0f31217236beec66005f59d7270aaa8e23bd9db5b35b41619",
+      "beforeEquityBuy": 60000,
+      "beforeForcedSale": 0,
+      "afterHash": "b2a2660597ada9d0f31217236beec66005f59d7270aaa8e23bd9db5b35b41619"
+    }
+  ]
+}

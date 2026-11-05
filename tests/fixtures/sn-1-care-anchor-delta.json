@@ -1,0 +1,13 @@
+{
+  "sourceRevision": "4d5f2bd3666440c488bc26c510bde1309ab56a71",
+  "description": "Synthetischer Seitenweg aus planned-inflows: vier Dynamic-Flex-Vorgaben, jeweils aktuelle und alte Pflege-Flex-Werte. Ausschließlich diese beiden Diagnosefelder ändern sich im Sterbejahr; alle übrigen vollständigen Payloadbytes bleiben gleich.",
+  "simulationYear": 8,
+  "before": {
+    "pflege_floor_anchor": 35381.65325810208,
+    "pflege_cap_zusatz": 144679.72163262044
+  },
+  "after": {
+    "pflege_floor_anchor": 30074.405269386767,
+    "pflege_cap_zusatz": 149986.96962133574
+  }
+}

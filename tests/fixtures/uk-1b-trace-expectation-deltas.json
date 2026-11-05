@@ -1,0 +1,42 @@
+{
+  "baselineCommit": "3388544a",
+  "change": "Nur Guardrails-Kennzahlen im optionalen Flex-Trace: budgetFloorBegrenzt ergänzt, budgetFloorGesperrt auf vollständig verhinderte Anhebungen beschränkt. Vollständige alte und neue Ergebnisse feldweise verglichen; alle anderen Werte einschließlich Entnahme, Aktionen und Folgestate bytegleich.",
+  "groups": [
+    {
+      "name": "ffbEngines",
+      "results": 6,
+      "beforeSha256": "815aa55f1a786541d3209d53d04613cc07d2261dae24f968b178f1fa95bac138",
+      "afterSha256": "f99d313a5d66babc0dfcc15960baa9e7b500ca2ca49acc1753d89b3e303ead74",
+      "changedFields": {
+        "budgetFloorBegrenzt": 6
+      }
+    },
+    {
+      "name": "engines",
+      "results": 3,
+      "beforeSha256": "d7c4065f594292ccad7623d0846023fa20c9f677233e0501bc09abf66539ee54",
+      "afterSha256": "fefefdcfda3a3f9c474b58e9abf6118f126d722ed34557420b838f3926364d5c",
+      "changedFields": {
+        "budgetFloorBegrenzt": 3
+      }
+    },
+    {
+      "name": "staticResults",
+      "results": 18,
+      "beforeSha256": "8667c3bc7b54b4b82942b664612729ef6138694c1a020d1c9d02b7a1b1e1b5ac",
+      "afterSha256": "db750676f8561a99bfe6ab30d40ae8c2408ae3b34f4dfe431ba28c787d34de1e",
+      "changedFields": {
+        "budgetFloorBegrenzt": 18
+      }
+    },
+    {
+      "name": "dynamicUnaffected",
+      "results": 6,
+      "beforeSha256": "946b9821e3621d4d8a8fdf652eca02158376a7be08e7634d465d39a0343a81e9",
+      "afterSha256": "7c5d8f9b623e555242bc5d919d79d6565227370ee2c8d311b01cea330c44b057",
+      "changedFields": {
+        "budgetFloorBegrenzt": 6
+      }
+    }
+  ]
+}

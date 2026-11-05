@@ -1,0 +1,417 @@
+{
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 42,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "date": "2026-10-16",
+  "source": "App-Muster über Simulator-Seitenleser; Jan/Lena mit 10 %/5 %",
+  "scenarios": {
+    "sophie": {
+      "alt": {
+        "inputsHash": "89896d4d4e7e345ee3cb046798766a1b91f8b51faf31e8a5f6f93ca84a0d5d9e",
+        "chunksHash": "218c0e2e728befa9aa56886b7207fb10efa917a7a2e40db2fcc595a230f88a96",
+        "technicalErrors": 0,
+        "evaluatedPaths": 2000,
+        "successPct": 97.05,
+        "finalRealP10": 220229.0818430501,
+        "finalRealP50": 875432.3704920544,
+        "taxesNominalMean": 78091.60105272465,
+        "equityBuysNominalMean": 0,
+        "equityBuysNominalSum": 0,
+        "retirementCashShareP50": 44.28874305525527,
+        "retirementCashSharePaths": 1854,
+        "financialYears": 51159,
+        "maxAbsFlowDelta": 7.450580596923828e-09,
+        "backtest": {
+          "period": "2000–2025",
+          "outcome": "completed",
+          "hash": "a1c347ec6f20d876ac33afa22f38e74cefd5d916dc1a6cddf78f636a8e042a71",
+          "years": 26,
+          "finalNominal": 371607.1245342667,
+          "finalReal": 227505.59529398388,
+          "taxes": 13206.58111668704,
+          "equityBuys": 0
+        },
+        "counterchecks": [
+          {
+            "period": "1929–1970",
+            "outcome": "completed",
+            "hash": "ea774d06ace84088a91ec3f5cd9bed0402f4f07a7eba79d9ba1ef78b3e3e1b78",
+            "years": 42,
+            "finalNominal": 5346978.506390091,
+            "finalReal": 2667973.509449326,
+            "taxes": 163772.275510183,
+            "equityBuys": 0
+          }
+        ]
+      },
+      "neu": {
+        "inputsHash": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+        "chunksHash": "8c221dafd1fdb29547400d29be9470fe83404de81bca9271e7a14a53b0ffe8dd",
+        "technicalErrors": 0,
+        "evaluatedPaths": 2000,
+        "successPct": 97.89999999999999,
+        "finalRealP10": 264122.35893327236,
+        "finalRealP50": 1379557.2240268746,
+        "taxesNominalMean": 64676.899884266415,
+        "equityBuysNominalMean": 262882.5,
+        "equityBuysNominalSum": 525765000,
+        "retirementCashShareP50": 1.480209609215799,
+        "retirementCashSharePaths": 1854,
+        "financialYears": 51207,
+        "maxAbsFlowDelta": 1.4901161193847656e-08,
+        "backtest": {
+          "period": "2000–2025",
+          "outcome": "completed",
+          "hash": "7f3652a6da80dffd2024f5130456a8e73f5e6deed82d2dc19de37965e5f79fdc",
+          "years": 26,
+          "finalNominal": 523895.30547630135,
+          "finalReal": 320739.5807964892,
+          "taxes": 21085.05022542248,
+          "equityBuys": 130000
+        },
+        "counterchecks": [
+          {
+            "period": "1929–1970",
+            "outcome": "completed",
+            "hash": "1dadb1d5725cdadb4947a6e83eb32864fa594f6dec3044645c4dee0a8a2e7984",
+            "years": 42,
+            "finalNominal": 12571824.101202456,
+            "finalReal": 6272943.425409333,
+            "taxes": 4093.1771632326936,
+            "equityBuys": 1365000
+          }
+        ]
+      }
+    },
+    "max-erika": {
+      "alt": {
+        "inputsHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+        "chunksHash": "1159c5d65d4ca2e2f22f552c49e0f3f2aaadabf1ba3f30f67c50dd26c384fa53",
+        "technicalErrors": 0,
+        "evaluatedPaths": 2000,
+        "successPct": 99.8,
+        "finalRealP10": 923596.6626604886,
+        "finalRealP50": 3053763.1413566153,
+        "taxesNominalMean": 40948.20998463573,
+        "equityBuysNominalMean": 0,
+        "equityBuysNominalSum": 0,
+        "retirementCashShareP50": null,
+        "retirementCashSharePaths": 0,
+        "financialYears": 39379,
+        "maxAbsFlowDelta": 1.4901161193847656e-08,
+        "backtest": {
+          "period": "2000–2025",
+          "outcome": "completed",
+          "hash": "9d6a701c902310e7b11ba587ae6ac6b3fff775f51044595099e689adcff7d897",
+          "years": 26,
+          "finalNominal": 2376100.5008673784,
+          "finalReal": 1454698.0486600397,
+          "taxes": 15212.998280990902,
+          "equityBuys": 0
+        },
+        "counterchecks": [
+          {
+            "period": "1929–1970",
+            "outcome": "completed",
+            "hash": "eceaac777dd09ef62dbac93d0b16118ef207cc9ce0a1e253c1e51d420a82efe0",
+            "years": 42,
+            "finalNominal": 29691012.631732024,
+            "finalReal": 14814878.173816845,
+            "taxes": 441977.43193662656,
+            "equityBuys": 0
+          }
+        ]
+      },
+      "neu": {
+        "inputsHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+        "chunksHash": "921b59208777125cb10346eef341d53aa37cd69e5514d4efba0a773e9562a507",
+        "technicalErrors": 0,
+        "evaluatedPaths": 2000,
+        "successPct": 99.8,
+        "finalRealP10": 911635.5071441381,
+        "finalRealP50": 3169497.074592475,
+        "taxesNominalMean": 37958.06532879012,
+        "equityBuysNominalMean": 156135,
+        "equityBuysNominalSum": 312270000,
+        "retirementCashShareP50": null,
+        "retirementCashSharePaths": 0,
+        "financialYears": 39379,
+        "maxAbsFlowDelta": 1.4901161193847656e-08,
+        "backtest": {
+          "period": "2000–2025",
+          "outcome": "completed",
+          "hash": "6b038f5dd3b2c4d7b2ffe3495fe8d242f1d2c954123db560836faa66ddd60404",
+          "years": 26,
+          "finalNominal": 2361351.851119837,
+          "finalReal": 1445668.6191387349,
+          "taxes": 14709.298233329615,
+          "equityBuys": 35000
+        },
+        "counterchecks": [
+          {
+            "period": "1929–1970",
+            "outcome": "completed",
+            "hash": "a858e77ec9de86dc48a98db21ef4195611bf4911267d52417947af24197831cc",
+            "years": 42,
+            "finalNominal": 38707807.35130285,
+            "finalReal": 19313974.144224785,
+            "taxes": 9905.838702953657,
+            "equityBuys": 3775000
+          }
+        ]
+      }
+    },
+    "jan-lena": {
+      "alt": {
+        "inputsHash": "71d6af40e054c2f8629223d472c4f13bdfb58d93b7b0f1789d5c527fba8a29d8",
+        "chunksHash": "b66f6a56110792a717f66259c9d8915ab81b74ae230abc2a7ac573bf947931d7",
+        "technicalErrors": 0,
+        "evaluatedPaths": 2000,
+        "successPct": 99.8,
+        "finalRealP10": 1304696.1621575665,
+        "finalRealP50": 4542450.495063655,
+        "taxesNominalMean": 389111.1086317903,
+        "equityBuysNominalMean": 345168.97104856087,
+        "equityBuysNominalSum": 690337942.0971217,
+        "retirementCashShareP50": null,
+        "retirementCashSharePaths": 0,
+        "financialYears": 54916,
+        "maxAbsFlowDelta": 2.9802322387695312e-08,
+        "backtest": {
+          "period": "2000–2025",
+          "outcome": "completed",
+          "hash": "0a65b9f6576a54130053b0c81e31e4b35398b56fa1d9e633dc2d6d50d3a00dde",
+          "years": 26,
+          "finalNominal": 2526922.051359522,
+          "finalReal": 1547034.1325574645,
+          "taxes": 114941.7614339633,
+          "equityBuys": 273645.4846827624
+        },
+        "counterchecks": [
+          {
+            "period": "1929–1970",
+            "outcome": "completed",
+            "hash": "9da81e6c88864bb9c0cbc1c3b800cee01bd5fb449a46b2a7e9042ed65cae3137",
+            "years": 42,
+            "finalNominal": 20867454.768643875,
+            "finalReal": 10412201.295711018,
+            "taxes": 184289.08220304234,
+            "equityBuys": 879000
+          }
+        ]
+      },
+      "neu": {
+        "inputsHash": "71d6af40e054c2f8629223d472c4f13bdfb58d93b7b0f1789d5c527fba8a29d8",
+        "chunksHash": "616d4193981fc8c8f66b1f96a401264588f6a8d5a841de68ff783c4e0de9a493",
+        "technicalErrors": 0,
+        "evaluatedPaths": 2000,
+        "successPct": 99.8,
+        "finalRealP10": 1310258.4237873915,
+        "finalRealP50": 4542450.495063655,
+        "taxesNominalMean": 389438.77416220814,
+        "equityBuysNominalMean": 349938.57059769484,
+        "equityBuysNominalSum": 699877141.1953896,
+        "retirementCashShareP50": null,
+        "retirementCashSharePaths": 0,
+        "financialYears": 54916,
+        "maxAbsFlowDelta": 2.9802322387695312e-08,
+        "backtest": {
+          "period": "2000–2025",
+          "outcome": "completed",
+          "hash": "c057e36106d2e98b62d5cd7313d7412c707b2b1f9671ac7a1d8ed1569ab6ca8d",
+          "years": 26,
+          "finalNominal": 2534379.711524077,
+          "finalReal": 1551599.8669129715,
+          "taxes": 115402.67820716678,
+          "equityBuys": 282900.1189339077
+        },
+        "counterchecks": [
+          {
+            "period": "1929–1970",
+            "outcome": "completed",
+            "hash": "9da81e6c88864bb9c0cbc1c3b800cee01bd5fb449a46b2a7e9042ed65cae3137",
+            "years": 42,
+            "finalNominal": 20867454.768643875,
+            "finalReal": 10412201.295711018,
+            "taxes": 184289.08220304234,
+            "equityBuys": 879000
+          }
+        ]
+      }
+    }
+  },
+  "byteControls": [
+    {
+      "cash": 5000,
+      "adjustment": "none",
+      "purchase": 0,
+      "beforeHash": "e51647b3128df158d42f2f07f0d6a8b089e5826400c6343269b550d997828e80",
+      "afterHash": "e51647b3128df158d42f2f07f0d6a8b089e5826400c6343269b550d997828e80"
+    },
+    {
+      "cash": 5000,
+      "adjustment": "keine",
+      "purchase": 0,
+      "beforeHash": "7f0e4beddd9e46f8de720dc227b695ac448273ef60807ee31a6ea48f9b6529af",
+      "afterHash": "7f0e4beddd9e46f8de720dc227b695ac448273ef60807ee31a6ea48f9b6529af"
+    },
+    {
+      "cash": 20000,
+      "adjustment": "none",
+      "purchase": 0,
+      "beforeHash": "031039b8aa95b2a1f2a6ae37077a79659a20a6b8501fa52a291169d601173858",
+      "afterHash": "031039b8aa95b2a1f2a6ae37077a79659a20a6b8501fa52a291169d601173858"
+    },
+    {
+      "cash": 20000,
+      "adjustment": "keine",
+      "purchase": 0,
+      "beforeHash": "6a8157cd4fc5836f59fbc4d9cd25cd5c7072e59b4ec9d214d82a54cbae1ecd19",
+      "afterHash": "6a8157cd4fc5836f59fbc4d9cd25cd5c7072e59b4ec9d214d82a54cbae1ecd19"
+    },
+    {
+      "cash": 35000,
+      "adjustment": "none",
+      "purchase": 35000,
+      "beforeHash": "091b6ab6d2ea0445a42d136052991eec3bf222395104564e04874c9c6b9a0574",
+      "afterHash": "091b6ab6d2ea0445a42d136052991eec3bf222395104564e04874c9c6b9a0574"
+    },
+    {
+      "cash": 35000,
+      "adjustment": "keine",
+      "purchase": 35000,
+      "beforeHash": "b7bb041cfe3b6b96771a56f871e0e0ad99a8fd181dffe4f10fea12973a3b508c",
+      "afterHash": "b7bb041cfe3b6b96771a56f871e0e0ad99a8fd181dffe4f10fea12973a3b508c"
+    },
+    {
+      "cash": 40000,
+      "adjustment": "none",
+      "purchase": 40000,
+      "beforeHash": "0404991e0b35149f107db2f1ff20bd6b6915e21e69bb70a46cc2139e3c8cc19e",
+      "afterHash": "0404991e0b35149f107db2f1ff20bd6b6915e21e69bb70a46cc2139e3c8cc19e"
+    },
+    {
+      "cash": 40000,
+      "adjustment": "keine",
+      "purchase": 40000,
+      "beforeHash": "cc1df0a5dcbdf709efb37d54acb5e6afc6d8f62de00c15e1d4fe5bd638e90a87",
+      "afterHash": "cc1df0a5dcbdf709efb37d54acb5e6afc6d8f62de00c15e1d4fe5bd638e90a87"
+    }
+  ],
+  "retirementCashShareBasis": "Ende des letzten Gehaltsjahrs (Jahr 12), unmittelbar vor Rentenbeginn; Tagesgeld / Gesamtvermögen, Median aus finanziell auswertbaren Pfaden.",
+  "totalPurchasesBasis": "Nominale Summe je Pfad, daraus Mittelwert und Summe über alle 2.000 Pfade; Steuern als nominale Summe je Pfad, gemittelt.",
+  "parity": {
+    "alt": {
+      "failed": false,
+      "caseCount": 208,
+      "unclassified": 0,
+      "sourceHash": "aa6fdab6f7026635f6d6b01dc23bd9122f33a0405fd35190262a7c064d52b679",
+      "scenarios": [
+        {
+          "key": "off",
+          "years": 26,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "errorYears": 0,
+          "sequenceDecisions": 1
+        },
+        {
+          "key": "konservativ",
+          "years": 26,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "errorYears": 0,
+          "sequenceDecisions": 1
+        },
+        {
+          "key": "ausgewogen",
+          "years": 26,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "errorYears": 0,
+          "sequenceDecisions": 1
+        },
+        {
+          "key": "offensiv",
+          "years": 26,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 25,
+          "errorYears": 0,
+          "sequenceDecisions": 1
+        }
+      ]
+    },
+    "neu": {
+      "failed": false,
+      "caseCount": 208,
+      "unclassified": 0,
+      "sourceHash": "0a3359a1b3677e5c252afabcc6ef6f2ccb8ada099a1abd71c57cc642056f3ff2",
+      "scenarios": [
+        {
+          "key": "off",
+          "years": 26,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "errorYears": 0,
+          "sequenceDecisions": 1
+        },
+        {
+          "key": "konservativ",
+          "years": 26,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "errorYears": 0,
+          "sequenceDecisions": 1
+        },
+        {
+          "key": "ausgewogen",
+          "years": 26,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 25,
+          "errorYears": 0,
+          "sequenceDecisions": 1
+        },
+        {
+          "key": "offensiv",
+          "years": 26,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "errorYears": 0,
+          "sequenceDecisions": 1
+        }
+      ]
+    },
+    "optionalChecks": [
+      {
+        "test": "npm run test:paritaet -- --pruefungen",
+        "before": {
+          "actual": 2300,
+          "expected": 2307
+        },
+        "after": {
+          "actual": 2300,
+          "expected": 2307
+        },
+        "reason": "Bestehende Legacy-Einkommensprobe verändert einen bereits migrierten Altwert statt der Einkünfteliste."
+      },
+      {
+        "test": "testParityComparison() separat",
+        "before": {
+          "actual": "GLEICH",
+          "expected": "AUSGEKLAMMERT"
+        },
+        "after": {
+          "actual": "GLEICH",
+          "expected": "AUSGEKLAMMERT"
+        },
+        "reason": "Bestehende FR-7-Probe erwartet die frühere Ausnahme nach Einführung von FR-42."
+      }
+    ]
+  }
+}

@@ -1,0 +1,676 @@
+{
+  "sourceRevision": "c1e161cf541d3ea8edc059256900fad74394d464",
+  "households": "Muster: Max und Erika, Haus 450000 EUR bei Max. Groß: 3 Mio. EUR Geld 90/10, Haus 800000 EUR bei Max, Erika heute PG2 üblich; wie EP-2. Verheiratet je 100 %, Muster unverheiratet FR-54 mit 0 % zusätzlichem Geld, Groß unverheiratet je 50 %. Hausverkauf nach FR-53 aktiv.",
+  "comparison": "Vorherquellen unverändert gegen neue Quellen. Altwerte über ALT=1 aus sim_-Schlüsseln gelesen. Backtests erhalten in beiden Quellen dieselben vollständig nach Schlüsseln geordneten Eingaben mit 75/50/50 %, einschließlich aller Anfrage-Metadaten. Keine Ergebnisfelder herausgefiltert.",
+  "before": {
+    "alt": true,
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "defaults": {
+      "floor": 70,
+      "wish": 75,
+      "minimum": 75
+    },
+    "definitions": {
+      "money": "heutige EUR",
+      "survivorBudget": "Grundbedarf plus tatsächlich gezahlter Flex; nur volle Hinterbliebenenjahre",
+      "continuity": "Alle finanziellen Paar-/Todes-/Hinterbliebenenjahre: realer Budgetrückgang >5 % außerhalb bear_deep/recovery_in_bear; größter absoluter relativer Jahressprung einschließlich Bärenmarkt",
+      "defaults": "App-Vorgaben, Pflege an, 35 Jahre, Musterhaus 450000 EUR bei Max; Groß wie EP-2 mit Haus 800000 EUR;  Regime-Markov, per-run-seed, CAPE-Sampling aus"
+    },
+    "scenarios": {
+      "muster/married/static": {
+        "coveredPct": 99.85000000000001,
+        "ruin": 3,
+        "belowMinimum": 27,
+        "survivorYears": 15132,
+        "survivorBudgetRealP10": 43178.17949078238,
+        "survivorBudgetRealP50": 43500,
+        "terminalRealP10": 911551.5275875434,
+        "terminalRealP50": 2796206.3201424396,
+        "continuity": {
+          "downYears": 2826,
+          "comparableYears": 32651,
+          "maxDropPct": 59.16360542597332,
+          "maxJumpPct": 84.3738827377187
+        },
+        "maxFlowDelta": 1.1175870895385742e-08,
+        "completeChunksSha256": "ef46c39d54f47fae2c65e1883989bb85f0aa2f723a95463847bcd5f25638bc2d",
+        "completePathsSha256": "b7482cdd5f41c5031d3ef16906405b036dc2193bc69bf89896914629981ce9e1",
+        "couplePrefixesSha256": "4bc17a6f4ccfd9b2756d2eab67c5af75e261826fa528e121ab09c0f9b47d266c",
+        "backtestSha256": "5ccaae199d3476bcb966f0cfd5dd9eeabac20e4933675c31489a239fe55876f9",
+        "historicalCountercheckSha256": "5166505a589b6361fa9eed6c20c36e4107c325662e151076e3afaac5484ff37f"
+      },
+      "muster/married/dynamic": {
+        "coveredPct": 99.85000000000001,
+        "ruin": 3,
+        "belowMinimum": 48,
+        "survivorYears": 15131,
+        "survivorBudgetRealP10": 57530.84795288697,
+        "survivorBudgetRealP50": 65692.17403048376,
+        "terminalRealP10": 676499.9354120148,
+        "terminalRealP50": 1796652.6158337372,
+        "continuity": {
+          "downYears": 4810,
+          "comparableYears": 32650,
+          "maxDropPct": 52.94138005003802,
+          "maxJumpPct": 99.32456424687912
+        },
+        "maxFlowDelta": 7.450580596923828e-09,
+        "completeChunksSha256": "b988d37f6342937fde8dd9898cfafd07d6982f8274934cf59ac8753397c3bc22",
+        "completePathsSha256": "063ac1e7f33dd8dc0343e4cb35a7547a2d0b94e1a06eb853414e4f2359dd2744",
+        "couplePrefixesSha256": "08e7046be6a06de1d460f1a96cdf27a7a76ca8961bcdf7a9c7f2d046d5322477",
+        "backtestSha256": "a4b60481b55c3a8a5c13370bcb7b4df6af762b7d8ff20b904d6d1c865e09e266",
+        "historicalCountercheckSha256": "75a724171d180c499d560882aa931981181e82e244fac13ffe54bbd3bb2b57fb"
+      },
+      "muster/unmarried/static": {
+        "coveredPct": 99.35000000000001,
+        "ruin": 13,
+        "belowMinimum": 160,
+        "survivorYears": 15095,
+        "survivorBudgetRealP10": 38944.330293631836,
+        "survivorBudgetRealP50": 43329.92411635797,
+        "terminalRealP10": 353355.72421515116,
+        "terminalRealP50": 1221380.4718918684,
+        "continuity": {
+          "downYears": 3172,
+          "comparableYears": 32623,
+          "maxDropPct": 59.440391591145584,
+          "maxJumpPct": 131.22831676244147
+        },
+        "maxFlowDelta": 1.862645149230957e-08,
+        "completeChunksSha256": "0926f9eb30f567de910868908acfc818c8e98c1deba6239a0ccc6f74fad6b01c",
+        "completePathsSha256": "64883f6da96ab32eaf7e4538797e9e0447cf5554f5592ccb293a23b8e65c915b",
+        "couplePrefixesSha256": "cc963935a5736b325d5774d65e0aa6eeda6d95d9bd7170798347b9633b05aee8",
+        "backtestSha256": "32ac80b9c1ff30c08a5e2427851b8c679748769f537137acfaf101981961349c",
+        "historicalCountercheckSha256": "0c4a30b9b2073d7364e108fb53ca4ce3e0f27d608d1ea807299c29bcb310323e"
+      },
+      "muster/unmarried/dynamic": {
+        "coveredPct": 99,
+        "ruin": 20,
+        "belowMinimum": 234,
+        "survivorYears": 15079,
+        "survivorBudgetRealP10": 36982.20026032508,
+        "survivorBudgetRealP50": 55932.02996623559,
+        "terminalRealP10": 259048.1442663952,
+        "terminalRealP50": 779365.7340817256,
+        "continuity": {
+          "downYears": 6039,
+          "comparableYears": 32607,
+          "maxDropPct": 68.46846846846847,
+          "maxJumpPct": 106.07236484439571
+        },
+        "maxFlowDelta": 7.450580596923828e-09,
+        "completeChunksSha256": "0b5fc86ad9b3a87bd821c78196c03bfe33d4d7c7dcf209ac53a876ab473259bf",
+        "completePathsSha256": "e942288be1b2ad9a5f7d8225350accc97077576754c2970ca23b2f498142e9be",
+        "couplePrefixesSha256": "a4f17009f6d753b619f48dc091cb6c38a47cd758756a459ba7348e9173dac4e6",
+        "backtestSha256": "d5651585e61bac8a0f4617044aba2a0e11eb351ddca61dae9639a23c299e92ac",
+        "historicalCountercheckSha256": "7ca7900ea3e6d6ffaab134dd01da9cd929d521909a60cdd6ff9ec0d6a5c1148e"
+      },
+      "gross/married/static": {
+        "coveredPct": 100,
+        "ruin": 0,
+        "belowMinimum": 33,
+        "survivorYears": 12926,
+        "survivorBudgetRealP10": 43220.46091768064,
+        "survivorBudgetRealP50": 54976.020792193085,
+        "terminalRealP10": 3113024.1457443447,
+        "terminalRealP50": 8639867.967525104,
+        "continuity": {
+          "downYears": 2781,
+          "comparableYears": 26973,
+          "maxDropPct": 61.03966452288767,
+          "maxJumpPct": 71.91981887092763
+        },
+        "maxFlowDelta": 5.960464477539063e-08,
+        "completeChunksSha256": "1311a63e97f3676a41d9574443e6810f56292f7d79cd51ac40d0d90fa3644e64",
+        "completePathsSha256": "21e49f1b0850f0b74cbe620125c8ba4127ba11d95e2381d79e02c26ef78293e0",
+        "couplePrefixesSha256": "15b8abc9a1f29e47c90e11e7d3db2b127fe4cecc794a91c44ad1c69fa0a16e5c",
+        "backtestSha256": "4771d51768483d4e1fe4393894e543892af6bee16ab3211242764063cd8ba063",
+        "historicalCountercheckSha256": "871bc0cd93271672a70a5dad5b79f4229e19aaed5d429fcbce2fb6de98e7bc34"
+      },
+      "gross/married/dynamic": {
+        "coveredPct": 100,
+        "ruin": 0,
+        "belowMinimum": 38,
+        "survivorYears": 12926,
+        "survivorBudgetRealP10": 65064.32649001553,
+        "survivorBudgetRealP50": 65984.42313768818,
+        "terminalRealP10": 2874225.67957588,
+        "terminalRealP50": 7839947.73819119,
+        "continuity": {
+          "downYears": 3218,
+          "comparableYears": 26973,
+          "maxDropPct": 50.86612859082673,
+          "maxJumpPct": 71.91981887092763
+        },
+        "maxFlowDelta": 5.960464477539063e-08,
+        "completeChunksSha256": "c51b9243b3a72ea5389fe98ba1c3817228dd6367738d147f4897bf754a3b724b",
+        "completePathsSha256": "cd31fa37d6c70665bd7dc9e7eca76807ed0a17da80d4ecd299e254437cc3616f",
+        "couplePrefixesSha256": "fa7fbff85af2975f00b6dc1dc543ba44cc73c49453a3b203004e652d784f19a1",
+        "backtestSha256": "f5023cb08518da9f8e132ad62a309cb0c0379fa838734268159a241e3a420f48",
+        "historicalCountercheckSha256": "a3092bc45047542364151c42dcba3919458938d3fbf5ed61f513b464e48b957c"
+      },
+      "gross/unmarried/static": {
+        "coveredPct": 98.75,
+        "ruin": 25,
+        "belowMinimum": 36,
+        "survivorYears": 12828,
+        "survivorBudgetRealP10": 43159.982546866304,
+        "survivorBudgetRealP50": 54345.55387005689,
+        "terminalRealP10": 1564169.4416183368,
+        "terminalRealP50": 5552675.658978485,
+        "continuity": {
+          "downYears": 2766,
+          "comparableYears": 26892,
+          "maxDropPct": 61.141316324386054,
+          "maxJumpPct": 71.91981887092763
+        },
+        "maxFlowDelta": 5.960464477539063e-08,
+        "completeChunksSha256": "79f10b650672b3d231ba57526629bd666bc9053c63d2c426a8ff5fb708aff381",
+        "completePathsSha256": "f26adc4808ad8423559b7b777a7aa578f4e15fb3f1e5b2e275992c823d866458",
+        "couplePrefixesSha256": "c5c1fb9e1da610178f4a3d87feb81cd2f42ebeabc18f36dc8d3110f87dc72bf1",
+        "backtestSha256": "601f7d5462902479adcba802c50263ce160c1ce3120391baee97f87d15638ff1",
+        "historicalCountercheckSha256": "561af4e2ea4f3f47a4dd82bcda15fd4971a931316fe011a9bea03604087aa653"
+      },
+      "gross/unmarried/dynamic": {
+        "coveredPct": 98,
+        "ruin": 40,
+        "belowMinimum": 45,
+        "survivorYears": 12811,
+        "survivorBudgetRealP10": 63893.71472533883,
+        "survivorBudgetRealP50": 65921.22419617772,
+        "terminalRealP10": 1368713.86981694,
+        "terminalRealP50": 4964167.70593605,
+        "continuity": {
+          "downYears": 3185,
+          "comparableYears": 26846,
+          "maxDropPct": 54.48319162868746,
+          "maxJumpPct": 71.91981887092763
+        },
+        "maxFlowDelta": 5.960464477539063e-08,
+        "completeChunksSha256": "17841b73187e490fb92e4cfecfccf74b32b805a6072e898c8e236ad79b365053",
+        "completePathsSha256": "dac51e264e1fef4b84738c3b8e06031ec3e8a723ea877f23fb52c039b11d587d",
+        "couplePrefixesSha256": "d787db844ef33eb16d0c17f25370837c3c5eb1bebc8b5d822425c767afdd88b4",
+        "backtestSha256": "efcd9109a6b5fdc21f3db5b324103aa0b05ad8866f2623a6c96aaf5298fc9e40",
+        "historicalCountercheckSha256": "44997c238b5f8c813814beebe43c3026ff7cffab68a5e2788635a5427755c2e8"
+      }
+    },
+    "compatibility": {
+      "sophie": {
+        "coveredPct": 96.65,
+        "ruin": 67,
+        "belowMinimum": 185,
+        "survivorYears": 0,
+        "survivorBudgetRealP10": null,
+        "survivorBudgetRealP50": null,
+        "terminalRealP10": 176736.39581486007,
+        "terminalRealP50": 1113740.6878190879,
+        "continuity": {
+          "downYears": 0,
+          "comparableYears": 42288,
+          "maxDropPct": 26.66666666666667,
+          "maxJumpPct": 130.0921157608539
+        },
+        "maxFlowDelta": 7.450580596923828e-09,
+        "completeChunksSha256": "04ef05f909d680bd8c9db2ddcd0e48baaa812331470c23450aea711e9fee423a",
+        "completePathsSha256": "c689a9f0eaed6420fb34108b2cf3031b3c3e50f954b82a447c615fe475c19700",
+        "couplePrefixesSha256": "d4513bba68e5e21707c957bf5274c3b310d7f25a4eb4748cfbcf1f3b1a275bad",
+        "backtestSha256": "3723a2d9df765f30dd5b32f2e60c7f5ff11e5a3e89ce78d9e7c87e299d6a76a7",
+        "historicalCountercheckSha256": "69b90c13263d04a1e0f42fd1164c8c569290060c83302f99c779738249933809"
+      },
+      "parity": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854",
+      "balanceInput": "abe48b59e0ef65526d6a509839848ef8aa375248f815990ed1eb81737005ed08",
+      "balanceDecision": "b037c21a039388b06f487ea763b2975cc5e40018b5f73597761d691b4e96fbcc"
+    }
+  },
+  "after": {
+    "alt": false,
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "defaults": {
+      "floor": 75,
+      "wish": 50,
+      "minimum": 50
+    },
+    "definitions": {
+      "money": "heutige EUR",
+      "survivorBudget": "Grundbedarf plus tatsächlich gezahlter Flex; nur volle Hinterbliebenenjahre",
+      "continuity": "Alle finanziellen Paar-/Todes-/Hinterbliebenenjahre: realer Budgetrückgang >5 % außerhalb bear_deep/recovery_in_bear; größter absoluter relativer Jahressprung einschließlich Bärenmarkt",
+      "defaults": "App-Vorgaben, Pflege an, 35 Jahre, Musterhaus 450000 EUR bei Max; Groß wie EP-2 mit Haus 800000 EUR;  Regime-Markov, per-run-seed, CAPE-Sampling aus"
+    },
+    "scenarios": {
+      "muster/married/static": {
+        "coveredPct": 99.85000000000001,
+        "ruin": 3,
+        "belowMinimum": 27,
+        "survivorYears": 15132,
+        "survivorBudgetRealP10": 37390.78395163399,
+        "survivorBudgetRealP50": 37500.00000000001,
+        "terminalRealP10": 926594.0657095071,
+        "terminalRealP50": 2861676.8891385915,
+        "continuity": {
+          "downYears": 2867,
+          "comparableYears": 32651,
+          "maxDropPct": 64.08604533445585,
+          "maxJumpPct": 86.78009521785899
+        },
+        "maxFlowDelta": 1.4901161193847656e-08,
+        "completeChunksSha256": "a02c241c1ad2b2ab95cff1aac4cfc04d5cdc67501ea6fd04c78f6c62236f3577",
+        "completePathsSha256": "d85cb50a56ae97816c64793bbee3a51b2172f89cb849388ce61de5aec09cc913",
+        "couplePrefixesSha256": "4bc17a6f4ccfd9b2756d2eab67c5af75e261826fa528e121ab09c0f9b47d266c",
+        "backtestSha256": "5ccaae199d3476bcb966f0cfd5dd9eeabac20e4933675c31489a239fe55876f9",
+        "historicalCountercheckSha256": "5166505a589b6361fa9eed6c20c36e4107c325662e151076e3afaac5484ff37f"
+      },
+      "muster/married/dynamic": {
+        "coveredPct": 99.85000000000001,
+        "ruin": 3,
+        "belowMinimum": 48,
+        "survivorYears": 15131,
+        "survivorBudgetRealP10": 50265.41750240438,
+        "survivorBudgetRealP50": 52455.78517876251,
+        "terminalRealP10": 720859.964212877,
+        "terminalRealP50": 1924244.512583022,
+        "continuity": {
+          "downYears": 4510,
+          "comparableYears": 32650,
+          "maxDropPct": 63.13565180176697,
+          "maxJumpPct": 107.17226129021866
+        },
+        "maxFlowDelta": 7.450580596923828e-09,
+        "completeChunksSha256": "01f6aa18e77150a854cab919d38fe302e50dbe4be7c94423f4ce4209c51e395d",
+        "completePathsSha256": "6661cfb26d8cfbafaf12f2cdecad84b4c6966726998d1ac62cf16e1c95833549",
+        "couplePrefixesSha256": "08e7046be6a06de1d460f1a96cdf27a7a76ca8961bcdf7a9c7f2d046d5322477",
+        "backtestSha256": "a4b60481b55c3a8a5c13370bcb7b4df6af762b7d8ff20b904d6d1c865e09e266",
+        "historicalCountercheckSha256": "75a724171d180c499d560882aa931981181e82e244fac13ffe54bbd3bb2b57fb"
+      },
+      "muster/unmarried/static": {
+        "coveredPct": 99.35000000000001,
+        "ruin": 13,
+        "belowMinimum": 142,
+        "survivorYears": 15095,
+        "survivorBudgetRealP10": 35742.611048368446,
+        "survivorBudgetRealP50": 37433.72459722047,
+        "terminalRealP10": 388246.05051478936,
+        "terminalRealP50": 1301497.2352421326,
+        "continuity": {
+          "downYears": 2995,
+          "comparableYears": 32625,
+          "maxDropPct": 64.43094756207624,
+          "maxJumpPct": 100.95579115660098
+        },
+        "maxFlowDelta": 1.862645149230957e-08,
+        "completeChunksSha256": "fe37f8ef27af84493d91cc57084faf2a197d4c82f64a8780d177fcdee7917b5a",
+        "completePathsSha256": "42db2c624dc21708e456ff36169f599a6976b1213e728c1eda7f3968226a2aba",
+        "couplePrefixesSha256": "cc963935a5736b325d5774d65e0aa6eeda6d95d9bd7170798347b9633b05aee8",
+        "backtestSha256": "32ac80b9c1ff30c08a5e2427851b8c679748769f537137acfaf101981961349c",
+        "historicalCountercheckSha256": "0c4a30b9b2073d7364e108fb53ca4ce3e0f27d608d1ea807299c29bcb310323e"
+      },
+      "muster/unmarried/dynamic": {
+        "coveredPct": 99.1,
+        "ruin": 18,
+        "belowMinimum": 204,
+        "survivorYears": 15086,
+        "survivorBudgetRealP10": 35810.857862825935,
+        "survivorBudgetRealP50": 50779.16878877157,
+        "terminalRealP10": 276967.4797718849,
+        "terminalRealP50": 831459.26475178,
+        "continuity": {
+          "downYears": 5512,
+          "comparableYears": 32615,
+          "maxDropPct": 65.59633027522935,
+          "maxJumpPct": 100.95579115660098
+        },
+        "maxFlowDelta": 1.1175870895385742e-08,
+        "completeChunksSha256": "d87a501bf3e14a2f62404c0f4fdb6779ddec214ea48abc0c6c5d5c5027bec9d6",
+        "completePathsSha256": "fcdca2d4bff833d6a74ff2c753ec26050bb1f3c1da9e711ed1d2d7a575137788",
+        "couplePrefixesSha256": "a4f17009f6d753b619f48dc091cb6c38a47cd758756a459ba7348e9173dac4e6",
+        "backtestSha256": "d5651585e61bac8a0f4617044aba2a0e11eb351ddca61dae9639a23c299e92ac",
+        "historicalCountercheckSha256": "7ca7900ea3e6d6ffaab134dd01da9cd929d521909a60cdd6ff9ec0d6a5c1148e"
+      },
+      "gross/married/static": {
+        "coveredPct": 100,
+        "ruin": 0,
+        "belowMinimum": 33,
+        "survivorYears": 12926,
+        "survivorBudgetRealP10": 37474.715155099635,
+        "survivorBudgetRealP50": 51958.00300210684,
+        "terminalRealP10": 3122584.4484685776,
+        "terminalRealP50": 8662707.853816263,
+        "continuity": {
+          "downYears": 2789,
+          "comparableYears": 26973,
+          "maxDropPct": 65.57454795274202,
+          "maxJumpPct": 85.538113365991
+        },
+        "maxFlowDelta": 5.960464477539063e-08,
+        "completeChunksSha256": "31dedcadc04a351a576f1f60ea6a8545d2e6163e8df65e491b0006af5202c80c",
+        "completePathsSha256": "88f8611225b41cf5438af019be735bb7c230748f20ef4d048f45da884bae2312",
+        "couplePrefixesSha256": "15b8abc9a1f29e47c90e11e7d3db2b127fe4cecc794a91c44ad1c69fa0a16e5c",
+        "backtestSha256": "4771d51768483d4e1fe4393894e543892af6bee16ab3211242764063cd8ba063",
+        "historicalCountercheckSha256": "871bc0cd93271672a70a5dad5b79f4229e19aaed5d429fcbce2fb6de98e7bc34"
+      },
+      "gross/married/dynamic": {
+        "coveredPct": 100,
+        "ruin": 0,
+        "belowMinimum": 38,
+        "survivorYears": 12926,
+        "survivorBudgetRealP10": 52132.103128095536,
+        "survivorBudgetRealP50": 60751.39596328442,
+        "terminalRealP10": 2914754.771863939,
+        "terminalRealP50": 7911010.633750717,
+        "continuity": {
+          "downYears": 3162,
+          "comparableYears": 26973,
+          "maxDropPct": 62.3196655675975,
+          "maxJumpPct": 100.54516514991745
+        },
+        "maxFlowDelta": 5.960464477539063e-08,
+        "completeChunksSha256": "4025445cd85373d5da40bde34679c17e7683e8e0d7ae3cf00972a26ca96b627c",
+        "completePathsSha256": "905e9c23a74c3a54de29b0e4788db996504b67f32eb73a3c131138ff545052da",
+        "couplePrefixesSha256": "fa7fbff85af2975f00b6dc1dc543ba44cc73c49453a3b203004e652d784f19a1",
+        "backtestSha256": "f5023cb08518da9f8e132ad62a309cb0c0379fa838734268159a241e3a420f48",
+        "historicalCountercheckSha256": "a3092bc45047542364151c42dcba3919458938d3fbf5ed61f513b464e48b957c"
+      },
+      "gross/unmarried/static": {
+        "coveredPct": 98.65,
+        "ruin": 27,
+        "belowMinimum": 37,
+        "survivorYears": 12825,
+        "survivorBudgetRealP10": 37211.58881131115,
+        "survivorBudgetRealP50": 51384.02747582525,
+        "terminalRealP10": 1565538.8049367042,
+        "terminalRealP50": 5605679.5851881355,
+        "continuity": {
+          "downYears": 2774,
+          "comparableYears": 26890,
+          "maxDropPct": 65.37911153535754,
+          "maxJumpPct": 82.81924273443731
+        },
+        "maxFlowDelta": 2.9802322387695312e-08,
+        "completeChunksSha256": "1cc6892fc6578078e6eab2844b07b8fd6002f5c66b09c96bef0c657317adaa27",
+        "completePathsSha256": "8c12f78a891d16859b888eae4ef872b607bd7a24facaac1355f21587aa830669",
+        "couplePrefixesSha256": "c5c1fb9e1da610178f4a3d87feb81cd2f42ebeabc18f36dc8d3110f87dc72bf1",
+        "backtestSha256": "601f7d5462902479adcba802c50263ce160c1ce3120391baee97f87d15638ff1",
+        "historicalCountercheckSha256": "561af4e2ea4f3f47a4dd82bcda15fd4971a931316fe011a9bea03604087aa653"
+      },
+      "gross/unmarried/dynamic": {
+        "coveredPct": 98,
+        "ruin": 40,
+        "belowMinimum": 46,
+        "survivorYears": 12810,
+        "survivorBudgetRealP10": 51991.35613553267,
+        "survivorBudgetRealP50": 59919.01926241744,
+        "terminalRealP10": 1370624.1864452863,
+        "terminalRealP50": 5070293.416897348,
+        "continuity": {
+          "downYears": 3146,
+          "comparableYears": 26846,
+          "maxDropPct": 58.48358584341427,
+          "maxJumpPct": 98.42093762838383
+        },
+        "maxFlowDelta": 2.9802322387695312e-08,
+        "completeChunksSha256": "dd054398baf5d2d75644d0fee8c3b150a2c337d623de3da651fd5d9477dbced6",
+        "completePathsSha256": "1b0cc0ef5fa3a9a8ba594cfe661c7affd8358d2876d8c4721d094e0e76fc5e31",
+        "couplePrefixesSha256": "d787db844ef33eb16d0c17f25370837c3c5eb1bebc8b5d822425c767afdd88b4",
+        "backtestSha256": "efcd9109a6b5fdc21f3db5b324103aa0b05ad8866f2623a6c96aaf5298fc9e40",
+        "historicalCountercheckSha256": "44997c238b5f8c813814beebe43c3026ff7cffab68a5e2788635a5427755c2e8"
+      }
+    },
+    "compatibility": {
+      "sophie": {
+        "coveredPct": 96.65,
+        "ruin": 67,
+        "belowMinimum": 185,
+        "survivorYears": 0,
+        "survivorBudgetRealP10": null,
+        "survivorBudgetRealP50": null,
+        "terminalRealP10": 176736.39581486007,
+        "terminalRealP50": 1113740.6878190879,
+        "continuity": {
+          "downYears": 0,
+          "comparableYears": 42288,
+          "maxDropPct": 26.66666666666667,
+          "maxJumpPct": 130.0921157608539
+        },
+        "maxFlowDelta": 7.450580596923828e-09,
+        "completeChunksSha256": "04ef05f909d680bd8c9db2ddcd0e48baaa812331470c23450aea711e9fee423a",
+        "completePathsSha256": "c689a9f0eaed6420fb34108b2cf3031b3c3e50f954b82a447c615fe475c19700",
+        "couplePrefixesSha256": "d4513bba68e5e21707c957bf5274c3b310d7f25a4eb4748cfbcf1f3b1a275bad",
+        "backtestSha256": "3723a2d9df765f30dd5b32f2e60c7f5ff11e5a3e89ce78d9e7c87e299d6a76a7",
+        "historicalCountercheckSha256": "69b90c13263d04a1e0f42fd1164c8c569290060c83302f99c779738249933809"
+      },
+      "parity": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854",
+      "balanceInput": "abe48b59e0ef65526d6a509839848ef8aa375248f815990ed1eb81737005ed08",
+      "balanceDecision": "b037c21a039388b06f487ea763b2975cc5e40018b5f73597761d691b4e96fbcc"
+    }
+  },
+  "legacyStoredValues": {
+    "alt": true,
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "defaults": {
+      "floor": 70,
+      "wish": 75,
+      "minimum": 75
+    },
+    "definitions": {
+      "money": "heutige EUR",
+      "survivorBudget": "Grundbedarf plus tatsächlich gezahlter Flex; nur volle Hinterbliebenenjahre",
+      "continuity": "Alle finanziellen Paar-/Todes-/Hinterbliebenenjahre: realer Budgetrückgang >5 % außerhalb bear_deep/recovery_in_bear; größter absoluter relativer Jahressprung einschließlich Bärenmarkt",
+      "defaults": "App-Vorgaben, Pflege an, 35 Jahre, Musterhaus 450000 EUR bei Max; Groß wie EP-2 mit Haus 800000 EUR;  Regime-Markov, per-run-seed, CAPE-Sampling aus"
+    },
+    "scenarios": {
+      "muster/married/static": {
+        "coveredPct": 99.85000000000001,
+        "ruin": 3,
+        "belowMinimum": 27,
+        "survivorYears": 15132,
+        "survivorBudgetRealP10": 43178.17949078238,
+        "survivorBudgetRealP50": 43500,
+        "terminalRealP10": 911551.5275875434,
+        "terminalRealP50": 2796206.3201424396,
+        "continuity": {
+          "downYears": 2826,
+          "comparableYears": 32651,
+          "maxDropPct": 59.16360542597332,
+          "maxJumpPct": 84.3738827377187
+        },
+        "maxFlowDelta": 1.1175870895385742e-08,
+        "completeChunksSha256": "ef46c39d54f47fae2c65e1883989bb85f0aa2f723a95463847bcd5f25638bc2d",
+        "completePathsSha256": "b7482cdd5f41c5031d3ef16906405b036dc2193bc69bf89896914629981ce9e1",
+        "couplePrefixesSha256": "4bc17a6f4ccfd9b2756d2eab67c5af75e261826fa528e121ab09c0f9b47d266c",
+        "backtestSha256": "5ccaae199d3476bcb966f0cfd5dd9eeabac20e4933675c31489a239fe55876f9",
+        "historicalCountercheckSha256": "5166505a589b6361fa9eed6c20c36e4107c325662e151076e3afaac5484ff37f"
+      }
+    },
+    "compatibility": {}
+  },
+  "historicalCountercheck": {
+    "before": {
+      "alt": true,
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "block",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "defaults": null,
+      "definitions": {
+        "money": "heutige EUR",
+        "survivorBudget": "Grundbedarf plus tatsächlich gezahlter Flex; nur volle Hinterbliebenenjahre",
+        "continuity": "Alle finanziellen Paar-/Todes-/Hinterbliebenenjahre: realer Budgetrückgang >5 % außerhalb bear_deep/recovery_in_bear; größter absoluter relativer Jahressprung einschließlich Bärenmarkt",
+        "defaults": "App-Vorgaben, Pflege an, 35 Jahre, Musterhaus 450000 EUR bei Max; Groß wie EP-2 mit Haus 800000 EUR;  Regime-Markov, per-run-seed, CAPE-Sampling aus"
+      },
+      "scenarios": {
+        "historical": {
+          "coveredPct": 99.95,
+          "ruin": 1,
+          "belowMinimum": 17,
+          "survivorYears": 15016,
+          "survivorBudgetRealP10": 43228.628091345396,
+          "survivorBudgetRealP50": 43500,
+          "terminalRealP10": 1105148.0052494192,
+          "terminalRealP50": 3321059.7904958865,
+          "continuity": {
+            "downYears": 2994,
+            "comparableYears": 35158,
+            "maxDropPct": 60.9486985341128,
+            "maxJumpPct": 84.60913441051319
+          },
+          "maxFlowDelta": 5.960464477539063e-08,
+          "completeChunksSha256": "4b6ee4adfbf36e72c3e755f177cb7d45e644e03cb0dbd148eeb6fdb3eef5c21e",
+          "completePathsSha256": "119ecb82606feb127abc1fe57b544e8706987781bb96e4bcd70b0cf6e8778bf4",
+          "couplePrefixesSha256": "619d74d78c80a3581cb2cf9acdfed232cb36e6a95b4aa922cafb14acb95ff99f",
+          "backtestSha256": "15de7eaac420c8df0bb377d5ca6e335c1ca8b7a6cc30e9bbb3a5f3d5c14f4092",
+          "historicalCountercheckSha256": "8d70e2d42808702be0af7ea3914f0691736a5526c0ae81952cfe9e38c53decf7"
+        }
+      },
+      "compatibility": {},
+      "historicalPool": "1925–1999, Blockbootstrap, Blockgröße 3"
+    },
+    "after": {
+      "alt": false,
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "block",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "defaults": null,
+      "definitions": {
+        "money": "heutige EUR",
+        "survivorBudget": "Grundbedarf plus tatsächlich gezahlter Flex; nur volle Hinterbliebenenjahre",
+        "continuity": "Alle finanziellen Paar-/Todes-/Hinterbliebenenjahre: realer Budgetrückgang >5 % außerhalb bear_deep/recovery_in_bear; größter absoluter relativer Jahressprung einschließlich Bärenmarkt",
+        "defaults": "App-Vorgaben, Pflege an, 35 Jahre, Musterhaus 450000 EUR bei Max; Groß wie EP-2 mit Haus 800000 EUR;  Regime-Markov, per-run-seed, CAPE-Sampling aus"
+      },
+      "scenarios": {
+        "historical": {
+          "coveredPct": 99.95,
+          "ruin": 1,
+          "belowMinimum": 17,
+          "survivorYears": 15016,
+          "survivorBudgetRealP10": 37499.99999999997,
+          "survivorBudgetRealP50": 37500.00000000001,
+          "terminalRealP10": 1143345.7473260772,
+          "terminalRealP50": 3363803.3510438865,
+          "continuity": {
+            "downYears": 3033,
+            "comparableYears": 35158,
+            "maxDropPct": 65.49943043424797,
+            "maxJumpPct": 86.57747520361876
+          },
+          "maxFlowDelta": 5.960464477539063e-08,
+          "completeChunksSha256": "e7c970044b641c4ff3af24b43c9b3f046ce082d1e8ecbcf596e706c1f69700bb",
+          "completePathsSha256": "c9c766f9c9d4786e1f2891572e5d4f28c2e6c6a93ae72be730f0412bc1b03b0b",
+          "couplePrefixesSha256": "619d74d78c80a3581cb2cf9acdfed232cb36e6a95b4aa922cafb14acb95ff99f",
+          "backtestSha256": "15de7eaac420c8df0bb377d5ca6e335c1ca8b7a6cc30e9bbb3a5f3d5c14f4092",
+          "historicalCountercheckSha256": "8d70e2d42808702be0af7ea3914f0691736a5526c0ae81952cfe9e38c53decf7"
+        }
+      },
+      "compatibility": {},
+      "historicalPool": "1925–1999, Blockbootstrap, Blockgröße 3"
+    }
+  },
+  "sensitivity": {
+    "alt": false,
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "defaults": null,
+    "definitions": {
+      "money": "heutige EUR",
+      "survivorBudget": "Grundbedarf plus tatsächlich gezahlter Flex; nur volle Hinterbliebenenjahre",
+      "continuity": "Alle finanziellen Paar-/Todes-/Hinterbliebenenjahre: realer Budgetrückgang >5 % außerhalb bear_deep/recovery_in_bear; größter absoluter relativer Jahressprung einschließlich Bärenmarkt",
+      "defaults": "App-Vorgaben, Pflege an, 35 Jahre, Musterhaus 450000 EUR bei Max; Groß wie EP-2 mit Haus 800000 EUR;  Regime-Markov, per-run-seed, CAPE-Sampling aus"
+    },
+    "scenarios": {
+      "0.7": {
+        "coveredPct": 99.85000000000001,
+        "ruin": 3,
+        "belowMinimum": 24,
+        "survivorYears": 15132,
+        "survivorBudgetRealP10": 26249.999999999993,
+        "survivorBudgetRealP50": 26250.000000000004,
+        "terminalRealP10": 990700.7140153076,
+        "terminalRealP50": 2994551.8604138764,
+        "continuity": {
+          "downYears": 2964,
+          "comparableYears": 32651,
+          "maxDropPct": 73.35712823082747,
+          "maxJumpPct": 123.97156459694143
+        },
+        "maxFlowDelta": 1.4901161193847656e-08,
+        "completeChunksSha256": "f56af352972854813254425230eeb9f6ee4500d19f19bf9c095fc92616e37eac",
+        "completePathsSha256": "635ad1803731f1040aa569d6424f12f69c612a3866ffd29ca335cdade48b41a8",
+        "couplePrefixesSha256": "4bc17a6f4ccfd9b2756d2eab67c5af75e261826fa528e121ab09c0f9b47d266c",
+        "backtestSha256": "15de7eaac420c8df0bb377d5ca6e335c1ca8b7a6cc30e9bbb3a5f3d5c14f4092",
+        "historicalCountercheckSha256": "8d70e2d42808702be0af7ea3914f0691736a5526c0ae81952cfe9e38c53decf7"
+      },
+      "1.3": {
+        "coveredPct": 99.85000000000001,
+        "ruin": 3,
+        "belowMinimum": 34,
+        "survivorYears": 15132,
+        "survivorBudgetRealP10": 48367.06249003813,
+        "survivorBudgetRealP50": 48749.999999999985,
+        "terminalRealP10": 876606.726406845,
+        "terminalRealP50": 2729158.068046272,
+        "continuity": {
+          "downYears": 2768,
+          "comparableYears": 32651,
+          "maxDropPct": 55.56933218525201,
+          "maxJumpPct": 84.3738827377187
+        },
+        "maxFlowDelta": 1.4901161193847656e-08,
+        "completeChunksSha256": "c71bc56a794cfab9335f4d62b7097c5bc939966577e4bbea3657f6d822d81a36",
+        "completePathsSha256": "149205eb939506b814c34b8a0ca8097e7d4e1f0a58ea30584ecd22e4a2d48d0a",
+        "couplePrefixesSha256": "4bc17a6f4ccfd9b2756d2eab67c5af75e261826fa528e121ab09c0f9b47d266c",
+        "backtestSha256": "15de7eaac420c8df0bb377d5ca6e335c1ca8b7a6cc30e9bbb3a5f3d5c14f4092",
+        "historicalCountercheckSha256": "8d70e2d42808702be0af7ea3914f0691736a5526c0ae81952cfe9e38c53decf7"
+      }
+    },
+    "compatibility": {}
+  },
+  "verification": {
+    "completeSophieChunksEqual": true,
+    "parityEqual": true,
+    "balanceInputAndDecisionEqual": true,
+    "allCouplePrefixesEqual": true,
+    "allBacktestsEqual": true,
+    "allHistoricalBacktestsEqual": true,
+    "storedLegacyCompleteChunksEqual": true
+  }
+}

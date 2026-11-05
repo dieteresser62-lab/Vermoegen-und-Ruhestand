@@ -1,0 +1,453 @@
+{
+  "synthetic": true,
+  "household": "Max und Erika Mustermann",
+  "purpose": "VS-1b: gleicher Datenstand vor/nach Pool-Wiederverwendung, unveränderte schnelle Suche und volle Endprobe",
+  "checksumFormat": "SHA256(JSON.stringify({ paths: chunk.pathSummaries, budgets }))",
+  "reference24Runs": {
+    "baseline": "a96ddabcf9286552785a6406175a5a3b133d150ce19357a847a2c710bf67a6ce",
+    "variant": "244b5d9c72c108b27e8764e46ad426b7b2a7cb6becbed0b5f7181e1e34f2ade4",
+    "rescued": "f4ce36cbd93c3d38b9dbf88db996a31f16ec76c840e77fdebb3421ac86f32c9c"
+  },
+  "before": {
+    "synthetic": true,
+    "household": "Max und Erika Mustermann",
+    "monteCarloParams": {
+      "anzahl": 10000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "goals": {
+      "coveragePct": 99,
+      "affectedPct": 10
+    },
+    "workerCount": 8,
+    "runtime": "v22.23.2",
+    "elapsedMs": 51224.920324,
+    "fastElapsedMs": null,
+    "monthly": 4950,
+    "totalMonthly": 7450,
+    "metrics": {
+      "coveragePct": 99.1,
+      "affectedPct": 3.3000000000000003,
+      "affectedYears": 1,
+      "budgetP10": 52133.055078324294,
+      "budgetP50": 83224.65457621029,
+      "wealthP10": 420555.99550847756,
+      "wealthP50": 1504843.8277278193
+    },
+    "evaluations": 12,
+    "observations": [
+      {
+        "monthly": 2500,
+        "metrics": {
+          "coveragePct": 99.7,
+          "affectedPct": 1.7999999999999998,
+          "affectedYears": 2,
+          "budgetP10": 37500,
+          "budgetP50": 59749.96401118754,
+          "wealthP10": 839065.7809951026,
+          "wealthP50": 2684222.6471136855
+        }
+      },
+      {
+        "monthly": 2750,
+        "metrics": {
+          "coveragePct": 99.7,
+          "affectedPct": 2,
+          "affectedYears": 1.5,
+          "budgetP10": 39000,
+          "budgetP50": 62637.85964967114,
+          "wealthP10": 793159.3019890236,
+          "wealthP50": 2551730.904099037
+        }
+      },
+      {
+        "monthly": 3000,
+        "metrics": {
+          "coveragePct": 99.7,
+          "affectedPct": 2.1,
+          "affectedYears": 1,
+          "budgetP10": 40500,
+          "budgetP50": 65549.49678404478,
+          "wealthP10": 734311.6338032747,
+          "wealthP50": 2431911.3920516474
+        }
+      },
+      {
+        "monthly": 3500,
+        "metrics": {
+          "coveragePct": 99.6,
+          "affectedPct": 2.1,
+          "affectedYears": 2,
+          "budgetP10": 43499.99999999999,
+          "budgetP50": 71004.01819075838,
+          "wealthP10": 643434.7985342017,
+          "wealthP50": 2162847.3324120175
+        }
+      },
+      {
+        "monthly": 4500,
+        "metrics": {
+          "coveragePct": 99.4,
+          "affectedPct": 2.7,
+          "affectedYears": 1,
+          "budgetP10": 49478.94866284196,
+          "budgetP50": 79609.92083066638,
+          "wealthP10": 502197.5031409702,
+          "wealthP50": 1701573.0763036907
+        }
+      },
+      {
+        "monthly": 6500,
+        "metrics": {
+          "coveragePct": 93.7,
+          "affectedPct": 4.1000000000000005,
+          "affectedYears": 2,
+          "budgetP10": 61254.89898655459,
+          "budgetP50": 92973.75463112262,
+          "wealthP10": 108164.80454724358,
+          "wealthP50": 883582.0037375177
+        }
+      },
+      {
+        "monthly": 5500,
+        "metrics": {
+          "coveragePct": 97.6,
+          "affectedPct": 3.5999999999999996,
+          "affectedYears": 2,
+          "budgetP10": 55405.34289846264,
+          "budgetP50": 87852.96704356623,
+          "wealthP10": 307361.3817282553,
+          "wealthP50": 1219185.4512679805
+        }
+      },
+      {
+        "monthly": 5000,
+        "metrics": {
+          "coveragePct": 98.9,
+          "affectedPct": 3.3000000000000003,
+          "affectedYears": 1,
+          "budgetP10": 52443.30852572165,
+          "budgetP50": 83973.58475499143,
+          "wealthP10": 399962.0360090464,
+          "wealthP50": 1465081.6137451446
+        }
+      },
+      {
+        "monthly": 4750,
+        "metrics": {
+          "coveragePct": 99.1,
+          "affectedPct": 3,
+          "affectedYears": 1,
+          "budgetP10": 50958.0042168611,
+          "budgetP50": 81339.99684058764,
+          "wealthP10": 461661.469315607,
+          "wealthP50": 1589375.4880241065
+        }
+      },
+      {
+        "monthly": 4850,
+        "metrics": {
+          "coveragePct": 99,
+          "affectedPct": 3,
+          "affectedYears": 1.5,
+          "budgetP10": 51565.273910806456,
+          "budgetP50": 82168.26874626482,
+          "wealthP10": 446962.0660144945,
+          "wealthP50": 1549962.151614388
+        }
+      },
+      {
+        "monthly": 4900,
+        "metrics": {
+          "coveragePct": 99,
+          "affectedPct": 3.2,
+          "affectedYears": 1,
+          "budgetP10": 51845.36516958408,
+          "budgetP50": 82898.77243268979,
+          "wealthP10": 432697.1568841378,
+          "wealthP50": 1523851.6334154545
+        }
+      },
+      {
+        "monthly": 4950,
+        "metrics": {
+          "coveragePct": 99.1,
+          "affectedPct": 3.3000000000000003,
+          "affectedYears": 1,
+          "budgetP10": 52133.055078324294,
+          "budgetP50": 83224.65457621029,
+          "wealthP10": 420555.99550847756,
+          "wealthP50": 1504843.8277278193
+        }
+      }
+    ],
+    "baselineChecksum": "9065e12c2b7061bc6707a84fad38d2708306e909781e62af3ab6cb3b74172c5f",
+    "variantChecksum": "0f6d8b3a4f746194a24f9666a0cc62f762a69ef6a295ec7b28f0203b8e985c60",
+    "workerInstances": 96,
+    "allTerminated": true
+  },
+  "after": {
+    "synthetic": true,
+    "household": "Max und Erika Mustermann",
+    "monteCarloParams": {
+      "anzahl": 10000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "goals": {
+      "coveragePct": 99,
+      "affectedPct": 10
+    },
+    "workerCount": 8,
+    "runtime": "v22.23.2",
+    "elapsedMs": 143670.486301,
+    "fastElapsedMs": 35965.049958,
+    "monthly": 4950,
+    "totalMonthly": 7450,
+    "metrics": {
+      "coveragePct": 98.81,
+      "affectedPct": 3.51,
+      "affectedYears": 2,
+      "budgetP10": 52117.82308360552,
+      "budgetP50": 83018.77470355731,
+      "wealthP10": 386379.1225494428,
+      "wealthP50": 1481476.7717923168
+    },
+    "evaluations": 12,
+    "finalVerification": {
+      "status": "unconfirmed",
+      "runs": 10000,
+      "searchMonthly": 4950,
+      "attempts": [
+        {
+          "monthly": 4950,
+          "metrics": {
+            "coveragePct": 98.81,
+            "affectedPct": 3.51,
+            "affectedYears": 2,
+            "budgetP10": 52117.82308360552,
+            "budgetP50": 83018.77470355731,
+            "wealthP10": 386379.1225494428,
+            "wealthP50": 1481476.7717923168
+          }
+        },
+        {
+          "monthly": 4900,
+          "metrics": {
+            "coveragePct": 98.86,
+            "affectedPct": 3.52,
+            "affectedYears": 2,
+            "budgetP10": 51819.31825029661,
+            "budgetP50": 82791.22198126072,
+            "wealthP10": 394663.98655813816,
+            "wealthP50": 1502951.1967149158
+          }
+        },
+        {
+          "monthly": 4850,
+          "metrics": {
+            "coveragePct": 98.91,
+            "affectedPct": 3.4000000000000004,
+            "affectedYears": 2,
+            "budgetP10": 51526.81759079528,
+            "budgetP50": 82029.36802973977,
+            "wealthP10": 403028.5604477466,
+            "wealthP50": 1530469.657452479
+          }
+        },
+        {
+          "monthly": 4800,
+          "metrics": {
+            "coveragePct": 98.95,
+            "affectedPct": 3.37,
+            "affectedYears": 2,
+            "budgetP10": 51222.862479159805,
+            "budgetP50": 81754.75452859791,
+            "wealthP10": 411011.67822627036,
+            "wealthP50": 1550332.6657690448
+          }
+        }
+      ]
+    },
+    "observations": [
+      {
+        "monthly": 2500,
+        "metrics": {
+          "coveragePct": 99.7,
+          "affectedPct": 1.7999999999999998,
+          "affectedYears": 2,
+          "budgetP10": 37500,
+          "budgetP50": 59749.96401118754,
+          "wealthP10": 839065.7809951026,
+          "wealthP50": 2684222.6471136855
+        }
+      },
+      {
+        "monthly": 2750,
+        "metrics": {
+          "coveragePct": 99.7,
+          "affectedPct": 2,
+          "affectedYears": 1.5,
+          "budgetP10": 39000,
+          "budgetP50": 62637.85964967114,
+          "wealthP10": 793159.3019890236,
+          "wealthP50": 2551730.904099037
+        }
+      },
+      {
+        "monthly": 3000,
+        "metrics": {
+          "coveragePct": 99.7,
+          "affectedPct": 2.1,
+          "affectedYears": 1,
+          "budgetP10": 40500,
+          "budgetP50": 65549.49678404478,
+          "wealthP10": 734311.6338032747,
+          "wealthP50": 2431911.3920516474
+        }
+      },
+      {
+        "monthly": 3500,
+        "metrics": {
+          "coveragePct": 99.6,
+          "affectedPct": 2.1,
+          "affectedYears": 2,
+          "budgetP10": 43499.99999999999,
+          "budgetP50": 71004.01819075838,
+          "wealthP10": 643434.7985342017,
+          "wealthP50": 2162847.3324120175
+        }
+      },
+      {
+        "monthly": 4500,
+        "metrics": {
+          "coveragePct": 99.4,
+          "affectedPct": 2.7,
+          "affectedYears": 1,
+          "budgetP10": 49478.94866284196,
+          "budgetP50": 79609.92083066638,
+          "wealthP10": 502197.5031409702,
+          "wealthP50": 1701573.0763036907
+        }
+      },
+      {
+        "monthly": 6500,
+        "metrics": {
+          "coveragePct": 93.7,
+          "affectedPct": 4.1000000000000005,
+          "affectedYears": 2,
+          "budgetP10": 61254.89898655459,
+          "budgetP50": 92973.75463112262,
+          "wealthP10": 108164.80454724358,
+          "wealthP50": 883582.0037375177
+        }
+      },
+      {
+        "monthly": 5500,
+        "metrics": {
+          "coveragePct": 97.6,
+          "affectedPct": 3.5999999999999996,
+          "affectedYears": 2,
+          "budgetP10": 55405.34289846264,
+          "budgetP50": 87852.96704356623,
+          "wealthP10": 307361.3817282553,
+          "wealthP50": 1219185.4512679805
+        }
+      },
+      {
+        "monthly": 5000,
+        "metrics": {
+          "coveragePct": 98.9,
+          "affectedPct": 3.3000000000000003,
+          "affectedYears": 1,
+          "budgetP10": 52443.30852572165,
+          "budgetP50": 83973.58475499143,
+          "wealthP10": 399962.0360090464,
+          "wealthP50": 1465081.6137451446
+        }
+      },
+      {
+        "monthly": 4750,
+        "metrics": {
+          "coveragePct": 99.1,
+          "affectedPct": 3,
+          "affectedYears": 1,
+          "budgetP10": 50958.0042168611,
+          "budgetP50": 81339.99684058764,
+          "wealthP10": 461661.469315607,
+          "wealthP50": 1589375.4880241065
+        }
+      },
+      {
+        "monthly": 4850,
+        "metrics": {
+          "coveragePct": 99,
+          "affectedPct": 3,
+          "affectedYears": 1.5,
+          "budgetP10": 51565.273910806456,
+          "budgetP50": 82168.26874626482,
+          "wealthP10": 446962.0660144945,
+          "wealthP50": 1549962.151614388
+        }
+      },
+      {
+        "monthly": 4900,
+        "metrics": {
+          "coveragePct": 99,
+          "affectedPct": 3.2,
+          "affectedYears": 1,
+          "budgetP10": 51845.36516958408,
+          "budgetP50": 82898.77243268979,
+          "wealthP10": 432697.1568841378,
+          "wealthP50": 1523851.6334154545
+        }
+      },
+      {
+        "monthly": 4950,
+        "metrics": {
+          "coveragePct": 99.1,
+          "affectedPct": 3.3000000000000003,
+          "affectedYears": 1,
+          "budgetP10": 52133.055078324294,
+          "budgetP50": 83224.65457621029,
+          "wealthP10": 420555.99550847756,
+          "wealthP50": 1504843.8277278193
+        }
+      }
+    ],
+    "baselineChecksum": "36ce245cdcfe3f103bd7650e3e9ba27ab6142fee57f150e51c39d186fe0a292d",
+    "variantChecksum": "06287088a7de1bdb21abbca38e19c8e9664ad2c6abd370fb811bd43fdf192b52",
+    "workerInstances": 8,
+    "allTerminated": true
+  },
+  "fastObservationsIdentical": true,
+  "comparisonZW1b": {
+    "referenceFlexMonthly": 4650,
+    "referenceRuns": 2000,
+    "differenceMonthly": 300,
+    "confirmed": false
+  },
+  "timingNote": "Einzelmessungen auf demselben Rechner mit acht echten Node-Workern. Abschließender Nachherlauf ohne parallele Fachtests; Doku-/Quellprüfungen liefen kurzzeitig mit.",
+  "firstAfterUnderTargetedTestLoad": {
+    "elapsedMs": 158153.51403299998,
+    "fastElapsedMs": 35445.03998,
+    "baselineChecksum": "36ce245cdcfe3f103bd7650e3e9ba27ab6142fee57f150e51c39d186fe0a292d",
+    "variantChecksum": "06287088a7de1bdb21abbca38e19c8e9664ad2c6abd370fb811bd43fdf192b52"
+  },
+  "fastRawParity1000Runs": {
+    "baselineBefore": "9065e12c2b7061bc6707a84fad38d2708306e909781e62af3ab6cb3b74172c5f",
+    "baselineAfter": "9065e12c2b7061bc6707a84fad38d2708306e909781e62af3ab6cb3b74172c5f",
+    "variantBefore": "0f6d8b3a4f746194a24f9666a0cc62f762a69ef6a295ec7b28f0203b8e985c60",
+    "variantAfter": "0f6d8b3a4f746194a24f9666a0cc62f762a69ef6a295ec7b28f0203b8e985c60",
+    "byteIdentical": true
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "reason": "PG-1b / FR-47: automatisch abgeleitetes Pflegegeld in künftigen Pflegejahren. Historische Referenzen bleiben erhalten. Dieselben zwei vollständigen Ausgangstests bestehen auf neuen Quellen, wenn ausschließlich die Pflegegeld-Ableitung im Messprozess 0 liefert. Keine geänderten Renten-, Budget- oder Pflegemodellregeln.",
+  "control": [
+    {
+      "file": "tests/plan-view-income.test.mjs",
+      "mode": "control",
+      "totalAssertions": 87,
+      "failedAssertions": 0,
+      "hashes": {},
+      "labels": []
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "mode": "control",
+      "totalAssertions": 206,
+      "failedAssertions": 0,
+      "hashes": {},
+      "labels": []
+    }
+  ],
+  "groups": [
+    {
+      "file": "tests/plan-view-income.test.mjs",
+      "mode": "collect",
+      "totalAssertions": 87,
+      "failedAssertions": 0,
+      "labels": [
+        {
+          "expected": "5179f520a83389b51c67feb8928b9ae26b3536d4257046a1e744cc0f32ef5af0",
+          "actual": "d358756455eb323b2443b3b61a65c6a3e09ac237cd02fe408de2d392d9b5b53a",
+          "label": "Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen"
+        }
+      ]
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "mode": "collect",
+      "totalAssertions": 206,
+      "failedAssertions": 0,
+      "labels": [
+        {
+          "expected": "f0d13f2b6116acc83601aeff4aefb36f316fbf35cb4f60dc245975b2980644a3",
+          "actual": "63ba724c59ea863cacc2bb0ac5700599a8c0b96150ac38253ed48ae0e134025a",
+          "label": "Vorgabe: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+        },
+        {
+          "expected": "1c46591f7d5bb935061299119b454fb979a489ff98c695da190eefcf3aa0a24f",
+          "actual": "79bc8a0b54c887a8d1308e46550e2f61bdc899a4338da7f9a7bd53b04a22b909",
+          "label": "Vorgabe: vollständiger PM-1c-Backtest und MC-Pfad 0"
+        },
+        {
+          "expected": "c8175d8de41ad3a39cf2210c0d347f52d7926048b952ebcf872967b648d94f22",
+          "actual": "c70d969dcd17eb1f6f5d8287d9806d7d9c5d300f09a588c5640206aa27ccf0f5",
+          "label": "konservativ: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+        },
+        {
+          "expected": "0bae8839b346f5703b3c38d7cdd1de53ec62c364ad6e9a538afca305862501b8",
+          "actual": "91f0fc95b43447e5fde18528d3f6d0efeac8bfc7684d2c9e02ddba82505c95de",
+          "label": "konservativ: vollständiger PM-1c-Backtest und MC-Pfad 0"
+        },
+        {
+          "expected": "31a3479a49c9e279e735f541d5b4c4e8e7aa5c20a7ed1367cfb37e38c2dda661",
+          "actual": "85d6e1ecd9ac9d185c059bef7eb80e2a314aa38cd2f2e59af265a0c012047a33",
+          "label": "ausgewogen: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+        },
+        {
+          "expected": "b4073f344c4650345285ebcb4cdf3b8d784f09766419277af212be9bd66bfa63",
+          "actual": "839c9acbd17bdf313e9b99cc6e68c1813b2dffe9064d8507b46794df7ca1fe10",
+          "label": "ausgewogen: vollständiger PM-1c-Backtest und MC-Pfad 0"
+        },
+        {
+          "expected": "2295d9bb055360bf56a8053f71aafdaf4de7029e293f09e6c6d36418628f0610",
+          "actual": "9dc5f8d1101efea1e2553b577bd2243dbd080bcd58109ee72d07e745e1a5281d",
+          "label": "offensiv: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+        },
+        {
+          "expected": "53fd0f90973ff405919132adb1bf1526d896eeb60b556872528daee37a59ad94",
+          "actual": "1b7beb8a0f39441d8b8eca5cc1f146d724b126de47e790cb309a3d3fc7da8580",
+          "label": "offensiv: vollständiger PM-1c-Backtest und MC-Pfad 0"
+        }
+      ]
+    }
+  ],
+  "hashes": {
+    "5179f520a83389b51c67feb8928b9ae26b3536d4257046a1e744cc0f32ef5af0": "d358756455eb323b2443b3b61a65c6a3e09ac237cd02fe408de2d392d9b5b53a",
+    "f0d13f2b6116acc83601aeff4aefb36f316fbf35cb4f60dc245975b2980644a3": "63ba724c59ea863cacc2bb0ac5700599a8c0b96150ac38253ed48ae0e134025a",
+    "1c46591f7d5bb935061299119b454fb979a489ff98c695da190eefcf3aa0a24f": "79bc8a0b54c887a8d1308e46550e2f61bdc899a4338da7f9a7bd53b04a22b909",
+    "c8175d8de41ad3a39cf2210c0d347f52d7926048b952ebcf872967b648d94f22": "c70d969dcd17eb1f6f5d8287d9806d7d9c5d300f09a588c5640206aa27ccf0f5",
+    "0bae8839b346f5703b3c38d7cdd1de53ec62c364ad6e9a538afca305862501b8": "91f0fc95b43447e5fde18528d3f6d0efeac8bfc7684d2c9e02ddba82505c95de",
+    "31a3479a49c9e279e735f541d5b4c4e8e7aa5c20a7ed1367cfb37e38c2dda661": "85d6e1ecd9ac9d185c059bef7eb80e2a314aa38cd2f2e59af265a0c012047a33",
+    "b4073f344c4650345285ebcb4cdf3b8d784f09766419277af212be9bd66bfa63": "839c9acbd17bdf313e9b99cc6e68c1813b2dffe9064d8507b46794df7ca1fe10",
+    "2295d9bb055360bf56a8053f71aafdaf4de7029e293f09e6c6d36418628f0610": "9dc5f8d1101efea1e2553b577bd2243dbd080bcd58109ee72d07e745e1a5281d",
+    "53fd0f90973ff405919132adb1bf1526d896eeb60b556872528daee37a59ad94": "1b7beb8a0f39441d8b8eca5cc1f146d724b126de47e790cb309a3d3fc7da8580"
+  }
+}

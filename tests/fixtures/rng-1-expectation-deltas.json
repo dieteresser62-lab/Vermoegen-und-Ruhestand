@@ -1,0 +1,889 @@
+{
+  "basis": "HEAD vor RNG-1; historische Referenzdateien bleiben erhalten. Jeder Eintrag ist ein einzelner beobachteter Referenzwechsel.",
+  "hashes": {
+    "92997de9b81aeaafd98ab6fa16747bc947c07cdcf5641fe5aa203e3766c1e7b8": "85bd41d3ff1a3c7f3588864e2ea167b76768bc5619db52b4eaf55227edc12901",
+    "74ae63429ffac8a127a3c7bc48ddbb33fdc99e3033a73bf336336b221eecb9e2": "1d18db89a8378c852c65959187d429523dec27fc7021b372b336293806d23451",
+    "e23d3579ff24fda039717a386925fed37a470bc4715951914dbdf96e725dc085": "2507049284df40aaa7ad18ba271a8784eb0e6f4e1602a83a92b9aca08e2af3e7",
+    "68ba6ffc74977fe0aa5fff6ec6141657f83a69b1072dbc7ce0fbabb611bc0a3d": "edeeeb3749ef9aa9269909b26b4b46f7fc30d5d38df22c3ac218622431939975",
+    "39d7805c286cea27130234ebc8433b4cb7f6a82d29167e3b9c3e46da3393af46": "7c7862704644b26b356e0ff749e0e4b7c1b9eb8444a5fb8a3e4407bffcd0de88",
+    "8d65b158d52e21bb504b344a7c9de15b0942fc07bfa12b88d9f31c2e45ccdf30": "6f8a68d5654055390df7e6d04df13a88f2c187b6055d09b1f38ac19d40d16995",
+    "f9f87cec1c6959b3c2941321f1293e476a180120bf4ecf2e757de51f8b217faf": "7ef5aa467db0d36a425cad626ea45980985ae2fa86ccbee5fc4fad3d3487e066",
+    "71ca1c1cfe45d7a960ec21fb16ee09d11d5fb2aaa22b613f2fb4f238eb4b9b15": "1224064f5daa7fdf96a1ed83e918d102f97544a720642ed2907e8365e57e4bdc",
+    "a50d41cad88e561077c81d0e8416e17ed35b8728cb287535763a13f84c2aad14": "a48624310096df472b088ac928b04247921826a05c19951b3ff28897619cbe1b",
+    "a1d11545e7e1f2d1292b826584ae938e0f6ed3764b46d37fdc06e859b3e255b1": "c346b0ed3f8b78b30ee76785aee37153364f6bf28e6efa93ab322d32c71d9d0d",
+    "6e45177cce75929eee85257698912bc53d9a49a0680f4f00bfd7a8fd5d17ed61": "4d01d3edb6d4cf536e28602da77adcff578d6bf7a0b49c67ca84b9542a50ae92",
+    "98cde32ed5230e26c7a7baeb9c7547e77a6abbfbaf11112a10d2bebfc532516a": "10d23de2418df5056ee20bc54fb84460dcc65cace79a53d4124c9f8fed3b5ecc",
+    "064593d49bc8e2ff6cfa633bd2efbfff39f68453717694edcab76d5e44d3ad77": "197efea926add0905a167852d6652e6fc2fc1aa2b62965a8ad22b5f3c7f0206e",
+    "1e7bd1015445340b6ad7ae1600cc94600123e690d1c77b6dbf262ca9ec43d139": "eaa98c82d67ff70c77aaec5882dbe163e2cbbde7b68c46c7ab1a01edd7ec65ef",
+    "ff443fd94870f5b8ceaaa0a4d17310b09f38bd1d346d7f7cad506f1ab0058edb": "d80ba7038e81778c3104361fc0b349d4d212aaeacbc92fb29aa0edd8cffaf6bb",
+    "1a9745f641e1a39cec845c07d9e08b33791b8c3dbceec079512cd601f5da2212": "80d6d8bba5313bb3b413f94141576405b1caa083ae9ee3d1fe39b340301d75f7",
+    "59f64ca3403ee91440559c83789e019047a47f61774e1dd15a414915b6ad3108": "929d393d45c107ae0974fecbc7c4d8cee9022dac063a2f3b660a9ea9d31859d8",
+    "2dcbf54815f7d86f4988838f7e803bafff91059659b0c3fbc105f8cc24a8fd0b": "b2a45474afe309b0b223e3063aa16df98ad9854a7bc1d72d6f70562aa7195f84",
+    "956ac1e8e55dfbb17f61f7468910f651a870d78d921e24e38000e8d3ea7c3009": "db13126e9a2c0b40483e2cc78455f6be68cc68425f562935dd833d25b284495c",
+    "d358756455eb323b2443b3b61a65c6a3e09ac237cd02fe408de2d392d9b5b53a": "9c1a5145497d5f22530dbb92a3245e2c5ee4026e5bc0b01d1b6c09d994f37b06",
+    "efa1e028c9e7c075033a3a0b2d7fc99f1fe46639ef5cb593dc424b5cb17f5233": "eae8fc48212b5b623fa3a4c4dae1ee1abc72d97e4618d5e5e2e1149a792ecfa6",
+    "0b3ff052764de769f068f934bc307c1cf85ca2f821a76736c577b7855de25b14": "b184412ce91a646639570868f05d6d3e5763f8b65f767a27c6daeea81a6c4cc4",
+    "6734accdb6dbc52f328523e0e8697a378081fea5390869144cb0371a1c57f27a": "ecd869f3d28c0ad494eaf3d8698102d24a17efd4f23c5e07d3ded1a03e9e6134",
+    "e0b7370ac32754a8eb4f341232a4f118d9a47fb351b664acca5551ee3706b674": "d91159043d465e31eafd8e95a69dc33a34d8d3436572334a38930c6040775aa3",
+    "db1bc09efddc7f0d20a80c2133a0a6cc73a0cdd9d07ee890e3451e4af232c9d2": "3288fcf4c6c08ed9b9557f7c31ae6612277a1e1b65dd4cd9a8ea4de388a86874",
+    "6eabf80b7626e6e3598f949319f2e3e6181ad6c8874ff1fb10a29a96730c8e48": "048fa12c925396e150aab2c63ac38eb598f95dcfd36b8f350e00c24f62351797",
+    "c1f0ed96fb74d94503c0512fa68f264d8e6dc3c536bdd0ff1af59f494e0d59e6": "46058fb65241a018d2f7e2a44499178cb9308ff9b15df78125dd4aba441d1dca",
+    "0f3b7cc5ff90d9a01d0558da92c48416af8097c37a5bd7ed6fd468fa91453951": "e7a186babde5b88f357f174e92e22ca75d9d45053cb45139040558c93c256481",
+    "cf7051deb6b802ee2a43c157cc19ad7ffea460a5e9b474063a4f32ab800a8ae6": "ae1c9991714ecf808ad16b4a2f31c77ff84cbe5689c3d9ac51731312366f5894",
+    "f54e55c2bdb8e248e5439eec4a9abee18706460a072a0197b74dd88195c32476": "7e981de21bf38499ffc4c0066cdda1dfd0cad112ceb3e3e55bcb457458174723",
+    "84a54bb02131142b0ca02eb965e09da1f33ceeb315e4317970bf8a616aa3b45c": "057d5d4884617417021bf40de645167ef5cb4aff0a932f9ff97d927e49464670",
+    "327f15adc974215297c7870112fe6512477476a24a0c6089633c66d7ae03796a": "dac678c46a83e25bbef03bbedc0abc0479779e167f31a74d96507ab0c6ff8c7d",
+    "a39dcc1d6c09f78ef3256b98490ddc20c00e5a1a46ea819a40a489fc1412cfc9": "0820f11710e08b73324a1210392cd1eb97d384f960719a4a95f87e646de638d8",
+    "b3324f8bec81bb3cf41059370a7155c85f3d2715828968c7c4b1bd4111230b75": "59749b35190eb2f2b96215d25a2c9f199ce0e78382272b938f6dca46940858d8",
+    "d3ddc0d8fa19787956172b73862abde709fc7fe9fa196738f9ae4753bcc17c76": "f08d56da57534ced873e39a894575ddc1fef86e4f23f07a8f8ad0231707b2994",
+    "63ba724c59ea863cacc2bb0ac5700599a8c0b96150ac38253ed48ae0e134025a": "837f9260a74390cc6e2a7a3bf4ef2601896a000da60e38e1f5b30d7030ebe403",
+    "79bc8a0b54c887a8d1308e46550e2f61bdc899a4338da7f9a7bd53b04a22b909": "b4505642fbe664d07c28fb0a0da39e1aaee99477f500ec591194d31538e0222d",
+    "b6f0defd00d45c32e3d060b80491556c423396d02067b45c0e44aa35c27750a0": "1570c118326715e00fd22dc95f70218b59db63870789d48862fc7bb5230b4510",
+    "c70d969dcd17eb1f6f5d8287d9806d7d9c5d300f09a588c5640206aa27ccf0f5": "f58c699d7988daebf9f2ffd3c12eecd2e983504164dd2a09b8c65344801b1c53",
+    "91f0fc95b43447e5fde18528d3f6d0efeac8bfc7684d2c9e02ddba82505c95de": "6e5a1d3263c3fbae16e293260faf789ccc3ab9f6a3808a7175da71e73102d400",
+    "cf9e787e4e622d1f9a8b1d534a68e24d8c285a2165368d6f71fa6e108aa28088": "93afa0fec7d216ffb21496e01e4cd5fae9aad68ca4b0028b704e3f3c7978d1ec",
+    "85d6e1ecd9ac9d185c059bef7eb80e2a314aa38cd2f2e59af265a0c012047a33": "13dcae26fe7d62333e09d6e0575c1f3371b2bcc783f502c5fe4b4d728ed876e7",
+    "839c9acbd17bdf313e9b99cc6e68c1813b2dffe9064d8507b46794df7ca1fe10": "08d038776afbb2403c3b186c7517212ae53308bc5a9cdaa3ab46739deef8d7cb",
+    "5a64c99c09f28cdff4f4810dacfa927ad6f8ac0d93aaa0bddecd22eaa87c8b46": "2603aac9fa17953b3ce869490467cfbdf265377746c7067e544dc1572ee83d58",
+    "9dc5f8d1101efea1e2553b577bd2243dbd080bcd58109ee72d07e745e1a5281d": "a04cf031ee4e88cb603f9db7784c925e9035f729419d311433f35b1e10788890",
+    "1b7beb8a0f39441d8b8eca5cc1f146d724b126de47e790cb309a3d3fc7da8580": "138fa64315d2632f312fdf964340c8defb09a203a4f65e4e541f4a03ea729019",
+    "a1781d820baeba5902df1781e737ef4e196e9a504fb2b5eb259f6e9e7f67d33a": "ffdd600bd1e8994e38fd4ab2f6ce66d23c7da300ab6e9f7c20e33d6933a4b682"
+  },
+  "changes": [
+    {
+      "file": "tests/annual-care-values.test.mjs",
+      "field": ".no-care.mc",
+      "before": "92997de9b81aeaafd98ab6fa16747bc947c07cdcf5641fe5aa203e3766c1e7b8",
+      "after": "85bd41d3ff1a3c7f3588864e2ea167b76768bc5619db52b4eaf55227edc12901",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Vorgaben: vollständige MC-, Backtest- und Paritätsbytes wie vor PG-2, ohne Pflege, Angehörige und amtliche Staffel"
+    },
+    {
+      "file": "tests/annual-care-values.test.mjs",
+      "field": ".family.mc",
+      "before": "74ae63429ffac8a127a3c7bc48ddbb33fdc99e3033a73bf336336b221eecb9e2",
+      "after": "1d18db89a8378c852c65959187d429523dec27fc7021b372b336293806d23451",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Vorgaben: vollständige MC-, Backtest- und Paritätsbytes wie vor PG-2, ohne Pflege, Angehörige und amtliche Staffel"
+    },
+    {
+      "file": "tests/annual-care-values.test.mjs",
+      "field": ".official.mc",
+      "before": "e23d3579ff24fda039717a386925fed37a470bc4715951914dbdf96e725dc085",
+      "after": "2507049284df40aaa7ad18ba271a8784eb0e6f4e1602a83a92b9aca08e2af3e7",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Vorgaben: vollständige MC-, Backtest- und Paritätsbytes wie vor PG-2, ohne Pflege, Angehörige und amtliche Staffel"
+    },
+    {
+      "file": "tests/care-price-continuation.test.mjs",
+      "field": "",
+      "before": "68ba6ffc74977fe0aa5fff6ec6141657f83a69b1072dbc7ce0fbabb611bc0a3d",
+      "after": "edeeeb3749ef9aa9269909b26b4b46f7fc30d5d38df22c3ac218622431939975",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. single-mc: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten"
+    },
+    {
+      "file": "tests/care-price-continuation.test.mjs",
+      "field": "",
+      "before": "39d7805c286cea27130234ebc8433b4cb7f6a82d29167e3b9c3e46da3393af46",
+      "after": "7c7862704644b26b356e0ff749e0e4b7c1b9eb8444a5fb8a3e4407bffcd0de88",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. single-sweep: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten"
+    },
+    {
+      "file": "tests/care-price-continuation.test.mjs",
+      "field": "",
+      "before": "8d65b158d52e21bb504b344a7c9de15b0942fc07bfa12b88d9f31c2e45ccdf30",
+      "after": "6f8a68d5654055390df7e6d04df13a88f2c187b6055d09b1f38ac19d40d16995",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. couple-mc: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten"
+    },
+    {
+      "file": "tests/care-price-continuation.test.mjs",
+      "field": "",
+      "before": "f9f87cec1c6959b3c2941321f1293e476a180120bf4ecf2e757de51f8b217faf",
+      "after": "7ef5aa467db0d36a425cad626ea45980985ae2fa86ccbee5fc4fad3d3487e066",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. couple-sweep: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten"
+    },
+    {
+      "file": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "",
+      "before": "71ca1c1cfe45d7a960ec21fb16ee09d11d5fb2aaa22b613f2fb4f238eb4b9b15",
+      "after": "1224064f5daa7fdf96a1ed83e918d102f97544a720642ed2907e8365e57e4bdc",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. mc: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder"
+    },
+    {
+      "file": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "",
+      "before": "a50d41cad88e561077c81d0e8416e17ed35b8728cb287535763a13f84c2aad14",
+      "after": "a48624310096df472b088ac928b04247921826a05c19951b3ff28897619cbe1b",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. mc: vollständige Referenz ohne Grund und Anmerkung"
+    },
+    {
+      "file": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "",
+      "before": "a1d11545e7e1f2d1292b826584ae938e0f6ed3764b46d37fdc06e859b3e255b1",
+      "after": "c346b0ed3f8b78b30ee76785aee37153364f6bf28e6efa93ab322d32c71d9d0d",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. mc: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen"
+    },
+    {
+      "file": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "",
+      "before": "6e45177cce75929eee85257698912bc53d9a49a0680f4f00bfd7a8fd5d17ed61",
+      "after": "4d01d3edb6d4cf536e28602da77adcff578d6bf7a0b49c67ca84b9542a50ae92",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. mc: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste"
+    },
+    {
+      "file": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "",
+      "before": "98cde32ed5230e26c7a7baeb9c7547e77a6abbfbaf11112a10d2bebfc532516a",
+      "after": "10d23de2418df5056ee20bc54fb84460dcc65cace79a53d4124c9f8fed3b5ecc",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. engineResults: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder"
+    },
+    {
+      "file": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "",
+      "before": "064593d49bc8e2ff6cfa633bd2efbfff39f68453717694edcab76d5e44d3ad77",
+      "after": "197efea926add0905a167852d6652e6fc2fc1aa2b62965a8ad22b5f3c7f0206e",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. engineResults: vollständige Referenz ohne Grund und Anmerkung"
+    },
+    {
+      "file": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "",
+      "before": "064593d49bc8e2ff6cfa633bd2efbfff39f68453717694edcab76d5e44d3ad77",
+      "after": "197efea926add0905a167852d6652e6fc2fc1aa2b62965a8ad22b5f3c7f0206e",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. engineResults: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen"
+    },
+    {
+      "file": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "",
+      "before": "1e7bd1015445340b6ad7ae1600cc94600123e690d1c77b6dbf262ca9ec43d139",
+      "after": "eaa98c82d67ff70c77aaec5882dbe163e2cbbde7b68c46c7ab1a01edd7ec65ef",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. engineResults: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste"
+    },
+    {
+      "file": "tests/household-payout-regression.test.mjs",
+      "field": "",
+      "before": "ff443fd94870f5b8ceaaa0a4d17310b09f38bd1d346d7f7cad506f1ab0058edb",
+      "after": "d80ba7038e81778c3104361fc0b349d4d212aaeacbc92fb29aa0edd8cffaf6bb",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Vollständige Backtest-/MC-Jahreslogs samt Backtest-Ende nach FR-30 gegen BK-2-Referenz"
+    },
+    {
+      "file": "tests/immobilien-empty-bytegleich.test.mjs",
+      "field": "",
+      "before": "1a9745f641e1a39cec845c07d9e08b33791b8c3dbceec079512cd601f5da2212",
+      "after": "80d6d8bba5313bb3b413f94141576405b1caa083ae9ee3d1fe39b340301d75f7",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Ohne Immobilien: vollständige 24 MC-Pfade mit Seed 12345 bytegleich zum Ausgangsstand"
+    },
+    {
+      "file": "tests/monte-carlo-measurement-contract.test.mjs",
+      "field": "",
+      "before": "59f64ca3403ee91440559c83789e019047a47f61774e1dd15a414915b6ad3108",
+      "after": "929d393d45c107ae0974fecbc7c4d8cee9022dac063a2f3b660a9ea9d31859d8",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.carResultSha256"
+    },
+    {
+      "file": "tests/monte-carlo-measurement-contract.test.mjs",
+      "field": "",
+      "before": "2dcbf54815f7d86f4988838f7e803bafff91059659b0c3fbc105f8cc24a8fd0b",
+      "after": "b2a45474afe309b0b223e3063aa16df98ad9854a7bc1d72d6f70562aa7195f84",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.autoOptimizeResultSha256"
+    },
+    {
+      "file": "tests/monte-carlo-measurement-contract.test.mjs",
+      "field": "",
+      "before": "956ac1e8e55dfbb17f61f7468910f651a870d78d921e24e38000e8d3ea7c3009",
+      "after": "db13126e9a2c0b40483e2cc78455f6be68cc68425f562935dd833d25b284495c",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.finalResultSha256"
+    },
+    {
+      "file": "tests/plan-view-income.test.mjs",
+      "field": "",
+      "before": "d358756455eb323b2443b3b61a65c6a3e09ac237cd02fe408de2d392d9b5b53a",
+      "after": "9c1a5145497d5f22530dbb92a3245e2c5ee4026e5bc0b01d1b6c09d994f37b06",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen"
+    },
+    {
+      "file": "tests/profile-person-data.test.mjs",
+      "field": "",
+      "before": "efa1e028c9e7c075033a3a0b2d7fc99f1fe46639ef5cb593dc424b5cb17f5233",
+      "after": "eae8fc48212b5b623fa3a4c4dae1ee1abc72d97e4618d5e5e2e1149a792ecfa6",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen BK-2-Referenz mit korrigierter Kirchensteuer: fehlender Beginn"
+    },
+    {
+      "file": "tests/profile-person-data.test.mjs",
+      "field": "",
+      "before": "efa1e028c9e7c075033a3a0b2d7fc99f1fe46639ef5cb593dc424b5cb17f5233",
+      "after": "eae8fc48212b5b623fa3a4c4dae1ee1abc72d97e4618d5e5e2e1149a792ecfa6",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen BK-2-Referenz mit korrigierter Kirchensteuer: 2026-01-01"
+    },
+    {
+      "file": "tests/profile-person-data.test.mjs",
+      "field": "",
+      "before": "efa1e028c9e7c075033a3a0b2d7fc99f1fe46639ef5cb593dc424b5cb17f5233",
+      "after": "eae8fc48212b5b623fa3a4c4dae1ee1abc72d97e4618d5e5e2e1149a792ecfa6",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen BK-2-Referenz mit korrigierter Kirchensteuer: 2024-07-15"
+    },
+    {
+      "file": "tests/profile-person-data.test.mjs",
+      "field": "",
+      "before": "0b3ff052764de769f068f934bc307c1cf85ca2f821a76736c577b7855de25b14",
+      "after": "b184412ce91a646639570868f05d6d3e5763f8b65f767a27c6daeea81a6c4cc4",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Vollständiger alter Offset-/Ansparrequest gegen BK-2-Referenz mit korrigierter Kirchensteuer"
+    },
+    {
+      "file": "tests/rechenregeln-bytegleich.test.mjs",
+      "field": "",
+      "before": "6734accdb6dbc52f328523e0e8697a378081fea5390869144cb0371a1c57f27a",
+      "after": "ecd869f3d28c0ad494eaf3d8698102d24a17efd4f23c5e07d3ded1a03e9e6134",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. off: MC-Pfad 0 mit FR-21–24/27"
+    },
+    {
+      "file": "tests/rechenregeln-bytegleich.test.mjs",
+      "field": "",
+      "before": "e0b7370ac32754a8eb4f341232a4f118d9a47fb351b664acca5551ee3706b674",
+      "after": "d91159043d465e31eafd8e95a69dc33a34d8d3436572334a38930c6040775aa3",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. konservativ: MC-Pfad 0 mit FR-21–24/27"
+    },
+    {
+      "file": "tests/rechenregeln-bytegleich.test.mjs",
+      "field": "",
+      "before": "db1bc09efddc7f0d20a80c2133a0a6cc73a0cdd9d07ee890e3451e4af232c9d2",
+      "after": "3288fcf4c6c08ed9b9557f7c31ae6612277a1e1b65dd4cd9a8ea4de388a86874",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. ausgewogen: MC-Pfad 0 mit FR-21–24/27"
+    },
+    {
+      "file": "tests/rechenregeln-bytegleich.test.mjs",
+      "field": "",
+      "before": "6eabf80b7626e6e3598f949319f2e3e6181ad6c8874ff1fb10a29a96730c8e48",
+      "after": "048fa12c925396e150aab2c63ac38eb598f95dcfd36b8f350e00c24f62351797",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. offensiv: MC-Pfad 0 mit FR-21–24/27"
+    },
+    {
+      "file": "tests/simulator-unmarried-parity.test.mjs",
+      "field": "",
+      "before": "c1f0ed96fb74d94503c0512fa68f264d8e6dc3c536bdd0ff1af59f494e0d59e6",
+      "after": "46058fb65241a018d2f7e2a44499178cb9308ff9b15df78125dd4aba441d1dca",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Verheiratet: vollständiger serieller MC bytegleich zum Kopf vor UP-1b"
+    },
+    {
+      "file": "tests/simulator-unmarried-parity.test.mjs",
+      "field": "[0]",
+      "before": "0f3b7cc5ff90d9a01d0558da92c48416af8097c37a5bd7ed6fd468fa91453951",
+      "after": "e7a186babde5b88f357f174e92e22ca75d9d45053cb45139040558c93c256481",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks bytegleich"
+    },
+    {
+      "file": "tests/simulator-unmarried-parity.test.mjs",
+      "field": "[1]",
+      "before": "cf7051deb6b802ee2a43c157cc19ad7ffea460a5e9b474063a4f32ab800a8ae6",
+      "after": "ae1c9991714ecf808ad16b4a2f31c77ff84cbe5689c3d9ac51731312366f5894",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks bytegleich"
+    },
+    {
+      "file": "tests/simulator-unmarried-parity.test.mjs",
+      "field": "[2]",
+      "before": "f54e55c2bdb8e248e5439eec4a9abee18706460a072a0197b74dd88195c32476",
+      "after": "7e981de21bf38499ffc4c0066cdda1dfd0cad112ceb3e3e55bcb457458174723",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks bytegleich"
+    },
+    {
+      "file": "tests/simulator-unmarried-parity.test.mjs",
+      "field": "",
+      "before": "84a54bb02131142b0ca02eb965e09da1f33ceeb315e4317970bf8a616aa3b45c",
+      "after": "057d5d4884617417021bf40de645167ef5cb4aff0a932f9ff97d927e49464670",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. Verheiratet: vollständiger Sweep bytegleich"
+    },
+    {
+      "file": "tests/survivor-bytegleich.test.mjs",
+      "field": "",
+      "before": "327f15adc974215297c7870112fe6512477476a24a0c6089633c66d7ae03796a",
+      "after": "dac678c46a83e25bbef03bbedc0abc0479779e167f31a74d96507ab0c6ff8c7d",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. off: MC ohne Tod entspricht BK-2-Referenz"
+    },
+    {
+      "file": "tests/survivor-bytegleich.test.mjs",
+      "field": "",
+      "before": "a39dcc1d6c09f78ef3256b98490ddc20c00e5a1a46ea819a40a489fc1412cfc9",
+      "after": "0820f11710e08b73324a1210392cd1eb97d384f960719a4a95f87e646de638d8",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. konservativ: MC ohne Tod entspricht BK-2-Referenz"
+    },
+    {
+      "file": "tests/survivor-bytegleich.test.mjs",
+      "field": "",
+      "before": "b3324f8bec81bb3cf41059370a7155c85f3d2715828968c7c4b1bd4111230b75",
+      "after": "59749b35190eb2f2b96215d25a2c9f199ce0e78382272b938f6dca46940858d8",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. ausgewogen: MC ohne Tod entspricht BK-2-Referenz"
+    },
+    {
+      "file": "tests/survivor-bytegleich.test.mjs",
+      "field": "",
+      "before": "d3ddc0d8fa19787956172b73862abde709fc7fe9fa196738f9ae4753bcc17c76",
+      "after": "f08d56da57534ced873e39a894575ddc1fef86e4f23f07a8f8ad0231707b2994",
+      "reason": "Gleichverteilter RNG ändert die gezogenen Markt-/Lebenspfade; neue Pflegeeintrittstabelle ändert zusätzlich Diagnostik und Pflegeereignisse. offensiv: MC ohne Tod entspricht BK-2-Referenz"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "63ba724c59ea863cacc2bb0ac5700599a8c0b96150ac38253ed48ae0e134025a",
+      "after": "837f9260a74390cc6e2a7a3bf4ef2601896a000da60e38e1f5b30d7030ebe403",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. Vorgabe: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "79bc8a0b54c887a8d1308e46550e2f61bdc899a4338da7f9a7bd53b04a22b909",
+      "after": "b4505642fbe664d07c28fb0a0da39e1aaee99477f500ec591194d31538e0222d",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. Vorgabe: vollständiger PM-1c-Backtest und MC-Pfad 0"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "b6f0defd00d45c32e3d060b80491556c423396d02067b45c0e44aa35c27750a0",
+      "after": "1570c118326715e00fd22dc95f70218b59db63870789d48862fc7bb5230b4510",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. Vorgabe: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "c70d969dcd17eb1f6f5d8287d9806d7d9c5d300f09a588c5640206aa27ccf0f5",
+      "after": "f58c699d7988daebf9f2ffd3c12eecd2e983504164dd2a09b8c65344801b1c53",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. konservativ: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "91f0fc95b43447e5fde18528d3f6d0efeac8bfc7684d2c9e02ddba82505c95de",
+      "after": "6e5a1d3263c3fbae16e293260faf789ccc3ab9f6a3808a7175da71e73102d400",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. konservativ: vollständiger PM-1c-Backtest und MC-Pfad 0"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "cf9e787e4e622d1f9a8b1d534a68e24d8c285a2165368d6f71fa6e108aa28088",
+      "after": "93afa0fec7d216ffb21496e01e4cd5fae9aad68ca4b0028b704e3f3c7978d1ec",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. konservativ: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "85d6e1ecd9ac9d185c059bef7eb80e2a314aa38cd2f2e59af265a0c012047a33",
+      "after": "13dcae26fe7d62333e09d6e0575c1f3371b2bcc783f502c5fe4b4d728ed876e7",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. ausgewogen: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "839c9acbd17bdf313e9b99cc6e68c1813b2dffe9064d8507b46794df7ca1fe10",
+      "after": "08d038776afbb2403c3b186c7517212ae53308bc5a9cdaa3ab46739deef8d7cb",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. ausgewogen: vollständiger PM-1c-Backtest und MC-Pfad 0"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "5a64c99c09f28cdff4f4810dacfa927ad6f8ac0d93aaa0bddecd22eaa87c8b46",
+      "after": "2603aac9fa17953b3ce869490467cfbdf265377746c7067e544dc1572ee83d58",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. ausgewogen: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "9dc5f8d1101efea1e2553b577bd2243dbd080bcd58109ee72d07e745e1a5281d",
+      "after": "a04cf031ee4e88cb603f9db7784c925e9035f729419d311433f35b1e10788890",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. offensiv: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "1b7beb8a0f39441d8b8eca5cc1f146d724b126de47e790cb309a3d3fc7da8580",
+      "after": "138fa64315d2632f312fdf964340c8defb09a203a4f65e4e541f4a03ea729019",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. offensiv: vollständiger PM-1c-Backtest und MC-Pfad 0"
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "before": "a1781d820baeba5902df1781e737ef4e196e9a504fb2b5eb259f6e9e7f67d33a",
+      "after": "ffdd600bd1e8994e38fd4ab2f6ce66d23c7da300ab6e9f7c20e33d6933a4b682",
+      "reason": "Korrigierte RNG-/Pflegeziehung und Referenzseed 12345 → 3 erhalten einen PG1-Eintritt mit späterem PG3-Tod. offensiv: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten"
+    }
+  ],
+  "numericLeaves": {
+    "mc": 756515,
+    "engineResults": 1069131
+  },
+  "otherChanges": [
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 1550097.0295862143,
+      "after": 1530179.9655267769,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: kurzer MC-Pfad mit tragfähigem Teil-Flex"
+    },
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 26523.090638845548,
+      "after": 4595.15317415294,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: zugehörige Steuerfolge im kurzen MC-Pfad"
+    },
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 3076350.496808638,
+      "after": 1651248.6499654865,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: kurzer MC-Pfad mit tragfähigem Teil-Flex"
+    },
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 38783.061693527394,
+      "after": 30828.001829849127,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: zugehörige Steuerfolge im kurzen MC-Pfad"
+    },
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 995466.8701660804,
+      "after": 1521533.1372132748,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: kurzer MC-Pfad mit tragfähigem Teil-Flex"
+    },
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 2570.640529818988,
+      "after": 20525.734372724342,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: zugehörige Steuerfolge im kurzen MC-Pfad"
+    },
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 1372717.3254679414,
+      "after": 1608293.4528409194,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: kurzer MC-Pfad mit tragfähigem Teil-Flex"
+    },
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 17319.325530417937,
+      "after": 14049.324854350129,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: zugehörige Steuerfolge im kurzen MC-Pfad"
+    },
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 2064209.6509100797,
+      "after": 843249.3053947198,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: kurzer MC-Pfad mit tragfähigem Teil-Flex"
+    },
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 39009.85288961562,
+      "after": 1495.985880253814,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: zugehörige Steuerfolge im kurzen MC-Pfad"
+    },
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 1723091.1678366938,
+      "after": 1461021.6261255194,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: kurzer MC-Pfad mit tragfähigem Teil-Flex"
+    },
+    {
+      "file": "tests/minimum-flex-restriction.test.mjs",
+      "before": 21026.504030252843,
+      "after": 17570.91684134624,
+      "reason": "Gleiche sechs Seed-12345-Pfade ziehen andere Marktjahre mit neuem RNG. FR-20: zugehörige Steuerfolge im kurzen MC-Pfad"
+    },
+    {
+      "file": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "numericLeaves.mc",
+      "before": 739721,
+      "after": 756515,
+      "reason": "Andere gezogene Jahre und längere Lebenspfade ändern die Anzahl vorhandener Zahlenfelder; Feld- und Vollprüfsummen werden weiterhin geprüft."
+    },
+    {
+      "file": "tests/cut-reason-bytegleich.test.mjs",
+      "field": "numericLeaves.engineResults",
+      "before": 1049182,
+      "after": 1069131,
+      "reason": "Andere gezogene Jahre und längere Lebenspfade ändern die Anzahl vorhandener Zahlenfelder; Feld- und Vollprüfsummen werden weiterhin geprüft."
+    },
+    {
+      "file": "tests/care-death-regression.test.mjs",
+      "field": "runIndex",
+      "before": 17,
+      "after": 3,
+      "reason": "Neuer Zufallspfad enthält erneut P1-Tod nach gemeinsamem Pflegejahr und überlebende P2; alle Pflegekosten-/Replay-Assertions unverändert."
+    },
+    {
+      "file": "tests/simulator-monte-carlo.test.mjs",
+      "field": "test15.seed",
+      "before": 1,
+      "after": 2,
+      "reason": "Neuer Seed erreicht weiterhin applied-Mindest-Flex; Vergleichsassertions unverändert."
+    },
+    {
+      "file": "tests/simulator-monte-carlo.test.mjs",
+      "field": "test17.seed",
+      "before": 2,
+      "after": 93,
+      "reason": "Ein Tail-Ereignis weiterhin in Simulationsjahr 3; sämtliche Ereignisassertions unverändert."
+    },
+    {
+      "file": "tests/simulator-sweep.test.mjs",
+      "field": "test37.seed",
+      "before": 4,
+      "after": 1,
+      "reason": "P2-Tod weiterhin in Jahr 3; Renten- und Halbjahresassertions unverändert."
+    },
+    {
+      "file": "tests/simulator-sweep.test.mjs",
+      "field": "test40.seed_and_makeRunSeed",
+      "before": 2,
+      "after": 93,
+      "reason": "Ein Tail-Ereignis weiterhin ab Index 2 mit Dauer 2; sämtliche Diagnoseassertions unverändert."
+    },
+    {
+      "file": "tests/tail-risk-overlay.test.mjs",
+      "field": "schedule.seed",
+      "before": 0,
+      "after": 387,
+      "reason": "Alter Nullzustand lieferte nur Nullen; neuer Seed hat drei niedrige Ziehungen, erhält die festen Ereignisindizes 0/1/5/6/10/11 ohne Regeländerung."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "field": "parameters.seed",
+      "before": 12345,
+      "after": 3,
+      "reason": "Neuer RNG erzeugt mit altem Seed keinen P1-Pflegeeintritt in Pfad 0; Seed 3 prüft weiter PG1-Eintritt und späteren PG3-Tod für alle vier Presets."
+    },
+    {
+      "file": "tests/auto-optimize-cancellation.test.mjs",
+      "field": "config.params.liquidityRunwayYears.step",
+      "before": 0.5,
+      "after": 0.1,
+      "reason": "Mit neuer LHS-Ziehung deckt das alte 19-Werte-Raster bereits alle Nachbarn ab, sodass refine nur Cachetreffer hat. Feineres synthetisches Raster erreicht wieder die echte Evaluationsbarriere; unveränderte Abbruchassertions für alle vier Phasen."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.Vorgabe.payload.firstCareYear",
+      "before": 9,
+      "after": 2,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.Vorgabe.payload.deathYear",
+      "before": 15,
+      "after": 5,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.Vorgabe.payload.prefixSha256",
+      "before": "e224febaf20baf62d5d85ef87af8e14f7468f1020c7fb96d63ad69015fac26aa",
+      "after": "d457233ff13e84005b4b20921465ba1f7f66f7947be5b1960a85428a84292152",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.Vorgabe.payload.afterSha256",
+      "before": "79bc8a0b54c887a8d1308e46550e2f61bdc899a4338da7f9a7bd53b04a22b909",
+      "after": "b4505642fbe664d07c28fb0a0da39e1aaee99477f500ec591194d31538e0222d",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.Vorgabe.legacyPayload.firstCareYear",
+      "before": 9,
+      "after": 2,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.Vorgabe.legacyPayload.deathYear",
+      "before": 15,
+      "after": 5,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.Vorgabe.legacyPayload.prefixSha256",
+      "before": "e224febaf20baf62d5d85ef87af8e14f7468f1020c7fb96d63ad69015fac26aa",
+      "after": "d457233ff13e84005b4b20921465ba1f7f66f7947be5b1960a85428a84292152",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.Vorgabe.legacyPayload.afterSha256",
+      "before": "63ba724c59ea863cacc2bb0ac5700599a8c0b96150ac38253ed48ae0e134025a",
+      "after": "837f9260a74390cc6e2a7a3bf4ef2601896a000da60e38e1f5b30d7030ebe403",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.konservativ.payload.firstCareYear",
+      "before": 9,
+      "after": 2,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.konservativ.payload.deathYear",
+      "before": 15,
+      "after": 5,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.konservativ.payload.prefixSha256",
+      "before": "52fedcc3730862843c6ab0d49e614ef67dfb1c082df658c0e0f43adac9fecdc6",
+      "after": "d305b98292ef02c9301c5d9c4d987647e60604ea49648313492e1bea870cb7ea",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.konservativ.payload.afterSha256",
+      "before": "91f0fc95b43447e5fde18528d3f6d0efeac8bfc7684d2c9e02ddba82505c95de",
+      "after": "6e5a1d3263c3fbae16e293260faf789ccc3ab9f6a3808a7175da71e73102d400",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.konservativ.legacyPayload.firstCareYear",
+      "before": 9,
+      "after": 2,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.konservativ.legacyPayload.deathYear",
+      "before": 15,
+      "after": 5,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.konservativ.legacyPayload.prefixSha256",
+      "before": "52fedcc3730862843c6ab0d49e614ef67dfb1c082df658c0e0f43adac9fecdc6",
+      "after": "d305b98292ef02c9301c5d9c4d987647e60604ea49648313492e1bea870cb7ea",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.konservativ.legacyPayload.afterSha256",
+      "before": "c70d969dcd17eb1f6f5d8287d9806d7d9c5d300f09a588c5640206aa27ccf0f5",
+      "after": "f58c699d7988daebf9f2ffd3c12eecd2e983504164dd2a09b8c65344801b1c53",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.ausgewogen.payload.firstCareYear",
+      "before": 9,
+      "after": 2,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.ausgewogen.payload.deathYear",
+      "before": 15,
+      "after": 5,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.ausgewogen.payload.prefixSha256",
+      "before": "6a8cb78432ab8b9415267eac5a27a91818d6d2a7630b01f56acec99fd7d675b8",
+      "after": "b912841a74ebfb070dad7bb13f850d1aec202482c148284449fdb41cc86e2104",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.ausgewogen.payload.afterSha256",
+      "before": "839c9acbd17bdf313e9b99cc6e68c1813b2dffe9064d8507b46794df7ca1fe10",
+      "after": "08d038776afbb2403c3b186c7517212ae53308bc5a9cdaa3ab46739deef8d7cb",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.ausgewogen.legacyPayload.firstCareYear",
+      "before": 9,
+      "after": 2,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.ausgewogen.legacyPayload.deathYear",
+      "before": 15,
+      "after": 5,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.ausgewogen.legacyPayload.prefixSha256",
+      "before": "6a8cb78432ab8b9415267eac5a27a91818d6d2a7630b01f56acec99fd7d675b8",
+      "after": "b912841a74ebfb070dad7bb13f850d1aec202482c148284449fdb41cc86e2104",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.ausgewogen.legacyPayload.afterSha256",
+      "before": "85d6e1ecd9ac9d185c059bef7eb80e2a314aa38cd2f2e59af265a0c012047a33",
+      "after": "13dcae26fe7d62333e09d6e0575c1f3371b2bcc783f502c5fe4b4d728ed876e7",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.offensiv.payload.firstCareYear",
+      "before": 9,
+      "after": 2,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.offensiv.payload.deathYear",
+      "before": 15,
+      "after": 5,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.offensiv.payload.prefixSha256",
+      "before": "e6baa7d2a77ca808c1e83cc814a78273a85f5dd7898b17e98d4aeea8ac376a4f",
+      "after": "0a2c8f3a17ec33708a4b16968c20c1043eb752eb2177e7e4b2405dae5eda7502",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.offensiv.payload.afterSha256",
+      "before": "1b7beb8a0f39441d8b8eca5cc1f146d724b126de47e790cb309a3d3fc7da8580",
+      "after": "138fa64315d2632f312fdf964340c8defb09a203a4f65e4e541f4a03ea729019",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.offensiv.legacyPayload.firstCareYear",
+      "before": 9,
+      "after": 2,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.offensiv.legacyPayload.deathYear",
+      "before": 15,
+      "after": 5,
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.offensiv.legacyPayload.prefixSha256",
+      "before": "e6baa7d2a77ca808c1e83cc814a78273a85f5dd7898b17e98d4aeea8ac376a4f",
+      "after": "0a2c8f3a17ec33708a4b16968c20c1043eb752eb2177e7e4b2405dae5eda7502",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "path": "carePath.offensiv.legacyPayload.afterSha256",
+      "before": "9dc5f8d1101efea1e2553b577bd2243dbd080bcd58109ee72d07e745e1a5281d",
+      "after": "a04cf031ee4e88cb603f9db7784c925e9035f729419d311433f35b1e10788890",
+      "reason": "Seed 12345 → 3 nach RNG-Korrektur; Eintritt/PG3-Tod und vollständiger Präfix bleiben geprüft, historischer Ursprungsbeleg bleibt erhalten."
+    },
+    {
+      "file": "tests/tail-risk-overlay.test.mjs",
+      "field": "eligible_overlay.seed",
+      "before": 0,
+      "after": 387,
+      "reason": "Nach Sicherung des Nullzustands liefert Seed 0 nicht mehr nur Nullen; Seed 387 erzeugt weiterhin das benötigte Ereignis im ersten Jahr, alle Overlay-/Grenzassertions bleiben unverändert."
+    },
+    {
+      "file": "tests/tail-risk-overlay.test.mjs",
+      "field": "crisis_overlay.seed",
+      "before": 0,
+      "after": 387,
+      "reason": "Nach Sicherung des Nullzustands liefert Seed 0 nicht mehr nur Nullen; Seed 387 erzeugt weiterhin das benötigte Ereignis im ersten Jahr, alle Overlay-/Grenzassertions bleiben unverändert."
+    },
+    {
+      "file": "tests/tail-risk-overlay.test.mjs",
+      "field": "bounded_overlay.seed",
+      "before": 0,
+      "after": 387,
+      "reason": "Nach Sicherung des Nullzustands liefert Seed 0 nicht mehr nur Nullen; Seed 387 erzeugt weiterhin das benötigte Ereignis im ersten Jahr, alle Overlay-/Grenzassertions bleiben unverändert."
+    },
+    {
+      "file": "tests/tail-risk-overlay.test.mjs",
+      "field": "summary_overlay.seed",
+      "before": 0,
+      "after": 387,
+      "reason": "Nach Sicherung des Nullzustands liefert Seed 0 nicht mehr nur Nullen; Seed 387 erzeugt weiterhin das benötigte Ereignis im ersten Jahr, alle Overlay-/Grenzassertions bleiben unverändert."
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "field": "janLena.sweepConfig.seed",
+      "before": 12345,
+      "after": 3,
+      "reason": "Sweep behält denselben festen Referenzseed wie der MC-Aufruf in parameters; Zufluss-/Runner-Assertions bleiben unverändert."
+    }
+  ],
+  "carePath": {
+    "Vorgabe": {
+      "payload": {
+        "firstCareYear": 2,
+        "firstCareGrade": 1,
+        "deathYear": 5,
+        "deathGrade": 3,
+        "prefixLength": 1,
+        "prefixSha256": "d457233ff13e84005b4b20921465ba1f7f66f7947be5b1960a85428a84292152",
+        "backtestSha256": "a58d036ddccc8ce6afe484f4881387f8f5da2cab251e9a9ab9112236fd6ab9ac",
+        "afterSha256": "b4505642fbe664d07c28fb0a0da39e1aaee99477f500ec591194d31538e0222d"
+      },
+      "legacyPayload": {
+        "firstCareYear": 2,
+        "firstCareGrade": 1,
+        "deathYear": 5,
+        "deathGrade": 3,
+        "prefixLength": 1,
+        "prefixSha256": "d457233ff13e84005b4b20921465ba1f7f66f7947be5b1960a85428a84292152",
+        "backtestSha256": "a58d036ddccc8ce6afe484f4881387f8f5da2cab251e9a9ab9112236fd6ab9ac",
+        "afterSha256": "837f9260a74390cc6e2a7a3bf4ef2601896a000da60e38e1f5b30d7030ebe403"
+      }
+    },
+    "konservativ": {
+      "payload": {
+        "firstCareYear": 2,
+        "firstCareGrade": 1,
+        "deathYear": 5,
+        "deathGrade": 3,
+        "prefixLength": 1,
+        "prefixSha256": "d305b98292ef02c9301c5d9c4d987647e60604ea49648313492e1bea870cb7ea",
+        "backtestSha256": "b67deefafc92d7b5849fda6986286c127e3683bb7c0712546e1105df0e5af5ee",
+        "afterSha256": "6e5a1d3263c3fbae16e293260faf789ccc3ab9f6a3808a7175da71e73102d400"
+      },
+      "legacyPayload": {
+        "firstCareYear": 2,
+        "firstCareGrade": 1,
+        "deathYear": 5,
+        "deathGrade": 3,
+        "prefixLength": 1,
+        "prefixSha256": "d305b98292ef02c9301c5d9c4d987647e60604ea49648313492e1bea870cb7ea",
+        "backtestSha256": "b67deefafc92d7b5849fda6986286c127e3683bb7c0712546e1105df0e5af5ee",
+        "afterSha256": "f58c699d7988daebf9f2ffd3c12eecd2e983504164dd2a09b8c65344801b1c53"
+      }
+    },
+    "ausgewogen": {
+      "payload": {
+        "firstCareYear": 2,
+        "firstCareGrade": 1,
+        "deathYear": 5,
+        "deathGrade": 3,
+        "prefixLength": 1,
+        "prefixSha256": "b912841a74ebfb070dad7bb13f850d1aec202482c148284449fdb41cc86e2104",
+        "backtestSha256": "7dc360b806bebab46eca70eafa9d8f1d0995b9728e976a26c9594b9e69c303b8",
+        "afterSha256": "08d038776afbb2403c3b186c7517212ae53308bc5a9cdaa3ab46739deef8d7cb"
+      },
+      "legacyPayload": {
+        "firstCareYear": 2,
+        "firstCareGrade": 1,
+        "deathYear": 5,
+        "deathGrade": 3,
+        "prefixLength": 1,
+        "prefixSha256": "b912841a74ebfb070dad7bb13f850d1aec202482c148284449fdb41cc86e2104",
+        "backtestSha256": "7dc360b806bebab46eca70eafa9d8f1d0995b9728e976a26c9594b9e69c303b8",
+        "afterSha256": "13dcae26fe7d62333e09d6e0575c1f3371b2bcc783f502c5fe4b4d728ed876e7"
+      }
+    },
+    "offensiv": {
+      "payload": {
+        "firstCareYear": 2,
+        "firstCareGrade": 1,
+        "deathYear": 5,
+        "deathGrade": 3,
+        "prefixLength": 1,
+        "prefixSha256": "0a2c8f3a17ec33708a4b16968c20c1043eb752eb2177e7e4b2405dae5eda7502",
+        "backtestSha256": "7dc2f1d20fd829291bb383c40d95c13575da72d9b34bdff88b349d1804cbf7f6",
+        "afterSha256": "138fa64315d2632f312fdf964340c8defb09a203a4f65e4e541f4a03ea729019"
+      },
+      "legacyPayload": {
+        "firstCareYear": 2,
+        "firstCareGrade": 1,
+        "deathYear": 5,
+        "deathGrade": 3,
+        "prefixLength": 1,
+        "prefixSha256": "0a2c8f3a17ec33708a4b16968c20c1043eb752eb2177e7e4b2405dae5eda7502",
+        "backtestSha256": "7dc2f1d20fd829291bb383c40d95c13575da72d9b34bdff88b349d1804cbf7f6",
+        "afterSha256": "a04cf031ee4e88cb603f9db7784c925e9035f729419d311433f35b1e10788890"
+      }
+    }
+  }
+}

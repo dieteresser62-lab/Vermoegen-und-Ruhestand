@@ -1,0 +1,512 @@
+{
+  "sourceRevision": "fb23d436a78fbffc24bd93901bb18a1460f826b5",
+  "groups": {
+    "backtest": {
+      "beforeSha256": "1c8bb53dbc9d3238d5dbc41d1121bf24d4758a063a27e3d4f3f62c9e8b5ff73f",
+      "afterSha256": "9d0f6f0a60d2970950d1ca32d4df90f0e6f709985f6b19591886b5d328f13aef",
+      "numericLeaves": 9183,
+      "beforeNumericSha256": "7020df04e999cfa750c220af94d95482ffe962054e45738517209d6c7d6f58cc",
+      "afterNumericSha256": "7020df04e999cfa750c220af94d95482ffe962054e45738517209d6c7d6f58cc",
+      "unchangedExceptTextsSha256": "fdaf1a84da226c26a922f29c15e9685a96491fbe4192392e59912c2f3eb13d10",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    "mc": {
+      "beforeSha256": "e7ec45a83cb5ffb3c7af5880a5c02cfb9cd5d2281566a5627753854971dcd85b",
+      "afterSha256": "491593a16e17d438f5499f76df18d78f6aef1dc2ec609451670fdbfdd0d87210",
+      "numericLeaves": 739017,
+      "beforeNumericSha256": "ba78a300aee3cbef934886d756b3eae05cd9284840605599809893b5cd2773d3",
+      "afterNumericSha256": "ba78a300aee3cbef934886d756b3eae05cd9284840605599809893b5cd2773d3",
+      "unchangedExceptTextsSha256": "8950679f76fb89c7853671271b6c4c39b97695c8d7b8433dcf3dfad612f73f46",
+      "changedFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    "engineResults": {
+      "beforeSha256": "44f2363b78fddcee9210afcd13aaf7f3f9873b332777aa8efd95802bbccb9543",
+      "afterSha256": "286095a2f2b93e9bb8edf4a68c9a55d1017aa2876a73af4c45c8dc1aef0123d7",
+      "numericLeaves": 1038914,
+      "beforeNumericSha256": "e8ff29dc9a188b66e7353aca85dd822ba81b14ae50c87792093ed1e335ecaabf",
+      "afterNumericSha256": "e8ff29dc9a188b66e7353aca85dd822ba81b14ae50c87792093ed1e335ecaabf",
+      "unchangedExceptTextsSha256": "5fd1440a6a57a788697453b35337eaf3cfa3d374ad0961c2b3fd38b19ec30d3f",
+      "changedFields": [
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    }
+  },
+  "backtestReasons": {
+    "totalYears": 26,
+    "changedYears": 6,
+    "transitions": {
+      "Guardrail (Vorsicht) → Flex-Anteil (S-Kurve)": 1,
+      "Flex-Anteil (S-Kurve) → Glättung": 5
+    }
+  },
+  "mcReasons": {
+    "totalYears": 2395,
+    "changedYears": 392,
+    "transitions": {
+      "Flex-Anteil (S-Kurve) → Glättung (Final-Guardrail)": 10,
+      "Flex-Anteil (S-Kurve) → Glättung": 334,
+      "Flex-Anteil (S-Kurve) → Safety-Cap (schwere Flex-Notlage)": 3,
+      "Guardrail (Vorsicht) → Flex-Anteil (S-Kurve)": 7,
+      "Flex-Anteil (S-Kurve) → Rundung": 11,
+      "Schwere Flex-Notlage → Safety-Cap (schwere Flex-Notlage)": 11,
+      "Flex-Anteil (S-Kurve) → Glättung (Anstieg)": 6,
+      "Vorjahresbezug → Safety-Cap (schwere Flex-Notlage)": 4,
+      "Glättung (Anstieg) → Glättung": 2,
+      "Flex-Anteil (S-Kurve) → Tiefer Bär": 1,
+      "Guardrail (Runway-Cap) → Safety-Cap (schwere Flex-Notlage)": 1,
+      "Glättung → Safety-Cap (schwere Flex-Notlage)": 1,
+      "Alarm → Safety-Cap (schwere Flex-Notlage)": 1
+    }
+  },
+  "parameters": {
+    "household": "Max und Erika Mustermann",
+    "period": "2000–2025",
+    "preset": "offensiv",
+    "paths": 100,
+    "years": 30,
+    "seed": 12345,
+    "method": "regime_markov",
+    "rngMode": "per-run-seed",
+    "capeSampling": false,
+    "mcPool": "Historische Inflation und Lohnänderung jeweils mindestens null, wie rechenregeln-bytegleich."
+  },
+  "description": "KG-1: ausschließlich Kürzungsgrund und Anmerkung geändert; jedes andere Feld einschließlich aller Zahlen bytegleich zur Basis.",
+  "hashes": {
+    "ef9c701841aef6a9928b873c97d9a5ebf598a11869b94d036c4e82e72ba8cf16": "c2b3ba596969f7d393d7414f5cc78d651c4f7c23081ab43f9b9d56c192d1de61",
+    "7da4803bebf64a461a08b816f9452747a61eaf4debc05496ae248fa000c13df9": "1e9f47d1606339c32d81af46e947225985f5de91f82ef4c314769f5ac52a71ec",
+    "cb83c51473be91506565205ec86e7b1e3f6ab6b10c52d0da4363106d7c103828": "f346a8b125c3a56a148df7a688c19b87e46d413967109b2f178c6b7bdd4d658c",
+    "b5ed62053cacb3568606375ed504e8f7cf2573ea1b231feb530b804e20f742e9": "c346b65030a0972668ba84783dd8bf706187e4e24456c4bcdb8a875bb65f0e07",
+    "38322b49112284d31f5bee92d1af602267d995165ec9d4c1302a3d3c72053b4e": "2a1056c9b79e83718fb77cb4262a4cde2a3164efb9f352da755d4025ca92d4e2",
+    "0879b3a44d6127f31f248164f721cc17812ee60b90cca28b18f9aca1636ce7e3": "3dfc44aa3da7e56ac572eb2b289b52a783075276bedad759f755f846dca0445e",
+    "87e305fef4795bba0259ed6cd47dd8f8b9d0b46b2bad97074388e0c24df6bd3e": "46f1dc8baf17355c0358aecc86055b5c928c7fc1ac20fbb9da643da78a26f22e",
+    "76049e332d50da12551e2846166ff4ddbbba1a8e85f0551928d24e6bbad55863": "1693b0272034d6d57f59e12cec4b1709e339f56fd8dc85ea2189dbf239550f95",
+    "344dd45c04ba23d5431d427ac3022e01f59b2b1d8555e1cd0d66ba8e1ff6944b": "af60ba6bb943a318485efb23ec790a32b62721c5bd31a77c28ff9082383c3fe9",
+    "a2853c1768dea244f4eab575327c44bdf9bcba57d880a3b8571114637b018d12": "743542607af05d373aba856332f9eebee1815336cdf03bdc1d5d0fce90127ed9",
+    "1e7927e4a96d07952b9e3a5511ab29f924b949ba1bdc3e6fb8925307105144f7": "fc075bc4cb3239ee4b3ee6d4bbe2465baa11c8b2c9cac34c6432707316683c96",
+    "4090fc6bd179469b1ed7dbea4955cc43e99436f08a2b11e859df01fbeacd7686": "3231e876e218f1ffa1b0a5bc7d1dfd8e0d825553e58ce225fc9638d8f717620b",
+    "bc9f9c4d72e14686fec1a5431482d66ff1a636fe2617c3954eb3218a95c70e0e": "8c4c3dd5eb3c20fa03b6cef78287e2bc8ac4b601899c516c39996fdf9e0b200c",
+    "f023cc2c0a132ed9aa453cf35fb107773ba970d2685b6d88db329271ba56a39a": "84f911509d582e9cd9fd6321025b7d56e341dcfe365bde2ba603f3f3b1bf702f",
+    "df8d9552515addc2eaa0957246aa6f581af003df32ddf2f9a957bc69907d2c2c": "98eba4298ebef180969de56309aa88be13f71a32dc96a18489420ea87c4ecf64",
+    "c0dcba8dd0c2b789dbb39a6b8e027d65eec8ea8ffca171f2c10e27a0fb67796f": "eeeea64c8b99f6bc00e2f09a145ec2120a9f02691a16d4223fea3218b35c0612",
+    "c5579a311402ac0c3d8ba7117a7dab67d758e7aa17f2d46cd014a02e8cd518ff": "efc66aa4e8cd082ae76e309eb04138b300e0a6f14f0a68652c9208a75983f1d6",
+    "c69911e14fab7bac24ef2351d69b985a364c0ed51349638f53e292a57282bc58": "b67b03b0e6f93cd6a2491047075d26aa3032e9390b1395ea75398970ffaf5db0",
+    "d7bbce4a7461ffef24e1556a57eebe0ee01398116b83941346c3ef2c37cf11f8": "f1300ad8f60edae0ba085da7fe7fa4c835f6398072ba41b39d84976be83d7b64",
+    "78b2e041d785131d14fbe8e8b64baafb1c2aee964e9da2b9cc86b836d392f490": "cf032b8277b96b7ad22c71cc9e73ae043f2b1da91589debc102221e97c508696",
+    "f61ddab9173796d3d40df687b65fdc9e44e9546894293b6309b7fbad83741d4f": "c3de92e94d9990d71b247970db361f0faa1ab0a73a2988999df93e8cee00ed18",
+    "e8a56d8fc04115c66ae34c575fefe8c0912523805ac4989dfa70817bedc2ef1d": "3ed88f1094554f6d485e05a260247077412b2cc52999527b5700341e88e082af",
+    "662b232eefbc3130a0f8e9f1cb7260bb8a3ed2db6287f6e3a781a13e6f58c97c": "d8373cd1c549ea13a4253e28d9a7e39e8cb05617104dc8357a31c591c1a80b6b",
+    "bccc56ed35bf61f79121d69fbcfaf6732c6b49f0371880880b9f39f3524b3dca": "ed29f33a6296dc4b1191c398c6add6d2d6e157c5e5b88d475fc1f012dbdfe72f",
+    "1c8bb53dbc9d3238d5dbc41d1121bf24d4758a063a27e3d4f3f62c9e8b5ff73f": "9d0f6f0a60d2970950d1ca32d4df90f0e6f709985f6b19591886b5d328f13aef",
+    "fe790a1ed8716f4e45e183cfdc23b0efe14bf8b79b295e9038cdb8b2dea63ab1": "7b409fd9374d48a6e8d18da99fee5e840bccbe7331ee4398ff1b12d14b6869fc"
+  },
+  "regressionEvidence": [
+    {
+      "test": "care",
+      "label": "single-backtest: vollständige Ausgabe ohne Pflege bytegleich zur Basis",
+      "beforeSha256": "ef9c701841aef6a9928b873c97d9a5ebf598a11869b94d036c4e82e72ba8cf16",
+      "afterSha256": "c2b3ba596969f7d393d7414f5cc78d651c4f7c23081ab43f9b9d56c192d1de61",
+      "numericLeaves": 4800,
+      "beforeNumericSha256": "59c0b43818d716198fc32c458f40a907ac7a961bcb27f750b8899ee51bff044f",
+      "afterNumericSha256": "59c0b43818d716198fc32c458f40a907ac7a961bcb27f750b8899ee51bff044f",
+      "unchangedExceptTextsSha256": "db88cc61733ffa08914afce9ba525f657a2e1651cf885fc901a029f0ff3b927c",
+      "changedFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "care",
+      "label": "single-mc: vollständige Ausgabe ohne Pflege bytegleich zur Basis",
+      "beforeSha256": "7da4803bebf64a461a08b816f9452747a61eaf4debc05496ae248fa000c13df9",
+      "afterSha256": "1e9f47d1606339c32d81af46e947225985f5de91f82ef4c314769f5ac52a71ec",
+      "numericLeaves": 15521,
+      "beforeNumericSha256": "8d0eac8702da3136e7c28b81fb89bdf49115d2e302d6f57616f85d7721f1d676",
+      "afterNumericSha256": "8d0eac8702da3136e7c28b81fb89bdf49115d2e302d6f57616f85d7721f1d676",
+      "unchangedExceptTextsSha256": "d5c5202602189204e67a9452d600ab57139ff5836df7303679f3f53bc5532fc0",
+      "changedFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "ff-d-regression",
+      "label": "Vollständige engines-Ergebnisse mit FR-20/33/34-Diagnosen",
+      "beforeSha256": "cb83c51473be91506565205ec86e7b1e3f6ab6b10c52d0da4363106d7c103828",
+      "afterSha256": "f346a8b125c3a56a148df7a688c19b87e46d413967109b2f178c6b7bdd4d658c",
+      "numericLeaves": 1104,
+      "beforeNumericSha256": "9299dd54d61f5ab828f65155703cf4c27d409d26e220eee28489b09c75520a8c",
+      "afterNumericSha256": "9299dd54d61f5ab828f65155703cf4c27d409d26e220eee28489b09c75520a8c",
+      "unchangedExceptTextsSha256": "33cfef31780ccff72d38dd097a271cf18b1cfa3d647a6130e062da32df0b42cd",
+      "changedFields": [
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "ff-f-regression",
+      "label": "engines: vollständige Ergebnisse ohne Dynamik nach BK-2",
+      "beforeSha256": "cb83c51473be91506565205ec86e7b1e3f6ab6b10c52d0da4363106d7c103828",
+      "afterSha256": "f346a8b125c3a56a148df7a688c19b87e46d413967109b2f178c6b7bdd4d658c",
+      "numericLeaves": 1104,
+      "beforeNumericSha256": "9299dd54d61f5ab828f65155703cf4c27d409d26e220eee28489b09c75520a8c",
+      "afterNumericSha256": "9299dd54d61f5ab828f65155703cf4c27d409d26e220eee28489b09c75520a8c",
+      "unchangedExceptTextsSha256": "33cfef31780ccff72d38dd097a271cf18b1cfa3d647a6130e062da32df0b42cd",
+      "changedFields": [
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "ff-g-regression",
+      "label": "dynamicUnaffected: ungefilterte JSON-Bytes gegen BK-2",
+      "beforeSha256": "b5ed62053cacb3568606375ed504e8f7cf2573ea1b231feb530b804e20f742e9",
+      "afterSha256": "c346b65030a0972668ba84783dd8bf706187e4e24456c4bcdb8a875bb65f0e07",
+      "numericLeaves": 2530,
+      "beforeNumericSha256": "9a3d2bcc012f98b25dfb5638740f2e3459b34fc640fa10f00043ff9faecfbccf",
+      "afterNumericSha256": "9a3d2bcc012f98b25dfb5638740f2e3459b34fc640fa10f00043ff9faecfbccf",
+      "unchangedExceptTextsSha256": "ba278d59ffbc0bdc039e9cfe342d2e3a82efb08993a03ffee5abbeca714418d5",
+      "changedFields": [
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "planned-inflows",
+      "label": "konservativ: explizite alte Flex-Werte reproduzieren FR-38",
+      "beforeSha256": "38322b49112284d31f5bee92d1af602267d995165ec9d4c1302a3d3c72053b4e",
+      "afterSha256": "2a1056c9b79e83718fb77cb4262a4cde2a3164efb9f352da755d4025ca92d4e2",
+      "numericLeaves": 13617,
+      "beforeNumericSha256": "6000ba6eb7e2faa8703188152cce01371a3a40aa7e80ff60992d3c670fcb9d45",
+      "afterNumericSha256": "6000ba6eb7e2faa8703188152cce01371a3a40aa7e80ff60992d3c670fcb9d45",
+      "unchangedExceptTextsSha256": "6cb1fc6be5a65a39d06901619490d8429a3f166cccb8094c80dd86ff0c31d616",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "planned-inflows",
+      "label": "konservativ: Backtest und MC-Pfad 0 entsprechen FR-39",
+      "beforeSha256": "0879b3a44d6127f31f248164f721cc17812ee60b90cca28b18f9aca1636ce7e3",
+      "afterSha256": "3dfc44aa3da7e56ac572eb2b289b52a783075276bedad759f755f846dca0445e",
+      "numericLeaves": 13624,
+      "beforeNumericSha256": "c227d278cfb79f7500eb60acad4970b3b85b6d39e9cad100544a216f7fe8c8c4",
+      "afterNumericSha256": "c227d278cfb79f7500eb60acad4970b3b85b6d39e9cad100544a216f7fe8c8c4",
+      "unchangedExceptTextsSha256": "40296b0d6c8b27b56759ed9c55b4e8d5a316528f8f0d62fb0a61d7db43a4a1f9",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "planned-inflows",
+      "label": "konservativ: Backtest und MC-Pfad ohne Pflege bleiben bytegleich zu cd34b374",
+      "beforeSha256": "87e305fef4795bba0259ed6cd47dd8f8b9d0b46b2bad97074388e0c24df6bd3e",
+      "afterSha256": "46f1dc8baf17355c0358aecc86055b5c928c7fc1ac20fbb9da643da78a26f22e",
+      "numericLeaves": 15508,
+      "beforeNumericSha256": "979907904354d94ee05350e722da570e45e04ec14421d4ff07a0d82d06a2c99f",
+      "afterNumericSha256": "979907904354d94ee05350e722da570e45e04ec14421d4ff07a0d82d06a2c99f",
+      "unchangedExceptTextsSha256": "74e2379f4ddbd29f938b3c2cb8cb6cf9aa36a2ea45f1017bbe938fed31c0aede",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "planned-inflows",
+      "label": "ausgewogen: explizite alte Flex-Werte reproduzieren FR-38",
+      "beforeSha256": "76049e332d50da12551e2846166ff4ddbbba1a8e85f0551928d24e6bbad55863",
+      "afterSha256": "1693b0272034d6d57f59e12cec4b1709e339f56fd8dc85ea2189dbf239550f95",
+      "numericLeaves": 13458,
+      "beforeNumericSha256": "e72f86eb85ea58ae632be8a9b81b31f584ffeaffa81dacb0bfa34364a9d97786",
+      "afterNumericSha256": "e72f86eb85ea58ae632be8a9b81b31f584ffeaffa81dacb0bfa34364a9d97786",
+      "unchangedExceptTextsSha256": "f70d9fac19b53a86c697e9ac43d844ea693f9315a8acbb073daed144df904a18",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "planned-inflows",
+      "label": "ausgewogen: Backtest und MC-Pfad 0 entsprechen FR-39",
+      "beforeSha256": "344dd45c04ba23d5431d427ac3022e01f59b2b1d8555e1cd0d66ba8e1ff6944b",
+      "afterSha256": "af60ba6bb943a318485efb23ec790a32b62721c5bd31a77c28ff9082383c3fe9",
+      "numericLeaves": 13572,
+      "beforeNumericSha256": "789c308f0ed08a31df6946c9beaf9e873da11f6b9f48960b9957599dfee9823c",
+      "afterNumericSha256": "789c308f0ed08a31df6946c9beaf9e873da11f6b9f48960b9957599dfee9823c",
+      "unchangedExceptTextsSha256": "80a4f1611f60910e079582eed2bae4a2b153e166af8c6388eccb9a4293631f26",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "planned-inflows",
+      "label": "ausgewogen: Backtest und MC-Pfad ohne Pflege bleiben bytegleich zu cd34b374",
+      "beforeSha256": "a2853c1768dea244f4eab575327c44bdf9bcba57d880a3b8571114637b018d12",
+      "afterSha256": "743542607af05d373aba856332f9eebee1815336cdf03bdc1d5d0fce90127ed9",
+      "numericLeaves": 15467,
+      "beforeNumericSha256": "2fe04b3925f805e8d618e749a41d96e54cd0ea5916a7a160e6065707e4055dd1",
+      "afterNumericSha256": "2fe04b3925f805e8d618e749a41d96e54cd0ea5916a7a160e6065707e4055dd1",
+      "unchangedExceptTextsSha256": "ac4679affc5919905e178ffddb7915f27b85c2849b8a40de085de47dfc48f6a2",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "planned-inflows",
+      "label": "offensiv: explizite alte Flex-Werte reproduzieren FR-38",
+      "beforeSha256": "1e7927e4a96d07952b9e3a5511ab29f924b949ba1bdc3e6fb8925307105144f7",
+      "afterSha256": "fc075bc4cb3239ee4b3ee6d4bbe2465baa11c8b2c9cac34c6432707316683c96",
+      "numericLeaves": 13550,
+      "beforeNumericSha256": "8a7ca17935a1d100daee6d882465f23cf4e1267b85fd4f2f3b01f4fdb23881fe",
+      "afterNumericSha256": "8a7ca17935a1d100daee6d882465f23cf4e1267b85fd4f2f3b01f4fdb23881fe",
+      "unchangedExceptTextsSha256": "bbe82fc43480455fb9fbb6bf7209601207996501dd904022cfcdb27ba81a7029",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "planned-inflows",
+      "label": "offensiv: Backtest und MC-Pfad 0 entsprechen FR-39",
+      "beforeSha256": "4090fc6bd179469b1ed7dbea4955cc43e99436f08a2b11e859df01fbeacd7686",
+      "afterSha256": "3231e876e218f1ffa1b0a5bc7d1dfd8e0d825553e58ce225fc9638d8f717620b",
+      "numericLeaves": 13548,
+      "beforeNumericSha256": "ca93e53f929b29d18002d6e9ca900d9232cea2a4e69e76a93aaabf16e161b378",
+      "afterNumericSha256": "ca93e53f929b29d18002d6e9ca900d9232cea2a4e69e76a93aaabf16e161b378",
+      "unchangedExceptTextsSha256": "5289287087a2d86b4d16d2fa9d0ecf2b30040105c0c5b1e80233de3079156579",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "planned-inflows",
+      "label": "offensiv: Backtest und MC-Pfad ohne Pflege bleiben bytegleich zu cd34b374",
+      "beforeSha256": "bc9f9c4d72e14686fec1a5431482d66ff1a636fe2617c3954eb3218a95c70e0e",
+      "afterSha256": "8c4c3dd5eb3c20fa03b6cef78287e2bc8ac4b601899c516c39996fdf9e0b200c",
+      "numericLeaves": 15437,
+      "beforeNumericSha256": "62d90df418005beb8296c4270366bb5c579e0c79dfebfe5d13c5e09a85a3a4b5",
+      "afterNumericSha256": "62d90df418005beb8296c4270366bb5c579e0c79dfebfe5d13c5e09a85a3a4b5",
+      "unchangedExceptTextsSha256": "f87595cfe53bc794496c8323464ebb6218f14dec92b288c33b7c064494e73218",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich",
+      "label": "konservativ: Backtest entspricht BK-2-Referenz",
+      "beforeSha256": "f023cc2c0a132ed9aa453cf35fb107773ba970d2685b6d88db329271ba56a39a",
+      "afterSha256": "84f911509d582e9cd9fd6321025b7d56e341dcfe365bde2ba603f3f3b1bf702f",
+      "numericLeaves": 3973,
+      "beforeNumericSha256": "65c45497882cee4a9962c4c1081702a15b35e1d770be0db6a373e5d717d04bb4",
+      "afterNumericSha256": "65c45497882cee4a9962c4c1081702a15b35e1d770be0db6a373e5d717d04bb4",
+      "unchangedExceptTextsSha256": "c70e12f8fd6abeea4aab09248dfaebf639dae6191aa07599f200e65bd4506b2e",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich",
+      "label": "konservativ: MC-Pfad 0 mit FR-21–24/27",
+      "beforeSha256": "df8d9552515addc2eaa0957246aa6f581af003df32ddf2f9a957bc69907d2c2c",
+      "afterSha256": "98eba4298ebef180969de56309aa88be13f71a32dc96a18489420ea87c4ecf64",
+      "numericLeaves": 6291,
+      "beforeNumericSha256": "93d9a29a321c51c3bab83ada79fbbdd93a39f56607c03f8a3f95ad0234ea7b55",
+      "afterNumericSha256": "93d9a29a321c51c3bab83ada79fbbdd93a39f56607c03f8a3f95ad0234ea7b55",
+      "unchangedExceptTextsSha256": "45c99d707198d1ce4cfbaa0813929a9d7f98a136c5ee1dd32675368a60c0545e",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich",
+      "label": "ausgewogen: MC-Pfad 0 mit FR-21–24/27",
+      "beforeSha256": "c0dcba8dd0c2b789dbb39a6b8e027d65eec8ea8ffca171f2c10e27a0fb67796f",
+      "afterSha256": "eeeea64c8b99f6bc00e2f09a145ec2120a9f02691a16d4223fea3218b35c0612",
+      "numericLeaves": 6293,
+      "beforeNumericSha256": "c0796138078638a99d0f2f53e451346e108c87b1a06db39b3218503e7dd1cc0e",
+      "afterNumericSha256": "c0796138078638a99d0f2f53e451346e108c87b1a06db39b3218503e7dd1cc0e",
+      "unchangedExceptTextsSha256": "dd28ac682a81dc3a778745503ed597e825828a764d812f479149dafef181fdae",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich",
+      "label": "offensiv: Backtest entspricht BK-2-Referenz",
+      "beforeSha256": "c5579a311402ac0c3d8ba7117a7dab67d758e7aa17f2d46cd014a02e8cd518ff",
+      "afterSha256": "efc66aa4e8cd082ae76e309eb04138b300e0a6f14f0a68652c9208a75983f1d6",
+      "numericLeaves": 3903,
+      "beforeNumericSha256": "98bd0e3007e3fa9de41e29c8ee750cefec1d7d3b4927666e23ff675664d139fa",
+      "afterNumericSha256": "98bd0e3007e3fa9de41e29c8ee750cefec1d7d3b4927666e23ff675664d139fa",
+      "unchangedExceptTextsSha256": "e9b9c25f6e3c9982f0bd37c267278e839e5be12d4adad0b712b3f01e590cb8c2",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich",
+      "label": "offensiv: MC-Pfad 0 mit FR-21–24/27",
+      "beforeSha256": "c69911e14fab7bac24ef2351d69b985a364c0ed51349638f53e292a57282bc58",
+      "afterSha256": "b67b03b0e6f93cd6a2491047075d26aa3032e9390b1395ea75398970ffaf5db0",
+      "numericLeaves": 6287,
+      "beforeNumericSha256": "f4cc33b37fada8a04b9d43f0d79bf00a3a044e08b3036099e0b0ff0973ee74af",
+      "afterNumericSha256": "f4cc33b37fada8a04b9d43f0d79bf00a3a044e08b3036099e0b0ff0973ee74af",
+      "unchangedExceptTextsSha256": "0a99a1f9a5cd19075da4c52a9ef6ccb2322a855ccea0a737e92b40d2d8c73ebc",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression",
+      "label": "kohorte-2006: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "beforeSha256": "d7bbce4a7461ffef24e1556a57eebe0ee01398116b83941346c3ef2c37cf11f8",
+      "afterSha256": "f1300ad8f60edae0ba085da7fe7fa4c835f6398072ba41b39d84976be83d7b64",
+      "numericLeaves": 1334,
+      "beforeNumericSha256": "420b340e1cd3192e9f48f957c1f4e0ed6b90c554491c776788af7d8def5ad254",
+      "afterNumericSha256": "420b340e1cd3192e9f48f957c1f4e0ed6b90c554491c776788af7d8def5ad254",
+      "unchangedExceptTextsSha256": "850c737fb982c8eb53596de5dbac254c327056f975fbcbc2b47a9a7ec783c415",
+      "changedFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression",
+      "label": "kohorte-2007: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "beforeSha256": "78b2e041d785131d14fbe8e8b64baafb1c2aee964e9da2b9cc86b836d392f490",
+      "afterSha256": "cf032b8277b96b7ad22c71cc9e73ae043f2b1da91589debc102221e97c508696",
+      "numericLeaves": 1334,
+      "beforeNumericSha256": "8f83a5db8b4717ce8cd6fb70ba8eed8eac7420b79fc9da3cb5746fd82ced8eac",
+      "afterNumericSha256": "8f83a5db8b4717ce8cd6fb70ba8eed8eac7420b79fc9da3cb5746fd82ced8eac",
+      "unchangedExceptTextsSha256": "23ea69ada7c64bc0214033085ba330f74335b7d7ea17503a8513915f1b3c0ac7",
+      "changedFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich",
+      "label": "konservativ: Backtest ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "f61ddab9173796d3d40df687b65fdc9e44e9546894293b6309b7fbad83741d4f",
+      "afterSha256": "c3de92e94d9990d71b247970db361f0faa1ab0a73a2988999df93e8cee00ed18",
+      "numericLeaves": 9251,
+      "beforeNumericSha256": "37dde13de3f78c340166624e54fb98a33ca702dd6e0ab3dbe71460676ffe8ab8",
+      "afterNumericSha256": "37dde13de3f78c340166624e54fb98a33ca702dd6e0ab3dbe71460676ffe8ab8",
+      "unchangedExceptTextsSha256": "2bc898676f388c38692aff3f95c2fd854222ffcfadda4a339b44863a1a1e98ec",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich",
+      "label": "konservativ: MC ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "e8a56d8fc04115c66ae34c575fefe8c0912523805ac4989dfa70817bedc2ef1d",
+      "afterSha256": "3ed88f1094554f6d485e05a260247077412b2cc52999527b5700341e88e082af",
+      "numericLeaves": 3754,
+      "beforeNumericSha256": "3ec9e7736b37434b609e47968c9d005da5676866b8dae859b9e6dd373d334fd7",
+      "afterNumericSha256": "3ec9e7736b37434b609e47968c9d005da5676866b8dae859b9e6dd373d334fd7",
+      "unchangedExceptTextsSha256": "b4fb3d83e5cb9a4e630f9b28851b487426c55179f0b3d6ca0cb828472f32c63a",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich",
+      "label": "ausgewogen: Backtest ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "662b232eefbc3130a0f8e9f1cb7260bb8a3ed2db6287f6e3a781a13e6f58c97c",
+      "afterSha256": "d8373cd1c549ea13a4253e28d9a7e39e8cb05617104dc8357a31c591c1a80b6b",
+      "numericLeaves": 9208,
+      "beforeNumericSha256": "61a088c4e02828f032cdb7b2dbe7a127cbbd342c003a4f3869960b6f8c79db99",
+      "afterNumericSha256": "61a088c4e02828f032cdb7b2dbe7a127cbbd342c003a4f3869960b6f8c79db99",
+      "unchangedExceptTextsSha256": "d176dc7f964146c1d92cc4b75c36dcf3a2ed1df02e94cd61dde15366fb151835",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich",
+      "label": "ausgewogen: MC ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "bccc56ed35bf61f79121d69fbcfaf6732c6b49f0371880880b9f39f3524b3dca",
+      "afterSha256": "ed29f33a6296dc4b1191c398c6add6d2d6e157c5e5b88d475fc1f012dbdfe72f",
+      "numericLeaves": 3756,
+      "beforeNumericSha256": "b90ac429949be6bef51c201d4fffa4876f2ad86f038e15b25651bc024ee2a2cc",
+      "afterNumericSha256": "b90ac429949be6bef51c201d4fffa4876f2ad86f038e15b25651bc024ee2a2cc",
+      "unchangedExceptTextsSha256": "9be6d2839dfa45989b9b8f7d7bd8e6ee7e79cce1417ba2397abed0ed1a337ee5",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich",
+      "label": "offensiv: Backtest ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "1c8bb53dbc9d3238d5dbc41d1121bf24d4758a063a27e3d4f3f62c9e8b5ff73f",
+      "afterSha256": "9d0f6f0a60d2970950d1ca32d4df90f0e6f709985f6b19591886b5d328f13aef",
+      "numericLeaves": 9183,
+      "beforeNumericSha256": "7020df04e999cfa750c220af94d95482ffe962054e45738517209d6c7d6f58cc",
+      "afterNumericSha256": "7020df04e999cfa750c220af94d95482ffe962054e45738517209d6c7d6f58cc",
+      "unchangedExceptTextsSha256": "fdaf1a84da226c26a922f29c15e9685a96491fbe4192392e59912c2f3eb13d10",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich",
+      "label": "offensiv: MC ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "fe790a1ed8716f4e45e183cfdc23b0efe14bf8b79b295e9038cdb8b2dea63ab1",
+      "afterSha256": "7b409fd9374d48a6e8d18da99fee5e840bccbe7331ee4398ff1b12d14b6869fc",
+      "numericLeaves": 3751,
+      "beforeNumericSha256": "204d2d6421c7e6690b21728ad55883a7940459489949489f2b71bbf2b9cb6410",
+      "afterNumericSha256": "204d2d6421c7e6690b21728ad55883a7940459489949489f2b71bbf2b9cb6410",
+      "unchangedExceptTextsSha256": "89afdf2d4e162cc79fce3ebfc536af60f23961582f943a714cd22177bf44551a",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    }
+  ],
+  "parityComparison": {
+    "cases": 208,
+    "changedRecordedReasons": 16,
+    "changedReasonsByPreset": {
+      "ausgewogen": 5,
+      "konservativ": 5,
+      "offensiv": 6
+    },
+    "groups": {
+      "beforeSha256": "69a40d5d9365277584991fd0d96d42d27d28f2a5e7e8e8ea6c118e438e8abe70",
+      "afterSha256": "131ecac8247e45c371ed98c7e47cd002e57f52afb1ec7ab11b4818d49353a6a8",
+      "numericLeaves": 181910,
+      "beforeNumericSha256": "c691c6e52a3fb0c70b54eccc9c691b0886f7b17f6adc800c66b6020ac4695cd0",
+      "afterNumericSha256": "c691c6e52a3fb0c70b54eccc9c691b0886f7b17f6adc800c66b6020ac4695cd0",
+      "unchangedExceptTextsSha256": "561667ff2a1300ad68b3baf041880d62eb4b9a3821f1d2a34a1a1123236dd24a",
+      "changedFields": [
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    }
+  }
+}

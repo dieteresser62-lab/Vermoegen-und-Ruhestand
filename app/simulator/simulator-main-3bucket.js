@@ -1,0 +1,69 @@
+/** @import {SimulatorControl} from '../../typcheck/simulator-ui.js' */
+import { readBoundHouseholdPlanField } from '../shared/household-plan-fields.js';
+"use strict";
+
+import { STRATEGY_OPTIONS } from '../../types/strategy-options.js';
+import { setFieldState } from '../shared/field-state.js';
+
+const LEGACY_STANDARD_MODES = new Set(['dynamic_flex', 'vpw', 'guardrails', 'fixed_real', 'none']);
+const DEFAULTS = {
+    bondTargetFactor: 5,
+    drawdownTrigger: 15
+};
+
+function normalizeMode(modeRaw) {
+    const mode = String(modeRaw || '').trim().toLowerCase();
+    if (mode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE) return STRATEGY_OPTIONS.THREE_BUCKET_JILGE;
+    if (mode === STRATEGY_OPTIONS.STANDARD || LEGACY_STANDARD_MODES.has(mode) || mode === '') {
+        return STRATEGY_OPTIONS.STANDARD;
+    }
+    return STRATEGY_OPTIONS.STANDARD;
+}
+
+function setDefaultIfEmpty(id, defaultValue) {
+    const el = /** @type {SimulatorControl} */ (document.getElementById(id));
+    if (!el || readBoundHouseholdPlanField(el) !== undefined) return;
+    const raw = String(el.value ?? '').trim();
+    if (raw !== '') return;
+    el.value = String(defaultValue);
+}
+
+/**
+ * @returns {void}
+ */
+export function refreshThreeBucketControls() {
+    const strategySelect = /** @type {HTMLSelectElement} */ (document.getElementById('entnahmeStrategie'));
+    const configGroup = document.getElementById('threeBucketConfigGroup');
+    if (!strategySelect || !configGroup) return;
+    const mode = normalizeMode(strategySelect.value);
+    strategySelect.value = mode;
+    const active = mode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE;
+    configGroup.style.display = active ? 'grid' : 'none';
+    if (strategySelect.ownerDocument && strategySelect.parentNode) {
+        setFieldState(strategySelect, 'editable', active ? '' : '3-Bucket-Felder nicht anwendbar: Standardstrategie ist gewählt.');
+    }
+    if (active) {
+        setDefaultIfEmpty('bondTargetFactor', DEFAULTS.bondTargetFactor);
+        setDefaultIfEmpty('drawdownTrigger', DEFAULTS.drawdownTrigger);
+    }
+}
+
+/**
+ * @returns {void}
+ */
+export function initThreeBucketControls() {
+    const strategySelect = /** @type {HTMLSelectElement} */ (document.getElementById('entnahmeStrategie'));
+    if (!strategySelect) return;
+    strategySelect.addEventListener('change', () => {
+        refreshThreeBucketControls();
+    });
+    refreshThreeBucketControls();
+}
+
+/**
+ * @param {unknown} modeRaw
+ * @returns Ergebnis der Operation.
+ */
+export function normalizeDecumulationMode(modeRaw) {
+    return normalizeMode(modeRaw);
+}

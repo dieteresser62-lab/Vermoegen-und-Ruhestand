@@ -1,0 +1,1112 @@
+{
+  "ruin": {
+    "result": {
+      "schemaVersion": "BacktestRunResultV1",
+      "request": {
+        "schemaVersion": "BacktestRequestV1",
+        "startYear": 2005,
+        "endYear": 2007,
+        "executionMode": "single_path",
+        "breakOnRuin": true,
+        "temporalConventionId": "realized_t_decision_t_minus_1_v1",
+        "dataset": {
+          "datasetId": "ruhestandsapp-historical-data-v1",
+          "revision": "2026-08-01.4",
+          "contentHash": "c79350c5abf2dee2feeaae65c88ed5e58487f878cb598fdffc132fbf48d01e79",
+          "manifestSchemaVersion": "HistoricalDataManifestV1",
+          "manifestHash": {
+            "algorithm": "sha256-canonical-json-v1",
+            "value": "7ee83d2c04ece133903fb8617f9da4448979b602c3b03649eefe4cd0d2ff62fb"
+          }
+        },
+        "engine": {
+          "apiVersion": null,
+          "buildId": null,
+          "sourceCommit": null,
+          "sourceTreeStatus": "unavailable",
+          "sourceProvenanceProvider": null,
+          "configFingerprint": null,
+          "quantizationContract": null
+        },
+        "inputs": {
+          "startAlter": 65,
+          "startVermoegen": 1000,
+          "depotwertAlt": 0,
+          "einstandAlt": 0,
+          "tagesgeld": 1000,
+          "geldmarktEtf": 0,
+          "startFloorBedarf": 24000,
+          "startFlexBedarf": 6000,
+          "minimumFlexAnnual": 0,
+          "flexBudgetAnnual": 0,
+          "flexBudgetRecharge": 0,
+          "renteMonatlich": 0,
+          "renteStartOffsetJahre": 0,
+          "rentAdjPct": 0,
+          "goldAktiv": false,
+          "goldZielProzent": 0,
+          "goldFloorProzent": 0,
+          "goldSteuerfrei": false,
+          "risikoprofil": "sicherheits-dynamisch",
+          "rebalancingBand": 20,
+          "liquidityRunwayYears": 3,
+          "maxSkimPctOfEq": 10,
+          "maxBearRefillPctOfEq": 5,
+          "marketCapeRatio": 20,
+          "capeRatio": 20,
+          "kirchensteuerSatz": 0,
+          "startSPB": 1000,
+          "dynamicFlex": false,
+          "goGoActive": false,
+          "pflegefallLogikAktivieren": false,
+          "geschlecht": "m",
+          "partner": {
+            "aktiv": false
+          },
+          "accumulationPhase": {
+            "enabled": false
+          }
+        }
+      },
+      "outcome": {
+        "kind": "ruin",
+        "ruinYear": 2005,
+        "reason": "Gesamtvermögen (1000) < Floor (24000)",
+        "lastCompletedYear": null
+      },
+      "warnings": [],
+      "error": null,
+      "rows": [
+        {
+          "jahr": 2005,
+          "row": {
+            "floor_brutto": 24000,
+            "renteSum": 0,
+            "aktionUndGrund": ">>> RUIN <<< Gesamtvermögen (1000) < Floor (24000)",
+            "ruin_reason": "Gesamtvermögen (1000) < Floor (24000)",
+            "Regime": "BANKRUPT",
+            "liquiditaet": 1000,
+            "wertAktien": 0,
+            "wertGold": 0,
+            "FlexRatePct": 0,
+            "flex_erfuellt_nominal": 0,
+            "QuoteEndPct": 0,
+            "RunwayCoveragePct": null,
+            "RunwayMeasurementPhase": "not_applicable_terminal_ruin",
+            "RunwayCoveragePostPayoutEndOfYearPct": null,
+            "runway_after_transaction_before_payout_months": null,
+            "runway_post_payout_end_of_year_months": null,
+            "NominalReturnEquityPct": 0,
+            "NominalReturnGoldPct": 0,
+            "steuern_gesamt": 0,
+            "NeedLiq": 0,
+            "GuardGold": 0,
+            "GuardEq": 0,
+            "GuardNote": "Gesamtvermögen (1000) < Floor (24000)",
+            "health_bucket_enabled": false,
+            "health_bucket_end": 0,
+            "floor_coverage_required_nominal": 24000,
+            "floor_coverage_covered_nominal": 1000,
+            "floor_shortfall_nominal": 23000,
+            "taxSavedByLossCarry": 0,
+            "lossCarryEnd": 0,
+            "portfolio_total_start": 1000,
+            "portfolio_total_end": 1000
+          },
+          "entscheidung": {
+            "jahresEntnahme": 0
+          },
+          "wertAktien": 0,
+          "wertGold": 0,
+          "liquiditaet": 1000,
+          "netA": 0,
+          "netG": 0,
+          "vpw": null,
+          "vpwFallbackHint": "no_vpw",
+          "adjPct": 0,
+          "inflationVJ": 1.6
+        }
+      ],
+      "requestedYears": 3,
+      "completedYears": 0,
+      "firstYear": 2005,
+      "lastCompletedYear": null,
+      "ruinYear": 2005,
+      "breakOnRuin": true,
+      "portfolioStart": 1000,
+      "portfolioEnd": 1000,
+      "dataStatus": "complete",
+      "incompleteReason": null,
+      "historicalYearRecords": [
+        {
+          "schemaVersion": "HistoricalYearRecordV1",
+          "year": 2005,
+          "simulationYear": 2005,
+          "temporalConventionId": "realized_t_decision_t_minus_1_v1",
+          "alignmentStatus": "approved_d01",
+          "dataset": {
+            "datasetId": "ruhestandsapp-historical-data-v1",
+            "revision": "2026-08-01.4",
+            "contentHash": "c79350c5abf2dee2feeaae65c88ed5e58487f878cb598fdffc132fbf48d01e79"
+          },
+          "realized": {
+            "equityReturn": {
+              "seriesId": "global_equity_research_index",
+              "value": 0.24349315622898549,
+              "unit": "ratio",
+              "sourceYear": 2005,
+              "asOfYear": 2005,
+              "qualityStatus": "present",
+              "derivation": "index_level_t_div_index_level_t_minus_1_minus_1",
+              "inputs": {
+                "previousSourceYear": 2004,
+                "previousIndexLevel": 201688.72733440928,
+                "currentSourceYear": 2005,
+                "currentIndexLevel": 250798.55212887184
+              }
+            },
+            "goldReturn": {
+              "seriesId": "gold_eur_perf",
+              "value": 8.784465120355843,
+              "unit": "percent_per_year",
+              "sourceYear": 2005,
+              "asOfYear": 2005,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            },
+            "cashBondReturn": {
+              "seriesId": "zinssatz_de",
+              "value": 2.09,
+              "unit": "percent_per_year",
+              "sourceYear": 2005,
+              "asOfYear": 2005,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            },
+            "inflation": {
+              "seriesId": "inflation_de",
+              "value": 1.6,
+              "unit": "percent_per_year",
+              "sourceYear": 2005,
+              "asOfYear": 2005,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            },
+            "wagePensionAdjustment": {
+              "seriesId": "lohn_de",
+              "value": 1.4,
+              "unit": "percent_per_year",
+              "sourceYear": 2005,
+              "asOfYear": 2005,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            }
+          },
+          "decisionAsOf": {
+            "capeRatio": {
+              "seriesId": "cape",
+              "value": 27.144808694741226,
+              "unit": "ratio",
+              "sourceYear": 2004,
+              "asOfYear": 2004,
+              "observationYear": 2004,
+              "observationMonth": 12,
+              "decisionYear": 2005,
+              "qualityStatus": "present",
+              "derivation": "generated_december_t_minus_1_decision_signal"
+            }
+          }
+        },
+        {
+          "schemaVersion": "HistoricalYearRecordV1",
+          "year": 2006,
+          "simulationYear": 2006,
+          "temporalConventionId": "realized_t_decision_t_minus_1_v1",
+          "alignmentStatus": "approved_d01",
+          "dataset": {
+            "datasetId": "ruhestandsapp-historical-data-v1",
+            "revision": "2026-08-01.4",
+            "contentHash": "c79350c5abf2dee2feeaae65c88ed5e58487f878cb598fdffc132fbf48d01e79"
+          },
+          "realized": {
+            "equityReturn": {
+              "seriesId": "global_equity_research_index",
+              "value": 0.12641337392975394,
+              "unit": "ratio",
+              "sourceYear": 2006,
+              "asOfYear": 2006,
+              "qualityStatus": "present",
+              "derivation": "index_level_t_div_index_level_t_minus_1_minus_1",
+              "inputs": {
+                "previousSourceYear": 2005,
+                "previousIndexLevel": 250798.55212887184,
+                "currentSourceYear": 2006,
+                "currentIndexLevel": 282502.84328017983
+              }
+            },
+            "goldReturn": {
+              "seriesId": "gold_eur_perf",
+              "value": 34.48718728858757,
+              "unit": "percent_per_year",
+              "sourceYear": 2006,
+              "asOfYear": 2006,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            },
+            "cashBondReturn": {
+              "seriesId": "zinssatz_de",
+              "value": 2.84,
+              "unit": "percent_per_year",
+              "sourceYear": 2006,
+              "asOfYear": 2006,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            },
+            "inflation": {
+              "seriesId": "inflation_de",
+              "value": 1.6,
+              "unit": "percent_per_year",
+              "sourceYear": 2006,
+              "asOfYear": 2006,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            },
+            "wagePensionAdjustment": {
+              "seriesId": "lohn_de",
+              "value": 1.5,
+              "unit": "percent_per_year",
+              "sourceYear": 2006,
+              "asOfYear": 2006,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            }
+          },
+          "decisionAsOf": {
+            "capeRatio": {
+              "seriesId": "cape",
+              "value": 26.443803114292415,
+              "unit": "ratio",
+              "sourceYear": 2005,
+              "asOfYear": 2005,
+              "observationYear": 2005,
+              "observationMonth": 12,
+              "decisionYear": 2006,
+              "qualityStatus": "present",
+              "derivation": "generated_december_t_minus_1_decision_signal"
+            }
+          }
+        },
+        {
+          "schemaVersion": "HistoricalYearRecordV1",
+          "year": 2007,
+          "simulationYear": 2007,
+          "temporalConventionId": "realized_t_decision_t_minus_1_v1",
+          "alignmentStatus": "approved_d01",
+          "dataset": {
+            "datasetId": "ruhestandsapp-historical-data-v1",
+            "revision": "2026-08-01.4",
+            "contentHash": "c79350c5abf2dee2feeaae65c88ed5e58487f878cb598fdffc132fbf48d01e79"
+          },
+          "realized": {
+            "equityReturn": {
+              "seriesId": "global_equity_research_index",
+              "value": -0.002328347936567443,
+              "unit": "ratio",
+              "sourceYear": 2007,
+              "asOfYear": 2007,
+              "qualityStatus": "present",
+              "derivation": "index_level_t_div_index_level_t_minus_1_minus_1",
+              "inputs": {
+                "previousSourceYear": 2006,
+                "previousIndexLevel": 282502.84328017983,
+                "currentSourceYear": 2007,
+                "currentIndexLevel": 281845.078367954
+              }
+            },
+            "goldReturn": {
+              "seriesId": "gold_eur_perf",
+              "value": 5.722666112575547,
+              "unit": "percent_per_year",
+              "sourceYear": 2007,
+              "asOfYear": 2007,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            },
+            "cashBondReturn": {
+              "seriesId": "zinssatz_de",
+              "value": 3.86,
+              "unit": "percent_per_year",
+              "sourceYear": 2007,
+              "asOfYear": 2007,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            },
+            "inflation": {
+              "seriesId": "inflation_de",
+              "value": 2.3,
+              "unit": "percent_per_year",
+              "sourceYear": 2007,
+              "asOfYear": 2007,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            },
+            "wagePensionAdjustment": {
+              "seriesId": "lohn_de",
+              "value": 2.1,
+              "unit": "percent_per_year",
+              "sourceYear": 2007,
+              "asOfYear": 2007,
+              "qualityStatus": "present",
+              "derivation": "embedded_value_t"
+            }
+          },
+          "decisionAsOf": {
+            "capeRatio": {
+              "seriesId": "cape",
+              "value": 27.2826897875717,
+              "unit": "ratio",
+              "sourceYear": 2006,
+              "asOfYear": 2006,
+              "observationYear": 2006,
+              "observationMonth": 12,
+              "decisionYear": 2007,
+              "qualityStatus": "present",
+              "derivation": "generated_december_t_minus_1_decision_signal"
+            }
+          }
+        }
+      ],
+      "legacyOutcome": "ruin",
+      "legacyMetrics": {
+        "totalWithdrawal": 0,
+        "maxReductionStreak": 0,
+        "reductionYears": 0,
+        "totalTaxes": 0
+      },
+      "summary": {
+        "startWealth": 1000,
+        "endWealth": 1000,
+        "totalWithdrawal": 0,
+        "maxReductionStreak": 0,
+        "reductionYears": 0,
+        "reductionDenominator": 0,
+        "totalTaxes": 0,
+        "healthBucket": {
+          "enabled": false,
+          "end": 0,
+          "realCoveragePct": null,
+          "targetGap": 0
+        },
+        "metricSchemaVersion": "HistoricalBacktestMetricsV3",
+        "metrics": {
+          "wealth_start_nominal_eur": 1000,
+          "wealth_end_nominal_eur": 1000,
+          "wealth_end_real_eur": 984.251968503937,
+          "withdrawal_total_nominal_eur": 0,
+          "floor_shortfall_occurred": true,
+          "floor_shortfall_years": 1,
+          "floor_shortfall_total_nominal_eur": 23000,
+          "floor_shortfall_total_real_eur": 23000,
+          "floor_shortfall_max_real_eur": 23000,
+          "floor_shortfall_longest_streak_years": 1,
+          "flex_required_total_nominal_eur": null,
+          "flex_fulfilled_total_nominal_eur": null,
+          "flex_fulfillment_total_pct": null,
+          "flex_reduction_years_gte_10_pct": null,
+          "flex_reduction_max_pct": null,
+          "flex_reduction_longest_streak_gte_10_pct": null,
+          "minimum_flex_shortfall_years": 0,
+          "minimum_flex_shortfall_total_nominal_eur": 0,
+          "runway_min_coverage_pct": null,
+          "runway_stress_years_below_100_pct": null,
+          "wealth_max_drawdown_nominal_end_series_pct": 0,
+          "tax_total_nominal_eur": 0,
+          "tax_saved_by_loss_carry_total_nominal_eur": 0,
+          "loss_carry_end_nominal_eur": 0,
+          "health_bucket_end_nominal_eur": 0,
+          "outcome_is_completed": false,
+          "outcome_is_ruin": true,
+          "outcome_is_incomplete": false,
+          "outcome_is_technical_error": false
+        }
+      },
+      "diagnostics": null,
+      "metrics": {
+        "schemaVersion": "HistoricalBacktestMetricsV3",
+        "reductionContract": {
+          "operator": "gte",
+          "thresholdPct": 10,
+          "includesExactThreshold": true,
+          "metricId": "flex_reduction_years_gte_10_pct"
+        },
+        "flexBasisContract": {
+          "allowed": [
+            "static_input",
+            "effective_vpw_plus_pension_surplus"
+          ],
+          "observed": [],
+          "effective": null,
+          "consistent": false,
+          "decumulationRowCount": 0
+        },
+        "runwayMeasurementContract": {
+          "phase": "after_transaction_before_payout",
+          "population": "all_non_accumulation_non_terminal_ruin_rows",
+          "phaseComplete": false,
+          "finiteObservationCount": 0,
+          "nullCoverageRowsExcludedAsNotApplicable": true,
+          "postPayoutEndOfYearExcluded": true
+        },
+        "drawdownReferenceSeries": "portfolioStart followed by each rows[*].row.portfolio_total_end, nominal, including health bucket",
+        "descriptors": [
+          {
+            "id": "wealth_start_nominal_eur",
+            "label": "Startvermoegen",
+            "unit": "EUR",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "higher_is_better",
+            "aggregationRule": "first_value",
+            "denominator": "one_run",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_no_initialized_portfolio",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "result.portfolioStart"
+          },
+          {
+            "id": "wealth_end_nominal_eur",
+            "label": "Endvermoegen",
+            "unit": "EUR",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "higher_is_better",
+            "aggregationRule": "last_value",
+            "denominator": "one_run",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_no_terminal_portfolio",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "result.portfolioEnd_reconciled_with_last_row.portfolio_total_end"
+          },
+          {
+            "id": "wealth_end_real_eur",
+            "label": "Reales Endvermoegen",
+            "unit": "EUR",
+            "nominalOrReal": "real",
+            "priceBasis": "real_start_year_prices",
+            "sign": "higher_is_better",
+            "aggregationRule": "last_nominal_value_div_cumulative_inflation",
+            "denominator": "one_run",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_terminal_wealth_or_inflation_path_missing",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "result.portfolioEnd_and_rows[*].inflationVJ"
+          },
+          {
+            "id": "withdrawal_total_nominal_eur",
+            "label": "Gesamte Entnahmen",
+            "unit": "EUR",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "neutral",
+            "aggregationRule": "sum",
+            "denominator": "emitted_year_rows",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_any_emitted_row_lacks_jahresEntnahme",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].entscheidung.jahresEntnahme"
+          },
+          {
+            "id": "floor_shortfall_occurred",
+            "label": "Floor-Shortfall aufgetreten",
+            "unit": "boolean",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "lower_is_better",
+            "aggregationRule": "any_positive",
+            "denominator": "emitted_year_rows",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 0
+            },
+            "missingnessRule": "false_only_if_all_rows_have_explicit_or_derived_shortfall",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.floor_shortfall_nominal_or_floor_aus_depot_minus_entnahme_effektiv"
+          },
+          {
+            "id": "floor_shortfall_years",
+            "label": "Jahre mit Floor-Shortfall",
+            "unit": "years",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "lower_is_better",
+            "aggregationRule": "count_positive",
+            "denominator": "emitted_year_rows",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 0
+            },
+            "missingnessRule": "null_if_any_row_shortfall_is_not_reconstructible",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.floor_shortfall_nominal_or_floor_aus_depot_minus_entnahme_effektiv"
+          },
+          {
+            "id": "floor_shortfall_total_nominal_eur",
+            "label": "Kumulierter Floor-Shortfall",
+            "unit": "EUR",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "lower_is_better",
+            "aggregationRule": "sum",
+            "denominator": "emitted_year_rows",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_any_row_shortfall_is_not_reconstructible",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.floor_shortfall_nominal_or_floor_aus_depot_minus_entnahme_effektiv"
+          },
+          {
+            "id": "floor_shortfall_total_real_eur",
+            "label": "Kumulierter realer Floor-Shortfall",
+            "unit": "EUR",
+            "nominalOrReal": "real",
+            "priceBasis": "real_start_year_prices",
+            "sign": "lower_is_better",
+            "aggregationRule": "sum_nominal_div_inflation_factor_at_year_start",
+            "denominator": "emitted_year_rows",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_shortfall_or_inflation_path_missing",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.floor_shortfall_nominal_and_rows[*].inflationVJ"
+          },
+          {
+            "id": "floor_shortfall_max_real_eur",
+            "label": "Hoechster realer Floor-Shortfall",
+            "unit": "EUR",
+            "nominalOrReal": "real",
+            "priceBasis": "real_start_year_prices",
+            "sign": "lower_is_better",
+            "aggregationRule": "maximum_nominal_div_inflation_factor_at_year_start",
+            "denominator": "emitted_year_rows",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_shortfall_or_inflation_path_missing",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.floor_shortfall_nominal_and_rows[*].inflationVJ"
+          },
+          {
+            "id": "floor_shortfall_longest_streak_years",
+            "label": "Laengste Floor-Shortfall-Dauer",
+            "unit": "years",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "lower_is_better",
+            "aggregationRule": "longest_consecutive_positive_streak",
+            "denominator": "emitted_year_rows",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 0
+            },
+            "missingnessRule": "null_if_any_row_shortfall_is_not_reconstructible",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.floor_shortfall_nominal_or_floor_aus_depot_minus_entnahme_effektiv"
+          },
+          {
+            "id": "flex_required_total_nominal_eur",
+            "label": "Kumulierter Haushalts-Flexbedarf",
+            "unit": "EUR",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "neutral",
+            "aggregationRule": "sum",
+            "denominator": "decumulation_years",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_any_decumulation_row_lacks_flex_value_or_if_flex_haushalt_basis_is_missing_or_mixed",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.flex_brutto_haushalt"
+          },
+          {
+            "id": "flex_fulfilled_total_nominal_eur",
+            "label": "Kumulierter erfuellter Haushalts-Flex",
+            "unit": "EUR",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "higher_is_better",
+            "aggregationRule": "sum",
+            "denominator": "decumulation_years",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_any_decumulation_row_lacks_flex_value_or_if_flex_haushalt_basis_is_missing_or_mixed",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.flex_haushalt_erfuellt"
+          },
+          {
+            "id": "flex_fulfillment_total_pct",
+            "label": "Erfuellungsquote Haushalts-Flex",
+            "unit": "percent",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "higher_is_better",
+            "aggregationRule": "sum_fulfilled_div_sum_required_times_100",
+            "denominator": "summed_household_flex_requirement",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_flex_series_or_consistent_flex_haushalt_basis_missing_or_total_requirement_not_positive",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.flex_haushalt_erfuellt / rows[*].row.flex_brutto_haushalt"
+          },
+          {
+            "id": "flex_reduction_years_gte_10_pct",
+            "label": "Jahre mit Haushalts-Flex-Kuerzung (≥ 10 %)",
+            "unit": "years",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "lower_is_better",
+            "aggregationRule": "count_value_greater_than_or_equal_10_pct",
+            "denominator": "decumulation_years",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 0
+            },
+            "missingnessRule": "null_if_any_decumulation_row_lacks_reduction_or_if_flex_haushalt_basis_is_missing_or_mixed",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.flex_haushalt_kuerzung_pct ?? rows[*].entscheidung.kuerzungProzent"
+          },
+          {
+            "id": "flex_reduction_max_pct",
+            "label": "Tiefste Haushalts-Flex-Kuerzung",
+            "unit": "percent",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "lower_is_better",
+            "aggregationRule": "maximum",
+            "denominator": "decumulation_years",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_no_decumulation_reduction_values_or_if_flex_haushalt_basis_is_missing_or_mixed",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.flex_haushalt_kuerzung_pct ?? rows[*].entscheidung.kuerzungProzent"
+          },
+          {
+            "id": "flex_reduction_longest_streak_gte_10_pct",
+            "label": "Laengste Haushalts-Flex-Kuerzungsserie (≥ 10 %)",
+            "unit": "years",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "lower_is_better",
+            "aggregationRule": "longest_consecutive_value_greater_than_or_equal_10_pct",
+            "denominator": "decumulation_years",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 0
+            },
+            "missingnessRule": "null_if_any_decumulation_row_lacks_reduction_or_if_flex_haushalt_basis_is_missing_or_mixed",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.flex_haushalt_kuerzung_pct ?? rows[*].entscheidung.kuerzungProzent"
+          },
+          {
+            "id": "minimum_flex_shortfall_years",
+            "label": "Jahre mit Mindest-Flex-Fehlbetrag",
+            "unit": "years",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "lower_is_better",
+            "aggregationRule": "count_positive",
+            "denominator": "minimum_flex_applicable_years",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 0
+            },
+            "missingnessRule": "null_if_any_applicable_row_lacks_minimumFlexShortfallAnnual",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.minimumFlexShortfallAnnual"
+          },
+          {
+            "id": "minimum_flex_shortfall_total_nominal_eur",
+            "label": "Kumulierter Mindest-Flex-Fehlbetrag",
+            "unit": "EUR",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "lower_is_better",
+            "aggregationRule": "sum",
+            "denominator": "minimum_flex_applicable_years",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_any_applicable_row_lacks_minimumFlexShortfallAnnual",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.minimumFlexShortfallAnnual"
+          },
+          {
+            "id": "runway_min_coverage_pct",
+            "label": "Minimale Runway-Deckung",
+            "unit": "percent",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "higher_is_better",
+            "aggregationRule": "minimum",
+            "denominator": "finite_coverage_rows_within_complete_after_transaction_before_payout_decumulation_phase",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_no_decumulation_row_or_phase_contract_incomplete_or_no_finite_RunwayCoveragePct",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "decumulation_rows[*].row.RunwayCoveragePct (after_transaction_before_payout)"
+          },
+          {
+            "id": "runway_stress_years_below_100_pct",
+            "label": "Jahre mit Runway-Stress (< 100 %)",
+            "unit": "years",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "lower_is_better",
+            "aggregationRule": "count_value_below_100_pct",
+            "denominator": "finite_coverage_rows_within_complete_after_transaction_before_payout_decumulation_phase",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 0
+            },
+            "missingnessRule": "null_if_no_decumulation_row_or_phase_contract_incomplete_or_no_finite_RunwayCoveragePct",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "decumulation_rows[*].row.RunwayCoveragePct (after_transaction_before_payout)"
+          },
+          {
+            "id": "wealth_max_drawdown_nominal_end_series_pct",
+            "label": "Maximaler Drawdown des nominalen Endvermoegens",
+            "unit": "percent",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "lower_is_better",
+            "aggregationRule": "maximum_peak_to_trough_decline",
+            "denominator": "portfolio_start_plus_each_emitted_year_end",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_any_portfolio_endpoint_is_missing_or_non_positive_peak",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "result.portfolioStart_and_rows[*].row.portfolio_total_end"
+          },
+          {
+            "id": "tax_total_nominal_eur",
+            "label": "Gezahlte Steuern",
+            "unit": "EUR",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "lower_is_better",
+            "aggregationRule": "sum",
+            "denominator": "emitted_year_rows",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_any_row_lacks_steuern_gesamt",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.steuern_gesamt"
+          },
+          {
+            "id": "tax_saved_by_loss_carry_total_nominal_eur",
+            "label": "Steuerersparnis durch Verlusttopf",
+            "unit": "EUR",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "neutral",
+            "aggregationRule": "sum",
+            "denominator": "emitted_year_rows",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_any_row_lacks_taxSavedByLossCarry",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "rows[*].row.taxSavedByLossCarry"
+          },
+          {
+            "id": "loss_carry_end_nominal_eur",
+            "label": "Verlusttopf am Laufende",
+            "unit": "EUR",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "neutral",
+            "aggregationRule": "last_value",
+            "denominator": "one_run",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "null_if_no_row_exposes_lossCarryEnd",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "last_rows[*].row.lossCarryEnd"
+          },
+          {
+            "id": "health_bucket_end_nominal_eur",
+            "label": "Pflegebucket am Laufende",
+            "unit": "EUR",
+            "nominalOrReal": "nominal",
+            "priceBasis": "nominal",
+            "sign": "neutral",
+            "aggregationRule": "last_canonical_enabled_value",
+            "denominator": "one_run",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 2
+            },
+            "missingnessRule": "zero_if_canonical_health_bucket_is_disabled",
+            "outcomeRule": "available_for_completed_or_ruin",
+            "source": "result.summary.healthBucket.end"
+          },
+          {
+            "id": "outcome_is_completed",
+            "label": "Outcome completed",
+            "unit": "boolean",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "higher_is_better",
+            "aggregationRule": "indicator",
+            "denominator": "one_requested_run",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 0
+            },
+            "missingnessRule": "never_missing_for_BacktestRunResultV1",
+            "outcomeRule": "available_for_all_outcomes",
+            "source": "result.outcome.kind"
+          },
+          {
+            "id": "outcome_is_ruin",
+            "label": "Outcome ruin",
+            "unit": "boolean",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "lower_is_better",
+            "aggregationRule": "indicator",
+            "denominator": "one_requested_run",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 0
+            },
+            "missingnessRule": "never_missing_for_BacktestRunResultV1",
+            "outcomeRule": "available_for_all_outcomes",
+            "source": "result.outcome.kind"
+          },
+          {
+            "id": "outcome_is_incomplete",
+            "label": "Outcome incomplete",
+            "unit": "boolean",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "lower_is_better",
+            "aggregationRule": "indicator",
+            "denominator": "one_requested_run",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 0
+            },
+            "missingnessRule": "never_missing_for_BacktestRunResultV1",
+            "outcomeRule": "available_for_all_outcomes",
+            "source": "result.outcome.kind"
+          },
+          {
+            "id": "outcome_is_technical_error",
+            "label": "Outcome technical_error",
+            "unit": "boolean",
+            "nominalOrReal": "not_applicable",
+            "priceBasis": "not_applicable",
+            "sign": "lower_is_better",
+            "aggregationRule": "indicator",
+            "denominator": "one_requested_run",
+            "rounding": {
+              "phase": "display_only",
+              "mode": "half_away_from_zero",
+              "fractionDigits": 0
+            },
+            "missingnessRule": "never_missing_for_BacktestRunResultV1",
+            "outcomeRule": "available_for_all_outcomes",
+            "source": "result.outcome.kind"
+          }
+        ],
+        "values": {
+          "wealth_start_nominal_eur": 1000,
+          "wealth_end_nominal_eur": 1000,
+          "wealth_end_real_eur": 984.251968503937,
+          "withdrawal_total_nominal_eur": 0,
+          "floor_shortfall_occurred": true,
+          "floor_shortfall_years": 1,
+          "floor_shortfall_total_nominal_eur": 23000,
+          "floor_shortfall_total_real_eur": 23000,
+          "floor_shortfall_max_real_eur": 23000,
+          "floor_shortfall_longest_streak_years": 1,
+          "flex_required_total_nominal_eur": null,
+          "flex_fulfilled_total_nominal_eur": null,
+          "flex_fulfillment_total_pct": null,
+          "flex_reduction_years_gte_10_pct": null,
+          "flex_reduction_max_pct": null,
+          "flex_reduction_longest_streak_gte_10_pct": null,
+          "minimum_flex_shortfall_years": 0,
+          "minimum_flex_shortfall_total_nominal_eur": 0,
+          "runway_min_coverage_pct": null,
+          "runway_stress_years_below_100_pct": null,
+          "wealth_max_drawdown_nominal_end_series_pct": 0,
+          "tax_total_nominal_eur": 0,
+          "tax_saved_by_loss_carry_total_nominal_eur": 0,
+          "loss_carry_end_nominal_eur": 0,
+          "health_bucket_end_nominal_eur": 0,
+          "outcome_is_completed": false,
+          "outcome_is_ruin": true,
+          "outcome_is_incomplete": false,
+          "outcome_is_technical_error": false
+        },
+        "availability": {
+          "wealth_start_nominal_eur": "available",
+          "wealth_end_nominal_eur": "available",
+          "wealth_end_real_eur": "available",
+          "withdrawal_total_nominal_eur": "available",
+          "floor_shortfall_occurred": "available",
+          "floor_shortfall_years": "available",
+          "floor_shortfall_total_nominal_eur": "available",
+          "floor_shortfall_total_real_eur": "available",
+          "floor_shortfall_max_real_eur": "available",
+          "floor_shortfall_longest_streak_years": "available",
+          "flex_required_total_nominal_eur": "missing",
+          "flex_fulfilled_total_nominal_eur": "missing",
+          "flex_fulfillment_total_pct": "missing",
+          "flex_reduction_years_gte_10_pct": "missing",
+          "flex_reduction_max_pct": "missing",
+          "flex_reduction_longest_streak_gte_10_pct": "missing",
+          "minimum_flex_shortfall_years": "available",
+          "minimum_flex_shortfall_total_nominal_eur": "available",
+          "runway_min_coverage_pct": "missing",
+          "runway_stress_years_below_100_pct": "missing",
+          "wealth_max_drawdown_nominal_end_series_pct": "available",
+          "tax_total_nominal_eur": "available",
+          "tax_saved_by_loss_carry_total_nominal_eur": "available",
+          "loss_carry_end_nominal_eur": "available",
+          "health_bucket_end_nominal_eur": "available",
+          "outcome_is_completed": "available",
+          "outcome_is_ruin": "available",
+          "outcome_is_incomplete": "available",
+          "outcome_is_technical_error": "available"
+        },
+        "reconciliation": {
+          "rowCount": 1,
+          "requestedYears": 3,
+          "completedYears": 0,
+          "outcomeKind": "ruin"
+        }
+      }
+    },
+    "states": [
+      {
+        "portfolio": {
+          "depotTranchesAktien": [],
+          "depotTranchesGold": [],
+          "depotTranchesGeldmarkt": [],
+          "liquiditaet": 1000,
+          "simulationSourceProfileId": "simulation",
+          "simulationEquityTqf": 0,
+          "simulationGoldTqf": 0,
+          "simulationGoldTaxExempt": false,
+          "simulationDate": "2005-12-31",
+          "healthBucketConfig": {
+            "enabled": false,
+            "initialAmount": 150000,
+            "assetSource": "money_market_first_then_cash",
+            "triggerMinGrade": 4,
+            "triggerMode": "OR",
+            "coverageMode": "care_additional_floor_only",
+            "returnMode": "cash_return",
+            "targetMode": "inflation_indexed_diagnostic"
+          },
+          "healthBucketGeldmarkt": 0,
+          "healthBucketTranches": [],
+          "healthBucketCashAmount": 0,
+          "healthBucketMeta": {
+            "enabled": false,
+            "requestedAmount": 0,
+            "used": 0,
+            "usedFromMoneyMarket": 0,
+            "usedFromCash": 0,
+            "shortfall": 0,
+            "capped": false,
+            "warnings": []
+          }
+        },
+        "baseFloor": 24000,
+        "baseFlex": 6000,
+        "baseMinimumFlexAnnual": 0,
+        "baseFlexBudgetAnnual": 0,
+        "baseFlexBudgetRecharge": 0,
+        "lastState": null,
+        "currentAnnualPension": 0,
+        "currentAnnualPension2": 0,
+        "marketDataHist": {
+          "endeVJ": 250798.55212887184,
+          "endeVJ_1": 201688.72733440928,
+          "endeVJ_2": 180572.25435962706,
+          "endeVJ_3": 166105.5559769139,
+          "ath": 272328.4982415213,
+          "jahreSeitAth": 1,
+          "capeRatio": 27.144808694741226,
+          "inflation": 1.6
+        }
+      }
+    ]
+  }
+}

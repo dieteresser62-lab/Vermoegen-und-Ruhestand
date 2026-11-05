@@ -1,0 +1,65 @@
+{
+  "description": "EK-1a: SHA-256 über vollständiges JSON.stringify(inputs/backtest/Monte-Carlo-Chunk), ohne Feldfilter. Synthetischer Musterhaushalt Max und Erika; Altfall mit 300/400 Euro sonstigen Einkünften und 40.000/60.000 Euro einmalig 2028/2029.",
+  "platform": "Linux x64, node v22.23.2",
+  "date": "2026-10-21",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM",
+    "useCapeSampling": false,
+    "backtest": "2000–2025",
+    "testDate": "2026-10-16"
+  },
+  "before": {
+    "ohne-altwerte": {
+      "inputs": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+      "backtest": "033301b1ce532005ed2662d05af5bfcb2ad1bc7139d157e0d9f1ee06e9e6bef6",
+      "monteCarlo": "96666c27c023afcddc7a454d974cfbd49d1bec27c6b0abbec4295081da953169",
+      "technical": {
+        "requested": 2000,
+        "financiallyEvaluable": 2000,
+        "technicalError": 0,
+        "errors": []
+      }
+    },
+    "mit-altwerten": {
+      "inputs": "e332198f11da6c0fb106b99327701b853e2525b7abba84309c679d9b4097b809",
+      "backtest": "94c111b47b30f3e2cd3318e345ca51d6fd9a32ac8f658556b8ff9fa88d7285f3",
+      "monteCarlo": "91ddd3ce78a4c568899a2c2accddc8dd5a36f8017d1b7fc4e4bdb45ffa4a37e6",
+      "technical": {
+        "requested": 2000,
+        "financiallyEvaluable": 2000,
+        "technicalError": 0,
+        "errors": []
+      }
+    }
+  },
+  "after": {
+    "ohne-altwerte": {
+      "inputs": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+      "backtest": "033301b1ce532005ed2662d05af5bfcb2ad1bc7139d157e0d9f1ee06e9e6bef6",
+      "monteCarlo": "96666c27c023afcddc7a454d974cfbd49d1bec27c6b0abbec4295081da953169",
+      "technical": {
+        "requested": 2000,
+        "financiallyEvaluable": 2000,
+        "technicalError": 0,
+        "errors": []
+      }
+    },
+    "mit-altwerten": {
+      "inputs": "e332198f11da6c0fb106b99327701b853e2525b7abba84309c679d9b4097b809",
+      "backtest": "94c111b47b30f3e2cd3318e345ca51d6fd9a32ac8f658556b8ff9fa88d7285f3",
+      "monteCarlo": "91ddd3ce78a4c568899a2c2accddc8dd5a36f8017d1b7fc4e4bdb45ffa4a37e6",
+      "technical": {
+        "requested": 2000,
+        "financiallyEvaluable": 2000,
+        "technicalError": 0,
+        "errors": []
+      }
+    }
+  }
+}

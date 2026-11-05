@@ -1,0 +1,62 @@
+{
+  "baseline": "aaec0829",
+  "synthetic": true,
+  "cases": [
+    {
+      "couple": false,
+      "variant": "usual",
+      "mcSha256": "6a216f59e166bb18517f9c0c62540f1316880f5079005560937d791b0145f067",
+      "backtestSha256": "0e117061ce5a1401ccf6719c88ebed6c6e91599c616adb19440f44cf8fbeb67f"
+    },
+    {
+      "couple": false,
+      "variant": "none",
+      "mcSha256": "cb34167c7fc4634a2f87649fc6ae296813ef04993aad346d45763386b5177943",
+      "backtestSha256": "4b1a76105b1971fa98d2d4933b05b424091e59ca248eb6870e15eaf9afd40720"
+    },
+    {
+      "couple": false,
+      "variant": "zero",
+      "mcSha256": "cb34167c7fc4634a2f87649fc6ae296813ef04993aad346d45763386b5177943",
+      "backtestSha256": "dde7dcf58c5600b3e5ee5d591ed7b72347ddc146f96d510bbf3ae58fd0cc3ce7"
+    },
+    {
+      "couple": false,
+      "variant": "slower",
+      "backtestSha256": "9ea64cba251a00cd5523ed248a214261e14caad6257f7ae637ee7c4879b8b460"
+    },
+    {
+      "couple": false,
+      "variant": "much_slower",
+      "backtestSha256": "70e50aa51d2ed83b5c6d982724972cd9027d71404dd7455f0177ac277c6410d2"
+    },
+    {
+      "couple": true,
+      "variant": "usual",
+      "mcSha256": "4bdd150c3e465ccf515184ea4860d702de6afb729bd2d6f6286e67d5e6356606",
+      "backtestSha256": "42d03fbd689924d0e91decf44fbc2fce9216b53859a94f5562a580275521be0f"
+    },
+    {
+      "couple": true,
+      "variant": "none",
+      "mcSha256": "310a2716be7aef738b49ce6b800ae7165dc54a31003f04dd2f7b6cd640c10263",
+      "backtestSha256": "24c627325e9f70c090f8950aff63a129bf3a0d951d75c9f3892f52f52a26d253"
+    },
+    {
+      "couple": true,
+      "variant": "zero",
+      "mcSha256": "310a2716be7aef738b49ce6b800ae7165dc54a31003f04dd2f7b6cd640c10263",
+      "backtestSha256": "5aee3800e84c0c4b9d820fe11d25d9bbca03e9ef7c04f119c345b64c7bbd0ca4"
+    },
+    {
+      "couple": true,
+      "variant": "slower",
+      "backtestSha256": "14a490b3edb68f1f1a8e1758f00ca2abb7616cdb525f8563a85e6ee445f80a0e"
+    },
+    {
+      "couple": true,
+      "variant": "much_slower",
+      "backtestSha256": "50fc394bdcfa33e65b6502849967141efe690a84058f1a67fbb59cb1892c7756"
+    }
+  ]
+}

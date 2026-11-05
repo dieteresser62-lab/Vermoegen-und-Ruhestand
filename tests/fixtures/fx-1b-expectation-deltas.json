@@ -1,0 +1,76 @@
+{
+  "hashes": {
+    "b9a46f125c42a1a7e57ada18ff369e2854881cfaf5ec0578ad29582e691d60da": "78b2e041d785131d14fbe8e8b64baafb1c2aee964e9da2b9cc86b836d392f490",
+    "fafa5f11b149d5075ab386264bad6f6e44ea61febb22ee249af72d6a2c109df1": "2dcbf54815f7d86f4988838f7e803bafff91059659b0c3fbc105f8cc24a8fd0b",
+    "79b79a55448bbfff52611236d511595d73035483fe51815a4dec01b7a30482b7": "956ac1e8e55dfbb17f61f7468910f651a870d78d921e24e38000e8d3ea7c3009",
+    "e49a82ab7e635795e01a8514c6783b649ae870d0bcd2068c5a9e79b3fcd60b87": "a8521182a14df0533c39f1c5ca6eb14e5d2c52a825adcee892a3e61298b258ba",
+    "b44374e99a3baa2b07db0a8bedeb062727bcf7868f2149c7f579f312585b8b47": "73b520faacc1dff12e43c598caa8998d98159b6f412c506e1aa704a50ed364b9",
+    "3396f2014f6f4a1f702233be2d7c0a5658ee5d8968fcbc1e8e3dff35d04d9876": "f20a31325d8915ca6daab1b30bab2fdaa9176a0ab435bfe8199420657ce18728",
+    "035b600d80f15b023dafd280912699bc7c52638ead9a6287241d07d660beb18c": "a60b1bbf7b52c8ffff18c08064e42c50aa1cd30e23089e2b5077e0b03503100b"
+  },
+  "evidence": [
+    {
+      "file": "simulator-small-lot-backtest-regression",
+      "assertion": "kohorte-2007: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "cause": "B3",
+      "before": "b9a46f125c42a1a7e57ada18ff369e2854881cfaf5ec0578ad29582e691d60da",
+      "after": "78b2e041d785131d14fbe8e8b64baafb1c2aee964e9da2b9cc86b836d392f490"
+    },
+    {
+      "file": "monte-carlo-measurement-contract",
+      "assertion": "Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.autoOptimizeResultSha256",
+      "cause": "B3",
+      "before": "fafa5f11b149d5075ab386264bad6f6e44ea61febb22ee249af72d6a2c109df1",
+      "after": "2dcbf54815f7d86f4988838f7e803bafff91059659b0c3fbc105f8cc24a8fd0b"
+    },
+    {
+      "file": "monte-carlo-measurement-contract",
+      "assertion": "Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.finalResultSha256",
+      "cause": "B3",
+      "before": "79b79a55448bbfff52611236d511595d73035483fe51815a4dec01b7a30482b7",
+      "after": "956ac1e8e55dfbb17f61f7468910f651a870d78d921e24e38000e8d3ea7c3009"
+    },
+    {
+      "file": "planned-inflows",
+      "assertion": "jan-lena: Musterrecords beziehungsweise Jan/Lenas Balance-Jahresrechnung entsprechen der Referenz",
+      "cause": "B3",
+      "before": "e49a82ab7e635795e01a8514c6783b649ae870d0bcd2068c5a9e79b3fcd60b87",
+      "after": "a8521182a14df0533c39f1c5ca6eb14e5d2c52a825adcee892a3e61298b258ba"
+    },
+    {
+      "file": "profile-person-data",
+      "assertion": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen BK-2-Referenz mit korrigierter Kirchensteuer: fehlender Beginn",
+      "cause": "B3",
+      "before": "b44374e99a3baa2b07db0a8bedeb062727bcf7868f2149c7f579f312585b8b47",
+      "after": "73b520faacc1dff12e43c598caa8998d98159b6f412c506e1aa704a50ed364b9"
+    },
+    {
+      "file": "profile-person-data",
+      "assertion": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen BK-2-Referenz mit korrigierter Kirchensteuer: 2026-01-01",
+      "cause": "B3",
+      "before": "b44374e99a3baa2b07db0a8bedeb062727bcf7868f2149c7f579f312585b8b47",
+      "after": "73b520faacc1dff12e43c598caa8998d98159b6f412c506e1aa704a50ed364b9"
+    },
+    {
+      "file": "profile-person-data",
+      "assertion": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen BK-2-Referenz mit korrigierter Kirchensteuer: 2024-07-15",
+      "cause": "B3",
+      "before": "b44374e99a3baa2b07db0a8bedeb062727bcf7868f2149c7f579f312585b8b47",
+      "after": "73b520faacc1dff12e43c598caa8998d98159b6f412c506e1aa704a50ed364b9"
+    },
+    {
+      "file": "profile-person-data",
+      "assertion": "Vollständiger alter Offset-/Ansparrequest gegen BK-2-Referenz mit korrigierter Kirchensteuer",
+      "cause": "B3",
+      "before": "3396f2014f6f4a1f702233be2d7c0a5658ee5d8968fcbc1e8e3dff35d04d9876",
+      "after": "f20a31325d8915ca6daab1b30bab2fdaa9176a0ab435bfe8199420657ce18728"
+    },
+    {
+      "file": "ff-g-regression",
+      "assertion": "Helga/Werner: vollständiger Backtest 2000–2025 mit FR-35 und 60.000 EUR Rücklage nach FR-36",
+      "cause": "F2",
+      "before": "035b600d80f15b023dafd280912699bc7c52638ead9a6287241d07d660beb18c",
+      "after": "a60b1bbf7b52c8ffff18c08064e42c50aa1cd30e23089e2b5077e0b03503100b"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="810" viewBox="0 0 480 810" role="img" aria-labelledby="title desc" data-source-sha256="93c9061604becb02f59a512631a0d0e636fcd31b0b2461cdcd697ddca17a8437">
+<title id="title">Sterbejahr und Folgejahr im Appmodell</title>
+<desc id="desc">Bis zur Jahresmitte zählt die eigene Rente. Danach folgen bei Anspruch Sterbevierteljahr und Hinterbliebenenrente. Am Jahresende werden Nachlass und Erbschaftsteuer gebucht; ab dem Folgejahr kann Wohnrechtsteuer anfallen.</desc>
+<rect width="480" height="810" rx="12" fill="#f1f2ee"/>
+<text x="240" y="37" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#1d2830"><tspan x="240" dy="0">Sterbejahr und Folgejahr im</tspan><tspan x="240" dy="29.7">Appmodell</tspan></text>
+<rect x="80" y="106" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="139.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Monate 1–6</tspan><tspan x="240.0" dy="27">Eigene Rente</tspan></text>
+<rect x="80" y="226" width="320" height="80" rx="10" fill="#f2e9d4" stroke="#b8954f" stroke-width="2"/>
+<text x="240.0" y="273.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Tod zur Jahresmitte</tspan></text>
+<rect x="80" y="346" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="379.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Monate 7–9</tspan><tspan x="240.0" dy="27">Sterbevierteljahr</tspan></text>
+<rect x="80" y="466" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="499.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Monate 10–12</tspan><tspan x="240.0" dy="27">Hinterbliebenenrente</tspan></text>
+<rect x="80" y="586" width="320" height="80" rx="10" fill="#f2e9d4" stroke="#b8954f" stroke-width="2"/>
+<text x="240.0" y="619.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Jahresende</tspan><tspan x="240.0" dy="27">Nachlass und Steuer</tspan></text>
+<rect x="80" y="706" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="739.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Folgejahr: allein</tspan><tspan x="240.0" dy="27">ggf. Wohnrechtsteuer</tspan></text>
+<polyline points="240,186 240,226" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,226 244,216 236,216" fill="#7a5a1f"/>
+<polyline points="240,306 240,346" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,346 244,336 236,336" fill="#7a5a1f"/>
+<polyline points="240,426 240,466" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,466 244,456 236,456" fill="#7a5a1f"/>
+<polyline points="240,546 240,586" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,586 244,576 236,576" fill="#7a5a1f"/>
+<polyline points="240,666 240,706" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,706 244,696 236,696" fill="#7a5a1f"/>
+</svg>

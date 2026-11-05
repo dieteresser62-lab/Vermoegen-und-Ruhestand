@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="782" viewBox="0 0 480 782" role="img" aria-labelledby="title desc" data-source-sha256="b062dcf7c694a8bd5193e7aa402d382bbefc5f6cc6f268411452924c350313ea">
+<title id="title">Vom Bedarf zur Auszahlung</title>
+<desc id="desc">Einkommen und Bedarf ergeben die offene Basis. Dynamik verändert den Flex-Bedarf. Marktregeln, Schutz und Minimum bestimmen die Rate. Erst die Monatsrundung ergibt die Auszahlung.</desc>
+<rect width="480" height="782" rx="12" fill="#f1f2ee"/>
+<text x="240" y="37" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#1d2830"><tspan x="240" dy="0">Vom Bedarf zur Auszahlung</tspan></text>
+<rect x="80" y="78" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="125.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Bedarf und Einkommen</tspan></text>
+<rect x="80" y="198" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="231.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Offener Grundbedarf</tspan><tspan x="240.0" dy="27">und Wunsch-Flex</tspan></text>
+<rect x="80" y="318" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="351.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Dynamik und</tspan><tspan x="240.0" dy="27">Haushaltsdeckel</tspan></text>
+<rect x="80" y="438" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="485.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Marktregeln und Flex-Rate</tspan></text>
+<rect x="80" y="558" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="605.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Schutz und Mindest-Flex</tspan></text>
+<rect x="80" y="678" width="320" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="240.0" y="711.5" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="240.0" dy="0">Monatsrundung</tspan><tspan x="240.0" dy="27">und Auszahlung</tspan></text>
+<polyline points="240,158 240,198" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,198 244,188 236,188" fill="#7a5a1f"/>
+<polyline points="240,278 240,318" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,318 244,308 236,308" fill="#7a5a1f"/>
+<polyline points="240,398 240,438" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,438 244,428 236,428" fill="#7a5a1f"/>
+<polyline points="240,518 240,558" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,558 244,548 236,548" fill="#7a5a1f"/>
+<polyline points="240,638 240,678" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="240,678 244,668 236,668" fill="#7a5a1f"/>
+</svg>

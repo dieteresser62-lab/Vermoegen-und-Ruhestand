@@ -1,0 +1,17 @@
+{
+  "baseRevision": "958ca383",
+  "corrections": "RF-1 + FF-A + FF-B + FF-C: pension guarantee, care death, church tax; survivor floor, income offset, death year, inheritance; partial emergency flex, dynamic cap, negative interest, corrected logs; household liquidity first, half-year survivor needs, net pension offset; FF-D/E/F: flex recovery, liquidity target protects both wish need and higher payout, go-go age limit, curve gate; FF-G: curve protects wish flex below the gate and limits the dynamic surplus",
+  "description": "BH-4 page inputs; Max/Erika; Backtest 2000–2025 and MC path 0, seed 12345, 35 years, regime_markov. SHA-256 of JSON.stringify({rows,path0}). Vorgabe = Dynamic Flex Aus. BK-1: only Helga/Werner demoHash changes: the annual plan excludes the active care reserve from liquidity and no longer invests reserved surplus in gold; other records and expectations unchanged. BK-3: Helga/Werner reserve both personal amounts (60,000 EUR); the peak tracks its real reserve basis (FR-35/36).",
+  "hashes": {
+    "Vorgabe": "6e02affd11e0755af1f3b489b7c856db84224658d189b904cd2e89abeef3b212",
+    "konservativ": "d6fc213ef868f3332bb913ef0ea8706847c2188c83b4a7fb1abe5f4587c5714d",
+    "ausgewogen": "eed63343c4f614cffd204866e371b82a3cb2b4d41bb6cb092b2dfa4947941302",
+    "offensiv": "ef16a0def8e2590a7badd88622f8cf8cb6c111f64101658a4d60290f0f22fc9a"
+  },
+  "demoHashes": {
+    "max-erika": "0ed222171e89f1dca39b382a61c531ad7d7aadc5c2be5455fdfea6cae0c5052f",
+    "renate": "4872a9e1ebedcbdceaaa835d7f892436a45c416152512056208031656e331551",
+    "helga-werner": "a3ab9777de7eeccfe312cce584a9d0fb37d945cd71cc596775e8b5069292d7b8",
+    "jan-lena": "a0924ac00a6ad3a3f79cac5d73484e8c5a41cf9be0e25f0f1a26129cbecd0c1f"
+  }
+}

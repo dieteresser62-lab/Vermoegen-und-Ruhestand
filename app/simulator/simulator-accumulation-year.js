@@ -1,0 +1,369 @@
+/** @import {TaxReconciliation} from '../../typcheck/rechenkern-integration.js' */
+import { validateAccumulationExpenses } from './simulator-input-validation.js';
+import { ensurePersonalAccounts, applyPersonalInterest, syncPersonalLiquidity, debitPersonalLiquidity,
+    personalProfiles, personalWithdrawalPlan } from './simulator-personal-accounts.js';
+import { calculateHouseholdPensionForYear } from './simulator-household-pension.js';
+import { buyGold, buyStocksNeu, sumDepot } from './simulator-portfolio.js';
+import {
+    calculateTargetLiquidityBalanceLike,
+    euros,
+    signedEuros
+} from './simulator-engine-direct-utils.js';
+import { buildNextMarketDataHist } from './simulator-year-portfolio.js';
+import { sumBondBucketValuation } from '../../engine/transactions/three-bucket-logic.mjs';
+import { beginPersonalTaxYear, settlePersonalTaxYear, beginAggregateTaxYear, settleAggregateTaxYear } from './simulator-personal-tax.js';
+import { applyUnmarriedInheritance } from './simulator-inheritance.js';
+import { finishSurvivorYear, survivorLiquidityTarget } from './simulator-survivor.js';
+import {
+    applyHealthBucketInterest,
+    buildHealthBucketDiagnostics
+} from './simulator-health-bucket.js';
+import {
+    advanceSimulatorCumulativeInflationFactor,
+    resolveSimulatorCumulativeInflationFactor
+} from './simulator-engine-helpers.js';
+
+/**
+ * @param inputs Wirksame Simulationseingaben.
+ * @param yearIndex Nullbasierter Index des Simulationsjahrs.
+ * @returns {boolean} Ergebnis der Operation.
+ */
+export function isAccumulationYear(inputs, yearIndex) {
+    return Boolean(inputs.accumulationPhase?.enabled && yearIndex < (inputs.transitionYear || 0));
+}
+
+/**
+ * Mutates portfolio by applying cash interest, savings contributions and optional purchases.
+ *
+ * @param {object} options
+ * @param options.currentState
+ * @param options.inputs
+ * @param options.yearData
+ * @param options.yearIndex
+ * @param options.portfolio
+ * @param options.liquiditaet
+ * @param options.initialLiqStart
+ * @param options.rA
+ * @param options.rG
+ * @param options.rC
+ * @param options.bondBucketBefore
+ * @param options.marketDataCurrentYear
+ * @param options.marketDataHist
+ * @param options.resolvedCapeRatio
+ * @param options.baseFloor
+ * @param options.baseFlex
+ * @param {number} [options.baseMinimumFlexAnnual]
+ * @param options.baseFlexBudgetAnnual
+ * @param options.baseFlexBudgetRecharge
+ * @param options.effectiveBaseFloor
+ * @param options.currentAnnualPension
+ * @param options.currentAnnualPension2
+ * @param options.householdCtx
+ * @param options.isBadYear
+ * @param [options.survivorYear]
+ * @param {boolean} [options.hasInheritance]
+ * @param [options.residenceAdvance]
+ * @param [options.advanceTaxBook]
+ * @returns Ergebnis der Operation.
+ */
+export function simulateAccumulationYear({
+    currentState,
+    inputs,
+    yearData,
+    yearIndex,
+    portfolio,
+    liquiditaet,
+    initialLiqStart,
+    rA,
+    rG,
+    rC,
+    bondBucketBefore,
+    marketDataCurrentYear,
+    marketDataHist,
+    resolvedCapeRatio,
+    baseFloor,
+    baseFlex,
+    baseMinimumFlexAnnual = 0,
+    baseFlexBudgetAnnual,
+    baseFlexBudgetRecharge,
+    effectiveBaseFloor,
+    currentAnnualPension,
+    currentAnnualPension2,
+    householdCtx,
+    isBadYear,
+    survivorYear = null,
+    hasInheritance = false,
+    residenceAdvance = null,
+    advanceTaxBook = null
+}) {
+    validateAccumulationExpenses(inputs);
+    ensurePersonalAccounts(portfolio, inputs);
+    const hasPersonalTaxData = portfolio.personAccounts.every(person => Number.isFinite(person.sparerPauschbetrag));
+    const personalTaxBook = advanceTaxBook || beginPersonalTaxYear(portfolio, {
+        sparerPauschbetrag: inputs.startSPB,
+        taxState: currentState.lastState?.taxState
+    });
+    const aggregateTaxBook = personalTaxBook ? null : beginAggregateTaxYear(portfolio);
+    const cumulativeInflationFactor = resolveSimulatorCumulativeInflationFactor(currentState);
+    const nextCumulativeInflationFactor = advanceSimulatorCumulativeInflationFactor(
+        cumulativeInflationFactor,
+        yearData.inflation
+    );
+    const portfolioActiveBeforeFlows = euros(
+        sumDepot({ depotTranchesAktien: portfolio.depotTranchesAktien })
+        + sumDepot({ depotTranchesGold: portfolio.depotTranchesGold })
+        + euros(residenceAdvance ? portfolio.liquiditaet : initialLiqStart)
+    );
+    const personalInterest = applyPersonalInterest(portfolio, Number(rC), { additive: true });
+    let cashZinsen = personalInterest.interest;
+    let liqNachZins = initialLiqStart;
+
+    let sparrateThisYear = (Number(inputs.accumulationPhase.sparrate) || 0) * 12;
+    if (inputs.accumulationPhase.sparrateIndexing === 'inflation' && currentState.accumulationState?.yearsSaved > 0) {
+        const priorAnnualSavings = Number(currentState.accumulationState.sparrateThisYear);
+        const lastYearSparrate = Number.isFinite(priorAnnualSavings)
+            ? priorAnnualSavings
+            : ((Number(inputs.accumulationPhase.sparrate) || 0) * 12);
+        sparrateThisYear = lastYearSparrate * (1 + yearData.inflation / 100);
+    } else if (inputs.accumulationPhase.sparrateIndexing === 'wage' && currentState.accumulationState?.yearsSaved > 0) {
+        const priorAnnualSavings = Number(currentState.accumulationState.sparrateThisYear);
+        const lastYearSparrate = Number.isFinite(priorAnnualSavings)
+            ? priorAnnualSavings
+            : ((Number(inputs.accumulationPhase.sparrate) || 0) * 12);
+        const hasWageGrowth = yearData.lohn !== null && yearData.lohn !== undefined;
+        const wageGrowthValue = Number(yearData.lohn);
+        const wageGrowth = hasWageGrowth && Number.isFinite(wageGrowthValue) ? wageGrowthValue : 2.0;
+        sparrateThisYear = lastYearSparrate * (1 + wageGrowth / 100);
+    }
+
+    const rentAdjPct = inputs.rentAdjPct || 0;
+    const nextP1 = (currentState.currentAnnualPension || 0) * (1 + rentAdjPct / 100);
+    const nextP2 = (currentState.currentAnnualPension2 || 0) * (1 + rentAdjPct / 100);
+
+    liquiditaet = portfolio.liquiditaet;
+    liqNachZins = euros(liquiditaet);
+    portfolio.personAccounts[0].tagesgeld += sparrateThisYear;
+    syncPersonalLiquidity(portfolio);
+    liquiditaet = portfolio.liquiditaet;
+    const healthBucketInterest = applyHealthBucketInterest({ inputs, portfolio, rC });
+    let healthBucketDiagnostics = buildHealthBucketDiagnostics({
+        inputs,
+        portfolio,
+        cumulativeInflationFactor
+    });
+
+    // Kalenderanteile beeinflussen nur das Ziel, nicht die tatsächlichen Cashflüsse.
+    const calendarPension = calculateHouseholdPensionForYear({ inputs, yearIndex,
+        currentAnnualPension, currentAnnualPension2, p1Alive: householdCtx.p1Alive, p2Alive: householdCtx.p2Alive,
+        ...(survivorYear ? { deathThisYear: survivorYear.deathThisYear, widowBenefits: householdCtx.widowBenefits,
+            widowPensionP1: currentState.widowPensionP1, widowPensionP2: currentState.widowPensionP2 } : {}) });
+    const p1Income = inputs.renteKalenderbeginn ? calendarPension.rente1BruttoEigen : currentAnnualPension;
+    const p2Income = inputs.partner?.renteKalenderbeginn ? calendarPension.rente2BruttoEigen : currentAnnualPension2;
+    const zielLiquiditaet = calculateTargetLiquidityBalanceLike(
+        inputs,
+        marketDataCurrentYear,
+        effectiveBaseFloor,
+        baseFlex,
+        p1Income + p2Income
+    );
+    const taxAction = {};
+    const taxState = {};
+    const ueberschuss = liquiditaet - zielLiquiditaet;
+
+    let kaufAktTotal = 0;
+    let kaufGldTotal = 0;
+
+    if (ueberschuss > 500) {
+        const goldZielProzent = inputs.goldAktiv ? (inputs.goldZielProzent || 0) : 0;
+        const equityValue = sumDepot({ depotTranchesAktien: portfolio.depotTranchesAktien });
+        const goldValue = sumDepot({ depotTranchesGold: portfolio.depotTranchesGold });
+        const totalWealth = equityValue + goldValue + liquiditaet;
+        const goldTarget = totalWealth * (goldZielProzent / 100);
+        const goldBetrag = inputs.goldAktiv ? Math.min(ueberschuss, Math.max(0, goldTarget - goldValue)) : 0;
+        const aktienBetrag = Math.max(0, ueberschuss - goldBetrag);
+
+        const funding = debitPersonalLiquidity(portfolio, goldBetrag + aktienBetrag,
+            personalWithdrawalPlan(personalProfiles(portfolio, inputs), goldBetrag + aktienBetrag, inputs.householdWithdrawalMode));
+        for (const row of funding.items) {
+            const share = row.amount / (goldBetrag + aktienBetrag);
+            if (goldBetrag > 0) buyGold(portfolio, goldBetrag * share, row.profileId);
+            if (aktienBetrag > 0) buyStocksNeu(portfolio, aktienBetrag * share, row.profileId);
+        }
+        liquiditaet = portfolio.liquiditaet;
+        kaufGldTotal = goldBetrag;
+        kaufAktTotal = aktienBetrag;
+    }
+
+    /** @type {TaxReconciliation & {taxFundingSaleGross?: number}} */
+    const taxResult = personalTaxBook ? settlePersonalTaxYear({ portfolio, book: personalTaxBook,
+        personalInterest, actionResult: taxAction, plannedActionFlow: null, regularSaleScale: 0,
+        forcedTaxReserved: 0, spendingNewState: {}, didForcedSale: false, inputs })
+        : settleAggregateTaxYear({ portfolio, book: aggregateTaxBook, personalInterest, actionResult: taxAction,
+            spendingNewState: taxState, inputs, taxStatePrev: currentState.lastState?.taxState });
+    const inheritanceLog = hasInheritance && !(taxResult.taxShortfall > 1e-8)
+        ? applyUnmarriedInheritance({ portfolio, transition: survivorYear,
+            inputs: inputs.partnership ? inputs : { ...inputs, partnership: { status: 'married' } },
+            inflationFactor: nextCumulativeInflationFactor, pension: calendarPension, personalInterest, actionResult: taxAction, household: householdCtx,
+            reserveTarget: () => survivorLiquidityTarget({ state: currentState, portfolio, transition: survivorYear, inputs,
+                household: householdCtx, yearIndex, inflationFactor: nextCumulativeInflationFactor,
+                marketData: marketDataCurrentYear, pension: calendarPension }) }) : null;
+    if (inheritanceLog) {
+        survivorYear.inheritanceLog = inheritanceLog;
+        healthBucketDiagnostics = buildHealthBucketDiagnostics({ inputs, portfolio, cumulativeInflationFactor });
+    }
+    liquiditaet = portfolio.liquiditaet;
+
+    const newAccumulationState = {
+        yearsSaved: (currentState.accumulationState?.yearsSaved || 0) + 1,
+        totalContributed: euros((currentState.accumulationState?.totalContributed || 0) + sparrateThisYear),
+        sparrateThisYear: euros(sparrateThisYear)
+    };
+
+    const newMarketDataHist = buildNextMarketDataHist({ marketDataHist, yearData, rA, resolvedCapeRatio });
+    const wertAktien = sumDepot({ depotTranchesAktien: portfolio.depotTranchesAktien });
+    const wertGold = sumDepot({ depotTranchesGold: portfolio.depotTranchesGold });
+    const portfolioActiveEnd = euros(wertAktien + wertGold + portfolio.liquiditaet);
+    const portfolioFlowDelta = portfolioActiveEnd - (
+        portfolioActiveBeforeFlows
+        + signedEuros(cashZinsen)
+        + euros(sparrateThisYear)
+        + taxResult.taxCashAdjustment
+        - (inheritanceLog ? inheritanceLog.abgang_erben - inheritanceLog.healthLeaves
+            + inheritanceLog.erbschaftsteuer + inheritanceLog.inheritancePayment.extraTax : 0)
+    );
+    const healthBucketWarnings = Array.isArray(portfolio.healthBucketMeta?.warnings)
+        ? portfolio.healthBucketMeta.warnings
+        : [];
+
+    const result = {
+        newState: {
+            portfolio,
+            cumulativeInflationFactor: nextCumulativeInflationFactor,
+            baseFloor: euros(baseFloor * (1 + yearData.inflation / 100)),
+            baseFlex: euros(baseFlex * (1 + yearData.inflation / 100)),
+            baseMinimumFlexAnnual: euros(baseMinimumFlexAnnual * (1 + yearData.inflation / 100)),
+            baseFlexBudgetAnnual: euros(baseFlexBudgetAnnual * (1 + yearData.inflation / 100)),
+            baseFlexBudgetRecharge: euros(baseFlexBudgetRecharge * (1 + yearData.inflation / 100)),
+            lastState: inheritanceLog || personalTaxBook && !hasPersonalTaxData
+                ? { taxState: { ...portfolio.personAccounts[0].taxState } } : personalTaxBook ? null : taxState,
+            currentAnnualPension: nextP1,
+            currentAnnualPension2: nextP2,
+            marketDataHist: newMarketDataHist,
+            samplerState: currentState.samplerState,
+            widowPensionP1: survivorYear ? calendarPension.nextWidowPensionP1 : 0,
+            widowPensionP2: survivorYear ? calendarPension.nextWidowPensionP2 : 0,
+            accumulationState: newAccumulationState,
+            transitionYear: currentState.transitionYear
+        },
+        totalTaxesThisYear: taxResult.totalTaxesThisYear + (inheritanceLog?.inheritancePayment.extraTax || 0),
+        ...(inheritanceLog?.inheritancePayment.shortfall > .01 ? { inheritanceShortfall: inheritanceLog.inheritancePayment.shortfall } : {}),
+        ...(taxResult.taxShortfall > 1e-8 ? { taxReconciliation: taxResult } : {}),
+        logData: {
+            ...(inheritanceLog ? { abgang_erben: inheritanceLog.abgang_erben, erbschaftsteuer: inheritanceLog.erbschaftsteuer,
+                inheritance: inheritanceLog.inheritance } : {}),
+            jahr: yearIndex + 1,
+            histJahr: yearData.jahr,
+            alter: inputs.startAlter + yearIndex,
+            inflation: yearData.inflation,
+            entscheidung: {
+                kuerzungProzent: 0,
+                monatlicheEntnahme: 0,
+                jahresEntnahme: 0,
+                kuerzungQuelle: 'none',
+                flexRate: 1.0,
+                runwayMonths: null
+            },
+            FlexRatePct: 1.0,
+            CutReason: 'none',
+            Alarm: false,
+            Regime: 'accumulation',
+            QuoteEndPct: 0,
+            RunwayCoveragePct: zielLiquiditaet > 0
+                ? (portfolio.liquiditaet / zielLiquiditaet) * 100
+                : null,
+            RunwayMeasurementPhase: 'post_accumulation_end_of_year',
+            RealReturnEquityPct: ((1 + rA) / (1 + yearData.inflation / 100) - 1),
+            RealReturnGoldPct: ((1 + rG) / (1 + yearData.inflation / 100) - 1),
+            entnahmequote: 0,
+            steuern_gesamt: taxResult.totalTaxesThisYear,
+            ...(personalTaxBook && (hasPersonalTaxData || taxAction.personalAnnualTaxes.some(row => row.taxFundingGross > 0))
+                ? { tax_funding_sale_gross: taxAction.personalAnnualTaxes.reduce((sum, row) => sum + row.taxFundingGross, 0) } : {}),
+            ...(taxResult.taxFundingSaleGross > 0 ? { tax_funding_sale_gross: taxResult.taxFundingSaleGross } : {}),
+            vk: { vkAkt: 0, vkGld: 0, vkBnd: 0, stAkt: 0, stGld: 0, stBnd: 0, vkGes: 0, stGes: 0 },
+            kaufAkt: euros(kaufAktTotal),
+            kaufGld: euros(kaufGldTotal),
+            wertAktien: euros(wertAktien),
+            wertGold: euros(wertGold),
+            liquiditaet: euros(portfolio.liquiditaet),
+            liqStart: euros(initialLiqStart),
+            personAccounts: portfolio.personAccounts.map(person => ({ ...person })),
+            cashInterestEarned: signedEuros(cashZinsen),
+            liqEnd: euros(liqNachZins),
+            liq_post_accumulation_end_of_year: euros(portfolio.liquiditaet),
+            portfolio_total_before_accumulation: portfolioActiveBeforeFlows,
+            portfolio_active_end: portfolioActiveEnd,
+            portfolio_flow_delta: portfolioFlowDelta,
+            health_bucket_start: euros(healthBucketInterest.startAmount),
+            health_bucket_used: 0,
+            health_bucket_interest: signedEuros(healthBucketInterest.interest),
+            health_bucket_end: euros(healthBucketDiagnostics.currentAmount),
+            health_bucket_target_nominal: euros(healthBucketDiagnostics.nominalTarget),
+            health_bucket_target_inflation_adjusted: euros(healthBucketDiagnostics.inflationAdjustedTarget),
+            health_bucket_real_coverage_pct: healthBucketDiagnostics.realCoveragePct,
+            health_bucket_target_gap: euros(healthBucketDiagnostics.targetGap),
+            health_bucket_warning: healthBucketWarnings.join(' | '),
+            portfolio_total_end: euros(wertAktien + wertGold + portfolio.liquiditaet + healthBucketDiagnostics.currentAmount),
+            aktionUndGrund: `Sparrate: ${euros(sparrateThisYear)}€ / Kauf A: ${euros(kaufAktTotal)}€ / Kauf G: ${euros(kaufGldTotal)}€`,
+            usedSPB: taxAction.taxSettlement?.spbUsedThisYear || 0,
+            floor_brutto: 0,
+            pension_annual: 0,
+            rente1: 0,
+            rente2: 0,
+            renteSum: 0,
+            floor_aus_depot: 0,
+            flex_brutto: 0,
+            flex_erfuellt_nominal: 0,
+            inflation_factor_cum: cumulativeInflationFactor,
+            jahresentnahme_real: 0,
+            pflege_aktiv: false,
+            pflege_zusatz_floor: 0,
+            pflege_zusatz_floor_delta: 0,
+            pflege_flex_faktor: 1,
+            pflege_kumuliert: 0,
+            pflege_grade: null,
+            pflege_grade_label: '',
+            pflege_delta_flex: 0,
+            WidowBenefitP1: 0,
+            WidowBenefitP2: 0,
+            NeedLiq: 0,
+            GuardGold: 0,
+            GuardEq: 0,
+            GuardNote: 'accumulation_phase',
+            Person1Alive: householdCtx.p1Alive ? 1 : 0,
+            Person2Alive: householdCtx.p2Alive ? 1 : 0,
+            pflege_floor_anchor: 0,
+            pflege_maxfloor_anchor: 0,
+            pflege_cap_zusatz: 0,
+            CareP1_Active: 0,
+            CareP1_Cost: 0,
+            CareP1_Grade: null,
+            CareP1_GradeLabel: '',
+            CareP2_Active: 0,
+            CareP2_Cost: 0,
+            CareP2_Grade: null,
+            CareP2_GradeLabel: '',
+            threeBucket: {
+                isBadYear,
+                bondBucketBefore: euros(bondBucketBefore),
+                bondBucketAfter: euros(sumBondBucketValuation(portfolio.depotTranchesAktien)),
+                bondRefillGross: 0,
+                bondRefillNet: 0,
+                bondRefillTax: 0,
+                bondSaleAmount: 0,
+                equityPreserved: 0
+            }
+        }
+    };
+    if (inheritanceLog) result.logData.steuern_gesamt = result.totalTaxesThisYear;
+    return finishSurvivorYear(result, survivorYear, calendarPension);
+}

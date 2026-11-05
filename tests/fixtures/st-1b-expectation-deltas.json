@@ -1,0 +1,510 @@
+{
+  "description": "ST-1b: geänderte Ausgabetexte und Extrembär-Diagnose; alle Zahlen außerhalb der ausdrücklich korrigierten B4-Logfelder bytegleich zum Ausgangsstand.",
+  "hashes": {
+    "8b8eaa6258ae23b4905974c237f4caa1e00badcf863e6ef2a786e2b11f0b0708": "cb83c51473be91506565205ec86e7b1e3f6ab6b10c52d0da4363106d7c103828",
+    "c20c04aed37cbd3e354fc3177f446233db17fe1c0e4f6f1abfbb6e8f11b82261": "1d1888c9119b609bc6eb26b629c16c45f569c3ce61b45891269eccd1ad3598d3",
+    "a84b8bce40d02e5c991efbf4e71cc761e4e6f20d2d86dc57535c6fc42bd2e10f": "b5ed62053cacb3568606375ed504e8f7cf2573ea1b231feb530b804e20f742e9",
+    "b27644ebdd71fb56a05eadbe5a0d7424fc16d1df0a3639577be00dddb017cf40": "529c020a67650285893cf48d4630b85aef6a152493ca4327cd8f177e6cce2d4b",
+    "9a3e32358781193c5d1a6cbbf02ef37b8716e86d0dac228166d4ee51f909f5aa": "5a820068125cbd4df77a805a65714287a4686eb566cc34583f42a8ee2c8493cc",
+    "b78a73adae2119db22f13be046fbb5f21691dc4a0baed3c620e62bcf78f63ba2": "c12e991667ed28da619b3fbfd3db39ec23aee5a137c655c0eeef2c25018a0503",
+    "78214f8b317d3618a4a559bcf10598e9e57d873f957a1a2de72b40be11711ff9": "fc05f3463544e66d970ceed3c713a1a963000b9af6f11dcfbb4edbc76eea748d",
+    "02f2b5c3afb81a2ba6e3886fbc2e95b48243c9be557959ac922f5c6ceefdc403": "e77d19736631c2a67561efb0e37dab78739fdf682de5706ca01bc164c4b6e7b0",
+    "bd80c379379774293c7bcfd13972c6a2a45d1249d893b9c9aeb46023a62232ae": "00de8d523afdbb123e90c83f983b4fa9d99d13e2d76384f39174cdc637bc587d",
+    "305e690e40cca2f024b7f3c46d9e8f8211cef16fd474bb87b6b860caa2402fd2": "4a27c193073eda1469d8d7602a0707d9adc79618debfc1d8281010a130886637",
+    "3b08a08a660096491f84d84b66a1e09eb87c873dc7f3cbdb801880e8960096cb": "bb0ef06558644d58cc82e9ed47dff066624e724290b70d495a0dcc53046b53aa",
+    "9fd3b458d5866cbfa124558621ade482c8ef406c09d2230bf8f83012ae2b3697": "afc5dbae7d468f4a4ad5ee274c0e60aa68817bad6f9273e291a2907df3dc9d54",
+    "b7c75a8a337c16de384d366c3a5334c14ccbd75358e71b0221fbe0637d2d21f6": "0eb2c98f5a265d1cb5f0b554f440f769001797d0e75c3839c949e37b5e3af657",
+    "6d39598a19c032fe58dbffb7df55ada26fbea97a5d03cff6fd0e1ce5d4996978": "f98bb1bcbec6b3851bc9c5723726028e1ce8f53b6f5b9cc1c75a4f1c4fe44dbf",
+    "58282c180aec55e320452df8d32c6976f8b160c1f698f6583201dba836c8be3d": "f3596e488edb0b255da047dff16090ac52abc641c253b579c295bf9a8214ca52",
+    "0531cfc24d3779641ba5b35e1a47fb573bb74755199da46a06009798e977d054": "b5e0550086e3c4b57387822856872c29666b6c7a3132abe2e3220b5466e818f2",
+    "df625d6ae30302ee761794443632ff9b794d11e2562383cc0a76e996f0130963": "ba8a890bb654065ca2e422397a52cdd739d502e49c57fcc5ac708af118b79cda",
+    "54ade30b5150a5dfed38b5981b22a8f1a06b450d9e4b1918b03d59908096794d": "3acdca131c3ff271fb8aad6260a5942eb030127cd299826210082a6959c87fa0",
+    "969bab3e83acb81f75a4be38e23d4e7c0973dfe27613e7b273947072e9f590ec": "b9a46f125c42a1a7e57ada18ff369e2854881cfaf5ec0578ad29582e691d60da",
+    "0907ab679bb2e59fee338a4ea4cc669a9677059b55a6831a678a1dd0470d8527": "c7afa69a2b12d645391a1b31723e1c7d7981c2128841bcb9db4effdd7528145d",
+    "586515ac747c46288f76f6995d48def693e6c9bbbf2a280e5bf3569bc2c7fd89": "d35fe93ea228d9e6ade5982dae7948788d430d2f6a996ccfd0701daac1a5891f",
+    "ebde5af90a2b5a38c43d546c4189a7cbca56466d78bf2efaed12bfe8cf1108a2": "2b72bc08a96667133b8d0be90397f8eb1aa90f5a24048c3a5cf833ef8e38a720",
+    "ea798124139c027b0f0863412e82ab15a4e9efce2db7a3d86f32c1ee368a98f5": "2fd6deb515413e835ff340062a7f90c79f9c7210c8d7fbd9adfd82475827d586",
+    "fe04dfb1781f5856d15157cffc1aeecdedd3af33db90db0ee5a23aaabef8b599": "febc5297feeb53108701dd2c2ed75a7a812dfa58c9d81ae0e9f12ff3aa5b40c5"
+  },
+  "evidence": [
+    {
+      "test": "ff-d-regression.test.mjs",
+      "label": "Vollständige engines-Ergebnisse mit FR-20/33/34-Diagnosen",
+      "before": "8b8eaa6258ae23b4905974c237f4caa1e00badcf863e6ef2a786e2b11f0b0708",
+      "after": "cb83c51473be91506565205ec86e7b1e3f6ab6b10c52d0da4363106d7c103828",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 1104,
+      "numericSha256": "6ef13b518bb7ed2cea8d633d3f7ec176d286dd8a92c353fbce887cf33eba36c5",
+      "changedFields": [
+        "budgetFloorGesperrt",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "ff-f-regression.test.mjs",
+      "label": "engines: vollständige Ergebnisse ohne Dynamik nach BK-2",
+      "before": "8b8eaa6258ae23b4905974c237f4caa1e00badcf863e6ef2a786e2b11f0b0708",
+      "after": "cb83c51473be91506565205ec86e7b1e3f6ab6b10c52d0da4363106d7c103828",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 1104,
+      "numericSha256": "6ef13b518bb7ed2cea8d633d3f7ec176d286dd8a92c353fbce887cf33eba36c5",
+      "changedFields": [
+        "budgetFloorGesperrt",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "ff-g-regression.test.mjs",
+      "label": "staticResults: ungefilterte JSON-Bytes gegen BK-2",
+      "before": "c20c04aed37cbd3e354fc3177f446233db17fe1c0e4f6f1abfbb6e8f11b82261",
+      "after": "1d1888c9119b609bc6eb26b629c16c45f569c3ce61b45891269eccd1ad3598d3",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 6780,
+      "numericSha256": "d18bb9f315bd46ae96fe5dfb7dd100ebb63f3bd05505360f22c9d8fc4c3d295d",
+      "changedFields": [
+        "budgetFloorGesperrt"
+      ]
+    },
+    {
+      "test": "ff-g-regression.test.mjs",
+      "label": "dynamicUnaffected: ungefilterte JSON-Bytes gegen BK-2",
+      "before": "a84b8bce40d02e5c991efbf4e71cc761e4e6f20d2d86dc57535c6fc42bd2e10f",
+      "after": "b5ed62053cacb3568606375ed504e8f7cf2573ea1b231feb530b804e20f742e9",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 2530,
+      "numericSha256": "64a7a770c8f0767113932a73d49daccac97872265b2267e7d04e0bbfa8600d52",
+      "changedFields": [
+        "budgetFloorGesperrt"
+      ]
+    },
+    {
+      "test": "ff-g-regression.test.mjs",
+      "label": "Helga/Werner: vollständiger Backtest 2000–2025 mit FR-35 und 60.000 EUR Rücklage nach FR-36",
+      "before": "b27644ebdd71fb56a05eadbe5a0d7424fc16d1df0a3639577be00dddb017cf40",
+      "after": "529c020a67650285893cf48d4630b85aef6a152493ca4327cd8f177e6cce2d4b",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 9688,
+      "numericSha256": "793eb06213ac3b57d51a8e4080a68b3f072be3a56d667bbb0ee71c034d993fbc",
+      "changedFields": [
+        "MarketExtremeBear",
+        "marketExtremeBear"
+      ]
+    },
+    {
+      "test": "flex-safety-bytegleich.test.mjs",
+      "label": "Sechs vollständige Engine-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz",
+      "before": "9a3e32358781193c5d1a6cbbf02ef37b8716e86d0dac228166d4ee51f909f5aa",
+      "after": "5a820068125cbd4df77a805a65714287a4686eb566cc34583f42a8ee2c8493cc",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 2445,
+      "numericSha256": "d756fbf4362603c3c016b6246c72c0c508eef43eae6ab99e880248e7b8db4871",
+      "changedFields": [
+        "anmerkung",
+        "budgetFloorGesperrt",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "flex-safety-bytegleich.test.mjs",
+      "label": "Drei vollständige Simulator-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz",
+      "before": "b78a73adae2119db22f13be046fbb5f21691dc4a0baed3c620e62bcf78f63ba2",
+      "after": "c12e991667ed28da619b3fbfd3db39ec23aee5a137c655c0eeef2c25018a0503",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 1467,
+      "numericSha256": "8c60dffc0c62cc1c19403704608252d771fc97215f59b530d1a7a23f3d0275d3",
+      "changedFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "Vorgabe: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "78214f8b317d3618a4a559bcf10598e9e57d873f957a1a2de72b40be11711ff9",
+      "after": "fc05f3463544e66d970ceed3c713a1a963000b9af6f11dcfbb4edbc76eea748d",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 12801,
+      "numericSha256": "69fb8b13b2288f1e266bfe3a34928a805c7dc5b2fb17317f2e5882ae412a5812",
+      "changedFields": [
+        "MarketExtremeBear",
+        "marketExtremeBear",
+        "pflege_delta_flex",
+        "pflege_kumuliert"
+      ]
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "konservativ: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "02f2b5c3afb81a2ba6e3886fbc2e95b48243c9be557959ac922f5c6ceefdc403",
+      "after": "e77d19736631c2a67561efb0e37dab78739fdf682de5706ca01bc164c4b6e7b0",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 13577,
+      "numericSha256": "e54c2961abbaaadeab6c4ad97f4b373835a8995b269d3015c20e5d4fb3169a99",
+      "changedFields": [
+        "CutReason",
+        "MarketExtremeBear",
+        "kuerzungQuelle",
+        "marketExtremeBear",
+        "pflege_delta_flex",
+        "pflege_kumuliert"
+      ]
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "ausgewogen: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "bd80c379379774293c7bcfd13972c6a2a45d1249d893b9c9aeb46023a62232ae",
+      "after": "00de8d523afdbb123e90c83f983b4fa9d99d13e2d76384f39174cdc637bc587d",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 13378,
+      "numericSha256": "04481623fb5a683dfb6040a7c369547d1376b4d832b6ecddaa007168e5d3b59f",
+      "changedFields": [
+        "CutReason",
+        "MarketExtremeBear",
+        "kuerzungQuelle",
+        "marketExtremeBear",
+        "pflege_delta_flex",
+        "pflege_kumuliert"
+      ]
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "offensiv: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "305e690e40cca2f024b7f3c46d9e8f8211cef16fd474bb87b6b860caa2402fd2",
+      "after": "4a27c193073eda1469d8d7602a0707d9adc79618debfc1d8281010a130886637",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 13468,
+      "numericSha256": "dce581665af4e640f532aab1b3297f84ed7b7145081bd9674f44a545b08b2e58",
+      "changedFields": [
+        "CutReason",
+        "MarketExtremeBear",
+        "kuerzungQuelle",
+        "marketExtremeBear",
+        "pflege_delta_flex",
+        "pflege_kumuliert"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "off: Backtest entspricht BK-2-Referenz",
+      "before": "3b08a08a660096491f84d84b66a1e09eb87c873dc7f3cbdb801880e8960096cb",
+      "after": "bb0ef06558644d58cc82e9ed47dff066624e724290b70d495a0dcc53046b53aa",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 3746,
+      "numericSha256": "97a9d4ddccca68f5a5c530943cc0b4f73fa82b566544cb09cef4a5cfb9a09897",
+      "changedFields": [
+        "MarketExtremeBear",
+        "marketExtremeBear"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "konservativ: Backtest entspricht BK-2-Referenz",
+      "before": "9fd3b458d5866cbfa124558621ade482c8ef406c09d2230bf8f83012ae2b3697",
+      "after": "afc5dbae7d468f4a4ad5ee274c0e60aa68817bad6f9273e291a2907df3dc9d54",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 3951,
+      "numericSha256": "9569bf3b7d80c5b1ddad61d6edca312cd8bc67d609cc1171bdd0e1bee886d680",
+      "changedFields": [
+        "CutReason",
+        "MarketExtremeBear",
+        "kuerzungQuelle",
+        "marketExtremeBear"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "ausgewogen: Backtest entspricht BK-2-Referenz",
+      "before": "b7c75a8a337c16de384d366c3a5334c14ccbd75358e71b0221fbe0637d2d21f6",
+      "after": "0eb2c98f5a265d1cb5f0b554f440f769001797d0e75c3839c949e37b5e3af657",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 3906,
+      "numericSha256": "0a73af32f0e68026b7560979701097352e5d032018fe3ba7ed83493c8157a68b",
+      "changedFields": [
+        "CutReason",
+        "MarketExtremeBear",
+        "kuerzungQuelle",
+        "marketExtremeBear"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "offensiv: Backtest entspricht BK-2-Referenz",
+      "before": "6d39598a19c032fe58dbffb7df55ada26fbea97a5d03cff6fd0e1ce5d4996978",
+      "after": "f98bb1bcbec6b3851bc9c5723726028e1ce8f53b6f5b9cc1c75a4f1c4fe44dbf",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 3881,
+      "numericSha256": "389e4852ab02b7101bc1278e226d5a487eb36cab569b350084f2d2dd12e68299",
+      "changedFields": [
+        "MarketExtremeBear",
+        "marketExtremeBear"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "offensiv: MC-Pfad 0 mit FR-21–24/27",
+      "before": "58282c180aec55e320452df8d32c6976f8b160c1f698f6583201dba836c8be3d",
+      "after": "f3596e488edb0b255da047dff16090ac52abc641c253b579c295bf9a8214ca52",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 6245,
+      "numericSha256": "aaeafd30d174dd221063a2fde28d3cda71e3940c7d9b66ab38d23e186a4199f7",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression.test.mjs",
+      "label": "standard: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "before": "0531cfc24d3779641ba5b35e1a47fb573bb74755199da46a06009798e977d054",
+      "after": "b5e0550086e3c4b57387822856872c29666b6c7a3132abe2e3220b5466e818f2",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 1328,
+      "numericSha256": "01c938d1a21142f658b5452ccf4095619eb37221a995b26c1f66fe1524ab3565",
+      "changedFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression.test.mjs",
+      "label": "drei-topf: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "before": "df625d6ae30302ee761794443632ff9b794d11e2562383cc0a76e996f0130963",
+      "after": "ba8a890bb654065ca2e422397a52cdd739d502e49c57fcc5ac708af118b79cda",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 1323,
+      "numericSha256": "7485ebe5bf19d81b6cc7190d37cd3b873c2194a25f63a0b1c58954fb21598a04",
+      "changedFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression.test.mjs",
+      "label": "kohorte-2006: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "before": "54ade30b5150a5dfed38b5981b22a8f1a06b450d9e4b1918b03d59908096794d",
+      "after": "3acdca131c3ff271fb8aad6260a5942eb030127cd299826210082a6959c87fa0",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 1328,
+      "numericSha256": "e53b89fc3ab4a8a42cf16a0b9b1b0d4579722e60a81e068aab05ee17282a1c55",
+      "changedFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression.test.mjs",
+      "label": "kohorte-2007: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "before": "969bab3e83acb81f75a4be38e23d4e7c0973dfe27613e7b273947072e9f590ec",
+      "after": "b9a46f125c42a1a7e57ada18ff369e2854881cfaf5ec0578ad29582e691d60da",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 1328,
+      "numericSha256": "325abbd7b3cc6d6d4206afdc2998da59ee8881c43e4a3cca01346b0e595a8b12",
+      "changedFields": [
+        "MarketExtremeBear",
+        "marketExtremeBear"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "off: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "0907ab679bb2e59fee338a4ea4cc669a9677059b55a6831a678a1dd0470d8527",
+      "after": "c7afa69a2b12d645391a1b31723e1c7d7981c2128841bcb9db4effdd7528145d",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 8756,
+      "numericSha256": "5d641d9adc85399587afc833fc302f621c71027818a3e97611a9636eda893461",
+      "changedFields": [
+        "MarketExtremeBear",
+        "marketExtremeBear"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "konservativ: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "586515ac747c46288f76f6995d48def693e6c9bbbf2a280e5bf3569bc2c7fd89",
+      "after": "d35fe93ea228d9e6ade5982dae7948788d430d2f6a996ccfd0701daac1a5891f",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 9199,
+      "numericSha256": "9ffa5a0c0b2963a6bf5270054b7cf48ab588017be8572bef13e9b006bb032e42",
+      "changedFields": [
+        "CutReason",
+        "MarketExtremeBear",
+        "kuerzungQuelle",
+        "marketExtremeBear"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "ausgewogen: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "ebde5af90a2b5a38c43d546c4189a7cbca56466d78bf2efaed12bfe8cf1108a2",
+      "after": "2b72bc08a96667133b8d0be90397f8eb1aa90f5a24048c3a5cf833ef8e38a720",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 9156,
+      "numericSha256": "729310019b31c4dadda62fb976a314821cfb21836bd24ccd2f6b99bd2d39952b",
+      "changedFields": [
+        "CutReason",
+        "MarketExtremeBear",
+        "kuerzungQuelle",
+        "marketExtremeBear"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "offensiv: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "ea798124139c027b0f0863412e82ab15a4e9efce2db7a3d86f32c1ee368a98f5",
+      "after": "2fd6deb515413e835ff340062a7f90c79f9c7210c8d7fbd9adfd82475827d586",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 9131,
+      "numericSha256": "aad1e1f1496d1618d4ce2d83dc021695a677541f6d9c7e460290c6603d065b63",
+      "changedFields": [
+        "CutReason",
+        "MarketExtremeBear",
+        "kuerzungQuelle",
+        "marketExtremeBear"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "offensiv: MC ohne Tod entspricht BK-2-Referenz",
+      "before": "fe04dfb1781f5856d15157cffc1aeecdedd3af33db90db0ee5a23aaabef8b599",
+      "after": "febc5297feeb53108701dd2c2ed75a7a812dfa58c9d81ae0e9f12ff3aa5b40c5",
+      "unchangedNumericLeavesOutsideB4LogDiagnostics": 3727,
+      "numericSha256": "276f822d251ae37241f4d7ec62accfab0895a0184bd95fd856c16b717902ad35",
+      "changedFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    }
+  ],
+  "monteCarloComparison": {
+    "changedOutcomes": 1,
+    "changedFinancialPaths": 1,
+    "before": {
+      "withdrawal": {
+        "n": 2000,
+        "mean": 265679.5665423698,
+        "p10": 85200
+      },
+      "wealth": {
+        "n": 2000,
+        "mean": 8840365.562722003,
+        "p10": 1216310.8001026204
+      },
+      "annual": {
+        "n": 43948,
+        "mean": 12090.632863491846,
+        "p10": 0
+      }
+    },
+    "after": {
+      "withdrawal": {
+        "n": 2000,
+        "mean": 265679.5665423698,
+        "p10": 85200
+      },
+      "wealth": {
+        "n": 2000,
+        "mean": 8840368.246895524,
+        "p10": 1216310.8001026204
+      },
+      "annual": {
+        "n": 43948,
+        "mean": 12090.632863491846,
+        "p10": 0
+      }
+    },
+    "parameters": {
+      "profile": "Max und Erika Mustermann",
+      "anzahl": 2000,
+      "maxDauer": 30,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "useCapeSampling": false
+    },
+    "care": {
+      "pflegefallLogikAktivieren": true,
+      "pflegeModellTyp": "chronisch",
+      "pflegeRampUp": 3,
+      "pflegeMaxFloor": 60000,
+      "pflegeKostenDrift": 0.035,
+      "pflegeGradeConfigs": {
+        "1": {
+          "zusatz": 3000,
+          "flexCut": 0.92,
+          "mortalityFactor": 1
+        },
+        "2": {
+          "zusatz": 6000,
+          "flexCut": 0.84,
+          "mortalityFactor": 1
+        },
+        "3": {
+          "zusatz": 9000,
+          "flexCut": 0.76,
+          "mortalityFactor": 1.25
+        },
+        "4": {
+          "zusatz": 12000,
+          "flexCut": 0.6799999999999999,
+          "mortalityFactor": 1.5
+        },
+        "5": {
+          "zusatz": 15000,
+          "flexCut": 0.6,
+          "mortalityFactor": 1.75
+        }
+      },
+      "healthBucket": {
+        "enabled": true,
+        "initialAmount": 150000,
+        "triggerMinGrade": 4,
+        "triggerMode": "OR",
+        "coverageMode": "care_additional_floor_only",
+        "returnMode": "cash_return",
+        "targetMode": "inflation_indexed_diagnostic"
+      }
+    },
+    "firstDifference": {
+      "source": "health_bucket_used",
+      "deathYear": true,
+      "before": 0,
+      "after": 4906.160270837325,
+      "withinAnnualCareCosts": true
+    }
+  },
+  "extremeBearDiagnosisComparison": [
+    {
+      "preset": "off",
+      "correctedYears": [
+        2009
+      ],
+      "allDeepBearOnly": true
+    },
+    {
+      "preset": "konservativ",
+      "correctedYears": [
+        2009
+      ],
+      "allDeepBearOnly": true
+    },
+    {
+      "preset": "ausgewogen",
+      "correctedYears": [
+        2009
+      ],
+      "allDeepBearOnly": true
+    },
+    {
+      "preset": "offensiv",
+      "correctedYears": [
+        2009
+      ],
+      "allDeepBearOnly": true
+    }
+  ],
+  "backtestNumericComparison": {
+    "profile": "Max und Erika Mustermann",
+    "period": "2000–2025",
+    "presets": {
+      "off": {
+        "numericLeaves": 9837,
+        "beforeSha256": "b96acb4ceeffce7d8f8e1cc9c47deb007310bbb875704fd6ab6a4b950d34ba54",
+        "afterSha256": "b96acb4ceeffce7d8f8e1cc9c47deb007310bbb875704fd6ab6a4b950d34ba54"
+      },
+      "konservativ": {
+        "numericLeaves": 10268,
+        "beforeSha256": "a661ffc74717af465608770c6997b8afcf74d18e3b7ec17d09d66540f3e5e71b",
+        "afterSha256": "a661ffc74717af465608770c6997b8afcf74d18e3b7ec17d09d66540f3e5e71b"
+      },
+      "ausgewogen": {
+        "numericLeaves": 10225,
+        "beforeSha256": "e3b37c4c2384602edd2079a2b650f31f60b4b4fa4547b194302b30db385b857b",
+        "afterSha256": "e3b37c4c2384602edd2079a2b650f31f60b4b4fa4547b194302b30db385b857b"
+      },
+      "offensiv": {
+        "numericLeaves": 10200,
+        "beforeSha256": "a90e18a80750dbd96c211bcae997cb2599ee558b8e71714693cd12b6a5297e97",
+        "afterSha256": "a90e18a80750dbd96c211bcae997cb2599ee558b8e71714693cd12b6a5297e97"
+      }
+    }
+  }
+}

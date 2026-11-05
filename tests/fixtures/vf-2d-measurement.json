@@ -1,0 +1,4253 @@
+{
+  "description": "VF-2d: synthetische VF-2a-Seitenmessung, 2.000 Pfade je Fall, Seed 12345; nur Drei Töpfe dürfen sich ändern.",
+  "revisions": {
+    "before_vf2a": "1ce640b3",
+    "vf2a": "7707d99b",
+    "before_vf2d": "59972005"
+  },
+  "measurementScript": "scripts/measure-vf2d.mjs",
+  "postBearMinimumDefinition": "Je Pfad Minimum des nominalen bondBucketAfter in allen Nicht-Bärenjahren nach dem ersten bear/crash-Jahr; recovery zählt als Erholung. Median nur über Pfade mit belegtem Folgejahr. Nur endliche protokollierte Bestände; fehlende Werte werden nicht als null Euro gewertet.",
+  "runs": {
+    "before_vf2a": {
+      "date": "2026-10-23",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 5,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "cases": {
+        "renate": {
+          "inputsHash": "aaed1c20bb723b0f49bf799082800801e07e02a41f9061f87a4cd807ec5bc91d",
+          "ruin": 804,
+          "technical": 0,
+          "taxedRoundTripPaths": 52,
+          "roundTripTax": 94541.39986469418,
+          "equityRoundTripPaths": 59,
+          "equityRoundTripExamples": [
+            {
+              "run": 0,
+              "year": 2,
+              "regime": "side_long",
+              "equityBuy": 70000,
+              "equitySale": 29077.377926536778,
+              "bondRefillTax": 245.197291745347,
+              "action": "Runway-Überschuss investieren + Bonds Auffüllen / Rebal.(A+)"
+            },
+            {
+              "run": 39,
+              "year": 15,
+              "regime": "peak_stable",
+              "equityBuy": 45000,
+              "equitySale": 5806.9269073962205,
+              "bondRefillTax": 633.6460623626663,
+              "action": "Runway-Überschuss investieren + Bonds Auffüllen / Rebal.(A+)"
+            },
+            {
+              "run": 42,
+              "year": 3,
+              "regime": "peak_hot",
+              "equityBuy": 69999.9999999999,
+              "equitySale": 5217.545003334213,
+              "bondRefillTax": 368.9636535482533,
+              "action": "Runway-Überschuss investieren + Bonds Auffüllen / Rebal.(A+)"
+            }
+          ],
+          "firstYearPayoutSalePaths": 0,
+          "firstYearTax": 5596249.578093011,
+          "realBudgetDropsOver5OutsideBear": 18,
+          "maxRealBudgetJumpPct": 231.19813864379805,
+          "maxRealBudgetDropPct": 18.36734693877551,
+          "chunks": [
+            "7b4a04d7bb477a7215f70144e963492ad17585de9996476931860673fe4c81cc",
+            "5e26a4b67dc4719f2aa32509fce7c7fb3af203123535c433dbb6851c33ce0293",
+            "b2463bade92a4399f9241a0b21d0de30c3f0f9668697855deff4c8f40c025bf8",
+            "f1c13545b473ff600d4188ff01e7298a5e3bf80e9b178b3ba7140ad9b7b3a35e",
+            "bc67b630522e7ea31e2f01eab8c6987bbffdcbe5d0daa10ddbd4ab6ba66122ea",
+            "c91ddb3a7ae20e2dfe40ec267d318f44b71c1527b713d345fc1ebe5f34a4d4c0",
+            "9a7e96e1288842ce0059f96a288ee73488574f8a39ba423196c30dd8361fa255",
+            "e5d84db1c4c618e660b8552cbd8b1bfc873b6eed5dca0967e97f0f70c2f0c887",
+            "c4ff01911b80178c0284d06aef83eaf7463b0bb001aa0404dbdf48f950e6997e",
+            "ae96a4ddb81ba9eef4485a3073498c5031cf55251ebca5e0684d223e5f835292",
+            "a48a5be992c6350c1795e980392878175f9c3b5ad7901d538156bcad48d59068",
+            "132327bc86138c0d6d29a6948756290a10c022879425cf6293e8273ae20d15df",
+            "d5ad0c6cc44eb21a96b5e74473d13a7160206414a8599d4cd9b3d2ff5359c217",
+            "1211ea3ac16e086fa3d5e4891db5e7448c5e3d629e959438eb934f7c7f7ac51c",
+            "c46c1d18e0fcea7b555ef0f620ded2b984f18749d0700e5b4af65c049fe59ef5",
+            "6af57d6a68679a477455f76d3f724fd57544e87f518b9c723508fa41aacdc69f",
+            "35969a7997cde407660156b23ce8df64b1a984ba15fb9da0b38a400322832cb5",
+            "ab3e3ee9ae12014815dec480d22215c6984800dcb7e7b95ded50772d15a2195d",
+            "b330e0178b09e88bef30be3482798a242729fc6427219b810765d7730cf0387f",
+            "8078688bd81a8628e51e6012f6a2544191832c78f5d04654216c07495c776d19"
+          ],
+          "postBearMinMedian": 0,
+          "postBearPathCount": 550,
+          "coveredPct": 59.8,
+          "backtests": [
+            {
+              "period": "1925–1999",
+              "hash": "9d3b820fa48dc497bfb51124ee2a63f4594d610c327d320afadb33ecf28b98db",
+              "outcome": "incomplete",
+              "years": 0,
+              "endWealth": null,
+              "cutYears": 0,
+              "details": {
+                "kind": "incomplete",
+                "lastCompletedYear": null,
+                "missingYears": [],
+                "missingFields": [],
+                "exclusionReason": "period_out_of_bounds"
+              }
+            },
+            {
+              "period": "1929–1963",
+              "hash": "5b583ffda73b810ac6b1ac32d727269cae9b06e83b6e4b98441c34fb65916996",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 857401.2521890786,
+              "cutYears": 22
+            },
+            {
+              "period": "1965–1999",
+              "hash": "683a2c873483bd8bbbd3f72c6721f64aaa0a6dd6b90e04a695826295e9b5088b",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 431222.69557207613,
+              "cutYears": 23
+            },
+            {
+              "period": "2000–2025",
+              "hash": "e34e7008e27758d633504316854e1ffcdf040d50337d13bc4c4da4af2885e80b",
+              "outcome": "ruin",
+              "years": 23,
+              "endWealth": 0,
+              "cutYears": 22
+            }
+          ]
+        },
+        "helga-werner": {
+          "inputsHash": "a1835424f3e74e05ae9a4c510a54edc4773da78a0cfe126a6c304b2f3eb11479",
+          "ruin": 50,
+          "technical": 0,
+          "taxedRoundTripPaths": 126,
+          "roundTripTax": 866391.964515754,
+          "equityRoundTripPaths": 147,
+          "equityRoundTripExamples": [
+            {
+              "run": 1,
+              "year": 2,
+              "regime": "peak_hot",
+              "equityBuy": 20000,
+              "equitySale": 285078.64644797146,
+              "bondRefillTax": 27353.59495197168,
+              "action": "Runway-Überschuss investieren + Bonds Auffüllen / Rebal.(G+) / Rebal.(A+)"
+            },
+            {
+              "run": 59,
+              "year": 11,
+              "regime": "peak_stable",
+              "equityBuy": 207946.27066032717,
+              "equitySale": 53355.855543406215,
+              "bondRefillTax": 12705.110025501885,
+              "action": "Opportunistisches Rebalancing & Liquidität auffüllen + Bonds Auffüllen / Anleihen verkauft 50000.00 € / Rebal.(A+)"
+            },
+            {
+              "run": 63,
+              "year": 10,
+              "regime": "side_long",
+              "equityBuy": 75249.1987153148,
+              "equitySale": 37220.95383954019,
+              "bondRefillTax": 6039.5798282803535,
+              "action": "Profilverbund-Transaktionen / Anleihen verkauft 10000.00 € / Rebal.(A+)"
+            }
+          ],
+          "firstYearPayoutSalePaths": 0,
+          "firstYearTax": 2508454.8452070323,
+          "realBudgetDropsOver5OutsideBear": 2141,
+          "maxRealBudgetJumpPct": 292.6242304363118,
+          "maxRealBudgetDropPct": 54.78293942890213,
+          "chunks": [
+            "0333a7b2a3b35207b9dcd4aa81115f8e4be273a0b015b47cf4af418de534566d",
+            "b7411601fe195baccbf78e1c9cf3a0aee9a30e6fed7c0630120ed8a26faafc5f",
+            "3f4222bee11d2525047efc8750e4e2b2a5991737629c831d9e67e8711694ee8e",
+            "2e31fa8788c1950a9de9b146f3f779761de797ec672cf95959a513ce43d0cabe",
+            "a595397d491c8ef85b6b40449bc44f665f2dd400bd30e7f52466ee1cbea1860c",
+            "bd0b05e0bd150d5be91880bb75c2076d13d1369e829af195d5aa3808f0ee5608",
+            "1def66306b4e63fbf3ec23e5644b30b556b7a2cdd198a33b0ff4bf0180c8d3b7",
+            "4fbef458bc4d835ce2a485a978b5757a2b245a21c4bddd0d4c2a4fe2312dc97d",
+            "bcc4ffef03cae2e7680aea8f52007d6100eac96e39484452096976d4c90bc5c0",
+            "6135b5f4295aff0d44e6c0a5584b4bd52b72f6c3894b286b19f68280afedb7f8",
+            "a5434bb936501c51fc913cc905b3ea37bce6010caf8aaaed1956fea3189cef92",
+            "9d5349672a1b81c8f0330c51138326473551c815a29720f0add82f5ab74296aa",
+            "9588d070fc0def009f8850e1b5fbe157614c0fbfdbff4579664e096a75c6ec0c",
+            "06dc3bd3a0c4ffcbef79fa0f7008acc86d518a72f5eb1352656871262cf1fd8f",
+            "210ea6c6424f3f8f11438af3533eaf2b509e252ad403067eadcc5a85266a800a",
+            "c6e44e043d6946b15ec9f3209442a295f67ebe51eec4441c90abf36556ba020e",
+            "0767a028d601ba371773c31cb090d78abf8596233f04f9ef244a43ac6031268d",
+            "41906a60fbca9f706f826aab943b5cce53571e206793b1d760d56f730b6fce7a",
+            "3e5c5e7925ec62db8c6e6c17fab37290e7c75ecb6ec2ba3bc93cf0a3a64bb4d3",
+            "af7f9e2378c4900eff4f73552974db3599e4f394d5fac9f8f7691b27c2453bad"
+          ],
+          "postBearMinMedian": 160710.20363555136,
+          "postBearPathCount": 468,
+          "coveredPct": 97.5,
+          "backtests": [
+            {
+              "period": "1925–1999",
+              "hash": "e9b77b5180e05a06fa0aa8b7e8945ea71698c7d4bef8b7d6bda9bafcbd73dc81",
+              "outcome": "incomplete",
+              "years": 0,
+              "endWealth": null,
+              "cutYears": 0,
+              "details": {
+                "kind": "incomplete",
+                "lastCompletedYear": null,
+                "missingYears": [],
+                "missingFields": [],
+                "exclusionReason": "period_out_of_bounds"
+              }
+            },
+            {
+              "period": "1929–1963",
+              "hash": "90b23515d35ad114adad6022a02b5f388c99a908e0dcb821669a259850316d31",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 8970388.150748992,
+              "cutYears": 0
+            },
+            {
+              "period": "1965–1999",
+              "hash": "eb507f30714d5fefb6efb06ad0d68d4b4c85620e0521757f81a7630c1a170fce",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 21276664.037470628,
+              "cutYears": 0
+            },
+            {
+              "period": "2000–2025",
+              "hash": "7fd38345a98c9890b78efe404c4fc9834fc241f2501adf355b88f772a9eb5c84",
+              "outcome": "completed",
+              "years": 26,
+              "endWealth": 1136525.9811816623,
+              "cutYears": 0
+            }
+          ]
+        }
+      }
+    },
+    "vf2a": {
+      "date": "2026-10-23",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 5,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "cases": {
+        "renate": {
+          "inputsHash": "aaed1c20bb723b0f49bf799082800801e07e02a41f9061f87a4cd807ec5bc91d",
+          "ruin": 806,
+          "technical": 0,
+          "taxedRoundTripPaths": 0,
+          "roundTripTax": 0,
+          "equityRoundTripPaths": 0,
+          "equityRoundTripExamples": [],
+          "firstYearPayoutSalePaths": 0,
+          "firstYearTax": 5290615.6622764915,
+          "realBudgetDropsOver5OutsideBear": 15,
+          "maxRealBudgetJumpPct": 231.19813864379805,
+          "maxRealBudgetDropPct": 18.36734693877551,
+          "chunks": [
+            "3fe5b29b3275b570a97a6057b02216e5d5a96ebaa7d4d42ea7d83df8ceb8786d",
+            "fbb820dc678c61bc8a31286d320de8f0ce01e4f7461936fd4343fc8265ed4085",
+            "9f5fac1febd9826f98bd7f20fbf77d5ee6dab852ef71c96eae51636da00d36a9",
+            "d88c9ac4dd927f95150572feb1f9546af10650da59a50c975496e9d0ae106c7b",
+            "c9153228ef449b68953826f19d20de0c4f748f9c1b560da25e3c105ac9af0693",
+            "a80b0812e65d95d52f1c57ae3022dbe870379eca16f009045565ce1f077a889f",
+            "f16b419d8df9da5fb249fdb659c353c93ed56b07b0874fe3e7cee025b37cfadf",
+            "3a5e996eb26750c68fdb1b7d2abcfc10ad116af3145c4abacf538519b2143651",
+            "a44c6c494985fb974dbed2de8135ff6a5ba48dc573fc5acf627dae3ab5d49b81",
+            "1f7e2b1276e8f7d75618f27ffd351c8dc967891652dfefa40cbf061f1fc3a49f",
+            "aafb9a242bf4b3235551330bbf7d4baddf61dfa8dfdaee54504ee45e8dea024e",
+            "0f219b6effb40b8191d4e81fa91e71cba3cc4ab39a0618b247c9ad1c04c3c7d6",
+            "67b2bbe98900e8ff6e71f69bbc416ab62f4dbee1bddc84f6c3a0b083bacd9147",
+            "e3f453a53c1b3df634f1616ee51ccc47b84a7e5fdac24d37096079fbcc064c0c",
+            "3d10478e6d17a185b93d86f5b45c9505a12506c44507e36725a6b32128f32676",
+            "8d4d5c55cd141912b82f5e4007a5222659266f717b9c280d191f126c1b089a27",
+            "6f27acf638821ae8c89d86a4ae30bbef0b4035085147285c1f050fe2b83fb71c",
+            "842a100ba30da3c905200b4d22b94d692e37e7a03a86fca5f4eea9c27b2c4573",
+            "26cb46a672165ad71841680860fb6c6b81b414751dbc56b5884c892347a4622d",
+            "50023b369c26648027889dea9f6241f7d4de0d3a3ad304edf4808a2d9f73e1c2"
+          ],
+          "postBearMinMedian": 0,
+          "postBearPathCount": 546,
+          "coveredPct": 59.699999999999996,
+          "backtests": [
+            {
+              "period": "1925–1999",
+              "hash": "9d3b820fa48dc497bfb51124ee2a63f4594d610c327d320afadb33ecf28b98db",
+              "outcome": "incomplete",
+              "years": 0,
+              "endWealth": null,
+              "cutYears": 0,
+              "details": {
+                "kind": "incomplete",
+                "lastCompletedYear": null,
+                "missingYears": [],
+                "missingFields": [],
+                "exclusionReason": "period_out_of_bounds"
+              }
+            },
+            {
+              "period": "1929–1963",
+              "hash": "5b583ffda73b810ac6b1ac32d727269cae9b06e83b6e4b98441c34fb65916996",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 857401.2521890786,
+              "cutYears": 22
+            },
+            {
+              "period": "1965–1999",
+              "hash": "04a3f81c0089ac06eb89aa18a326446c827b1e06c1ae4c0b248b72638d444e7c",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 422973.2343693042,
+              "cutYears": 23
+            },
+            {
+              "period": "2000–2025",
+              "hash": "e685c9674e862edb5c6ab0117cb1557e835db552dbb4eed73572c9efae8c4cc1",
+              "outcome": "ruin",
+              "years": 23,
+              "endWealth": 329.29851642979133,
+              "cutYears": 22
+            }
+          ]
+        },
+        "helga-werner": {
+          "inputsHash": "a1835424f3e74e05ae9a4c510a54edc4773da78a0cfe126a6c304b2f3eb11479",
+          "ruin": 51,
+          "technical": 0,
+          "taxedRoundTripPaths": 0,
+          "roundTripTax": 0,
+          "equityRoundTripPaths": 1,
+          "equityRoundTripExamples": [
+            {
+              "run": 1938,
+              "year": 9,
+              "regime": "side_long",
+              "equityBuy": 21411.018375432643,
+              "equitySale": 10000,
+              "bondRefillTax": 0,
+              "action": "Opportunistisches Rebalancing & Liquidität auffüllen / Rebal.(A+)"
+            }
+          ],
+          "firstYearPayoutSalePaths": 0,
+          "firstYearTax": 1862974.6051550624,
+          "realBudgetDropsOver5OutsideBear": 2141,
+          "maxRealBudgetJumpPct": 292.6242304363118,
+          "maxRealBudgetDropPct": 54.78293942890213,
+          "chunks": [
+            "6a97273ef86e98f3b93655d46e3a7f527c000077a6f38e74a3df55cdcec30773",
+            "8f28e1dcda15b8759d4245891e5eaa8fc2780b0642d7607cc1adaefe32c691dc",
+            "e483cd991904de510db53dab310d1bfe82d8eb710d5564bf4e4fff7da9162faf",
+            "94a59dc648c1eac9046e727b9a3f23b2046e28111b71c6ebdce78f94c6497fb5",
+            "b045a89a1e7d0d8e9b60ae76c9653a10abfc691e4972227dae5fb854adb68fab",
+            "b9a1c9b2f23b6b1e87d6d8166f98ad87bbd28298b1777ad98bfc121b5539aa86",
+            "8a8e223ffa8896a3fb84010b704f3fd9b3661e9630e7b35bf691f61808dafa6b",
+            "e81a196458c367765156cd9b2cd9c39733e72f9bab72e98ec0b97d5824022da9",
+            "0b6551e7972fde93395fdaef761e9f9e812f16fe244c8f5fcd7b92c35e0836c6",
+            "e0a26b2e9c6e6ee14c84016abf2e2f95a84e5270eee9e0937c9f0021e539f72c",
+            "11f15116a2991249b2e0c7a0cab4c070543405dca4d6b6bb8bfe84f5bd2ae851",
+            "45123ef6d4ef81cf94a65ab98568d1713ca6900e5dfdc8c65b80e580250635fb",
+            "3ba97630beece019b4df35708d28ebd9cd3a396957c86e3812360c8e995c1314",
+            "9f0d522fa30d619dbfac6eb48fe862cd1635422d7a8fc7b6e23e64470f0b94f8",
+            "7cda6262b5893a9efee5028abb4a9655e9ab828f0b91079b213854804d18b3d3",
+            "8b9268589ff174589fdb40ec3c1cc9175add9f1166661f5975b16a2e9caab79b",
+            "c27ef2437d09aaed8651bfea1a3c68172ac314d974c01d7364d642850ee6246c",
+            "3db4097f1823b6093ee4a007f2278eecc5d3b5ffdec2d5fbc3826701cff12b9e",
+            "245bc156cacc27e8042ad427e14ebdad024236ccb48dedab33c39f58aca99142",
+            "06d0a128f41a4df509f33a42e97f548aeb7b570e90ab19e1ca0ef98859d1b84a"
+          ],
+          "postBearMinMedian": 152598.6337282496,
+          "postBearPathCount": 468,
+          "coveredPct": 97.45,
+          "backtests": [
+            {
+              "period": "1925–1999",
+              "hash": "e9b77b5180e05a06fa0aa8b7e8945ea71698c7d4bef8b7d6bda9bafcbd73dc81",
+              "outcome": "incomplete",
+              "years": 0,
+              "endWealth": null,
+              "cutYears": 0,
+              "details": {
+                "kind": "incomplete",
+                "lastCompletedYear": null,
+                "missingYears": [],
+                "missingFields": [],
+                "exclusionReason": "period_out_of_bounds"
+              }
+            },
+            {
+              "period": "1929–1963",
+              "hash": "02fb4918a8814229351d4892510231dc927f044e3d187ca2727c3d15091eda4c",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 8882079.701323448,
+              "cutYears": 0
+            },
+            {
+              "period": "1965–1999",
+              "hash": "c6c703b80eb03febba8cb9cb891b59b89b19f723e205ae2b1c9735795953b9b6",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 21275721.69805752,
+              "cutYears": 0
+            },
+            {
+              "period": "2000–2025",
+              "hash": "9da26b11f344bed0a9a1e61680844669a90711c45f1a979cb888a1407065e4a2",
+              "outcome": "completed",
+              "years": 26,
+              "endWealth": 1150852.1867193463,
+              "cutYears": 0
+            }
+          ]
+        }
+      }
+    },
+    "before_vf2d": {
+      "date": "2026-10-23",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 5,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "cases": {
+        "renate": {
+          "inputsHash": "300c0a61d84f2997a685e616929dce19719325ddcff3129876e384ec5483bb58",
+          "ruin": 806,
+          "technical": 0,
+          "taxedRoundTripPaths": 0,
+          "roundTripTax": 0,
+          "equityRoundTripPaths": 0,
+          "equityRoundTripExamples": [],
+          "firstYearPayoutSalePaths": 0,
+          "firstYearTax": 5290615.6622764915,
+          "realBudgetDropsOver5OutsideBear": 15,
+          "maxRealBudgetJumpPct": 231.19813864379805,
+          "maxRealBudgetDropPct": 18.36734693877551,
+          "chunks": [
+            "3fe5b29b3275b570a97a6057b02216e5d5a96ebaa7d4d42ea7d83df8ceb8786d",
+            "fbb820dc678c61bc8a31286d320de8f0ce01e4f7461936fd4343fc8265ed4085",
+            "9f5fac1febd9826f98bd7f20fbf77d5ee6dab852ef71c96eae51636da00d36a9",
+            "d88c9ac4dd927f95150572feb1f9546af10650da59a50c975496e9d0ae106c7b",
+            "c9153228ef449b68953826f19d20de0c4f748f9c1b560da25e3c105ac9af0693",
+            "a80b0812e65d95d52f1c57ae3022dbe870379eca16f009045565ce1f077a889f",
+            "f16b419d8df9da5fb249fdb659c353c93ed56b07b0874fe3e7cee025b37cfadf",
+            "3a5e996eb26750c68fdb1b7d2abcfc10ad116af3145c4abacf538519b2143651",
+            "a44c6c494985fb974dbed2de8135ff6a5ba48dc573fc5acf627dae3ab5d49b81",
+            "1f7e2b1276e8f7d75618f27ffd351c8dc967891652dfefa40cbf061f1fc3a49f",
+            "aafb9a242bf4b3235551330bbf7d4baddf61dfa8dfdaee54504ee45e8dea024e",
+            "0f219b6effb40b8191d4e81fa91e71cba3cc4ab39a0618b247c9ad1c04c3c7d6",
+            "67b2bbe98900e8ff6e71f69bbc416ab62f4dbee1bddc84f6c3a0b083bacd9147",
+            "e3f453a53c1b3df634f1616ee51ccc47b84a7e5fdac24d37096079fbcc064c0c",
+            "3d10478e6d17a185b93d86f5b45c9505a12506c44507e36725a6b32128f32676",
+            "8d4d5c55cd141912b82f5e4007a5222659266f717b9c280d191f126c1b089a27",
+            "6f27acf638821ae8c89d86a4ae30bbef0b4035085147285c1f050fe2b83fb71c",
+            "842a100ba30da3c905200b4d22b94d692e37e7a03a86fca5f4eea9c27b2c4573",
+            "26cb46a672165ad71841680860fb6c6b81b414751dbc56b5884c892347a4622d",
+            "50023b369c26648027889dea9f6241f7d4de0d3a3ad304edf4808a2d9f73e1c2"
+          ],
+          "postBearMinMedian": 0,
+          "postBearPathCount": 546,
+          "coveredPct": 59.699999999999996,
+          "backtests": [
+            {
+              "period": "1925–1999",
+              "hash": "437ab31dc3e1193e83b8136922339759d5bd9601eecb4734327bd6914a8d65aa",
+              "outcome": "incomplete",
+              "years": 0,
+              "endWealth": null,
+              "cutYears": 0,
+              "details": {
+                "kind": "incomplete",
+                "lastCompletedYear": null,
+                "missingYears": [],
+                "missingFields": [],
+                "exclusionReason": "period_out_of_bounds"
+              }
+            },
+            {
+              "period": "1929–1963",
+              "hash": "b4140b57595ba06dac30e8cc10ef8f5bfe154700f8639f9ac2d590b632f54b47",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 857401.2521890786,
+              "cutYears": 22
+            },
+            {
+              "period": "1965–1999",
+              "hash": "8a06651941766ae9e4f73dd98d150714d87e752c03fc8fa361e3e38a067014c0",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 422973.2343693042,
+              "cutYears": 23
+            },
+            {
+              "period": "2000–2025",
+              "hash": "8636fa3dc1d5b12e8fab44421cda80dea4f7610fe17b81fabd4999ed0c547645",
+              "outcome": "ruin",
+              "years": 23,
+              "endWealth": 329.29851642979133,
+              "cutYears": 22
+            }
+          ]
+        },
+        "helga-werner": {
+          "inputsHash": "a9fb3238d5c7862654723e891ca9de0a380ad8aea2aee2a1c7cf5b19cc1b4662",
+          "ruin": 53,
+          "technical": 0,
+          "taxedRoundTripPaths": 0,
+          "roundTripTax": 0,
+          "equityRoundTripPaths": 0,
+          "equityRoundTripExamples": [],
+          "firstYearPayoutSalePaths": 0,
+          "firstYearTax": 175607.09144393785,
+          "realBudgetDropsOver5OutsideBear": 2140,
+          "maxRealBudgetJumpPct": 292.6242304363118,
+          "maxRealBudgetDropPct": 54.78293942890213,
+          "chunks": [
+            "fa5423cbb48883da51a8ac1cc8ab90153c1f81ea4775d10b1d0770d035d5ce8c",
+            "e1e73daf5a667bf7687dd07d9405a79030e5de79ea2248fe9a758a6799a33838",
+            "2b2fd3acaa560bf55486a602c5878e790a266fa18dd265dd205963b5d567f395",
+            "5e05e144460e8299161caee2e2353e52d5392d2acc0e8603534bbb6e0bd3b37a",
+            "0dfbce6f50cd5e73d1c748d89c06aca96bc01444243471616cdb2bb5230ec8a7",
+            "09e2820a4d1326edad63b60c600b35f6f42838296b87e14ced6120e1927d3a99",
+            "2fe051e835c7fb0cae258f4a52dc1536e8c3f587bee90b372198a8c0f9529fc9",
+            "7058d5f6b15f06db5b3fa7e264b8ea711a4a48754a1de06412c515d4a125885c",
+            "409381dc42c8a86daa503f56916541386618eb3d0d87b0b58eb4272a3b8b0f9f",
+            "d43efadf2e69d9ca5a4ea5ec79b2a70e3db949d161e41be3b24a98065c075896",
+            "8b7dbe9282c64c984a9b343ee53a8e0fbaea68d541225f6bc912e38469064334",
+            "e6cf065012e9ce3e35a1876a37ac81b3e015b53483c384545be34dd791a64625",
+            "886a118cc2c50459acaa87b84ffafbb05cacd2836dfd4e994dd02a4c7a41718e",
+            "784f2e921caec1183df766cdea7fb12bce4e6f98d39a7abed27c8ebc3e713558",
+            "78b3ccad092f999d998b94f14339975bbf0f9ea09c96273bf5865f29b294074f",
+            "33a88ef9843ba5e51df9afbe153a27f086677117c4b531e2db9721297a9bbf2c",
+            "e8e5492465368ab6999fa857d4a0c4340efb09219c015492cba06b4b0f82f8fd",
+            "0d6522a328b5b999c2261747c9afa237fcbf8fedba44f04a7b388c340f69e52a",
+            "d332e7e87f39b9c8e88afff5850a5ff3dec7bf674dbe43043f8406a9d993cb66",
+            "7c78006817859e1ef127757fb4d1836a02ab7157d8f137cba3c8364ab00b5d57"
+          ],
+          "postBearMinMedian": 143583.5493766694,
+          "postBearPathCount": 469,
+          "coveredPct": 97.35000000000001,
+          "backtests": [
+            {
+              "period": "1925–1999",
+              "hash": "49ba9c38eadd007021e49f6695e7e2462aa0e58be98614f27fd4edb906a1fef3",
+              "outcome": "incomplete",
+              "years": 0,
+              "endWealth": null,
+              "cutYears": 0,
+              "details": {
+                "kind": "incomplete",
+                "lastCompletedYear": null,
+                "missingYears": [],
+                "missingFields": [],
+                "exclusionReason": "period_out_of_bounds"
+              }
+            },
+            {
+              "period": "1929–1963",
+              "hash": "8c9c4c31c685cdb2cf193e0dee1054f42dfe5c7980a8b42bb7732b6cfcb7ef0b",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 10619536.699011108,
+              "cutYears": 0
+            },
+            {
+              "period": "1965–1999",
+              "hash": "a4892b5c91f28e28bcfce077e47da052bf757ff8fbe4de2e5d622fe8f6eadaff",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 25598723.83094494,
+              "cutYears": 0
+            },
+            {
+              "period": "2000–2025",
+              "hash": "c172ff17953139fdb2d4f4dc63e128b87d1ae84417220efc35c70c51d4b71e4f",
+              "outcome": "completed",
+              "years": 26,
+              "endWealth": 2435666.0815659924,
+              "cutYears": 0
+            }
+          ]
+        },
+        "martin-petra": {
+          "inputsHash": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+          "ruin": 4,
+          "technical": 0,
+          "taxedRoundTripPaths": 0,
+          "roundTripTax": 0,
+          "equityRoundTripPaths": 1999,
+          "equityRoundTripExamples": [
+            {
+              "run": 0,
+              "year": 2,
+              "regime": "side_long",
+              "equityBuy": 19463.13,
+              "equitySale": 11393.156042605246,
+              "bondRefillTax": 0,
+              "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11393.16 € / Rebal.(A+)"
+            },
+            {
+              "run": 0,
+              "year": 3,
+              "regime": "peak_hot",
+              "equityBuy": 26121.25,
+              "equitySale": 11667.79718043578,
+              "bondRefillTax": 0,
+              "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11667.80 € / Rebal.(A+)"
+            },
+            {
+              "run": 0,
+              "year": 4,
+              "regime": "peak_hot",
+              "equityBuy": 26730.97,
+              "equitySale": 10191.113077338436,
+              "bondRefillTax": 0,
+              "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 10191.11 € / Rebal.(A+)"
+            }
+          ],
+          "firstYearPayoutSalePaths": 0,
+          "firstYearTax": 504516.1006515269,
+          "realBudgetDropsOver5OutsideBear": 2855,
+          "maxRealBudgetJumpPct": 108.45819317958556,
+          "maxRealBudgetDropPct": 68.62623835732987,
+          "chunks": [
+            "24ebed127a1712ab89fb3eb767591a2911635ba6296ce2a822282b5f03846142",
+            "b703f9edd3b086e074a53576a13fb311820803187722f0b474c3791a0e17ce42",
+            "f1cb69448ab53f72da2e3e5bad1e9d8269c340f366f841614ebf19553c3e3758",
+            "bc4401bf7b6fe24139f56f5cff423d09da99937bf10b6eb1bc6c4f29f6ea1de4",
+            "3e8b2d270dd84825cc4df80d363bd95834a49dd722afb92f5d9ea0bb6b9e1f8e",
+            "add4b0849d88e6ac472632c48d0f0ee81009b5be837f386f49f9946be9514104",
+            "de4a684c6e054a667289c06753a738a62591d6fba2b20e1e286149c0f3d451b9",
+            "711b30bda8d1822c7e7b033e0cd9c14cdb23b3d44437eed3fcd55db8dbff2bca",
+            "f7474accd6c4d6f72d980d31c7d0978694aea9f64a987d08c35b9e5799c4d6f9",
+            "10424bd4912c00227b9cae893e7f0e07835f38eb1f31304d7b68aa2c365bf438",
+            "3cbfdb0419f77fb35a44c93ecdf6c32c2eced4478433dfcf3d41941136b08065",
+            "e1785cfc1da652568671b41e0cc7aa7155261768cf602566890f6ad7401144d0",
+            "aa622a9f6bf77a4d9d348b8102e253942e2bfd505de16ab50ed6cb2cfd5e02b0",
+            "c3cdca4099d0da009e1e210648aeb10b3906211e5dee8a22327b3b4a4170e063",
+            "ef1a83e3ece0873d95bdad4dc61cefdfeda7b1b28156b9b448f75b9d8d1e99d2",
+            "5f392f10181cae52e644c466d2145949d9390bb2e31239e2a41ec31866a29207",
+            "a54fe91ee75ad952ba278d57fd31dcd8623873797e54777309e1f4b4c27f14fc",
+            "06ca6ad55bf41f5ba508465f8ee71530da53482b68996d04be4001ffa09ca2da",
+            "055c961a9d9f74c74a12aaf6d0f22605e129715ad4b4e13b8bd5a661c1cf56c2",
+            "6f3d4af4e0fdc93927910f596988b12ace37ac40842a9a78fa19ce2f0ae6cd9f"
+          ],
+          "postBearMinMedian": 0,
+          "postBearPathCount": 1347,
+          "coveredPct": 99.8,
+          "backtests": [
+            {
+              "period": "1925–1999",
+              "hash": "8cdc1848871259020223825a34bd09730ea638c7bcff9e58550b4b030c771caa",
+              "outcome": "incomplete",
+              "years": 0,
+              "endWealth": null,
+              "cutYears": 0,
+              "details": {
+                "kind": "incomplete",
+                "lastCompletedYear": null,
+                "missingYears": [],
+                "missingFields": [],
+                "exclusionReason": "period_out_of_bounds"
+              }
+            },
+            {
+              "period": "1929–1963",
+              "hash": "fc8e8153f43fb4e1ecfb8b0b756ddaa29d6ac4332d364d2f26f215e9ba72fc5e",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 32215581.70165653,
+              "cutYears": 0
+            },
+            {
+              "period": "1965–1999",
+              "hash": "342fc261516a9db531e7116d60ee780b0f86463397a1df2360b91b5a97bdd601",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 47634910.21580382,
+              "cutYears": 0
+            },
+            {
+              "period": "2000–2025",
+              "hash": "322b411d84c6ff3429ea5f58209d5e36d407d214326c714ff680ebd914cbc0a9",
+              "outcome": "completed",
+              "years": 26,
+              "endWealth": 3823542.584742294,
+              "cutYears": 0
+            }
+          ]
+        }
+      }
+    },
+    "vf2d": {
+      "date": "2026-10-23",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 5,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "cases": {
+        "renate": {
+          "inputsHash": "300c0a61d84f2997a685e616929dce19719325ddcff3129876e384ec5483bb58",
+          "ruin": 804,
+          "technical": 0,
+          "taxedRoundTripPaths": 0,
+          "roundTripTax": 0,
+          "equityRoundTripPaths": 0,
+          "equityRoundTripExamples": [],
+          "firstYearPayoutSalePaths": 0,
+          "firstYearTax": 5265694.992498149,
+          "realBudgetDropsOver5OutsideBear": 30,
+          "maxRealBudgetJumpPct": 231.19813864379805,
+          "maxRealBudgetDropPct": 18.36734693877551,
+          "chunks": [
+            "2c4cfe1c9f0012ce5827921e6b3716f974a5a51404fb4cfaa4e609a53d83a106",
+            "c107e030c3a36ba8df643a4b6353d03b30989ec8178ff2e86b59fd1d95bdd6a1",
+            "da389bc1709007c3330ed4cb8952e9f48cfc30ff7b6eb3a04869b318c10ed3a7",
+            "01185d7cb6f8ec771f0ac01c824ab7f2ec8e0100e762fdc04f96e6634dd6d90d",
+            "382e7eaf27b9d52701f663d66a4399030fa548435b398fcccea4a126db5eddf7",
+            "7f29358137f2b3cf3fabff76118a4d7e73eedf36f9eac1d6da1fabd919af4989",
+            "0991bedb0a8a5bb409018a2c7ee1584fb24f94f9b8655efdbdbed96e697b3970",
+            "90d43382b5020528df1747b4ffb6b93afbd09446a3f4ce22b55320e77c77a0c9",
+            "b646dbfae82c791153cc620d40dede866b4a5e97ec5f9d8f7079171da3615072",
+            "ed478da49afd20f70497f664b1941fe2db1d33bccb1ce61ddbcb9dd30b3e9907",
+            "b3059f7d2bf12083d4592dc01120c135f411cead49d15481e4bb967521fab9e5",
+            "68705b8e09376dc1909ba6224c74bc03c3ed4efe82890046c932e98b74bb65fa",
+            "dbabd6e051ab9701c6179f166c280c8be96ba5995d802315c2da7d3d66a4549f",
+            "5c1585af34744f2f20393be872731ed2203c36be9e1e1bd8421168c9ce27e6b4",
+            "82a9a0fa3ed54e5441d82209023b5dabdb800312fff7a5e7adededcb2dcc2ffd",
+            "9b64a9183b72af2b764564342539ddb2fda18e7aa7cc4e95ff0dfc331c536b21",
+            "d0b2c46fdcf52d64930408fb393c9b0e363cfc96bcd6c31b26d976b0ae06a0ec",
+            "431c4d2ad0ee52ef82333bc628ffcd675ecb12d38539981a9adf4bd26d073f5e",
+            "df97e04e2bb3da8e51f923c2439891bca205e3deb5972f7a5a8336b1dd48e06f",
+            "4944f907f23a52172fa7afd08576eb521c10c930cfe8a34bdfd0e4d2365bb37f"
+          ],
+          "postBearMinMedian": 0,
+          "postBearPathCount": 547,
+          "coveredPct": 59.8,
+          "backtests": [
+            {
+              "period": "1925–1999",
+              "hash": "437ab31dc3e1193e83b8136922339759d5bd9601eecb4734327bd6914a8d65aa",
+              "outcome": "incomplete",
+              "years": 0,
+              "endWealth": null,
+              "cutYears": 0,
+              "details": {
+                "kind": "incomplete",
+                "lastCompletedYear": null,
+                "missingYears": [],
+                "missingFields": [],
+                "exclusionReason": "period_out_of_bounds"
+              }
+            },
+            {
+              "period": "1929–1963",
+              "hash": "00a4b80640c4651ef0a0d3ce9d267d2b30c7a3007b27e728e3057917cf16f12e",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 861392.204735603,
+              "cutYears": 22
+            },
+            {
+              "period": "1965–1999",
+              "hash": "e19b2908327e61fa1c89f564ea8b325b4c0e17296b497e3d5e2b25a5e5541883",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 680820.9036947674,
+              "cutYears": 23
+            },
+            {
+              "period": "2000–2025",
+              "hash": "50d9ff0d518fe33fb1b06506299689d965866da76dfc900d4d8c065228cb75a6",
+              "outcome": "ruin",
+              "years": 23,
+              "endWealth": 10447.493532801225,
+              "cutYears": 22
+            }
+          ]
+        },
+        "helga-werner": {
+          "inputsHash": "a9fb3238d5c7862654723e891ca9de0a380ad8aea2aee2a1c7cf5b19cc1b4662",
+          "ruin": 52,
+          "technical": 0,
+          "taxedRoundTripPaths": 0,
+          "roundTripTax": 0,
+          "equityRoundTripPaths": 0,
+          "equityRoundTripExamples": [],
+          "firstYearPayoutSalePaths": 0,
+          "firstYearTax": 175607.09144393785,
+          "realBudgetDropsOver5OutsideBear": 2140,
+          "maxRealBudgetJumpPct": 292.6242304363118,
+          "maxRealBudgetDropPct": 54.78293942890213,
+          "chunks": [
+            "c354cdd6adc9e46441d264787aaa092402cd5cdf168e2847412fc10774fd09f9",
+            "72c8f167819adc8747763830215cb0b2a7b1e052c845423a761089ed42dcf083",
+            "df324cd7f9a9c8686113e069c4474dd451de800afa1b825c8169d66f1d9fdda1",
+            "737bbb84d6b7b635b962e9e610eb28e1953b8702ee176fb7d7d1dedfc8cf7b69",
+            "e4fe7803989368ea8c171fb593fbf076fea20906caa7f247e6728deb77d0b81a",
+            "1094a6eb50d9ed5e20af5205548e3746de5a084df0274c63e21a03860d706ca8",
+            "d77953235dc52db38f73c7d85d160ed2c4684f4281fa3dc5186aeb2ead2fd2ad",
+            "67e3987d9a264587f2a4c7eaca7dbb4e62f9ef182170f9005e65e416a43782b2",
+            "6a2b2c38b0fbcf2da83f872a94cd4f5cdb3bc9b2d517a339c6a160f2eef19a54",
+            "ac5a1fe9400afb4c0209d4d692f1b5e684135ec57c70523ed96141b2008441ff",
+            "fe20e05ddb3bee5aa68e2fc9085e3e456dd2365b10b405e7793ec4c32bfcaba2",
+            "c005be899e165ff0bbadfabcf809215fda2f56d2d62a862b1b6eb89b8a3b0bb5",
+            "8488862b3f5b4fcbf1075ada1c82788d6b307ce56cf3bc566ce1452c507e3f6b",
+            "6e4f04a425c977ff729d8df19f14df90a30393258d139879cbc0801b012d6854",
+            "dbb1b35bdf64c3b14696ce37214b5d45b8c21b0367cf1ebff08612dadd66ceab",
+            "58f6169f27ab2fe93e8d01cb8ce48a55a038f4255bf975edbae3bef9775eb4d9",
+            "94269fce82363854a5d0003b4ce69860b8663893323974b03d0ac3ff1f854136",
+            "0fc9e36cccd5cc719c6320d7c57b77f5373b728cb7ec725bfaba24c8c2b6d529",
+            "12ee3c6b35c4eac0ca3b585c8020f67a18630929cd15d8b895991d2aba5fc233",
+            "5b5948596d6583c4335541207aada9dec8f2701f1229a4c74508e9ac9c71d490"
+          ],
+          "postBearMinMedian": 79780.56686498293,
+          "postBearPathCount": 470,
+          "coveredPct": 97.39999999999999,
+          "backtests": [
+            {
+              "period": "1925–1999",
+              "hash": "49ba9c38eadd007021e49f6695e7e2462aa0e58be98614f27fd4edb906a1fef3",
+              "outcome": "incomplete",
+              "years": 0,
+              "endWealth": null,
+              "cutYears": 0,
+              "details": {
+                "kind": "incomplete",
+                "lastCompletedYear": null,
+                "missingYears": [],
+                "missingFields": [],
+                "exclusionReason": "period_out_of_bounds"
+              }
+            },
+            {
+              "period": "1929–1963",
+              "hash": "8c9c4c31c685cdb2cf193e0dee1054f42dfe5c7980a8b42bb7732b6cfcb7ef0b",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 10619536.699011108,
+              "cutYears": 0
+            },
+            {
+              "period": "1965–1999",
+              "hash": "a4892b5c91f28e28bcfce077e47da052bf757ff8fbe4de2e5d622fe8f6eadaff",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 25598723.83094494,
+              "cutYears": 0
+            },
+            {
+              "period": "2000–2025",
+              "hash": "a883c387f6d09921bcb8c0e5c993a18f2cef73f2511c223130b08d5234e1b18d",
+              "outcome": "completed",
+              "years": 26,
+              "endWealth": 2446955.641542792,
+              "cutYears": 0
+            }
+          ]
+        },
+        "max-erika": {
+          "inputsHash": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+          "ruin": 6,
+          "technical": 0,
+          "taxedRoundTripPaths": 0,
+          "roundTripTax": 0,
+          "equityRoundTripPaths": 1078,
+          "equityRoundTripExamples": [
+            {
+              "run": 1,
+              "year": 9,
+              "regime": "side_long",
+              "equityBuy": 32054.98,
+              "equitySale": 193685.98889866215,
+              "bondRefillTax": 0,
+              "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+            },
+            {
+              "run": 4,
+              "year": 11,
+              "regime": "peak_hot",
+              "equityBuy": 50000,
+              "equitySale": 381388.4294582288,
+              "bondRefillTax": 0,
+              "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+            },
+            {
+              "run": 5,
+              "year": 14,
+              "regime": "peak_hot",
+              "equityBuy": 38230.55,
+              "equitySale": 182108.51647522504,
+              "bondRefillTax": 0,
+              "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+            }
+          ],
+          "firstYearPayoutSalePaths": 0,
+          "firstYearTax": 6109199.864143535,
+          "realBudgetDropsOver5OutsideBear": 2865,
+          "maxRealBudgetJumpPct": 86.78009521785899,
+          "maxRealBudgetDropPct": 64.08604533445585,
+          "chunks": [
+            "c2bf10120781daa46e831dd66c74881448daa41aef1d9fb66a99ab3882a8c531",
+            "160bcf2465d5a76db549827c1224c4b2817452f2e22cdc76ace0b2965c20d4d9",
+            "8bab8fafc38154c0684f00bcc3a794545960a24301e8a7c16c833352dc546aa8",
+            "abfa10ef1993c77d4f4d93c3866a7ed3c425acf928fdec6f404bb38da1601915",
+            "9f69ba6fa16244335f063a0931e25dc06d6fbeff715c289e443b0a82182e8ef7",
+            "c82798cdd91ffda3f27183bd087f17733bcb14e6d430eb037e38eed37b42e98b",
+            "c1e0528ee68ac701dd29d75d793c152c731b805e88865c97cf4cec3c5b6e5245",
+            "f134a13aedbd11bbd0bd9d4d93a5d4c7f6bb2c28fcc79002e2f4d12244f68f9e",
+            "a866673834400523f20a6da12d517c7e2938e9dba57ac4f4d14577a93866436b",
+            "ace7a9955426227108af2f2f74ebf7f3132821197fd9346364106dfca1091bc4",
+            "ff73082181b9b03b36a6ecaa517994ede16e231889c6275934d4349986196ddf",
+            "6e74a75f50b76ef68ae683f3d131d42afbae48ef78e3ab71dd26532aad3672c2",
+            "a7387ec3aa2ed507e5601f6865de5d5d021d3a508eff717a7fd6e1cb83587b82",
+            "2179f85b73e37719bd757b9e9c19fa6edc0637cb4ecb97a14f38fa09990e1192",
+            "c0e07181d20e3cd5891e030b3718863bf1548606118e21a5d4705131ab593317",
+            "3540de9a694a1e7ace1637e9bacc00e2552c5e02aaa9ce358e208730f91f1a4b",
+            "8559c2968088ac2aaf263bc218285888cda22ec7ae99ed27ae7ab97f5be7a380",
+            "83ca5248cd924cc7be1a498be4ac99805e10fffac15103fbdceab7cf780f4d80",
+            "044e3e3d5e3fdc9c8cc2d7fd73d330fdae86604a301cf3e4a53045bdb9a764e9",
+            "bb606eece865ff5ac5642864d763d189ce5f3dffb92e19722f7e764937e17972"
+          ],
+          "postBearMinMedian": 0,
+          "postBearPathCount": 1259,
+          "coveredPct": 99.7,
+          "backtests": [
+            {
+              "period": "1925–1999",
+              "hash": "3fe40bfa873a572aa559681587cd9a99f64bb28e3cfe770cb55cdf2102fb8b41",
+              "outcome": "incomplete",
+              "years": 0,
+              "endWealth": null,
+              "cutYears": 0,
+              "details": {
+                "kind": "incomplete",
+                "lastCompletedYear": null,
+                "missingYears": [],
+                "missingFields": [],
+                "exclusionReason": "period_out_of_bounds"
+              }
+            },
+            {
+              "period": "1929–1963",
+              "hash": "099fc7f195af428666acf18d5154aacb21d81ca21a8ba52be051a93fbc0dce98",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 26541226.714951817,
+              "cutYears": 3
+            },
+            {
+              "period": "1965–1999",
+              "hash": "21ec6cf86a9f949fb59feee25696a5c5de280b79d9afe13403ae669b0e5e9433",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 37647753.559412554,
+              "cutYears": 5
+            },
+            {
+              "period": "2000–2025",
+              "hash": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295",
+              "outcome": "completed",
+              "years": 26,
+              "endWealth": 2361600.621178225,
+              "cutYears": 25
+            }
+          ]
+        },
+        "martin-petra": {
+          "inputsHash": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+          "ruin": 4,
+          "technical": 0,
+          "taxedRoundTripPaths": 0,
+          "roundTripTax": 0,
+          "equityRoundTripPaths": 1999,
+          "equityRoundTripExamples": [
+            {
+              "run": 0,
+              "year": 2,
+              "regime": "side_long",
+              "equityBuy": 19463.13,
+              "equitySale": 11393.156042605246,
+              "bondRefillTax": 0,
+              "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11393.16 € / Rebal.(A+)"
+            },
+            {
+              "run": 0,
+              "year": 3,
+              "regime": "peak_hot",
+              "equityBuy": 26121.25,
+              "equitySale": 11667.79718043578,
+              "bondRefillTax": 0,
+              "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11667.80 € / Rebal.(A+)"
+            },
+            {
+              "run": 0,
+              "year": 4,
+              "regime": "peak_hot",
+              "equityBuy": 26730.97,
+              "equitySale": 10191.113077338436,
+              "bondRefillTax": 0,
+              "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 10191.11 € / Rebal.(A+)"
+            }
+          ],
+          "firstYearPayoutSalePaths": 0,
+          "firstYearTax": 504516.1006515269,
+          "realBudgetDropsOver5OutsideBear": 2855,
+          "maxRealBudgetJumpPct": 108.45819317958556,
+          "maxRealBudgetDropPct": 68.62623835732987,
+          "chunks": [
+            "24ebed127a1712ab89fb3eb767591a2911635ba6296ce2a822282b5f03846142",
+            "b703f9edd3b086e074a53576a13fb311820803187722f0b474c3791a0e17ce42",
+            "f1cb69448ab53f72da2e3e5bad1e9d8269c340f366f841614ebf19553c3e3758",
+            "bc4401bf7b6fe24139f56f5cff423d09da99937bf10b6eb1bc6c4f29f6ea1de4",
+            "3e8b2d270dd84825cc4df80d363bd95834a49dd722afb92f5d9ea0bb6b9e1f8e",
+            "add4b0849d88e6ac472632c48d0f0ee81009b5be837f386f49f9946be9514104",
+            "de4a684c6e054a667289c06753a738a62591d6fba2b20e1e286149c0f3d451b9",
+            "711b30bda8d1822c7e7b033e0cd9c14cdb23b3d44437eed3fcd55db8dbff2bca",
+            "f7474accd6c4d6f72d980d31c7d0978694aea9f64a987d08c35b9e5799c4d6f9",
+            "10424bd4912c00227b9cae893e7f0e07835f38eb1f31304d7b68aa2c365bf438",
+            "3cbfdb0419f77fb35a44c93ecdf6c32c2eced4478433dfcf3d41941136b08065",
+            "e1785cfc1da652568671b41e0cc7aa7155261768cf602566890f6ad7401144d0",
+            "aa622a9f6bf77a4d9d348b8102e253942e2bfd505de16ab50ed6cb2cfd5e02b0",
+            "c3cdca4099d0da009e1e210648aeb10b3906211e5dee8a22327b3b4a4170e063",
+            "ef1a83e3ece0873d95bdad4dc61cefdfeda7b1b28156b9b448f75b9d8d1e99d2",
+            "5f392f10181cae52e644c466d2145949d9390bb2e31239e2a41ec31866a29207",
+            "a54fe91ee75ad952ba278d57fd31dcd8623873797e54777309e1f4b4c27f14fc",
+            "06ca6ad55bf41f5ba508465f8ee71530da53482b68996d04be4001ffa09ca2da",
+            "055c961a9d9f74c74a12aaf6d0f22605e129715ad4b4e13b8bd5a661c1cf56c2",
+            "6f3d4af4e0fdc93927910f596988b12ace37ac40842a9a78fa19ce2f0ae6cd9f"
+          ],
+          "postBearMinMedian": 0,
+          "postBearPathCount": 1347,
+          "coveredPct": 99.8,
+          "backtests": [
+            {
+              "period": "1925–1999",
+              "hash": "8cdc1848871259020223825a34bd09730ea638c7bcff9e58550b4b030c771caa",
+              "outcome": "incomplete",
+              "years": 0,
+              "endWealth": null,
+              "cutYears": 0,
+              "details": {
+                "kind": "incomplete",
+                "lastCompletedYear": null,
+                "missingYears": [],
+                "missingFields": [],
+                "exclusionReason": "period_out_of_bounds"
+              }
+            },
+            {
+              "period": "1929–1963",
+              "hash": "fc8e8153f43fb4e1ecfb8b0b756ddaa29d6ac4332d364d2f26f215e9ba72fc5e",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 32215581.70165653,
+              "cutYears": 0
+            },
+            {
+              "period": "1965–1999",
+              "hash": "342fc261516a9db531e7116d60ee780b0f86463397a1df2360b91b5a97bdd601",
+              "outcome": "completed",
+              "years": 35,
+              "endWealth": 47634910.21580382,
+              "cutYears": 0
+            },
+            {
+              "period": "2000–2025",
+              "hash": "322b411d84c6ff3429ea5f58209d5e36d407d214326c714ff680ebd914cbc0a9",
+              "outcome": "completed",
+              "years": 26,
+              "endWealth": 3823542.584742294,
+              "cutYears": 0
+            }
+          ]
+        }
+      }
+    }
+  },
+  "unchanged": {
+    "max_erika": {
+      "before": {
+        "inputsHash": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+        "ruin": 6,
+        "technical": 0,
+        "taxedRoundTripPaths": 0,
+        "roundTripTax": 0,
+        "equityRoundTripPaths": 1078,
+        "equityRoundTripExamples": [
+          {
+            "run": 1,
+            "year": 9,
+            "regime": "side_long",
+            "equityBuy": 32054.98,
+            "equitySale": 193685.98889866215,
+            "bondRefillTax": 0,
+            "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+          },
+          {
+            "run": 4,
+            "year": 11,
+            "regime": "peak_hot",
+            "equityBuy": 50000,
+            "equitySale": 381388.4294582288,
+            "bondRefillTax": 0,
+            "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+          },
+          {
+            "run": 5,
+            "year": 14,
+            "regime": "peak_hot",
+            "equityBuy": 38230.55,
+            "equitySale": 182108.51647522504,
+            "bondRefillTax": 0,
+            "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+          }
+        ],
+        "firstYearPayoutSalePaths": 0,
+        "firstYearTax": 6109199.864143535,
+        "realBudgetDropsOver5OutsideBear": 2865,
+        "maxRealBudgetJumpPct": 86.78009521785899,
+        "maxRealBudgetDropPct": 64.08604533445585,
+        "chunks": [
+          "c2bf10120781daa46e831dd66c74881448daa41aef1d9fb66a99ab3882a8c531",
+          "160bcf2465d5a76db549827c1224c4b2817452f2e22cdc76ace0b2965c20d4d9",
+          "8bab8fafc38154c0684f00bcc3a794545960a24301e8a7c16c833352dc546aa8",
+          "abfa10ef1993c77d4f4d93c3866a7ed3c425acf928fdec6f404bb38da1601915",
+          "9f69ba6fa16244335f063a0931e25dc06d6fbeff715c289e443b0a82182e8ef7",
+          "c82798cdd91ffda3f27183bd087f17733bcb14e6d430eb037e38eed37b42e98b",
+          "c1e0528ee68ac701dd29d75d793c152c731b805e88865c97cf4cec3c5b6e5245",
+          "f134a13aedbd11bbd0bd9d4d93a5d4c7f6bb2c28fcc79002e2f4d12244f68f9e",
+          "a866673834400523f20a6da12d517c7e2938e9dba57ac4f4d14577a93866436b",
+          "ace7a9955426227108af2f2f74ebf7f3132821197fd9346364106dfca1091bc4",
+          "ff73082181b9b03b36a6ecaa517994ede16e231889c6275934d4349986196ddf",
+          "6e74a75f50b76ef68ae683f3d131d42afbae48ef78e3ab71dd26532aad3672c2",
+          "a7387ec3aa2ed507e5601f6865de5d5d021d3a508eff717a7fd6e1cb83587b82",
+          "2179f85b73e37719bd757b9e9c19fa6edc0637cb4ecb97a14f38fa09990e1192",
+          "c0e07181d20e3cd5891e030b3718863bf1548606118e21a5d4705131ab593317",
+          "3540de9a694a1e7ace1637e9bacc00e2552c5e02aaa9ce358e208730f91f1a4b",
+          "8559c2968088ac2aaf263bc218285888cda22ec7ae99ed27ae7ab97f5be7a380",
+          "83ca5248cd924cc7be1a498be4ac99805e10fffac15103fbdceab7cf780f4d80",
+          "044e3e3d5e3fdc9c8cc2d7fd73d330fdae86604a301cf3e4a53045bdb9a764e9",
+          "bb606eece865ff5ac5642864d763d189ce5f3dffb92e19722f7e764937e17972"
+        ],
+        "coveredPct": 99.7,
+        "backtests": [
+          {
+            "period": "1925–1999",
+            "hash": "3fe40bfa873a572aa559681587cd9a99f64bb28e3cfe770cb55cdf2102fb8b41",
+            "outcome": "incomplete",
+            "years": 0,
+            "endWealth": null,
+            "cutYears": 0,
+            "details": {
+              "kind": "incomplete",
+              "lastCompletedYear": null,
+              "missingYears": [],
+              "missingFields": [],
+              "exclusionReason": "period_out_of_bounds"
+            }
+          },
+          {
+            "period": "1929–1963",
+            "hash": "099fc7f195af428666acf18d5154aacb21d81ca21a8ba52be051a93fbc0dce98",
+            "outcome": "completed",
+            "years": 35,
+            "endWealth": 26541226.714951817,
+            "cutYears": 3
+          },
+          {
+            "period": "1965–1999",
+            "hash": "21ec6cf86a9f949fb59feee25696a5c5de280b79d9afe13403ae669b0e5e9433",
+            "outcome": "completed",
+            "years": 35,
+            "endWealth": 37647753.559412554,
+            "cutYears": 5
+          },
+          {
+            "period": "2000–2025",
+            "hash": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295",
+            "outcome": "completed",
+            "years": 26,
+            "endWealth": 2361600.621178225,
+            "cutYears": 25
+          }
+        ]
+      },
+      "after": {
+        "inputsHash": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+        "ruin": 6,
+        "technical": 0,
+        "taxedRoundTripPaths": 0,
+        "roundTripTax": 0,
+        "equityRoundTripPaths": 1078,
+        "equityRoundTripExamples": [
+          {
+            "run": 1,
+            "year": 9,
+            "regime": "side_long",
+            "equityBuy": 32054.98,
+            "equitySale": 193685.98889866215,
+            "bondRefillTax": 0,
+            "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+          },
+          {
+            "run": 4,
+            "year": 11,
+            "regime": "peak_hot",
+            "equityBuy": 50000,
+            "equitySale": 381388.4294582288,
+            "bondRefillTax": 0,
+            "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+          },
+          {
+            "run": 5,
+            "year": 14,
+            "regime": "peak_hot",
+            "equityBuy": 38230.55,
+            "equitySale": 182108.51647522504,
+            "bondRefillTax": 0,
+            "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+          }
+        ],
+        "firstYearPayoutSalePaths": 0,
+        "firstYearTax": 6109199.864143535,
+        "realBudgetDropsOver5OutsideBear": 2865,
+        "maxRealBudgetJumpPct": 86.78009521785899,
+        "maxRealBudgetDropPct": 64.08604533445585,
+        "chunks": [
+          "c2bf10120781daa46e831dd66c74881448daa41aef1d9fb66a99ab3882a8c531",
+          "160bcf2465d5a76db549827c1224c4b2817452f2e22cdc76ace0b2965c20d4d9",
+          "8bab8fafc38154c0684f00bcc3a794545960a24301e8a7c16c833352dc546aa8",
+          "abfa10ef1993c77d4f4d93c3866a7ed3c425acf928fdec6f404bb38da1601915",
+          "9f69ba6fa16244335f063a0931e25dc06d6fbeff715c289e443b0a82182e8ef7",
+          "c82798cdd91ffda3f27183bd087f17733bcb14e6d430eb037e38eed37b42e98b",
+          "c1e0528ee68ac701dd29d75d793c152c731b805e88865c97cf4cec3c5b6e5245",
+          "f134a13aedbd11bbd0bd9d4d93a5d4c7f6bb2c28fcc79002e2f4d12244f68f9e",
+          "a866673834400523f20a6da12d517c7e2938e9dba57ac4f4d14577a93866436b",
+          "ace7a9955426227108af2f2f74ebf7f3132821197fd9346364106dfca1091bc4",
+          "ff73082181b9b03b36a6ecaa517994ede16e231889c6275934d4349986196ddf",
+          "6e74a75f50b76ef68ae683f3d131d42afbae48ef78e3ab71dd26532aad3672c2",
+          "a7387ec3aa2ed507e5601f6865de5d5d021d3a508eff717a7fd6e1cb83587b82",
+          "2179f85b73e37719bd757b9e9c19fa6edc0637cb4ecb97a14f38fa09990e1192",
+          "c0e07181d20e3cd5891e030b3718863bf1548606118e21a5d4705131ab593317",
+          "3540de9a694a1e7ace1637e9bacc00e2552c5e02aaa9ce358e208730f91f1a4b",
+          "8559c2968088ac2aaf263bc218285888cda22ec7ae99ed27ae7ab97f5be7a380",
+          "83ca5248cd924cc7be1a498be4ac99805e10fffac15103fbdceab7cf780f4d80",
+          "044e3e3d5e3fdc9c8cc2d7fd73d330fdae86604a301cf3e4a53045bdb9a764e9",
+          "bb606eece865ff5ac5642864d763d189ce5f3dffb92e19722f7e764937e17972"
+        ],
+        "postBearMinMedian": 0,
+        "postBearPathCount": 1259,
+        "coveredPct": 99.7,
+        "backtests": [
+          {
+            "period": "1925–1999",
+            "hash": "3fe40bfa873a572aa559681587cd9a99f64bb28e3cfe770cb55cdf2102fb8b41",
+            "outcome": "incomplete",
+            "years": 0,
+            "endWealth": null,
+            "cutYears": 0,
+            "details": {
+              "kind": "incomplete",
+              "lastCompletedYear": null,
+              "missingYears": [],
+              "missingFields": [],
+              "exclusionReason": "period_out_of_bounds"
+            }
+          },
+          {
+            "period": "1929–1963",
+            "hash": "099fc7f195af428666acf18d5154aacb21d81ca21a8ba52be051a93fbc0dce98",
+            "outcome": "completed",
+            "years": 35,
+            "endWealth": 26541226.714951817,
+            "cutYears": 3
+          },
+          {
+            "period": "1965–1999",
+            "hash": "21ec6cf86a9f949fb59feee25696a5c5de280b79d9afe13403ae669b0e5e9433",
+            "outcome": "completed",
+            "years": 35,
+            "endWealth": 37647753.559412554,
+            "cutYears": 5
+          },
+          {
+            "period": "2000–2025",
+            "hash": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295",
+            "outcome": "completed",
+            "years": 26,
+            "endWealth": 2361600.621178225,
+            "cutYears": 25
+          }
+        ]
+      },
+      "inputHashEqual": true,
+      "fullChunkHashesEqual": true,
+      "backtestsEqual": true,
+      "chunkHashAggregateSha256": "8644b2a0a613df409646c6a42faacf64ed398ce6866f709492f06fc657a357cb"
+    },
+    "martin_petra": {
+      "fullChunkHashesEqual": true,
+      "backtestsEqual": true
+    },
+    "balance": {
+      "before": [
+        {
+          "kind": "Muster-Haushalt",
+          "strategy": "standard",
+          "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+          "result": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8"
+        },
+        {
+          "kind": "Muster-Haushalt",
+          "strategy": "3_bucket_jilge",
+          "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+          "result": "c827601100d06cf4d5ec79163501d7b232f13dbaa268da22528ac2cdd4e8cd79"
+        },
+        {
+          "kind": "Einzelprofil",
+          "strategy": "standard",
+          "input": "1cb3d507e4a80f63a69126d1d5f113f38e99142ac73a8856ced8473326f16ab9",
+          "result": "9758a31817a20c85d5d1add7ce75e228c9f68ccd4a3cf9b86b38f2633f321293"
+        },
+        {
+          "kind": "Einzelprofil",
+          "strategy": "3_bucket_jilge",
+          "input": "b9ed739f65fd1ac4b851487785c86bc077beb903fd859fec79cdd2e32647c958",
+          "result": "ace8d2b667bd58acfaeb760af9d289435d6775c751edf46b209b6b7a74995e70"
+        },
+        {
+          "kind": "Haushalt mit Außenperson",
+          "strategy": "standard",
+          "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+          "result": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8"
+        },
+        {
+          "kind": "Haushalt mit Außenperson",
+          "strategy": "3_bucket_jilge",
+          "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+          "result": "c827601100d06cf4d5ec79163501d7b232f13dbaa268da22528ac2cdd4e8cd79"
+        },
+        {
+          "kind": "aktive Außenperson",
+          "strategy": "standard",
+          "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+          "result": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8"
+        },
+        {
+          "kind": "aktive Außenperson",
+          "strategy": "3_bucket_jilge",
+          "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+          "result": "c827601100d06cf4d5ec79163501d7b232f13dbaa268da22528ac2cdd4e8cd79"
+        },
+        {
+          "kind": "synthetische Echtform",
+          "strategy": "standard",
+          "input": "6e528385052d5ba97a1d24fdd9188899dda7a486fbab59cbc9dbca099e2c986f",
+          "result": "1946d6dec675510ad7437246a884d2acb252ddc29ce469e713ba26e6629f96b6"
+        },
+        {
+          "kind": "synthetische Echtform",
+          "strategy": "3_bucket_jilge",
+          "input": "112db1af74eeeb564edfc9b54fde424c604a64527c291965fb474b426bfa1b9c",
+          "result": "5bd7771d37b3dfb12c70cc54be5c5103ce40ec812513d340601eda912ae1b51a"
+        },
+        {
+          "kind": "Altbestand",
+          "strategy": "standard",
+          "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+          "result": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8"
+        },
+        {
+          "kind": "Altbestand",
+          "strategy": "3_bucket_jilge",
+          "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+          "result": "c827601100d06cf4d5ec79163501d7b232f13dbaa268da22528ac2cdd4e8cd79"
+        }
+      ],
+      "after": [
+        {
+          "kind": "Muster-Haushalt",
+          "strategy": "standard",
+          "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+          "result": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8"
+        },
+        {
+          "kind": "Muster-Haushalt",
+          "strategy": "3_bucket_jilge",
+          "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+          "result": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96"
+        },
+        {
+          "kind": "Einzelprofil",
+          "strategy": "standard",
+          "input": "1cb3d507e4a80f63a69126d1d5f113f38e99142ac73a8856ced8473326f16ab9",
+          "result": "9758a31817a20c85d5d1add7ce75e228c9f68ccd4a3cf9b86b38f2633f321293"
+        },
+        {
+          "kind": "Einzelprofil",
+          "strategy": "3_bucket_jilge",
+          "input": "b9ed739f65fd1ac4b851487785c86bc077beb903fd859fec79cdd2e32647c958",
+          "result": "f8df9cd8aff2a15547006dd159111d1f484ed872e7bd271bd65fb7a734cd5fda"
+        },
+        {
+          "kind": "Haushalt mit Außenperson",
+          "strategy": "standard",
+          "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+          "result": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8"
+        },
+        {
+          "kind": "Haushalt mit Außenperson",
+          "strategy": "3_bucket_jilge",
+          "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+          "result": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96"
+        },
+        {
+          "kind": "aktive Außenperson",
+          "strategy": "standard",
+          "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+          "result": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8"
+        },
+        {
+          "kind": "aktive Außenperson",
+          "strategy": "3_bucket_jilge",
+          "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+          "result": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96"
+        },
+        {
+          "kind": "synthetische Echtform",
+          "strategy": "standard",
+          "input": "6e528385052d5ba97a1d24fdd9188899dda7a486fbab59cbc9dbca099e2c986f",
+          "result": "1946d6dec675510ad7437246a884d2acb252ddc29ce469e713ba26e6629f96b6"
+        },
+        {
+          "kind": "synthetische Echtform",
+          "strategy": "3_bucket_jilge",
+          "input": "112db1af74eeeb564edfc9b54fde424c604a64527c291965fb474b426bfa1b9c",
+          "result": "eadfe13cda2f9a17d0d620bd047ae3d615dfcd5b6b5498f450baa837a469f15e"
+        },
+        {
+          "kind": "Altbestand",
+          "strategy": "standard",
+          "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+          "result": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8"
+        },
+        {
+          "kind": "Altbestand",
+          "strategy": "3_bucket_jilge",
+          "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+          "result": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96"
+        }
+      ],
+      "standardFullResultHashesEqual": true,
+      "standardCaseCount": 6
+    }
+  },
+  "parity": {
+    "summaryEqual": true,
+    "before": {
+      "failed": false,
+      "scenarios": [
+        {
+          "key": "off",
+          "label": "Aus",
+          "backtestOutcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "years": 26,
+          "equalYears": 0,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "roundingYears": 0,
+          "openQuestions": {},
+          "missingPersonModelYears": 26,
+          "errorYears": 0,
+          "technicalFields": [],
+          "counts": {
+            "GLEICH": 33644,
+            "NICHT_ANWENDBAR": 210,
+            "FEHLT_LOG": 104,
+            "PHASE_NICHT_VERGLEICHBAR": 208,
+            "FEHLT_MODELL": 52
+          },
+          "recordedYears": 26,
+          "sequenceDecisions": 1,
+          "sequenceUnavailableYears": 26,
+          "sequenceStoppedYear": 2000,
+          "residuals": {
+            "classes": [
+              {
+                "id": "MARKTZEIT_HERKUNFT_FEHLT",
+                "explanation": "Balance records have no independent historical source-year metadata.",
+                "status": "FEHLT_LOG",
+                "fields": 78,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_records_have_no_independent_market_period_metadata"
+                ],
+                "examples": [
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "input.temporal.capeReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "input.temporal.inflationReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "input.temporal.temporalConventionId",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "QUELLREVISION_FEHLT",
+                "explanation": "The source-content hash is present; a Git revision was not supplied.",
+                "status": "FEHLT_LOG",
+                "fields": 26,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "source_revision_unavailable"
+                ],
+                "examples": [
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2001",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2002",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "JAHRESENDE_NUR_SIMULATOR",
+                "explanation": "Balance recommends transactions and does not book an executed year-end portfolio.",
+                "status": "PHASE_NICHT_VERGLEICHBAR",
+                "fields": 208,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_has_no_executed_year_end"
+                ],
+                "examples": [
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "yearEnd.portfolio",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "yearEnd.actualWithdrawal",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "yearEnd.annualTax",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "FOLGELAUF_AUSFUEHRUNG_FEHLT",
+                "explanation": "The independent Balance adapter lacks personal annual bookings; later decisions remain unavailable.",
+                "status": "FEHLT_MODELL",
+                "fields": 52,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "independent_annual_execution_adapter_missing",
+                  "independent_annual_execution_ledger_unavailable",
+                  "no_engine_call_after_terminal:2000"
+                ],
+                "examples": [
+                  {
+                    "case": "off-sequence-2000",
+                    "field": "sequence.personalExecution",
+                    "reason": "independent_annual_execution_ledger_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-sequence-2000",
+                    "field": "sequence.execution",
+                    "reason": "independent_annual_execution_adapter_missing",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-sequence-2001",
+                    "field": "sequence.decision",
+                    "reason": "no_engine_call_after_terminal:2000",
+                    "delta": null
+                  }
+                ]
+              }
+            ],
+            "unclassified": []
+          },
+          "console": "Aus: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+        },
+        {
+          "key": "konservativ",
+          "label": "Konservativ",
+          "backtestOutcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "years": 26,
+          "equalYears": 0,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "roundingYears": 0,
+          "openQuestions": {},
+          "missingPersonModelYears": 26,
+          "errorYears": 0,
+          "technicalFields": [],
+          "counts": {
+            "GLEICH": 33068,
+            "NICHT_ANWENDBAR": 170,
+            "FEHLT_LOG": 104,
+            "PHASE_NICHT_VERGLEICHBAR": 208,
+            "FEHLT_MODELL": 52
+          },
+          "recordedYears": 26,
+          "sequenceDecisions": 1,
+          "sequenceUnavailableYears": 26,
+          "sequenceStoppedYear": 2000,
+          "residuals": {
+            "classes": [
+              {
+                "id": "MARKTZEIT_HERKUNFT_FEHLT",
+                "explanation": "Balance records have no independent historical source-year metadata.",
+                "status": "FEHLT_LOG",
+                "fields": 78,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_records_have_no_independent_market_period_metadata"
+                ],
+                "examples": [
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "input.temporal.capeReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "input.temporal.inflationReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "input.temporal.temporalConventionId",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "QUELLREVISION_FEHLT",
+                "explanation": "The source-content hash is present; a Git revision was not supplied.",
+                "status": "FEHLT_LOG",
+                "fields": 26,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "source_revision_unavailable"
+                ],
+                "examples": [
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2001",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2002",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "JAHRESENDE_NUR_SIMULATOR",
+                "explanation": "Balance recommends transactions and does not book an executed year-end portfolio.",
+                "status": "PHASE_NICHT_VERGLEICHBAR",
+                "fields": 208,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_has_no_executed_year_end"
+                ],
+                "examples": [
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "yearEnd.portfolio",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "yearEnd.actualWithdrawal",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "yearEnd.annualTax",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "FOLGELAUF_AUSFUEHRUNG_FEHLT",
+                "explanation": "The independent Balance adapter lacks personal annual bookings; later decisions remain unavailable.",
+                "status": "FEHLT_MODELL",
+                "fields": 52,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "independent_annual_execution_adapter_missing",
+                  "independent_annual_execution_ledger_unavailable",
+                  "no_engine_call_after_terminal:2000"
+                ],
+                "examples": [
+                  {
+                    "case": "konservativ-sequence-2000",
+                    "field": "sequence.personalExecution",
+                    "reason": "independent_annual_execution_ledger_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-sequence-2000",
+                    "field": "sequence.execution",
+                    "reason": "independent_annual_execution_adapter_missing",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-sequence-2001",
+                    "field": "sequence.decision",
+                    "reason": "no_engine_call_after_terminal:2000",
+                    "delta": null
+                  }
+                ]
+              }
+            ],
+            "unclassified": []
+          },
+          "console": "Konservativ: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+        },
+        {
+          "key": "ausgewogen",
+          "label": "Ausgewogen",
+          "backtestOutcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "years": 26,
+          "equalYears": 0,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "roundingYears": 0,
+          "openQuestions": {},
+          "missingPersonModelYears": 26,
+          "errorYears": 0,
+          "technicalFields": [],
+          "counts": {
+            "GLEICH": 33435,
+            "NICHT_ANWENDBAR": 162,
+            "FEHLT_LOG": 104,
+            "PHASE_NICHT_VERGLEICHBAR": 208,
+            "FEHLT_MODELL": 52
+          },
+          "recordedYears": 26,
+          "sequenceDecisions": 1,
+          "sequenceUnavailableYears": 26,
+          "sequenceStoppedYear": 2000,
+          "residuals": {
+            "classes": [
+              {
+                "id": "MARKTZEIT_HERKUNFT_FEHLT",
+                "explanation": "Balance records have no independent historical source-year metadata.",
+                "status": "FEHLT_LOG",
+                "fields": 78,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_records_have_no_independent_market_period_metadata"
+                ],
+                "examples": [
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "input.temporal.capeReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "input.temporal.inflationReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "input.temporal.temporalConventionId",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "QUELLREVISION_FEHLT",
+                "explanation": "The source-content hash is present; a Git revision was not supplied.",
+                "status": "FEHLT_LOG",
+                "fields": 26,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "source_revision_unavailable"
+                ],
+                "examples": [
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2001",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2002",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "JAHRESENDE_NUR_SIMULATOR",
+                "explanation": "Balance recommends transactions and does not book an executed year-end portfolio.",
+                "status": "PHASE_NICHT_VERGLEICHBAR",
+                "fields": 208,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_has_no_executed_year_end"
+                ],
+                "examples": [
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "yearEnd.portfolio",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "yearEnd.actualWithdrawal",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "yearEnd.annualTax",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "FOLGELAUF_AUSFUEHRUNG_FEHLT",
+                "explanation": "The independent Balance adapter lacks personal annual bookings; later decisions remain unavailable.",
+                "status": "FEHLT_MODELL",
+                "fields": 52,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "independent_annual_execution_adapter_missing",
+                  "independent_annual_execution_ledger_unavailable",
+                  "no_engine_call_after_terminal:2000"
+                ],
+                "examples": [
+                  {
+                    "case": "ausgewogen-sequence-2000",
+                    "field": "sequence.personalExecution",
+                    "reason": "independent_annual_execution_ledger_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-sequence-2000",
+                    "field": "sequence.execution",
+                    "reason": "independent_annual_execution_adapter_missing",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-sequence-2001",
+                    "field": "sequence.decision",
+                    "reason": "no_engine_call_after_terminal:2000",
+                    "delta": null
+                  }
+                ]
+              }
+            ],
+            "unclassified": []
+          },
+          "console": "Ausgewogen: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+        },
+        {
+          "key": "offensiv",
+          "label": "Offensiv",
+          "backtestOutcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "years": 26,
+          "equalYears": 0,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "roundingYears": 0,
+          "openQuestions": {},
+          "missingPersonModelYears": 26,
+          "errorYears": 0,
+          "technicalFields": [],
+          "counts": {
+            "GLEICH": 34714,
+            "NICHT_ANWENDBAR": 176,
+            "FEHLT_LOG": 104,
+            "PHASE_NICHT_VERGLEICHBAR": 208,
+            "FEHLT_MODELL": 52
+          },
+          "recordedYears": 26,
+          "sequenceDecisions": 1,
+          "sequenceUnavailableYears": 26,
+          "sequenceStoppedYear": 2000,
+          "residuals": {
+            "classes": [
+              {
+                "id": "MARKTZEIT_HERKUNFT_FEHLT",
+                "explanation": "Balance records have no independent historical source-year metadata.",
+                "status": "FEHLT_LOG",
+                "fields": 78,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_records_have_no_independent_market_period_metadata"
+                ],
+                "examples": [
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "input.temporal.capeReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "input.temporal.inflationReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "input.temporal.temporalConventionId",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "QUELLREVISION_FEHLT",
+                "explanation": "The source-content hash is present; a Git revision was not supplied.",
+                "status": "FEHLT_LOG",
+                "fields": 26,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "source_revision_unavailable"
+                ],
+                "examples": [
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2001",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2002",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "JAHRESENDE_NUR_SIMULATOR",
+                "explanation": "Balance recommends transactions and does not book an executed year-end portfolio.",
+                "status": "PHASE_NICHT_VERGLEICHBAR",
+                "fields": 208,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_has_no_executed_year_end"
+                ],
+                "examples": [
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "yearEnd.portfolio",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "yearEnd.actualWithdrawal",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "yearEnd.annualTax",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "FOLGELAUF_AUSFUEHRUNG_FEHLT",
+                "explanation": "The independent Balance adapter lacks personal annual bookings; later decisions remain unavailable.",
+                "status": "FEHLT_MODELL",
+                "fields": 52,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "independent_annual_execution_adapter_missing",
+                  "independent_annual_execution_ledger_unavailable",
+                  "no_engine_call_after_terminal:2000"
+                ],
+                "examples": [
+                  {
+                    "case": "offensiv-sequence-2000",
+                    "field": "sequence.personalExecution",
+                    "reason": "independent_annual_execution_ledger_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-sequence-2000",
+                    "field": "sequence.execution",
+                    "reason": "independent_annual_execution_adapter_missing",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-sequence-2001",
+                    "field": "sequence.decision",
+                    "reason": "no_engine_call_after_terminal:2000",
+                    "delta": null
+                  }
+                ]
+              }
+            ],
+            "unclassified": []
+          },
+          "console": "Offensiv: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+        }
+      ],
+      "complete": false,
+      "residuals": {
+        "classes": [
+          {
+            "id": "MARKTZEIT_HERKUNFT_FEHLT",
+            "explanation": "Balance records have no independent historical source-year metadata.",
+            "status": "FEHLT_LOG",
+            "fields": 312,
+            "cases": 104,
+            "years": [
+              2000,
+              2001,
+              2002,
+              2003,
+              2004,
+              2005,
+              2006,
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025
+            ],
+            "reasons": [
+              "balance_records_have_no_independent_market_period_metadata"
+            ],
+            "examples": [
+              {
+                "case": "off-recorded-2000",
+                "field": "input.temporal.capeReferenceYear",
+                "reason": "balance_records_have_no_independent_market_period_metadata",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2000",
+                "field": "input.temporal.inflationReferenceYear",
+                "reason": "balance_records_have_no_independent_market_period_metadata",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2000",
+                "field": "input.temporal.temporalConventionId",
+                "reason": "balance_records_have_no_independent_market_period_metadata",
+                "delta": null
+              }
+            ]
+          },
+          {
+            "id": "QUELLREVISION_FEHLT",
+            "explanation": "The source-content hash is present; a Git revision was not supplied.",
+            "status": "FEHLT_LOG",
+            "fields": 104,
+            "cases": 104,
+            "years": [
+              2000,
+              2001,
+              2002,
+              2003,
+              2004,
+              2005,
+              2006,
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025
+            ],
+            "reasons": [
+              "source_revision_unavailable"
+            ],
+            "examples": [
+              {
+                "case": "off-recorded-2000",
+                "field": "evidence.1",
+                "reason": "source_revision_unavailable",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2001",
+                "field": "evidence.1",
+                "reason": "source_revision_unavailable",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2002",
+                "field": "evidence.1",
+                "reason": "source_revision_unavailable",
+                "delta": null
+              }
+            ]
+          },
+          {
+            "id": "JAHRESENDE_NUR_SIMULATOR",
+            "explanation": "Balance recommends transactions and does not book an executed year-end portfolio.",
+            "status": "PHASE_NICHT_VERGLEICHBAR",
+            "fields": 832,
+            "cases": 104,
+            "years": [
+              2000,
+              2001,
+              2002,
+              2003,
+              2004,
+              2005,
+              2006,
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025
+            ],
+            "reasons": [
+              "balance_has_no_executed_year_end"
+            ],
+            "examples": [
+              {
+                "case": "off-recorded-2000",
+                "field": "yearEnd.portfolio",
+                "reason": "balance_has_no_executed_year_end",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2000",
+                "field": "yearEnd.actualWithdrawal",
+                "reason": "balance_has_no_executed_year_end",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2000",
+                "field": "yearEnd.annualTax",
+                "reason": "balance_has_no_executed_year_end",
+                "delta": null
+              }
+            ]
+          },
+          {
+            "id": "FOLGELAUF_AUSFUEHRUNG_FEHLT",
+            "explanation": "The independent Balance adapter lacks personal annual bookings; later decisions remain unavailable.",
+            "status": "FEHLT_MODELL",
+            "fields": 208,
+            "cases": 104,
+            "years": [
+              2000,
+              2001,
+              2002,
+              2003,
+              2004,
+              2005,
+              2006,
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025
+            ],
+            "reasons": [
+              "independent_annual_execution_adapter_missing",
+              "independent_annual_execution_ledger_unavailable",
+              "no_engine_call_after_terminal:2000"
+            ],
+            "examples": [
+              {
+                "case": "off-sequence-2000",
+                "field": "sequence.personalExecution",
+                "reason": "independent_annual_execution_ledger_unavailable",
+                "delta": null
+              },
+              {
+                "case": "off-sequence-2000",
+                "field": "sequence.execution",
+                "reason": "independent_annual_execution_adapter_missing",
+                "delta": null
+              },
+              {
+                "case": "off-sequence-2001",
+                "field": "sequence.decision",
+                "reason": "no_engine_call_after_terminal:2000",
+                "delta": null
+              }
+            ]
+          }
+        ],
+        "unclassified": []
+      }
+    },
+    "after": {
+      "failed": false,
+      "scenarios": [
+        {
+          "key": "off",
+          "label": "Aus",
+          "backtestOutcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "years": 26,
+          "equalYears": 0,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "roundingYears": 0,
+          "openQuestions": {},
+          "missingPersonModelYears": 26,
+          "errorYears": 0,
+          "technicalFields": [],
+          "counts": {
+            "GLEICH": 33644,
+            "NICHT_ANWENDBAR": 210,
+            "FEHLT_LOG": 104,
+            "PHASE_NICHT_VERGLEICHBAR": 208,
+            "FEHLT_MODELL": 52
+          },
+          "recordedYears": 26,
+          "sequenceDecisions": 1,
+          "sequenceUnavailableYears": 26,
+          "sequenceStoppedYear": 2000,
+          "residuals": {
+            "classes": [
+              {
+                "id": "MARKTZEIT_HERKUNFT_FEHLT",
+                "explanation": "Balance records have no independent historical source-year metadata.",
+                "status": "FEHLT_LOG",
+                "fields": 78,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_records_have_no_independent_market_period_metadata"
+                ],
+                "examples": [
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "input.temporal.capeReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "input.temporal.inflationReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "input.temporal.temporalConventionId",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "QUELLREVISION_FEHLT",
+                "explanation": "The source-content hash is present; a Git revision was not supplied.",
+                "status": "FEHLT_LOG",
+                "fields": 26,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "source_revision_unavailable"
+                ],
+                "examples": [
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2001",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2002",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "JAHRESENDE_NUR_SIMULATOR",
+                "explanation": "Balance recommends transactions and does not book an executed year-end portfolio.",
+                "status": "PHASE_NICHT_VERGLEICHBAR",
+                "fields": 208,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_has_no_executed_year_end"
+                ],
+                "examples": [
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "yearEnd.portfolio",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "yearEnd.actualWithdrawal",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-recorded-2000",
+                    "field": "yearEnd.annualTax",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "FOLGELAUF_AUSFUEHRUNG_FEHLT",
+                "explanation": "The independent Balance adapter lacks personal annual bookings; later decisions remain unavailable.",
+                "status": "FEHLT_MODELL",
+                "fields": 52,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "independent_annual_execution_adapter_missing",
+                  "independent_annual_execution_ledger_unavailable",
+                  "no_engine_call_after_terminal:2000"
+                ],
+                "examples": [
+                  {
+                    "case": "off-sequence-2000",
+                    "field": "sequence.personalExecution",
+                    "reason": "independent_annual_execution_ledger_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-sequence-2000",
+                    "field": "sequence.execution",
+                    "reason": "independent_annual_execution_adapter_missing",
+                    "delta": null
+                  },
+                  {
+                    "case": "off-sequence-2001",
+                    "field": "sequence.decision",
+                    "reason": "no_engine_call_after_terminal:2000",
+                    "delta": null
+                  }
+                ]
+              }
+            ],
+            "unclassified": []
+          },
+          "console": "Aus: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+        },
+        {
+          "key": "konservativ",
+          "label": "Konservativ",
+          "backtestOutcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "years": 26,
+          "equalYears": 0,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "roundingYears": 0,
+          "openQuestions": {},
+          "missingPersonModelYears": 26,
+          "errorYears": 0,
+          "technicalFields": [],
+          "counts": {
+            "GLEICH": 33068,
+            "NICHT_ANWENDBAR": 170,
+            "FEHLT_LOG": 104,
+            "PHASE_NICHT_VERGLEICHBAR": 208,
+            "FEHLT_MODELL": 52
+          },
+          "recordedYears": 26,
+          "sequenceDecisions": 1,
+          "sequenceUnavailableYears": 26,
+          "sequenceStoppedYear": 2000,
+          "residuals": {
+            "classes": [
+              {
+                "id": "MARKTZEIT_HERKUNFT_FEHLT",
+                "explanation": "Balance records have no independent historical source-year metadata.",
+                "status": "FEHLT_LOG",
+                "fields": 78,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_records_have_no_independent_market_period_metadata"
+                ],
+                "examples": [
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "input.temporal.capeReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "input.temporal.inflationReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "input.temporal.temporalConventionId",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "QUELLREVISION_FEHLT",
+                "explanation": "The source-content hash is present; a Git revision was not supplied.",
+                "status": "FEHLT_LOG",
+                "fields": 26,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "source_revision_unavailable"
+                ],
+                "examples": [
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2001",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2002",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "JAHRESENDE_NUR_SIMULATOR",
+                "explanation": "Balance recommends transactions and does not book an executed year-end portfolio.",
+                "status": "PHASE_NICHT_VERGLEICHBAR",
+                "fields": 208,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_has_no_executed_year_end"
+                ],
+                "examples": [
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "yearEnd.portfolio",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "yearEnd.actualWithdrawal",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-recorded-2000",
+                    "field": "yearEnd.annualTax",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "FOLGELAUF_AUSFUEHRUNG_FEHLT",
+                "explanation": "The independent Balance adapter lacks personal annual bookings; later decisions remain unavailable.",
+                "status": "FEHLT_MODELL",
+                "fields": 52,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "independent_annual_execution_adapter_missing",
+                  "independent_annual_execution_ledger_unavailable",
+                  "no_engine_call_after_terminal:2000"
+                ],
+                "examples": [
+                  {
+                    "case": "konservativ-sequence-2000",
+                    "field": "sequence.personalExecution",
+                    "reason": "independent_annual_execution_ledger_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-sequence-2000",
+                    "field": "sequence.execution",
+                    "reason": "independent_annual_execution_adapter_missing",
+                    "delta": null
+                  },
+                  {
+                    "case": "konservativ-sequence-2001",
+                    "field": "sequence.decision",
+                    "reason": "no_engine_call_after_terminal:2000",
+                    "delta": null
+                  }
+                ]
+              }
+            ],
+            "unclassified": []
+          },
+          "console": "Konservativ: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+        },
+        {
+          "key": "ausgewogen",
+          "label": "Ausgewogen",
+          "backtestOutcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "years": 26,
+          "equalYears": 0,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "roundingYears": 0,
+          "openQuestions": {},
+          "missingPersonModelYears": 26,
+          "errorYears": 0,
+          "technicalFields": [],
+          "counts": {
+            "GLEICH": 33435,
+            "NICHT_ANWENDBAR": 162,
+            "FEHLT_LOG": 104,
+            "PHASE_NICHT_VERGLEICHBAR": 208,
+            "FEHLT_MODELL": 52
+          },
+          "recordedYears": 26,
+          "sequenceDecisions": 1,
+          "sequenceUnavailableYears": 26,
+          "sequenceStoppedYear": 2000,
+          "residuals": {
+            "classes": [
+              {
+                "id": "MARKTZEIT_HERKUNFT_FEHLT",
+                "explanation": "Balance records have no independent historical source-year metadata.",
+                "status": "FEHLT_LOG",
+                "fields": 78,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_records_have_no_independent_market_period_metadata"
+                ],
+                "examples": [
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "input.temporal.capeReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "input.temporal.inflationReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "input.temporal.temporalConventionId",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "QUELLREVISION_FEHLT",
+                "explanation": "The source-content hash is present; a Git revision was not supplied.",
+                "status": "FEHLT_LOG",
+                "fields": 26,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "source_revision_unavailable"
+                ],
+                "examples": [
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2001",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2002",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "JAHRESENDE_NUR_SIMULATOR",
+                "explanation": "Balance recommends transactions and does not book an executed year-end portfolio.",
+                "status": "PHASE_NICHT_VERGLEICHBAR",
+                "fields": 208,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_has_no_executed_year_end"
+                ],
+                "examples": [
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "yearEnd.portfolio",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "yearEnd.actualWithdrawal",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-recorded-2000",
+                    "field": "yearEnd.annualTax",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "FOLGELAUF_AUSFUEHRUNG_FEHLT",
+                "explanation": "The independent Balance adapter lacks personal annual bookings; later decisions remain unavailable.",
+                "status": "FEHLT_MODELL",
+                "fields": 52,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "independent_annual_execution_adapter_missing",
+                  "independent_annual_execution_ledger_unavailable",
+                  "no_engine_call_after_terminal:2000"
+                ],
+                "examples": [
+                  {
+                    "case": "ausgewogen-sequence-2000",
+                    "field": "sequence.personalExecution",
+                    "reason": "independent_annual_execution_ledger_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-sequence-2000",
+                    "field": "sequence.execution",
+                    "reason": "independent_annual_execution_adapter_missing",
+                    "delta": null
+                  },
+                  {
+                    "case": "ausgewogen-sequence-2001",
+                    "field": "sequence.decision",
+                    "reason": "no_engine_call_after_terminal:2000",
+                    "delta": null
+                  }
+                ]
+              }
+            ],
+            "unclassified": []
+          },
+          "console": "Ausgewogen: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+        },
+        {
+          "key": "offensiv",
+          "label": "Offensiv",
+          "backtestOutcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "years": 26,
+          "equalYears": 0,
+          "decisionEqualYears": 26,
+          "transactionEqualYears": 26,
+          "roundingYears": 0,
+          "openQuestions": {},
+          "missingPersonModelYears": 26,
+          "errorYears": 0,
+          "technicalFields": [],
+          "counts": {
+            "GLEICH": 34714,
+            "NICHT_ANWENDBAR": 176,
+            "FEHLT_LOG": 104,
+            "PHASE_NICHT_VERGLEICHBAR": 208,
+            "FEHLT_MODELL": 52
+          },
+          "recordedYears": 26,
+          "sequenceDecisions": 1,
+          "sequenceUnavailableYears": 26,
+          "sequenceStoppedYear": 2000,
+          "residuals": {
+            "classes": [
+              {
+                "id": "MARKTZEIT_HERKUNFT_FEHLT",
+                "explanation": "Balance records have no independent historical source-year metadata.",
+                "status": "FEHLT_LOG",
+                "fields": 78,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_records_have_no_independent_market_period_metadata"
+                ],
+                "examples": [
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "input.temporal.capeReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "input.temporal.inflationReferenceYear",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "input.temporal.temporalConventionId",
+                    "reason": "balance_records_have_no_independent_market_period_metadata",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "QUELLREVISION_FEHLT",
+                "explanation": "The source-content hash is present; a Git revision was not supplied.",
+                "status": "FEHLT_LOG",
+                "fields": 26,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "source_revision_unavailable"
+                ],
+                "examples": [
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2001",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2002",
+                    "field": "evidence.1",
+                    "reason": "source_revision_unavailable",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "JAHRESENDE_NUR_SIMULATOR",
+                "explanation": "Balance recommends transactions and does not book an executed year-end portfolio.",
+                "status": "PHASE_NICHT_VERGLEICHBAR",
+                "fields": 208,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "balance_has_no_executed_year_end"
+                ],
+                "examples": [
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "yearEnd.portfolio",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "yearEnd.actualWithdrawal",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-recorded-2000",
+                    "field": "yearEnd.annualTax",
+                    "reason": "balance_has_no_executed_year_end",
+                    "delta": null
+                  }
+                ]
+              },
+              {
+                "id": "FOLGELAUF_AUSFUEHRUNG_FEHLT",
+                "explanation": "The independent Balance adapter lacks personal annual bookings; later decisions remain unavailable.",
+                "status": "FEHLT_MODELL",
+                "fields": 52,
+                "cases": 26,
+                "years": [
+                  2000,
+                  2001,
+                  2002,
+                  2003,
+                  2004,
+                  2005,
+                  2006,
+                  2007,
+                  2008,
+                  2009,
+                  2010,
+                  2011,
+                  2012,
+                  2013,
+                  2014,
+                  2015,
+                  2016,
+                  2017,
+                  2018,
+                  2019,
+                  2020,
+                  2021,
+                  2022,
+                  2023,
+                  2024,
+                  2025
+                ],
+                "reasons": [
+                  "independent_annual_execution_adapter_missing",
+                  "independent_annual_execution_ledger_unavailable",
+                  "no_engine_call_after_terminal:2000"
+                ],
+                "examples": [
+                  {
+                    "case": "offensiv-sequence-2000",
+                    "field": "sequence.personalExecution",
+                    "reason": "independent_annual_execution_ledger_unavailable",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-sequence-2000",
+                    "field": "sequence.execution",
+                    "reason": "independent_annual_execution_adapter_missing",
+                    "delta": null
+                  },
+                  {
+                    "case": "offensiv-sequence-2001",
+                    "field": "sequence.decision",
+                    "reason": "no_engine_call_after_terminal:2000",
+                    "delta": null
+                  }
+                ]
+              }
+            ],
+            "unclassified": []
+          },
+          "console": "Offensiv: Entscheidungen gleich 26/26; Personenplan gleich 26/26; vollständig gleich 0/26; Rundung 0; offene Fachfragen keine; fehlendes Personenmodell 26; Fehler 0; Folgelauf 1/26, ab 2000 unvollständig ausführbar. Restklassen: MARKTZEIT_HERKUNFT_FEHLT, QUELLREVISION_FEHLT, JAHRESENDE_NUR_SIMULATOR, FOLGELAUF_AUSFUEHRUNG_FEHLT; unklassifiziert 0."
+        }
+      ],
+      "complete": false,
+      "residuals": {
+        "classes": [
+          {
+            "id": "MARKTZEIT_HERKUNFT_FEHLT",
+            "explanation": "Balance records have no independent historical source-year metadata.",
+            "status": "FEHLT_LOG",
+            "fields": 312,
+            "cases": 104,
+            "years": [
+              2000,
+              2001,
+              2002,
+              2003,
+              2004,
+              2005,
+              2006,
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025
+            ],
+            "reasons": [
+              "balance_records_have_no_independent_market_period_metadata"
+            ],
+            "examples": [
+              {
+                "case": "off-recorded-2000",
+                "field": "input.temporal.capeReferenceYear",
+                "reason": "balance_records_have_no_independent_market_period_metadata",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2000",
+                "field": "input.temporal.inflationReferenceYear",
+                "reason": "balance_records_have_no_independent_market_period_metadata",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2000",
+                "field": "input.temporal.temporalConventionId",
+                "reason": "balance_records_have_no_independent_market_period_metadata",
+                "delta": null
+              }
+            ]
+          },
+          {
+            "id": "QUELLREVISION_FEHLT",
+            "explanation": "The source-content hash is present; a Git revision was not supplied.",
+            "status": "FEHLT_LOG",
+            "fields": 104,
+            "cases": 104,
+            "years": [
+              2000,
+              2001,
+              2002,
+              2003,
+              2004,
+              2005,
+              2006,
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025
+            ],
+            "reasons": [
+              "source_revision_unavailable"
+            ],
+            "examples": [
+              {
+                "case": "off-recorded-2000",
+                "field": "evidence.1",
+                "reason": "source_revision_unavailable",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2001",
+                "field": "evidence.1",
+                "reason": "source_revision_unavailable",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2002",
+                "field": "evidence.1",
+                "reason": "source_revision_unavailable",
+                "delta": null
+              }
+            ]
+          },
+          {
+            "id": "JAHRESENDE_NUR_SIMULATOR",
+            "explanation": "Balance recommends transactions and does not book an executed year-end portfolio.",
+            "status": "PHASE_NICHT_VERGLEICHBAR",
+            "fields": 832,
+            "cases": 104,
+            "years": [
+              2000,
+              2001,
+              2002,
+              2003,
+              2004,
+              2005,
+              2006,
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025
+            ],
+            "reasons": [
+              "balance_has_no_executed_year_end"
+            ],
+            "examples": [
+              {
+                "case": "off-recorded-2000",
+                "field": "yearEnd.portfolio",
+                "reason": "balance_has_no_executed_year_end",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2000",
+                "field": "yearEnd.actualWithdrawal",
+                "reason": "balance_has_no_executed_year_end",
+                "delta": null
+              },
+              {
+                "case": "off-recorded-2000",
+                "field": "yearEnd.annualTax",
+                "reason": "balance_has_no_executed_year_end",
+                "delta": null
+              }
+            ]
+          },
+          {
+            "id": "FOLGELAUF_AUSFUEHRUNG_FEHLT",
+            "explanation": "The independent Balance adapter lacks personal annual bookings; later decisions remain unavailable.",
+            "status": "FEHLT_MODELL",
+            "fields": 208,
+            "cases": 104,
+            "years": [
+              2000,
+              2001,
+              2002,
+              2003,
+              2004,
+              2005,
+              2006,
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025
+            ],
+            "reasons": [
+              "independent_annual_execution_adapter_missing",
+              "independent_annual_execution_ledger_unavailable",
+              "no_engine_call_after_terminal:2000"
+            ],
+            "examples": [
+              {
+                "case": "off-sequence-2000",
+                "field": "sequence.personalExecution",
+                "reason": "independent_annual_execution_ledger_unavailable",
+                "delta": null
+              },
+              {
+                "case": "off-sequence-2000",
+                "field": "sequence.execution",
+                "reason": "independent_annual_execution_adapter_missing",
+                "delta": null
+              },
+              {
+                "case": "off-sequence-2001",
+                "field": "sequence.decision",
+                "reason": "no_engine_call_after_terminal:2000",
+                "delta": null
+              }
+            ]
+          }
+        ],
+        "unclassified": []
+      }
+    },
+    "note": "Quellhash und Laufzeiten ändern sich erwartungsgemäß. Gleichheit bezieht sich auf alle Szenario-/Restklassen und Fehlersummen."
+  },
+  "originalCommandChecks": {
+    "command": "VF_CASES=renate,helga-werner VF_BASE_DIR=<Quellkopie> node auftrag/VF-2a-mess-vergleich.mjs <Ausgabe.json>",
+    "completeChunkHashesEqualToExtendedMetricRun": {
+      "before_vf2a": {
+        "renate": true,
+        "helga-werner": true
+      },
+      "vf2a": {
+        "renate": true,
+        "helga-werner": true
+      },
+      "vf2d": {
+        "renate": true,
+        "helga-werner": true
+      }
+    }
+  },
+  "visibleTextChanges": {
+    "labels": [
+      "Spielkurse, nicht echt",
+      "Variante wechseln …",
+      "Variante wechseln",
+      "Weiter",
+      "Immobilien eintragen",
+      "Anleihen auffüllen",
+      "Anleihen/Puffer",
+      "Rente"
+    ],
+    "lessons": [
+      {
+        "household": "max-erika",
+        "variant": "grund",
+        "exercises": [
+          "Personen & Vermögen → Erika → Einkünfte: Rente, Feld „ab“, von 07/2027 auf 07/2028 verschieben. Vergleiche im Simulator → Annahmen → „Einkünfte, Ausgaben und Bedarf“ die Jahre 2027 und 2028, Spalte „Ergebnis“ (aus Vermögen). Ohne Erikas Rente steigt die Entnahme in diesen Jahren.",
+          "Personen & Vermögen → Haushalt & Plan → Bedarf pro Jahr: Wunschbedarf um 300 € im Monat erhöhen. Vergleiche Balance → Dein Monatsbudget, Zeile „aus dem Vermögen“."
+        ],
+        "observe": "Übung 1: Simulator → Annahmen → „Einkünfte, Ausgaben und Bedarf“, Spalte „Ergebnis“. Übung 2: Balance → Dein Monatsbudget, Zeile „aus dem Vermögen“."
+      },
+      {
+        "household": "renate",
+        "variant": "grund",
+        "exercises": [
+          "Personen & Vermögen → Haushalt & Plan → Bedarf pro Jahr: Wunschbedarf in Schritten von 100 € im Monat ändern.",
+          "Steckbrief → „Variante wechseln …“: „Grundfall“ und „Kleines Vermögen“ vergleichen. Dabei starten die Beispieldaten neu."
+        ],
+        "observe": "Nach jeder Änderung Monte Carlo neu rechnen → „Grundbedarf gedeckt“."
+      },
+      {
+        "household": "renate",
+        "variant": "klein",
+        "exercises": [
+          "Personen & Vermögen → Haushalt & Plan → Bedarf pro Jahr: Wunschbedarf in Schritten von 100 € im Monat ändern.",
+          "Steckbrief → „Variante wechseln …“: „Grundfall“ und „Kleines Vermögen“ vergleichen. Dabei starten die Beispieldaten neu."
+        ],
+        "observe": "Nach jeder Änderung Monte Carlo neu rechnen → „Grundbedarf gedeckt“."
+      },
+      {
+        "household": "jan-lena",
+        "variant": "grund",
+        "exercises": [
+          "Personen & Vermögen → Jan → Einkünfte: Rente, Feld „ab“, von 01/2035 auf 01/2033 vorziehen.",
+          "Steckbrief → „Variante wechseln …“: „Grundfall“ und „Lebensstandard halten“ vergleichen. Dabei starten die Beispieldaten neu."
+        ],
+        "observe": "Nach jeder Änderung Monte Carlo neu rechnen → „Läufe mit Jahren unter Mindest-Flex“."
+      },
+      {
+        "household": "jan-lena",
+        "variant": "halten",
+        "exercises": [
+          "Personen & Vermögen → Jan → Einkünfte: Rente, Feld „ab“, von 01/2035 auf 01/2033 vorziehen.",
+          "Steckbrief → „Variante wechseln …“: „Grundfall“ und „Lebensstandard halten“ vergleichen. Dabei starten die Beispieldaten neu."
+        ],
+        "observe": "Nach jeder Änderung Monte Carlo neu rechnen → „Läufe mit Jahren unter Mindest-Flex“."
+      },
+      {
+        "household": "helga-werner",
+        "variant": "grund",
+        "exercises": [
+          "Personen & Vermögen → Werner → Person & Steuern: Pflegegrad heute 3 eintragen. Unter Haushalt & Plan → Bedarf den Grundbedarf auf 54.000 € im Jahr erhöhen. Die App zählt heutige Pflegekosten nicht von selbst dazu.",
+          "Personen & Vermögen → Werner → Person & Steuern: Pflegeform heute auf „zu Hause mit externer Unterstützung“ stellen. Vergleiche Balance: Pflegegeld fällt weg."
+        ],
+        "observe": "Übung 1: Simulator neu rechnen → Szenario-Protokoll, Pflege. Übung 2: Balance → Dein Monatsbudget → Einkünfte."
+      },
+      {
+        "household": "helga-werner",
+        "variant": "haus-pg3",
+        "exercises": [
+          "Personen & Vermögen → Werner → Person & Steuern: Pflegeform heute auf „zu Hause mit externer Unterstützung“ stellen. Vergleiche Balance: Pflegegeld fällt weg.",
+          "Personen & Vermögen → Helga und danach Werner → Person & Steuern: jeweils Pflegegrad heute 4 und Pflegeform „im Heim“ wählen. Danach Simulator neu rechnen und im Szenario-Protokoll das Verkaufsjahr suchen."
+        ],
+        "observe": "Übung 1: Balance → Dein Monatsbudget → Einkünfte. Übung 2: Simulator → Szenario-Protokoll, Spalte „Immobilienverkauf“."
+      },
+      {
+        "household": "sophie",
+        "variant": "grund",
+        "exercises": [
+          "Personen & Vermögen → Sophie → Einkünfte: Gehalt ändern. Vergleiche Balance → Dein Monatsbudget, Zeile „angelegt“.",
+          "Steckbrief → „Variante wechseln …“: „Grundfall“ und „Teilzeit vor der Rente“ vergleichen. Dabei starten die Beispieldaten neu."
+        ],
+        "observe": "Nach jeder Änderung Balance → Dein Monatsbudget, Zeile „angelegt“."
+      },
+      {
+        "household": "sophie",
+        "variant": "teilzeit",
+        "exercises": [
+          "Personen & Vermögen → Sophie → Einkünfte: Gehalt ändern. Vergleiche Balance → Dein Monatsbudget, Zeile „angelegt“.",
+          "Steckbrief → „Variante wechseln …“: „Grundfall“ und „Teilzeit vor der Rente“ vergleichen. Dabei starten die Beispieldaten neu."
+        ],
+        "observe": "Nach jeder Änderung Balance → Dein Monatsbudget, Zeile „angelegt“."
+      },
+      {
+        "household": "martin-petra",
+        "variant": "grund",
+        "exercises": [
+          "Steckbrief → „Variante wechseln …“: „Haus + Steuer“ und „Gegenseitig 100 %“ und „Verheiratet“ vergleichen. Dabei starten die Beispieldaten neu.",
+          "Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: Erbanteile ändern. Danach Simulator → Monte Carlo rechnen → Szenarien: ein Protokoll mit Todesfall öffnen."
+        ],
+        "observe": "Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: „bleibt im Haushalt / verlässt den Haushalt / Erbschaftsteuer“. Nach jeder Variante Monte Carlo neu rechnen → „Grundbedarf gedeckt“."
+      },
+      {
+        "household": "martin-petra",
+        "variant": "hundert",
+        "exercises": [
+          "Steckbrief → „Variante wechseln …“: „Haus + Steuer“ und „Gegenseitig 100 %“ und „Verheiratet“ vergleichen. Dabei starten die Beispieldaten neu.",
+          "Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: Erbanteile ändern. Danach Simulator → Monte Carlo rechnen → Szenarien: ein Protokoll mit Todesfall öffnen."
+        ],
+        "observe": "Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: „bleibt im Haushalt / verlässt den Haushalt / Erbschaftsteuer“. Nach jeder Variante Monte Carlo neu rechnen → „Grundbedarf gedeckt“."
+      },
+      {
+        "household": "martin-petra",
+        "variant": "ehe",
+        "exercises": [
+          "Steckbrief → „Variante wechseln …“: „Haus + Steuer“ und „Gegenseitig 100 %“ und „Verheiratet“ vergleichen. Dabei starten die Beispieldaten neu.",
+          "Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: Erbanteile ändern. Danach Simulator → Monte Carlo rechnen → Szenarien: ein Protokoll mit Todesfall öffnen."
+        ],
+        "observe": "Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: „bleibt im Haushalt / verlässt den Haushalt / Erbschaftsteuer“. Nach jeder Variante Monte Carlo neu rechnen → „Grundbedarf gedeckt“."
+      }
+    ]
+  }
+}

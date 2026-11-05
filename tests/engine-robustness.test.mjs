@@ -1,0 +1,301 @@
+import { EngineAPI } from '../engine/index.mjs';
+import { ValidationError } from '../engine/errors.mjs';
+
+console.log('--- Engine Robustness Tests ---');
+
+// Base-Input für Robustheitschecks: valide, komplett, mit Markt- und Steuerdaten.
+const baseInput = {
+    depotwertAlt: 500000,
+    depotwertNeu: 0,
+    goldWert: 0,
+    tagesgeld: 50000,
+    geldmarktEtf: 0,
+    inflation: 2.0,
+    renteMonatlich: 0,
+    floorBedarf: 24000,
+    flexBedarf: 12000,
+    startAlter: 35,
+    aktuellesAlter: 35,
+    goldAktiv: false,
+    risikoprofil: 'sicherheits-dynamisch',
+    goldFloorProzent: 0,
+    runwayTargetMonths: 36,
+    runwayMinMonths: 24,
+    renteAktiv: false,
+    marketCapeRatio: 20,
+    targetEq: 60,
+    rebalBand: 5,
+    maxSkimPctOfEq: 10,
+    maxBearRefillPctOfEq: 20,
+    endeVJ: 100,
+    endeVJ_1: 90,
+    endeVJ_2: 95,
+    endeVJ_3: 92,
+    ath: 105,
+    jahreSeitAth: 1,
+    costBasisAlt: 300000,
+    costBasisNeu: 0,
+    goldCost: 0,
+    sparerPauschbetrag: 1000
+};
+
+function assertFiniteNumber(value, label) {
+    assert(Number.isFinite(value), `${label} should be finite`);
+}
+
+// --- TEST 1: Zero Inflation ---
+{
+    const input = { ...baseInput, inflation: 0 };
+    const result = EngineAPI.simulateSingleYear(input, null);
+    // Zero-Inflation darf nicht als "invalid" gelten.
+    assert(!result.error, 'Zero inflation should not cause validation error');
+    assert(result.ui && result.ui.spending, 'Should return spending result');
+    assertFiniteNumber(result.ui.spending.monatlicheEntnahme, 'monatlicheEntnahme');
+}
+
+// --- TEST 2: High (but valid) Inflation ---
+{
+    const input = { ...baseInput, inflation: 50 };
+    const result = EngineAPI.simulateSingleYear(input, null);
+    // Grenze laut Validator: bis 50% erlaubt.
+    assert(!result.error, 'High inflation within bounds should be accepted');
+    assertFiniteNumber(result.ui.spending.monatlicheEntnahme, 'monatlicheEntnahme');
+}
+
+// --- TEST 2b: Historical deflation within the widened lower bound ---
+{
+    const input = { ...baseInput, inflation: -11.02941175231129 };
+    const result = EngineAPI.simulateSingleYear(input, null);
+    assert(!result.error, 'Documented 1932 German historical deflation should be accepted');
+    assertFiniteNumber(result.ui.spending.monatlicheEntnahme, 'monatlicheEntnahme');
+}
+
+// --- TEST 2c: Lower inflation boundary is inclusive ---
+{
+    const input = { ...baseInput, inflation: -15 };
+    const result = EngineAPI.simulateSingleYear(input, null);
+    assert(!result.error, 'Inflation at the -15% lower bound should be accepted');
+    assertFiniteNumber(result.ui.spending.monatlicheEntnahme, 'monatlicheEntnahme');
+}
+
+// --- TEST 3: Extreme Market Jump (100% yearly performance) ---
+{
+    const input = { ...baseInput, endeVJ: 200, endeVJ_1: 100, ath: 220, jahreSeitAth: 0 };
+    const result = EngineAPI.simulateSingleYear(input, null);
+    // Extremes Kursplus sollte die Engine nicht destabilisieren.
+    assert(!result.error, 'Extreme market jump should not crash');
+    assertFiniteNumber(result.newState.lastTotalBudget, 'lastTotalBudget');
+}
+
+// --- TEST 3b: Zero Market Return (0% yearly performance) ---
+{
+    const input = { ...baseInput, endeVJ: 100, endeVJ_1: 100, ath: 105, jahreSeitAth: 1 };
+    const result = EngineAPI.simulateSingleYear(input, null);
+    assert(!result.error, 'Zero market return should not crash');
+    assertFiniteNumber(result.ui.spending.monatlicheEntnahme, 'monatlicheEntnahme');
+}
+
+// --- TEST 4: Negative Assets -> Validation Error (no crash) ---
+{
+    // Validierungsfehler sollen sauber zurückgegeben werden (ohne Crash/Throw).
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+        const input = { ...baseInput, tagesgeld: -10 };
+        const result = EngineAPI.simulateSingleYear(input, null);
+        assert(result.error instanceof ValidationError, 'Negative assets should return ValidationError');
+    } finally {
+        console.error = originalError;
+    }
+}
+
+// --- TEST 5: Out-of-range Age -> Validation Error (no crash) ---
+{
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+        const input = { ...baseInput, aktuellesAlter: 5 };
+        const result = EngineAPI.simulateSingleYear(input, null);
+        assert(result.error instanceof ValidationError, 'Out-of-range age should return ValidationError');
+    } finally {
+        console.error = originalError;
+    }
+}
+
+// --- TEST 6: Out-of-range Inflation -> Validation Error (no crash) ---
+{
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+        const excessiveInflation = EngineAPI.simulateSingleYear(
+            { ...baseInput, inflation: 100 },
+            null
+        );
+        const excessiveDeflation = EngineAPI.simulateSingleYear(
+            { ...baseInput, inflation: -15.0001 },
+            null
+        );
+        assert(
+            excessiveInflation.error instanceof ValidationError,
+            'Inflation above 50% should return ValidationError'
+        );
+        assert(
+            excessiveDeflation.error instanceof ValidationError,
+            'Inflation below -15% should return ValidationError'
+        );
+    } finally {
+        console.error = originalError;
+    }
+}
+
+// --- TEST 7: Negative values (assets + spending) ---
+{
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+        const input = { ...baseInput, depotwertAlt: -1000, tagesgeld: -500, floorBedarf: -2000, flexBedarf: -500 };
+        const result = EngineAPI.simulateSingleYear(input, null);
+        assert(result.error instanceof ValidationError, 'Negative assets/spending should return ValidationError');
+    } finally {
+        console.error = originalError;
+    }
+}
+
+// --- TEST 8: NaN/Infinity inputs ---
+{
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+        const input = { ...baseInput, tagesgeld: NaN, geldmarktEtf: Infinity };
+        const result = EngineAPI.simulateSingleYear(input, null);
+        const hasValidationError = result?.error instanceof ValidationError;
+        // Ergebnis darf Fehler liefern, aber nicht crashen.
+        assert(hasValidationError || !result?.error, 'NaN/Infinity inputs should not crash');
+        if (!result?.error) {
+            assertFiniteNumber(result.ui?.spending?.monatlicheEntnahme, 'monatlicheEntnahme (NaN/Infinity)');
+        }
+    } finally {
+        console.error = originalError;
+    }
+}
+
+// --- TEST 9: Extreme high values (>100M) ---
+{
+    const input = {
+        ...baseInput,
+        depotwertAlt: 150_000_000,
+        depotwertNeu: 25_000_000,
+        tagesgeld: 10_000_000,
+        geldmarktEtf: 5_000_000,
+        floorBedarf: 240_000,
+        flexBedarf: 120_000
+    };
+    const result = EngineAPI.simulateSingleYear(input, null);
+    assert(!result.error, 'Extreme high values should not crash');
+    assertFiniteNumber(result.ui?.spending?.monatlicheEntnahme, 'monatlicheEntnahme (high values)');
+}
+
+// --- TEST 10: Empty portfolio (all zero) ---
+{
+    const input = {
+        ...baseInput,
+        depotwertAlt: 0,
+        depotwertNeu: 0,
+        goldWert: 0,
+        tagesgeld: 0,
+        geldmarktEtf: 0
+    };
+    const result = EngineAPI.simulateSingleYear(input, null);
+    // Leeres Portfolio: keine Entnahme, aber sauberer Return.
+    assert(!result.error, 'Empty portfolio should not crash');
+    assertFiniteNumber(result.ui?.spending?.monatlicheEntnahme, 'monatlicheEntnahme (empty portfolio)');
+}
+
+// --- TEST 11: Missing required fields ---
+{
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+        const input = { ...baseInput };
+        delete input.startAlter;
+        delete input.aktuellesAlter;
+        delete input.floorBedarf;
+        delete input.flexBedarf;
+        const result = EngineAPI.simulateSingleYear(input, null);
+        assert(result?.error instanceof ValidationError, 'Missing required spending fields should return ValidationError');
+        assert(result.error.errors?.some(e => e.fieldId === 'floorBedarf'), 'Missing floorBedarf should be reported');
+        assert(result.error.errors?.some(e => e.fieldId === 'flexBedarf'), 'Missing flexBedarf should be reported');
+        assert(result, 'Missing required fields should return a result object');
+    } finally {
+        console.error = originalError;
+    }
+}
+
+// --- TEST 12: Division by zero (totalWealth = 0) ---
+{
+    const input = {
+        ...baseInput,
+        depotwertAlt: 0,
+        depotwertNeu: 0,
+        goldWert: 0,
+        tagesgeld: 0,
+        geldmarktEtf: 0,
+        floorBedarf: 0,
+        flexBedarf: 0
+    };
+    const result = EngineAPI.simulateSingleYear(input, null);
+    assert(!result.error, 'Total wealth = 0 should not crash');
+    assertFiniteNumber(result.ui?.spending?.monatlicheEntnahme, 'monatlicheEntnahme (zero wealth)');
+}
+
+// --- TEST 13: minimumFlexAnnual missing/zero stays neutral; invalid is rejected ---
+{
+    const withoutMinimumFlex = EngineAPI.simulateSingleYear({ ...baseInput }, null);
+    const zeroMinimumFlex = EngineAPI.simulateSingleYear({ ...baseInput, minimumFlexAnnual: 0 }, null);
+    const invalidMinimumFlex = EngineAPI.simulateSingleYear({ ...baseInput, minimumFlexAnnual: 'abc' }, null);
+    assert(!withoutMinimumFlex.error, 'Missing minimumFlexAnnual should be accepted');
+    assert(!zeroMinimumFlex.error, 'minimumFlexAnnual=0 should be accepted');
+    assert(invalidMinimumFlex.error instanceof ValidationError, 'Invalid minimumFlexAnnual should return ValidationError');
+    assertEqual(
+        zeroMinimumFlex.ui?.spending?.jahresEntnahme,
+        withoutMinimumFlex.ui?.spending?.jahresEntnahme,
+        'minimumFlexAnnual=0 should not change annual spending'
+    );
+    assert(
+        invalidMinimumFlex.error.errors?.some(e => e.fieldId === 'minimumFlexAnnual'),
+        'Invalid minimumFlexAnnual error should identify the field'
+    );
+}
+
+// --- TEST 14: minimumFlexAnnual validation rejects negative and above flexBedarf ---
+{
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+        const negative = EngineAPI.simulateSingleYear({ ...baseInput, minimumFlexAnnual: -1 }, null);
+        const aboveFlex = EngineAPI.simulateSingleYear({ ...baseInput, minimumFlexAnnual: baseInput.flexBedarf + 1 }, null);
+        assert(negative.error instanceof ValidationError, 'Negative minimumFlexAnnual should return ValidationError');
+        assert(aboveFlex.error instanceof ValidationError, 'minimumFlexAnnual > flexBedarf should return ValidationError');
+        assert(
+            aboveFlex.error.errors?.some(e => e.fieldId === 'minimumFlexAnnual'),
+            'ValidationError should point to minimumFlexAnnual'
+        );
+    } finally {
+        console.error = originalError;
+    }
+}
+
+// --- TEST 15: Age > 120 years ---
+{
+    const originalError = console.error;
+    console.error = () => {};
+    try {
+        const input = { ...baseInput, aktuellesAlter: 130 };
+        const result = EngineAPI.simulateSingleYear(input, null);
+        assert(result.error instanceof ValidationError, 'Age > 120 should return ValidationError');
+    } finally {
+        console.error = originalError;
+    }
+}
+
+console.log('--- Engine Robustness Tests Completed ---');

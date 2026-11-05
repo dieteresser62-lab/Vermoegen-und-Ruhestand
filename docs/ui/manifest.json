@@ -1,0 +1,2252 @@
+{
+  "schemaVersion": 1,
+  "imageCount": 66,
+  "totalBytes": 6470848,
+  "durationSeconds": 390.74,
+  "images": [
+    {
+      "path": "docs/ui/uebersicht.png",
+      "caption": "Auf der Übersicht steht, was als Nächstes ansteht.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 148401,
+      "sha256": "3b03af23c3523fb914c45fc5ff60916d36c82af2f884a1d74cf35a14ea31e250",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "Übersicht",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/personen-haushalt-plan.png",
+      "caption": "Haushalt & Plan zeigt zuerst den Bedarf; Partnerschaft und Todesfall ist darunter zugeklappt.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 133,
+        "width": 1696,
+        "height": 940
+      },
+      "width": 1696,
+      "height": 940,
+      "bytes": 155374,
+      "sha256": "f3674927152cc7d9ad8594f91970a7417291ca6ec21d27881ab0f175a0ae7db0",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Bedarf vor Partnerschaft und Todesfall · Partnerschaft eingeklappt",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 166,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/personen-max.png",
+      "caption": "Max zeigt Einkünfte mit einer einmaligen Rückzahlung von 50.000 €.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 686
+      },
+      "width": 1696,
+      "height": 686,
+      "bytes": 66241,
+      "sha256": "a7dd0ed1f95436f9e307c1113bab15ce34cfe90a92475c433773a446e41069b6",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Max · Einkünfte mit 50.000 € Rückzahlung",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 535,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/personen-erika.png",
+      "caption": "Erika geht später in Rente als Max.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 1080
+      },
+      "width": 1696,
+      "height": 1080,
+      "bytes": 125101,
+      "sha256": "aa445bbfe1d7af773aae6bf905be3141aba9c68b8c79f573306f138acbb3679b",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Erika · Personendetails geschlossen und Vermögenskarte mit Tagesgeld",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 311,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/verlauf-haushalt.png",
+      "caption": "Der Verlauf fasst das Haushaltsvermögen zusammen.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 102444,
+      "sha256": "44fee48f0a3e82ad7dc85232773cb9aedeeab382745d16446d41bb044ddd4b00",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Vermögensverlauf haushalt",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/verlauf-max.png",
+      "caption": "Max’ Vermögen lässt sich einzeln verfolgen.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 108167,
+      "sha256": "b5a485bc96a6f3bbd4aaab73eb3f57129bc95cae60d0fd0096462461232e0fd6",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Vermögensverlauf max",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/verlauf-erika.png",
+      "caption": "Erikas Vermögen ist einzeln sichtbar.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 101350,
+      "sha256": "90186484a09d26ce61ef248b7ca1a9df4179ac0b672f73995027579feb82bc1c",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Vermögensverlauf erika",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/verlauf-kennzahlen.png",
+      "caption": "Rendite und Risiko sowie Monatsrenditen zeigen Anlagen ohne Tagesgeld.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 854
+      },
+      "width": 1696,
+      "height": 854,
+      "bytes": 84920,
+      "sha256": "e3bec7d30fa279ae6b5858a1c16b6d5d766897f948548a02613608aeed027496",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Depotkennzahlen Haushalt · alle Anlageformen zugeklappt",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 1635,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/verlauf-jahresuebersicht.png",
+      "caption": "Die Jahresübersicht trennt Wertänderung, Käufe und Verkäufe sowie Rendite.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 710,
+        "width": 1696,
+        "height": 362
+      },
+      "width": 1696,
+      "height": 362,
+      "bytes": 30856,
+      "sha256": "84ca2d6118ab3b6bc34728437c4e790435802db07aac9130653d3a948b5a3bc2",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Jahresübersicht der Anlagen · Haushalt",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 1774,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/ausgaben.png",
+      "caption": "Ausgaben zeigt Monats- und Jahreswerte.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 110358,
+      "sha256": "3dd32fb6a5eb2823018de92a84b4c20e5a9929a44b123858be1aa7fbd47aefa4",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Ausgaben.html",
+        "state": "Ausgaben 2026",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/balance-ueberblick.png",
+      "caption": "Überblick zeigt Beschluss, Vorschau und Reserven heute und nach Umsetzung.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 273393,
+      "sha256": "9362cb680340167f799c158fac54665272faa07cd074b6a15ce8bfba3efff028",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Balance.html",
+        "state": "Balance ueberblick",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/balance-bedarf-strategie.png",
+      "caption": "Bedarf & Strategie zeigt die Bedarfswerte; Alle Parameter fasst die Planwerte zusammen und ist zugeklappt.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 266,
+        "y": 59,
+        "width": 1596,
+        "height": 946
+      },
+      "width": 1596,
+      "height": 946,
+      "bytes": 92126,
+      "sha256": "4a37207a0ac2925cb9912ffbc5d3baa850f10bda21df17475a16ce9d22037cff",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Balance.html",
+        "state": "Balance bedarf-strategie · Alle Parameter geschlossen",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 257,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/balance-diagnose.png",
+      "caption": "Diagnose erklärt die Empfehlung.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 114686,
+      "sha256": "a87c493848739b688a209929b3c3095f67fb7fce6b72e1c64a01175f5cbb41c7",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Balance.html",
+        "state": "Balance diagnose",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/simulator-ergebnis.png",
+      "caption": "Ergebnis zeigt Backtest und MC.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 162141,
+      "sha256": "39f588544e61d28c74229124ce1fd8edbb13d80d7f782fc0ba4ea0d33065580b",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Simulator ergebnis nach Backtest und Monte-Carlo",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/simulator-annahmen.png",
+      "caption": "Die Planübersicht zeigt den gewählten Monat über den Jahreswerten.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 906
+      },
+      "width": 1696,
+      "height": 906,
+      "bytes": 100303,
+      "sha256": "a3bbba682a8b65d9defaa9a09ce0d83fb38aaf656500b540a5bef198d1103252",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Monatszeile und Jahrestabelle",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 1866,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/simulator-backtest.png",
+      "caption": "Was im Lauf auffällt zeigt drei Backtest-Karten und Jahreslinks; Weitere bleibt geschlossen.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 361
+      },
+      "width": 1696,
+      "height": 361,
+      "bytes": 44374,
+      "sha256": "662716e87d053f7c328dba5c3a1925c0c1324866387aa4872bb6f14ed0c7ec9f",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Simulator backtest nach Backtest und Monte-Carlo · Was im Lauf auffällt · Weitere geschlossen",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 784,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monte-carlo-einstellungen.png",
+      "caption": "Simulation, Zeitraum & Daten und Stresstest stehen in Einstellungen; Erweitert zeigt die technischen Optionen.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 241,
+        "y": 0,
+        "width": 1646,
+        "height": 1080
+      },
+      "width": 1646,
+      "height": 1080,
+      "bytes": 96904,
+      "sha256": "e8abca7079ef27586659d15cf9043bc0cab646258f84435fdea5fb3d1009f4a7",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Monte-Carlo · Einstellungen und Erweitert geöffnet · 10.000 Läufe · Seed 12345",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 452,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monte-carlo-ueberblick.png",
+      "caption": "Überblick zeigt den Musterlauf.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 1080
+      },
+      "width": 1696,
+      "height": 1080,
+      "bytes": 124703,
+      "sha256": "bc61caad684e1e87cb22243f6b336f53be6a3cbf318f284c29dfc1d20baf140a",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Monte-Carlo ueberblick · 10.000 Läufe · Seed 12345",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 658,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monte-carlo-risiko-verteilung.png",
+      "caption": "Die Verteilung macht die Streuung sichtbar.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 1080
+      },
+      "width": 1696,
+      "height": 1080,
+      "bytes": 80308,
+      "sha256": "0de0cf70eab1b439e5de48e084e9e64b7299e3bca2d9c155c7e80aab3516a967",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Monte-Carlo risiko-verteilung · 10.000 Läufe · Seed 12345",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 658,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monte-carlo-pflege.png",
+      "caption": "Pflege zeigt das Modellrisiko.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 1080
+      },
+      "width": 1696,
+      "height": 1080,
+      "bytes": 96644,
+      "sha256": "adc81b834c1127627f01b07f17f8f58abe33184e27d30070b287c735e6c451ad",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Monte-Carlo pflege · 10.000 Läufe · Seed 12345",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 526,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monte-carlo-szenario-logs.png",
+      "caption": "Pfade vergleichen zeigt P10, Median und P90 mit Gesamtanteilen und Kennzahlen der Einzelpfade.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 613
+      },
+      "width": 1696,
+      "height": 613,
+      "bytes": 60120,
+      "sha256": "ab96d16e909d74272819db29768b5be358dbea9eb357cef345f7df69b59ef44f",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Monte-Carlo szenario-logs · 10.000 Läufe · Seed 12345 · Pfade vergleichen · P10, Median, P90",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 828,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/werkstatt.png",
+      "caption": "Drei Werkzeuge stehen in der Werkstatt bereit.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 751
+      },
+      "width": 1696,
+      "height": 751,
+      "bytes": 72524,
+      "sha256": "28a83da27c3112c4eec2baf3bcfa8978482652b3a59e0ac4377f06d2e7132fac",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Werkstatt · Werkzeugauswahl",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/werkstatt-replay.png",
+      "caption": "Replay zeigt die Pfadeingaben.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 1080
+      },
+      "width": 1696,
+      "height": 1080,
+      "bytes": 83454,
+      "sha256": "3ec392cca62892b24e1c690c8451d18afce45e26bdee517d3ed87bf48e625bd1",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Werkstatt replay · Eingaben",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 815,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/werkstatt-sweep.png",
+      "caption": "Parameter-Sweep zeigt die Eingaben.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 1080
+      },
+      "width": 1696,
+      "height": 1080,
+      "bytes": 75245,
+      "sha256": "01f7992781297ad54878d884b3f10f4b61bbe1432f6d9897055f00c40c339c0f",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Werkstatt sweep · Eingaben",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 815,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/werkstatt-auto-optimize.png",
+      "caption": "Auto-Optimize zeigt die Sucheingaben.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 1080
+      },
+      "width": 1696,
+      "height": 1080,
+      "bytes": 79859,
+      "sha256": "e1f5d6ceb5e97d99db4f61909b8fbd0e57051c10045686c28724f46b9457ab4b",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Werkstatt auto-optimize · Eingaben",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 815,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/daten-sicherung.png",
+      "caption": "Der Datenstatus steht in Daten & Sicherung.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 155491,
+      "sha256": "0de8b9ee7e2dfd2eb0aa1b284aaae88529f92e06d4164deb71c61edd1a5173b2",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Daten-Sicherung.html",
+        "state": "Daten & Sicherung · Normalbetrieb · synthetischer Musterhaushalt",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/daten-sicherung-punkte.png",
+      "caption": "Wiederherstellungspunkte sind nach Anlass gruppiert und zeigen je eine Grundzeile; einzeln löschbare Personenpunkte nennen „Bleibt, bis du ihn selbst löschst“.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 266,
+        "y": 95,
+        "width": 885,
+        "height": 794
+      },
+      "width": 885,
+      "height": 794,
+      "bytes": 67525,
+      "sha256": "110335f25790f50d70e01f4b52632281904135ab7ffb593151eef9248c2b4715",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Daten-Sicherung.html",
+        "state": "Wiederherstellungspunkte · Normalbetrieb · fünf zurückholbare Punkte aus drei Anlässen · ältere Punkte geschlossen · Grundzeile je Punkt",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 880,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/probelauf-band.png",
+      "caption": "Das Band zeigt Testdatum und Kursmodus; Ein Jahr durchspielen steht links von Spielbereich beenden.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 112
+      },
+      "width": 1696,
+      "height": 112,
+      "bytes": 13869,
+      "sha256": "3f243ba3cc4de081a32fb532365162f6715f31116e9819e49da1619c7d85ba5b",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "Spielbereich · Testdatum, Kursmodus und Beenden",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/spielbereich-vergleich.png",
+      "caption": "Eine Kopie ohne Datumssprung zeigt beim Beenden den Vergleich Echt / Spielbereich.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-15",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 69873,
+      "sha256": "035f26cde5a8920139e495c183aee989def1d9063e796577c3fc9880be5ea97b",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "Spielbereich beenden · frische Vorschau heute mit höherem Monatsbudget und Goldkauf",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/handbuch-start.png",
+      "caption": "Die Startseite zeigt die Aufgaben im aktuellen Handbuch.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 153621,
+      "sha256": "dd92dabe8ce9e8a5464a5d7d63dab21b86888442cdd27b3c22370412af528ff9",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Handbuch.html",
+        "state": "Handbuchstart mit Aufgaben, Kapitelnavigation und Suche",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monatsabschluss/01-faellig.png",
+      "caption": "Die Übersicht bietet den Oktoberabschluss an.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-11-10",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 248288,
+      "sha256": "348ae4beac4bb6f895815fca7297c703cc330ea05fa05aba3dae602643edf6e8",
+      "group": "monatsabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "monatsabschluss fällig",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monatsabschluss/02-kurse.png",
+      "caption": "Der Reiter Kurse zeigt Kursstand und Tranchen-Tabelle nebeneinander.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-11-10",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 86610,
+      "sha256": "1ce20b3d1c1a26286efbe3feb77104f6025f2a80631e8ac1a74398e91298c081",
+      "group": "monatsabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "monatsabschluss · prices",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monatsabschluss/03-ausgaben.png",
+      "caption": "Der Reiter Ausgaben zeigt Personenkarten und die offene Kategorie-Tabelle.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-11-10",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 89260,
+      "sha256": "9c200a2df30ce91ceeb4ab6cdc24ce55d01cbe71d7aa66ba138d305c92133512",
+      "group": "monatsabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "monatsabschluss · expenses",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monatsabschluss/04-budget.png",
+      "caption": "Drei Kacheln zeigen Ausgaben, Monatsbudget und Abweichung.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-11-10",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 89330,
+      "sha256": "dbafd0118062758d1f270ad0e56e04a4e4d85b8511bb784237a45cffddf3a8c5",
+      "group": "monatsabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "monatsabschluss · budget",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monatsabschluss/05-tagesgeld.png",
+      "caption": "Der Reiter Tagesgeld zeigt Personen nebeneinander und den Monatsbetrag darunter.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-11-10",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 72569,
+      "sha256": "9516ce986c56ecc938a114ec4b25b7b900f80585346e91fcdf3bc15b2253e074",
+      "group": "monatsabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "monatsabschluss · cash",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monatsabschluss/06-ergebnis.png",
+      "caption": "Das Ergebnis zeigt links das Monatsbudget und rechts Kacheln und Herleitung ohne Reiter.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-11-10",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 55112,
+      "sha256": "b747e426b4e1bc9a8790622b68715a3937da364c955319e2329d0ab266be6dcf",
+      "group": "monatsabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "monatsabschluss · bestätigtes Ergebnis",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/jahresabschluss/01-faellig.png",
+      "caption": "Die Übersicht bietet den Jahresabschluss an.",
+      "household": "Max und Erika Mustermann",
+      "date": "2027-01-02",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 72,
+        "width": 1696,
+        "height": 1008
+      },
+      "width": 1696,
+      "height": 1008,
+      "bytes": 252147,
+      "sha256": "ded80300826d7b74c8b63343ae3e336770c4197d5d3dac201e252289fc46217b",
+      "group": "jahresabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "jahresabschluss fällig",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/jahresabschluss/02-kurse.png",
+      "caption": "Der Reiter Kurse zeigt Kursstand und Tranchen-Tabelle nebeneinander.",
+      "household": "Max und Erika Mustermann",
+      "date": "2027-01-02",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 93273,
+      "sha256": "127499363660f6f2d69de14f312d90fef4e639adcb4c2de09b086b59b3b1122d",
+      "group": "jahresabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "jahresabschluss · prices",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/jahresabschluss/03-ausgaben.png",
+      "caption": "Der Reiter Ausgaben Dezember zeigt Personenkarten und die offene Kategorie-Tabelle.",
+      "household": "Max und Erika Mustermann",
+      "date": "2027-01-02",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 111615,
+      "sha256": "aef3ab59af6838663494de04f0bb03056a46ec9b81c34e48135b94f2c2bef71d",
+      "group": "jahresabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "jahresabschluss · expenses",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/jahresabschluss/04-budget.png",
+      "caption": "Der Reiter Budgetvergleich zeigt links Dezember und rechts das Jahr.",
+      "household": "Max und Erika Mustermann",
+      "date": "2027-01-02",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 112021,
+      "sha256": "230cd40379c4aa48cbc6d13ac7c61c483b360ef6ddd729fe273a59087556af17",
+      "group": "jahresabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "jahresabschluss · budget",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/jahresabschluss/05-tagesgeld.png",
+      "caption": "Der Reiter Tagesgeld 31.12. zeigt die Jahresendstände nebeneinander.",
+      "household": "Max und Erika Mustermann",
+      "date": "2027-01-02",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 74801,
+      "sha256": "30356232f6ae7bf90b63895b50c5ac7c43751546ddcd9e2a7fa874a13f1270b6",
+      "group": "jahresabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "jahresabschluss · cash",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/jahresabschluss/06-marktdaten.png",
+      "caption": "Der Reiter Pflegewerte steht vor Marktdaten und zeigt Pflegegeld und Heim-Eigenanteil nebeneinander.",
+      "household": "Max und Erika Mustermann",
+      "date": "2027-01-02",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 110071,
+      "sha256": "f89d736406874a6da9bb9a4fe070ce0913b44ae388ead5ee37edf30a7b48c1fa",
+      "group": "jahresabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "jahresabschluss · market",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/jahresabschluss/07-pflegewerte.png",
+      "caption": "Der Reiter Marktdaten zeigt Jahreswerte und die abgestufte Budgetprüfung; bei verschiedenen Folgen ist eine ausdrückliche Wahl nötig.",
+      "household": "Max und Erika Mustermann",
+      "date": "2027-01-02",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 89518,
+      "sha256": "2d835be773ea9eb0b743c179a8977e16e800a5a03e5b5507bff415b6ad2df4fd",
+      "group": "jahresabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "jahresabschluss · care",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/jahresabschluss/08-plan.png",
+      "caption": "Der Reiter Plan 2027 zeigt Bedarf links, Monatsbudget und Marktwahl rechts; „Wahl ändern“ führt zu Marktdaten.",
+      "household": "Max und Erika Mustermann",
+      "date": "2027-01-02",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 134971,
+      "sha256": "fdd0f17c819a47a0e3053eb4c3866697edd0b7cf3cad573654b3647fa0eabe72",
+      "group": "jahresabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "jahresabschluss · preview",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 82
+        }
+      }
+    },
+    {
+      "path": "docs/ui/jahresabschluss/09-ergebnis.png",
+      "caption": "Das Ergebnis zeigt links Handlung und Monatsbudget, rechts Kacheln und Herleitungen ohne Reiter.",
+      "household": "Max und Erika Mustermann",
+      "date": "2027-01-02",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 352,
+        "y": 82,
+        "width": 1216,
+        "height": 916
+      },
+      "width": 1216,
+      "height": 916,
+      "bytes": 81034,
+      "sha256": "0ba069638641e2b472e07476b481963d8b2ce434a04173a0f777e8181fe01802",
+      "group": "jahresabschluss",
+      "seed": 12345,
+      "source": {
+        "page": "index.html",
+        "state": "jahresabschluss · bestätigtes Ergebnis",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/personen-sophie.png",
+      "caption": "Sophie spart mit ihrem Gehalt an; die Rente beginnt im Januar 2038.",
+      "household": "Sophie Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 701
+      },
+      "width": 1696,
+      "height": 701,
+      "bytes": 72331,
+      "sha256": "8ee02b8c2837b5f041de6f6f63cb0d8f33978d3d343cd29a88718da04b854f5c",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Sophie · Gehalt bis Dezember 2037, Rente ab Januar 2038",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 457,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/einkuenfte-offen.png",
+      "caption": "Einkünfte geöffnet: Rente, feste und einmalige Einkunft mit einheitlichen Feldern.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 734
+      },
+      "width": 1696,
+      "height": 734,
+      "bytes": 77077,
+      "sha256": "7c321507627c375323204dab8c4b3cecf7dab9fa9020a2e7f4e574d0248215fc",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Einkünfte · geöffnet",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 535,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/einkuenfte-geschlossen.png",
+      "caption": "Einkünfte geschlossen: Die Zusammenfassung nennt Beträge und Zeiträume.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 83
+      },
+      "width": 1696,
+      "height": 83,
+      "bytes": 12234,
+      "sha256": "1cba2235713e10f218904e94ab26f9e2e19c3cbe9a617d339ac53ce49a1e67b3",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Einkünfte · geschlossen",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 535,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/geplante-ausgaben-offen.png",
+      "caption": "Geplante Ausgaben geöffnet: Ratenkredit und Auto außerhalb von Grundbedarf und Flex.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 257,
+        "width": 1696,
+        "height": 606
+      },
+      "width": 1696,
+      "height": 606,
+      "bytes": 60423,
+      "sha256": "3fdcd3f314ac7454818113bfc4ff9c2b82c642567aab9f06c0ff5f4d854650ec",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Geplante Ausgaben · geöffnet",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 792,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/geplante-ausgaben-geschlossen.png",
+      "caption": "Geplante Ausgaben geschlossen: Die Zusammenfassung nennt die geplanten Zahlungen.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 781,
+        "width": 1696,
+        "height": 83
+      },
+      "width": 1696,
+      "height": 83,
+      "bytes": 12642,
+      "sha256": "e7ae3e917bb460a3f4b3fb598cb7eb89e749ebe486fe65b9686f1cb2be6543fe",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Geplante Ausgaben · geschlossen",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 268,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/balance-geplante-posten.png",
+      "caption": "Balance zeigt die geplanten Posten des Planjahres mit Monat und Vorzeichen.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 1347,
+        "y": 573,
+        "width": 498,
+        "height": 409
+      },
+      "width": 498,
+      "height": 409,
+      "bytes": 32597,
+      "sha256": "5ddd7773e49e153ad9a86a9c214072bd254d8bee48ad0fce11015a30b8c25c5b",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Balance.html",
+        "state": "Balance · geplante Posten 2026",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 1433,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/ausgaben-geplante-zuordnung.png",
+      "caption": "Beim Ausgabenimport wird die bezahlte geplante Ausgabe außerhalb des Monatsbudgets zugeordnet.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 616,
+        "y": 78,
+        "width": 688,
+        "height": 924
+      },
+      "width": 688,
+      "height": 924,
+      "bytes": 60091,
+      "sha256": "93d7b0ac113da16ac0ea39e5e6f1efeb1f07eac2995c58438fe3326409a9281f",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Balance.html",
+        "state": "Ausgabenimport · geplante Zahlung zuordnen",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 0,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/protokoll-backtest.png",
+      "caption": "Backtest-Protokoll: Das Einnahmen-ⓘ der ersten Jahreszeile zeigt Rente, sonstige und einmalige Einkünfte.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 247,
+        "y": 341,
+        "width": 1634,
+        "height": 658
+      },
+      "width": 1634,
+      "height": 658,
+      "bytes": 128738,
+      "sha256": "cbfe51bb164e3d9ad71f489fe9da4821d1666bad423202f8473a1538848ab342",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "backtest · Standard mit Einnahmen-Info der ersten Jahreszeile · gerechneter Musterlauf",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 1603,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/protokoll-backtest-details.png",
+      "caption": "Backtest-Protokoll: Detailliert zeigt die Einzelbeträge.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 247,
+        "y": 341,
+        "width": 1634,
+        "height": 658
+      },
+      "width": 1634,
+      "height": 658,
+      "bytes": 77308,
+      "sha256": "dae42976ceafeca4847a74e85f7a2c1356a4728d3e4f5bf5162e5ba9288fd48f",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "backtest · Detailliert · gerechneter Musterlauf",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 1603,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/protokoll-monte-carlo.png",
+      "caption": "Monte-Carlo-Protokoll: Das Erbe-ⓘ zeigt positive Erbschaftsteuer und ihre Herkunft aus geerbtem Steuergeld.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 372,
+        "width": 1696,
+        "height": 656
+      },
+      "width": 1696,
+      "height": 656,
+      "bytes": 141523,
+      "sha256": "6466d191eef3a11f74f221b001fb1c2a6f31cd332d6ecf68623a049fddc8ae28",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Nicht verheiratet · Immobilien und Steuergeld · Erbschaftsteuer > 0 mit Herkunft",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 3379,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/protokoll-monte-carlo-details.png",
+      "caption": "Monte-Carlo-Protokoll: Detailliert ergänzt die Jahresphasen; An Erben und Erbschaftsteuer stehen auch in Normal.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 372,
+        "width": 1696,
+        "height": 656
+      },
+      "width": 1696,
+      "height": 656,
+      "bytes": 100273,
+      "sha256": "ce0a080c49fb0339a3a8f233999522057106e097d4eab10d239575581cbfa5ed",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Nicht verheiratet · Todesjahr · Detailliert mit An Erben und Erbschaftsteuer",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 3379,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/tagesgeld-bearbeiten.png",
+      "caption": "Tagesgeld lässt sich direkt in der Vermögenskarte bearbeiten.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 920
+      },
+      "width": 1696,
+      "height": 920,
+      "bytes": 91188,
+      "sha256": "1706e98be0e7089ae0e1cdb593d7ab9c8ac40c26b4204eeba567da86ca30e589",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Erika · Tagesgeld im Bearbeitungszustand",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 680,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/personen-pflegegrad.png",
+      "caption": "Max Mustermann im Spielbereich: Pflegegrad 2, angenommener langsamerer Verlauf und automatisch gerechnetes Pflegegeld.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 452
+      },
+      "width": 1696,
+      "height": 452,
+      "bytes": 63993,
+      "sha256": "2b92894022b9d90d0301727796d02a6a0de8d3db70dec891f80c00e10134070b",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Person & Steuern · heutiger Pflegegrad 2",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 447,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/partnerschaft-todesfall.png",
+      "caption": "Nicht verheiratet: Erika erbt Immobilien und Steuergeld von Max, zusätzlich 0 % vom übrigen Geldvermögen.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 7,
+        "width": 1696,
+        "height": 1026
+      },
+      "width": 1696,
+      "height": 1026,
+      "bytes": 119554,
+      "sha256": "20eb0d3df0549ba7e90a982d8e54c632638ff5997665eea0d0fcef26b26e73e3",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Nicht verheiratet · Erika erbt Immobilien und Steuergeld · zusätzlich 0 %",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 1213,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/personen-immobilien.png",
+      "caption": "Max: Haus 450.000 € und vermietete Wohnung 210.000 € mit 650 € Nettomiete pro Monat.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 1080
+      },
+      "width": 1696,
+      "height": 1080,
+      "bytes": 119755,
+      "sha256": "d91a34e0c634024f2c2cdc350b8699aa59a27aae991757f909390af52da82fc0",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Max · zwei Immobilien · vermietete Wohnung geöffnet",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 758,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/simulator-hinterbliebene.png",
+      "caption": "Nicht verheiratet: Erbanteile und gesperrte Rentenfelder; Grundbedarf, Wunsch- und Mindest-Flex bleiben einstellbar.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 266,
+        "y": 0,
+        "width": 1596,
+        "height": 402
+      },
+      "width": 1596,
+      "height": 402,
+      "bytes": 48477,
+      "sha256": "b16bd8b0f82377464530cdb3daab556ccd40f037a29c41cf8513fef67696a452",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Erbanteile · gesperrte Rentenfelder · Hinterbliebenenbedarf 75/50/50 %",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 1916,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/partnerschaft-verheiratet.png",
+      "caption": "Verheiratet: Erika erbt 50 % von Max, Klasse I mit steuerfreiem Familienheim.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 1080
+      },
+      "width": 1696,
+      "height": 1080,
+      "bytes": 118031,
+      "sha256": "bde84d1883245d626e896a8fd563e039d45d47bdf62f8e1dbd8fec39f92c8e28",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "depot-tranchen-manager.html",
+        "state": "Verheiratet · Erika erbt 50 % von Max · Klasse I mit Familienheim",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 1228,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monte-carlo-vergleich.png",
+      "caption": "Vergleich: Wunschbudget +300 €/Monat, 1.000 gepaarte Läufe je Plan bei Einstellung 10.000, Seed 12345.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 1080
+      },
+      "width": 1696,
+      "height": 1080,
+      "bytes": 136037,
+      "sha256": "b271fdb642bad66927e2e26da3c15c17f7549d4581dbcf5f5b28cfc1c838d3fe",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Vergleich · Wunschbudget +300 €/Monat · 1.000 Läufe je Plan (Einstellung 10.000 ÷ 10) · Seed 12345",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 724,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/monte-carlo-zielwert.png",
+      "caption": "Zielwertsuche: 1.000 gepaarte Läufe je Schritt, Endprobe mit 10.000 Läufen, Seed 12345; unbestätigter Fund wird gekennzeichnet.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 216,
+        "y": 0,
+        "width": 1696,
+        "height": 1080
+      },
+      "width": 1696,
+      "height": 1080,
+      "bytes": 159626,
+      "sha256": "d1868e47bfabd4363aa70501ba3970f405d93d2d7bbaed074a8b3de09e038394",
+      "group": "masken",
+      "seed": 12345,
+      "source": {
+        "page": "Simulator.html",
+        "state": "Zielwertsuche · Ziele 99/10 · Suche mit 1.000 Läufen je Schritt · Endprobe mit 10.000 Läufen · Seed 12345",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 724,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/jahresbudget-max-erika-normal.png",
+      "caption": "Im normalen Jahr ist der Flex voll finanziert. Die App zeigt keine Warum-Treppe.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 266,
+        "y": 0,
+        "width": 798,
+        "height": 463
+      },
+      "width": 798,
+      "height": 463,
+      "bytes": 26644,
+      "sha256": "d68be6305d7835487188a4e2694d77c7816d263d0ebccd0398b55cd20244b634",
+      "group": "jahresbudget",
+      "seed": 12345,
+      "source": {
+        "page": "Balance.html",
+        "state": "Budgetbeschluss nach Jahresrendite 2000 · Musterwerte 17.10.2026 · Dynamic Flex aus",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 320,
+          "closeDialogContent": 0
+        }
+      }
+    },
+    {
+      "path": "docs/ui/jahresbudget-max-erika-2002.png",
+      "caption": "2002 senken Alarm und Rundung den Monatsbetrag. Die Warum-Treppe zeigt beide Eingriffe.",
+      "household": "Max und Erika Mustermann",
+      "date": "2026-10-20",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "scale": 1,
+      "crop": {
+        "x": 266,
+        "y": 0,
+        "width": 798,
+        "height": 873
+      },
+      "width": 798,
+      "height": 873,
+      "bytes": 61311,
+      "sha256": "8e65a90783423cfd8f959a14af1e4f51036e5531b57327ab2b10c4e3347773e0",
+      "group": "jahresbudget",
+      "seed": 12345,
+      "source": {
+        "page": "Balance.html",
+        "state": "Budgetbeschluss nach Jahresrendite 2002 · Musterwerte 17.10.2026 · Dynamic Flex aus",
+        "commit": "4c28cdc35fa906af0e1e08a9197ecb532bb9ce4d",
+        "treeStatus": "clean",
+        "scroll": {
+          "x": 0,
+          "y": 320,
+          "closeDialogContent": 0
+        }
+      }
+    }
+  ]
+}

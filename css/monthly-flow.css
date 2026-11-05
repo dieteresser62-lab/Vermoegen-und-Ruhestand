@@ -1,0 +1,26 @@
+.monthly-flow { display: grid; gap: var(--space-3); min-width: 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-sunken); }
+.monthly-flow-heading, .monthly-flow-detail, .monthly-flow-incomes { color: var(--text-muted); font: 400 var(--text-dense)/1.5 var(--font-sans); }
+.monthly-flow-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); }
+.monthly-flow-bar { display: flex; height: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-lg); overflow: hidden; }
+.monthly-flow-income { background: var(--text-main); }
+.monthly-flow-one-time { background: var(--text-muted); }
+.monthly-flow-withdrawal { background: var(--accent-line); }
+.monthly-flow-saving { background: var(--good); }
+.monthly-flow-cut { background: repeating-linear-gradient(45deg, var(--bad-soft), var(--bad-soft) 6px, var(--surface) 6px, var(--surface) 12px); }
+.monthly-flow-equation { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); color: var(--text-main); font: 400 var(--text-base)/1.5 var(--font-sans); }
+.monthly-flow-key { display: inline-block; width: var(--space-3); height: var(--space-3); margin-right: var(--space-2); }
+.monthly-flow-main { display: flex; align-items: baseline; gap: var(--space-2); color: var(--text-main); }
+.monthly-flow-main strong { font: 600 var(--value-lg)/1.2 var(--font-serif); font-variant-numeric: tabular-nums; }
+.monthly-flow-footer { border-top: 1px solid var(--border); padding-top: var(--space-3); display: grid; gap: var(--space-2); }
+.monthly-flow-footer p { margin: 0; }
+.monthly-flow-income-notes { display: grid; gap: var(--space-1); padding-top: var(--space-2); }
+.monthly-flow-income-notes p { margin: 0; }
+.monthly-flow-term { white-space: nowrap; }
+.monthly-flow-amount { font: inherit; font-weight: 600; font-variant-numeric: tabular-nums; }
+.monthly-flow-sign { color: var(--text-muted); }
+.monthly-flow-equation .monthly-flow-term.monthly-flow-saving { color: var(--good); background: transparent; }
+.monthly-flow-incomes > summary { cursor: pointer; }
+.monthly-flow-details { display: grid; gap: var(--space-1); padding-top: var(--space-2); }
+.monthly-flow-detail-row { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+.monthly-flow-detail-row > :last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.monthly-flow [hidden], .monthly-flow-detail[hidden] { display: none; }

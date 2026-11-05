@@ -1,0 +1,15 @@
+{
+  "testDate": "2026-10-23",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "inputsHash": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+  "backtestHash": "e9b57dbe7c4815dc6b6c97564dacef1cd193d0d86079be7276c8a7b0a6e3a268",
+  "monteCarloHash": "2ebdaab9deefe71192ae29f0704e9936e043ebe79be2d2436634e1010bd95d49"
+}

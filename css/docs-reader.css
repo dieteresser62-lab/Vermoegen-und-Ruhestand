@@ -1,0 +1,26 @@
+/* Local documentation uses the suite's existing typography, cards and tables. */
+.docs-reader { margin: 0; min-width: 1280px; background: var(--page); color: var(--text-main); font-family: var(--font-sans); line-height: var(--leading-body); }
+.docs-reader > header { padding: var(--space-4) var(--space-8); background: var(--surface); border-bottom: 1px solid var(--border); }
+.docs-reader-layout { display: grid; grid-template-columns: 15rem minmax(0, 72rem); gap: var(--space-6); margin: var(--space-8); justify-content: center; }
+.docs-reader nav { position: sticky; top: var(--space-6); align-self: start; max-height: 90vh; overflow: auto; }
+.docs-reader nav ul { list-style: none; padding: 0; }
+.docs-reader nav li { margin-bottom: var(--space-3); }
+.docs-reader main { min-width: 0; padding: var(--space-8); }
+.docs-reader h1, .docs-reader h2, .docs-reader h3 { font-family: var(--font-serif); font-weight: 500; line-height: var(--leading-heading); scroll-margin-top: var(--space-6); }
+.docs-reader h1 { font-size: var(--balance-h1); }
+.docs-reader h2 { margin-top: var(--space-8); font-size: var(--balance-h2); }
+.docs-reader h3 { margin-top: var(--space-6); font-size: var(--balance-h3); }
+.docs-reader table { width: 100%; }
+.docs-reader pre { overflow: auto; padding: var(--space-4); background: var(--surface-sunken); }
+.docs-reader code { font-family: var(--font-mono); overflow-wrap: anywhere; }
+.docs-reader img { width: auto; max-width: 100%; box-sizing: border-box; height: auto; }
+.docs-reader figure { margin: var(--space-6) 0; }
+.docs-reader figcaption, .docs-repository small { color: var(--text-muted); font-size: var(--text-sm); }
+.docs-repository { overflow-wrap: anywhere; }
+
+.docs-reader img[src$="/06-ergebnis.png"], .docs-reader img[src$="/09-ergebnis.png"] { max-width: min(100%, 480px); }
+
+/* Fragment destinations stay visible until another anchor is selected. */
+.docs-reader .docs-heading:target { border-inline-start: 4px solid var(--accent); background: var(--accent-soft); padding: var(--space-2) var(--space-3); margin-top: 0; scroll-margin-top: calc(var(--space-8) + var(--space-8)); }
+.docs-target-note { display: none; color: var(--text-muted); font-size: var(--text-sm); }
+.docs-target-note:has(+ .docs-heading:target) { display: block; margin: var(--space-8) 0 var(--space-2); }

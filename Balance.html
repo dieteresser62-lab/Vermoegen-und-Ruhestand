@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="de" data-density="compact" data-suite-page="balance">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balance · Vermögen &amp; Ruhestand</title>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/fonts.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/monthly-flow.css">
+
+
+    <!-- External Stylesheets -->
+    <link rel="stylesheet" href="css/balance.css">
+
+    <!-- External Scripts -->
+    <script type="module" src="app/profile/profile-bridge.js"></script>
+    <script type="module" src="engine.js"></script>
+    <script type="module" src="app/balance/balance-main.js"></script>
+    <link rel="stylesheet" href="css/suite-frame.css">
+    <script type="module" src="app/shared/suite-frame.js"></script>
+</head>
+
+<body>
+    <a class="suite-skip" href="#suiteMain">Zur Hauptaufgabe</a>
+    <div class="suite-shell">
+        <header class="suite-header">
+            <a class="suite-brand" href="index.html" data-profile-handoff><span data-suite-icon="landmark" aria-hidden="true"></span><span>Vermögen &amp; Ruhestand</span></a>
+            <div id="suiteContext" class="suite-context-row" aria-label="Seitenkontext"><span id="suiteProfileContext" class="suite-context" role="status" aria-live="polite" hidden></span><span class="ds-context-pill" id="balanceScope" hidden><svg class="balance-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg><b id="suiteHouseholdContext" class="suite-context">Haushalt wird geladen</b><button id="balanceChangeScope" type="button" class="ds-mini-button">ändern</button></span>
+          <span class="ds-context-pill">Planungsjahr <b id="balancePlanningYearPill">—</b></span>
+          <span class="ds-context-pill">Marktdaten <b id="balanceMarketDate">nicht verfügbar</b></span></div>
+            <button id="probelaufStart" type="button" class="suite-probelauf-start ds-button ds-button-secondary" aria-describedby="probelaufStatus" disabled>Spielbereich starten …</button>
+        </header>
+        <div id="probelaufStatus" class="suite-probelauf-status" role="status" aria-live="polite" hidden></div>
+        <div id="suiteNavigationStatus" class="suite-navigation-status" role="alert" hidden></div>
+        <div class="suite-layout">
+            <nav class="suite-navigation" aria-label="Hauptnavigation" id="suiteNavigation">
+                <button id="suiteSidebarToggle" class="suite-sidebar-toggle ds-button ds-button-secondary ds-icon-button" type="button" aria-label="Leiste einklappen" title="Leiste einklappen" aria-controls="suiteNavigation" aria-expanded="true">
+                    <span data-suite-icon="panel-left-close" aria-hidden="true"></span><span data-suite-icon="panel-left" aria-hidden="true"></span>
+                </button>
+                <a href="index.html" data-profile-handoff aria-label="Übersicht" title="Übersicht"><span data-suite-icon="house" aria-hidden="true"></span><span>Übersicht</span></a>
+                <a href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false" aria-label="Personen &amp; Vermögen – Rente, Depot, Gold" title="Personen &amp; Vermögen"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Personen &amp; Vermögen<small class="ds-navigation-subtitle">Rente, Depot, Gold</small></span></a>
+                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
+                <a href="Balance.html" data-profile-handoff aria-current="page" aria-label="Balance – Jahresplanung" title="Balance"><span data-suite-icon="scale" aria-hidden="true"></span><span>Balance<small class="ds-navigation-subtitle">Jahresplanung</small></span></a>
+                <a href="Simulator.html" data-profile-handoff aria-label="Simulator" title="Simulator"><span data-suite-icon="chart-no-axes-combined" aria-hidden="true"></span><span>Simulator</span></a>
+                <a href="Handbuch.html" data-profile-handoff aria-label="Handbuch" title="Handbuch"><span data-suite-icon="book-open" aria-hidden="true"></span><span>Handbuch</span></a>
+                <a href="Daten-Sicherung.html" data-profile-handoff data-suite-backup aria-label="Daten &amp; Sicherung" title="Daten &amp; Sicherung"><span data-suite-icon="landmark" aria-hidden="true"></span><span>Daten &amp; Sicherung</span></a>
+            </nav>
+            <main class="suite-content" id="suiteMain" tabindex="-1">
+                <aside id="probelaufBand" class="probelauf-band" aria-label="Spielbereich" hidden>
+                    <strong id="probelaufBandText"></strong>
+                    <div class="ds-actions">
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="day">+1 Tag</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="month">+1 Monat</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="date">Datum wählen …</button>
+                        <button type="button" class="ds-button ds-button-secondary" data-probelauf-action="end">Spielbereich beenden</button>
+                    </div>
+                </aside>
+
+    <div class="main-layout balance-page">
+      <div class="balance-wrap">
+
+        <div id="balanceMarketAlarm" class="ds-banner ds-banner-warning" role="status" hidden><div><strong>Alarm aktiv</strong><p id="balanceMarketAlarmText"></p></div><button type="button" class="ds-button ds-button-secondary ds-mini-button" data-balance-tab="diagnosis">Warum? Diagnose öffnen</button></div>
+        <header class="app-header balance-head ds-page-head">
+          <div class="ds-page-copy">
+            <h1>Balance <span id="balancePlanningYear">—</span></h1>
+          </div>
+          <div class="balance-head-tools ds-page-actions"><a href="Handbuch.html" target="_blank" data-profile-handoff class="balance-help-link ds-button ds-button-secondary ds-icon-button" title="Hilfe" aria-label="Hilfe öffnen"><span aria-hidden="true">?</span></a></div>
+        </header>
+
+        <div class="tab-buttons" role="tablist" aria-label="Balance-Ansichten">
+          <button id="balanceTabOverview" class="tab-btn active ds-tab" data-tab="overview" type="button" role="tab" aria-controls="tab-overview" aria-selected="true" tabindex="0">Überblick</button>
+          <button id="balanceTabStrategy" class="tab-btn ds-tab" data-tab="strategy" type="button" role="tab" aria-controls="tab-strategy" aria-selected="false" tabindex="-1">Bedarf &amp; Strategie</button>
+          <button id="openDiagnosisBtn" class="tab-btn ds-tab" data-tab="diagnosis" type="button" role="tab" aria-controls="tab-diagnosis" aria-selected="false" tabindex="-1">Diagnose</button>
+        </div>
+        <section id="balanceMessages" aria-label="Meldungen">
+          <div id="engine-version-alert" class="ds-note ds-note-warning" role="alert" tabindex="-1" style="display:none; background-color: var(--warn-soft); color: var(--warn);"></div>
+          <div id="balanceAnnualRecovery" class="ds-note ds-note-error" role="alert" hidden></div>
+          <div id="error-container" aria-live="polite"></div>
+          <div id="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
+          <div id="action-error-container" role="alert" aria-live="assertive" aria-relevant="additions text" tabindex="-1"></div>
+        </section>
+        <section id="tab-overview" class="tab-panel active" role="tabpanel" aria-labelledby="balanceTabOverview" tabindex="0">
+          <p id="balancePlanTrialResult" class="ds-note ds-note-warning" hidden>Versuch · mit Abweichung vom Plan</p><div id="results" class="balance-overview" aria-live="polite">
+<section class="ds-plan-card ov-hero" aria-labelledby="h-ov-hero"><div class="ds-plan-card-head"><h3 id="h-ov-hero">Dein Monatsbudget</h3><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung Monatsbudget" aria-expanded="false" aria-describedby="info-Monatsbudget" aria-controls="info-Monatsbudget">ⓘ</button><span class="ds-info-pop" id="info-Monatsbudget" role="tooltip">Verbrauchte feste Einkünfte plus finanzierte Vermögensentnahme aus der Projektion für das nächste Planjahr. Im Ansparjahr bleibt der Überschuss außerhalb des Budgets auf dem Tagesgeld und wird nach den Regeln der App angelegt. Mit festgeschriebenem Jahresplan steht die Vorschau neben dem gültigen Planbetrag, die Differenz zeigt Vorschau minus Plan.</span></span></div><div class="balance-budget-values"><div><div id="balanceBudgetPreview" class="ds-source" hidden></div><div id="balanceMonthlyBudget" class="balance-hero-num">—</div><div id="balanceBudgetRuleSource" class="ds-source" hidden>nach Regel (Jahresendstände)</div></div><div id="balanceBudgetPlan" class="balance-plan-reference" hidden></div></div><div id="balanceBudgetReasons" class="ds-source balance-budget-reasons" hidden></div><div id="balanceHighBudget" class="balance-preview-alternative ds-row" hidden></div><div id="balanceAnnualBudget" class="balance-hero-sub">Noch keine gültige Berechnung.</div><div class="balance-budget-cut"><div id="balanceBudgetCut" class="balance-gap"></div><button id="balanceBudgetWhy" type="button" class="ds-button ds-button-secondary balance-why-button" aria-expanded="false" aria-controls="balanceBudgetTrace" hidden>Warum?</button></div><div id="balanceBudgetTrace" class="balance-flex-trace" role="region" aria-label="Warum gekürzt?" hidden></div><div class="monthly-flow">
+<div class="monthly-flow-heading">So kommt dein Budget zustande · pro Monat</div>
+<div id="balanceBudgetBar" class="monthly-flow-bar" aria-hidden="true"></div>
+<div class="monthly-flow-equation">
+<span class="monthly-flow-term"><i class="monthly-flow-key monthly-flow-income" aria-hidden="true"></i>Einkünfte <strong id="balanceMonthlyIncome" class="monthly-flow-amount">—</strong></span>
+<span id="balanceFlowWithdrawalSign" class="monthly-flow-sign" aria-hidden="true">+</span>
+<span id="balanceFlowWithdrawal" class="monthly-flow-term"><i class="monthly-flow-key monthly-flow-withdrawal" aria-hidden="true"></i>aus dem Vermögen <strong id="monatlicheEntnahme" class="monthly-flow-amount">—</strong></span>
+<span class="monthly-flow-sign" aria-hidden="true">=</span>
+<span class="monthly-flow-term">Monatsbudget <strong id="balanceFlowBudget" class="monthly-flow-amount">—</strong></span>
+<span id="balanceFlowSavingSign" class="monthly-flow-sign" aria-hidden="true" hidden>+</span>
+<span id="balanceFlowSaving" class="monthly-flow-term monthly-flow-saving" hidden><i class="monthly-flow-key monthly-flow-saving" aria-hidden="true"></i>angelegt <strong id="balanceMonthlySaving" class="monthly-flow-amount">—</strong></span>
+</div>
+<details id="balanceIncomeDetails" class="monthly-flow-incomes ds-technical-details" hidden></details>
+<div id="balanceFlowNeed" class="monthly-flow-detail" hidden></div>
+<div id="balanceWithdrawalPlan" class="monthly-flow-detail" hidden></div>
+<div id="balanceIncomeSurplusNote" class="monthly-flow-detail" hidden>angelegt: aufs Tagesgeld, dann nach den Regeln der App</div>
+</div>
+<div class="monthly-flow-footer"><div id="balanceBudgetChips" class="balance-budget-notes"></div><p id="balancePlannedExpensesNote" class="monthly-flow-detail"></p><p class="balance-expenses-summary"><a id="balanceExpensesSummary" href="Ausgaben.html#ausgaben" data-profile-handoff>Ausgabenstand noch nicht verfügbar</a></p></div><details class="ds-technical-details" id="entnahme-breakdown" style="margin-top: 10px; display: none;">
+                    <summary>Details zur Entnahme</summary>
+                    <div style="margin-top: 10px; font-size: var(--balance-help); line-height: 1.5;" id="entnahmeDetailsContent">
+                    </div>
+                </details></section>
+<section id="balanceActionArea" class="ds-plan-card ov-act" aria-labelledby="h-ov-act"><div class="ds-plan-card-head"><h3 id="h-ov-act">Handlungsanweisung &amp; Vorschau</h3><span id="balanceActionPeriod" class="ds-plan-chip ds-chip-warning"></span></div><div id="balanceAnnualAction" class="balance-annual-action"><h3>Noch keine Handlungsanweisung aus dem Jahresabschluss</h3></div><section id="balanceMarketPreview" class="balance-market-preview" aria-labelledby="balanceMarketPreviewTitle" hidden>
+<div id="balanceMarketPreviewHead" class="balance-preview-head"><div class="balance-preview-heading"><div class="balance-preview-title-line"><h4 id="balanceMarketPreviewTitle">Budgetprüfung für das nächste Jahr</h4><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung Budgetprüfung" aria-expanded="false" aria-controls="balanceMarketPreviewInfo" aria-describedby="balanceMarketPreviewInfo">ⓘ</button><span id="balanceMarketPreviewInfo" class="ds-info-pop" role="tooltip">Bereitet das nächste Jahr wie der Jahresabschluss vor – nur auf einer Kopie, ohne zu speichern – und rechnet beide Varianten. Unbekannte Werte sind Annahmen. Verbindlich ist nur der Jahresabschluss. <a href="Handbuch.html#balance-vorschau" data-profile-handoff>Mehr im Handbuch</a></span></span></div><small id="balanceMarketPreviewSubtitle" class="ds-source" hidden>Projektion mit heutigen Werten</small></div><small id="balanceMarketPreviewSource" class="ds-source"></small></div>
+<div id="balanceMarketPreviewBody"></div></section><h4>Vorläufige Empfehlung · nach Regel</h4><div class="balance-action-main"><span id="balanceActionIcon" class="balance-action-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8M14 7h7v7M3 21h18"/></svg></span><div><div id="balanceActionTitle" class="balance-action-verb">Noch keine Empfehlung</div><div id="balanceActionAmount" class="balance-action-amount"></div><p id="balanceActionNote"><span id="balanceActionPurpose">Empfehlung · keine Buchung</span><span id="balanceActionCoverage"></span></p></div></div><div id="balanceHighAction" class="balance-preview-alternative ds-row" hidden></div><div id="balanceActionRouting" class="balance-action-routing" hidden><div class="ds-source">Wohin der Erlös fließt</div><div id="balanceActionTransfer" class="balance-action-transfer"></div><div class="balance-row ds-row"><span>Steuer auf die Verkäufe <span class="ds-info"><button type="button" class="ds-info-button" aria-label="Steuer in der Vorschau" aria-expanded="false" aria-controls="balanceActionTaxInfo" aria-describedby="balanceActionTaxInfo">ⓘ</button><span id="balanceActionTaxInfo" class="ds-info-pop" role="tooltip">Gerechnet mit vollem Sparer-Pauschbetrag. Hast du ihn in diesem Jahr schon genutzt, fällt die Steuer höher aus.</span></span></span><strong id="balanceActionTax"></strong></div></div><div class="balance-action-foot"><span class="balance-action-disclaimer"><span id="balanceActionFootnote">Vorläufig · erst im Jahresabschluss festgeschrieben</span><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung zur vorläufigen Empfehlung" aria-expanded="false" aria-describedby="balanceActionDisclaimer" aria-controls="balanceActionDisclaimer">ⓘ</button><span class="ds-info-pop" id="balanceActionDisclaimer" role="tooltip">Vorschau mit heutigen Werten. Der Plan wird erst im Jahresabschluss festgeschrieben; die Umsetzung bleibt deine Entscheidung.</span></span></span><button id="openActionDetails" type="button" class="ds-button balance-button-brass"><svg class="balance-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg>Details &amp; Drucken</button></div></section>
+<section class="ds-plan-card ov-mkt" aria-labelledby="h-ov-mkt"><div class="ds-plan-card-head"><h3 id="h-ov-mkt">Marktphase · Vorschau nach Regel</h3><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung Marktphase" aria-expanded="false" aria-describedby="info-Marktphase" aria-controls="info-Marktphase">ⓘ</button><span class="ds-info-pop" id="info-Marktphase" role="tooltip">Die Engine bestimmt die Phase aus Kursverlauf, Abstand zum Allzeithoch und Zeit seit dem Hoch. CAPE ergänzt die Bewertung.</span></span></div><div id="marktstatusText">—</div><div id="balanceMarketScale" class="balance-market-scale" aria-label="Phasen-Skala"></div><div class="balance-scale-labels"><span>heiß gelaufen</span><span>Höchststand</span><span>Korrektur</span><span>Tiefer Bär</span></div><div id="balanceMarketFacts"></div><div id="balanceMarketSource" class="ds-source balance-provenance"></div></section>
+<section class="ds-plan-card ov-need" aria-labelledby="h-ov-need"><div class="ds-plan-card-head"><h3 id="h-ov-need">Dein Bedarf</h3><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung Bedarf" aria-expanded="false" aria-describedby="info-Bedarf" aria-controls="info-Bedarf">ⓘ</button><span class="ds-info-pop" id="info-Bedarf" role="tooltip">Floor ist der Basisbedarf; Flex deckt Extras. Die bestehende Flex-Rate bestimmt den finanzierten Anteil.</span></span></div><div><div id="balanceNeedTotal" class="balance-card-number">—</div><div class="ds-source">Bedarf gesamt laut Plan · im Monat</div></div><div id="balanceNeedRows"></div><p id="balanceFloorCoverage" class="ds-hint"></p><strong id="neuerBedarf" hidden>—</strong><div id="balanceNeedProfiles" hidden></div><button type="button" class="ds-mini-button balance-text-action" data-balance-tab="strategy"><svg class="balance-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Bedarf &amp; Strategie anpassen</button></section>
+<section class="ds-plan-card ov-res" aria-labelledby="h-ov-res"><div class="ds-plan-card-head"><h3 id="h-ov-res">Deine Reserven</h3><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung Reserven" aria-expanded="false" aria-describedby="info-Reserven" aria-controls="info-Reserven">ⓘ</button><span class="ds-info-pop" id="info-Reserven" role="tooltip">Tagesgeld und Geldmarkt bilden die Liquidität. Reservierte Pflegevorsorge ist separat ausgewiesen. Reichweite ist keine langfristige Vermögensprognose.</span></span></div><div id="balanceReserveValues" class="balance-reserve-values"></div><div id="balanceReserveParts" class="balance-reserve-parts"></div><div class="balance-reserve-goal"><p id="balanceReserveTarget" class="balance-reserve-target"></p><div id="balancePersonalCashTargets" class="ds-source"></div><div id="balanceReserveBar" class="balance-reserve-bar" role="img"><i id="balanceReserveAfterBar" class="balance-reserve-after" hidden></i><i id="liquiditaetBalken" class="balance-reserve-today"></i><i id="balanceReserveGoalMark" class="balance-reserve-goal-mark"></i></div><div id="balanceReserveCoverage" class="balance-reserve-labels ds-source"></div></div><div id="balanceReserveRunway" class="balance-row ds-row"></div><div id="balanceReserveRows"></div><strong id="zielLiquiditaet" hidden>—</strong><div id="balancePlannedPosts" hidden></div><div class="balance-row ds-row" id="minGoldRow" hidden><span>Gold-Mindestziel</span><strong id="minGoldDisplay">—</strong></div><div id="healthBucketSummary" class="health-bucket-summary" aria-live="polite"></div></section>
+
+
+          </div>
+        </section>
+        <div class="form-column panel">
+<section id="tab-strategy" class="tab-panel" role="tabpanel" aria-labelledby="balanceTabStrategy" tabindex="0" hidden>
+<div class="balance-strategy-grid">
+<aside id="balancePlanTrialBand" class="balance-plan-trial-band balance-strategy-wide" hidden>
+  <strong id="balancePlanTrialMessage"></strong><ul id="balancePlanTrialDifferences"></ul>
+  <button type="button" id="balancePlanTrialBack" class="ds-mini-button">Zurück zum Plan</button>
+  <button type="button" id="balancePlanTrialAdopt" class="ds-mini-button">Auswahl in Haushalt &amp; Plan übernehmen</button>
+  <a href="depot-tranchen-manager.html#haushalt-plan" data-profile-handoff data-profile-handoff-export="false">Plan und Ursprung in Personen &amp; Vermögen</a>
+  <p id="balancePlanTrialStatus" role="status"></p>
+</aside>
+<section class="ds-plan-card balance-strategy-need balance-strategy-wide" aria-labelledby="h-strategy-need">
+  <div class="ds-plan-card-head"><div><h2 id="h-strategy-need" data-plan-card-label="needAnnual">Bedarf pro Jahr</h2><div class="ds-source" id="balancePlanSource"><span id="balanceNeedSource">aus Haushalt &amp; Plan</span> · <a href="depot-tranchen-manager.html#haushalt-plan" data-profile-handoff data-profile-handoff-export="false">Im Plan ändern</a></div></div><button type="button" id="balancePlanTrialStart" data-plan-trial-toggle class="ds-button ds-button-secondary">Nur hier ausprobieren</button></div>
+  <div class="ds-field-grid ds-need-values"><div class="ds-field"><label for="floorBedarf">Grundbedarf (Floor)</label><div class="ds-unit-frame"><input
+                                    id="floorBedarf" class="currency ds-input" type="text" inputmode="numeric" value="12000"><span>€/Jahr</span></div><span class="ds-help" data-plan-field-hint="floorBedarf"></span></div><div class="ds-field"><label for="flexBedarf">Wunschbedarf (Flex)</label><div class="ds-unit-frame"><input
+                                    id="flexBedarf" class="currency ds-input" type="text" inputmode="numeric" value="24000"><span>€/Jahr</span></div><span class="ds-help" data-plan-field-hint="flexBedarf"></span></div><div class="ds-field"><label for="minimumFlexAnnual">Mindest-Flex</label><div class="ds-unit-frame"><input id="minimumFlexAnnual" class="currency ds-input" type="text" inputmode="numeric"
+                                    value="0"
+                                    title="Bedingte Untergrenze für Flex-Ausgaben in kürzenden Safety-/Guardrail-Phasen; ersetzt nicht den Floor."><span>€/Jahr</span></div><span class="ds-help" data-plan-field-hint="minimumFlexAnnual"></span></div></div>
+  <div class="balance-need-footer"><span class="ds-source">Inflation <span id="balanceInflationSource">Gespeicherter Jahresstand · Jahr und Herkunft nicht belegt</span></span><div id="bedarfAnpassungContainer" class="balance-inflation-note"></div></div>
+</section>
+<section class="ds-plan-card balance-strategy-adopt balance-strategy-wide" aria-labelledby="h-strategy-adopt">
+  <div class="ds-plan-card-head"><div><h3 id="h-strategy-adopt">Übernommen</h3><p class="ds-source">aus Personen &amp; Vermögen · nur zur Ansicht</p></div><a href="depot-tranchen-manager.html#personen" data-profile-handoff data-profile-handoff-export="false">In Personen &amp; Vermögen ändern</a></div>
+  <div id="balanceAdoptedRows" class="balance-tile-row"><div id="balanceAdopt-income" class="balance-value-tile"><span class="ds-help">Feste Einkünfte im Jahr</span><strong id="balanceAdopt-income-value" class="ds-readonly-value">—</strong><span id="balanceAdopt-income-source" class="ds-source ds-visually-hidden"></span></div><div id="balanceAdopt-cash" class="balance-value-tile"><span class="ds-help">Tagesgeld</span><strong id="balanceAdopt-cash-value" class="ds-readonly-value">—</strong><span id="balanceAdopt-cash-source" class="ds-source ds-visually-hidden"></span></div><div id="balanceAdopt-money-market" class="balance-value-tile"><span class="ds-help">Geldmarkt</span><strong id="balanceAdopt-money-market-value" class="ds-readonly-value">—</strong><span id="balanceAdopt-money-market-source" class="ds-source ds-visually-hidden"></span></div><div id="balanceAdopt-depot" class="balance-value-tile"><span class="ds-help">Aktien alt / neu</span><strong id="balanceAdopt-depot-value" class="ds-readonly-value">—</strong><span id="balanceAdopt-depot-source" class="ds-source ds-visually-hidden"></span></div><div id="balanceAdopt-gold-bonds" class="balance-value-tile"><span class="ds-help">Gold · Anleihen</span><strong id="balanceAdopt-gold-bonds-value" class="ds-readonly-value">—</strong><span id="balanceAdopt-gold-bonds-source" class="ds-source ds-visually-hidden"></span></div><div id="balanceAdopt-costs" class="balance-value-tile"><span class="ds-help">Einstandswerte</span><strong id="balanceAdopt-costs-value" class="ds-readonly-value">—</strong><span id="balanceAdopt-costs-source" class="ds-source ds-visually-hidden"></span><span id="balanceAdopt-costs-detail" class="ds-help"></span></div></div></section>
+<section class="ds-plan-card balance-strategy-wide" aria-labelledby="h-strategy-market"><div class="ds-plan-card-head"><div><h3 id="h-strategy-market" data-plan-group-label="5">Jahresmarktdaten</h3><div class="balance-provenance-row"><p id="marketDataProvenance" class="balance-provenance ds-source" role="status" aria-live="polite" data-available="false">Jahresmarktdaten · Quelle und Stand noch nicht bestätigt · im Jahresabschluss prüfen</p><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Ausführliche Herkunft der Marktdaten" aria-expanded="false" aria-describedby="marketDataProvenanceDetail" aria-controls="marketDataProvenanceDetail">ⓘ</button><span class="ds-info-pop" id="marketDataProvenanceDetail" role="tooltip">Für diese Werte sind Quelle und Stand noch nicht bestätigt. Im Jahresabschluss kannst du die Marktdaten laden und prüfen.</span></span></div><span class="ds-help">Aktienindex in € · nur lesend; Korrektur unter „Alle Parameter“</span></div><div class="balance-strategy-actions"><a href="index.html" data-profile-handoff class="ds-button ds-button-secondary">Marktdaten im Jahresabschluss prüfen · Übersicht</a><button id="btnJahresUpdateLog" type="button" class="ds-mini-button" aria-label="Protokoll des letzten Jahres-Updates anzeigen" disabled>Protokoll</button></div></div><div class="balance-tile-row balance-market-tiles"><div class="balance-value-tile"><span class="ds-help">Ende Vorjahr</span><strong id="balanceMarket-endeVJ-value" class="ds-readonly-value">—</strong><span id="balanceMarket-endeVJ-detail" class="ds-help">—</span></div><div class="balance-value-tile"><span class="ds-help">VJ − 1</span><strong id="balanceMarket-endeVJ_1-value" class="ds-readonly-value">—</strong><span id="balanceMarket-endeVJ_1-detail" class="ds-help">—</span></div><div class="balance-value-tile"><span class="ds-help">VJ − 2</span><strong id="balanceMarket-endeVJ_2-value" class="ds-readonly-value">—</strong><span id="balanceMarket-endeVJ_2-detail" class="ds-help">—</span></div><div class="balance-value-tile"><span class="ds-help">VJ − 3</span><strong id="balanceMarket-endeVJ_3-value" class="ds-readonly-value">—</strong><span id="balanceMarket-endeVJ_3-detail" class="ds-help">—</span></div><div class="balance-value-tile"><span class="ds-help">Allzeithoch</span><strong id="balanceMarket-ath-value" class="ds-readonly-value">—</strong><span id="balanceMarket-ath-detail" class="ds-help">—</span></div><div class="balance-value-tile"><span class="ds-help">CAPE · Inflation</span><strong id="balanceMarket-cape-value" class="ds-readonly-value">—</strong></div></div></section>
+<details id="balanceAllParameters" class="balance-strategy-wide ds-plan-parameters household-plan-more"><summary class="household-plan-summary-toggle"><span><strong>Alle Parameter</strong><span class="household-plan-summary" data-plan-parameter-summary>Planbereich wird geprüft …</span></span><span class="household-plan-disclosure-action"><span>▸ zeigen</span><span>▾ ausblenden</span></span></summary>
+  <div class="balance-parameter-head"><span class="ds-source">aus Haushalt &amp; Plan · <a href="depot-tranchen-manager.html#haushalt-plan" data-profile-handoff data-profile-handoff-export="false">Im Plan ändern</a></span><button type="button" data-plan-trial-toggle class="ds-button ds-button-secondary">Nur hier ausprobieren</button></div>
+  <div class="household-plan-groups">
+<section class="household-plan-group balance-parameter-card" aria-labelledby="h-flex-budget"><h3 id="h-flex-budget" data-plan-group-label="1">Flex-Budget</h3><div class="household-plan-rows"><div class="household-plan-field"><label for="flexBudgetAnnual">Budget pro Jahr</label><div class="ds-unit-frame"><input id="flexBudgetAnnual" class="currency ds-input" type="text" inputmode="numeric"
+                                    value="7000"
+                                    title="Maximaler Flex-Betrag pro Krisenjahr (inflationsbereinigt). 0 = deaktiviert."><span>€/Jahr</span></div></div><div class="household-plan-field"><label for="flexBudgetYears">Reicht für</label><div class="ds-unit-frame"><input id="flexBudgetYears" type="number" min="0" max="10" step="0.5" value="5"
+                                    title="Maximale Topfgröße in Jahren (Cap * Jahre)." class="ds-input"><span>Jahre</span></div></div><div class="household-plan-field"><label for="flexBudgetRecharge">Wiederauffüllen pro Jahr</label><div class="ds-unit-frame"><input id="flexBudgetRecharge" class="currency ds-input" type="text" inputmode="numeric"
+                                    value="5000"
+                                    title="Wie schnell der Flex-Topf in Nicht-Krisenjahren wieder aufgefüllt wird."><span>€/Jahr</span></div></div></div></section>
+<section class="household-plan-group balance-parameter-card" aria-labelledby="h-strategy-settings"><h3 id="h-strategy-settings" data-plan-group-label="2">Reserven</h3><div class="household-plan-rows"><div class="household-plan-field"><label for="liquidityRunwayYears">Liquiditäts-Reichweite</label><div class="ds-unit-frame"><input id="liquidityRunwayYears" type="number" min="1" max="10" step="0.5"
+                                    title="Zielreichweite der operativen Liquidität. Die Engine leitet daraus intern eine harte Sicherheitsuntergrenze ab."
+                                    value="5" class="ds-input"><span>Jahre</span></div><span class="ds-help">Freie Liquidität in Jahren Entnahme</span></div><div class="household-plan-field"><label for="liquidityCashMonths">davon im Tagesgeld</label><div class="ds-unit-frame"><input id="liquidityCashMonths" type="number" min="0" max="60" step="1" value="12" class="ds-input"><span>Monate</span></div><span class="ds-help">Rest im Geldmarkt</span></div><div class="household-plan-field"><label for="minCashBufferMonths">Mindest-Liquidität</label><div class="ds-unit-frame"><input id="minCashBufferMonths" type="number" min="0" max="12" step="1"
+                                title="Anzahl an Monatsausgaben (Brutto), die immer auf dem Tagesgeld verbleiben sollen, auch wenn keine Entnahme nötig ist."
+                                value="2" class="ds-input"><span>Monate</span></div></div></div></section>
+<section class="household-plan-group balance-parameter-card" aria-labelledby="h-withdrawal"><h3 id="h-withdrawal" data-plan-group-label="3">Entnahme &amp; Umschichten</h3><div class="household-plan-rows"><div class="household-plan-field"><span id="entnahmeStrategie-label" class="balance-field-label">Strategie</span><div hidden><select
+                                    id="entnahmeStrategie" class="ds-select">
+                                    <option value="standard" selected>Standard</option>
+                                    <option value="3_bucket_jilge">3-Bucket Jilge</option>
+                                </select></div><div id="entnahmeStrategie-segments" class="ds-segment" data-balance-control="entnahmeStrategie" role="group" aria-labelledby="entnahmeStrategie-label"><button type="button" data-balance-value="standard" aria-pressed="false">Standard</button><button type="button" data-balance-value="3_bucket_jilge" aria-pressed="false">3-Bucket (Jilge)</button></div><span id="entnahmeStrategie-presentation-reason" class="ds-field-reason" hidden></span></div><div id="threeBucketConfigGroup" class="household-plan-rows" style="display:none"><div class="household-plan-field"><label for="bondTargetFactor">Anleihen-Zielfaktor</label><div class="ds-unit-frame"><input type="number" id="bondTargetFactor" placeholder="5"
+                                    step="0.1" min="0" class="ds-input"><span>× Jahresausgaben</span></div></div><div class="household-plan-field"><label for="drawdownTrigger">Rückgang für Auffüllen</label><div class="ds-unit-frame"><input type="number" id="drawdownTrigger" placeholder="15"
+                                    step="0.1" min="0" class="ds-input"><span>% Verlust</span></div></div><div class="household-plan-field"><label for="bondRefillThreshold">Anleihen-Auffüllschwelle</label><div class="ds-unit-frame"><input type="number" id="bondRefillThreshold" placeholder="optional"
+                                    step="0.1" min="0" class="ds-input"><span>%</span></div></div></div><div class="household-plan-field"><label for="maxSkimPctOfEq">Max. Abschöpfen</label><div class="ds-unit-frame"><input id="maxSkimPctOfEq" type="number" min="0" max="25" step="1"
+                                    title="Begrenzt nur Aktienverkäufe zum Auffüllen der Liquidität (pro Jahr in % des Aktienwerts). Käufe aus Überschuss bleiben davon unabhängig."
+                                    value="10" class="ds-input"><span>%</span></div></div><div class="household-plan-field"><label for="maxBearRefillPctOfEq">Max. Auffüllen im Bärenmarkt</label><div class="ds-unit-frame"><input id="maxBearRefillPctOfEq" type="number" value="5" min="0" max="15" step="0.5"
+                                    title="Der maximal pro Jahr zu verkaufende Betrag (als Prozentsatz des Aktiendepots) im Bärenmarkt, um die Runway bis zum Minimum aufzufüllen." class="ds-input"><span>%</span></div></div></div><div class="household-plan-field"><span id="profilverbund-withdrawal-mode-label" class="balance-field-label">Verteilung im Haushalt</span><div hidden><select id="profilverbund-withdrawal-mode" class="ds-select">
+                                        <option value="tax_optimized">Steueroptimiert</option>
+                                        <option value="proportional">Proportional</option>
+                                        <option value="runway_first">Runway-First</option>
+                                    </select></div><div id="profilverbund-withdrawal-mode-segments" class="ds-segment" data-balance-control="profilverbund-withdrawal-mode" role="group" aria-labelledby="profilverbund-withdrawal-mode-label"><button type="button" data-balance-value="tax_optimized" aria-pressed="false">Steueroptimiert</button><button type="button" data-balance-value="proportional" aria-pressed="false">Proportional</button><button type="button" data-balance-value="runway_first" aria-pressed="false">Runway zuerst</button></div><span id="profilverbund-withdrawal-mode-presentation-reason" class="ds-field-reason" hidden></span></div></section>
+<section class="household-plan-group balance-parameter-card balance-dynamic-card" aria-labelledby="h-dynamic-details"><h3 id="h-dynamic-details" data-plan-group-label="4">Dynamik</h3><div class="household-plan-rows"><div class="household-plan-field"><span id="dynamicFlexPreset-label" class="balance-field-label">Voreinstellung</span><div hidden><select
+                                    id="dynamicFlexPreset"
+                                    title="Einfaches Profil für Dynamic-Flex: Details werden automatisch gesetzt" class="ds-select">
+                                    <option value="off">Aus</option>
+                                    <option value="konservativ">Konservativ</option>
+                                    <option value="ausgewogen" selected>Ausgewogen</option>
+                                    <option value="offensiv">Offensiv</option>
+                                    <option value="custom">Benutzerdefiniert</option>
+                                </select></div><div id="dynamicFlexPreset-segments" class="ds-segment" data-balance-control="dynamicFlexPreset" role="group" aria-labelledby="dynamicFlexPreset-label"><button type="button" data-balance-value="off" aria-pressed="false">Aus</button><button type="button" data-balance-value="konservativ" aria-pressed="false">Konservativ</button><button type="button" data-balance-value="ausgewogen" aria-pressed="false">Ausgewogen</button><button type="button" data-balance-value="offensiv" aria-pressed="false">Offensiv</button><button type="button" data-balance-value="custom" aria-pressed="false">Benutzerdefiniert</button></div><span id="dynamicFlexPreset-presentation-reason" class="ds-field-reason" hidden></span></div></div><p id="balanceDynamicFlexOff" class="ds-help" hidden>Dynamic Flex ist aus – Detailwerte gesperrt</p><div hidden><input type="checkbox" id="dynamicFlexShowAdvanced" title="Zeigt Detailparameter für Dynamic-Flex an" class="ds-checkbox"></div><div id="dynamicFlexAdvancedToggleRow" hidden></div><div id="dynamicFlexConfigGroup" class="household-plan-rows"><div class="household-plan-field"><span id="dynamicFlex-label" class="balance-field-label">Dynamische Entnahme</span><div hidden><input type="checkbox" id="dynamicFlex"
+                                        title="Steuert den Flex-Bedarf dynamisch per VPW-Logik (nur Flex-Anteil, Floor bleibt fix)" class="ds-checkbox"></div><div id="dynamicFlex-segments" class="ds-segment" data-balance-control="dynamicFlex" role="group" aria-labelledby="dynamicFlex-label"><button type="button" data-balance-value="false" aria-pressed="false">Aus</button><button type="button" data-balance-value="true" aria-pressed="false">An</button></div><span id="dynamicFlex-presentation-reason" class="ds-field-reason" hidden></span></div><div class="household-plan-field"><label for="horizonMethod">Horizont-Methode</label><select
+                                    id="horizonMethod" title="Methode für die Restlaufzeitberechnung des VPW-Faktors" class="ds-select">
+                                    <option value="survival_quantile" selected>Überlebensquantil</option>
+                                    <option value="mean">Erwartungswert</option>
+                                </select></div><div class="household-plan-field"><label for="horizonYears">Planungshorizont</label><div class="ds-unit-frame"><input type="number"
+                                    id="horizonYears" value="30" min="1" max="60" step="1"
+                                    title="Direkte Vorgabe der Restlaufzeit in Jahren (validiert 1 bis 60)" class="ds-input"><span>Jahre</span></div></div><div class="household-plan-field"><label for="survivalQuantile">Überlebensquantil</label><div class="ds-unit-frame"><input
+                                    type="number" id="survivalQuantile" value="0.85" min="0.5" max="0.99" step="0.01"
+                                    title="Quantil für aktuarische Restlaufzeit (0.5 bis 0.99)" class="ds-input"><span>%</span></div></div><div class="household-plan-field"><span id="goGoActive-label" class="balance-field-label">Go-Go-Jahre</span><div hidden><input type="checkbox" id="goGoActive"
+                                        title="Aktiviert temporären VPW-Flex-Aufschlag in der Go-Go-Phase" class="ds-checkbox"></div><div id="goGoActive-segments" class="ds-segment" data-balance-control="goGoActive" role="group" aria-labelledby="goGoActive-label"><button type="button" data-balance-value="false" aria-pressed="false">Aus</button><button type="button" data-balance-value="true" aria-pressed="false">An</button></div><span id="goGoActive-presentation-reason" class="ds-field-reason" hidden></span></div><div class="household-plan-field"><label for="goGoMultiplier">Go-Go-Faktor</label><div class="ds-unit-frame"><input
+                                    type="number" id="goGoMultiplier" value="1.1" min="1" max="1.5" step="0.05"
+                                    title="Multiplikator auf VPW-Flex in Go-Go-Jahren (1.0 bis 1.5)" class="ds-input"><span>×</span></div></div><div class="household-plan-field"><label for="longevityMode">Langlebigkeit</label><select
+                                    id="longevityMode"
+                                    title="Konservative Anpassung des VPW-Horizonts; Standard ist aus" class="ds-select">
+                                    <option value="none" selected>Aus</option>
+                                    <option value="quantile_shift">Quantilverschiebung</option>
+                                    <option value="relative_horizon_buffer">Relativer Horizontpuffer</option>
+                                    <option value="buffer_years">Fixer Jahrespuffer</option>
+                                </select></div><div class="household-plan-field"><label for="longevityQuantileShift">Quantil-Aufschlag</label><div class="ds-unit-frame"><input
+                                    type="number" id="longevityQuantileShift" value="0.05" min="0" max="0.10"
+                                    step="0.01"
+                                    title="Erhöht das Survival-Quantil um bis zu 0,10; effektiv maximal 0,95" class="ds-input"><span>%</span></div></div><div class="household-plan-field"><label for="longevityRelativePct">Relativer Horizont-Puffer</label><div class="ds-unit-frame"><input
+                                    type="number" id="longevityRelativePct" value="0.05" min="0" max="0.20" step="0.01"
+                                    title="Erhöht den Raw-Horizon prozentual um bis zu 20%" class="ds-input"><span>%</span></div></div><div class="household-plan-field"><label for="longevityBufferYears">Zusätzlicher Horizont-Puffer</label><div class="ds-unit-frame"><input
+                                    type="number" id="longevityBufferYears" value="2" min="0" max="10" step="1"
+                                    title="Fixer Vergleichspuffer in ganzen Jahren (0 bis 10)" class="ds-input"><span>Jahre</span></div></div></div></section>
+<section class="household-plan-group balance-parameter-card" aria-labelledby="h-plan-market"><h3 id="h-plan-market" data-plan-group-label="5">Jahresmarktdaten</h3><div class="household-plan-rows"><div class="household-plan-field"><label for="marketCapeRatio">CAPE</label><div class="ds-unit-frame"><input
+                                    type="number" id="marketCapeRatio" value="32" step="0.1" min="0"
+                                    title="Aktuelles Shiller-CAPE (Cyclically Adjusted Price-to-Earnings Ratio) - Bewertungskennzahl für den Aktienmarkt" class="ds-input"></div></div></div></section>
+</div>
+<div class="household-plan-groups household-plan-local" aria-label="Weitere Parameter der Balance">
+<section class="household-plan-group balance-parameter-card" aria-labelledby="h-market-correction"><h3 id="h-market-correction">Marktdaten-Korrektur</h3><p class="ds-source">Kurse wie bisher direkt korrigieren.</p><div class="household-plan-rows balance-market-fields"><div class="household-plan-field"><label for="endeVJ">Ende Vorjahr</label><div class="ds-unit-frame"><input type="number" id="endeVJ"
+                                    min="0" step="0.01" placeholder="0" class="ds-input"><span>€</span></div></div><div class="household-plan-field"><label for="endeVJ_1">Ende Vorjahr − 1</label><div class="ds-unit-frame"><input type="number"
+                                    id="endeVJ_1" min="0" step="0.01" placeholder="0" class="ds-input"><span>€</span></div></div><div class="household-plan-field"><label for="endeVJ_2">Ende Vorjahr − 2</label><div class="ds-unit-frame"><input type="number"
+                                    id="endeVJ_2" min="0" step="0.01" placeholder="0" class="ds-input"><span>€</span></div></div><div class="household-plan-field"><label for="endeVJ_3">Ende Vorjahr − 3</label><div class="ds-unit-frame"><input type="number"
+                                    id="endeVJ_3" min="0" step="0.01" placeholder="0" class="ds-input"><span>€</span></div></div><div class="household-plan-field"><label for="ath">Allzeithoch</label><div class="ds-unit-frame"><input type="number" id="ath"
+                                    min="0" step="0.01" placeholder="0" class="ds-input"><span>€</span></div></div><div class="household-plan-field"><label for="jahreSeitAth">Jahre seit Hoch</label><div class="ds-unit-frame"><input type="number"
+                                    id="jahreSeitAth" step="0.01" min="0" placeholder="0" class="ds-input"><span>Jahre</span></div></div></div><div hidden><input id="inflation" disabled readonly type="number" placeholder="0" step="0.1" title="Gespeicherte Inflation aus dem Jahresabschluss; Fortschreibung im Jahresabschluss" class="ds-input"></div></section>
+<section class="household-plan-group balance-parameter-card" aria-labelledby="h-taxes"><h3 id="h-taxes">Steuern</h3><div class="household-plan-rows"><div class="household-plan-field"><label for="kirchensteuerSatz">Kirchensteuer</label><select
+                                    id="kirchensteuerSatz" class="ds-select">
+                                    <option value="0">0 %</option>
+                                    <option value="0.08">8 %</option>
+                                    <option value="0.09" selected>9 %</option>
+                                </select></div><div class="household-plan-field"><label for="sparerPauschbetrag">Sparer-Pauschbetrag</label><div class="ds-unit-frame"><input
+                                    id="sparerPauschbetrag" class="currency ds-input" type="text" disabled readonly data-no-persist="true"
+                                    value="1000"><span>€</span></div><p id="balancePersonSPBSource" class="ds-source ds-explanation"></p><a id="balancePersonEditLink" href="depot-tranchen-manager.html#personendaten" data-profile-handoff data-profile-handoff-export="false">In Personen &amp; Vermögen ändern</a></div></div><p class="ds-source">Einstandswerte und Teilfreistellung kommen aus den Tranchen im Vermögen.</p></section>
+<div class="balance-parameter-stack"><section class="household-plan-group balance-parameter-card" aria-labelledby="h-buffer-gold"><h3 id="h-buffer-gold">Gold</h3><p class="ds-source">aus Personen &amp; Vermögen · im Versuch lokal änderbar</p><div class="household-plan-rows"><div class="household-plan-field"><label for="rebalancingBand">Gold-Umschichtungsband</label><span id="balanceGoldOff" class="ds-readonly-value">Gold aus</span><div id="balanceGoldBandFrame" class="ds-unit-frame" data-gold-active="false"><input id="rebalancingBand" type="number" min="0" max="100" step="1"
+                                    title="Die prozentuale Toleranz um das Goldziel, bevor Gold-Rebalancing ausgelöst wird."
+                                    value="25" class="ds-input"><span>±%</span></div></div></div></section>
+</div>
+</div></details>
+<div hidden id="balanceContractInputs"><input id="fixedIncomeAnnual" type="text" inputmode="numeric" disabled
+                                    title="Summe aller festen jährlichen Einkünfte (gesetzliche Rente, Betriebsrente, sonstige Einkünfte) - wird automatisch aus dem Profil berechnet" class="ds-input"><input
+                                    id="tagesgeld" class="currency ds-input" type="text" inputmode="numeric" placeholder="0"
+                                    disabled title="Wird im Profil-Assets Manager gepflegt"><input
+                                    id="geldmarktEtf" class="currency ds-input" type="text" inputmode="numeric" placeholder="0"
+                                    disabled
+                                    title="Ihr Geldmarkt-ETF-Bestand - sehr sichere, kurzfristig verfügbare Anlage mit leicht höherer Rendite als Tagesgeld"><input
+                                    id="depotwertGesamt" class="currency ds-input" type="text" inputmode="numeric"
+                                    placeholder="z. B. 1.950.000" disabled
+                                    title="Gesamter Depotwert (aus Tranchen/Profilen aggregiert)"><div id="initialBondBucketGroup"><input type="text" id="initialBondBucket" data-field-state="adopted" aria-describedby="bond-origin" placeholder="0" disabled
+                                    inputmode="numeric" data-no-persist="true"
+                                    title="Wert aller Anleihen-Tranchen beim Start (aus Profilen/Tranchen aggregiert)" class="ds-input"></div><div id="goldWertGroup"><input id="goldWert" class="currency ds-input" type="text" inputmode="numeric"
+                                    disabled value="0"
+                                    title="Aktueller Wert Ihres physischen Gold-Bestands (optional, wenn Gold-Strategie aktiv)"></div><input id="profilName" type="hidden"><input id="aktuellesAlter" type="hidden"><input id="renteAktiv" type="hidden"><input id="renteMonatlich" type="hidden"><input id="depotwertAlt" type="hidden"><input id="depotwertNeu" type="hidden"><input
+                                        id="costBasisAlt" class="currency ds-input" type="text" inputmode="numeric" disabled
+                                        placeholder="0" title="Einstand Alt wird aus Profilen/Tranchen aggregiert"><input
+                                        id="costBasisNeu" class="currency ds-input" type="text" inputmode="numeric" disabled
+                                        placeholder="0" title="Einstand Neu wird aus Profilen/Tranchen aggregiert"><input id="tqfAlt"
+                                        type="number" step="0.01" min="0" max="1" placeholder="0" class="ds-input"><input id="tqfNeu"
+                                        type="number" step="0.01" min="0" max="1" placeholder="0" class="ds-input"><input
+                                        id="goldCost" class="currency ds-input" type="text" inputmode="numeric" disabled
+                                        placeholder="0" title="Gold-Einstand wird aus Profilen/Tranchen aggregiert"></div>
+</div></section>
+        </div>
+        <section id="tab-diagnosis" class="tab-panel" role="tabpanel" aria-labelledby="openDiagnosisBtn" tabindex="0" hidden>
+          <h2 id="diagnosisTitle" class="ds-visually-hidden">Entscheidungsdiagnose</h2>
+          <div id="diagContent" class="balance-diagnosis-content">
+            <div id="diag-chips" class="diag-chips" role="group" aria-label="Status-Übersicht"></div>
+            <div class="balance-diagnosis-grid">
+              <section class="ds-plan-card diagnosis-decision-card" aria-labelledby="diagnosisDecisionTitle">
+                <h2 id="diagnosisDecisionTitle">Warum diese Empfehlung?</h2>
+                <ul id="diag-decision-tree"></ul>
+              </section>
+              <section class="ds-plan-card" aria-labelledby="diagnosisTransactionTitle">
+                <h3 id="diagnosisTransactionTitle">Transaktionsvorschlag</h3>
+                <div id="diag-transaction" class="diag-transaction"></div>
+              </section>
+            </div>
+            <section class="ds-plan-card" aria-labelledby="diagnosisGuardrailsTitle">
+              <div class="ds-plan-card-head">
+                <h3 id="diagnosisGuardrailsTitle">Leitplanken</h3>
+                <label class="diagnosis-filter ds-rule-toggle"><span>Nur aktive Regeln</span><input type="checkbox" id="diagFilterToggle" class="ds-checkbox" role="switch"></label>
+              </div>
+              <div id="diag-guardrails" class="diag-guardrails"></div>
+            </section>
+            <section class="ds-plan-card" aria-labelledby="diagnosisKeyParamsTitle">
+              <div class="ds-plan-card-head">
+                <h3 id="diagnosisKeyParamsTitle">Alle Kennzahlen</h3>
+                <button id="copyDiagnosisBtn" type="button" class="ds-button ds-button-secondary">Diagnose kopieren</button>
+              </div>
+              <div id="diag-key-params"></div>
+            </section>
+          </div>
+    </section>
+      </div>
+    </div>
+    <dialog id="actionDetailsDialog" class="balance-action-dialog ds-card" aria-labelledby="actionDetailsTitle">
+      <div class="balance-dialog-actions"><button id="printAction" type="button" class="ds-button ds-button-secondary"><svg class="balance-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg>Drucken</button><button id="closeActionDetails" type="button" class="ds-icon-button balance-action-close" aria-label="Schließen">×</button></div>
+      <div class="balance-action-dialog-head"><h2 id="actionDetailsTitle">Handlungsanweisung</h2><div class="balance-action-dialog-amount"><div id="actionDetailsAmountLabel" class="ds-source"></div><strong id="actionDetailsAmount"></strong></div></div>
+      <div id="handlungsanweisung" title="Vollständige Handlungsempfehlung"></div>
+      <aside class="hint ds-note balance-action-note" role="note"><div id="actionDetailsNote" class="ds-explanation">Die Empfehlung bucht nichts <span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung zur Empfehlung" aria-expanded="false">i</button><span class="ds-info-pop" role="tooltip">Die Empfehlung bucht nichts. Balance rechnet mit dem vorhandenen Bestand.</span></span></div></aside>
+      <div class="balance-dialog-actions balance-action-dialog-primary"><a id="actionManagerLink" class="ds-button balance-button-brass" href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false">Vermögen öffnen →</a><button id="copyAction" type="button" class="ds-button ds-button-secondary"><svg class="balance-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>Als Text kopieren</button></div>
+      <div class="ds-actions"><button id="balancePlayExecute" type="button" class="ds-button ds-button-secondary" hidden>Als ausgeführt eintragen</button><button id="balancePlayCredit" type="button" class="ds-button ds-button-primary" hidden>Gutschrift bestätigen</button><span id="balancePlayCreditAmount" class="ds-source"></span></div>
+      <p id="balancePlayExecutionStatus" class="ds-source" role="status"></p>
+      <div id="actionPurposeContent"></div>
+      <div id="print-footer"></div>
+    </dialog>
+<!-- Modal: Jahres-Update Ergebnis -->
+    <div id="updateResultModal" class="modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content ds-card">
+            <div class="modal-header">
+                <div><div class="ds-eyebrow">Jahresabschluss</div><h2 id="modalTitle">Jahresabschluss</h2></div>
+                <button type="button" class="modal-close ds-icon-button" aria-label="Schließen">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="modalResults" class="modal-results"></div>
+                <div id="modalDuration" class="modal-duration"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="modalCloseBtn" class="ds-button ds-button-secondary">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="devTools"
+        style="display:none; position:fixed; bottom:10px; right:10px; background:var(--text-main); color:var(--surface); padding:10px; border-radius:5px; z-index:9999;">
+        <div style="margin-bottom:8px;">
+            <label>
+                <input type="checkbox" id="telemetryToggle" class="ds-checkbox" />
+                Worker-Diagnose
+            </label>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <button id="printTelemetry" style="padding:4px 8px; cursor:pointer;" class="ds-button ds-button-secondary">Bericht anzeigen</button>
+            <button id="exportTelemetry" style="padding:4px 8px; cursor:pointer;" class="ds-button ds-button-secondary">Export JSON</button>
+        </div>
+    </div>
+    <script>
+        if (window.location.search.includes('dev=true')) {
+            const devTools = document.getElementById('devTools');
+            const toggle = document.getElementById('telemetryToggle');
+            const printBtn = document.getElementById('printTelemetry');
+            const exportBtn = document.getElementById('exportTelemetry');
+
+            if (devTools && toggle) {
+                devTools.style.display = 'block';
+                toggle.checked = localStorage.getItem('enableWorkerTelemetry') === 'true';
+                toggle.addEventListener('change', e => {
+                    localStorage.setItem('enableWorkerTelemetry', e.target.checked);
+                    alert('Telemetry ' + (e.target.checked ? 'aktiviert' : 'deaktiviert') + '. Seite neu laden.');
+                });
+            }
+
+            const getRegistry = () => {
+                if (!(window.__workerTelemetryRegistry instanceof Map)) {
+                    window.__workerTelemetryRegistry = new Map();
+                }
+                return window.__workerTelemetryRegistry;
+            };
+
+            if (printBtn) {
+                printBtn.addEventListener('click', () => {
+                    const registry = getRegistry();
+                    if (!registry || registry.size === 0) {
+                        console.warn('[Telemetry] Keine Telemetry-Instanzen gefunden.');
+                        return;
+                    }
+                    for (const telemetry of registry.values()) {
+                        if (telemetry && typeof telemetry.printReport === 'function') {
+                            telemetry.printReport();
+                        }
+                    }
+                });
+            }
+
+            if (exportBtn) {
+                exportBtn.addEventListener('click', async () => {
+                    const registry = getRegistry();
+                    if (!registry || registry.size === 0) {
+                        console.warn('[Telemetry] Keine Telemetry-Instanzen gefunden.');
+                        return;
+                    }
+                    const report = {};
+                    for (const [name, telemetry] of registry.entries()) {
+                        if (telemetry && typeof telemetry.getReport === 'function') {
+                            report[name] = telemetry.getReport();
+                        }
+                    }
+                    const json = JSON.stringify(report, null, 2);
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        try {
+                            await navigator.clipboard.writeText(json);
+                            alert('Telemetry JSON kopiert.');
+                        } catch (err) {
+                            console.warn('[Telemetry] Clipboard fehlgeschlagen:', err);
+                            console.log(json);
+                        }
+                    } else {
+                        console.log(json);
+                    }
+                });
+            }
+        }
+    </script>
+
+            </main>
+        </div>
+    </div>
+    <dialog id="navigationGuardDialog" class="navigation-guard-dialog ds-card" aria-labelledby="navigationGuardTitle" aria-describedby="navigationGuardDescription">
+        <h2 id="navigationGuardTitle">Seite verlassen?</h2>
+        <p id="navigationGuardDescription"></p>
+        <div class="navigation-guard-actions">
+            <button id="navigationGuardStay" type="button" class="ds-button ds-button-secondary">Bleiben</button>
+            <button id="navigationGuardLeave" type="button" class="ds-button ds-button-primary">Trotzdem wechseln</button>
+        </div>
+    </dialog>
+</body>
+
+</html>

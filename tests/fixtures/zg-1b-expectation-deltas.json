@@ -1,0 +1,233 @@
+{
+  "reason": "ZG-1b: Familienheim kürzt den steuerfreien Zugewinn; vollständige Ausgangsreferenzen bleiben erhalten.",
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "linux"
+  },
+  "params": {
+    "anzahl": 50,
+    "maxDauer": 35,
+    "blockSize": 5,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "cases": {
+    "block/no-home": {
+      "before": {
+        "totals": "75e1f56246bee1a972a1a697d1e2c237be07baa3ef6aa60721aaec073e2ed483",
+        "lists": "1dc980313db486baab0f06c6bdb7688e73c642af146dc61f57004e9ec9f9deca",
+        "pathSummaries": "b1a2df1973b81f75f7572e8c8bda89bdcd53ecbd6b10fe121ee2e4c82a003998",
+        "heatmap": "02703fc4ec9224774f8182028d727c232ceec648f83c3153d018e8eaf09b5366",
+        "combined": "61cdf1af6220cd66fed7da2b8ff0120c12cb3ccbfd9323d72a4463eaade63708"
+      },
+      "after": {
+        "totals": "75e1f56246bee1a972a1a697d1e2c237be07baa3ef6aa60721aaec073e2ed483",
+        "lists": "1dc980313db486baab0f06c6bdb7688e73c642af146dc61f57004e9ec9f9deca",
+        "pathSummaries": "b1a2df1973b81f75f7572e8c8bda89bdcd53ecbd6b10fe121ee2e4c82a003998",
+        "heatmap": "02703fc4ec9224774f8182028d727c232ceec648f83c3153d018e8eaf09b5366",
+        "combined": "61cdf1af6220cd66fed7da2b8ff0120c12cb3ccbfd9323d72a4463eaade63708"
+      },
+      "characteristicIndices": [
+        10,
+        18,
+        38,
+        23,
+        49,
+        26,
+        39,
+        31,
+        27,
+        7,
+        30,
+        22,
+        29
+      ]
+    },
+    "regime_markov/no-home": {
+      "before": {
+        "totals": "341ee9f1187555d72a4b005ba0974f9ea9f64570567244e7659caee11802d45d",
+        "lists": "751cc71acb2f8a5c6d9e60c6cf701c9005ae2b495b2e00a55328daf5efd5c2ce",
+        "pathSummaries": "ec0e929a26c14c0be4ef4254b4924eb097297b5b9570d9fe23b831939ed446e6",
+        "heatmap": "91683524ba55cdc27c4d0c6f2c1b44097e7ac6f63ede9fedebd51cd64c44e1d7",
+        "combined": "3ff9ccef6fe65c6c0622efefa9b670597a97fb471f9f7649ae39ea93cea93e89"
+      },
+      "after": {
+        "totals": "341ee9f1187555d72a4b005ba0974f9ea9f64570567244e7659caee11802d45d",
+        "lists": "751cc71acb2f8a5c6d9e60c6cf701c9005ae2b495b2e00a55328daf5efd5c2ce",
+        "pathSummaries": "ec0e929a26c14c0be4ef4254b4924eb097297b5b9570d9fe23b831939ed446e6",
+        "heatmap": "91683524ba55cdc27c4d0c6f2c1b44097e7ac6f63ede9fedebd51cd64c44e1d7",
+        "combined": "3ff9ccef6fe65c6c0622efefa9b670597a97fb471f9f7649ae39ea93cea93e89"
+      },
+      "characteristicIndices": [
+        31,
+        6,
+        34,
+        1,
+        18,
+        23,
+        43,
+        17,
+        35,
+        48,
+        22,
+        47
+      ]
+    },
+    "regime_iid/no-home": {
+      "before": {
+        "totals": "51a12b6f2edcc997f49d90de0d05bf218cee9ced260527ccb6fadaa9bf4990b0",
+        "lists": "9341c72d9faa475251e738e8691686c7c57fe6815f10a6fb16bcc959d050e00a",
+        "pathSummaries": "0b6992aa294873338210831912c70d0e410f5dbb3df2431a62042877971c0f4d",
+        "heatmap": "5b5396a38adecf0867e2c80178ea776ecad15d82e58f6cfc1738409828dbf702",
+        "combined": "26bb74a8f6086f5a5e54a38542c12ce06c23ab800b30eb9ab2c1012aa24bb4b4"
+      },
+      "after": {
+        "totals": "51a12b6f2edcc997f49d90de0d05bf218cee9ced260527ccb6fadaa9bf4990b0",
+        "lists": "9341c72d9faa475251e738e8691686c7c57fe6815f10a6fb16bcc959d050e00a",
+        "pathSummaries": "0b6992aa294873338210831912c70d0e410f5dbb3df2431a62042877971c0f4d",
+        "heatmap": "5b5396a38adecf0867e2c80178ea776ecad15d82e58f6cfc1738409828dbf702",
+        "combined": "26bb74a8f6086f5a5e54a38542c12ce06c23ab800b30eb9ab2c1012aa24bb4b4"
+      },
+      "characteristicIndices": [
+        29,
+        49,
+        31,
+        4,
+        26,
+        45,
+        35,
+        43,
+        17,
+        36,
+        22,
+        47,
+        39
+      ]
+    },
+    "stationary/no-home": {
+      "before": {
+        "totals": "aa9cc3a81bf83c28fdd3b1983f6729acd2ba2b91214f02c05996b41f95989e2f",
+        "lists": "947dcb7cd1ba51fc3aab2660b8493fc1efa1ee2aa29c221a86955823db52446d",
+        "pathSummaries": "d2541d9f82708c622e6ce6fc18cc1752f2727ea538db74007fe305fff9135d8b",
+        "heatmap": "0d0135d57fc93f4b71a858336bf28c7c81c11105e9e41cabd1026764a253fa70",
+        "combined": "443a12978e026cb76bc0fabb6434e2420c89bbfda2febec72970609010a04fe5"
+      },
+      "after": {
+        "totals": "aa9cc3a81bf83c28fdd3b1983f6729acd2ba2b91214f02c05996b41f95989e2f",
+        "lists": "947dcb7cd1ba51fc3aab2660b8493fc1efa1ee2aa29c221a86955823db52446d",
+        "pathSummaries": "d2541d9f82708c622e6ce6fc18cc1752f2727ea538db74007fe305fff9135d8b",
+        "heatmap": "0d0135d57fc93f4b71a858336bf28c7c81c11105e9e41cabd1026764a253fa70",
+        "combined": "443a12978e026cb76bc0fabb6434e2420c89bbfda2febec72970609010a04fe5"
+      },
+      "characteristicIndices": [
+        30,
+        29,
+        2,
+        34,
+        14,
+        32,
+        5,
+        13,
+        21,
+        16,
+        15,
+        22,
+        49
+      ]
+    },
+    "block/home": {
+      "before": {
+        "totals": "172842930ed19a12f296337d450aad4e9f525c7ef4590855b43539e6cb1766a5",
+        "lists": "1466e5b830893e315aadae282ebfb5e02fbf71906fcfa4602459a051374408fd",
+        "pathSummaries": "a117b199d119238db1712d3efea7e589d25cd6546018de9a2037288887ab54f3",
+        "heatmap": "02703fc4ec9224774f8182028d727c232ceec648f83c3153d018e8eaf09b5366",
+        "combined": "602ff837455421f34f0f778578963699b38870a39c02104a487df84e22f6f1cd"
+      },
+      "after": {
+        "totals": "172842930ed19a12f296337d450aad4e9f525c7ef4590855b43539e6cb1766a5",
+        "lists": "2865958479b917431e529ad72b4818be83328ae26f39b84bafc72f9b96615e59",
+        "pathSummaries": "5240f5b9d2e9f1f25863c66455a231b1e585f83e9b5a3653976fee1a7fbc2961",
+        "heatmap": "02703fc4ec9224774f8182028d727c232ceec648f83c3153d018e8eaf09b5366",
+        "combined": "85058fca7c2744ea4d3c6ad8298ab77551f2abaaa124b942185f5008bf646dde"
+      },
+      "characteristicIndices": [
+        10,
+        46,
+        34,
+        0,
+        49,
+        26,
+        39,
+        31,
+        27,
+        7,
+        30,
+        22,
+        29
+      ]
+    },
+    "regime_markov/home": {
+      "before": {
+        "totals": "341ee9f1187555d72a4b005ba0974f9ea9f64570567244e7659caee11802d45d",
+        "lists": "28eadf9e52abd7d6c0653c46d087673758783c2927db355e6bfccf94f9c6d226",
+        "pathSummaries": "2433099341d49a2e8ee25ea1c4069412e123d8af2b4a025050d898398928dc7f",
+        "heatmap": "91683524ba55cdc27c4d0c6f2c1b44097e7ac6f63ede9fedebd51cd64c44e1d7",
+        "combined": "1c36044c890a2bfff0bc7b92d22aaf3bde049c6968aa7662d57b237cf7bef130"
+      },
+      "after": {
+        "totals": "341ee9f1187555d72a4b005ba0974f9ea9f64570567244e7659caee11802d45d",
+        "lists": "5e699d5bf0b11dd852446c267f9657519b0783c4fba054095dd9ba665ad47a62",
+        "pathSummaries": "9332e7d0f3562e1c94cacaa5d16b4099db3d211d7637b5b53d10110d3639e5b7",
+        "heatmap": "91683524ba55cdc27c4d0c6f2c1b44097e7ac6f63ede9fedebd51cd64c44e1d7",
+        "combined": "91e05dbc51a184e906517042a9001f7c541e9236d99c4835320989f77ab8561a"
+      },
+      "characteristicIndices": [
+        31,
+        6,
+        34,
+        1,
+        20,
+        23,
+        11,
+        17,
+        35,
+        48,
+        22,
+        47
+      ]
+    },
+    "regime_iid/home": {
+      "before": {
+        "totals": "51a12b6f2edcc997f49d90de0d05bf218cee9ced260527ccb6fadaa9bf4990b0",
+        "lists": "48e058e833eebc7811b6a5490ef13188ed613fd2735200094546f8f26bf1c323",
+        "pathSummaries": "d670e149fdd5672f2d340460bfae81fbfa378b30d20181ceddcf7ec95f3ce3c2",
+        "heatmap": "5b5396a38adecf0867e2c80178ea776ecad15d82e58f6cfc1738409828dbf702",
+        "combined": "bb8d65f0db646b9ef62fc8ef5a599f168db2282cdc66da11ee398285c1251dae"
+      },
+      "after": {
+        "totals": "d6b131f93c8ea4c3eb1b3b4da40d1d27159537a32d39d75a62d1ee12c8e35c83",
+        "lists": "04589462fe95c2840b94f48f6b8c4c95ae5e6a22a19c018d0e52fa8baec94ba9",
+        "pathSummaries": "c2f46af64fc25fe663ad6d73fe9622d4e731a775e45b3a19f07f1c54dd85bab7",
+        "heatmap": "5b5396a38adecf0867e2c80178ea776ecad15d82e58f6cfc1738409828dbf702",
+        "combined": "405d8e807e7442791775d66c1a94610b855d188028a506535b4f1e7d5050037b"
+      },
+      "characteristicIndices": [
+        29,
+        49,
+        31,
+        4,
+        40,
+        46,
+        28,
+        43,
+        17,
+        36,
+        22,
+        47,
+        39
+      ]
+    }
+  }
+}

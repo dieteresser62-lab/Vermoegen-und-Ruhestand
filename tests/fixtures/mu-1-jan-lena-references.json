@@ -1,0 +1,9 @@
+{
+  "testDate": "2026-10-23 (Strategie und Plan), 2026-10-16 (Zuflussreferenz)",
+  "change": "Jan/Lena: Mindest-Flex 6.750 EUR statt 27.000 EUR, feste Nettozahlung umbenannt. Alte Vollreferenzen bleiben als Vorgänger erhalten.",
+  "hashes": {
+    "f600165cc76c0cfef66fda34eaa08ccfac7a7ddd7528f48b8d744a40b2454b9d": "27d79ae884b7e0a865f3aeec785f85c9914316d121902549232d2ece7658b495",
+    "5c3416aa74fc28c443199488083b7a177e6faed19180f1aa99f44b27aeaa15a6": "18ae09f5fd49650030824f5c0d55055dc263f30fa0974a45aca9ffbc08e4dec6",
+    "a8521182a14df0533c39f1c5ca6eb14e5d2c52a825adcee892a3e61298b258ba": "6e4420068a81ec70ea7ad585c9116aef6819da0e0fe00c2dc75a57f8a024e067"
+  }
+}

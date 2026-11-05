@@ -1,0 +1,24 @@
+// Benannte Abhängigkeiten halten den unveränderten Ablauf samt Fehler-/Cleanupgrenzen zusammen.
+export { createMonteCarloUI, readMonteCarloParameters } from '../monte-carlo-ui.js';
+export { cancelMonteCarlo, activeMonteCarloRun } from './state.js';
+export { setOverviewRunPhase, beginOverviewRun, readOverviewAssumptions, failOverviewRun, completeOverviewRun, projectMonteCarloOverview } from '../simulator-result-overview.js';
+export { throwIfRunCancelled, formatMs, formatSpeedup } from './helpers.js';
+export { prepareHistoricalDataOnce, compileScenario, getDataVersion } from '../simulator-engine-helpers.js';
+export { validateSimulatorInputs, formatSimulatorValidationError } from '../simulator-input-validation.js';
+export { getCommonInputs } from '../simulator-portfolio.js';
+export { personDataContextFor, readDocumentPersonInputs } from '../simulator-person-overrides.js';
+export { createProtocolPersonContext } from '../protocol-columns.js';
+export { normalizeWidowOptions } from '../simulator-sweep-utils.js';
+export { annualData } from '../simulator-data.js';
+export { resolveMonteCarloSamplingContractV1 } from '../mc-year-sampling.js';
+export { beginSimulationSummary, completeSimulationSummary } from '../simulator-overview-summary.js';
+export { ScenarioAnalyzer } from '../scenario-analyzer.js';
+export { runMonteCarloSerial, runMonteCarloLogsForIndices } from './serial.js';
+export { runMonteCarloWithWorkers } from './workers.js';
+export { isWorkerRunCancelledError } from '../worker-job-runner.js';
+export { createMonteCarloRunRequestV1, createMonteCarloRunResultV1 } from '../monte-carlo-contracts.js';
+export { createMonteCarloExportDownload, captureMonteCarloEngineProvenance } from '../monte-carlo-export.js';
+export { EngineAPI } from '../../../engine/index.mjs';
+export { displayMonteCarloResults } from '../simulator-results.js';
+export { recordMonteCarloHintMeasurement, monteCarloHintComparableKey } from '../monte-carlo-run-hint.js';
+export { simulatorRunAssumptions } from '../simulator-run-assumptions.js';

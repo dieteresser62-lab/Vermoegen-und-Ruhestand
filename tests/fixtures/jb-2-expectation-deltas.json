@@ -1,0 +1,83 @@
+{
+  "reason": "JB-2 berichtigt Vorsichtsmeldung, Diagnose und Kürzungsgründe. Beträge, Raten, Aktionen und Folgezustände bleiben gleich. Historische Belege werden nicht überschrieben.",
+  "changes": [
+    "Inflations-Cap → Vorsicht beim Budget-Floor; Quote und Schwelle statt unwirksamem Inflationsdeckel.",
+    "Neue Meldung nur bei tatsächlich verhinderter Budget-Floor-Anhebung.",
+    "Guardrail (Vorsicht) entfällt als Quelle ohne verhinderten Kaufkraftausgleich; andere begrenzende Quellen bleiben sichtbar."
+  ],
+  "hashes": {
+    "b67d8f07fcffa09faf1cf7a83652a266364263ffa132bd7285cf4d27f00bb343": "e0cda0c1d71b8b74eec7719bff0addca334158a8e17db16cc9366b3c32d3f947",
+    "0ca622bf902efd0ca6f3e8c5546ec9015f4539a3971115abac339adfe92dd335": "2ec01e3f74060f33cff2c1d33c35117585e3727d361d56037b8b07063838cc88",
+    "3aa7eb2d07e830792d42da27f39d8fc5038509cf68f88c39247f091aceee4bd9": "968d4da0df613f18ee36238034eb701b6d379b2f58e135c446aeb735086e2a51",
+    "f54fa84794651a29d3f07a096df9942a7f750b0e86ec2a289581bae61f59eb75": "1d7c98b516bd07515f411bd4611c9b4949bd2bea4272c6c19a2c6933fad0041f",
+    "de2b3761429161c069697620d8a216d11fabff84acf7167df195cf758dc86603": "c0fa94bb7d8d08a4daccf12fc7c0579796f4636d6e3204f9d74f9336fad19b5e",
+    "45ae2f53206bc15a2fcf0009e857baf17599299524ccfab7d2310220e305784a": "4f2f2c7d56087d57a136afee3e1d378ca470f50c905a90d7ab1f78ecc9ad3c33",
+    "de3154e6a31ea76ed33d63292233d18b1d34a066d6c427b66dd7f48eb7ac037a": "a042cc1f5d4dbfaa31f4bc17cacc60d1845085b02f1a3d5db735ef4f7bae8012"
+  },
+  "evidence": [
+    {
+      "test": "ff-d-regression",
+      "label": "Vollständige engines-Ergebnisse mit FR-20/33/34-Diagnosen",
+      "before": "b67d8f07fcffa09faf1cf7a83652a266364263ffa132bd7285cf4d27f00bb343",
+      "after": "e0cda0c1d71b8b74eec7719bff0addca334158a8e17db16cc9366b3c32d3f947",
+      "unchangedNumericLeaves": 431,
+      "numericSha256": "b2ddbe2184c8a98546916870d33d7a2e7d1ca22bf03dbc763b46c7dfa6bd12be"
+    },
+    {
+      "test": "ff-f-regression",
+      "label": "engines: vollständige Ergebnisse ohne Dynamik nach BK-2",
+      "before": "b67d8f07fcffa09faf1cf7a83652a266364263ffa132bd7285cf4d27f00bb343",
+      "after": "e0cda0c1d71b8b74eec7719bff0addca334158a8e17db16cc9366b3c32d3f947",
+      "unchangedNumericLeaves": 431,
+      "numericSha256": "b2ddbe2184c8a98546916870d33d7a2e7d1ca22bf03dbc763b46c7dfa6bd12be"
+    },
+    {
+      "test": "ff-g-regression",
+      "label": "staticResults: ungefilterte JSON-Bytes gegen BK-2",
+      "before": "0ca622bf902efd0ca6f3e8c5546ec9015f4539a3971115abac339adfe92dd335",
+      "after": "2ec01e3f74060f33cff2c1d33c35117585e3727d361d56037b8b07063838cc88",
+      "unchangedNumericLeaves": 2664,
+      "numericSha256": "01bdefdbfc3cf15175567a924e3df2b130d247714160b6a84251e0a536cb2b9b"
+    },
+    {
+      "test": "ff-g-regression",
+      "label": "dynamicUnaffected: ungefilterte JSON-Bytes gegen BK-2",
+      "before": "3aa7eb2d07e830792d42da27f39d8fc5038509cf68f88c39247f091aceee4bd9",
+      "after": "968d4da0df613f18ee36238034eb701b6d379b2f58e135c446aeb735086e2a51",
+      "unchangedNumericLeaves": 1052,
+      "numericSha256": "7596b70e0b1d70bc8dc486dda657a2ff0be0b87c4466fa919386f49cf48f8622"
+    },
+    {
+      "test": "flex-safety-bytegleich",
+      "label": "Sechs vollständige Engine-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz",
+      "before": "f54fa84794651a29d3f07a096df9942a7f750b0e86ec2a289581bae61f59eb75",
+      "after": "1d7c98b516bd07515f411bd4611c9b4949bd2bea4272c6c19a2c6933fad0041f",
+      "unchangedNumericLeaves": 999,
+      "numericSha256": "709de676c810e43f983b9c92070095051165acd8e9879aca47b14ab4ecdb0f24"
+    },
+    {
+      "test": "planned-inflows",
+      "label": "Vorgabe: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "de2b3761429161c069697620d8a216d11fabff84acf7167df195cf758dc86603",
+      "after": "c0fa94bb7d8d08a4daccf12fc7c0579796f4636d6e3204f9d74f9336fad19b5e",
+      "unchangedNumericLeaves": 12867,
+      "numericSha256": "1d7449cb3a5026006007d4b74daa7e2303d9ec61a550f918965f5883dd1eb4c0"
+    },
+    {
+      "test": "rechenregeln-bytegleich",
+      "label": "off: Backtest entspricht BK-2-Referenz",
+      "before": "45ae2f53206bc15a2fcf0009e857baf17599299524ccfab7d2310220e305784a",
+      "after": "4f2f2c7d56087d57a136afee3e1d378ca470f50c905a90d7ab1f78ecc9ad3c33",
+      "unchangedNumericLeaves": 3768,
+      "numericSha256": "8620463c24f1fbb4967d561153b46a32df6275bbfa3dbddbea03c9cf7ed4e9bc"
+    },
+    {
+      "test": "survivor-bytegleich",
+      "label": "off: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "de3154e6a31ea76ed33d63292233d18b1d34a066d6c427b66dd7f48eb7ac037a",
+      "after": "a042cc1f5d4dbfaa31f4bc17cacc60d1845085b02f1a3d5db735ef4f7bae8012",
+      "unchangedNumericLeaves": 8808,
+      "numericSha256": "949c2f86c1404bee23e9e4c0d12c06e5e17b7727893c077a2378c20b3f534c6f"
+    }
+  ]
+}

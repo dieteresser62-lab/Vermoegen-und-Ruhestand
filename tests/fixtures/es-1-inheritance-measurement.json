@@ -1,0 +1,738 @@
+{
+  "synthetic": true,
+  "beforeRevision": "c808c9852a543269338a3449e2b47ef5a88dff3b",
+  "testDate": "2026-10-23",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "basis": "Max/Erika: Haus 800000 EUR bei Max, unverheiratet, Haus + Steuer, 0 %. Groß wie EP-3: Geld 3 Mio. EUR 90/10, Haus 800000 EUR bei Max, Erika PG2 üblich, Haus + Steuer + 25 %, Standard ohne Anleihen. Pflege an; 35 Jahre. Mediane über alle 2000 Pfade einschließlich Nullpfaden, Steuer und X nominale Pfadsummen, Endvermögen real. Verkaufssteuer auf X: zusätzliche Jahressteuer für die Liquidation ausschließlich dieses Depotanteils; im Ausgangsordner nur lesende Messsonde, keine Änderung an Rechnung oder Logs. Gegenproben mit 1000000 EUR Depot/500000 EUR Einstand und optional zusätzlich 200000 EUR Tagesgeld; Pauschbetrag dort 1000 EUR, Kirchensteuer null.",
+  "before": {
+    "synthetic": true,
+    "testDate": "2026-10-23",
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "scenarios": {
+      "muster": {
+        "inputsSha256": "8daae7ab40303d488e8f5ec8bfbe8d44e9b82f223bc0fe806f8bf94aff6f2a73",
+        "sha256": "390e0aac3ecf2493ba8043e0b11bf5625c0312444d9f44255d7199c5181ef5b0",
+        "coveredPct": 99.9,
+        "ruin": 2,
+        "unpaid": 0,
+        "medianX": 380819.49309480016,
+        "medianTax": 385736.46148652723,
+        "medianSaleTaxOnX": 39703.25196724851,
+        "medianEndReal": 1235065.0420844043,
+        "maxFlowDelta": 1.4901161193847656e-8
+      },
+      "gross25": {
+        "inputsSha256": "641743c82fb5f4c9a4d9755bb6783a201bda57b298333f805f0fb8760c3bf88c",
+        "sha256": "ae69626091a250e272c0c179343954fdaabfbdebefaad8012047f4597ccb42ef",
+        "coveredPct": 99,
+        "ruin": 20,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 84332.36459351232,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 5067187.202016825,
+        "maxFlowDelta": 5.960464477539063e-8
+      },
+      "married": {
+        "inputsSha256": "d04ca06c37ae291eded8484fc288c2dfcbc3e2e6d730111285cfe2e131d815d4",
+        "sha256": "d21aeeb4959c2bec2e1be294f3c64290efe2ec45202f0e5f27566de9ff6eb8a4",
+        "coveredPct": 100,
+        "ruin": 0,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 75751.42828925027,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 2806220.2752109636,
+        "maxFlowDelta": 1.4901161193847656e-8
+      },
+      "unmarried50": {
+        "inputsSha256": "68014be6e1f372749eb4df40c1da4846eaf17df2df78a0ead4c32295c186eb0f",
+        "sha256": "b10559a9f354edcddea31cecd466e08a954ca8cde9a2e44d869746070b9ce0fb",
+        "coveredPct": 99.7,
+        "ruin": 6,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 270276.6507956459,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 1540058.0804912709,
+        "maxFlowDelta": 1.6763806343078613e-8
+      },
+      "unmarried0": {
+        "inputsSha256": "22421918835eacea3d2337782ecabffd53981828b718900a38073f838ebb715c",
+        "sha256": "b0aaf7d9dcb8e1f4c7d980f7721ced456fa03a5ddbab537b13426d462b556f2c",
+        "coveredPct": 98.2,
+        "ruin": 36,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 0,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 1193303.4921265785,
+        "maxFlowDelta": 1.4901161193847656e-8
+      },
+      "noHome": {
+        "inputsSha256": "5a8fa684bd3b2f52b46e22911d92f8725e6d27e1a4aa503e4033e0dd8bdc81e7",
+        "sha256": "72bbfebaf6cf1595939fc0e269d3a30e96637375b459579e2bc68ff003e27788",
+        "coveredPct": 98.1,
+        "ruin": 38,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 0,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 1175388.2151818243,
+        "maxFlowDelta": 1.4901161193847656e-8
+      },
+      "floor100": {
+        "inputsSha256": "4ff2822d41dbab23685e884b8d4480d448de43ecb00dd197151067a72d519ca2",
+        "sha256": "95ddf0b1d214d4b9cf8ad50504090c42736feec65217caa221eca48f4534475b",
+        "coveredPct": 96.95,
+        "ruin": 61,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 0,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 1066745.035173486,
+        "maxFlowDelta": 1.6763806343078613e-8
+      }
+    },
+    "compatibility": {
+      "parity": "581d0c55dd295fc60ac34a730072792633f0048d69c74554588d6c4bd9fc1a9a",
+      "balanceInput": "4c51dd2b278a97f85177e7d4ccb8b72ba9b175bd8d837a40ca2dc620ebb25fa3",
+      "balanceCalculation": "bfe1d39a837bfc5154942bc366ec93d50f88bf10d4f581346b7cf4c29759d128"
+    },
+    "counterchecks": [
+      {
+        "cash": 0,
+        "own": 0,
+        "sparerPauschbetrag": 1000,
+        "taxCash": 334285.7142857269,
+        "tax": 334285.71428571804,
+        "saleTax": 43820.17857143023,
+        "shortfall": 43820.178571421384,
+        "survivorMoney": 0
+      },
+      {
+        "cash": 0,
+        "own": 100000,
+        "sparerPauschbetrag": 1000,
+        "taxCash": 334285.7142857269,
+        "tax": 334285.71428571804,
+        "saleTax": 35326.088527204105,
+        "shortfall": 0,
+        "survivorMoney": 64673.91147280474
+      },
+      {
+        "cash": 200000,
+        "own": 0,
+        "sparerPauschbetrag": 1000,
+        "taxCash": 334285.71428576106,
+        "tax": 334285.71428572835,
+        "saleTax": 17445.17857143474,
+        "shortfall": 17445.178571402026,
+        "survivorMoney": 0
+      },
+      {
+        "cash": 200000,
+        "own": 100000,
+        "sparerPauschbetrag": 1000,
+        "taxCash": 334285.71428576106,
+        "tax": 334285.71428572835,
+        "saleTax": 4944.519052763627,
+        "shortfall": 0,
+        "survivorMoney": 95055.48094726908
+      }
+    ]
+  },
+  "after": {
+    "synthetic": true,
+    "testDate": "2026-10-23",
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "scenarios": {
+      "muster": {
+        "inputsSha256": "8daae7ab40303d488e8f5ec8bfbe8d44e9b82f223bc0fe806f8bf94aff6f2a73",
+        "sha256": "f6a2db8118546c632577a6bf605196579239cf9dd62bba89dd3f86e3be185739",
+        "coveredPct": 99.9,
+        "ruin": 2,
+        "unpaid": 0,
+        "medianX": 450850.08206380514,
+        "medianTax": 408382.40886897163,
+        "medianSaleTaxOnX": 46945.82043769123,
+        "medianEndReal": 1277812.012633949,
+        "maxFlowDelta": 1.4901161193847656e-8
+      },
+      "gross25": {
+        "inputsSha256": "641743c82fb5f4c9a4d9755bb6783a201bda57b298333f805f0fb8760c3bf88c",
+        "sha256": "3583d2b620976d289186cde4bbe5d77be826c3862df1847b2be720a6f81425e7",
+        "coveredPct": 99,
+        "ruin": 20,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 84332.36459351232,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 5155905.860225607,
+        "maxFlowDelta": 5.960464477539063e-8
+      },
+      "married": {
+        "inputsSha256": "d04ca06c37ae291eded8484fc288c2dfcbc3e2e6d730111285cfe2e131d815d4",
+        "sha256": "d21aeeb4959c2bec2e1be294f3c64290efe2ec45202f0e5f27566de9ff6eb8a4",
+        "coveredPct": 100,
+        "ruin": 0,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 75751.42828925027,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 2806220.2752109636,
+        "maxFlowDelta": 1.4901161193847656e-8
+      },
+      "unmarried50": {
+        "inputsSha256": "68014be6e1f372749eb4df40c1da4846eaf17df2df78a0ead4c32295c186eb0f",
+        "sha256": "b10559a9f354edcddea31cecd466e08a954ca8cde9a2e44d869746070b9ce0fb",
+        "coveredPct": 99.7,
+        "ruin": 6,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 270276.6507956459,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 1540058.0804912709,
+        "maxFlowDelta": 1.6763806343078613e-8
+      },
+      "unmarried0": {
+        "inputsSha256": "22421918835eacea3d2337782ecabffd53981828b718900a38073f838ebb715c",
+        "sha256": "b0aaf7d9dcb8e1f4c7d980f7721ced456fa03a5ddbab537b13426d462b556f2c",
+        "coveredPct": 98.2,
+        "ruin": 36,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 0,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 1193303.4921265785,
+        "maxFlowDelta": 1.4901161193847656e-8
+      },
+      "noHome": {
+        "inputsSha256": "5a8fa684bd3b2f52b46e22911d92f8725e6d27e1a4aa503e4033e0dd8bdc81e7",
+        "sha256": "72bbfebaf6cf1595939fc0e269d3a30e96637375b459579e2bc68ff003e27788",
+        "coveredPct": 98.1,
+        "ruin": 38,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 0,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 1175388.2151818243,
+        "maxFlowDelta": 1.4901161193847656e-8
+      },
+      "floor100": {
+        "inputsSha256": "4ff2822d41dbab23685e884b8d4480d448de43ecb00dd197151067a72d519ca2",
+        "sha256": "95ddf0b1d214d4b9cf8ad50504090c42736feec65217caa221eca48f4534475b",
+        "coveredPct": 96.95,
+        "ruin": 61,
+        "unpaid": 0,
+        "medianX": 0,
+        "medianTax": 0,
+        "medianSaleTaxOnX": 0,
+        "medianEndReal": 1066745.035173486,
+        "maxFlowDelta": 1.6763806343078613e-8
+      }
+    },
+    "compatibility": {
+      "parity": "581d0c55dd295fc60ac34a730072792633f0048d69c74554588d6c4bd9fc1a9a",
+      "balanceInput": "4c51dd2b278a97f85177e7d4ccb8b72ba9b175bd8d837a40ca2dc620ebb25fa3",
+      "balanceCalculation": "bfe1d39a837bfc5154942bc366ec93d50f88bf10d4f581346b7cf4c29759d128"
+    },
+    "counterchecks": [
+      {
+        "cash": 0,
+        "own": 0,
+        "sparerPauschbetrag": 1000,
+        "taxCash": 411416.94169419905,
+        "tax": 357425.08250825974,
+        "saleTax": 53991.8591859225,
+        "shortfall": 0,
+        "survivorMoney": 1.6807462088763714e-8
+      },
+      {
+        "cash": 0,
+        "own": 100000,
+        "sparerPauschbetrag": 1000,
+        "taxCash": 411416.94169419905,
+        "tax": 357425.08250825974,
+        "saleTax": 53991.8591859225,
+        "shortfall": 0,
+        "survivorMoney": 100000.00000001681
+      },
+      {
+        "cash": 200000,
+        "own": 0,
+        "sparerPauschbetrag": 1000,
+        "taxCash": 364992.29922994797,
+        "tax": 343497.68976898433,
+        "saleTax": 21494.60946094939,
+        "shortfall": 0,
+        "survivorMoney": 1.4246325008571148e-8
+      },
+      {
+        "cash": 200000,
+        "own": 100000,
+        "sparerPauschbetrag": 1000,
+        "taxCash": 364992.29922994797,
+        "tax": 343497.68976898433,
+        "saleTax": 21494.60946094939,
+        "shortfall": 0,
+        "survivorMoney": 100000.00000001425
+      }
+    ]
+  },
+  "compatibility": {
+    "married": {
+      "before": "d21aeeb4959c2bec2e1be294f3c64290efe2ec45202f0e5f27566de9ff6eb8a4",
+      "after": "d21aeeb4959c2bec2e1be294f3c64290efe2ec45202f0e5f27566de9ff6eb8a4"
+    },
+    "unmarried50": {
+      "before": "b10559a9f354edcddea31cecd466e08a954ca8cde9a2e44d869746070b9ce0fb",
+      "after": "b10559a9f354edcddea31cecd466e08a954ca8cde9a2e44d869746070b9ce0fb"
+    },
+    "unmarried0": {
+      "before": "b0aaf7d9dcb8e1f4c7d980f7721ced456fa03a5ddbab537b13426d462b556f2c",
+      "after": "b0aaf7d9dcb8e1f4c7d980f7721ced456fa03a5ddbab537b13426d462b556f2c"
+    },
+    "noHome": {
+      "before": "72bbfebaf6cf1595939fc0e269d3a30e96637375b459579e2bc68ff003e27788",
+      "after": "72bbfebaf6cf1595939fc0e269d3a30e96637375b459579e2bc68ff003e27788"
+    },
+    "floor100": {
+      "before": "95ddf0b1d214d4b9cf8ad50504090c42736feec65217caa221eca48f4534475b",
+      "after": "95ddf0b1d214d4b9cf8ad50504090c42736feec65217caa221eca48f4534475b"
+    },
+    "parity": {
+      "before": "581d0c55dd295fc60ac34a730072792633f0048d69c74554588d6c4bd9fc1a9a",
+      "after": "581d0c55dd295fc60ac34a730072792633f0048d69c74554588d6c4bd9fc1a9a"
+    },
+    "balanceInput": {
+      "before": "4c51dd2b278a97f85177e7d4ccb8b72ba9b175bd8d837a40ca2dc620ebb25fa3",
+      "after": "4c51dd2b278a97f85177e7d4ccb8b72ba9b175bd8d837a40ca2dc620ebb25fa3"
+    },
+    "balanceCalculation": {
+      "before": "bfe1d39a837bfc5154942bc366ec93d50f88bf10d4f581346b7cf4c29759d128",
+      "after": "bfe1d39a837bfc5154942bc366ec93d50f88bf10d4f581346b7cf4c29759d128"
+    }
+  },
+  "compatibilitySha256": "60071682ccc744652d01d90d7a370bace23b1ec28ca65dc45c2411e5b916bda4",
+  "nv1IsolatedB01": {
+    "before": {
+      "synthetic": true,
+      "testDate": "2026-10-23",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "scenarios": {
+        "renate": {
+          "strategy": "3_bucket_jilge",
+          "bonds": 145000,
+          "inputsSha256": "a7eca5876ab6689afb135f23baa6b331a760f03cc44b59c6dfbdbf8a6664e386",
+          "coveredPct": 83,
+          "ruin": 340,
+          "ruinWithHome": 0,
+          "emergency": 0,
+          "medianEmergencyYear": null,
+          "care": 1425,
+          "medianRentReal": null,
+          "realP10": 0,
+          "realP50": 356000.5930906086,
+          "sha256": "147bd4ec3984ff0d86146ccbbfa1ae70d1efade01436286752a4bbf107abba08",
+          "maxFlowDelta": 9.313225746154785e-10,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d8725f05731b50252f9017f206273e8c5dc2d1a76dc265ccdfa7b421685cdca4"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 348993.17726864206,
+              "sha256": "b8242564a49f81dabc7537072f1d97567bb69f9429fc256dfbfaff6f0bdeb136"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 5271499.895924766,
+              "sha256": "0f38451949dc8ba4e84ddacf7bd0070e4bee6b23b0073570ac0f2cd54e8e5757"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 6540192.263681113,
+              "sha256": "6bd963b86765ae393d09a02d711c6699b3362904abff0e5ee4951dd350b38e8f"
+            }
+          ]
+        },
+        "muster": {
+          "strategy": "standard",
+          "bonds": 0,
+          "inputsSha256": "8daae7ab40303d488e8f5ec8bfbe8d44e9b82f223bc0fe806f8bf94aff6f2a73",
+          "coveredPct": 99.9,
+          "ruin": 2,
+          "ruinWithHome": 0,
+          "emergency": 35,
+          "medianEmergencyYear": 2042,
+          "care": 193,
+          "medianRentReal": 32000,
+          "realP10": 326293.2519259753,
+          "realP50": 1235065.0420844043,
+          "sha256": "390e0aac3ecf2493ba8043e0b11bf5625c0312444d9f44255d7199c5181ef5b0",
+          "maxFlowDelta": 1.4901161193847656e-8,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d969e0577528fc4c91c78c4088b30171827395812a1b9d8a3f14d0a11c4fda8e"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 2361600.621178225,
+              "sha256": "fd02734aa92db91fc342295e9d674c136a4956044890b711792f8a18ab62aa98"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 26541226.714951817,
+              "sha256": "1ccc13b1980d1843fdf966987203981d5a25c54ea168aae3b9ad61e5f4bc4919"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 37647753.559412554,
+              "sha256": "4f3c601dea715f490b6f5e596bcd865e1010288faf8bc1976944979e7fdb0b81"
+            }
+          ]
+        },
+        "gross": {
+          "strategy": "standard",
+          "bonds": 0,
+          "inputsSha256": "c10dce986dfdd03189e104fd69339c47282348ff01ac11292f37e171118ce044",
+          "coveredPct": 98.3,
+          "ruin": 34,
+          "ruinWithHome": 0,
+          "emergency": 54,
+          "medianEmergencyYear": 2039,
+          "care": 677,
+          "medianRentReal": null,
+          "realP10": 451666.26944621606,
+          "realP50": 3647039.2524339487,
+          "sha256": "34938b78df3dcfb3e0e58196938ba52cc24dc887952566a0cb47d456e6057afd",
+          "maxFlowDelta": 5.960464477539063e-8,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "1b051b84c13dd8fbd3af5e929643bb2b36c8b200cc3eaba5970c92fd2e004622"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 12463313.018230205,
+              "sha256": "966302a1a83a3d7e8ee9e1a07c88556889e89502af3eb71427aea9d497081904"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 91472220.07496423,
+              "sha256": "16d841a71f0e5bae2fe1f5e4a29a4f7ce51840e89cc7bbe81b4a115834376bbe"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 127180423.97606868,
+              "sha256": "aba0c8bccbd46899285e03b62f67caa8b58bfb117155073ec87d34f7ccfeb31e"
+            }
+          ]
+        }
+      },
+      "compatibility": {}
+    },
+    "after": {
+      "synthetic": true,
+      "testDate": "2026-10-23",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "scenarios": {
+        "renate": {
+          "strategy": "3_bucket_jilge",
+          "bonds": 145000,
+          "inputsSha256": "a7eca5876ab6689afb135f23baa6b331a760f03cc44b59c6dfbdbf8a6664e386",
+          "coveredPct": 83,
+          "ruin": 340,
+          "ruinWithHome": 0,
+          "emergency": 0,
+          "medianEmergencyYear": null,
+          "care": 1425,
+          "medianRentReal": null,
+          "realP10": 0,
+          "realP50": 356000.5930906086,
+          "sha256": "147bd4ec3984ff0d86146ccbbfa1ae70d1efade01436286752a4bbf107abba08",
+          "maxFlowDelta": 9.313225746154785e-10,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d8725f05731b50252f9017f206273e8c5dc2d1a76dc265ccdfa7b421685cdca4"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 348993.17726864206,
+              "sha256": "b8242564a49f81dabc7537072f1d97567bb69f9429fc256dfbfaff6f0bdeb136"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 5271499.895924766,
+              "sha256": "0f38451949dc8ba4e84ddacf7bd0070e4bee6b23b0073570ac0f2cd54e8e5757"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 6540192.263681113,
+              "sha256": "6bd963b86765ae393d09a02d711c6699b3362904abff0e5ee4951dd350b38e8f"
+            }
+          ]
+        },
+        "muster": {
+          "strategy": "standard",
+          "bonds": 0,
+          "inputsSha256": "8daae7ab40303d488e8f5ec8bfbe8d44e9b82f223bc0fe806f8bf94aff6f2a73",
+          "coveredPct": 99.9,
+          "ruin": 2,
+          "ruinWithHome": 0,
+          "emergency": 35,
+          "medianEmergencyYear": 2042,
+          "care": 193,
+          "medianRentReal": 32000,
+          "realP10": 326293.2519259753,
+          "realP50": 1235065.0420844043,
+          "sha256": "390e0aac3ecf2493ba8043e0b11bf5625c0312444d9f44255d7199c5181ef5b0",
+          "maxFlowDelta": 1.4901161193847656e-8,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d969e0577528fc4c91c78c4088b30171827395812a1b9d8a3f14d0a11c4fda8e"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 2361600.621178225,
+              "sha256": "fd02734aa92db91fc342295e9d674c136a4956044890b711792f8a18ab62aa98"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 26541226.714951817,
+              "sha256": "1ccc13b1980d1843fdf966987203981d5a25c54ea168aae3b9ad61e5f4bc4919"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 37647753.559412554,
+              "sha256": "4f3c601dea715f490b6f5e596bcd865e1010288faf8bc1976944979e7fdb0b81"
+            }
+          ]
+        },
+        "gross": {
+          "strategy": "standard",
+          "bonds": 0,
+          "inputsSha256": "c10dce986dfdd03189e104fd69339c47282348ff01ac11292f37e171118ce044",
+          "coveredPct": 98.3,
+          "ruin": 34,
+          "ruinWithHome": 0,
+          "emergency": 54,
+          "medianEmergencyYear": 2039,
+          "care": 677,
+          "medianRentReal": null,
+          "realP10": 451666.26944621606,
+          "realP50": 3647039.2524339487,
+          "sha256": "34938b78df3dcfb3e0e58196938ba52cc24dc887952566a0cb47d456e6057afd",
+          "maxFlowDelta": 5.960464477539063e-8,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "1b051b84c13dd8fbd3af5e929643bb2b36c8b200cc3eaba5970c92fd2e004622"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 12463313.018230205,
+              "sha256": "966302a1a83a3d7e8ee9e1a07c88556889e89502af3eb71427aea9d497081904"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 91472220.07496423,
+              "sha256": "16d841a71f0e5bae2fe1f5e4a29a4f7ce51840e89cc7bbe81b4a115834376bbe"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 127180423.97606868,
+              "sha256": "aba0c8bccbd46899285e03b62f67caa8b58bfb117155073ec87d34f7ccfeb31e"
+            }
+          ]
+        }
+      },
+      "compatibility": {}
+    },
+    "sha256": "5eff63f21e8c6897a80a9e985d3904cda0429f4949f63fe9d5523ab3f8254cb3",
+    "scope": "Nur Hausabgang an Dritte, isoliert von der Netto-Steuergeldkorrektur; 3 Haushalte mit je 2000 Pfaden sowie sämtliche historischen Gegenproben. Vollständige Ergebnisse einschließlich Chunk-Prüfsummen identisch."
+  }
+}

@@ -1,0 +1,272 @@
+{
+  "sourceRevision": "6c8e0678197977dae2ebecaaf6dc568d778dc3f9",
+  "basis": "Muster Max/Erika: Haus 450000 EUR bei Max. Groß: 3 Mio. EUR Geld 90/10, Haus 800000 EUR bei Max, Erika PG2 üblich; übrige Musterwerte. Endwerte real; Steuer nominale Pfadsumme einschließlich Nullpfaden; Kalender-Verkaufsjahr.",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "before": {
+    "muster/unmarried0": {
+      "coveredPct": 97.8,
+      "ruinPaths": 44,
+      "salePaths": 0,
+      "medianSaleYear": null,
+      "realP10": 242659.43443391868,
+      "realP50": 1077871.605749017,
+      "medianInheritanceTax": 0,
+      "sha256": "c8d22e2883ba4cd7413e202051a81cd47f33c78ac6a35d65bf3554562f1c5c8b",
+      "backtestSha256": "3ee6f918608234c7ad4f313a468b1e1af91611b022a82d06ae3e2e9dc28466d0",
+      "maxFlowDelta": 1.862645149230957e-8
+    },
+    "muster/unmarried100": {
+      "coveredPct": 98.7,
+      "ruinPaths": 26,
+      "salePaths": 0,
+      "medianSaleYear": null,
+      "realP10": 430142.57128761266,
+      "realP50": 1875439.823840937,
+      "medianInheritanceTax": 434938.38508087106,
+      "sha256": "682158c431c43a2bada9057338e983636124de1b0eef1fafc22ee7448bd421ff",
+      "backtestSha256": "2d1f7c695accb44209e922d2d224349adb48db3a8d8b4895aaaf21cc145ba82b",
+      "maxFlowDelta": 1.1175870895385742e-8
+    },
+    "muster/married100": {
+      "coveredPct": 99.7,
+      "ruinPaths": 6,
+      "salePaths": 0,
+      "medianSaleYear": null,
+      "realP10": 798924.7188191843,
+      "realP50": 2632531.6932210764,
+      "medianInheritanceTax": 74514.78657277604,
+      "sha256": "1c3c7d232ae3ab3b0d568da70b431afbcb8a4651086d0d0d5f16e7a81f8fe33a",
+      "backtestSha256": "0f537405dfbfe9a297e87d75d283a049f9136651fc53ec62e4f3ee16ff487c32",
+      "maxFlowDelta": 1.4901161193847656e-8
+    },
+    "gross/unmarried0": {
+      "coveredPct": 87.6,
+      "ruinPaths": 248,
+      "salePaths": 0,
+      "medianSaleYear": null,
+      "realP10": 0,
+      "realP50": 3363184.379792138,
+      "medianInheritanceTax": 0,
+      "sha256": "22dad046aedeef7be2a3ed68d91f61c1c45f1e2656fd2629a9bc7b7e56e53d11",
+      "backtestSha256": "8f2e31353efe1e284de2f2dd75a23cd0818ab02b663dd925e80ce59e332e5f00",
+      "maxFlowDelta": 5.960464477539063e-8
+    },
+    "gross/unmarried100": {
+      "coveredPct": 98.9,
+      "ruinPaths": 22,
+      "salePaths": 0,
+      "medianSaleYear": null,
+      "realP10": 1924088.1321931223,
+      "realP50": 6249337.152789492,
+      "medianInheritanceTax": 356128.3046468225,
+      "sha256": "ad4e3134ee79c0fdcbe75e971d5f62cfc9d41a5601da764afbd312f30baf08f9",
+      "backtestSha256": "f8fbb6cbfec2a331a1e7c281e0cea2dedfd01a7d7f8ac4810e84f1a34dc734fb",
+      "maxFlowDelta": 5.960464477539063e-8
+    },
+    "gross/married100": {
+      "coveredPct": 99.95,
+      "ruinPaths": 1,
+      "salePaths": 0,
+      "medianSaleYear": null,
+      "realP10": 2786203.3789804587,
+      "realP50": 8020589.305723395,
+      "medianInheritanceTax": 131797.83443061903,
+      "sha256": "c56b10e97108b70a491b56f38f49897d54d8831012fc7ad277966959b5266a09",
+      "backtestSha256": "d6e9b9548c705a6133fdfac26e46567a51b6a856d92fcc8e392d5584587e6631",
+      "maxFlowDelta": 5.960464477539063e-8
+    }
+  },
+  "after": {
+    "muster/unmarried0": {
+      "coveredPct": 97.95,
+      "ruinPaths": 41,
+      "salePaths": 273,
+      "medianSaleYear": 2042,
+      "realP10": 253533.6769964592,
+      "realP50": 1117534.9695241963,
+      "medianInheritanceTax": 0,
+      "sha256": "fea3c6bccdc846afb784a78f28013aefecf257326c384cf31bceb979c857c4f2",
+      "backtestSha256": "3ee6f918608234c7ad4f313a468b1e1af91611b022a82d06ae3e2e9dc28466d0",
+      "maxFlowDelta": 1.862645149230957e-8
+    },
+    "muster/homeAndTax": {
+      "coveredPct": 98.9,
+      "ruinPaths": 22,
+      "salePaths": 653,
+      "medianSaleYear": 2045,
+      "realP10": 335135.1786702084,
+      "realP50": 1209263.537846514,
+      "medianInheritanceTax": 204119.97085256389,
+      "sha256": "9f3fbf27eff21a995203ab2556518a5d40833fed2e4f2ba14770e5563bcc1923",
+      "backtestSha256": "37f54575e27cfeae75157bd0a5e3b54130b0bd6f522a1e7ad508dfc5f6778392",
+      "maxFlowDelta": 1.862645149230957e-8
+    },
+    "muster/unmarried100": {
+      "coveredPct": 99.55000000000001,
+      "ruinPaths": 9,
+      "salePaths": 653,
+      "medianSaleYear": 2045,
+      "realP10": 586192.1999836835,
+      "realP50": 2025238.5471552457,
+      "medianInheritanceTax": 434938.38508087106,
+      "sha256": "a53f62d491f9925732e8472f393f111b92b73d5c233eb84cfe30368f87e767f4",
+      "backtestSha256": "2d1f7c695accb44209e922d2d224349adb48db3a8d8b4895aaaf21cc145ba82b",
+      "maxFlowDelta": 1.1175870895385742e-8
+    },
+    "muster/married100": {
+      "coveredPct": 99.9,
+      "ruinPaths": 2,
+      "salePaths": 656,
+      "medianSaleYear": 2045,
+      "realP10": 915569.009340397,
+      "realP50": 2796643.8154532323,
+      "medianInheritanceTax": 82678.15921581161,
+      "sha256": "fd4ac28d58e24fb6c25e1b72ffe714694542c28fbbeeda6c8f86616e943a4965",
+      "backtestSha256": "0f537405dfbfe9a297e87d75d283a049f9136651fc53ec62e4f3ee16ff487c32",
+      "maxFlowDelta": 1.1175870895385742e-8
+    },
+    "gross/unmarried0": {
+      "coveredPct": 87.75,
+      "ruinPaths": 245,
+      "salePaths": 981,
+      "medianSaleYear": 2037,
+      "realP10": 0,
+      "realP50": 3545496.5837860676,
+      "medianInheritanceTax": 0,
+      "sha256": "2f193248aa913ee36abfc54505396e69a90bc58b359748b76854c586d030f9bf",
+      "backtestSha256": "8f2e31353efe1e284de2f2dd75a23cd0818ab02b663dd925e80ce59e332e5f00",
+      "maxFlowDelta": 5.960464477539063e-8
+    },
+    "gross/homeAndTax": {
+      "coveredPct": 89.2,
+      "ruinPaths": 216,
+      "salePaths": 1112,
+      "medianSaleYear": 2037,
+      "realP10": 0,
+      "realP50": 3628309.955524224,
+      "medianInheritanceTax": 0,
+      "sha256": "7f61cb2a9383045d4749757b9f646374de0d654e4a57430e03d9057f6f48eac0",
+      "backtestSha256": "101387857770b06fa228a2b2322b12801e6cc34d89104c8a225a2bf8a09779f1",
+      "maxFlowDelta": 5.960464477539063e-8
+    },
+    "gross/unmarried100": {
+      "coveredPct": 98.8,
+      "ruinPaths": 24,
+      "salePaths": 1112,
+      "medianSaleYear": 2037,
+      "realP10": 2620888.3688302385,
+      "realP50": 7033336.36792138,
+      "medianInheritanceTax": 353766.11720367963,
+      "sha256": "c1aa651de6215c564567778263e8a98aefd504beb0fa94b18abe442bd2174035",
+      "backtestSha256": "f8fbb6cbfec2a331a1e7c281e0cea2dedfd01a7d7f8ac4810e84f1a34dc734fb",
+      "maxFlowDelta": 5.960464477539063e-8
+    },
+    "gross/married100": {
+      "coveredPct": 100,
+      "ruinPaths": 0,
+      "salePaths": 1121,
+      "medianSaleYear": 2037,
+      "realP10": 3122733.4004718596,
+      "realP50": 8655969.66767212,
+      "medianInheritanceTax": 139278.52330013172,
+      "sha256": "7682d0fd5543cedb5e5939ef1276fb9cc37b1981cbaec5253908e8ab8622f32a",
+      "backtestSha256": "d6e9b9548c705a6133fdfac26e46567a51b6a856d92fcc8e392d5584587e6631",
+      "maxFlowDelta": 5.960464477539063e-8
+    }
+  },
+  "compatibility": {
+    "muster/unmarried0": {
+      "unchangedPathsWithoutSale": 1727,
+      "noSalePathCount": 1727,
+      "backtestSha256": "3ee6f918608234c7ad4f313a468b1e1af91611b022a82d06ae3e2e9dc28466d0"
+    },
+    "muster/unmarried100": {
+      "unchangedPathsWithoutSale": 1347,
+      "noSalePathCount": 1347,
+      "backtestSha256": "2d1f7c695accb44209e922d2d224349adb48db3a8d8b4895aaaf21cc145ba82b"
+    },
+    "muster/married100": {
+      "unchangedPathsWithoutSale": 1344,
+      "noSalePathCount": 1344,
+      "backtestSha256": "0f537405dfbfe9a297e87d75d283a049f9136651fc53ec62e4f3ee16ff487c32"
+    },
+    "gross/unmarried0": {
+      "unchangedPathsWithoutSale": 1019,
+      "noSalePathCount": 1019,
+      "backtestSha256": "8f2e31353efe1e284de2f2dd75a23cd0818ab02b663dd925e80ce59e332e5f00"
+    },
+    "gross/unmarried100": {
+      "unchangedPathsWithoutSale": 888,
+      "noSalePathCount": 888,
+      "backtestSha256": "f8fbb6cbfec2a331a1e7c281e0cea2dedfd01a7d7f8ac4810e84f1a34dc734fb"
+    },
+    "gross/married100": {
+      "unchangedPathsWithoutSale": 879,
+      "noSalePathCount": 879,
+      "backtestSha256": "d6e9b9548c705a6133fdfac26e46567a51b6a856d92fcc8e392d5584587e6631"
+    },
+    "parity": {
+      "before": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854",
+      "after": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854"
+    },
+    "balance": {
+      "before": "abe48b59e0ef65526d6a509839848ef8aa375248f815990ed1eb81737005ed08",
+      "after": "abe48b59e0ef65526d6a509839848ef8aa375248f815990ed1eb81737005ed08"
+    },
+    "sophie": {
+      "before": {
+        "coveredPct": 96.65,
+        "ruinPaths": 67,
+        "salePaths": 0,
+        "medianSaleYear": null,
+        "realP10": 176736.39581486007,
+        "realP50": 1113740.6878190879,
+        "medianInheritanceTax": 0,
+        "sha256": "04ef05f909d680bd8c9db2ddcd0e48baaa812331470c23450aea711e9fee423a",
+        "backtestSha256": "7f3652a6da80dffd2024f5130456a8e73f5e6deed82d2dc19de37965e5f79fdc",
+        "maxFlowDelta": 7.450580596923828e-9
+      },
+      "after": {
+        "coveredPct": 96.65,
+        "ruinPaths": 67,
+        "salePaths": 0,
+        "medianSaleYear": null,
+        "realP10": 176736.39581486007,
+        "realP50": 1113740.6878190879,
+        "medianInheritanceTax": 0,
+        "sha256": "04ef05f909d680bd8c9db2ddcd0e48baaa812331470c23450aea711e9fee423a",
+        "backtestSha256": "7f3652a6da80dffd2024f5130456a8e73f5e6deed82d2dc19de37965e5f79fdc",
+        "maxFlowDelta": 7.450580596923828e-9
+      }
+    },
+    "allUnchangedPaths": {
+      "count": 7204,
+      "before": "714f0e5b65afdc326b94039bafd8013a71eacb2a93fedf6f8f58f95e576d7713",
+      "after": "714f0e5b65afdc326b94039bafd8013a71eacb2a93fedf6f8f58f95e576d7713"
+    },
+    "allBacktests": {
+      "count": 6,
+      "before": "196773ef3a010fed8b88b837a5fd29241ad6ad411ee022e94564dd3b4283fef2",
+      "after": "196773ef3a010fed8b88b837a5fd29241ad6ad411ee022e94564dd3b4283fef2"
+    }
+  },
+  "validation": {
+    "assertions": 128967,
+    "testCommand": "npm test",
+    "docsCommand": "npm run docs:pruefen",
+    "docsErrors": 0,
+    "imageCommand": "npm run docs:bilder",
+    "imageCount": 65,
+    "imageBytes": 6165130,
+    "proofImage": "auftrag/EP-2-pruefbild-partnerschaft.png",
+    "handCalculationTaxCash": 334285.7142857143
+  }
+}

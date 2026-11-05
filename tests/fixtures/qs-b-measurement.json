@@ -1,0 +1,493 @@
+{
+  "testDate": "2026-10-23",
+  "beforeRevision": "d2d6b979ee55d7bf1c6ab75402ad2d95338da5ee",
+  "regressions": {
+    "oldRed": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "W"
+    ],
+    "newAssertions": 179
+  },
+  "monteCarlo": {
+    "before": {
+      "testDate": "2026-10-23",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "basis": "Geldvermögen am Laufende und zusätzliche Pflegekosten in Startkaufkraft; Mittel über alle auswertbaren Pfade, Ruin-Endvermögen 0.",
+      "results": {
+        "pflege": {
+          "id": "helga-werner",
+          "variant": "haus-pg3",
+          "inputHash": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+          "chunks": [
+            "30f9b0da7c2b32bfe00923de1267d7a74356248baae073b7b77b924391e85a2d",
+            "f85135a65af7436d06c69b3cc20add96c72c02bf88a417fe55a90d6225ed4bcc",
+            "b0ee8c77ff72fdaf5df1ef4055c8dd5f7d1cfda298d738cf8219f4c839671fef",
+            "da88e11e126da68df87e4474c7312dcf17cb1c72dff17e68b37e8056d897f85f",
+            "1749ded6e2f4bfb180b3adf233fb87529d87bb05319963e9bedb9e45b35803d6",
+            "53f1a0f2261dd42b688471a3f1e6f3b794dab498276fe0d27fae059a92f7ed7d",
+            "28cbc678db0189cdebf9140069dc8b365348308e42958a6863a016f8a3b3d2ba",
+            "66a8b42e398c81b795ef72eadfb230a2fc3faf6176db14350e98d2f5fcb02558",
+            "9779df0cf8d57693eb99a5283e2fb47077c16296b3602d7a13bdf601d307cbc1",
+            "0fd2199b23c14358753d4cd4503420cf36685a4c535b3ea64609da302787611e",
+            "28c03875a31fcb6531612129d6efef20afae8c8e02e17a0f08899b1048ff48cb",
+            "712064dea59401b288bc486b6066d9d4e870de54c672037d3aa891df761ac014",
+            "f072a8ee44b9b16295301f9f286ce2d44f8d813fc3e20eb9c6d48c1a5ccf7c24",
+            "d14364912d6bd8f9f72dec3a2ed5f816a90b4bda203723f295860ff24f97f89f",
+            "5eed1ef6103bf46f65efabc29e7d7d0f13eda36fc2dd56e7735e46259790e964",
+            "5811dbf256c9783e2ea5c27061d4c06ef4bc86521b2ba22934d390137d78ff01",
+            "f5495822c58b72ca60d50388c9af2bc63d1d5389ffe80b0934ef383ae30735bb",
+            "cb8467172ea733fb132a1c8e45f91fd9809be56ff1e9161dc7a605892db58777",
+            "bc3a56bc9369a8a213164a98406296de541f93e048893d941f9cf11a7b6e5bd2",
+            "6b394b431d9fa0aabc98dcaac7f7c7a6c9abf921de83c492bbba4da8dc7d6afc"
+          ],
+          "technical": 0,
+          "coveredPct": 99.8,
+          "ruin": 4,
+          "meanEndRealEur": 656001.6458232262,
+          "meanCareCostRealEur": 135399.9190967915,
+          "deaths": 1917
+        },
+        "todesfall": {
+          "id": "max-erika",
+          "variant": "grund",
+          "inputHash": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+          "chunks": [
+            "127ef9988c9b6b471bac41b78773a7043cd90232d1f393023bf9b4f5f7fa9475",
+            "95484b808b7923b9163c1eb038398811ea45ad360bb42741116d8e0d86a36392",
+            "4a1eaed4112982715fe0f55b8e14320a2f4ddbc57017e402e40e404f2ec707c2",
+            "6150cc106f4a1d0066870d7a28870e76a0d3d6393426baa5c84bbc4dcbe47f08",
+            "cfefb00c4b2abbf7e2c2ef6fe75f4daaeac017cb6c38d7fd514e275f96ed9ca4",
+            "811545870691893f4099612a3aa98e4a48551384ad4660d4f5db6fa1f12c3baf",
+            "15e810e6822872a140245d61472abaf95517c2a1edb08963a2ec616549fe8c0d",
+            "d6df25d90f216498a078fbf5e996701324802fa0ff60675918d4cf8f33c847a3",
+            "d60877a9768b8c63abbd499afc42e7c67829aff252679a3181c47ef6985cc83a",
+            "e3be70d87a8412297cc2380b60bc9b781c1848e8436a1ceebfcc275328f2e1c2",
+            "7fa99947aede4fee0c79173b4f49799317fb01cdf79c41fe5278e69f5453f53e",
+            "d2a2a133ee1dbf179a2eedff2cbebc3fcb4c82853b06747cd2da11ae533e3f49",
+            "bbb7f1756dc18d4174d38ee6f1098f6d1beeba087425089ef2dd37f6ac741c9e",
+            "6b9bce6f0bd07d0f3d203b98e1278eeb3936e7e93e699961c7c6cd81b9f7d96e",
+            "2eb60a4c1ba1222856f9286eff99d0c1891775e503f8a2a80115c0fe4e0b3403",
+            "0f7b9a2e354b7070d534bf2ae0c7159a5466f9f2f064e2f8ab9fe87b144df297",
+            "06200bd4b47342785debbf51438c78e99c01059f3358090a4b0507e9aaf0fbd5",
+            "97b66d89a603533a6768507b89d0e664a9385c3a4dcee96091496d0261307918",
+            "1c933ba2d5aa11997d085c114a15911fd2a536a0c9cab9bd0467e04127b56b32",
+            "61dad90ef40ce40f56f17ea4064c30c414099fe0fb790aba4a442a6711830bd9"
+          ],
+          "technical": 0,
+          "coveredPct": 99.7,
+          "ruin": 6,
+          "meanEndRealEur": 4036020.782350481,
+          "meanCareCostRealEur": 159052.4307203648,
+          "deaths": 1910
+        },
+        "unverheiratet": {
+          "id": "martin-petra",
+          "variant": "grund",
+          "inputHash": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+          "chunks": [
+            "ee559369d78bc3d90555d6943aea2ad1ce50cee72c85406b1837355c40c4ff71",
+            "b15924e2a25a49361797d6355d2ad06a1fa795f62ab383ef04e98f18b8d27d67",
+            "b8134cb14540660bb50ba6a100f70973cc54148173e786b2272fef033183ed7a",
+            "b77306bb4d13e27afd5254cdf7648c7e47f92255beba100547542eac70e2d164",
+            "0ef365d5d4ca8e3a97c7b228287f755601f0d050cb5536f1444cce413c6f2d2a",
+            "072364ff25c21eb761dee85458f89debbb33d4087535495b78c8b025e16b3398",
+            "ef93de9fce509473810cab2a65874c0baf2740c80537d958c50548d6ba80ac21",
+            "81dada319b1b5c149ea0d07136cf724f9828e5cbcdcf42fa1800311ac89082f8",
+            "5e19e8446cde09f64b9570e167664f322a8007b2ad5112ebcd65f9279e85c930",
+            "c40a013a8b01e81fe673abd6be7278eb05a23bce0e4b71961c0ec6f87fae6836",
+            "e4d451534b5f130f1d36256324286c0d638acd5d1e4ef33f4da1e2f71f540922",
+            "46a259999da56c18d34642a0e2f9b0f498dc2536676a8a5705bff73563c1c4c2",
+            "9cc2eafb3a7dd535d9dfb7eebf99afbf50ba19d46b0a388aded30030d18b2511",
+            "55f2c6d692942eb7f5d8bc2b5348fc041679bace993d1a5f62dcc00fcd37135c",
+            "a63652a0f7f8618c362b97573631c94df83800967fa739e3eacf952246573ea3",
+            "10df52fd57ef238fc4eaaa7accf5013d0590c601143b3822df56f82a1d6e0c22",
+            "984fe37fa163b4f9a3f3bc86fa9b8be2c06a267d60760a08efc925740b6fd9e1",
+            "1342df1fdbbea3ab501aa2af3076259f48b8ad1b2f21342e9c1acced947e9790",
+            "8d85f7080068e74995b9d7188fe932d491f371bdb3838d23fc6f6ff44b1e5214",
+            "788ee8dd83c3ea69451a30fe52cdaf528bd5ef274591c237c91ef21b1fbf803e"
+          ],
+          "technical": 0,
+          "coveredPct": 99.85,
+          "ruin": 3,
+          "meanEndRealEur": 2247189.241494441,
+          "meanCareCostRealEur": 170270.99289483836,
+          "deaths": 1934
+        }
+      }
+    },
+    "after": {
+      "testDate": "2026-10-23",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "basis": "Geldvermögen am Laufende und zusätzliche Pflegekosten in Startkaufkraft; Mittel über alle auswertbaren Pfade, Ruin-Endvermögen 0.",
+      "results": {
+        "pflege": {
+          "id": "helga-werner",
+          "variant": "haus-pg3",
+          "inputHash": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+          "chunks": [
+            "ec4c54e4abb1157a0a8c228d3c6f22176b800544777e71667056a650dd09d76e",
+            "3f5799b70ce5ba9ea8bd210a7e943a3b13cc519fe03200a62963e688d93f6354",
+            "23d95cea1e384faf0ed976dd8ba04f4032d18701ce63167559721edc83f61611",
+            "0cbba7e8db5b65466c7e9cddf37bd026e3b68e31722fd0d2ed5caf6a2ca9e890",
+            "db29e8d768bc1fa0e560d1064791f3882da3a49a1aaf4cacff3d3c5dc6403c5e",
+            "b2015cc511272828454ee4a2aaee76b6df1779338a235e57d5ec562586862da0",
+            "da1961b0a892cd35e2d083197aacab73a0b619a11f06946099a454db4de22069",
+            "07ad6556d29da30eb1fa4dbf18f41594d8463d56016d0bf3f5b1cd57ba585dc1",
+            "bb736328fc3ab9d02171facb5f31381e0923ff7a467cda95e2d1dbdbbcff0148",
+            "bbf1698704e9ea9d7e77321af1692312efa003b94db9e3d63c85c6d9e0285e1e",
+            "5b5162299fac142991917658df6705a88533220c5ffa32590f40079f834c2e64",
+            "fed3a9412674891dda7653eb8d769e27334d6bea19275de1ae7ef82da7ba4fb1",
+            "288e99b87b31afd45964ed225e990b15cf5dc3c4fde52085b60f54052c06bf66",
+            "fede2f4a53c6d3b4b75318af2e5366e39f355f8f4d4a994a154db195db6e1a17",
+            "b683f68f0148cf701bca56cfe456ed7b5d65134d98aecca72b33d41da40a4e8b",
+            "0adf0e713c62a2f581d1ac09f4b7f58db2efac2c71ef7681a0b8ad6bf1f1b000",
+            "a4eacd2f67d8edc4a25b8dd2b18658c3e61704a80ec2bec631bc1fb906e609d4",
+            "8e1e517204f0613f2f807e5e6adc07d811e77a4bb2cc71361cca62be76249667",
+            "47ebd9f12314d59994fb2c371ae3cbb44b3ffe3898df841aeb08921847074ac3",
+            "9ef1e10d97182c1ee6942ebfd488cfcfac9aa6f780ae572572416b9920d94e2a"
+          ],
+          "technical": 0,
+          "coveredPct": 99.8,
+          "ruin": 4,
+          "meanEndRealEur": 645447.9652840616,
+          "meanCareCostRealEur": 135399.9190967915,
+          "deaths": 1917
+        },
+        "todesfall": {
+          "id": "max-erika",
+          "variant": "grund",
+          "inputHash": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+          "chunks": [
+            "775b245b63200dfba14ce2e1fcbe03586acfc1e6b4164fcbcdaf0467b813cf75",
+            "5dd9aff77f19f0b17eead3070b2c365de50688b15447f1a5b9f92bcfb6ed9268",
+            "b70da57106fccce5fd123aa1b4dcac142bac0fc5d5d0083fa7d808f5b7c6fcf0",
+            "ec95487b8eeef830faac2f0ea6da30997e70f81913f7629a16704710716074e6",
+            "cfefb00c4b2abbf7e2c2ef6fe75f4daaeac017cb6c38d7fd514e275f96ed9ca4",
+            "de6a880407fe80263fc49a281630588323d7f9d3c5ed23f28025a6717daa17b1",
+            "3d8b1c270282680c4193dae08cd2d40497379431eb959e77df96a35d441fc338",
+            "d6df25d90f216498a078fbf5e996701324802fa0ff60675918d4cf8f33c847a3",
+            "e434dad746c141cf679ab9492726266a7aede7ebf30ca16908c33be5880ddc93",
+            "9ab94fbbfe759a767e00ce22fa2356860c50003bf3ce2437402fb796f5036fa4",
+            "7fa99947aede4fee0c79173b4f49799317fb01cdf79c41fe5278e69f5453f53e",
+            "6a7cf10e02d6edefe2acf50ea27cb614f81190f63630989c96b7ec976385ddb9",
+            "c76b53f855753e246dcfc609e8561c45ab8d7f657e19e7c35df307e5d75ae5a5",
+            "1ff099e8ef32c3051a2dc71902b594d2b724a98d45ba2307e71007eb98266458",
+            "ef80b604152a3187faee2acce125d6b756ee534f3bdf73a6345c4929478ea474",
+            "a014e1ca33d5fd13dc0fc9631476bb01ca0452d2adf954298243126905379ca1",
+            "06200bd4b47342785debbf51438c78e99c01059f3358090a4b0507e9aaf0fbd5",
+            "29ddf19acbd50e54bc0ad856e5ec3b4a47b7fd8941e502eeeaebcae709584d00",
+            "c3b8246dee39c2a7ee05c2d43020f29cde389ee776bed1883a6df325e6303bf9",
+            "ba4a5186db6d643565beb791e1692b701c0acf42f13bb9fa379a1312b59bdb54"
+          ],
+          "technical": 0,
+          "coveredPct": 99.7,
+          "ruin": 6,
+          "meanEndRealEur": 4036083.9152393,
+          "meanCareCostRealEur": 159052.4307203648,
+          "deaths": 1910
+        },
+        "unverheiratet": {
+          "id": "martin-petra",
+          "variant": "grund",
+          "inputHash": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+          "chunks": [
+            "ee559369d78bc3d90555d6943aea2ad1ce50cee72c85406b1837355c40c4ff71",
+            "b15924e2a25a49361797d6355d2ad06a1fa795f62ab383ef04e98f18b8d27d67",
+            "b8134cb14540660bb50ba6a100f70973cc54148173e786b2272fef033183ed7a",
+            "b77306bb4d13e27afd5254cdf7648c7e47f92255beba100547542eac70e2d164",
+            "0ef365d5d4ca8e3a97c7b228287f755601f0d050cb5536f1444cce413c6f2d2a",
+            "072364ff25c21eb761dee85458f89debbb33d4087535495b78c8b025e16b3398",
+            "ef93de9fce509473810cab2a65874c0baf2740c80537d958c50548d6ba80ac21",
+            "81dada319b1b5c149ea0d07136cf724f9828e5cbcdcf42fa1800311ac89082f8",
+            "5e19e8446cde09f64b9570e167664f322a8007b2ad5112ebcd65f9279e85c930",
+            "c40a013a8b01e81fe673abd6be7278eb05a23bce0e4b71961c0ec6f87fae6836",
+            "e4d451534b5f130f1d36256324286c0d638acd5d1e4ef33f4da1e2f71f540922",
+            "46a259999da56c18d34642a0e2f9b0f498dc2536676a8a5705bff73563c1c4c2",
+            "9cc2eafb3a7dd535d9dfb7eebf99afbf50ba19d46b0a388aded30030d18b2511",
+            "55f2c6d692942eb7f5d8bc2b5348fc041679bace993d1a5f62dcc00fcd37135c",
+            "a63652a0f7f8618c362b97573631c94df83800967fa739e3eacf952246573ea3",
+            "10df52fd57ef238fc4eaaa7accf5013d0590c601143b3822df56f82a1d6e0c22",
+            "984fe37fa163b4f9a3f3bc86fa9b8be2c06a267d60760a08efc925740b6fd9e1",
+            "1342df1fdbbea3ab501aa2af3076259f48b8ad1b2f21342e9c1acced947e9790",
+            "8d85f7080068e74995b9d7188fe932d491f371bdb3838d23fc6f6ff44b1e5214",
+            "788ee8dd83c3ea69451a30fe52cdaf528bd5ef274591c237c91ef21b1fbf803e"
+          ],
+          "technical": 0,
+          "coveredPct": 99.85,
+          "ruin": 3,
+          "meanEndRealEur": 2247189.241494441,
+          "meanCareCostRealEur": 170270.99289483836,
+          "deaths": 1934
+        }
+      }
+    }
+  },
+  "vf2h": {
+    "before": {
+      "date": "2026-10-23",
+      "parameters": {
+        "anzahl": 8,
+        "maxDauer": 35,
+        "blockSize": 5,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "cases": {
+        "max-erika/grund": {
+          "inputs": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+          "mc": "9ca41428605c9d9d5d5933859946147f816352f99be09bde332dc855be7b8cb3",
+          "backtest": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295"
+        },
+        "max-erika/immobilien": {
+          "inputs": "86ddc30151241ba05ff3db4b9eed89888a97a5a41d17de69d04b809cbd00d58e",
+          "mc": "62f8a300c543a7c4d1d60afe928bd68d14b78104d06b60583256cb9e2fb08b86",
+          "backtest": "ad4ff19c892aa47f9484e6fc93202e4dc9d018a31ff567e16af483ee90f24195"
+        },
+        "renate/grund": {
+          "inputs": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+          "mc": "a4eee4ee50ce85c37ad9ec613bcc5fa5acb30a571c861f06e08725da4434f9fc",
+          "backtest": "373ed483058841c431e98cb8bb6659c37561d6ce7ed3077211baf51879df18c0"
+        },
+        "renate/klein": {
+          "inputs": "7f8fefe0aca3909ba632b8cbe0932a99aaff39be854cc14b67a49327832d82e5",
+          "mc": "cec8713f87aa8ef575003395000415087d609cb54e70622522d66f5e20305721",
+          "backtest": "c56dc6f5ae499999b91b433169811b7d0f31d23250f0180360a4e1f31b440a35"
+        },
+        "jan-lena/grund": {
+          "inputs": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+          "mc": "0e742dcea470e8b2768753968099181a228d7e22545cdfb017de2b03d4ab3950",
+          "backtest": "dc7dea48fe3f6397bd9dc8d7c91cd40a5764b33dc36a7ba9960af6917b8c306b"
+        },
+        "jan-lena/halten": {
+          "inputs": "ab9b9d059adf07739776fec57454e61c14ab402611bd38066ba78c3f57d79d0c",
+          "mc": "6a542cc9b96503e25b59fe3105e2e040b746f0047c2c21bb7caed1150d348ccf",
+          "backtest": "57f93b224b6a018c8e4d66baccde178a541ca78819b6c84a1abce5c5df33379f"
+        },
+        "helga-werner/grund": {
+          "inputs": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+          "mc": "7420284f67b1550ec1b758f05fc80d8972f052e150de3d9c572608f362fb01cf",
+          "backtest": "92ea9bdd5ccaa84cc57f0460ec89f5f02718e4a3c2944c7a68a3f9a719f58499"
+        },
+        "helga-werner/haus-pg3": {
+          "inputs": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+          "mc": "75fbb548b4d9e65ebfa89311b772763a588ae31f77756fca1dd6ceff16e4a4a3",
+          "backtest": "261937d98630f35e4e6ff2b645a2ecd2faeb8d44af6285a918e351f8bddac94e"
+        },
+        "sophie/grund": {
+          "inputs": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+          "mc": "829f403c8cbdf7b1d32946e0ca62b20790633a3b5a93377da1219080e17f7e16",
+          "backtest": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341"
+        },
+        "sophie/teilzeit": {
+          "inputs": "0ccb65c20a976ec95aa91f5c1f0b244d7fe8ba32c14c4c85487a5936327f8b2e",
+          "mc": "f03cf432738e2bb53043d858fefe84728a628775b13076562a28f1ec7a36ec1f",
+          "backtest": "76554554fbe16e45e241ae065390332b337eef4f4c912b3c4e487948a8e1eed4"
+        },
+        "martin-petra/grund": {
+          "inputs": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+          "mc": "5a67789d66ac8286d60e4484080d5500efae9ece6ae5a6059c6c321ec1029620",
+          "backtest": "322b411d84c6ff3429ea5f58209d5e36d407d214326c714ff680ebd914cbc0a9"
+        },
+        "martin-petra/hundert": {
+          "inputs": "ddfdcbd5100334422050d27f28d9f3a0cd7aca977b06753c29a84bfa253c351e",
+          "mc": "2432f10a7a4791ca8dd5feddb7fbcfab0adc202a66bd5d3f0f7f0f0399c79ca7",
+          "backtest": "c96e3ce33c72e095a96e4ec6d0fe713f39c129547503eee0c72a02b0518cf7c6"
+        },
+        "martin-petra/ehe": {
+          "inputs": "b01b07df59e0ae874a6142da5c0e447a0940e73369044272fbd5c482ba06d0f4",
+          "mc": "6f87214a993fe65981d9f15eb9035ecd43dc535f67b5cf36d339d56ab23a89eb",
+          "backtest": "d33f64a2d43423cc346ece4bbeb6ebf983987e8802452603ec7ba28a768c6aa0"
+        },
+        "martin-petra/testament": {
+          "inputs": "0eddfcaa4c2e65f69188e6dc44875584659abcc4936a7cd43ae57f9d34036154",
+          "mc": "3a0364a97ff8a04638d418e10c44e3a44086b60ffc73b0f9dca6680cb25185d7",
+          "backtest": "046e6ae19a7c6e1197cfb3c81a2c252065362fd60d0b9750eb2883b79755f03f"
+        }
+      }
+    },
+    "after": {
+      "date": "2026-10-23",
+      "parameters": {
+        "anzahl": 8,
+        "maxDauer": 35,
+        "blockSize": 5,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "cases": {
+        "max-erika/grund": {
+          "inputs": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+          "mc": "9ca41428605c9d9d5d5933859946147f816352f99be09bde332dc855be7b8cb3",
+          "backtest": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295"
+        },
+        "max-erika/immobilien": {
+          "inputs": "86ddc30151241ba05ff3db4b9eed89888a97a5a41d17de69d04b809cbd00d58e",
+          "mc": "62f8a300c543a7c4d1d60afe928bd68d14b78104d06b60583256cb9e2fb08b86",
+          "backtest": "ad4ff19c892aa47f9484e6fc93202e4dc9d018a31ff567e16af483ee90f24195"
+        },
+        "renate/grund": {
+          "inputs": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+          "mc": "a4eee4ee50ce85c37ad9ec613bcc5fa5acb30a571c861f06e08725da4434f9fc",
+          "backtest": "373ed483058841c431e98cb8bb6659c37561d6ce7ed3077211baf51879df18c0"
+        },
+        "renate/klein": {
+          "inputs": "7f8fefe0aca3909ba632b8cbe0932a99aaff39be854cc14b67a49327832d82e5",
+          "mc": "cec8713f87aa8ef575003395000415087d609cb54e70622522d66f5e20305721",
+          "backtest": "c56dc6f5ae499999b91b433169811b7d0f31d23250f0180360a4e1f31b440a35"
+        },
+        "jan-lena/grund": {
+          "inputs": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+          "mc": "0e742dcea470e8b2768753968099181a228d7e22545cdfb017de2b03d4ab3950",
+          "backtest": "dc7dea48fe3f6397bd9dc8d7c91cd40a5764b33dc36a7ba9960af6917b8c306b"
+        },
+        "jan-lena/halten": {
+          "inputs": "ab9b9d059adf07739776fec57454e61c14ab402611bd38066ba78c3f57d79d0c",
+          "mc": "6a542cc9b96503e25b59fe3105e2e040b746f0047c2c21bb7caed1150d348ccf",
+          "backtest": "57f93b224b6a018c8e4d66baccde178a541ca78819b6c84a1abce5c5df33379f"
+        },
+        "helga-werner/grund": {
+          "inputs": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+          "mc": "7420284f67b1550ec1b758f05fc80d8972f052e150de3d9c572608f362fb01cf",
+          "backtest": "92ea9bdd5ccaa84cc57f0460ec89f5f02718e4a3c2944c7a68a3f9a719f58499"
+        },
+        "helga-werner/haus-pg3": {
+          "inputs": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+          "mc": "99fc6113e0bd26f3259b1c10138ba76243893f47f2dec6d9c8664db4613abed0",
+          "backtest": "87ae2cae3a71db8b839e1001abe26234ca752f55f5caa14dcff630abdbd5bbc2"
+        },
+        "sophie/grund": {
+          "inputs": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+          "mc": "829f403c8cbdf7b1d32946e0ca62b20790633a3b5a93377da1219080e17f7e16",
+          "backtest": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341"
+        },
+        "sophie/teilzeit": {
+          "inputs": "0ccb65c20a976ec95aa91f5c1f0b244d7fe8ba32c14c4c85487a5936327f8b2e",
+          "mc": "f03cf432738e2bb53043d858fefe84728a628775b13076562a28f1ec7a36ec1f",
+          "backtest": "76554554fbe16e45e241ae065390332b337eef4f4c912b3c4e487948a8e1eed4"
+        },
+        "martin-petra/grund": {
+          "inputs": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+          "mc": "5a67789d66ac8286d60e4484080d5500efae9ece6ae5a6059c6c321ec1029620",
+          "backtest": "959fda2080ae6cd541949c647af75041f72bffbc331fad0640497a07ed9ebc86"
+        },
+        "martin-petra/hundert": {
+          "inputs": "ddfdcbd5100334422050d27f28d9f3a0cd7aca977b06753c29a84bfa253c351e",
+          "mc": "2432f10a7a4791ca8dd5feddb7fbcfab0adc202a66bd5d3f0f7f0f0399c79ca7",
+          "backtest": "ef31a161d78961139d7942a436367ce40829f7c4238bba3145224a12e0623ee3"
+        },
+        "martin-petra/ehe": {
+          "inputs": "b01b07df59e0ae874a6142da5c0e447a0940e73369044272fbd5c482ba06d0f4",
+          "mc": "6f87214a993fe65981d9f15eb9035ecd43dc535f67b5cf36d339d56ab23a89eb",
+          "backtest": "d33f64a2d43423cc346ece4bbeb6ebf983987e8802452603ec7ba28a768c6aa0"
+        },
+        "martin-petra/testament": {
+          "inputs": "010e14c6b7ec8e029d141bfe03490dd1259ad4539c9c7acce1c0a93d7aaaa735",
+          "mc": "fcf32da7bfa74c36bf3a223bd2eed52c90d6d9a8bc8d5e08ac1b01c91387a80a",
+          "backtest": "cac254305bb337e221e6b68b610ef05bec3656e3db41ab0034f6ed2b379a9414"
+        }
+      }
+    },
+    "unchangedCases": [
+      "max-erika/grund",
+      "max-erika/immobilien",
+      "renate/grund",
+      "renate/klein",
+      "jan-lena/grund",
+      "jan-lena/halten",
+      "helga-werner/grund",
+      "sophie/grund",
+      "sophie/teilzeit",
+      "martin-petra/ehe"
+    ],
+    "changedCases": {
+      "helga-werner/haus-pg3": [
+        "mc",
+        "backtest"
+      ],
+      "martin-petra/grund": [
+        "backtest"
+      ],
+      "martin-petra/hundert": [
+        "backtest"
+      ],
+      "martin-petra/testament": [
+        "inputs",
+        "mc",
+        "backtest"
+      ]
+    },
+    "contract": "Unverändertes measure-vf2h.mjs: acht MC-Pfade je Variante und Backtests 2000–2025; ausschließlich bestehender Filter für Immobilien-Anzeigefelder."
+  },
+  "effects": {
+    "helga-werner/haus-pg3": "Befund 2: heutiger Flex bleibt; weitere Rücklagenfolgen aus 1/6/8.",
+    "martin-petra/grund": "Befund 4: persönlicher Zahlungsweg im Backtest.",
+    "martin-petra/hundert": "Befund 4: persönlicher Zahlungsweg im Backtest.",
+    "martin-petra/testament": "Befund 4 im Backtest und Teil W: Geburtsdatum und Bewertungsalter.",
+    "max-erika/grund": "Befund 3: Hinterbliebenenrente bei unterjährig beginnender eigener Rente."
+  },
+  "parity": {
+    "cases": 208,
+    "financialSummaryUnchanged": true,
+    "changedSummaryFields": [
+      "source.sourceHash",
+      "durationMs"
+    ],
+    "beforeFailed": false,
+    "afterFailed": false,
+    "runtimeTargetMet": false,
+    "reason": "Gleiche Entscheidungen und Personenpläne; bekannte unbelegte Jahresend- und Folgelaufverträge bleiben. Vorher 24,06 s, nachher 13,03 s bei paralleler Validierung, Ziel 10 s."
+  },
+  "validation": {
+    "npmTest": {
+      "assertions": 138408,
+      "failedAssertions": 0,
+      "failedFiles": 0,
+      "separateGates": 4,
+      "outsideSandbox": true
+    },
+    "docs": {
+      "files": 52,
+      "errors": 0,
+      "warnings": 6
+    },
+    "browser": {
+      "outsideSandbox": true,
+      "passed": [
+        "Simulator Monte-Carlo E2E",
+        "Personen & Vermögen Ansichten und Sprungziele"
+      ]
+    },
+    "images": {
+      "fullRunOutsideSandbox": true,
+      "count": 65,
+      "bytes": 6244771
+    }
+  }
+}

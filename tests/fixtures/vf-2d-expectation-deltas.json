@@ -1,0 +1,100 @@
+{
+  "reason": "VF-2d Teil B, FR-63: ausdrückliche Bären-Auszahlung, kein gegenläufiger Anleihenhandel, persönliche Reserve und ausgeführte Auffülldiagnose. Nur Drei-Töpfe-Ergebnisse ändern sich; historische Belege bleiben erhalten. Vollständige JSON-Prüfsummen ohne Feldfilter.",
+  "hashes": {
+    "d01317d4f9a419dff2a58d6cdb781f4aea5d73fc6fb19653063f149fd4f7a311": "098f56d508f2728fc611b9b389dc96abbb211ca3e872bbccb3062daa71c3ea2a",
+    "2d8092505491a6484ee42a63bca99ff457714620ba666782909a4d03e44d32ef": "9f54347061cb277ca3ac4e92da3dfe2d34758eca315f25dc157b946e4b0bd532",
+    "c164b8b0ed2b556acc1f670e8cfedf985d5ffdaef895827cbbebaa1a88a1b7b1": "6594d332a069d2fa379838cd0c79af8c43943f98d2f57d00bedfcb9f2eb22b5d",
+    "55920ee0627095a907e3db84890c73eea1660eebf4b39f043685b6e4bfd506b7": "7b2ea06a189a5e367a95d5eb5adc0d8be4a64c26f30de0607214e3dd7f3f1df9",
+    "bad09054a7e9f0f4afcbe0a724fc7dd8251be9afba572e8f3e335ef43927928e": "1ee9d80e5c53a822f69110180a2b50b651991df822874c3087244c6525796712",
+    "f425e2c4a05d5e574e7de58625aa65ec15cfaf5c62e2c68ac6d2e9fb4a61badb": "8c16199c7a3167a2872d434f167657d0826a74f62e90b6306639119cfddd2172",
+    "03aa015bb0c24c5c2b638729daa550114a19b48c6e21dc78e38cec5ba567a89a": "e812d0fe17c583609ef27c3107490d9552c192fcc5f39462ea54724d1bdb526a",
+    "13977b397229e2fa0d493b3cd1d0b87a4256bc9b98bddc340922ed6ec26c55d5": "89f0ddf55542ee3a1f08ebbf8772df67fdd6500dc7ce4e9c6974d883eeaa5fe0",
+    "a86644769ed43e2969ef61fa80268937d5f79b8ad3d5817332df56f4b0234894": "275897befbebcda640ba150dd16039a44aa90adb145016d2ba09045dd90e5458",
+    "4442bf77c4df8f5715dbf685b9d293a5c5c39eef27720af8f005fe4fdadbc0a8": "8b5716e03dac3beccf0e73abda125c63c3e8ecba681a4b3bdb1fc8821ef07a2d",
+    "c827601100d06cf4d5ec79163501d7b232f13dbaa268da22528ac2cdd4e8cd79": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96",
+    "ace8d2b667bd58acfaeb760af9d289435d6775c751edf46b209b6b7a74995e70": "f8df9cd8aff2a15547006dd159111d1f484ed872e7bd271bd65fb7a734cd5fda",
+    "5bd7771d37b3dfb12c70cc54be5c5103ce40ec812513d340601eda912ae1b51a": "eadfe13cda2f9a17d0d620bd047ae3d615dfcd5b6b5498f450baa837a469f15e"
+  },
+  "groups": [
+    {
+      "case": "Helga/Werner: vollständiger Backtest nach FR-63, Tagesgeld zuerst in Anleihen und keine Auffüllung im Bärenmarkt",
+      "beforeSha256": "d01317d4f9a419dff2a58d6cdb781f4aea5d73fc6fb19653063f149fd4f7a311",
+      "afterSha256": "098f56d508f2728fc611b9b389dc96abbb211ca3e872bbccb3062daa71c3ea2a"
+    },
+    {
+      "case": "drei-topf: vollständige Finanzbytes und Folgezustände, Drei Töpfe mit FR-63, übrige BK-2-Belege unverändert",
+      "beforeSha256": "2d8092505491a6484ee42a63bca99ff457714620ba666782909a4d03e44d32ef",
+      "afterSha256": "9f54347061cb277ca3ac4e92da3dfe2d34758eca315f25dc157b946e4b0bd532"
+    },
+    {
+      "case": "renate/statisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "c164b8b0ed2b556acc1f670e8cfedf985d5ffdaef895827cbbebaa1a88a1b7b1",
+      "afterSha256": "6594d332a069d2fa379838cd0c79af8c43943f98d2f57d00bedfcb9f2eb22b5d"
+    },
+    {
+      "case": "renate/statisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "55920ee0627095a907e3db84890c73eea1660eebf4b39f043685b6e4bfd506b7",
+      "afterSha256": "7b2ea06a189a5e367a95d5eb5adc0d8be4a64c26f30de0607214e3dd7f3f1df9"
+    },
+    {
+      "case": "renate/dynamisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "bad09054a7e9f0f4afcbe0a724fc7dd8251be9afba572e8f3e335ef43927928e",
+      "afterSha256": "1ee9d80e5c53a822f69110180a2b50b651991df822874c3087244c6525796712"
+    },
+    {
+      "case": "renate/dynamisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "f425e2c4a05d5e574e7de58625aa65ec15cfaf5c62e2c68ac6d2e9fb4a61badb",
+      "afterSha256": "8c16199c7a3167a2872d434f167657d0826a74f62e90b6306639119cfddd2172"
+    },
+    {
+      "case": "helga-werner/statisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "03aa015bb0c24c5c2b638729daa550114a19b48c6e21dc78e38cec5ba567a89a",
+      "afterSha256": "e812d0fe17c583609ef27c3107490d9552c192fcc5f39462ea54724d1bdb526a"
+    },
+    {
+      "case": "helga-werner/statisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "13977b397229e2fa0d493b3cd1d0b87a4256bc9b98bddc340922ed6ec26c55d5",
+      "afterSha256": "89f0ddf55542ee3a1f08ebbf8772df67fdd6500dc7ce4e9c6974d883eeaa5fe0"
+    },
+    {
+      "case": "helga-werner/dynamisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "a86644769ed43e2969ef61fa80268937d5f79b8ad3d5817332df56f4b0234894",
+      "afterSha256": "275897befbebcda640ba150dd16039a44aa90adb145016d2ba09045dd90e5458"
+    },
+    {
+      "case": "helga-werner/dynamisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "4442bf77c4df8f5715dbf685b9d293a5c5c39eef27720af8f005fe4fdadbc0a8",
+      "afterSha256": "8b5716e03dac3beccf0e73abda125c63c3e8ecba681a4b3bdb1fc8821ef07a2d"
+    },
+    {
+      "case": "Muster-Haushalt",
+      "beforeSha256": "c827601100d06cf4d5ec79163501d7b232f13dbaa268da22528ac2cdd4e8cd79",
+      "afterSha256": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96"
+    },
+    {
+      "case": "Einzelprofil",
+      "beforeSha256": "ace8d2b667bd58acfaeb760af9d289435d6775c751edf46b209b6b7a74995e70",
+      "afterSha256": "f8df9cd8aff2a15547006dd159111d1f484ed872e7bd271bd65fb7a734cd5fda"
+    },
+    {
+      "case": "Haushalt mit Außenperson",
+      "beforeSha256": "c827601100d06cf4d5ec79163501d7b232f13dbaa268da22528ac2cdd4e8cd79",
+      "afterSha256": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96"
+    },
+    {
+      "case": "aktive Außenperson",
+      "beforeSha256": "c827601100d06cf4d5ec79163501d7b232f13dbaa268da22528ac2cdd4e8cd79",
+      "afterSha256": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96"
+    },
+    {
+      "case": "synthetische Echtform",
+      "beforeSha256": "5bd7771d37b3dfb12c70cc54be5c5103ce40ec812513d340601eda912ae1b51a",
+      "afterSha256": "eadfe13cda2f9a17d0d620bd047ae3d615dfcd5b6b5498f450baa837a469f15e"
+    },
+    {
+      "case": "Altbestand",
+      "beforeSha256": "c827601100d06cf4d5ec79163501d7b232f13dbaa268da22528ac2cdd4e8cd79",
+      "afterSha256": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96"
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+{
+  "reason": "NL-1 erweitert ausschließlich das Markt-Gate von FR-20 um recovery_in_bear. Gegen f1b6799e nachgerechnet: zehn reine Diagnosefälle ändern nur MarketExtremeBear/marketExtremeBear; sieben Rechenfälle enthalten die zusätzliche Notlage oder deren Folgen. Historische Referenzen bleiben erhalten. Alle BM-6-MC-N/D-Pfadkennzahlen stimmen für alt/Na exakt überein.",
+  "hashes": {
+    "529c020a67650285893cf48d4630b85aef6a152493ca4327cd8f177e6cce2d4b": "b27644ebdd71fb56a05eadbe5a0d7424fc16d1df0a3639577be00dddb017cf40",
+    "dee6402b79a594ffac593b7f38aad07294da68b63e8fca08a70d6cccfaa4cb3b": "59f64ca3403ee91440559c83789e019047a47f61774e1dd15a414915b6ad3108",
+    "94128d07186adbb54fd164645d0ed4781d48988a2dfc6ea8d4920f7e2a20161f": "65298ac84ab0c1cdd7f6ec5120a9454acc8c2c7b4f3ebbdb3bdace8c8cfc1134",
+    "0e762cb4c142e35e777deb1e09e3902be8ed1a2ce13cd8b9845c50c64758d510": "7ff5ca1cceb196a9ece6e68209281af4f06d6a52df78cff43bb76ca7f804a743",
+    "03f4a78e4767442ae3bf5d8251504b12a2119d33c882e1ada9a7cb436eaf727f": "78214f8b317d3618a4a559bcf10598e9e57d873f957a1a2de72b40be11711ff9",
+    "48b66e7ab5c30679139dddcfb8b0a37dce06f27d1e8e0d0dde64a538f0b3eb84": "02f2b5c3afb81a2ba6e3886fbc2e95b48243c9be557959ac922f5c6ceefdc403",
+    "5e88045fe7441e7425a6749d8c47bece6ec10c42ffc9de3351666831ad5595a4": "bd80c379379774293c7bcfd13972c6a2a45d1249d893b9c9aeb46023a62232ae",
+    "d33261e456c95c56ed5e7cc011f9a29da56dbd9acc9b2bf4376cc7df122c9736": "305e690e40cca2f024b7f3c46d9e8f8211cef16fd474bb87b6b860caa2402fd2",
+    "bb0ef06558644d58cc82e9ed47dff066624e724290b70d495a0dcc53046b53aa": "3b08a08a660096491f84d84b66a1e09eb87c873dc7f3cbdb801880e8960096cb",
+    "43939915ff3e79127cdd472d396f59290a28b33e539842ac4f4b3f0a17887f40": "9fd3b458d5866cbfa124558621ade482c8ef406c09d2230bf8f83012ae2b3697",
+    "7936923b684e10d4c66461c26a5bcb50b33e79e27ec644eaeec931902cdafd15": "b7c75a8a337c16de384d366c3a5334c14ccbd75358e71b0221fbe0637d2d21f6",
+    "f98bb1bcbec6b3851bc9c5723726028e1ce8f53b6f5b9cc1c75a4f1c4fe44dbf": "6d39598a19c032fe58dbffb7df55ada26fbea97a5d03cff6fd0e1ce5d4996978",
+    "751e7e1ef371eb8ff452a09c9c1cab11e13db6a491ff8886734b4d5e5d6cd455": "969bab3e83acb81f75a4be38e23d4e7c0973dfe27613e7b273947072e9f590ec",
+    "c7afa69a2b12d645391a1b31723e1c7d7981c2128841bcb9db4effdd7528145d": "0907ab679bb2e59fee338a4ea4cc669a9677059b55a6831a678a1dd0470d8527",
+    "b7da2fb7a927868752a9ae822c33cef74276af7ac2ac44db45b8022abb7f09ac": "586515ac747c46288f76f6995d48def693e6c9bbbf2a280e5bf3569bc2c7fd89",
+    "234869e4a7f63877d585a871c911c02d9ee96daebc00513b04a3d2c7eb489322": "ebde5af90a2b5a38c43d546c4189a7cbca56466d78bf2efaed12bfe8cf1108a2",
+    "38373a8537f4ad7a223b1366620c802d25a4cb3a365070908661372a9479a671": "ea798124139c027b0f0863412e82ab15a4e9efce2db7a3d86f32c1ee368a98f5"
+  },
+  "evidence": [
+    {
+      "test": "ff-g-regression.test.mjs",
+      "label": "Helga/Werner: vollständiger Backtest 2000–2025 mit FR-35 und 60.000 EUR Rücklage nach FR-36",
+      "before": "529c020a67650285893cf48d4630b85aef6a152493ca4327cd8f177e6cce2d4b",
+      "after": "b27644ebdd71fb56a05eadbe5a0d7424fc16d1df0a3639577be00dddb017cf40",
+      "changedLeaves": 3,
+      "cause": "recovery_market_diagnostic_only"
+    },
+    {
+      "test": "monte-carlo-measurement-contract.test.mjs",
+      "label": "Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.carResultSha256",
+      "before": "dee6402b79a594ffac593b7f38aad07294da68b63e8fca08a70d6cccfaa4cb3b",
+      "after": "59f64ca3403ee91440559c83789e019047a47f61774e1dd15a414915b6ad3108",
+      "changedLeaves": 3,
+      "cause": "recovery_emergency_and_following_financial_years"
+    },
+    {
+      "test": "monte-carlo-measurement-contract.test.mjs",
+      "label": "Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.autoOptimizeResultSha256",
+      "before": "94128d07186adbb54fd164645d0ed4781d48988a2dfc6ea8d4920f7e2a20161f",
+      "after": "65298ac84ab0c1cdd7f6ec5120a9454acc8c2c7b4f3ebbdb3bdace8c8cfc1134",
+      "changedLeaves": 13,
+      "cause": "recovery_emergency_and_following_financial_years"
+    },
+    {
+      "test": "monte-carlo-measurement-contract.test.mjs",
+      "label": "Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.finalResultSha256",
+      "before": "0e762cb4c142e35e777deb1e09e3902be8ed1a2ce13cd8b9845c50c64758d510",
+      "after": "7ff5ca1cceb196a9ece6e68209281af4f06d6a52df78cff43bb76ca7f804a743",
+      "changedLeaves": 8,
+      "cause": "recovery_emergency_and_following_financial_years"
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "Vorgabe: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "03f4a78e4767442ae3bf5d8251504b12a2119d33c882e1ada9a7cb436eaf727f",
+      "after": "78214f8b317d3618a4a559bcf10598e9e57d873f957a1a2de72b40be11711ff9",
+      "changedLeaves": 3,
+      "cause": "recovery_market_diagnostic_only"
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "konservativ: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "48b66e7ab5c30679139dddcfb8b0a37dce06f27d1e8e0d0dde64a538f0b3eb84",
+      "after": "02f2b5c3afb81a2ba6e3886fbc2e95b48243c9be557959ac922f5c6ceefdc403",
+      "changedLeaves": 3,
+      "cause": "recovery_market_diagnostic_only"
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "ausgewogen: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "5e88045fe7441e7425a6749d8c47bece6ec10c42ffc9de3351666831ad5595a4",
+      "after": "bd80c379379774293c7bcfd13972c6a2a45d1249d893b9c9aeb46023a62232ae",
+      "changedLeaves": 1961,
+      "cause": "recovery_emergency_and_following_financial_years"
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "offensiv: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "d33261e456c95c56ed5e7cc011f9a29da56dbd9acc9b2bf4376cc7df122c9736",
+      "after": "305e690e40cca2f024b7f3c46d9e8f8211cef16fd474bb87b6b860caa2402fd2",
+      "changedLeaves": 3,
+      "cause": "recovery_market_diagnostic_only"
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "off: Backtest entspricht BK-2-Referenz",
+      "before": "bb0ef06558644d58cc82e9ed47dff066624e724290b70d495a0dcc53046b53aa",
+      "after": "3b08a08a660096491f84d84b66a1e09eb87c873dc7f3cbdb801880e8960096cb",
+      "changedLeaves": 3,
+      "cause": "recovery_market_diagnostic_only"
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "konservativ: Backtest entspricht BK-2-Referenz",
+      "before": "43939915ff3e79127cdd472d396f59290a28b33e539842ac4f4b3f0a17887f40",
+      "after": "9fd3b458d5866cbfa124558621ade482c8ef406c09d2230bf8f83012ae2b3697",
+      "changedLeaves": 3,
+      "cause": "recovery_market_diagnostic_only"
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "ausgewogen: Backtest entspricht BK-2-Referenz",
+      "before": "7936923b684e10d4c66461c26a5bcb50b33e79e27ec644eaeec931902cdafd15",
+      "after": "b7c75a8a337c16de384d366c3a5334c14ccbd75358e71b0221fbe0637d2d21f6",
+      "changedLeaves": 218,
+      "cause": "recovery_emergency_and_following_financial_years"
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "offensiv: Backtest entspricht BK-2-Referenz",
+      "before": "f98bb1bcbec6b3851bc9c5723726028e1ce8f53b6f5b9cc1c75a4f1c4fe44dbf",
+      "after": "6d39598a19c032fe58dbffb7df55ada26fbea97a5d03cff6fd0e1ce5d4996978",
+      "changedLeaves": 3,
+      "cause": "recovery_market_diagnostic_only"
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression.test.mjs",
+      "label": "kohorte-2007: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "before": "751e7e1ef371eb8ff452a09c9c1cab11e13db6a491ff8886734b4d5e5d6cd455",
+      "after": "969bab3e83acb81f75a4be38e23d4e7c0973dfe27613e7b273947072e9f590ec",
+      "changedLeaves": 126,
+      "cause": "recovery_emergency_and_following_financial_years"
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "off: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "c7afa69a2b12d645391a1b31723e1c7d7981c2128841bcb9db4effdd7528145d",
+      "after": "0907ab679bb2e59fee338a4ea4cc669a9677059b55a6831a678a1dd0470d8527",
+      "changedLeaves": 3,
+      "cause": "recovery_market_diagnostic_only"
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "konservativ: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "b7da2fb7a927868752a9ae822c33cef74276af7ac2ac44db45b8022abb7f09ac",
+      "after": "586515ac747c46288f76f6995d48def693e6c9bbbf2a280e5bf3569bc2c7fd89",
+      "changedLeaves": 3,
+      "cause": "recovery_market_diagnostic_only"
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "ausgewogen: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "234869e4a7f63877d585a871c911c02d9ee96daebc00513b04a3d2c7eb489322",
+      "after": "ebde5af90a2b5a38c43d546c4189a7cbca56466d78bf2efaed12bfe8cf1108a2",
+      "changedLeaves": 1972,
+      "cause": "recovery_emergency_and_following_financial_years"
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "offensiv: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "38373a8537f4ad7a223b1366620c802d25a4cb3a365070908661372a9479a671",
+      "after": "ea798124139c027b0f0863412e82ab15a4e9efce2db7a3d86f32c1ee368a98f5",
+      "changedLeaves": 3,
+      "cause": "recovery_market_diagnostic_only"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+# Regeln des Dual-Agent-Orchestrators fuer die RuhestandsApp.
+# Vorlage: docs/reference/einrichtung.md im Orchestrator-Repository.
+# Stoppgruende: nur die eingebauten des Orchestrators (siehe AGENTS.md).
+# Belegung: ohne [roles]/[agent_profiles] gilt die mitgelieferte Standardbelegung
+# Codex (Implementierer) / Claude (Pruefer und Finalpruefer); Haengererkennung
+# mit den Standardwerten (900 s Modellstille, 3600 s je Befehl).
+# Toolchain: node und npm kommen aus dem System, node_modules liegt im
+# Repository. Der gehaertete Codex-Implementierer braucht deshalb keine
+# toolchain_read_roots; ein Node unter dem Home-Verzeichnis (etwa nvm) ist in
+# seiner Sandbox unsichtbar, dort laufen /usr/bin/node und /usr/bin/npm
+# (gemessen am 02.10.2026 mit codex sandbox und dem erzeugten Rechteprofil).
+# Abschluss: merge_completed_branch = false (Operatorentscheidung 03.10.2026).
+# Nach befundfreier Abnahme bleibt der Zielbranch ungemergt. Die gesteuerte
+# Sitzung fuehrt danach den Browser-Smoke ausserhalb der Sandbox aus und merged
+# erst dann lokal nach main; der post-merge-Hook baut dabei die EXE. Grund: Der
+# Implementierer kann in seiner Sandbox weder Server noch Browser starten, eine
+# Browser-Pruefregel im Orchestrator konvergiert deshalb nicht (Orchestrator-
+# Backlog 153). Gepusht wird nie.
+
+[repository]
+base_branch = "main"
+
+[paths]
+productive = [
+    "app/**", "engine/**", "workers/**", "types/**", "css/**", "assets/**",
+    "data/**", "config/**", "scripts/**", "tools/**", "src-tauri/**",
+    "*.html", "*.js", "*.mjs", "*.css",
+    "package.json", "package-lock.json", "start_suite.cmd", "orchestrator.toml", ".github/**",
+]
+tests = ["tests/**"]
+documentation = ["docs/**", "*.md", "Presentation/**", "audit/**"]
+generated = [
+    ".orchestrator/**", "node_modules/**", "dist/**", ".coverage/**",
+    "src-tauri/target/**", "src-tauri/gen/**",
+]
+
+[validation]
+default_command = ["npm", "test"]
+default_timeout_seconds = 1200
+
+[workflow]
+merge_completed_branch = false
+plan_gate = false
+test_change_gate = false
+manual_slice_gate = false
+scope_extension_gate = false
+

@@ -1,0 +1,175 @@
+
+import { SpendingPlanner } from '../engine/planners/SpendingPlanner.mjs';
+import {
+    calcFlexShare,
+    calculateFinalWithdrawal,
+    quantizeMonthly,
+    SPENDING_ROUNDING_FALLBACK_CODE,
+    smoothstep
+} from '../engine/planners/spending-policy-helpers.mjs';
+import { CONFIG } from '../engine/config.mjs';
+
+console.log('--- Spending Quantization Tests ---');
+
+// Shared minimal fixtures to keep assertions focused on quantization.
+const PROFILE = { minRunwayMonths: 24, isDynamic: true };
+const MARKET = { sKey: 'hot_neutral', abstandVomAthProzent: 0, szenarioText: 'Test' };
+const LAST_STATE = { flexRate: 100, initialized: true, keyParams: { peakRealVermoegen: 500000, currentRealVermoegen: 500000, entnahmequoteDepot: 0.03 } };
+const INPUT = { inflation: 2 };
+
+// --- TEST 1: Helper Logic ---
+{
+    // Force quantization on so helper outputs are deterministic.
+    CONFIG.ANTI_PSEUDO_ACCURACY.ENABLED = true;
+
+    // Tier 1 (< 2000): Step 50
+    assertEqual(quantizeMonthly(1832, 'floor'), 1800, 'helper 1832 -> 1800');
+    assertEqual(SpendingPlanner._quantizeMonthly(1832, 'floor'), 1800, '1832 -> 1800');
+    assertEqual(SpendingPlanner._quantizeMonthly(1849, 'floor'), 1800, '1849 -> 1800');
+    assertEqual(SpendingPlanner._quantizeMonthly(1851, 'floor'), 1850, '1851 -> 1850');
+
+    // Tier 2 (< 5000): Step 100
+    assertEqual(SpendingPlanner._quantizeMonthly(3420, 'floor'), 3400, '3420 -> 3400');
+    assertEqual(SpendingPlanner._quantizeMonthly(3490, 'floor'), 3400, '3490 -> 3400');
+
+    // Tier 3 (> 5000): Step 250
+    assertEqual(SpendingPlanner._quantizeMonthly(6100, 'floor'), 6000, '6100 -> 6000');
+    assertEqual(SpendingPlanner._quantizeMonthly(6240, 'floor'), 6000, '6240 -> 6000');
+    assertEqual(SpendingPlanner._quantizeMonthly(6260, 'floor'), 6250, '6260 -> 6250');
+    assertEqual(quantizeMonthly(1832, 'ceil'), 1850, 'helper ceil 1832 -> 1850');
+    assertEqual(smoothstep(-1), 0, 'smoothstep clamps lower bound');
+    assertEqual(smoothstep(0.5), 0.5, 'smoothstep midpoint');
+    assertEqual(smoothstep(2), 1, 'smoothstep clamps upper bound');
+    assertEqual(calcFlexShare({ floor: 30000, flex: 10000 }), 0.25, 'flex share should use flex / total');
+    assertEqual(calcFlexShare({ floor: 0, flex: 0 }), 0, 'empty budget should have no flex share');
+
+    for (const disabledValue of [false, undefined, null, 0, '']) {
+        CONFIG.ANTI_PSEUDO_ACCURACY.ENABLED = disabledValue;
+        assertEqual(quantizeMonthly(1832, 'floor'), 1832,
+            `legacy falsy ENABLED=${String(disabledValue)} disables quantization`);
+    }
+    CONFIG.ANTI_PSEUDO_ACCURACY.ENABLED = true;
+
+    console.log('✅ Helper Logic Passed');
+}
+
+// --- TEST 2: Integration Logic ---
+{
+    // Disable the S-curve so we only test the rounding path.
+    CONFIG.ANTI_PSEUDO_ACCURACY.ENABLED = true;
+    const prevFlexCurve = CONFIG.SPENDING_MODEL.FLEX_SHARE_S_CURVE.ENABLED;
+    CONFIG.SPENDING_MODEL.FLEX_SHARE_S_CURVE.ENABLED = false;
+
+    const oddBedarf = {
+        floor: 30000,
+        flex: 12043 // Total 42043 => /12 = 3503.58
+    };
+
+    const params = {
+        lastState: LAST_STATE,
+        market: MARKET,
+        inflatedBedarf: oddBedarf,
+        runwayMonate: 40,
+        profil: PROFILE,
+        depotwertGesamt: 600000,
+        gesamtwert: 600000,
+        renteJahr: 0,
+        input: INPUT
+    };
+
+    const result = SpendingPlanner.determineSpending(params);
+
+    // Expected: 3503.58 -> Round down to next 100 (Tier 2, <5000).
+    // 3500.
+    // Annual result: 3500 * 12 = 42000.
+
+    const monatlich = result.spendingResult.monatlicheEntnahme;
+    assertEqual(monatlich, 3500, 'Should round 3503.58 down to 3500');
+
+    const total = result.spendingResult.details.endgueltigeEntnahme;
+    assertEqual(total, 42000, 'Annual should be 12 * 3500 = 42000');
+
+    // Restore config for later tests.
+    CONFIG.SPENDING_MODEL.FLEX_SHARE_S_CURVE.ENABLED = prevFlexCurve;
+    console.log('✅ Integration Logic Passed');
+}
+
+// --- TEST 3: Quantization cannot undercut the hard annual floor ---
+{
+    CONFIG.ANTI_PSEUDO_ACCURACY.ENABLED = true;
+    const floorOnly = { floor: 25000, flex: 0 };
+    const direct = SpendingPlanner._calculateFinalWithdrawal(floorOnly, 100);
+    const result = SpendingPlanner.determineSpending({
+        lastState: LAST_STATE,
+        market: MARKET,
+        inflatedBedarf: floorOnly,
+        runwayMonate: 40,
+        profil: PROFILE,
+        depotwertGesamt: 600000,
+        gesamtwert: 600000,
+        renteJahr: 0,
+        input: INPUT
+    });
+
+    assertEqual(direct.endgueltigeEntnahme, 25000, 'Monthly quantization must not reduce a 25,000 annual floor to 24,000');
+    assertEqual(result.spendingResult.details.endgueltigeEntnahme, 25000, 'Planner integration must preserve the exact hard floor');
+    assert(direct.quantization.floorProtectionApplied === true, 'Helper should diagnose floor protection after quantization');
+    assertEqual(direct.quantization.quantizedAnnual, 24000, 'Diagnostics should retain the pre-protection quantized annual amount');
+    assertEqual(direct.quantization.finalAnnual, 25000, 'Diagnostics should expose the protected final annual amount');
+    console.log('✅ Hard floor survives monthly quantization');
+}
+
+// --- TEST 4: Effective flex rate uses the same normalized floor as withdrawal ---
+{
+    const result = calculateFinalWithdrawal({ floor: -1200, flex: 12000 }, 50, false);
+
+    assertEqual(result.endgueltigeEntnahme, 6000, 'Normalized negative floor should contribute zero to withdrawal');
+    assertEqual(result.flexRate, 50, 'Effective flex rate must use the normalized floor consistently');
+    assertEqual(result.quantization.floorAnnual, 0, 'Quantization diagnostics should expose the normalized floor');
+    console.log('✅ Effective flex rate uses the normalized floor contract');
+}
+
+// --- TEST 5: Exported rounding contract is consumed by the engine helper ---
+{
+    const contract = CONFIG.ANTI_PSEUDO_ACCURACY.WITHDRAWAL_ROUNDING;
+    const previousMode = contract.monthlyMode;
+    try {
+        contract.monthlyMode = 'ceil';
+        const result = calculateFinalWithdrawal({ floor: 0, flex: 24900 }, 100, true);
+        assertEqual(result.quantization.mode, 'ceil', 'Helper diagnostics expose the configured monthly mode');
+        assertEqual(result.quantization.annualizationFactor, 12, 'Helper consumes the configured annualization factor');
+        assertEqual(result.endgueltigeEntnahme, 25200, 'Changing the configured mode changes the actual withdrawal calculation');
+    } finally {
+        contract.monthlyMode = previousMode;
+    }
+    console.log('✅ Engine consumes the exported rounding contract');
+}
+
+// --- TEST 6: Invalid live config degrades to the pinned safe contract ---
+{
+    const previousContract = CONFIG.ANTI_PSEUDO_ACCURACY;
+    const expected = calculateFinalWithdrawal({ floor: 0, flex: 24900 }, 100, true);
+    const previousWarn = console.warn;
+    const warnings = [];
+    try {
+        console.warn = (...args) => warnings.push(args.join(' '));
+        CONFIG.ANTI_PSEUDO_ACCURACY = { ENABLED: true };
+        const result = calculateFinalWithdrawal({ floor: 0, flex: 24900 }, 100, true);
+        assertEqual(result.endgueltigeEntnahme, expected.endgueltigeEntnahme,
+            'Replacing the live anti-pseudo-accuracy config must use the pinned safe calculation');
+        assertEqual(result.quantization.mode, 'floor',
+            'Safe fallback retains the released floor-rounding mode');
+        assert(result.quantization.contractFallbackApplied === true,
+            'Diagnostics expose the defensive rounding/tier fallback');
+        assertEqual(result.quantization.warningCode, SPENDING_ROUNDING_FALLBACK_CODE,
+            'Fallback diagnostics expose a stable warning code');
+        assert(warnings.some(message => message.includes(SPENDING_ROUNDING_FALLBACK_CODE)),
+            'Invalid live rounding config emits a visible stable warning');
+    } finally {
+        console.warn = previousWarn;
+        CONFIG.ANTI_PSEUDO_ACCURACY = previousContract;
+    }
+    console.log('✅ Invalid live rounding config degrades safely without a batch-breaking throw');
+}
+
+console.log('--- Spending Quantization Tests Completed ---');

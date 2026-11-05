@@ -1,0 +1,74 @@
+[
+  {
+    "kind": "Muster-Haushalt",
+    "strategy": "standard",
+    "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+    "result": "e167d8a1971f5a2295c2fac297eed2a7da97c7c688dae71164bd34d2b0d8de60"
+  },
+  {
+    "kind": "Muster-Haushalt",
+    "strategy": "3_bucket_jilge",
+    "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+    "result": "85a820fc598e3fa926c982e09af2bb4116fa35100eb7de3c4358d457979171cd"
+  },
+  {
+    "kind": "Einzelprofil",
+    "strategy": "standard",
+    "input": "1cb3d507e4a80f63a69126d1d5f113f38e99142ac73a8856ced8473326f16ab9",
+    "result": "bc4e5c56861b826ed08e72d1392c66398d39dc9bfd51d11c10658265aca144e1"
+  },
+  {
+    "kind": "Einzelprofil",
+    "strategy": "3_bucket_jilge",
+    "input": "b9ed739f65fd1ac4b851487785c86bc077beb903fd859fec79cdd2e32647c958",
+    "result": "7e83aafab6f87b8b0284e60cba0531c53675847f810513a03c2d858f595467d3"
+  },
+  {
+    "kind": "Haushalt mit Außenperson",
+    "strategy": "standard",
+    "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+    "result": "e167d8a1971f5a2295c2fac297eed2a7da97c7c688dae71164bd34d2b0d8de60"
+  },
+  {
+    "kind": "Haushalt mit Außenperson",
+    "strategy": "3_bucket_jilge",
+    "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+    "result": "85a820fc598e3fa926c982e09af2bb4116fa35100eb7de3c4358d457979171cd"
+  },
+  {
+    "kind": "aktive Außenperson",
+    "strategy": "standard",
+    "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+    "result": "e167d8a1971f5a2295c2fac297eed2a7da97c7c688dae71164bd34d2b0d8de60"
+  },
+  {
+    "kind": "aktive Außenperson",
+    "strategy": "3_bucket_jilge",
+    "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+    "result": "85a820fc598e3fa926c982e09af2bb4116fa35100eb7de3c4358d457979171cd"
+  },
+  {
+    "kind": "synthetische Echtform",
+    "strategy": "standard",
+    "input": "6e528385052d5ba97a1d24fdd9188899dda7a486fbab59cbc9dbca099e2c986f",
+    "result": "a7989d879fba64215731dc656e5980a4b733c4f0b670f31e19436452d7280334"
+  },
+  {
+    "kind": "synthetische Echtform",
+    "strategy": "3_bucket_jilge",
+    "input": "112db1af74eeeb564edfc9b54fde424c604a64527c291965fb474b426bfa1b9c",
+    "result": "2a4429c943c953432a1fca8d0d9d82539738af3d3af97b23d8fae55351e6a8a4"
+  },
+  {
+    "kind": "Altbestand",
+    "strategy": "standard",
+    "input": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+    "result": "e167d8a1971f5a2295c2fac297eed2a7da97c7c688dae71164bd34d2b0d8de60"
+  },
+  {
+    "kind": "Altbestand",
+    "strategy": "3_bucket_jilge",
+    "input": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+    "result": "85a820fc598e3fa926c982e09af2bb4116fa35100eb7de3c4358d457979171cd"
+  }
+]

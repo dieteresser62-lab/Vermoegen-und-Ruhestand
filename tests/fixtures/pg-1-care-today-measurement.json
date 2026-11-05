@@ -1,0 +1,613 @@
+{
+  "purpose": "FR-45, synthetisches Paar Max und Erika Mustermann, Startalter 60/63",
+  "baselineRevision": "694fddd9d7712668e6b7894d73ea3f46ccccfe45",
+  "measurementCommand": "node scripts/measure-care-today.mjs <Quellordner> <Ausgabe.json> none|grade|zero [0.7|1|1.3]",
+  "careCosts": "Real zum Laufstart; beide Personen, einschließlich Ereignisse nach Ruin. Pflegejahre als Personenjahre, Sterbejahr halb.",
+  "lifeYears": "Verbleibende Jahre der ersten Person ab Start, Sterbejahr halb; bei Horizontende rechtszensiert.",
+  "sensitivity": "Nur im Messprozess: Faktor für langsamer .5 × .7 bzw. .5 × 1.3; Fortschritt und Übersterblichkeit gemeinsam.",
+  "counterperiod": "Historischer Backtest 1965–2024, keine Herleitung aus einem historischen Pfad.",
+  "results": {
+    "base": {
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "linux",
+        "arch": "x64"
+      },
+      "variant": "none",
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 48,
+        "methode": "block",
+        "blockSize": 3,
+        "seed": 12345,
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "completeOutputSha256": "c73e957d0035946b51fe1a5334469fb14522e87cd2696e2efe549da392843d7a",
+      "outputBytes": 658976628,
+      "noCurrentGradeChecks": {
+        "single-backtest": "183fecb4587572231c53be2af612efd13d6873b2f280117261b6a3e66e4ddc59",
+        "single-mc": "f1ffc0632397bbfdaa205681a420384ed328e996953ca1643a88b4ac4b95b29f",
+        "single-sweep": "a002072e370f24c3797c7fddb2cf91da3f8988bb6817497a28163ca77022c8de",
+        "couple-backtest": "9c3f90bcad7365eb1b6d167a47751cf7f6e9952e2baabbed3424f71858f75232",
+        "couple-mc": "80c871c51b833c69dc339af45b6ad41c115370a158dba1da569c9988fa6075c8",
+        "couple-sweep": "f9f87cec1c6959b3c2941321f1293e476a180120bf4ecf2e757de51f8b217faf"
+      },
+      "metrics": {
+        "successPct": 99.3,
+        "realEndP10": 508022.02680281026,
+        "realEndP50": 1539364.893093368,
+        "meanCareCostReal": 180723.73225939678,
+        "meanCareYears": 5.4975,
+        "meanP1LifeYears": 19.185,
+        "meanP1DeathAge": 79.185,
+        "censoredPaths": 0
+      },
+      "backtest": {
+        "sha256": "ff33715616ae6fa3bd5ff9c39ec60eec58c7501ee82ff3d5d8e06dbbf38a1ef4",
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 2024
+        },
+        "summary": {
+          "startWealth": 790000,
+          "endWealth": 159805481.35745475,
+          "totalWithdrawal": 82200,
+          "maxReductionStreak": 0,
+          "reductionYears": 0,
+          "reductionDenominator": 60,
+          "totalTaxes": 21999.613427098637,
+          "healthBucket": {
+            "enabled": false,
+            "end": 0,
+            "realCoveragePct": null,
+            "targetGap": 0
+          },
+          "metricSchemaVersion": "HistoricalBacktestMetricsV3",
+          "metrics": {
+            "minimum_flex_restriction_years": 0,
+            "minimum_flex_restriction_share_pct": 0,
+            "minimum_flex_paid_median_nominal_eur": 85060.7848591218,
+            "minimum_flex_desired_median_nominal_eur": 85060.7848591218,
+            "minimum_flex_paid_minimum_nominal_eur": 30000,
+            "wealth_start_nominal_eur": 790000,
+            "wealth_end_nominal_eur": 159805481.35745475,
+            "wealth_end_real_eur": 32562629.71291505,
+            "withdrawal_total_nominal_eur": 82200,
+            "floor_shortfall_occurred": false,
+            "floor_shortfall_years": 0,
+            "floor_shortfall_total_nominal_eur": 0,
+            "floor_shortfall_total_real_eur": 0,
+            "floor_shortfall_max_real_eur": 0,
+            "floor_shortfall_longest_streak_years": 0,
+            "flex_required_total_nominal_eur": 4853690.366209628,
+            "flex_fulfilled_total_nominal_eur": 4852441.299467133,
+            "flex_fulfillment_total_pct": 99.9742656278367,
+            "flex_reduction_years_gte_10_pct": 0,
+            "flex_reduction_max_pct": 1.6797316463675145,
+            "flex_reduction_longest_streak_gte_10_pct": 0,
+            "minimum_flex_shortfall_years": 0,
+            "minimum_flex_shortfall_total_nominal_eur": 0,
+            "runway_min_coverage_pct": 84.66413633445019,
+            "runway_stress_years_below_100_pct": 2,
+            "wealth_max_drawdown_nominal_end_series_pct": 38.35944618933044,
+            "tax_total_nominal_eur": 21999.613427098637,
+            "tax_saved_by_loss_carry_total_nominal_eur": 0,
+            "loss_carry_end_nominal_eur": 0,
+            "health_bucket_end_nominal_eur": 0,
+            "outcome_is_completed": true,
+            "outcome_is_ruin": false,
+            "outcome_is_incomplete": false,
+            "outcome_is_technical_error": false
+          }
+        },
+        "rows": 60,
+        "careCostReal": 0
+      }
+    },
+    "none": {
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "linux",
+        "arch": "x64"
+      },
+      "variant": "none",
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 48,
+        "methode": "block",
+        "blockSize": 3,
+        "seed": 12345,
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "completeOutputSha256": "c73e957d0035946b51fe1a5334469fb14522e87cd2696e2efe549da392843d7a",
+      "outputBytes": 658976628,
+      "noCurrentGradeChecks": {
+        "single-backtest": "183fecb4587572231c53be2af612efd13d6873b2f280117261b6a3e66e4ddc59",
+        "single-mc": "f1ffc0632397bbfdaa205681a420384ed328e996953ca1643a88b4ac4b95b29f",
+        "single-sweep": "a002072e370f24c3797c7fddb2cf91da3f8988bb6817497a28163ca77022c8de",
+        "couple-backtest": "9c3f90bcad7365eb1b6d167a47751cf7f6e9952e2baabbed3424f71858f75232",
+        "couple-mc": "80c871c51b833c69dc339af45b6ad41c115370a158dba1da569c9988fa6075c8",
+        "couple-sweep": "f9f87cec1c6959b3c2941321f1293e476a180120bf4ecf2e757de51f8b217faf"
+      },
+      "metrics": {
+        "successPct": 99.3,
+        "realEndP10": 508022.02680281026,
+        "realEndP50": 1539364.893093368,
+        "meanCareCostReal": 180723.73225939678,
+        "meanCareYears": 5.4975,
+        "meanP1LifeYears": 19.185,
+        "meanP1DeathAge": 79.185,
+        "censoredPaths": 0
+      },
+      "backtest": {
+        "sha256": "ff33715616ae6fa3bd5ff9c39ec60eec58c7501ee82ff3d5d8e06dbbf38a1ef4",
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 2024
+        },
+        "summary": {
+          "startWealth": 790000,
+          "endWealth": 159805481.35745475,
+          "totalWithdrawal": 82200,
+          "maxReductionStreak": 0,
+          "reductionYears": 0,
+          "reductionDenominator": 60,
+          "totalTaxes": 21999.613427098637,
+          "healthBucket": {
+            "enabled": false,
+            "end": 0,
+            "realCoveragePct": null,
+            "targetGap": 0
+          },
+          "metricSchemaVersion": "HistoricalBacktestMetricsV3",
+          "metrics": {
+            "minimum_flex_restriction_years": 0,
+            "minimum_flex_restriction_share_pct": 0,
+            "minimum_flex_paid_median_nominal_eur": 85060.7848591218,
+            "minimum_flex_desired_median_nominal_eur": 85060.7848591218,
+            "minimum_flex_paid_minimum_nominal_eur": 30000,
+            "wealth_start_nominal_eur": 790000,
+            "wealth_end_nominal_eur": 159805481.35745475,
+            "wealth_end_real_eur": 32562629.71291505,
+            "withdrawal_total_nominal_eur": 82200,
+            "floor_shortfall_occurred": false,
+            "floor_shortfall_years": 0,
+            "floor_shortfall_total_nominal_eur": 0,
+            "floor_shortfall_total_real_eur": 0,
+            "floor_shortfall_max_real_eur": 0,
+            "floor_shortfall_longest_streak_years": 0,
+            "flex_required_total_nominal_eur": 4853690.366209628,
+            "flex_fulfilled_total_nominal_eur": 4852441.299467133,
+            "flex_fulfillment_total_pct": 99.9742656278367,
+            "flex_reduction_years_gte_10_pct": 0,
+            "flex_reduction_max_pct": 1.6797316463675145,
+            "flex_reduction_longest_streak_gte_10_pct": 0,
+            "minimum_flex_shortfall_years": 0,
+            "minimum_flex_shortfall_total_nominal_eur": 0,
+            "runway_min_coverage_pct": 84.66413633445019,
+            "runway_stress_years_below_100_pct": 2,
+            "wealth_max_drawdown_nominal_end_series_pct": 38.35944618933044,
+            "tax_total_nominal_eur": 21999.613427098637,
+            "tax_saved_by_loss_carry_total_nominal_eur": 0,
+            "loss_carry_end_nominal_eur": 0,
+            "health_bucket_end_nominal_eur": 0,
+            "outcome_is_completed": true,
+            "outcome_is_ruin": false,
+            "outcome_is_incomplete": false,
+            "outcome_is_technical_error": false
+          }
+        },
+        "rows": 60,
+        "careCostReal": 0
+      }
+    },
+    "grade": {
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "linux",
+        "arch": "x64"
+      },
+      "variant": "grade",
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 48,
+        "methode": "block",
+        "blockSize": 3,
+        "seed": 12345,
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "completeOutputSha256": "2c8bc6a355abc2ddaaedc20084d10724c5c2947522d83022cebdbad78d5cd448",
+      "outputBytes": 587150660,
+      "noCurrentGradeChecks": {
+        "single-backtest": "183fecb4587572231c53be2af612efd13d6873b2f280117261b6a3e66e4ddc59",
+        "single-mc": "f1ffc0632397bbfdaa205681a420384ed328e996953ca1643a88b4ac4b95b29f",
+        "single-sweep": "a002072e370f24c3797c7fddb2cf91da3f8988bb6817497a28163ca77022c8de",
+        "couple-backtest": "9c3f90bcad7365eb1b6d167a47751cf7f6e9952e2baabbed3424f71858f75232",
+        "couple-mc": "80c871c51b833c69dc339af45b6ad41c115370a158dba1da569c9988fa6075c8",
+        "couple-sweep": "f9f87cec1c6959b3c2941321f1293e476a180120bf4ecf2e757de51f8b217faf"
+      },
+      "metrics": {
+        "successPct": 93.65,
+        "realEndP10": 144397.3292685178,
+        "realEndP50": 771905.7855503641,
+        "meanCareCostReal": 535213.2106954592,
+        "meanCareYears": 14.97275,
+        "meanP1LifeYears": 11.483,
+        "meanP1DeathAge": 71.483,
+        "censoredPaths": 0
+      },
+      "backtest": {
+        "sha256": "41e3c9475c10d5be7a8e63307f8ff7dfa828fc9c9a2c49936bfb00d7764c1b80",
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 2024
+        },
+        "summary": {
+          "startWealth": 790000,
+          "endWealth": 81082426.57111236,
+          "totalWithdrawal": 2491800,
+          "maxReductionStreak": 1,
+          "reductionYears": 1,
+          "reductionDenominator": 60,
+          "totalTaxes": 715849.8733510094,
+          "healthBucket": {
+            "enabled": false,
+            "end": 0,
+            "realCoveragePct": null,
+            "targetGap": 0
+          },
+          "metricSchemaVersion": "HistoricalBacktestMetricsV3",
+          "metrics": {
+            "minimum_flex_restriction_years": 0,
+            "minimum_flex_restriction_share_pct": 0,
+            "minimum_flex_paid_median_nominal_eur": 84773.55752441737,
+            "minimum_flex_desired_median_nominal_eur": 85060.7848591218,
+            "minimum_flex_paid_minimum_nominal_eur": 26400,
+            "wealth_start_nominal_eur": 790000,
+            "wealth_end_nominal_eur": 81082426.57111236,
+            "wealth_end_real_eur": 16521692.561683781,
+            "withdrawal_total_nominal_eur": 2491800,
+            "floor_shortfall_occurred": false,
+            "floor_shortfall_years": 0,
+            "floor_shortfall_total_nominal_eur": 0,
+            "floor_shortfall_total_real_eur": 0,
+            "floor_shortfall_max_real_eur": 0,
+            "floor_shortfall_longest_streak_years": 0,
+            "flex_required_total_nominal_eur": 4853690.366209628,
+            "flex_fulfilled_total_nominal_eur": 4814491.497621832,
+            "flex_fulfillment_total_pct": 99.19239041574036,
+            "flex_reduction_years_gte_10_pct": 1,
+            "flex_reduction_max_pct": 12,
+            "flex_reduction_longest_streak_gte_10_pct": 1,
+            "minimum_flex_shortfall_years": 0,
+            "minimum_flex_shortfall_total_nominal_eur": 0,
+            "runway_min_coverage_pct": 22.457214399832154,
+            "runway_stress_years_below_100_pct": 19,
+            "wealth_max_drawdown_nominal_end_series_pct": 39.03899814266665,
+            "tax_total_nominal_eur": 715849.8733510094,
+            "tax_saved_by_loss_carry_total_nominal_eur": 0,
+            "loss_carry_end_nominal_eur": 0,
+            "health_bucket_end_nominal_eur": 0,
+            "outcome_is_completed": true,
+            "outcome_is_ruin": false,
+            "outcome_is_incomplete": false,
+            "outcome_is_technical_error": false
+          }
+        },
+        "rows": 60,
+        "careCostReal": 2358202.594545707
+      }
+    },
+    "zero": {
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "linux",
+        "arch": "x64"
+      },
+      "variant": "zero",
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 48,
+        "methode": "block",
+        "blockSize": 3,
+        "seed": 12345,
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "completeOutputSha256": "d5d9699dae7b1f7c6ae0354adbfe435e5a86294b0af1c3af30940d07a4175821",
+      "outputBytes": 595711821,
+      "noCurrentGradeChecks": {
+        "single-backtest": "183fecb4587572231c53be2af612efd13d6873b2f280117261b6a3e66e4ddc59",
+        "single-mc": "f1ffc0632397bbfdaa205681a420384ed328e996953ca1643a88b4ac4b95b29f",
+        "single-sweep": "a002072e370f24c3797c7fddb2cf91da3f8988bb6817497a28163ca77022c8de",
+        "couple-backtest": "9c3f90bcad7365eb1b6d167a47751cf7f6e9952e2baabbed3424f71858f75232",
+        "couple-mc": "80c871c51b833c69dc339af45b6ad41c115370a158dba1da569c9988fa6075c8",
+        "couple-sweep": "f9f87cec1c6959b3c2941321f1293e476a180120bf4ecf2e757de51f8b217faf"
+      },
+      "metrics": {
+        "successPct": 95.9,
+        "realEndP10": 258925.4937949329,
+        "realEndP50": 973659.7154309088,
+        "meanCareCostReal": 436535.87832339207,
+        "meanCareYears": 16.16875,
+        "meanP1LifeYears": 12.7215,
+        "meanP1DeathAge": 72.7215,
+        "censoredPaths": 0
+      },
+      "backtest": {
+        "sha256": "4332a7c8b9c713eff5e6dfba0c80309ad4c8c9d184bbc3d687c0d757c87a9209",
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 2024
+        },
+        "summary": {
+          "startWealth": 790000,
+          "endWealth": 174782263.91892418,
+          "totalWithdrawal": 56400,
+          "maxReductionStreak": 0,
+          "reductionYears": 0,
+          "reductionDenominator": 60,
+          "totalTaxes": 23895.230471768045,
+          "healthBucket": {
+            "enabled": false,
+            "end": 0,
+            "realCoveragePct": null,
+            "targetGap": 0
+          },
+          "metricSchemaVersion": "HistoricalBacktestMetricsV3",
+          "metrics": {
+            "minimum_flex_restriction_years": 0,
+            "minimum_flex_restriction_share_pct": 0,
+            "minimum_flex_paid_median_nominal_eur": 85060.7848591218,
+            "minimum_flex_desired_median_nominal_eur": 85060.7848591218,
+            "minimum_flex_paid_minimum_nominal_eur": 29364,
+            "wealth_start_nominal_eur": 790000,
+            "wealth_end_nominal_eur": 174782263.91892418,
+            "wealth_end_real_eur": 35614361.23487153,
+            "withdrawal_total_nominal_eur": 56400,
+            "floor_shortfall_occurred": false,
+            "floor_shortfall_years": 0,
+            "floor_shortfall_total_nominal_eur": 0,
+            "floor_shortfall_total_real_eur": 0,
+            "floor_shortfall_max_real_eur": 0,
+            "floor_shortfall_longest_streak_years": 0,
+            "flex_required_total_nominal_eur": 4853690.366209628,
+            "flex_fulfilled_total_nominal_eur": 4851816.770889156,
+            "flex_fulfillment_total_pct": 99.9613985405102,
+            "flex_reduction_years_gte_10_pct": 0,
+            "flex_reduction_max_pct": 2.1200000000000045,
+            "flex_reduction_longest_streak_gte_10_pct": 0,
+            "minimum_flex_shortfall_years": 0,
+            "minimum_flex_shortfall_total_nominal_eur": 0,
+            "runway_min_coverage_pct": 88.48058467140156,
+            "runway_stress_years_below_100_pct": 1,
+            "wealth_max_drawdown_nominal_end_series_pct": 38.32678363956178,
+            "tax_total_nominal_eur": 23895.230471768045,
+            "tax_saved_by_loss_carry_total_nominal_eur": 0,
+            "loss_carry_end_nominal_eur": 0,
+            "health_bucket_end_nominal_eur": 0,
+            "outcome_is_completed": true,
+            "outcome_is_ruin": false,
+            "outcome_is_incomplete": false,
+            "outcome_is_technical_error": false
+          }
+        },
+        "rows": 60,
+        "careCostReal": 0
+      }
+    },
+    "low": {
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "linux",
+        "arch": "x64"
+      },
+      "variant": "zero",
+      "sensitivity": 0.7,
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 48,
+        "methode": "block",
+        "blockSize": 3,
+        "seed": 12345,
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "completeOutputSha256": "637a65b27a5fee8d1606b26267cf19acdbf000cccbada5d6fbe2989eefb31377",
+      "outputBytes": 605868320,
+      "noCurrentGradeChecks": {
+        "single-backtest": "183fecb4587572231c53be2af612efd13d6873b2f280117261b6a3e66e4ddc59",
+        "single-mc": "f1ffc0632397bbfdaa205681a420384ed328e996953ca1643a88b4ac4b95b29f",
+        "single-sweep": "a002072e370f24c3797c7fddb2cf91da3f8988bb6817497a28163ca77022c8de",
+        "couple-backtest": "9c3f90bcad7365eb1b6d167a47751cf7f6e9952e2baabbed3424f71858f75232",
+        "couple-mc": "80c871c51b833c69dc339af45b6ad41c115370a158dba1da569c9988fa6075c8",
+        "couple-sweep": "f9f87cec1c6959b3c2941321f1293e476a180120bf4ecf2e757de51f8b217faf"
+      },
+      "metrics": {
+        "successPct": 96.7,
+        "realEndP10": 293581.78708484437,
+        "realEndP50": 1068211.2627123366,
+        "meanCareCostReal": 395476.6925999551,
+        "meanCareYears": 17.10075,
+        "meanP1LifeYears": 13.657,
+        "meanP1DeathAge": 73.657,
+        "censoredPaths": 0
+      },
+      "backtest": {
+        "sha256": "4332a7c8b9c713eff5e6dfba0c80309ad4c8c9d184bbc3d687c0d757c87a9209",
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 2024
+        },
+        "summary": {
+          "startWealth": 790000,
+          "endWealth": 174782263.91892418,
+          "totalWithdrawal": 56400,
+          "maxReductionStreak": 0,
+          "reductionYears": 0,
+          "reductionDenominator": 60,
+          "totalTaxes": 23895.230471768045,
+          "healthBucket": {
+            "enabled": false,
+            "end": 0,
+            "realCoveragePct": null,
+            "targetGap": 0
+          },
+          "metricSchemaVersion": "HistoricalBacktestMetricsV3",
+          "metrics": {
+            "minimum_flex_restriction_years": 0,
+            "minimum_flex_restriction_share_pct": 0,
+            "minimum_flex_paid_median_nominal_eur": 85060.7848591218,
+            "minimum_flex_desired_median_nominal_eur": 85060.7848591218,
+            "minimum_flex_paid_minimum_nominal_eur": 29364,
+            "wealth_start_nominal_eur": 790000,
+            "wealth_end_nominal_eur": 174782263.91892418,
+            "wealth_end_real_eur": 35614361.23487153,
+            "withdrawal_total_nominal_eur": 56400,
+            "floor_shortfall_occurred": false,
+            "floor_shortfall_years": 0,
+            "floor_shortfall_total_nominal_eur": 0,
+            "floor_shortfall_total_real_eur": 0,
+            "floor_shortfall_max_real_eur": 0,
+            "floor_shortfall_longest_streak_years": 0,
+            "flex_required_total_nominal_eur": 4853690.366209628,
+            "flex_fulfilled_total_nominal_eur": 4851816.770889156,
+            "flex_fulfillment_total_pct": 99.9613985405102,
+            "flex_reduction_years_gte_10_pct": 0,
+            "flex_reduction_max_pct": 2.1200000000000045,
+            "flex_reduction_longest_streak_gte_10_pct": 0,
+            "minimum_flex_shortfall_years": 0,
+            "minimum_flex_shortfall_total_nominal_eur": 0,
+            "runway_min_coverage_pct": 88.48058467140156,
+            "runway_stress_years_below_100_pct": 1,
+            "wealth_max_drawdown_nominal_end_series_pct": 38.32678363956178,
+            "tax_total_nominal_eur": 23895.230471768045,
+            "tax_saved_by_loss_carry_total_nominal_eur": 0,
+            "loss_carry_end_nominal_eur": 0,
+            "health_bucket_end_nominal_eur": 0,
+            "outcome_is_completed": true,
+            "outcome_is_ruin": false,
+            "outcome_is_incomplete": false,
+            "outcome_is_technical_error": false
+          }
+        },
+        "rows": 60,
+        "careCostReal": 0
+      }
+    },
+    "high": {
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "linux",
+        "arch": "x64"
+      },
+      "variant": "zero",
+      "sensitivity": 1.3,
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 48,
+        "methode": "block",
+        "blockSize": 3,
+        "seed": 12345,
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "completeOutputSha256": "910b3250386948bf0b35165328b2a08bf05688d211c00cfe97e8fb92aeb83c59",
+      "outputBytes": 593190312,
+      "noCurrentGradeChecks": {
+        "single-backtest": "183fecb4587572231c53be2af612efd13d6873b2f280117261b6a3e66e4ddc59",
+        "single-mc": "f1ffc0632397bbfdaa205681a420384ed328e996953ca1643a88b4ac4b95b29f",
+        "single-sweep": "a002072e370f24c3797c7fddb2cf91da3f8988bb6817497a28163ca77022c8de",
+        "couple-backtest": "9c3f90bcad7365eb1b6d167a47751cf7f6e9952e2baabbed3424f71858f75232",
+        "couple-mc": "80c871c51b833c69dc339af45b6ad41c115370a158dba1da569c9988fa6075c8",
+        "couple-sweep": "f9f87cec1c6959b3c2941321f1293e476a180120bf4ecf2e757de51f8b217faf"
+      },
+      "metrics": {
+        "successPct": 95.5,
+        "realEndP10": 236436.5317490545,
+        "realEndP50": 916399.3790391077,
+        "meanCareCostReal": 460788.4047187297,
+        "meanCareYears": 15.666,
+        "meanP1LifeYears": 12.194,
+        "meanP1DeathAge": 72.194,
+        "censoredPaths": 0
+      },
+      "backtest": {
+        "sha256": "4332a7c8b9c713eff5e6dfba0c80309ad4c8c9d184bbc3d687c0d757c87a9209",
+        "outcome": {
+          "kind": "completed",
+          "lastCompletedYear": 2024
+        },
+        "summary": {
+          "startWealth": 790000,
+          "endWealth": 174782263.91892418,
+          "totalWithdrawal": 56400,
+          "maxReductionStreak": 0,
+          "reductionYears": 0,
+          "reductionDenominator": 60,
+          "totalTaxes": 23895.230471768045,
+          "healthBucket": {
+            "enabled": false,
+            "end": 0,
+            "realCoveragePct": null,
+            "targetGap": 0
+          },
+          "metricSchemaVersion": "HistoricalBacktestMetricsV3",
+          "metrics": {
+            "minimum_flex_restriction_years": 0,
+            "minimum_flex_restriction_share_pct": 0,
+            "minimum_flex_paid_median_nominal_eur": 85060.7848591218,
+            "minimum_flex_desired_median_nominal_eur": 85060.7848591218,
+            "minimum_flex_paid_minimum_nominal_eur": 29364,
+            "wealth_start_nominal_eur": 790000,
+            "wealth_end_nominal_eur": 174782263.91892418,
+            "wealth_end_real_eur": 35614361.23487153,
+            "withdrawal_total_nominal_eur": 56400,
+            "floor_shortfall_occurred": false,
+            "floor_shortfall_years": 0,
+            "floor_shortfall_total_nominal_eur": 0,
+            "floor_shortfall_total_real_eur": 0,
+            "floor_shortfall_max_real_eur": 0,
+            "floor_shortfall_longest_streak_years": 0,
+            "flex_required_total_nominal_eur": 4853690.366209628,
+            "flex_fulfilled_total_nominal_eur": 4851816.770889156,
+            "flex_fulfillment_total_pct": 99.9613985405102,
+            "flex_reduction_years_gte_10_pct": 0,
+            "flex_reduction_max_pct": 2.1200000000000045,
+            "flex_reduction_longest_streak_gte_10_pct": 0,
+            "minimum_flex_shortfall_years": 0,
+            "minimum_flex_shortfall_total_nominal_eur": 0,
+            "runway_min_coverage_pct": 88.48058467140156,
+            "runway_stress_years_below_100_pct": 1,
+            "wealth_max_drawdown_nominal_end_series_pct": 38.32678363956178,
+            "tax_total_nominal_eur": 23895.230471768045,
+            "tax_saved_by_loss_carry_total_nominal_eur": 0,
+            "loss_carry_end_nominal_eur": 0,
+            "health_bucket_end_nominal_eur": 0,
+            "outcome_is_completed": true,
+            "outcome_is_ruin": false,
+            "outcome_is_incomplete": false,
+            "outcome_is_technical_error": false
+          }
+        },
+        "rows": 60,
+        "careCostReal": 0
+      }
+    }
+  },
+  "parity": {
+    "cases": 208,
+    "equalInputsStatesResultsAndResidualClasses": true,
+    "excludedProvenanceFields": [
+      "caseHash",
+      "source.sourceHash",
+      "replay.log.logHash",
+      "replay.log.source.sourceHash"
+    ],
+    "comparisonSha256": "eba8942e8c30925727d41fd2172cbd328d3a2cd10639c5fb5c8cc22c088d0c9e",
+    "newComparisonSha256": "eba8942e8c30925727d41fd2172cbd328d3a2cd10639c5fb5c8cc22c088d0c9e"
+  }
+}

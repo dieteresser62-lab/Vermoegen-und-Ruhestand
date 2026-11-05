@@ -1,0 +1,389 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "measuredDate": "2026-10-23",
+  "baselineRevision": "66bd8cc7034730ffb166675040c0c635b17ac4fb",
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "useCapeSampling": false,
+  "exportedAt": "2026-10-22T12:00:00.000Z",
+  "hashMethod": "SHA-256 over JSON.stringify(value); exportSha256 covers Backtest JSON/CSV and Monte-Carlo V1/V2 in that order.",
+  "elapsedContext": "Wall time with other local verification jobs running concurrently; includes baseline recording and all search steps.",
+  "households": {
+    "max-erika": {
+      "regressions": {
+        "inputsSha256": {
+          "before": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+          "after": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b"
+        },
+        "balanceEngineSha256": {
+          "before": "4ddd2935a02b990f9fb938eb0be65a839133bb29f69ecee93954b01014104db8",
+          "after": "4ddd2935a02b990f9fb938eb0be65a839133bb29f69ecee93954b01014104db8"
+        },
+        "backtestSha256": {
+          "before": "46300ba917e11edccb2ed8b987af7c099ae738821052c78080750f305a185638",
+          "after": "46300ba917e11edccb2ed8b987af7c099ae738821052c78080750f305a185638"
+        },
+        "mcSha256": {
+          "before": "c8f9a2968c05da2fcf2334741218b9f1448065c5281d2ddbbba5076d04d5bffb",
+          "after": "c8f9a2968c05da2fcf2334741218b9f1448065c5281d2ddbbba5076d04d5bffb"
+        },
+        "exportsSha256": {
+          "before": "117e22a81a2ab4288b07f065d766cd4437839eaf6e10f62f745ad154ecc5fbbe",
+          "after": "117e22a81a2ab4288b07f065d766cd4437839eaf6e10f62f745ad154ecc5fbbe"
+        },
+        "exportSha256": {
+          "before": [
+            "1fd90bda3d497b11314de2821130f7cdbf2aac6bf52a858ad0672c6a0e8b3e6e",
+            "0d7b080e8d92f0fd51632057293749c11ffb335a847fc783d437c51e523238ee",
+            "5ed6443f3d1dfca0020b13b2cf5a76c68a4252066bbe310e375e0c157115f371",
+            "a37169fdc2e429ca6fd35d28ac8786b16cba6b0c6fa704f1e6f889292a05d24f"
+          ],
+          "after": [
+            "1fd90bda3d497b11314de2821130f7cdbf2aac6bf52a858ad0672c6a0e8b3e6e",
+            "0d7b080e8d92f0fd51632057293749c11ffb335a847fc783d437c51e523238ee",
+            "5ed6443f3d1dfca0020b13b2cf5a76c68a4252066bbe310e375e0c157115f371",
+            "a37169fdc2e429ca6fd35d28ac8786b16cba6b0c6fa704f1e6f889292a05d24f"
+          ]
+        }
+      },
+      "comparison": {
+        "budget": {
+          "change": {
+            "kind": "budget",
+            "monthly": 300
+          },
+          "before": "fa3b14ad85dbdf765d4aadd886ecd1facec9894355d73fa9319a39b7a5faf41b",
+          "after": "fa3b14ad85dbdf765d4aadd886ecd1facec9894355d73fa9319a39b7a5faf41b"
+        },
+        "expense": {
+          "change": {
+            "kind": "expense",
+            "amount": 25000,
+            "month": "2030-06"
+          },
+          "before": "38ab0c001b9da3bda34e83c5a855f6eef4ab6a46065affe2e6d8d95efb76002a",
+          "after": "38ab0c001b9da3bda34e83c5a855f6eef4ab6a46065affe2e6d8d95efb76002a"
+        },
+        "income": {
+          "change": {
+            "kind": "income",
+            "incomeId": "pension:0",
+            "months": 12
+          },
+          "before": "16b26d9d9bacd0c9a24e85beb6e22b163b504b27d57be468a1a2e4f0cb5862f0",
+          "after": "16b26d9d9bacd0c9a24e85beb6e22b163b504b27d57be468a1a2e4f0cb5862f0"
+        }
+      }
+    },
+    "sophie": {
+      "regressions": {
+        "inputsSha256": {
+          "before": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+          "after": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31"
+        },
+        "balanceEngineSha256": {
+          "before": "2d6cfd7e3582fdb2458a4c81c9f8c92a8e086a06f41bc9dc94cf646efc3fb52a",
+          "after": "2d6cfd7e3582fdb2458a4c81c9f8c92a8e086a06f41bc9dc94cf646efc3fb52a"
+        },
+        "backtestSha256": {
+          "before": "c174332a0617a5fefd3fcd31da6e310be5a004e4c743d8571e4e23102be2067a",
+          "after": "c174332a0617a5fefd3fcd31da6e310be5a004e4c743d8571e4e23102be2067a"
+        },
+        "mcSha256": {
+          "before": "c333557cdfb8465392b6331b7539d34d43893ebb9fbac4f92645b55afb2a5726",
+          "after": "c333557cdfb8465392b6331b7539d34d43893ebb9fbac4f92645b55afb2a5726"
+        },
+        "exportsSha256": {
+          "before": "0bf42e0c45025f571ab06c0b7c910469653fe01a5ab25bdf03f311ebb50d67a1",
+          "after": "0bf42e0c45025f571ab06c0b7c910469653fe01a5ab25bdf03f311ebb50d67a1"
+        },
+        "exportSha256": {
+          "before": [
+            "3170de2cbf6035fe57e3fc2c64a45abc552e332c3736fb144739054e6a63a24b",
+            "ad635e27b75c78bcbc7eea593379eebabba2d220d1108da0d5990f6bfee8f7b8",
+            "eef9ee08253a430efbee3108b791b54c69f298cf42a24b8850c1be2878486a59",
+            "8c4f9eb3033dab6045739cf9c48420025e2b1da9eace50eaf3e03ee63bc302df"
+          ],
+          "after": [
+            "3170de2cbf6035fe57e3fc2c64a45abc552e332c3736fb144739054e6a63a24b",
+            "ad635e27b75c78bcbc7eea593379eebabba2d220d1108da0d5990f6bfee8f7b8",
+            "eef9ee08253a430efbee3108b791b54c69f298cf42a24b8850c1be2878486a59",
+            "8c4f9eb3033dab6045739cf9c48420025e2b1da9eace50eaf3e03ee63bc302df"
+          ]
+        }
+      },
+      "comparison": {
+        "budget": {
+          "change": {
+            "kind": "budget",
+            "monthly": 300
+          },
+          "before": "d6e2e8fe6194a5400a47c76226e74ba6ef5043734c209439056c26ba38cf60e1",
+          "after": "d6e2e8fe6194a5400a47c76226e74ba6ef5043734c209439056c26ba38cf60e1"
+        },
+        "expense": {
+          "change": {
+            "kind": "expense",
+            "amount": 25000,
+            "month": "2030-06"
+          },
+          "before": "e028506012da26faa987476c87d8802d5fa64dedc89e87706e432b4249813595",
+          "after": "e028506012da26faa987476c87d8802d5fa64dedc89e87706e432b4249813595"
+        },
+        "income": {
+          "change": {
+            "kind": "income",
+            "incomeId": "pension:0",
+            "months": 12
+          },
+          "before": "a65bcb73a0ba6091de5bd17e1ed97d0813553a0476923753d62aa4f94186cf39",
+          "after": "a65bcb73a0ba6091de5bd17e1ed97d0813553a0476923753d62aa4f94186cf39"
+        }
+      }
+    }
+  },
+  "searches": [
+    {
+      "status": "unreachable",
+      "lowerMetrics": {
+        "coveragePct": 99.9,
+        "affectedPct": 57.15,
+        "affectedYears": 2,
+        "budgetP10": 26850,
+        "budgetP50": 37800,
+        "wealthP10": 1158507.8386472522,
+        "wealthP50": 3544973.668461887
+      },
+      "goals": {
+        "coveragePct": 99,
+        "affectedPct": 10
+      },
+      "lowerMonthly": 650,
+      "currentMonthly": 2500,
+      "maximumMonthly": 1000000,
+      "evaluations": 2,
+      "observations": [
+        {
+          "monthly": 650,
+          "metrics": {
+            "coveragePct": 99.9,
+            "affectedPct": 57.15,
+            "affectedYears": 2,
+            "budgetP10": 26850,
+            "budgetP50": 37800,
+            "wealthP10": 1158507.8386472522,
+            "wealthP50": 3544973.668461887
+          }
+        }
+      ],
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM",
+        "startYearFilter": 1970,
+        "startYearHalfLife": 20,
+        "excludeEstimatedHistory": false
+      },
+      "elapsedSeconds": 42.130584649999996
+    },
+    {
+      "status": "found",
+      "monthly": 4650,
+      "atUpperBound": false,
+      "nextMonthly": 4700,
+      "nextMetrics": {
+        "coveragePct": 98.85000000000001,
+        "affectedPct": 2.75,
+        "affectedYears": 1,
+        "budgetP10": 63076.88612249769,
+        "budgetP50": 82609.49570664432,
+        "wealthP10": 393315.77707129903,
+        "wealthP50": 1450419.9210950113
+      },
+      "comparison": {
+        "baseline": {
+          "coveragePct": 99.7,
+          "affectedPct": 1.7000000000000002,
+          "affectedYears": 2,
+          "budgetP10": 43499.99999999999,
+          "budgetP50": 59794.02285209055,
+          "wealthP10": 798924.7188191842,
+          "wealthP50": 2632531.6932210764
+        },
+        "variant": {
+          "coveragePct": 99.15,
+          "affectedPct": 2.8000000000000003,
+          "affectedYears": 1,
+          "budgetP10": 62647.95350268755,
+          "budgetP50": 82195.43905418435,
+          "wealthP10": 400815.8159319685,
+          "wealthP50": 1478661.7373192583
+        },
+        "differences": {
+          "coveragePct": -0.5499999999999972,
+          "affectedPct": 1.1,
+          "affectedYears": -1,
+          "budgetP10": 19147.95350268756,
+          "budgetP50": 22401.416202093795,
+          "wealthP10": -398108.9028872157,
+          "wealthP50": -1153869.9559018181
+        }
+      },
+      "goals": {
+        "coveragePct": 99,
+        "affectedPct": 70
+      },
+      "lowerMonthly": 650,
+      "currentMonthly": 2500,
+      "maximumMonthly": 1000000,
+      "evaluations": 10,
+      "observations": [
+        {
+          "monthly": 650,
+          "metrics": {
+            "coveragePct": 99.9,
+            "affectedPct": 57.15,
+            "affectedYears": 2,
+            "budgetP10": 26850,
+            "budgetP50": 37800,
+            "wealthP10": 1158507.8386472522,
+            "wealthP50": 3544973.668461887
+          }
+        },
+        {
+          "monthly": 5000,
+          "metrics": {
+            "coveragePct": 98.5,
+            "affectedPct": 3.1,
+            "affectedYears": 1.5,
+            "budgetP10": 65709.86816172965,
+            "budgetP50": 85070.9749716633,
+            "wealthP10": 327999.93656666,
+            "wealthP50": 1297303.8254058699
+          }
+        },
+        {
+          "monthly": 2800,
+          "metrics": {
+            "coveragePct": 99.7,
+            "affectedPct": 1.7500000000000002,
+            "affectedYears": 2,
+            "budgetP10": 46199.999999999985,
+            "budgetP50": 63332.95765522716,
+            "wealthP10": 742273.7224297537,
+            "wealthP50": 2467340.7486939947
+          }
+        },
+        {
+          "monthly": 3900,
+          "metrics": {
+            "coveragePct": 99.55000000000001,
+            "affectedPct": 2.25,
+            "affectedYears": 2,
+            "budgetP10": 55991.80790364485,
+            "budgetP50": 75488.23641257396,
+            "wealthP10": 540706.594677921,
+            "wealthP50": 1864023.8414917206
+          }
+        },
+        {
+          "monthly": 4450,
+          "metrics": {
+            "coveragePct": 99.35000000000001,
+            "affectedPct": 2.7,
+            "affectedYears": 1,
+            "budgetP10": 60864.27922113496,
+            "budgetP50": 80541.53653907662,
+            "wealthP10": 438753.08521116996,
+            "wealthP50": 1581948.5669436175
+          }
+        },
+        {
+          "monthly": 4700,
+          "metrics": {
+            "coveragePct": 98.85000000000001,
+            "affectedPct": 2.75,
+            "affectedYears": 1,
+            "budgetP10": 63076.88612249769,
+            "budgetP50": 82609.49570664432,
+            "wealthP10": 393315.77707129903,
+            "wealthP50": 1450419.9210950113
+          }
+        },
+        {
+          "monthly": 4550,
+          "metrics": {
+            "coveragePct": 99.1,
+            "affectedPct": 2.7,
+            "affectedYears": 1,
+            "budgetP10": 61748.827304482766,
+            "budgetP50": 81348.42117428343,
+            "wealthP10": 418032.84872312326,
+            "wealthP50": 1540623.964614626
+          }
+        },
+        {
+          "monthly": 4600,
+          "metrics": {
+            "coveragePct": 99.2,
+            "affectedPct": 2.7,
+            "affectedYears": 1.5,
+            "budgetP10": 62174.90734682923,
+            "budgetP50": 81879.06801372182,
+            "wealthP10": 409632.65091722977,
+            "wealthP50": 1511397.593665997
+          }
+        },
+        {
+          "monthly": 4650,
+          "metrics": {
+            "coveragePct": 99.15,
+            "affectedPct": 2.8000000000000003,
+            "affectedYears": 1,
+            "budgetP10": 62647.95350268755,
+            "budgetP50": 82195.43905418435,
+            "wealthP10": 400815.8159319685,
+            "wealthP50": 1478661.7373192583
+          }
+        }
+      ],
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM",
+        "startYearFilter": 1970,
+        "startYearHalfLife": 20,
+        "excludeEstimatedHistory": false
+      },
+      "elapsedSeconds": 305.61576118899995
+    }
+  ],
+  "sourceFilesSha256": {
+    "Simulator.html": "22353c4266e7f5ac06e67af4e738cbaab5deebfd3d1ac77e1ebff57cf9e5ecb9",
+    "simulator.css": "59286287a260a9592c152f8d658ac737a7ec9ac56974136d652e60d47ffd839c",
+    "app/simulator/decision-comparison.js": "9e6c9ab98eef5e0ecccd6cc6f85b8bfc04b38a0155e73d12d58cd6dea4a04bbe",
+    "app/simulator/decision-comparison-ui.js": "ebd436a879ccbc35c420d0285892e08d3fdab028e09e1fbf94c2380cb0976e45",
+    "app/simulator/target-budget-search.js": "b365d2798823ef1eb930cd4bb5362ee3127dba48c2aeb53b08a3837932fe7cfd"
+  }
+}

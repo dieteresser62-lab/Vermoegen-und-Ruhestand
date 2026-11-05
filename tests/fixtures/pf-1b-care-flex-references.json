@@ -1,0 +1,46 @@
+{
+  "baseRevision": "9528f9bc",
+  "reason": "FR-39: Flex je Pflegegrad 100/100/50/0/0 %. Explizite alte Flex-Werte reproduzieren alle FR-38-Referenzen. Erste Abweichung in den vier synthetischen Pfaden beim Eintritt in PG2 in Jahr 2; Backtest-Jahreszeilen und Pfade ohne Pflege bytegleich. Vollständige JSON.stringify({rows,path0})-Ausgaben, keine ausgeblendeten Felder.",
+  "presets": {
+    "Vorgabe": {
+      "before": "5d90af273b2586e3d68c6993e792ff5f2f61a3e1f9af1d18b3a04ddc1729ef25",
+      "after": "df3851ccffb836a25a63b45f42c64e97bf949e533df25533a9bb3ce4b56dc7d5",
+      "withoutCare": "ac4f83a06251939b6e3b6386f4b59b1cc9792c6b54a0e8d0b9b7ced61fa68351",
+      "firstChangedYear": 2,
+      "firstCareGrades": [
+        2,
+        null
+      ]
+    },
+    "konservativ": {
+      "before": "38322b49112284d31f5bee92d1af602267d995165ec9d4c1302a3d3c72053b4e",
+      "after": "0879b3a44d6127f31f248164f721cc17812ee60b90cca28b18f9aca1636ce7e3",
+      "withoutCare": "87e305fef4795bba0259ed6cd47dd8f8b9d0b46b2bad97074388e0c24df6bd3e",
+      "firstChangedYear": 2,
+      "firstCareGrades": [
+        2,
+        null
+      ]
+    },
+    "ausgewogen": {
+      "before": "76049e332d50da12551e2846166ff4ddbbba1a8e85f0551928d24e6bbad55863",
+      "after": "344dd45c04ba23d5431d427ac3022e01f59b2b1d8555e1cd0d66ba8e1ff6944b",
+      "withoutCare": "a2853c1768dea244f4eab575327c44bdf9bcba57d880a3b8571114637b018d12",
+      "firstChangedYear": 2,
+      "firstCareGrades": [
+        2,
+        null
+      ]
+    },
+    "offensiv": {
+      "before": "1e7927e4a96d07952b9e3a5511ab29f924b949ba1bdc3e6fb8925307105144f7",
+      "after": "4090fc6bd179469b1ed7dbea4955cc43e99436f08a2b11e859df01fbeacd7686",
+      "withoutCare": "bc9f9c4d72e14686fec1a5431482d66ff1a636fe2617c3954eb3218a95c70e0e",
+      "firstChangedYear": 2,
+      "firstCareGrades": [
+        2,
+        null
+      ]
+    }
+  }
+}

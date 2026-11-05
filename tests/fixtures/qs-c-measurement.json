@@ -1,0 +1,244 @@
+{
+  "testDate": "2026-10-23",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 5,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "units": {
+    "coveredPct": "Prozent der 2000 Pfade mit gedecktem Floor bis Laufende",
+    "ruin": "Anzahl",
+    "meanEndWealth": "Operatives Geldvermögen des Runner-Endwerts in Euro der Startkaufkraft; ohne getrennte Pflegereserve und Immobilien",
+    "meanTaxes": "nominale Euro je Lauf, über alle Jahre"
+  },
+  "cases": {
+    "max-erika/grund": {
+      "before": {
+        "coveredPct": 99.7,
+        "ruin": 6,
+        "meanEndWealth": 4036083.915239304,
+        "meanTaxes": 76853.9140092552,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 99.7,
+        "ruin": 6,
+        "meanEndWealth": 4042217.2912577786,
+        "meanTaxes": 72662.77909913237,
+        "technicalErrors": 0
+      }
+    },
+    "max-erika/immobilien": {
+      "before": {
+        "coveredPct": 100,
+        "ruin": 0,
+        "meanEndWealth": 4611957.688599612,
+        "meanTaxes": 63591.60362610914,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 100,
+        "ruin": 0,
+        "meanEndWealth": 4619323.316460218,
+        "meanTaxes": 57735.767785259166,
+        "technicalErrors": 0
+      }
+    },
+    "renate/grund": {
+      "before": {
+        "coveredPct": 93.8,
+        "ruin": 124,
+        "meanEndWealth": 514791.65749515564,
+        "meanTaxes": 58959.34470420551,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 93.8,
+        "ruin": 124,
+        "meanEndWealth": 514818.9667622798,
+        "meanTaxes": 58924.56215738237,
+        "technicalErrors": 0
+      }
+    },
+    "renate/klein": {
+      "before": {
+        "coveredPct": 37.65,
+        "ruin": 1247,
+        "meanEndWealth": 26551.520196990594,
+        "meanTaxes": 12949.682518752143,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 37.65,
+        "ruin": 1247,
+        "meanEndWealth": 26580.74707150612,
+        "meanTaxes": 12916.330280813732,
+        "technicalErrors": 0
+      }
+    },
+    "jan-lena/grund": {
+      "before": {
+        "coveredPct": 99.75,
+        "ruin": 5,
+        "meanEndWealth": 5964396.936794328,
+        "meanTaxes": 362156.48871251236,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 99.7,
+        "ruin": 6,
+        "meanEndWealth": 5976071.5057313265,
+        "meanTaxes": 354318.11393914284,
+        "technicalErrors": 0
+      }
+    },
+    "jan-lena/halten": {
+      "before": {
+        "coveredPct": 99.65,
+        "ruin": 7,
+        "meanEndWealth": 5850672.892193931,
+        "meanTaxes": 360520.45377631794,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 99.65,
+        "ruin": 7,
+        "meanEndWealth": 5863930.937870043,
+        "meanTaxes": 352938.0217440852,
+        "technicalErrors": 0
+      }
+    },
+    "helga-werner/grund": {
+      "before": {
+        "coveredPct": 99.75,
+        "ruin": 5,
+        "meanEndWealth": 958009.8802573842,
+        "meanTaxes": 48362.60984905869,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 99.75,
+        "ruin": 5,
+        "meanEndWealth": 958987.3288484814,
+        "meanTaxes": 47400.72168601807,
+        "technicalErrors": 0
+      }
+    },
+    "helga-werner/haus-pg3": {
+      "before": {
+        "coveredPct": 99.8,
+        "ruin": 4,
+        "meanEndWealth": 645447.9652840614,
+        "meanTaxes": 61821.95484629406,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 99.8,
+        "ruin": 4,
+        "meanEndWealth": 646085.3594758797,
+        "meanTaxes": 61133.067794874456,
+        "technicalErrors": 0
+      }
+    },
+    "sophie/grund": {
+      "before": {
+        "coveredPct": 97,
+        "ruin": 60,
+        "meanEndWealth": 2049442.7773942403,
+        "meanTaxes": 65605.5531825666,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 97.05,
+        "ruin": 59,
+        "meanEndWealth": 2059292.489529439,
+        "meanTaxes": 56494.5048503957,
+        "technicalErrors": 0
+      }
+    },
+    "sophie/teilzeit": {
+      "before": {
+        "coveredPct": 95.75,
+        "ruin": 85,
+        "meanEndWealth": 1761716.2577266556,
+        "meanTaxes": 63824.402992956144,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 95.89999999999999,
+        "ruin": 82,
+        "meanEndWealth": 1770462.3097921822,
+        "meanTaxes": 56302.73109677299,
+        "technicalErrors": 0
+      }
+    },
+    "martin-petra/grund": {
+      "before": {
+        "coveredPct": 99.85000000000001,
+        "ruin": 3,
+        "meanEndWealth": 2247189.2414944405,
+        "meanTaxes": 108489.20710564163,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 99.85000000000001,
+        "ruin": 3,
+        "meanEndWealth": 2254535.1420262116,
+        "meanTaxes": 95617.94342532507,
+        "technicalErrors": 0
+      }
+    },
+    "martin-petra/hundert": {
+      "before": {
+        "coveredPct": 99.85000000000001,
+        "ruin": 3,
+        "meanEndWealth": 3949923.1766281403,
+        "meanTaxes": 257396.03823221993,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 99.85000000000001,
+        "ruin": 3,
+        "meanEndWealth": 3983456.477744901,
+        "meanTaxes": 233973.49951127492,
+        "technicalErrors": 0
+      }
+    },
+    "martin-petra/ehe": {
+      "before": {
+        "coveredPct": 100,
+        "ruin": 0,
+        "meanEndWealth": 5542177.969376828,
+        "meanTaxes": 102084.14870742353,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 100,
+        "ruin": 0,
+        "meanEndWealth": 5559620.975550366,
+        "meanTaxes": 88863.20468665431,
+        "technicalErrors": 0
+      }
+    },
+    "martin-petra/testament": {
+      "before": {
+        "coveredPct": 99.15,
+        "ruin": 17,
+        "meanEndWealth": 2736917.341729396,
+        "meanTaxes": 104170.37134342482,
+        "technicalErrors": 0
+      },
+      "after": {
+        "coveredPct": 99.15,
+        "ruin": 17,
+        "meanEndWealth": 2753693.4633999164,
+        "meanTaxes": 90595.39990576277,
+        "technicalErrors": 0
+      }
+    }
+  }
+}

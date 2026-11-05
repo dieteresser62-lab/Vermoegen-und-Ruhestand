@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="430" viewBox="0 0 680 430" role="img" aria-labelledby="title desc" data-source-sha256="9f3b7e66cee4693a490bfc0b177231945555faa0c42e1117a6f7e5b3b52225bd">
+<title id="title">Was das Laufende bedeutet</title>
+<desc id="desc">Ein Monte-Carlo-Lauf endet durch Tod aller Personen, Horizont, Ruin oder technischen Fehler. Tod und Horizont zählen ohne vorherigen Ruin als gedeckt bis Laufende. Ein technischer Fehler sperrt die Gesamtquote.</desc>
+<rect width="680" height="430" rx="12" fill="#f1f2ee"/>
+<text x="340" y="36" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#1d2830"><tspan x="340" dy="0">Was das Laufende bedeutet</tspan></text>
+<rect x="210" y="70" width="260" height="72" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="340.0" y="100.14999999999999" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#1d2830"><tspan x="340.0" dy="0">Ende eines</tspan><tspan x="340.0" dy="24.3">Monte-Carlo-Laufs</tspan></text>
+<rect x="20" y="200" width="164" height="72" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="102.0" y="230.15" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#1d2830"><tspan x="102.0" dy="0">Alle</tspan><tspan x="102.0" dy="24.3">verstorben</tspan></text>
+<rect x="204" y="200" width="172" height="72" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="290.0" y="230.15" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#1d2830"><tspan x="290.0" dy="0">Horizont</tspan><tspan x="290.0" dy="24.3">erreicht</tspan></text>
+<rect x="396" y="200" width="80" height="72" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="436.0" y="242.3" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#9c3b33"><tspan x="436.0" dy="0">Ruin</tspan></text>
+<rect x="496" y="200" width="164" height="72" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="578.0" y="230.15" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#1d2830"><tspan x="578.0" dy="0">Technischer</tspan><tspan x="578.0" dy="24.3">Fehler</tspan></text>
+<rect x="58" y="330" width="276" height="72" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="196.0" y="360.15000000000003" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#7a5a1f"><tspan x="196.0" dy="0">Ohne Ruin</tspan><tspan x="196.0" dy="24.3">bis Laufende</tspan></text>
+<rect x="490" y="330" width="176" height="72" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="578.0" y="360.15000000000003" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#1d2830"><tspan x="578.0" dy="0">Gesamtquote</tspan><tspan x="578.0" dy="24.3">nicht auswertbar</tspan></text>
+<polyline points="340.0,142 340.0,170 102.0,170 102.0,200" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="102.0,200 106,190 98,190" fill="#7a5a1f"/>
+<polyline points="340.0,142 340.0,170 290.0,170 290.0,200" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="290.0,200 294,190 286,190" fill="#7a5a1f"/>
+<polyline points="340.0,142 340.0,170 436.0,170 436.0,200" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="436.0,200 440,190 432,190" fill="#7a5a1f"/>
+<polyline points="340.0,142 340.0,170 578.0,170 578.0,200" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="578.0,200 582,190 574,190" fill="#7a5a1f"/>
+<polyline points="102.0,272 102.0,300 196.0,300 196.0,330" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="196.0,330 200,320 192,320" fill="#7a5a1f"/>
+<polyline points="290.0,272 290.0,300 196.0,300 196.0,330" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="196.0,330 200,320 192,320" fill="#7a5a1f"/>
+<polyline points="578.0,272 578.0,330" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="578.0,330 582,320 574,320" fill="#7a5a1f"/>
+</svg>

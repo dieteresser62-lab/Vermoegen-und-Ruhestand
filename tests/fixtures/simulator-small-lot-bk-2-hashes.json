@@ -1,0 +1,34 @@
+{
+  "baseRevision": "94db2031",
+  "cause": "FR-20-Diagnose und FR-34-Folgeanker; synthetische vollständige Finanzprojektionen",
+  "hashes": {
+    "standard": {
+      "before": "212823a28f09e91ed1c99681dd0c8463721a8abdf0f660be2ba99acc51f8b85e",
+      "after": "b5e0550086e3c4b57387822856872c29666b6c7a3132abe2e3220b5466e818f2"
+    },
+    "drei-topf": {
+      "before": "77533543185337f9f3c64749ac7f79dbeb5e04084d8e10b17b826c454f0fe4c8",
+      "after": "ba8a890bb654065ca2e422397a52cdd739d502e49c57fcc5ac708af118b79cda"
+    },
+    "offene-lots": {
+      "before": "99321c1b195f7330d246cf82507325eaeaed93119339d6d58428671b6ebf0ac1",
+      "after": "ab86440b274343d82a6564f9389ea08fde57344f52bc08ce8e3ddb5cc0dfa50f"
+    },
+    "liquiditaet": {
+      "before": "bc5185d1b4872347be9ced8d02a52eb9eaa79b72fada5e2c3cd0f3877fa1ac34",
+      "after": "ba537f9be53cccfa4bd3fdb539695f7d21c6603b5dc0221b09503ed15f7249a9"
+    },
+    "ruin": {
+      "before": "39fbc3bb7c7093597daa5425fde1016341539b344bf93a153e7447b1353db27e",
+      "after": "39fbc3bb7c7093597daa5425fde1016341539b344bf93a153e7447b1353db27e"
+    },
+    "kohorte-2006": {
+      "before": "2af94dd0f7bc8a2d4665d487815fa0591555d0ed62adb8924166397d0fba5d31",
+      "after": "3acdca131c3ff271fb8aad6260a5942eb030127cd299826210082a6959c87fa0"
+    },
+    "kohorte-2007": {
+      "before": "9a857b44fe049c32b927d586b8c85fb7954518effd87c80f68d1ee6628497757",
+      "after": "751e7e1ef371eb8ff452a09c9c1cab11e13db6a491ff8886734b4d5e5d6cd455"
+    }
+  }
+}

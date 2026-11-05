@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="960" viewBox="0 0 1120 960" role="img" aria-labelledby="title desc" data-source-sha256="61787c02ea789e59b970b0bce753d5fae060e42197c218ac1b97d683fdf1888f">
+<title id="title">Von der Geldlücke zur Verwendung</title>
+<desc id="desc">Entnahme und freie Bestände bestimmen Ziel und Schutz. Bei zulässigem Verkaufsauftrag folgen Quellenwahl, Steuer und Nettoverwendung. Ohne Verkauf werden Überschussanlage oder Warten geprüft. Der Jahresbeleg hält die Empfehlung fest; er ist noch keine reale Ausführung.</desc>
+<rect width="1120" height="960" rx="12" fill="#f1f2ee"/>
+<text x="560.0" y="38" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#1d2830"><tspan x="560.0" dy="0">Von der Geldlücke zur Verwendung</tspan></text>
+<rect x="100" y="80" width="360" height="80" rx="10" fill="#fff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="280.0" y="127.0" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#1d2830"><tspan x="280.0" dy="0">Entnahme und freie Bestände</tspan></text>
+<rect x="100" y="210" width="360" height="80" rx="10" fill="#fff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="280.0" y="257.0" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#1d2830"><tspan x="280.0" dy="0">Liquiditätsziel und Schutz</tspan></text>
+<rect x="100" y="340" width="360" height="90" rx="10" fill="#f2e9d4" stroke="#b8954f" stroke-width="2"/>
+<text x="280.0" y="379.0" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#1d2830"><tspan x="280.0" dy="0">Verkaufsauftrag</tspan><tspan x="280.0" dy="26">zulässig?</tspan></text>
+<rect x="100" y="490" width="360" height="85" rx="10" fill="#fff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="280.0" y="526.5" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#1d2830"><tspan x="280.0" dy="0">Quellen nach Strategie</tspan><tspan x="280.0" dy="26">und Eigentümer</tspan></text>
+<rect x="100" y="630" width="360" height="80" rx="10" fill="#fff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="280.0" y="677.0" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#1d2830"><tspan x="280.0" dy="0">Brutto abzüglich Steuer</tspan></text>
+<rect x="100" y="760" width="360" height="80" rx="10" fill="#fff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="280.0" y="794.0" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#1d2830"><tspan x="280.0" dy="0">Netto für Liquidität</tspan><tspan x="280.0" dy="26">und Käufe</tspan></text>
+<rect x="650" y="490" width="360" height="85" rx="10" fill="#fff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="830.0" y="526.5" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#1d2830"><tspan x="830.0" dy="0">Überschuss anlegen</tspan><tspan x="830.0" dy="26">oder warten</tspan></text>
+<rect x="650" y="760" width="360" height="80" rx="10" fill="#fff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="830.0" y="807.0" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#1d2830"><tspan x="830.0" dy="0">Empfehlung im Jahresbeleg</tspan></text>
+<polyline points="280,160 280,210" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="280.0,210.0 285.0,199.0 275.0,199.0" fill="#7a5a1f"/>
+<polyline points="280,290 280,340" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="280.0,340.0 285.0,329.0 275.0,329.0" fill="#7a5a1f"/>
+<polyline points="280,430 280,490" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="280.0,490.0 285.0,479.0 275.0,479.0" fill="#7a5a1f"/>
+<text x="310" y="466" text-anchor="middle" font-family="sans-serif" font-size="17" fill="#1d2830"><tspan x="310" dy="0">Ja</tspan></text>
+<polyline points="460,385 830,385 830,490" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="830.0,490.0 835.0,479.0 825.0,479.0" fill="#7a5a1f"/>
+<text x="650" y="372" text-anchor="middle" font-family="sans-serif" font-size="17" fill="#1d2830"><tspan x="650" dy="0">Nein</tspan></text>
+<polyline points="280,575 280,630" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="280.0,630.0 285.0,619.0 275.0,619.0" fill="#7a5a1f"/>
+<polyline points="280,710 280,760" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="280.0,760.0 285.0,749.0 275.0,749.0" fill="#7a5a1f"/>
+<polyline points="460,800 650,800" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="650.0,800.0 639.0,795.0 639.0,805.0" fill="#7a5a1f"/>
+<polyline points="830,575 830,760" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="830.0,760.0 835.0,749.0 825.0,749.0" fill="#7a5a1f"/>
+<text x="560.0" y="930" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#1d2830"><tspan x="560.0" dy="0">Messing: Entscheidung · Pfeile: Prüf- und Geldfolge · Beleg ist keine reale Ausführung</tspan></text>
+</svg>

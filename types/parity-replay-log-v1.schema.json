@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ParityReplayLogV1",
+  "type": "object",
+  "required": ["schemaVersion", "source", "initialRecords", "years", "limitations", "captureIssues", "logHash"],
+  "properties": {
+    "schemaVersion": { "const": "ParityReplayLogV1" },
+    "source": {
+      "type": "object",
+      "required": ["sourceHash", "engineVersion", "datasetHash", "temporalConventionId"],
+      "properties": {
+        "sourceHash": { "$ref": "#/$defs/nullableHash" },
+        "datasetHash": { "$ref": "#/$defs/nullableHash" },
+        "engineVersion": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "object", "required": ["api", "build"], "properties": {
+              "api": { "type": ["string", "number"] }, "build": { "type": ["string", "number"] }
+            } }
+          ]
+        },
+        "temporalConventionId": { "type": ["string", "null"] }
+      }
+    },
+    "initialRecords": { "type": ["object", "null"] },
+    "years": { "type": "array", "items": { "$ref": "#/$defs/year" } },
+    "limitations": { "type": "array", "items": { "type": "object" } },
+    "captureIssues": { "type": "array", "items": { "type": "object" } },
+    "logHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "$defs": {
+    "nullableHash": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+    "argument": {
+      "description": "undefined is encoded as an object with the sole key $parityValue and value undefined.",
+      "type": ["object", "null"]
+    },
+    "year": {
+      "type": "object",
+      "required": ["yearIndex", "historicalYear", "logicalPlanningYear", "decisionPhase", "engineInput", "engineLastState", "options", "expectedDecision", "simulatorStateAtYearStart", "simulatorStateBefore", "assumptions", "householdEvents", "effectiveAnnualPensions", "cashAndLots", "marketContext", "horizonContext", "resetEvidence"],
+      "properties": {
+        "yearIndex": { "type": "integer", "minimum": 0 },
+        "historicalYear": { "type": ["integer", "null"] },
+        "logicalPlanningYear": { "type": ["integer", "null"] },
+        "decisionPhase": { "const": "VOR_TRANSAKTION" },
+        "engineInput": { "type": "object" },
+        "engineLastState": { "$ref": "#/$defs/argument" },
+        "options": { "$ref": "#/$defs/argument" },
+        "expectedDecision": { "type": "object" },
+        "simulatorStateAtYearStart": { "type": "object" },
+        "simulatorStateBefore": { "type": "object" },
+        "assumptions": { "type": "object" },
+        "householdEvents": { "type": "object" },
+        "effectiveAnnualPensions": { "type": "object" },
+        "cashAndLots": { "type": "object" },
+        "marketContext": { "type": "object" },
+        "horizonContext": { "type": "object" },
+        "resetEvidence": { "type": "object" }
+      }
+    }
+  }
+}

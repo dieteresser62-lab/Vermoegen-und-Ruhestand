@@ -1,0 +1,11 @@
+{
+  "basis": "55923f7905daed0e6bce3436c3b39e9568f6b17f",
+  "count": 24,
+  "seed": 12345,
+  "inputsHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+  "backtestHash": "6b038f5dd3b2c4d7b2ffe3495fe8d242f1d2c954123db560836faa66ddd60404",
+  "monteCarloHash": "1a9745f641e1a39cec845c07d9e08b33791b8c3dbceec079512cd601f5da2212",
+  "parityHash": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854",
+  "parityCases": 208,
+  "parityFailed": false
+}

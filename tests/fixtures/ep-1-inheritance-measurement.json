@@ -1,0 +1,252 @@
+{
+  "sourceRevision": "09657073beb090248f7464d73f5b4d45f92ef1f4",
+  "household": "Max und Erika Mustermann; ausschließlich synthetische Daten",
+  "measurement": "Vier Varianten mit je 2000 Pfaden, Seed 12345; reale Endwerte, nominale Lebenspfadsummen von Steuer und Abgang.",
+  "before": {
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "variants": {
+      "married100": {
+        "successPct": 99.7,
+        "realP50": 2796023.899418609,
+        "realP10": 804619.4400709856,
+        "medianInheritanceTax": 0,
+        "medianLeaves": 0,
+        "aboveSixMillion": 0,
+        "completeOutputSha256": "08fe2ef64533b2f8f0014edc4e51f913235eb7560acf0466aa5ae493b2e977d2",
+        "backtestSha256": "73aa3f2927367786f13263dd5f4000d573733a07d1463ec15756f287e65d2637",
+        "pathsWithoutLiqEndSha256": "f77af0477b01794b629f81d2f47e979989309877d6ae5460fc81bbc8e50ea0d3"
+      },
+      "married50": {
+        "successPct": 99.7,
+        "realP50": 2796023.899418609,
+        "realP10": 804619.4400709856,
+        "medianInheritanceTax": 0,
+        "medianLeaves": 0,
+        "aboveSixMillion": 0,
+        "completeOutputSha256": "08fe2ef64533b2f8f0014edc4e51f913235eb7560acf0466aa5ae493b2e977d2",
+        "backtestSha256": "c931985c65040c1dcdeeef8487da95a8ef6330e9c09f071c771b6f03fc17b9f1",
+        "pathsWithoutLiqEndSha256": "f77af0477b01794b629f81d2f47e979989309877d6ae5460fc81bbc8e50ea0d3"
+      },
+      "unmarried0": {
+        "successPct": 97.8,
+        "realP50": 1077871.605749017,
+        "realP10": 242659.43443391868,
+        "medianInheritanceTax": 0,
+        "medianLeaves": 970022.8446221335,
+        "aboveSixMillion": 0,
+        "completeOutputSha256": "5c4ac514554ceb3bdd08cbe75bc0d1722658f1510a2dedcdd354cc40b15dde68",
+        "backtestSha256": "5f22e12701c6dc2129ba0c11883db257fb06330791035a68f551e7f5acd5d27e",
+        "pathsWithoutLiqEndSha256": "8b2e5c46c2c1aaa8f25e97ffe2623fc9bfed60ac3d5ff7ab53b6ceeeb6fd2648"
+      },
+      "unmarried100": {
+        "successPct": 99.45,
+        "realP50": 2084549.560402367,
+        "realP10": 571698.1110324747,
+        "medianInheritanceTax": 285006.8533866401,
+        "medianLeaves": 0,
+        "aboveSixMillion": 63,
+        "completeOutputSha256": "2c6bcd9c516158aae803a9128220b07b4157b72427be4419110b3e5423133614",
+        "backtestSha256": "54de3f60eb9a7faaa764dc99faccd67cb44e84712b9b471b53bb069812a3cc26",
+        "pathsWithoutLiqEndSha256": "1fe1e75bc0c805ab49964752dcbb44dceccbf52209c880cc4a642a0f95441475"
+      }
+    }
+  },
+  "after": {
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "variants": {
+      "married100": {
+        "successPct": 99.7,
+        "realP50": 2632531.6932210764,
+        "realP10": 798924.7188191842,
+        "medianInheritanceTax": 74514.78657277604,
+        "medianLeaves": 0,
+        "aboveSixMillion": 63,
+        "completeOutputSha256": "7934c6f1b9b4306a3a311816daeceb5e7e4e02acc76f26d7aab893566241f1fb",
+        "backtestSha256": "73aa3f2927367786f13263dd5f4000d573733a07d1463ec15756f287e65d2637",
+        "pathsWithoutLiqEndSha256": "02bc91aa580b9ad0d06ef2b175c89b3bf6106222d0eb3efa52bf9075aeaa570a"
+      },
+      "married50": {
+        "successPct": 99.7,
+        "realP50": 2047681.8029422134,
+        "realP10": 588985.8748584307,
+        "medianInheritanceTax": 0,
+        "medianLeaves": 498382.6219092534,
+        "aboveSixMillion": 19,
+        "completeOutputSha256": "822fceac31ea529508ae731071f4a639f8c0f41c486587629635c370b62e9955",
+        "backtestSha256": "c931985c65040c1dcdeeef8487da95a8ef6330e9c09f071c771b6f03fc17b9f1",
+        "pathsWithoutLiqEndSha256": "7b971c83b36f95e883b0da33d3f99b29c2416a0e95946abe478c91c139397aaf"
+      },
+      "unmarried0": {
+        "successPct": 97.8,
+        "realP50": 1077871.605749017,
+        "realP10": 242659.43443391868,
+        "medianInheritanceTax": 0,
+        "medianLeaves": 970022.8446221335,
+        "aboveSixMillion": 0,
+        "completeOutputSha256": "5b27d54765c694b4cc7a074c466e8be7c1f7aee151f9286106db3ddeed5ef088",
+        "backtestSha256": "5f22e12701c6dc2129ba0c11883db257fb06330791035a68f551e7f5acd5d27e",
+        "pathsWithoutLiqEndSha256": "8b2e5c46c2c1aaa8f25e97ffe2623fc9bfed60ac3d5ff7ab53b6ceeeb6fd2648"
+      },
+      "unmarried100": {
+        "successPct": 99.45,
+        "realP50": 2084549.560402367,
+        "realP10": 571698.1110324747,
+        "medianInheritanceTax": 285006.8533866401,
+        "medianLeaves": 0,
+        "aboveSixMillion": 63,
+        "completeOutputSha256": "4bb6f54019af1730c3d423b449b180023f96748c936a6afd71232005ac4fcf22",
+        "backtestSha256": "54de3f60eb9a7faaa764dc99faccd67cb44e84712b9b471b53bb069812a3cc26",
+        "pathsWithoutLiqEndSha256": "5e112d0ec80363d178cfabeed1eaa11304c63cd4cacb95e49e01121ee6cc13df"
+      }
+    }
+  },
+  "comparisons": {
+    "married100": {
+      "unchangedPathsExceptLiqEnd": 90,
+      "changedPathsExceptLiqEnd": 1910
+    },
+    "married50": {
+      "unchangedPathsExceptLiqEnd": 90,
+      "changedPathsExceptLiqEnd": 1910
+    },
+    "unmarried0": {
+      "unchangedPathsExceptLiqEnd": 2000,
+      "changedPathsExceptLiqEnd": 0
+    },
+    "unmarried100": {
+      "unchangedPathsExceptLiqEnd": 1937,
+      "changedPathsExceptLiqEnd": 63
+    }
+  },
+  "compatibility": {
+    "before": {
+      "sophie": {
+        "inputs": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+        "backtest": "7f3652a6da80dffd2024f5130456a8e73f5e6deed82d2dc19de37965e5f79fdc",
+        "mc": "6459318a46c5e0bab2619f64c2332dcb7549d7c3bb75d95e0786737d3de69eca",
+        "computation": "32f3896480afa33668c71e7c066685431f2db406ccaa9e9294400ca2bd6545d5",
+        "withoutProtocol": "32f3896480afa33668c71e7c066685431f2db406ccaa9e9294400ca2bd6545d5"
+      },
+      "max-erika": {
+        "inputs": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+        "backtest": "6b038f5dd3b2c4d7b2ffe3495fe8d242f1d2c954123db560836faa66ddd60404",
+        "mc": "46058fb65241a018d2f7e2a44499178cb9308ff9b15df78125dd4aba441d1dca",
+        "computation": "c96ac4a43be74919034b316d89b4cb8d214aa0337d19c985d9de742e32be9d04",
+        "withoutProtocol": "c96ac4a43be74919034b316d89b4cb8d214aa0337d19c985d9de742e32be9d04"
+      },
+      "parity": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854",
+      "balance": "abe48b59e0ef65526d6a509839848ef8aa375248f815990ed1eb81737005ed08",
+      "balanceCalculation": "b037c21a039388b06f487ea763b2975cc5e40018b5f73597761d691b4e96fbcc"
+    },
+    "marriedTaxForcedToZero": {
+      "sophie": {
+        "inputs": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+        "backtest": "7f3652a6da80dffd2024f5130456a8e73f5e6deed82d2dc19de37965e5f79fdc",
+        "mc": "6459318a46c5e0bab2619f64c2332dcb7549d7c3bb75d95e0786737d3de69eca",
+        "computation": "32f3896480afa33668c71e7c066685431f2db406ccaa9e9294400ca2bd6545d5",
+        "withoutProtocol": "32f3896480afa33668c71e7c066685431f2db406ccaa9e9294400ca2bd6545d5"
+      },
+      "max-erika": {
+        "inputs": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+        "backtest": "6b038f5dd3b2c4d7b2ffe3495fe8d242f1d2c954123db560836faa66ddd60404",
+        "mc": "36be6e5a0ac2b07875a98297a3dd1bdedc723dc5a3aa925db9f1b37272944031",
+        "computation": "c96ac4a43be74919034b316d89b4cb8d214aa0337d19c985d9de742e32be9d04",
+        "withoutProtocol": "7c61a529bf3b5ee9d1d862a97c52f02670252c4436e728d3bfb588093fc2cf03"
+      },
+      "parity": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854",
+      "balance": "abe48b59e0ef65526d6a509839848ef8aa375248f815990ed1eb81737005ed08"
+    },
+    "beforeProtocolCorrection": {
+      "sophie": {
+        "inputs": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+        "backtest": "7f3652a6da80dffd2024f5130456a8e73f5e6deed82d2dc19de37965e5f79fdc",
+        "mc": "6459318a46c5e0bab2619f64c2332dcb7549d7c3bb75d95e0786737d3de69eca",
+        "computation": "32f3896480afa33668c71e7c066685431f2db406ccaa9e9294400ca2bd6545d5",
+        "withoutProtocol": "32f3896480afa33668c71e7c066685431f2db406ccaa9e9294400ca2bd6545d5",
+        "scenarioJsonExceptProtocolSha256": "66342179cb1b6b8883e31de9d30ef602e8c4065f601b0f0f2bbd9ead5fa9e537",
+        "scenarioCsvExceptProtocolSha256": "ec3eedaea182b7cc8e6d8ac2f6e105bcad27230f4791938290081e75c5fdb3b2"
+      },
+      "max-erika": {
+        "inputs": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+        "backtest": "6b038f5dd3b2c4d7b2ffe3495fe8d242f1d2c954123db560836faa66ddd60404",
+        "mc": "6cf936f6399506262c5bbfe7f06fa571d3baa86518766b18465a891b594ac73c",
+        "computation": "e711bcdf7d521fdea2728eb3e16fd8d6070ec3643c31b48d74cf2e396a44b1c5",
+        "withoutProtocol": "6350ff7d90fee07b322ae2fded245fddf3c043ef4c733edafd025f655c710f58",
+        "scenarioJsonExceptProtocolSha256": "ac9bb314ceebec68fc0091acb74a4821d8f443c1c4fdf36e70d00ea9509a6ad6",
+        "scenarioCsvExceptProtocolSha256": "082ff6054958e12066e1ac02e4740ca85ec641fdb8313083e66522d05341c7cb"
+      },
+      "parity": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854",
+      "balance": "abe48b59e0ef65526d6a509839848ef8aa375248f815990ed1eb81737005ed08"
+    },
+    "after": {
+      "sophie": {
+        "inputs": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+        "backtest": "7f3652a6da80dffd2024f5130456a8e73f5e6deed82d2dc19de37965e5f79fdc",
+        "mc": "6459318a46c5e0bab2619f64c2332dcb7549d7c3bb75d95e0786737d3de69eca",
+        "computation": "32f3896480afa33668c71e7c066685431f2db406ccaa9e9294400ca2bd6545d5",
+        "withoutProtocol": "32f3896480afa33668c71e7c066685431f2db406ccaa9e9294400ca2bd6545d5",
+        "scenarioJsonExceptProtocolSha256": "66342179cb1b6b8883e31de9d30ef602e8c4065f601b0f0f2bbd9ead5fa9e537",
+        "scenarioCsvExceptProtocolSha256": "ec3eedaea182b7cc8e6d8ac2f6e105bcad27230f4791938290081e75c5fdb3b2"
+      },
+      "max-erika": {
+        "inputs": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+        "backtest": "6b038f5dd3b2c4d7b2ffe3495fe8d242f1d2c954123db560836faa66ddd60404",
+        "mc": "c0f922195cfefeb76cd657bf545425add3e64cd9f18403114c00e5343b383152",
+        "computation": "e711bcdf7d521fdea2728eb3e16fd8d6070ec3643c31b48d74cf2e396a44b1c5",
+        "withoutProtocol": "6350ff7d90fee07b322ae2fded245fddf3c043ef4c733edafd025f655c710f58",
+        "scenarioJsonExceptProtocolSha256": "ac9bb314ceebec68fc0091acb74a4821d8f443c1c4fdf36e70d00ea9509a6ad6",
+        "scenarioCsvExceptProtocolSha256": "082ff6054958e12066e1ac02e4740ca85ec641fdb8313083e66522d05341c7cb"
+      },
+      "parity": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854",
+      "balance": "abe48b59e0ef65526d6a509839848ef8aa375248f815990ed1eb81737005ed08",
+      "balanceCalculation": "b037c21a039388b06f487ea763b2975cc5e40018b5f73597761d691b4e96fbcc"
+    },
+    "method": "Nullsteuerprobe: private Quellkopie mit return 0 für status married am Anfang von inheritanceTax. Protokollprobe: private Quellkopie ohne die liqEnd-/Personenkonten-Korrektur, sonst identisch. Je 12 MC-Pfade; vollständiger Backtest und 208 Paritätsfälle.",
+    "zeroTaxChecksumEqual": true,
+    "protocolOtherFieldsChecksumEqual": true,
+    "protocolExportsExceptCorrectedFieldsEqual": true
+  },
+  "handCalculations": {
+    "I_50": {
+      "money": 2000000,
+      "selfUsedHome": 800000,
+      "percent": 50,
+      "taxable": 500000,
+      "tax": 75000,
+      "moneyLeaves": 1000000,
+      "moneyRemainsAfterTax": 925000
+    },
+    "I_100": {
+      "money": 2000000,
+      "selfUsedHome": 800000,
+      "percent": 100,
+      "taxable": 1500000,
+      "tax": 285000,
+      "moneyLeaves": 0,
+      "moneyRemainsAfterTax": 1715000
+    },
+    "III_7m": {
+      "taxable": 7000000,
+      "tierTax": 3500000,
+      "taxAtPreviousLimit": 1800000,
+      "hardshipIncrement": 750000,
+      "tax": 2550000
+    }
+  }
+}

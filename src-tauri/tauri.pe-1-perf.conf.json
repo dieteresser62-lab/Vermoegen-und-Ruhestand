@@ -1,0 +1,18 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Vermögen & Ruhestand Laufzeitprüfung",
+  "identifier": "de.vermoegen-ruhestand.entwicklung.kandidat",
+  "app": {
+    "windows": [
+      {
+        "title": "Vermögen & Ruhestand",
+        "resizable": true,
+        "maximized": false,
+        "width": 1920,
+        "height": 1080,
+        "dataDirectory": "pe-1-laufzeit-schalter",
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --js-flags=--invocation-count-for-turbofan=300"
+      }
+    ]
+  }
+}

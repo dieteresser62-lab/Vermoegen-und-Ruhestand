@@ -1,0 +1,155 @@
+{
+  "schemaVersion": "RNG1ValidationV1",
+  "runtime": {
+    "platform": "linux",
+    "node": "v22.23.2"
+  },
+  "tests": {
+    "command": "npm test",
+    "exitCode": 0,
+    "assertions": 128111,
+    "passed": 128111,
+    "failedAssertions": 0,
+    "failedFiles": 0,
+    "durationSeconds": 107.83,
+    "sandbox": "Vollständige Suite außerhalb der Sandbox: deren gezielte Node-/Git-Unterprozesse scheitern innerhalb mit EPERM. Keine Assertions deaktiviert.",
+    "separateGatesNotRun": [
+      {
+        "file": "tests/browser-smoke.test.mjs",
+        "reason": "Separates Browser-Gate, keine neuen Browserfälle laut Auftrag; UI-Verhalten unverändert."
+      },
+      {
+        "file": "tests/demography-care-survivor-runtime-measurement.test.mjs",
+        "reason": "Windows x64/Node v25.2.1 für historische Bytebelege erforderlich; frische RNG-1-Messung separat belegt."
+      },
+      {
+        "file": "tests/german-cash-money-market-source-reconstruction.test.mjs",
+        "reason": "Windows/Poppler 25.07.0 erforderlich; keine Cash-Daten geändert."
+      },
+      {
+        "file": "tests/simulator-backtest-characterization.test.mjs",
+        "reason": "Nicht einzeln ausgeführt wie in GEMEINSAM.md verlangt; Windows x64/Node v25.2.1 erforderlich."
+      }
+    ]
+  },
+  "docs": {
+    "commands": [
+      "npm run docs:parameter",
+      "npm run docs:beispiele",
+      "npm run docs:pruefen"
+    ],
+    "exitCode": 0,
+    "files": 47,
+    "errors": 0,
+    "warnings": [
+      {
+        "file": "docs/internal/design/fachregeln.md",
+        "line": 125,
+        "reason": "Unveränderte Nutzerregel; Wortlaut bleibt erhalten. Projektregeln liegen außerhalb RNG-1."
+      },
+      {
+        "file": "docs/reference/FORSCHUNGSABGLEICH_EVIDENZREGISTER.md",
+        "line": 211,
+        "reason": "Optimal ist Teil des unverändert übernommenen Publikationstitels von Blanchett/Kowara/Chen; nicht umformulieren."
+      },
+      {
+        "file": "docs/reference/FORSCHUNGSABGLEICH_EVIDENZREGISTER.md",
+        "line": 230,
+        "reason": "Optimal ist Teil des unverändert übernommenen Publikationstitels von Blanchett; nicht umformulieren."
+      },
+      {
+        "file": "docs/ui/manifest.json",
+        "line": 1,
+        "reason": "Bestehende Bildgröße 5722921 Bytes; RNG-1 fügt keine Bilder hinzu und umfasst keine Bildoptimierung."
+      },
+      {
+        "file": "tests/README.md",
+        "line": 147,
+        "reason": "Technische Referenzkennung ae2179d2 einer historischen Testmessung; für Reproduktion erhalten."
+      },
+      {
+        "file": "tests/README.md",
+        "line": 161,
+        "reason": "Expliziter technischer Quellcommit eines historischen Prüfbelegs; für Reproduktion erhalten."
+      },
+      {
+        "file": "tests/README.md",
+        "line": 162,
+        "reason": "Expliziter technischer Quellcommit im zugehörigen Reproduktionsbefehl; erhalten."
+      }
+    ],
+    "styleReview": "Alle sechs geänderten Doku-/Handbuchdateien nach der Änderung absatzweise gegengelesen. Keine neuen Warnungen."
+  },
+  "parity": {
+    "command": "npm run test:paritaet",
+    "exitCode": 0,
+    "cases": 208,
+    "unclassifiedResiduals": 0,
+    "durationSeconds": 15.75,
+    "runtimeNote": "Ziel unter 10 Sekunden im parallelen Prüf-/Messbetrieb überschritten. Bestehende klassifizierte Restklassen bleiben erhalten; keine Vollgleichheit der unterschiedlichen Phasen behauptet. Der Alt/Neu-Vergleich aller Fälle mit gleicher synthetischer Quellidentität ist bytegleich."
+  },
+  "demographyArtifact": {
+    "command": "node scripts/build-german-demography-care-survivor-contract.mjs --verify-only",
+    "exitCode": 0
+  },
+  "evidence": [
+    "tests/fixtures/rng-1-measurement.json",
+    "tests/fixtures/rng-1-care-recalibration.json",
+    "tests/fixtures/rng-1-expectation-deltas.json"
+  ],
+  "changedFiles": [
+    "Handbuch.html",
+    "app/simulator/german-demography-care-survivor-contract.js",
+    "app/simulator/simulator-engine-helpers.js",
+    "app/simulator/simulator-utils.js",
+    "docs/reference/DATA_SOURCES.md",
+    "docs/reference/FACHKONZEPT.md",
+    "docs/reference/FORSCHUNGSABGLEICH_EVIDENZREGISTER.md",
+    "docs/reference/JAHRESBUDGET.md",
+    "docs/reference/TECHNICAL.md",
+    "scripts/build-german-demography-care-survivor-contract.mjs",
+    "tests/annual-care-values.test.mjs",
+    "tests/auto-optimize-cancellation.test.mjs",
+    "tests/care-death-regression.test.mjs",
+    "tests/care-price-continuation.test.mjs",
+    "tests/cut-reason-bytegleich.test.mjs",
+    "tests/household-payout-regression.test.mjs",
+    "tests/immobilien-empty-bytegleich.test.mjs",
+    "tests/minimum-flex-restriction.test.mjs",
+    "tests/monte-carlo-measurement-contract.test.mjs",
+    "tests/monte-carlo-sampling.test.mjs",
+    "tests/plan-view-income.test.mjs",
+    "tests/planned-inflows.test.mjs",
+    "tests/profile-person-data.test.mjs",
+    "tests/rechenregeln-bytegleich.test.mjs",
+    "tests/simulator-monte-carlo.test.mjs",
+    "tests/simulator-sweep.test.mjs",
+    "tests/simulator-unmarried-parity.test.mjs",
+    "tests/survivor-bytegleich.test.mjs",
+    "tests/tail-risk-overlay.test.mjs",
+    "tests/utils.test.mjs"
+  ],
+  "newFiles": [
+    "scripts/measure-rng-1.mjs",
+    "tests/fixtures/rng-1-care-recalibration.json",
+    "tests/fixtures/rng-1-expectation-deltas.json",
+    "tests/fixtures/rng-1-measurement.json",
+    "tests/helpers/rng-1-expectations.mjs",
+    "tests/fixtures/rng-1-validation.json",
+    "auftrag/ERGEBNIS-RNG-1.md"
+  ],
+  "inheritedWorktreeFiles": [
+    "app/simulator/simulator-utils.js",
+    "app/simulator/simulator-engine-helpers.js",
+    "tests/fixtures/rng-1-calibration-blocker.json"
+  ],
+  "referenceUpdates": {
+    "hashMappings": 47,
+    "hashUses": 50,
+    "otherReferenceChanges": 59,
+    "contractLeaves": 29,
+    "careEntryTotals": 6,
+    "propertyAssertionsAndCalibrationTolerancesUnchanged": true
+  },
+  "limits": "Kein Browser-Smoke und keine Windows-spezifischen separaten Gates; keine EXE gebaut. Nur synthetische Daten. Keine Commits, Branchwechsel, Pushes oder Merges."
+}

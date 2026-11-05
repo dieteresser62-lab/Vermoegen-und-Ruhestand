@@ -1,0 +1,353 @@
+{
+  "reason": "FR-52: Balance begrenzt das Ansparbudget auf denselben Verbrauch wie der Simulator; ausschließlich synthetische Haushalte.",
+  "baselineRevision": "f0054f84e43c23c2dbca4e49a9e4728816a281d4",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "useCapeSampling": false,
+  "backtest": {
+    "historicalYears": "2000–2025",
+    "logicalYears": "2026–2051",
+    "lifeEvents": false
+  },
+  "exports": {
+    "order": [
+      "Backtest JSON",
+      "Backtest CSV",
+      "Monte Carlo V1 JSON",
+      "Monte Carlo V2 JSON"
+    ],
+    "exportedAt": "2026-10-22T12:00:00.000Z",
+    "sourceProvenance": "synthetic_fixture, sourceCommit = a × 40"
+  },
+  "hashes": {
+    "max-erika": {
+      "inputsSha256": {
+        "before": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+        "after": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+        "equal": true
+      },
+      "balanceEngineSha256": {
+        "before": "4ddd2935a02b990f9fb938eb0be65a839133bb29f69ecee93954b01014104db8",
+        "after": "4ddd2935a02b990f9fb938eb0be65a839133bb29f69ecee93954b01014104db8",
+        "equal": true
+      },
+      "backtestSha256": {
+        "before": "46300ba917e11edccb2ed8b987af7c099ae738821052c78080750f305a185638",
+        "after": "46300ba917e11edccb2ed8b987af7c099ae738821052c78080750f305a185638",
+        "equal": true
+      },
+      "mcSha256": {
+        "before": "c8f9a2968c05da2fcf2334741218b9f1448065c5281d2ddbbba5076d04d5bffb",
+        "after": "c8f9a2968c05da2fcf2334741218b9f1448065c5281d2ddbbba5076d04d5bffb",
+        "equal": true
+      },
+      "exportsSha256": {
+        "before": "117e22a81a2ab4288b07f065d766cd4437839eaf6e10f62f745ad154ecc5fbbe",
+        "after": "117e22a81a2ab4288b07f065d766cd4437839eaf6e10f62f745ad154ecc5fbbe",
+        "equal": true
+      },
+      "exportSha256": {
+        "before": [
+          "1fd90bda3d497b11314de2821130f7cdbf2aac6bf52a858ad0672c6a0e8b3e6e",
+          "0d7b080e8d92f0fd51632057293749c11ffb335a847fc783d437c51e523238ee",
+          "5ed6443f3d1dfca0020b13b2cf5a76c68a4252066bbe310e375e0c157115f371",
+          "a37169fdc2e429ca6fd35d28ac8786b16cba6b0c6fa704f1e6f889292a05d24f"
+        ],
+        "after": [
+          "1fd90bda3d497b11314de2821130f7cdbf2aac6bf52a858ad0672c6a0e8b3e6e",
+          "0d7b080e8d92f0fd51632057293749c11ffb335a847fc783d437c51e523238ee",
+          "5ed6443f3d1dfca0020b13b2cf5a76c68a4252066bbe310e375e0c157115f371",
+          "a37169fdc2e429ca6fd35d28ac8786b16cba6b0c6fa704f1e6f889292a05d24f"
+        ],
+        "equal": true
+      }
+    },
+    "sophie": {
+      "inputsSha256": {
+        "before": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+        "after": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+        "equal": true
+      },
+      "balanceEngineSha256": {
+        "before": "2d6cfd7e3582fdb2458a4c81c9f8c92a8e086a06f41bc9dc94cf646efc3fb52a",
+        "after": "2d6cfd7e3582fdb2458a4c81c9f8c92a8e086a06f41bc9dc94cf646efc3fb52a",
+        "equal": true
+      },
+      "backtestSha256": {
+        "before": "c174332a0617a5fefd3fcd31da6e310be5a004e4c743d8571e4e23102be2067a",
+        "after": "c174332a0617a5fefd3fcd31da6e310be5a004e4c743d8571e4e23102be2067a",
+        "equal": true
+      },
+      "mcSha256": {
+        "before": "c333557cdfb8465392b6331b7539d34d43893ebb9fbac4f92645b55afb2a5726",
+        "after": "c333557cdfb8465392b6331b7539d34d43893ebb9fbac4f92645b55afb2a5726",
+        "equal": true
+      },
+      "exportsSha256": {
+        "before": "0bf42e0c45025f571ab06c0b7c910469653fe01a5ab25bdf03f311ebb50d67a1",
+        "after": "0bf42e0c45025f571ab06c0b7c910469653fe01a5ab25bdf03f311ebb50d67a1",
+        "equal": true
+      },
+      "exportSha256": {
+        "before": [
+          "3170de2cbf6035fe57e3fc2c64a45abc552e332c3736fb144739054e6a63a24b",
+          "ad635e27b75c78bcbc7eea593379eebabba2d220d1108da0d5990f6bfee8f7b8",
+          "eef9ee08253a430efbee3108b791b54c69f298cf42a24b8850c1be2878486a59",
+          "8c4f9eb3033dab6045739cf9c48420025e2b1da9eace50eaf3e03ee63bc302df"
+        ],
+        "after": [
+          "3170de2cbf6035fe57e3fc2c64a45abc552e332c3736fb144739054e6a63a24b",
+          "ad635e27b75c78bcbc7eea593379eebabba2d220d1108da0d5990f6bfee8f7b8",
+          "eef9ee08253a430efbee3108b791b54c69f298cf42a24b8850c1be2878486a59",
+          "8c4f9eb3033dab6045739cf9c48420025e2b1da9eace50eaf3e03ee63bc302df"
+        ],
+        "equal": true
+      }
+    }
+  },
+  "sophieSavingYears": [
+    {
+      "year": 2026,
+      "marketYear": 2000,
+      "balanceBefore": {
+        "budget": 3400,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2500,
+        "saving": 900
+      },
+      "simulator": {
+        "budget": 2500,
+        "saving": 900
+      }
+    },
+    {
+      "year": 2027,
+      "marketYear": 2001,
+      "balanceBefore": {
+        "budget": 3485,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2532.4999999999995,
+        "saving": 952.5000000000003
+      },
+      "simulator": {
+        "budget": 2532.4999999999995,
+        "saving": 952.5000000000003
+      }
+    },
+    {
+      "year": 2028,
+      "marketYear": 2002,
+      "balanceBefore": {
+        "budget": 3561.67,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2583.1499999999996,
+        "saving": 978.5200000000003
+      },
+      "simulator": {
+        "budget": 2583.1499999999996,
+        "saving": 978.5200000000003
+      }
+    },
+    {
+      "year": 2029,
+      "marketYear": 2003,
+      "balanceBefore": {
+        "budget": 3632.9033999999997,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2619.3140999999996,
+        "saving": 1013.5893
+      },
+      "simulator": {
+        "budget": 2619.3141,
+        "saving": 1013.5893
+      }
+    },
+    {
+      "year": 2030,
+      "marketYear": 2004,
+      "balanceBefore": {
+        "budget": 3730.9917917999996,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2645.507241,
+        "saving": 1085.4845507999999
+      },
+      "simulator": {
+        "budget": 2645.507241,
+        "saving": 1085.4845507999999
+      }
+    },
+    {
+      "year": 2031,
+      "marketYear": 2005,
+      "balanceBefore": {
+        "budget": 3809.3426194277995,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2687.8353568560005,
+        "saving": 1121.5072625717992
+      },
+      "simulator": {
+        "budget": 2687.835356856,
+        "saving": 1121.5072625717992
+      }
+    },
+    {
+      "year": 2032,
+      "marketYear": 2006,
+      "balanceBefore": {
+        "budget": 3862.673416099789,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2730.8407225656965,
+        "saving": 1131.8326935340926
+      },
+      "simulator": {
+        "budget": 2730.840722565696,
+        "saving": 1131.8326935340926
+      }
+    },
+    {
+      "year": 2033,
+      "marketYear": 2007,
+      "balanceBefore": {
+        "budget": 3920.6135173412854,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2774.5341741267475,
+        "saving": 1146.079343214538
+      },
+      "simulator": {
+        "budget": 2774.5341741267475,
+        "saving": 1146.079343214538
+      }
+    },
+    {
+      "year": 2034,
+      "marketYear": 2008,
+      "balanceBefore": {
+        "budget": 4002.946401205452,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2838.3484601316623,
+        "saving": 1164.5979410737893
+      },
+      "simulator": {
+        "budget": 2838.348460131662,
+        "saving": 1164.5979410737893
+      }
+    },
+    {
+      "year": 2035,
+      "marketYear": 2009,
+      "balanceBefore": {
+        "budget": 4119.031846840409,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2912.145520095086,
+        "saving": 1206.8863267453237
+      },
+      "simulator": {
+        "budget": 2912.145520095086,
+        "saving": 1206.8863267453237
+      }
+    },
+    {
+      "year": 2036,
+      "marketYear": 2010,
+      "balanceBefore": {
+        "budget": 4139.627006074611,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2920.8819566553702,
+        "saving": 1218.7450494192408
+      },
+      "simulator": {
+        "budget": 2920.8819566553707,
+        "saving": 1218.74504941924
+      }
+    },
+    {
+      "year": 2037,
+      "marketYear": 2011,
+      "balanceBefore": {
+        "budget": 4255.5365622447,
+        "saving": 0
+      },
+      "balanceAfter": {
+        "budget": 2950.090776221924,
+        "saving": 1305.445786022776
+      },
+      "simulator": {
+        "budget": 2950.0907762219244,
+        "saving": 1305.445786022776
+      }
+    }
+  ],
+  "maxErikaSavings": {
+    "balanceEngineProbes": [],
+    "backtest": [],
+    "monteCarloYearCounts": {
+      "2028": 10,
+      "2029": 40,
+      "2030": 96,
+      "2031": 176,
+      "2032": 244,
+      "2033": 347,
+      "2034": 440,
+      "2035": 549,
+      "2036": 629,
+      "2037": 686,
+      "2038": 730,
+      "2039": 763,
+      "2040": 788,
+      "2041": 796,
+      "2042": 784,
+      "2043": 756,
+      "2044": 687,
+      "2045": 639,
+      "2046": 571,
+      "2047": 461,
+      "2048": 373,
+      "2049": 274,
+      "2050": 194,
+      "2051": 129,
+      "2052": 77,
+      "2053": 42,
+      "2054": 16,
+      "2055": 9,
+      "2056": 3,
+      "2057": 1,
+      "2058": 1
+    }
+  },
+  "parity": {
+    "cases": 208,
+    "beforeSha256": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854",
+    "afterSha256": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854",
+    "changedLeaves": 0,
+    "basis": "runParityScenarios mit identischer synthetischer source; nur durationMs außerhalb des fachlichen Belegs. test:paritaet vorher und nachher: Exit 0; bestehende Restklassen unverändert."
+  }
+}

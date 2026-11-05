@@ -1,0 +1,672 @@
+{
+  "reason": "EV-1b/FR-67: Folgejahr statt Todesjahr für Renten und Einkünfte im Reserveziel. Nur belegte Referenzfolgen; historische Vollreferenzen bleiben erhalten.",
+  "date": "2026-10-28",
+  "measurement": {
+    "method": "auftrag/ev1/ev1-messen.mjs, nur muster50 und gross50; zusätzliche vollständige Jahreszeilen-Hashes",
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 5,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM",
+      "startYearFilter": 1970,
+      "startYearHalfLife": 20,
+      "excludeEstimatedHistory": false
+    },
+    "households": [
+      {
+        "id": "muster50",
+        "inputHash": "38f26f0c1ae212bd3fc61e2501a14d6fe69bcaca4c184f6cc57e8006c9bc3d9f",
+        "before": {
+          "successPct": 98.9,
+          "failCount": 22,
+          "deathLiquidityMedian": 50416.349350252654,
+          "deathLiquidityZeroPct": 0,
+          "emergencyYears": 729,
+          "emergencyVolumeReal": 27778132.00673495,
+          "maxFlowDelta": 0.004999317927286029,
+          "pathsWithDeath": 1909,
+          "completeOutputSha256": "d3e08bb07e103ebfe7637e5d1d52737ce6b35b9fd18a875ae6b5dcde1c24c25d"
+        },
+        "after": {
+          "successPct": 98.9,
+          "failCount": 22,
+          "deathLiquidityMedian": 48285.80413292082,
+          "deathLiquidityZeroPct": 0,
+          "emergencyYears": 739,
+          "emergencyVolumeReal": 28010479.72626783,
+          "maxFlowDelta": 0.004999317927286029,
+          "pathsWithDeath": 1909,
+          "completeOutputSha256": "dbd644e1d17d39517aeb5f7f96476575e932dcd66948074238ceaf6e1d6105cb"
+        },
+        "controls": {
+          "pathsWithoutDeathByteEqual": 91,
+          "changedPaths": 1612,
+          "rowsBeforeDeathByteEqual": 24526,
+          "changedRowsBeforeDeath": 0,
+          "diagnosticOutputsByteEqual": 2000,
+          "fixedBacktests": [
+            {
+              "start": 2000,
+              "end": 2025,
+              "before": "e204a25ca23048399b30e6b38ee79ca32b310d2654ea239e5b8321c7d94b511f",
+              "after": "e204a25ca23048399b30e6b38ee79ca32b310d2654ea239e5b8321c7d94b511f"
+            },
+            {
+              "start": 1929,
+              "end": 1963,
+              "before": "e4106ecafc1249501510c709ef94ebaba5210b8db7d6e5af4db666d804794fa5",
+              "after": "e4106ecafc1249501510c709ef94ebaba5210b8db7d6e5af4db666d804794fa5"
+            },
+            {
+              "start": 1965,
+              "end": 1999,
+              "before": "0b08320cb1fd5b2640944d3ea261f2afd0854dffdd64deee1031b0873df81ae0",
+              "after": "0b08320cb1fd5b2640944d3ea261f2afd0854dffdd64deee1031b0873df81ae0"
+            }
+          ]
+        }
+      },
+      {
+        "id": "gross50",
+        "inputHash": "8e58d44037e0ef987cf9d536410336ae0f705ef2cfaa4d24b39afaf05e11ba73",
+        "before": {
+          "successPct": 98.45,
+          "failCount": 31,
+          "deathLiquidityMedian": 96522.98558269665,
+          "deathLiquidityZeroPct": 0,
+          "emergencyYears": 479,
+          "emergencyVolumeReal": 19210055.196772598,
+          "maxFlowDelta": 0.0049646515399217606,
+          "pathsWithDeath": 1882,
+          "completeOutputSha256": "7e4737dfaa4fe43ec836b552af870cb840398a6c0c4116a9337c4bc4656df904"
+        },
+        "after": {
+          "successPct": 98.45,
+          "failCount": 31,
+          "deathLiquidityMedian": 95875.5362306404,
+          "deathLiquidityZeroPct": 0,
+          "emergencyYears": 491,
+          "emergencyVolumeReal": 19309530.94830295,
+          "maxFlowDelta": 0.0049646515399217606,
+          "pathsWithDeath": 1882,
+          "completeOutputSha256": "89564ccf0926dc18ddb1cad0ad96782e028d9e9d2b1465bde68030abfdf79342"
+        },
+        "controls": {
+          "pathsWithoutDeathByteEqual": 118,
+          "changedPaths": 1528,
+          "rowsBeforeDeathByteEqual": 19744,
+          "changedRowsBeforeDeath": 0,
+          "diagnosticOutputsByteEqual": 2000,
+          "fixedBacktests": [
+            {
+              "start": 2000,
+              "end": 2025,
+              "before": "16f4195a29404d624c9a1d1c9f15280a0e4533a2718e89d594d6815deb591b7f",
+              "after": "16f4195a29404d624c9a1d1c9f15280a0e4533a2718e89d594d6815deb591b7f"
+            },
+            {
+              "start": 1929,
+              "end": 1963,
+              "before": "edb8dd1f4ad13dae363be54de9ba946ba8baa6f6c2704d6964b861b8a79e7012",
+              "after": "edb8dd1f4ad13dae363be54de9ba946ba8baa6f6c2704d6964b861b8a79e7012"
+            },
+            {
+              "start": 1965,
+              "end": 1999,
+              "before": "5382fbb29411d30cc125ad9182672f22a92fd7ef6f9e9771a86f01def2ba343c",
+              "after": "5382fbb29411d30cc125ad9182672f22a92fd7ef6f9e9771a86f01def2ba343c"
+            }
+          ]
+        }
+      }
+    ],
+    "projectionChecks": {
+      "calls": 3716,
+      "changedTarget": 3140,
+      "pensionChanged": 3556,
+      "incomeChanged": 0,
+      "unchangedIncome": 160
+    }
+  },
+  "hashes": {
+    "9104e01c60bb49dd721a78746a3d732443535abcd035c4ec2268a6f6c794b408": "23a3f6dcb769ccd9b295ba3b630d03f5b899ef315e7164e757050ec64b859865",
+    "e70c6972d42acce308672fb6fd5636c3afb280858a776da868ac320c97a18905": "e95e92b5a9f6298fbe60d06279384cff062eb81637eac64d4d90245e87fc47d6",
+    "16911e4986c6f1d1d9fc174e1a1a2460dd77e783f34974a380d05885ca496092": "d5efd5524d33e74583aa3e7140deec303a98a94b3b9b40b74c8e5cc0a2976648",
+    "ddedf001269d87811010b776c985fbd237df853571bba5c88a44a6571f466392": "b6722f1cc12b66232048344cca11c9229ea5c21a78eae6cadded802132336587",
+    "99a2233eb8d5a6e96e3ba1810a75b7bba9f069bf908c5e08357aaac22cfe8bf0": "34a457229a649a97f2ae020b7eca97b86c89b71f1627c6de92233eb491dab10b",
+    "c28faea1a35e2ede8cfe5cf75476783c3b6a017b42666df6b392cc76f67c4dd4": "22695a5c97710b709aa61295a86ba61a926c5913ab504894c3d63a686ee0b1b2",
+    "a210561f0c7c07281fe4974e904cddae558f8f743179159cb3be2fef120776dc": "4cd1b1946a75ba764e8f5bb895b259f6ec183a76c3d02e2f6c1e5e7acf2d025d",
+    "bb1b9f494e05b6ca8b9a455b3a976d2328e43be5e62c61ff93c8766ad5305da7": "657b09723fb796366fb4f36ce766328b85c8df89ddc104e8f0c353960380df34",
+    "4b9eef9ab1c40c4263b0ffdb76dbc33a218df0a3917e01510a4500ce287b6047": "0b55ebbadb42a693d3128190eb176587b59a3a3ec8d285c3dcc3ee21838161e7",
+    "c83df26e72cfe42fb1679e21c4454a3352be46d3219812a6227b8531711ce890": "d1138c7fce193863285a0d717c14caa1c1cef262177324acc09cb3223c25d0d9",
+    "d75242c4d16c93029c698f454d785819ebaa034827d51aee9f2f1f36073b9375": "16fcd634898d8582d0fcb34bdeeff45f43c35d274aefd4258daeaf1e8532b44b",
+    "28fc3084b781e95d7a999c94e05fd51f1d218323b9b9380894c3c53e6980f98b": "6aff8e285132eb51fa948826ba64992e756022178b786100126decda87e86896",
+    "53f4b7f77897ef4ea04dccfd7939965e5057f0a5f441297312a5e3fc67894543": "3b56fe91e313b05369dfe5ad897c817261615d7dd29d90d1d3577dde647bcc32",
+    "98f10097edff136aa267a0d586a75ad986ca882a7efdb969ad6f9df4dda20b69": "f1f41bb7fe4d0bcffec15473b98b908ddeb568b83d58089ecf23c600f30d4dea",
+    "26c4a3b22064ff6d28ef93a75d727dcfe1eb43cb513e94165464ed3799c6a08a": "1dc980313db486baab0f06c6bdb7688e73c642af146dc61f57004e9ec9f9deca",
+    "314b9a6cf03df9f710903af03ae588a1123daaa553cb89597102678f3c422c98": "b1a2df1973b81f75f7572e8c8bda89bdcd53ecbd6b10fe121ee2e4c82a003998",
+    "c6be4b46d4c51b5674b4fc2f621fa441840c76d3331d68991498d796405f1f1f": "61cdf1af6220cd66fed7da2b8ff0120c12cb3ccbfd9323d72a4463eaade63708",
+    "af377b60011de2473162cf294bb1fe9a1b59458efbe37b18ee15080e25372153": "751cc71acb2f8a5c6d9e60c6cf701c9005ae2b495b2e00a55328daf5efd5c2ce",
+    "8650288cf6735024bc3c0152f93ab72ab1c572628c7cd075d3ce127aab335bc4": "ec0e929a26c14c0be4ef4254b4924eb097297b5b9570d9fe23b831939ed446e6",
+    "36916e7ca1c729d7c32ff87d14b0532cbfbf26fa27be9917fbd165a6ef5a1af6": "3ff9ccef6fe65c6c0622efefa9b670597a97fb471f9f7649ae39ea93cea93e89",
+    "b765738a15a04ad6cd7ab738997bda1e3f98f1e58f42b031a696de9fe7a1efcc": "51a12b6f2edcc997f49d90de0d05bf218cee9ced260527ccb6fadaa9bf4990b0",
+    "4bfe45608cf5df85bf8a0abef26b82184d60b16aa70d1fb70debdbc4050f7557": "9341c72d9faa475251e738e8691686c7c57fe6815f10a6fb16bcc959d050e00a",
+    "9958dd1ff879ee8d10354d5e95332d08776ab23b7e69b2b8d42459f62f76cd0c": "0b6992aa294873338210831912c70d0e410f5dbb3df2431a62042877971c0f4d",
+    "7e67ae2496b104b36127abaa41be8910bbe8f42bbc23ef9c499daa7aa8d9bd1e": "26bb74a8f6086f5a5e54a38542c12ce06c23ab800b30eb9ab2c1012aa24bb4b4",
+    "526f4e9d7782dc0c99ce5e87a0ff88e6fd5f4dd0b541aa7866c7ee1c71f66c50": "947dcb7cd1ba51fc3aab2660b8493fc1efa1ee2aa29c221a86955823db52446d",
+    "29d1a955a7a4cfd01ef4484a3f35501d88afbe86d2077102838db375ab601ef4": "d2541d9f82708c622e6ce6fc18cc1752f2727ea538db74007fe305fff9135d8b",
+    "5a2d32c3a61bb538222be23462c36c3cd6ecbd75564e55807d81df04861f5e07": "443a12978e026cb76bc0fabb6434e2420c89bbfda2febec72970609010a04fe5",
+    "913810f0777ff23b75c70280a6cf7b0684c23b96d39c37524d36bc6c9415c5aa": "1466e5b830893e315aadae282ebfb5e02fbf71906fcfa4602459a051374408fd",
+    "67816ad7d43f90d3eb36ae358a92dc9f2378ef5662d6300bcafaf765a5e5abad": "a117b199d119238db1712d3efea7e589d25cd6546018de9a2037288887ab54f3",
+    "9fa6e0ab43e785aa171a0d99badfb85658bb300b17db585700fcbcae3aea06de": "602ff837455421f34f0f778578963699b38870a39c02104a487df84e22f6f1cd",
+    "d83d2448c61165db083483cbf7837275ef0d07fec9606c28d93eba3441c0720a": "28eadf9e52abd7d6c0653c46d087673758783c2927db355e6bfccf94f9c6d226",
+    "3a060ec7011b6d0390d573833f952edacb290749ed0ceebe1127bf845288ae3e": "2433099341d49a2e8ee25ea1c4069412e123d8af2b4a025050d898398928dc7f",
+    "d1aba53eee14c195fba2b69c5558b04ca1913a06eadfa06a849c2f85e828a8f4": "1c36044c890a2bfff0bc7b92d22aaf3bde049c6968aa7662d57b237cf7bef130",
+    "1ea7747ff709e66abaa16ecc91bae6196b4bcf466130b6e1019e031030a7ef7a": "51a12b6f2edcc997f49d90de0d05bf218cee9ced260527ccb6fadaa9bf4990b0",
+    "4e4f817798ed34571cd104d2a963d1ca0acb4f942ee07056b3a46cbcdf3adc43": "48e058e833eebc7811b6a5490ef13188ed613fd2735200094546f8f26bf1c323",
+    "89ff45c6a819cb92b473ba32d84cf1da2d5680e661872d7f8ee6acdcac1fe3ff": "d670e149fdd5672f2d340460bfae81fbfa378b30d20181ceddcf7ec95f3ce3c2",
+    "8b8470bd84d78a39a77469220e7227d4ff160b7c74bcdceffb0554b6408be655": "bb8d65f0db646b9ef62fc8ef5a599f168db2282cdc66da11ee398285c1251dae",
+    "6f0a2a67c451d906b85966685e05a63728ac7ebd9c5259f047a71b6353a2faf8": "4482c1d2fab1693028bbc02e14d3c72943c57057aaa8301635e4fc258496af2f",
+    "cf7f687ab367eec28842fa1bf62b186094f2ec4e60aa2cbde93652e1b037fde8": "769c9ac55556c706554d85cfd7ccd472146896d7434eceecd589394768718db7",
+    "445439e37289ccee2013b7020d84d58a5da795256a856959cdd353b96a6c373a": "abc9fde88cd843241531fda84a6530f99ca4b25481e3ac0f42751901d4229ab2",
+    "ed3f59bba4877538674955d570bbacb4d358fe0a758a8d73a656f7bcf431dfc6": "49e959f0196c1077f78a198e35e864146340a829a22f24afd69e4f7556fb61ad",
+    "8f71e6bed097ccebc28036cf367335d26c8bfefe0cf3d68e8918621a0590161d": "678e1423ccb5c1235e1bd7bd39e5fee5a85348e35cef9a34a999da7651849078",
+    "9925c5d42000826dd06f986109538a5051a2a2886326828745654d82d664a7b5": "6ed3c4ea82c694d3b8474dd19aee38ecf6e8ed25eefe56e0576d9fd94b3af377",
+    "9287f2a442488a9cd513a1199da2d08a5a660667d076e30b249f3f80a08302d5": "a93d7e34333ce14fda3221a2214b1ac62d2e16b510a82bd451bf2ca993599885",
+    "315887598b2cf3659cdc6e6103123ab0d1d6b949b22eb92b68270227f3d5a612": "363bea66bb670380a665cd75910e7c54e447b9991efcb47f6f840f809e2207d3",
+    "bbc14d82f8c55450dd0ab08b8ab039d3a19dc80b29be99586a67c48a05695924": "3776b48d0cc59d9c102f613873113703327d46ee60089372c22201d914d06527",
+    "2597bc3a6a4016b60ce13b5ab269d4da28b5f86929319cc493cb9f83c23c2578": "d040342e6cf6a8478472dad57f056fc59b1699146232c40767acf508be883c63",
+    "1defd6b8679b85e94b59c67b3276a846404ecac85326620f41e491139b8fb97f": "3db19377cc55eb546c6a15ca710575002936998d6035e11de6ff8bd603e41ad5",
+    "9717e5488e9d86159ad6c732f30e74e17990f4dcb2e7e71d180256ebadca1986": "2067f4e6354a7d417da66ba07ff4827995a16e9f20204954ccb66521bc0c5cbc",
+    "3dace3aa82d2ac8d0b9061c19cbd0ef71186881cf864802239b61a9c15bce67a": "8ed25b13a03d4ad80e2040d905a902a8d26ff6dce628811918e0388799dc26a0",
+    "49d2a7d9b31aebbb3005f32ad392da56ce3880a0f156574bb1f616613f3c04db": "b838fac6d1d84b7d41e8392d8a7fbe28c76377db878af10f47ad9d12fa169544",
+    "363320d853bf1a9e23d8bf37773eb70f3a8aa51a7036ba6da7808336e0a743a7": "47fd65258219114e55457da39c3094ae9e867e455472368ee40caf4966360b85",
+    "fa3f8bafe1acc921d756be342b9e02ad8cd2b373b1659fd4c87896734ba616fe": "6fe363928c14d1962132c554696119af8afe44f939b8d60046c391a4e1fa09fe",
+    "ae70633ca551372082bb876e6054f8300c67cccea3b9b648baac74d332379283": "f14aa64c3ddf739373b1a0fb72c034a58f4d3655b32594a42d4a25fb7888eca8",
+    "a1fa1a701b2d499ce02e45485188d572b819c7d3893043ff7570b3bd32b3ddb7": "d116eedbed1e18c0c5d4eb7494217f7310372d74a71b57267f5811a1bd8c75cf",
+    "71f95f8a9937c76b3e7f9f89da9995fcf8d8e879c5b3743a9d26b321cf974618": "8bfa5bc1a25494d5d6abfa19fee3fabc558aca30cceea9a62e1392dbac255c94",
+    "bc0de28977f7a3379c687b829fada5280a6cefda647f8175f50e9ac26cbad2c5": "aab0ac66b05dcabe85c26808c27f762637f6f6e4862f441b7e34489c1ffa740d",
+    "5048214c7a9804c8765ec76537041cef745b4bb47453c539397a4bc4fc07940e": "22b47e25d2912468cafab10d8a2aa2992dd2b1c5454e0c09f3b81d2fd49b2308",
+    "cd55133b37239db3271aa1ef16f4833ee4a9c322a2aaab5ec4562390a6f9cc05": "0253c5a4e35a988d8e98f7b96cf31f1ad4a4087e1c44b37ddfbeae6e4a0c5450",
+    "63a42ece4f02f9cd19e036c52d867e9243f3e5efd48a8cc066176b815bdeb9ac": "d6d5b9f5d035696bf2b2899c9bfe5fb483f386225b82a47ce75d00fc718da927",
+    "64ad9ae6aad18a6993f05fc327d45397d580b6cf602e6dc550c5bb045df7607a": "e98f88ff634df75ee5ece586b4a642bf689d4b4e82ced40840eacb61d7852035",
+    "74ccdf8c33b866665c9ce0c7dcc56310caa54a5d35bef3c99ca228d92384bb76": "6bb16c221a32902b18f07cbbe1669e7b69b33789767a0b3cfbd52dc6110d222b"
+  },
+  "numericLeaves": {
+    "mc": 757551,
+    "engineResults": 1067876
+  },
+  "referenceControls": [
+    {
+      "file": "care-price-continuation.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "care-price-continuation.test.mjs",
+          "message": "couple-mc: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten",
+          "before": "9104e01c60bb49dd721a78746a3d732443535abcd035c4ec2268a6f6c794b408",
+          "after": "23a3f6dcb769ccd9b295ba3b630d03f5b899ef315e7164e757050ec64b859865"
+        }
+      ]
+    },
+    {
+      "file": "care-today.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "care-today.test.mjs",
+          "message": "usual, Paar true: vollständiges MC-Ergebnis mit belegten PA-1-Folgen",
+          "before": "e70c6972d42acce308672fb6fd5636c3afb280858a776da868ac320c97a18905",
+          "after": "e95e92b5a9f6298fbe60d06279384cff062eb81637eac64d4d90245e87fc47d6"
+        },
+        {
+          "file": "care-today.test.mjs",
+          "message": "none, Paar true: vollständiges MC-Ergebnis mit belegten PA-1-Folgen",
+          "before": "16911e4986c6f1d1d9fc174e1a1a2460dd77e783f34974a380d05885ca496092",
+          "after": "d5efd5524d33e74583aa3e7140deec303a98a94b3b9b40b74c8e5cc0a2976648"
+        },
+        {
+          "file": "care-today.test.mjs",
+          "message": "zero, Paar true: vollständiges MC-Ergebnis mit belegten PA-1-Folgen",
+          "before": "16911e4986c6f1d1d9fc174e1a1a2460dd77e783f34974a380d05885ca496092",
+          "after": "d5efd5524d33e74583aa3e7140deec303a98a94b3b9b40b74c8e5cc0a2976648"
+        }
+      ]
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "cut-reason-bytegleich.test.mjs",
+          "message": "mc: sämtliche Zahlenfelder einschließlich belegter Rentenreste",
+          "before": 757550,
+          "after": 757551
+        },
+        {
+          "file": "cut-reason-bytegleich.test.mjs",
+          "message": "mc: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+          "before": "ddedf001269d87811010b776c985fbd237df853571bba5c88a44a6571f466392",
+          "after": "b6722f1cc12b66232048344cca11c9229ea5c21a78eae6cadded802132336587"
+        },
+        {
+          "file": "cut-reason-bytegleich.test.mjs",
+          "message": "mc: vollständige Referenz ohne Grund und Anmerkung",
+          "before": "99a2233eb8d5a6e96e3ba1810a75b7bba9f069bf908c5e08357aaac22cfe8bf0",
+          "after": "34a457229a649a97f2ae020b7eca97b86c89b71f1627c6de92233eb491dab10b"
+        },
+        {
+          "file": "cut-reason-bytegleich.test.mjs",
+          "message": "mc: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+          "before": "c28faea1a35e2ede8cfe5cf75476783c3b6a017b42666df6b392cc76f67c4dd4",
+          "after": "22695a5c97710b709aa61295a86ba61a926c5913ab504894c3d63a686ee0b1b2"
+        },
+        {
+          "file": "cut-reason-bytegleich.test.mjs",
+          "message": "mc: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+          "before": "a210561f0c7c07281fe4974e904cddae558f8f743179159cb3be2fef120776dc",
+          "after": "4cd1b1946a75ba764e8f5bb895b259f6ec183a76c3d02e2f6c1e5e7acf2d025d"
+        },
+        {
+          "file": "cut-reason-bytegleich.test.mjs",
+          "message": "engineResults: sämtliche Zahlenfelder einschließlich belegter Rentenreste",
+          "before": 1067975,
+          "after": 1067876
+        },
+        {
+          "file": "cut-reason-bytegleich.test.mjs",
+          "message": "engineResults: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+          "before": "bb1b9f494e05b6ca8b9a455b3a976d2328e43be5e62c61ff93c8766ad5305da7",
+          "after": "657b09723fb796366fb4f36ce766328b85c8df89ddc104e8f0c353960380df34"
+        },
+        {
+          "file": "cut-reason-bytegleich.test.mjs",
+          "message": "engineResults: vollständige Referenz ohne Grund und Anmerkung",
+          "before": "4b9eef9ab1c40c4263b0ffdb76dbc33a218df0a3917e01510a4500ce287b6047",
+          "after": "0b55ebbadb42a693d3128190eb176587b59a3a3ec8d285c3dcc3ee21838161e7"
+        },
+        {
+          "file": "cut-reason-bytegleich.test.mjs",
+          "message": "engineResults: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+          "before": "4b9eef9ab1c40c4263b0ffdb76dbc33a218df0a3917e01510a4500ce287b6047",
+          "after": "0b55ebbadb42a693d3128190eb176587b59a3a3ec8d285c3dcc3ee21838161e7"
+        },
+        {
+          "file": "cut-reason-bytegleich.test.mjs",
+          "message": "engineResults: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+          "before": "c83df26e72cfe42fb1679e21c4454a3352be46d3219812a6227b8531711ce890",
+          "after": "d1138c7fce193863285a0d717c14caa1c1cef262177324acc09cb3223c25d0d9"
+        }
+      ]
+    },
+    {
+      "file": "decision-comparison-pool.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "decision-comparison-pool.test.mjs",
+          "message": "",
+          "before": "d75242c4d16c93029c698f454d785819ebaa034827d51aee9f2f1f36073b9375",
+          "after": "16fcd634898d8582d0fcb34bdeeff45f43c35d274aefd4258daeaf1e8532b44b"
+        },
+        {
+          "file": "decision-comparison-pool.test.mjs",
+          "message": "",
+          "before": "28fc3084b781e95d7a999c94e05fd51f1d218323b9b9380894c3c53e6980f98b",
+          "after": "6aff8e285132eb51fa948826ba64992e756022178b786100126decda87e86896"
+        },
+        {
+          "file": "decision-comparison-pool.test.mjs",
+          "message": "",
+          "before": "53f4b7f77897ef4ea04dccfd7939965e5057f0a5f441297312a5e3fc67894543",
+          "after": "3b56fe91e313b05369dfe5ad897c817261615d7dd29d90d1d3577dde647bcc32"
+        }
+      ]
+    },
+    {
+      "file": "immobilien-empty-bytegleich.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "immobilien-empty-bytegleich.test.mjs",
+          "message": "Ohne Immobilien: vollständige 24 MC-Pfade mit Seed 12345 und belegter Ehe-Erbschaftsteuer",
+          "before": "98f10097edff136aa267a0d586a75ad986ca882a7efdb969ad6f9df4dda20b69",
+          "after": "f1f41bb7fe4d0bcffec15473b98b908ddeb568b83d58089ecf23c600f30d4dea"
+        }
+      ]
+    },
+    {
+      "file": "md-2-scenarios.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "block/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.lists",
+          "before": "26c4a3b22064ff6d28ef93a75d727dcfe1eb43cb513e94165464ed3799c6a08a",
+          "after": "1dc980313db486baab0f06c6bdb7688e73c642af146dc61f57004e9ec9f9deca"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "block/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.pathSummaries",
+          "before": "314b9a6cf03df9f710903af03ae588a1123daaa553cb89597102678f3c422c98",
+          "after": "b1a2df1973b81f75f7572e8c8bda89bdcd53ecbd6b10fe121ee2e4c82a003998"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "block/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.combined",
+          "before": "c6be4b46d4c51b5674b4fc2f621fa441840c76d3331d68991498d796405f1f1f",
+          "after": "61cdf1af6220cd66fed7da2b8ff0120c12cb3ccbfd9323d72a4463eaade63708"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_markov/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.lists",
+          "before": "af377b60011de2473162cf294bb1fe9a1b59458efbe37b18ee15080e25372153",
+          "after": "751cc71acb2f8a5c6d9e60c6cf701c9005ae2b495b2e00a55328daf5efd5c2ce"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_markov/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.pathSummaries",
+          "before": "8650288cf6735024bc3c0152f93ab72ab1c572628c7cd075d3ce127aab335bc4",
+          "after": "ec0e929a26c14c0be4ef4254b4924eb097297b5b9570d9fe23b831939ed446e6"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_markov/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.combined",
+          "before": "36916e7ca1c729d7c32ff87d14b0532cbfbf26fa27be9917fbd165a6ef5a1af6",
+          "after": "3ff9ccef6fe65c6c0622efefa9b670597a97fb471f9f7649ae39ea93cea93e89"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_iid/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.totals",
+          "before": "b765738a15a04ad6cd7ab738997bda1e3f98f1e58f42b031a696de9fe7a1efcc",
+          "after": "51a12b6f2edcc997f49d90de0d05bf218cee9ced260527ccb6fadaa9bf4990b0"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_iid/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.lists",
+          "before": "4bfe45608cf5df85bf8a0abef26b82184d60b16aa70d1fb70debdbc4050f7557",
+          "after": "9341c72d9faa475251e738e8691686c7c57fe6815f10a6fb16bcc959d050e00a"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_iid/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.pathSummaries",
+          "before": "9958dd1ff879ee8d10354d5e95332d08776ab23b7e69b2b8d42459f62f76cd0c",
+          "after": "0b6992aa294873338210831912c70d0e410f5dbb3df2431a62042877971c0f4d"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_iid/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.combined",
+          "before": "7e67ae2496b104b36127abaa41be8910bbe8f42bbc23ef9c499daa7aa8d9bd1e",
+          "after": "26bb74a8f6086f5a5e54a38542c12ce06c23ab800b30eb9ab2c1012aa24bb4b4"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "stationary/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.lists",
+          "before": "526f4e9d7782dc0c99ce5e87a0ff88e6fd5f4dd0b541aa7866c7ee1c71f66c50",
+          "after": "947dcb7cd1ba51fc3aab2660b8493fc1efa1ee2aa29c221a86955823db52446d"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "stationary/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.pathSummaries",
+          "before": "29d1a955a7a4cfd01ef4484a3f35501d88afbe86d2077102838db375ab601ef4",
+          "after": "d2541d9f82708c622e6ce6fc18cc1752f2727ea538db74007fe305fff9135d8b"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "stationary/no-home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.combined",
+          "before": "5a2d32c3a61bb538222be23462c36c3cd6ecbd75564e55807d81df04861f5e07",
+          "after": "443a12978e026cb76bc0fabb6434e2420c89bbfda2febec72970609010a04fe5"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "block/home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.lists",
+          "before": "913810f0777ff23b75c70280a6cf7b0684c23b96d39c37524d36bc6c9415c5aa",
+          "after": "1466e5b830893e315aadae282ebfb5e02fbf71906fcfa4602459a051374408fd"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "block/home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.pathSummaries",
+          "before": "67816ad7d43f90d3eb36ae358a92dc9f2378ef5662d6300bcafaf765a5e5abad",
+          "after": "a117b199d119238db1712d3efea7e589d25cd6546018de9a2037288887ab54f3"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "block/home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.combined",
+          "before": "9fa6e0ab43e785aa171a0d99badfb85658bb300b17db585700fcbcae3aea06de",
+          "after": "602ff837455421f34f0f778578963699b38870a39c02104a487df84e22f6f1cd"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_markov/home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.lists",
+          "before": "d83d2448c61165db083483cbf7837275ef0d07fec9606c28d93eba3441c0720a",
+          "after": "28eadf9e52abd7d6c0653c46d087673758783c2927db355e6bfccf94f9c6d226"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_markov/home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.pathSummaries",
+          "before": "3a060ec7011b6d0390d573833f952edacb290749ed0ceebe1127bf845288ae3e",
+          "after": "2433099341d49a2e8ee25ea1c4069412e123d8af2b4a025050d898398928dc7f"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_markov/home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.combined",
+          "before": "d1aba53eee14c195fba2b69c5558b04ca1913a06eadfa06a849c2f85e828a8f4",
+          "after": "1c36044c890a2bfff0bc7b92d22aaf3bde049c6968aa7662d57b237cf7bef130"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_iid/home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.totals",
+          "before": "1ea7747ff709e66abaa16ecc91bae6196b4bcf466130b6e1019e031030a7ef7a",
+          "after": "51a12b6f2edcc997f49d90de0d05bf218cee9ced260527ccb6fadaa9bf4990b0"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_iid/home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.lists",
+          "before": "4e4f817798ed34571cd104d2a963d1ca0acb4f942ee07056b3a46cbcdf3adc43",
+          "after": "48e058e833eebc7811b6a5490ef13188ed613fd2735200094546f8f26bf1c323"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_iid/home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.pathSummaries",
+          "before": "89ff45c6a819cb92b473ba32d84cf1da2d5680e661872d7f8ee6acdcac1fe3ff",
+          "after": "d670e149fdd5672f2d340460bfae81fbfa378b30d20181ceddcf7ec95f3ce3c2"
+        },
+        {
+          "file": "md-2-scenarios.test.mjs",
+          "message": "regime_iid/home: totals/lists/pathSummaries/heatmap bytegleich zum Ausgangsstand.combined",
+          "before": "8b8470bd84d78a39a77469220e7227d4ff160b7c74bcdceffb0554b6408be655",
+          "after": "bb8d65f0db646b9ef62fc8ef5a599f168db2282cdc66da11ee398285c1251dae"
+        }
+      ]
+    },
+    {
+      "file": "muster-max-erika-parity.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "muster-max-erika-parity.test.mjs",
+          "message": "Max/Erika MC 2.000 Läufe, Seed 12345, 23.10.2026 mit belegten PA-1-Folgen",
+          "before": "6f0a2a67c451d906b85966685e05a63728ac7ebd9c5259f047a71b6353a2faf8",
+          "after": "4482c1d2fab1693028bbc02e14d3c72943c57057aaa8301635e4fc258496af2f"
+        }
+      ]
+    },
+    {
+      "file": "plan-view-income.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "plan-view-income.test.mjs",
+          "message": "Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen",
+          "before": "cf7f687ab367eec28842fa1bf62b186094f2ec4e60aa2cbde93652e1b037fde8",
+          "after": "769c9ac55556c706554d85cfd7ccd472146896d7434eceecd589394768718db7"
+        }
+      ]
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "Vorgabe: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+          "before": "445439e37289ccee2013b7020d84d58a5da795256a856959cdd353b96a6c373a",
+          "after": "abc9fde88cd843241531fda84a6530f99ca4b25481e3ac0f42751901d4229ab2"
+        },
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "Vorgabe: vollständiger PM-1c-Backtest und MC-Pfad 0",
+          "before": "ed3f59bba4877538674955d570bbacb4d358fe0a758a8d73a656f7bcf431dfc6",
+          "after": "49e959f0196c1077f78a198e35e864146340a829a22f24afd69e4f7556fb61ad"
+        },
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "Vorgabe: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+          "before": "8f71e6bed097ccebc28036cf367335d26c8bfefe0cf3d68e8918621a0590161d",
+          "after": "678e1423ccb5c1235e1bd7bd39e5fee5a85348e35cef9a34a999da7651849078"
+        },
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "konservativ: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+          "before": "9925c5d42000826dd06f986109538a5051a2a2886326828745654d82d664a7b5",
+          "after": "6ed3c4ea82c694d3b8474dd19aee38ecf6e8ed25eefe56e0576d9fd94b3af377"
+        },
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "konservativ: vollständiger PM-1c-Backtest und MC-Pfad 0",
+          "before": "9287f2a442488a9cd513a1199da2d08a5a660667d076e30b249f3f80a08302d5",
+          "after": "a93d7e34333ce14fda3221a2214b1ac62d2e16b510a82bd451bf2ca993599885"
+        },
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "konservativ: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+          "before": "315887598b2cf3659cdc6e6103123ab0d1d6b949b22eb92b68270227f3d5a612",
+          "after": "363bea66bb670380a665cd75910e7c54e447b9991efcb47f6f840f809e2207d3"
+        },
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "ausgewogen: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+          "before": "bbc14d82f8c55450dd0ab08b8ab039d3a19dc80b29be99586a67c48a05695924",
+          "after": "3776b48d0cc59d9c102f613873113703327d46ee60089372c22201d914d06527"
+        },
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "ausgewogen: vollständiger PM-1c-Backtest und MC-Pfad 0",
+          "before": "2597bc3a6a4016b60ce13b5ab269d4da28b5f86929319cc493cb9f83c23c2578",
+          "after": "d040342e6cf6a8478472dad57f056fc59b1699146232c40767acf508be883c63"
+        },
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "ausgewogen: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+          "before": "1defd6b8679b85e94b59c67b3276a846404ecac85326620f41e491139b8fb97f",
+          "after": "3db19377cc55eb546c6a15ca710575002936998d6035e11de6ff8bd603e41ad5"
+        },
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "offensiv: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+          "before": "9717e5488e9d86159ad6c732f30e74e17990f4dcb2e7e71d180256ebadca1986",
+          "after": "2067f4e6354a7d417da66ba07ff4827995a16e9f20204954ccb66521bc0c5cbc"
+        },
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "offensiv: vollständiger PM-1c-Backtest und MC-Pfad 0",
+          "before": "3dace3aa82d2ac8d0b9061c19cbd0ef71186881cf864802239b61a9c15bce67a",
+          "after": "8ed25b13a03d4ad80e2040d905a902a8d26ff6dce628811918e0388799dc26a0"
+        },
+        {
+          "file": "planned-inflows.test.mjs",
+          "message": "offensiv: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+          "before": "49d2a7d9b31aebbb3005f32ad392da56ce3880a0f156574bb1f616613f3c04db",
+          "after": "b838fac6d1d84b7d41e8392d8a7fbe28c76377db878af10f47ad9d12fa169544"
+        }
+      ]
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "rechenregeln-bytegleich.test.mjs",
+          "message": "off: MC-Pfad 0 mit FR-21–24/27",
+          "before": "363320d853bf1a9e23d8bf37773eb70f3a8aa51a7036ba6da7808336e0a743a7",
+          "after": "47fd65258219114e55457da39c3094ae9e867e455472368ee40caf4966360b85"
+        },
+        {
+          "file": "rechenregeln-bytegleich.test.mjs",
+          "message": "konservativ: MC-Pfad 0 mit FR-21–24/27",
+          "before": "fa3f8bafe1acc921d756be342b9e02ad8cd2b373b1659fd4c87896734ba616fe",
+          "after": "6fe363928c14d1962132c554696119af8afe44f939b8d60046c391a4e1fa09fe"
+        },
+        {
+          "file": "rechenregeln-bytegleich.test.mjs",
+          "message": "ausgewogen: MC-Pfad 0 mit FR-21–24/27",
+          "before": "ae70633ca551372082bb876e6054f8300c67cccea3b9b648baac74d332379283",
+          "after": "f14aa64c3ddf739373b1a0fb72c034a58f4d3655b32594a42d4a25fb7888eca8"
+        },
+        {
+          "file": "rechenregeln-bytegleich.test.mjs",
+          "message": "offensiv: MC-Pfad 0 mit FR-21–24/27",
+          "before": "a1fa1a701b2d499ce02e45485188d572b819c7d3893043ff7570b3bd32b3ddb7",
+          "after": "d116eedbed1e18c0c5d4eb7494217f7310372d74a71b57267f5811a1bd8c75cf"
+        }
+      ]
+    },
+    {
+      "file": "simulator-unmarried-parity.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "simulator-unmarried-parity.test.mjs",
+          "message": "Verheiratet: vollständiger serieller MC mit belegten FR-51-Folgen",
+          "before": "71f95f8a9937c76b3e7f9f89da9995fcf8d8e879c5b3743a9d26b321cf974618",
+          "after": "8bfa5bc1a25494d5d6abfa19fee3fabc558aca30cceea9a62e1392dbac255c94"
+        },
+        {
+          "file": "simulator-unmarried-parity.test.mjs",
+          "message": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51.0",
+          "before": "bc0de28977f7a3379c687b829fada5280a6cefda647f8175f50e9ac26cbad2c5",
+          "after": "aab0ac66b05dcabe85c26808c27f762637f6f6e4862f441b7e34489c1ffa740d"
+        },
+        {
+          "file": "simulator-unmarried-parity.test.mjs",
+          "message": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51.1",
+          "before": "5048214c7a9804c8765ec76537041cef745b4bb47453c539397a4bc4fc07940e",
+          "after": "22b47e25d2912468cafab10d8a2aa2992dd2b1c5454e0c09f3b81d2fd49b2308"
+        },
+        {
+          "file": "simulator-unmarried-parity.test.mjs",
+          "message": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51.2",
+          "before": "cd55133b37239db3271aa1ef16f4833ee4a9c322a2aaab5ec4562390a6f9cc05",
+          "after": "0253c5a4e35a988d8e98f7b96cf31f1ad4a4087e1c44b37ddfbeae6e4a0c5450"
+        },
+        {
+          "file": "simulator-unmarried-parity.test.mjs",
+          "message": "Verheiratet: vollständiger Sweep mit FR-51",
+          "before": "63a42ece4f02f9cd19e036c52d867e9243f3e5efd48a8cc066176b815bdeb9ac",
+          "after": "d6d5b9f5d035696bf2b2899c9bfe5fb483f386225b82a47ce75d00fc718da927"
+        }
+      ]
+    },
+    {
+      "file": "zg-1-equalization.test.mjs",
+      "restoredDeltas": 0,
+      "deltas": [
+        {
+          "file": "zg-1-equalization.test.mjs",
+          "message": "married: vollständiges Todesjahr bytegleich zum Ausgangsstand",
+          "before": "64ad9ae6aad18a6993f05fc327d45397d580b6cf602e6dc550c5bb045df7607a",
+          "after": "e98f88ff634df75ee5ece586b4a642bf689d4b4e82ced40840eacb61d7852035"
+        },
+        {
+          "file": "zg-1-equalization.test.mjs",
+          "message": "unmarried: vollständiges Todesjahr bytegleich zum Ausgangsstand",
+          "before": "74ccdf8c33b866665c9ce0c7dcc56310caa54a5d35bef3c99ca228d92384bb76",
+          "after": "6bb16c221a32902b18f07cbbe1669e7b69b33789767a0b3cfbd52dc6110d222b"
+        }
+      ]
+    }
+  ]
+}

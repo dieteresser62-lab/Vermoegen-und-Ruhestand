@@ -1,0 +1,400 @@
+{
+  "status": "CONTRACT-UNCLEAR",
+  "reason": "RNG-1 verlangt unveränderte grüne Eigenschaftstests. Die unveränderte Pflege-Kalibrierung besteht auf der alten Quelle und scheitert mit gleichverteiltem RNG. Pflegemodell, Schwellen und Tests wurden nicht angepasst.",
+  "baselineRevision": "7bb0c6b6579186615c63cbfb5972986411142d53",
+  "reproduction": {
+    "measurement": "node scripts/calibrate-care-model.mjs --persons=200000 --seed=4102026",
+    "test": "node tests/run-single.mjs tests/care-model-calibration.test.mjs",
+    "note": "Beide Befehle jeweils im archivierten Ausgangsstand und im korrigierten Arbeitsbaum ausführen. Ausschließlich synthetische Kohorten."
+  },
+  "sources": {
+    "scripts/calibrate-care-model.mjs": {
+      "beforeSha256": "c15b95696de2efca4e36292126fb2f5071572d252a5ac7298f25b5827dec0a9e",
+      "afterSha256": "c15b95696de2efca4e36292126fb2f5071572d252a5ac7298f25b5827dec0a9e"
+    },
+    "tests/care-model-calibration.test.mjs": {
+      "beforeSha256": "a298d3b4d88e8e4e5a6fa5942d2bed6d6d13ef8fa9ee57a6350be22d99ae9f42",
+      "afterSha256": "a298d3b4d88e8e4e5a6fa5942d2bed6d6d13ef8fa9ee57a6350be22d99ae9f42"
+    },
+    "app/simulator/simulator-utils.js": {
+      "beforeSha256": "5ebef91e6eadc31d8365b8e95c9234e9d5f0762bc5a5cacf4e5438c7160998dd",
+      "afterSha256": "5e714da59830a5074bfbe16a75893da1dc9179b277637e0e7cbdf1c5ddca6a09"
+    },
+    "app/simulator/simulator-engine-helpers.js": {
+      "beforeSha256": "8677ee1a8e874ba8fef7bd035d62151758d73f50119355d396aaa7c94fb8a7c4",
+      "afterSha256": "eda03434547f6365e593c2db63a554e392bb7ff075d193abc7abe5dae8cd5bf3"
+    }
+  },
+  "blockingObservation": {
+    "sex": "w",
+    "ageBand": "85–89",
+    "officialPct": 65.01,
+    "tolerancePp": 3,
+    "beforeModelPct": 65.30024651413605,
+    "afterModelPct": 61.988615497612926,
+    "changePp": -3.3116310165231226,
+    "afterDeviationPp": -3.021384502387079,
+    "toleranceExceededPp": 0.021384502387078896
+  },
+  "testResults": {
+    "before": {
+      "exitCode": 0,
+      "assertions": 82,
+      "passed": 82
+    },
+    "after": {
+      "exitCode": 1,
+      "assertions": 72,
+      "passed": 71,
+      "failedAssertions": 1,
+      "note": "Bestehender Runner bricht am ersten fehlgeschlagenen Assert ab."
+    }
+  },
+  "changedTestReferences": [],
+  "before": {
+    "personsPerSex": 200000,
+    "seed": 4102026,
+    "observation": "year-end surviving person-years; observed stock at 65; chronic care; no mortality improvement; care duration counted from age 65 only",
+    "initialStock": {
+      "runtimeRole": "offline_calibration_only_simulator_starts_without_care",
+      "source": "22421-02!I46 (male), I68 (female), ages 60-64; proxy for stock at age 65.",
+      "prevalencePctBySex": {
+        "m": 4.25,
+        "w": 4.42
+      },
+      "gradeDistribution": "22421-01!C34:C38, all ages; normalized over assigned grades 1-5."
+    },
+    "gradeReference": "All ages: tables 22421-01/-02 contain age and grade separately, no age-by-grade cross-tabulation.",
+    "bySex": {
+      "m": {
+        "initialCases": 8500,
+        "initialPrevalencePct": 4.25,
+        "cases": 99014,
+        "careYears": 480735,
+        "meanCareYearsPerCase": 4.855222493788757,
+        "deathsInCarePct": 49.507,
+        "prevalence": {
+          "65": {
+            "alive": 937039,
+            "care": 61955,
+            "modelPct": 6.611784568198336,
+            "officialPct": 6.57,
+            "tolerancePp": 3
+          },
+          "70": {
+            "alive": 797987,
+            "care": 82417,
+            "modelPct": 10.328113114624674,
+            "officialPct": 10.2,
+            "tolerancePp": 3
+          },
+          "75": {
+            "alive": 609483,
+            "care": 107846,
+            "modelPct": 17.694669088391308,
+            "officialPct": 16.48,
+            "tolerancePp": 3
+          },
+          "80": {
+            "alive": 369591,
+            "care": 106478,
+            "modelPct": 28.80968421850099,
+            "officialPct": 28.24,
+            "tolerancePp": 3
+          },
+          "85": {
+            "alive": 131923,
+            "care": 62648,
+            "modelPct": 47.48830757335718,
+            "officialPct": 47.45,
+            "tolerancePp": 3
+          },
+          "90": {
+            "alive": 13391,
+            "care": 9795,
+            "modelPct": 73.14614293181988,
+            "officialPct": 73.43,
+            "tolerancePp": 5
+          },
+          "95": {
+            "alive": 110,
+            "care": 89,
+            "modelPct": 80.9090909090909,
+            "officialPct": 84.74,
+            "tolerancePp": 5
+          }
+        }
+      },
+      "w": {
+        "initialCases": 8840,
+        "initialPrevalencePct": 4.42,
+        "cases": 132099,
+        "careYears": 771387.5,
+        "meanCareYearsPerCase": 5.839465098146087,
+        "deathsInCarePct": 66.0495,
+        "prevalence": {
+          "65": {
+            "alive": 963888,
+            "care": 67378,
+            "modelPct": 6.99023123018442,
+            "officialPct": 6.55,
+            "tolerancePp": 3
+          },
+          "70": {
+            "alive": 879080,
+            "care": 107199,
+            "modelPct": 12.194453292078082,
+            "officialPct": 11.11,
+            "tolerancePp": 3
+          },
+          "75": {
+            "alive": 738758,
+            "care": 169390,
+            "modelPct": 22.92902411885895,
+            "officialPct": 20.75,
+            "tolerancePp": 3
+          },
+          "80": {
+            "alive": 507484,
+            "care": 203732,
+            "modelPct": 40.1455021242049,
+            "officialPct": 39.07,
+            "tolerancePp": 3
+          },
+          "85": {
+            "alive": 207696,
+            "care": 135626,
+            "modelPct": 65.30024651413605,
+            "officialPct": 65.01,
+            "tolerancePp": 3
+          },
+          "90": {
+            "alive": 24205,
+            "care": 21796,
+            "modelPct": 90.04751084486676,
+            "officialPct": 89.42,
+            "tolerancePp": 5
+          },
+          "95": {
+            "alive": 220,
+            "care": 217,
+            "modelPct": 98.63636363636364,
+            "officialPct": 97.81,
+            "tolerancePp": 5
+          }
+        }
+      }
+    },
+    "gradeShares": [
+      {
+        "grade": 1,
+        "count": 143695,
+        "modelPct": 12.642908550845265,
+        "officialPct": 13.814287243694398,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 2,
+        "count": 432425,
+        "modelPct": 38.04662465708107,
+        "officialPct": 40.445880643188424,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 3,
+        "count": 336590,
+        "modelPct": 29.614646223800467,
+        "officialPct": 29.643913225921963,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 4,
+        "count": 150671,
+        "modelPct": 13.256687249134673,
+        "officialPct": 11.765248775901723,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 5,
+        "count": 73185,
+        "modelPct": 6.439133319138528,
+        "officialPct": 4.2938060882068,
+        "tolerancePp": 4
+      }
+    ],
+    "passed": true
+  },
+  "after": {
+    "personsPerSex": 200000,
+    "seed": 4102026,
+    "observation": "year-end surviving person-years; observed stock at 65; chronic care; no mortality improvement; care duration counted from age 65 only",
+    "initialStock": {
+      "runtimeRole": "offline_calibration_only_simulator_starts_without_care",
+      "source": "22421-02!I46 (male), I68 (female), ages 60-64; proxy for stock at age 65.",
+      "prevalencePctBySex": {
+        "m": 4.25,
+        "w": 4.42
+      },
+      "gradeDistribution": "22421-01!C34:C38, all ages; normalized over assigned grades 1-5."
+    },
+    "gradeReference": "All ages: tables 22421-01/-02 contain age and grade separately, no age-by-grade cross-tabulation.",
+    "bySex": {
+      "m": {
+        "initialCases": 8500,
+        "initialPrevalencePct": 4.25,
+        "cases": 101880,
+        "careYears": 518498,
+        "meanCareYearsPerCase": 5.089301138594425,
+        "deathsInCarePct": 50.94,
+        "prevalence": {
+          "65": {
+            "alive": 945407,
+            "care": 59483,
+            "modelPct": 6.291787558162781,
+            "officialPct": 6.57,
+            "tolerancePp": 3
+          },
+          "70": {
+            "alive": 824394,
+            "care": 80037,
+            "modelPct": 9.708585943129135,
+            "officialPct": 10.2,
+            "tolerancePp": 3
+          },
+          "75": {
+            "alive": 657068,
+            "care": 108531,
+            "modelPct": 16.517468511630454,
+            "officialPct": 16.48,
+            "tolerancePp": 3
+          },
+          "80": {
+            "alive": 433653,
+            "care": 118232,
+            "modelPct": 27.264195105303088,
+            "officialPct": 28.24,
+            "tolerancePp": 3
+          },
+          "85": {
+            "alive": 183048,
+            "care": 83163,
+            "modelPct": 45.43234561426511,
+            "officialPct": 47.45,
+            "tolerancePp": 3
+          },
+          "90": {
+            "alive": 25111,
+            "care": 17772,
+            "modelPct": 70.77376448568357,
+            "officialPct": 73.43,
+            "tolerancePp": 5
+          },
+          "95": {
+            "alive": 405,
+            "care": 340,
+            "modelPct": 83.95061728395062,
+            "officialPct": 84.74,
+            "tolerancePp": 5
+          }
+        }
+      },
+      "w": {
+        "initialCases": 8840,
+        "initialPrevalencePct": 4.42,
+        "cases": 134060,
+        "careYears": 817990,
+        "meanCareYearsPerCase": 6.101670893629718,
+        "deathsInCarePct": 67.03,
+        "prevalence": {
+          "65": {
+            "alive": 969483,
+            "care": 64876,
+            "modelPct": 6.6918140906029295,
+            "officialPct": 6.55,
+            "tolerancePp": 3
+          },
+          "70": {
+            "alive": 896805,
+            "care": 102008,
+            "modelPct": 11.374602059533567,
+            "officialPct": 11.11,
+            "tolerancePp": 3
+          },
+          "75": {
+            "alive": 774268,
+            "care": 164188,
+            "modelPct": 21.20557739697366,
+            "officialPct": 20.75,
+            "tolerancePp": 3
+          },
+          "80": {
+            "alive": 568541,
+            "care": 212772,
+            "modelPct": 37.42421390893533,
+            "officialPct": 39.07,
+            "tolerancePp": 3
+          },
+          "85": {
+            "alive": 272300,
+            "care": 168795,
+            "modelPct": 61.988615497612926,
+            "officialPct": 65.01,
+            "tolerancePp": 3
+          },
+          "90": {
+            "alive": 42851,
+            "care": 37701,
+            "modelPct": 87.98161069753331,
+            "officialPct": 89.42,
+            "tolerancePp": 5
+          },
+          "95": {
+            "alive": 633,
+            "care": 620,
+            "modelPct": 97.94628751974723,
+            "officialPct": 97.81,
+            "tolerancePp": 5
+          }
+        }
+      }
+    },
+    "gradeShares": [
+      {
+        "grade": 1,
+        "count": 151349,
+        "modelPct": 12.420743887246639,
+        "officialPct": 13.814287243694398,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 2,
+        "count": 491392,
+        "modelPct": 40.3270201999478,
+        "officialPct": 40.445880643188424,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 3,
+        "count": 357575,
+        "modelPct": 29.34507327753878,
+        "officialPct": 29.643913225921963,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 4,
+        "count": 149629,
+        "modelPct": 12.27958881198308,
+        "officialPct": 11.765248775901723,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 5,
+        "count": 68573,
+        "modelPct": 5.627573823283694,
+        "officialPct": 4.2938060882068,
+        "tolerancePp": 4
+      }
+    ],
+    "passed": false
+  }
+}

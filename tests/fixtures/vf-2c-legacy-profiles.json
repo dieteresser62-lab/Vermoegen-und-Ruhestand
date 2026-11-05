@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "exportedAt": "2026-10-23T12:00:00.000Z",
+  "currentProfileId": "muster_a",
+  "registry": {
+    "version": 1,
+    "profiles": {
+      "muster_a": {
+        "meta": {
+          "id": "muster_a",
+          "name": "Max",
+          "belongsToHousehold": true,
+          "createdAt": "2025-01-01T12:00:00Z",
+          "updatedAt": "2025-01-01T12:00:00Z"
+        },
+        "data": {
+          "profile_person_schema_version": "1",
+          "profile_geburtsdatum": "1958-03-14",
+          "profile_geschlecht": "m",
+          "profile_rentenbeginn": "2023-01-01",
+          "profile_rentenanpassung_art": "wage",
+          "profile_rentenanpassung_pct": "0",
+          "profile_kirchensteuer_pct": "0",
+          "profile_sparer_pauschbetrag": "1000",
+          "profile_rente_steuerquote_pct": "80",
+          "profile_rente_monatlich": "2300",
+          "profile_tagesgeld": "18000",
+          "profile_gold_aktiv": "false",
+          "profile_gold_steuerfrei": "false",
+          "profile_gold_ziel_pct": "0",
+          "profile_gold_floor_pct": "0",
+          "profile_gold_rebal_band": "25",
+          "profile_cash_history_v1": "{\"version\":1,\"baselineValue\":16000,\"entries\":[{\"date\":\"2025-01-01\",\"value\":17000},{\"date\":\"2026-01-01\",\"value\":18000},{\"date\":\"2026-10-01\",\"value\":18000}]}",
+          "profile_wealth_history_lots_v1": "{\"version\":1,\"lots\":{\"muster_a_lot_1\":{\"tranche\":{\"schemaVersion\":2,\"trancheId\":\"muster_a_lot_1\",\"name\":\"Muster Aktien-ETF\",\"type\":\"aktien_alt\",\"category\":\"equity\",\"ticker\":\"VWRL.DE\",\"isin\":\"IE00B3RBWM25\",\"shares\":2078.1354451561238,\"purchasePrice\":53.250829,\"currentPrice\":86.616106,\"asOf\":1792713600,\"purchaseDate\":\"2016-06-15\",\"tqf\":0.3,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":180000,\"costBasis\":110662.43522884764,\"instrumentId\":\"isin:IE00B3RBWM25\"},\"remainingShares\":2078.1354451561238,\"status\":\"present\",\"capturedAt\":\"2025-01-01\"},\"muster_a_lot_2\":{\"tranche\":{\"schemaVersion\":2,\"trancheId\":\"muster_a_lot_2\",\"name\":\"Muster Aktien-ETF\",\"type\":\"aktien_neu\",\"category\":\"equity\",\"ticker\":\"VWCE.DE\",\"isin\":\"IE00BK5BQT80\",\"shares\":1245.93530910063,\"purchasePrice\":121.41709,\"currentPrice\":144.46978,\"asOf\":1792713600,\"purchaseDate\":\"2020-05-18\",\"tqf\":0.3,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":180000,\"costBasis\":151277.83955924903,\"instrumentId\":\"isin:IE00BK5BQT80\"},\"remainingShares\":1245.93530910063,\"status\":\"present\",\"capturedAt\":\"2025-01-01\"},\"muster_a_lot_3\":{\"tranche\":{\"schemaVersion\":2,\"trancheId\":\"muster_a_lot_3\",\"name\":\"Muster Geldmarkt\",\"type\":\"geldmarkt\",\"category\":\"money_market\",\"ticker\":\"XEON.DE\",\"isin\":\"LU0290358497\",\"shares\":296.3488805392226,\"purchasePrice\":116.070752,\"currentPrice\":121.478441,\"asOf\":1792713600,\"purchaseDate\":\"2024-04-12\",\"tqf\":0,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":36000,\"costBasis\":34397.437418545735,\"instrumentId\":\"isin:LU0290358497\"},\"remainingShares\":296.3488805392226,\"status\":\"present\",\"capturedAt\":\"2025-01-01\"}}}",
+          "depot_tranchen": "[{\"schemaVersion\":2,\"trancheId\":\"muster_a_lot_1\",\"name\":\"Muster Aktien-ETF\",\"type\":\"aktien_alt\",\"category\":\"equity\",\"ticker\":\"VWRL.DE\",\"isin\":\"IE00B3RBWM25\",\"shares\":2078.1354451561238,\"purchasePrice\":53.250829,\"currentPrice\":86.616106,\"asOf\":1792713600,\"purchaseDate\":\"2016-06-15\",\"tqf\":0.3,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":180000,\"costBasis\":110662.43522884764,\"instrumentId\":\"isin:IE00B3RBWM25\"},{\"schemaVersion\":2,\"trancheId\":\"muster_a_lot_2\",\"name\":\"Muster Aktien-ETF\",\"type\":\"aktien_neu\",\"category\":\"equity\",\"ticker\":\"VWCE.DE\",\"isin\":\"IE00BK5BQT80\",\"shares\":1245.93530910063,\"purchasePrice\":121.41709,\"currentPrice\":144.46978,\"asOf\":1792713600,\"purchaseDate\":\"2020-05-18\",\"tqf\":0.3,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":180000,\"costBasis\":151277.83955924903,\"instrumentId\":\"isin:IE00BK5BQT80\"},{\"schemaVersion\":2,\"trancheId\":\"muster_a_lot_3\",\"name\":\"Muster Geldmarkt\",\"type\":\"geldmarkt\",\"category\":\"money_market\",\"ticker\":\"XEON.DE\",\"isin\":\"LU0290358497\",\"shares\":296.3488805392226,\"purchasePrice\":116.070752,\"currentPrice\":121.478441,\"asOf\":1792713600,\"purchaseDate\":\"2024-04-12\",\"tqf\":0,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":36000,\"costBasis\":34397.437418545735,\"instrumentId\":\"isin:LU0290358497\"}]",
+          "ruhestandsmodellValues_v29_guardrails": "{\"inputs\":{\"profilName\":\"Max\",\"tagesgeld\":18000,\"geldmarktEtf\":36000,\"depotwertAlt\":180000,\"depotwertNeu\":180000,\"floorBedarf\":30000,\"flexBedarf\":30000,\"minimumFlexAnnual\":7500,\"flexBudgetAnnual\":0,\"flexBudgetYears\":0,\"flexBudgetRecharge\":0,\"liquidityRunwayYears\":5,\"maxSkimPctOfEq\":0,\"maxBearRefillPctOfEq\":0,\"goGoMultiplier\":1,\"capeRatio\":25,\"inflation\":2,\"endeVJ\":143,\"endeVJ_1\":131,\"endeVJ_2\":132,\"endeVJ_3\":130,\"ath\":143,\"jahreSeitAth\":0,\"goldAktiv\":false,\"goldBestand\":0,\"goldZielProzent\":0,\"goldFloorProzent\":0,\"rebalancingBand\":25},\"profilverbundHouseholdInputs\":{\"profilName\":\"Max\",\"tagesgeld\":30000,\"geldmarktEtf\":60000,\"depotwertAlt\":340000,\"depotwertNeu\":360000,\"floorBedarf\":30000,\"flexBedarf\":30000,\"minimumFlexAnnual\":7500,\"flexBudgetAnnual\":0,\"flexBudgetYears\":0,\"flexBudgetRecharge\":0,\"liquidityRunwayYears\":5,\"maxSkimPctOfEq\":0,\"maxBearRefillPctOfEq\":0,\"goGoMultiplier\":1,\"capeRatio\":25,\"inflation\":2,\"endeVJ\":143,\"endeVJ_1\":131,\"endeVJ_2\":132,\"endeVJ_3\":130,\"ath\":143,\"jahreSeitAth\":0,\"goldAktiv\":false,\"goldBestand\":0,\"goldZielProzent\":0,\"goldFloorProzent\":0,\"rebalancingBand\":25},\"annualPeriodMetadata\":{\"schemaVersion\":1,\"lastCommittedPeriod\":\"calendar-year:2025\",\"pendingCommit\":null},\"lastState\":{\"cumulativeInflationFactor\":1},\"wealthHistory\":{\"schemaVersion\":1,\"entries\":[{\"id\":\"manual:2026-01-01\",\"asOf\":\"2026-01-01\",\"reason\":\"manual\",\"periodId\":null,\"tagesgeld\":18000,\"geldmarktEtf\":35480.40795156401,\"depotwertAlt\":174108.82474905995,\"depotwertNeu\":178515.26872955717,\"aktienEtf\":352624.09347861714,\"total\":406104.50143018115}]}}",
+          "overview_balance_summary_v1": "{\"version\":1,\"entries\":{\"[2026,\\\"[\\\\\\\"household\\\\\\\",[\\\\\\\"muster_a\\\\\\\",\\\\\\\"muster_b\\\\\\\"]]\\\"]\":{\"year\":2026,\"scope\":{\"kind\":\"household\",\"ids\":[\"muster_a\",\"muster_b\"],\"key\":\"[\\\"household\\\",[\\\"muster_a\\\",\\\"muster_b\\\"]]\"},\"monthlyWithdrawal\":2700,\"monthlyBudget\":5000,\"status\":\"fest\",\"createdAt\":\"2026-01-01T11:00:00.000Z\"}}}",
+          "overview_month_provision_v1": "{\"version\":1,\"entries\":{\"[\\\"2026-09\\\",\\\"[\\\\\\\"household\\\\\\\",[\\\\\\\"muster_a\\\\\\\",\\\\\\\"muster_b\\\\\\\"]]\\\"]\":{\"month\":\"2026-09\",\"scope\":{\"kind\":\"household\",\"ids\":[\"muster_a\",\"muster_b\"],\"key\":\"[\\\"household\\\",[\\\"muster_a\\\",\\\"muster_b\\\"]]\"},\"completedAt\":\"2026-10-01T10:00:00.000Z\"}}}",
+          "profile_care_grade_today": "2",
+          "profile_care_additional_monthly": "100",
+          "profile_care_allowance_as_income": "true",
+          "sim_pflegeStufe2Form": "family",
+          "sim_pflegeStufe3Form": "external",
+          "sim_pflegeStufe4Form": "external",
+          "sim_pflegeStufe5Form": "external",
+          "profile_sonstige_einkuenfte": "123",
+          "profile_planned_inflows_v1": "{\"schemaVersion\": 1, \"entries\": [{\"year\": 2028, \"amount\": 5000, \"label\": \"Altzahlung\"}]}"
+        }
+      },
+      "muster_b": {
+        "meta": {
+          "id": "muster_b",
+          "name": "Erika",
+          "belongsToHousehold": true,
+          "createdAt": "2025-01-01T12:00:00Z",
+          "updatedAt": "2025-01-01T12:00:00Z"
+        },
+        "data": {
+          "profile_person_schema_version": "1",
+          "profile_geburtsdatum": "1961-08-22",
+          "profile_geschlecht": "w",
+          "profile_rentenbeginn": "2027-07-01",
+          "profile_rentenanpassung_art": "wage",
+          "profile_rentenanpassung_pct": "0",
+          "profile_kirchensteuer_pct": "0",
+          "profile_sparer_pauschbetrag": "1000",
+          "profile_rente_steuerquote_pct": "80",
+          "profile_rente_monatlich": "1600",
+          "profile_tagesgeld": "12000",
+          "profile_gold_aktiv": "false",
+          "profile_gold_steuerfrei": "false",
+          "profile_gold_ziel_pct": "0",
+          "profile_gold_floor_pct": "0",
+          "profile_gold_rebal_band": "25",
+          "profile_cash_history_v1": "{\"version\":1,\"baselineValue\":10000,\"entries\":[{\"date\":\"2025-01-01\",\"value\":11000},{\"date\":\"2026-01-01\",\"value\":12000},{\"date\":\"2026-10-01\",\"value\":12000}]}",
+          "profile_wealth_history_lots_v1": "{\"version\":1,\"lots\":{\"muster_b_lot_1\":{\"tranche\":{\"schemaVersion\":2,\"trancheId\":\"muster_b_lot_1\",\"name\":\"Muster Aktien-ETF\",\"type\":\"aktien_alt\",\"category\":\"equity\",\"ticker\":\"VWRL.DE\",\"isin\":\"IE00B3RBWM25\",\"shares\":1847.2315068054434,\"purchasePrice\":53.250829,\"currentPrice\":86.616106,\"asOf\":1792713600,\"purchaseDate\":\"2016-06-15\",\"tqf\":0.3,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":160000,\"costBasis\":98366.60909230901,\"instrumentId\":\"isin:IE00B3RBWM25\"},\"remainingShares\":1847.2315068054434,\"status\":\"present\",\"capturedAt\":\"2025-01-01\"},\"muster_b_lot_2\":{\"tranche\":{\"schemaVersion\":2,\"trancheId\":\"muster_b_lot_2\",\"name\":\"Muster Aktien-ETF\",\"type\":\"aktien_neu\",\"category\":\"equity\",\"ticker\":\"VWCE.DE\",\"isin\":\"IE00BK5BQT80\",\"shares\":1245.93530910063,\"purchasePrice\":132.801431,\"currentPrice\":144.46978,\"asOf\":1792713600,\"purchaseDate\":\"2025-02-14\",\"tqf\":0.3,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":180000,\"costBasis\":165461.991981991,\"instrumentId\":\"isin:IE00BK5BQT80\"},\"remainingShares\":1245.93530910063,\"status\":\"present\",\"capturedAt\":\"2025-01-01\"},\"muster_b_lot_3\":{\"tranche\":{\"schemaVersion\":2,\"trancheId\":\"muster_b_lot_3\",\"name\":\"Muster Geldmarkt\",\"type\":\"geldmarkt\",\"category\":\"money_market\",\"ticker\":\"XEON.DE\",\"isin\":\"LU0290358497\",\"shares\":197.56592035948174,\"purchasePrice\":116.070752,\"currentPrice\":121.478441,\"asOf\":1792713600,\"purchaseDate\":\"2024-04-12\",\"tqf\":0,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":24000,\"costBasis\":22931.624945697156,\"instrumentId\":\"isin:LU0290358497\"},\"remainingShares\":197.56592035948174,\"status\":\"present\",\"capturedAt\":\"2025-01-01\"}}}",
+          "depot_tranchen": "[{\"schemaVersion\":2,\"trancheId\":\"muster_b_lot_1\",\"name\":\"Muster Aktien-ETF\",\"type\":\"aktien_alt\",\"category\":\"equity\",\"ticker\":\"VWRL.DE\",\"isin\":\"IE00B3RBWM25\",\"shares\":1847.2315068054434,\"purchasePrice\":53.250829,\"currentPrice\":86.616106,\"asOf\":1792713600,\"purchaseDate\":\"2016-06-15\",\"tqf\":0.3,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":160000,\"costBasis\":98366.60909230901,\"instrumentId\":\"isin:IE00B3RBWM25\"},{\"schemaVersion\":2,\"trancheId\":\"muster_b_lot_2\",\"name\":\"Muster Aktien-ETF\",\"type\":\"aktien_neu\",\"category\":\"equity\",\"ticker\":\"VWCE.DE\",\"isin\":\"IE00BK5BQT80\",\"shares\":1245.93530910063,\"purchasePrice\":132.801431,\"currentPrice\":144.46978,\"asOf\":1792713600,\"purchaseDate\":\"2025-02-14\",\"tqf\":0.3,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":180000,\"costBasis\":165461.991981991,\"instrumentId\":\"isin:IE00BK5BQT80\"},{\"schemaVersion\":2,\"trancheId\":\"muster_b_lot_3\",\"name\":\"Muster Geldmarkt\",\"type\":\"geldmarkt\",\"category\":\"money_market\",\"ticker\":\"XEON.DE\",\"isin\":\"LU0290358497\",\"shares\":197.56592035948174,\"purchasePrice\":116.070752,\"currentPrice\":121.478441,\"asOf\":1792713600,\"purchaseDate\":\"2024-04-12\",\"tqf\":0,\"taxExempt\":false,\"notes\":\"Synthetischer Musterbestand\",\"marketValue\":24000,\"costBasis\":22931.624945697156,\"instrumentId\":\"isin:LU0290358497\"}]",
+          "ruhestandsmodellValues_v29_guardrails": "{\"inputs\":{\"profilName\":\"Erika\",\"tagesgeld\":12000,\"geldmarktEtf\":24000,\"depotwertAlt\":160000,\"depotwertNeu\":180000,\"floorBedarf\":30000,\"flexBedarf\":30000,\"minimumFlexAnnual\":7500,\"flexBudgetAnnual\":0,\"flexBudgetYears\":0,\"flexBudgetRecharge\":0,\"liquidityRunwayYears\":5,\"maxSkimPctOfEq\":0,\"maxBearRefillPctOfEq\":0,\"goGoMultiplier\":1,\"capeRatio\":25,\"inflation\":2,\"endeVJ\":143,\"endeVJ_1\":131,\"endeVJ_2\":132,\"endeVJ_3\":130,\"ath\":143,\"jahreSeitAth\":0,\"goldAktiv\":false,\"goldBestand\":0,\"goldZielProzent\":0,\"goldFloorProzent\":0,\"rebalancingBand\":25},\"profilverbundHouseholdInputs\":{\"profilName\":\"Erika\",\"tagesgeld\":30000,\"geldmarktEtf\":60000,\"depotwertAlt\":340000,\"depotwertNeu\":360000,\"floorBedarf\":30000,\"flexBedarf\":30000,\"minimumFlexAnnual\":7500,\"flexBudgetAnnual\":0,\"flexBudgetYears\":0,\"flexBudgetRecharge\":0,\"liquidityRunwayYears\":5,\"maxSkimPctOfEq\":0,\"maxBearRefillPctOfEq\":0,\"goGoMultiplier\":1,\"capeRatio\":25,\"inflation\":2,\"endeVJ\":143,\"endeVJ_1\":131,\"endeVJ_2\":132,\"endeVJ_3\":130,\"ath\":143,\"jahreSeitAth\":0,\"goldAktiv\":false,\"goldBestand\":0,\"goldZielProzent\":0,\"goldFloorProzent\":0,\"rebalancingBand\":25},\"annualPeriodMetadata\":{\"schemaVersion\":1,\"lastCommittedPeriod\":\"calendar-year:2025\",\"pendingCommit\":null},\"lastState\":{\"cumulativeInflationFactor\":1},\"wealthHistory\":{\"schemaVersion\":1,\"entries\":[{\"id\":\"manual:2026-01-01\",\"asOf\":\"2026-01-01\",\"reason\":\"manual\",\"periodId\":null,\"tagesgeld\":12000,\"geldmarktEtf\":23653.605301042677,\"depotwertAlt\":154763.39977694218,\"depotwertNeu\":178515.26872955717,\"aktienEtf\":333278.6685064994,\"total\":368932.27380754205}]}}",
+          "overview_balance_summary_v1": "{\"version\":1,\"entries\":{\"[2026,\\\"[\\\\\\\"household\\\\\\\",[\\\\\\\"muster_a\\\\\\\",\\\\\\\"muster_b\\\\\\\"]]\\\"]\":{\"year\":2026,\"scope\":{\"kind\":\"household\",\"ids\":[\"muster_a\",\"muster_b\"],\"key\":\"[\\\"household\\\",[\\\"muster_a\\\",\\\"muster_b\\\"]]\"},\"monthlyWithdrawal\":2700,\"monthlyBudget\":5000,\"status\":\"fest\",\"createdAt\":\"2026-01-01T11:00:00.000Z\"}}}",
+          "overview_month_provision_v1": "{\"version\":1,\"entries\":{\"[\\\"2026-09\\\",\\\"[\\\\\\\"household\\\\\\\",[\\\\\\\"muster_a\\\\\\\",\\\\\\\"muster_b\\\\\\\"]]\\\"]\":{\"month\":\"2026-09\",\"scope\":{\"kind\":\"household\",\"ids\":[\"muster_a\",\"muster_b\"],\"key\":\"[\\\"household\\\",[\\\"muster_a\\\",\\\"muster_b\\\"]]\"},\"completedAt\":\"2026-10-01T10:00:00.000Z\"}}}",
+          "profile_care_grade_today": "3",
+          "profile_care_additional_monthly": "100",
+          "profile_care_allowance_as_income": "true",
+          "sim_pflegeStufe2Form": "family",
+          "sim_pflegeStufe3Form": "external",
+          "sim_pflegeStufe4Form": "external",
+          "sim_pflegeStufe5Form": "external",
+          "profile_sonstige_einkuenfte": "123",
+          "profile_planned_inflows_v1": "{\"schemaVersion\": 1, \"entries\": [{\"year\": 2028, \"amount\": 5000, \"label\": \"Altzahlung\"}]}"
+        }
+      }
+    }
+  },
+  "globals": {}
+}

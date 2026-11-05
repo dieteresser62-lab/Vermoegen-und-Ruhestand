@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="900" viewBox="0 0 1120 900" role="img" aria-labelledby="title desc" data-source-sha256="e69aad048075c76af07eb89abceb16dba71e93f766271ec2bd721b9b18854bd9">
+<title id="title">Heimverkauf und Notverkauf</title>
+<desc id="desc">Verkäufliches Eigentum wird regulär verkauft, wenn alle Lebenden ab Pflegegrad 4 im Heim sind. Sonst kann eine Geldlücke einen einzelnen Notverkauf auslösen. Beide liefern 90 Prozent Erlös; nur Notverkauf bei Selbstnutzung ergänzt Wohnmiete.</desc>
+<rect width="1120" height="900" rx="12" fill="#f1f2ee"/>
+<text x="560.0" y="38" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#1d2830"><tspan x="560.0" dy="0">Heimverkauf und Notverkauf</tspan></text>
+<rect x="410" y="80" width="300" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="560.0" y="127.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="560.0" dy="0">Verkäufliches Eigentum</tspan></text>
+<rect x="410" y="215" width="300" height="80" rx="10" fill="#f2e9d4" stroke="#b8954f" stroke-width="2"/>
+<text x="560.0" y="249.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="560.0" dy="0">Alle Lebenden</tspan><tspan x="560.0" dy="27">Grad 4+ im Heim?</tspan></text>
+<rect x="40" y="400" width="300" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="190.0" y="447.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="190.0" dy="0">Heimverkauf</tspan></text>
+<rect x="780" y="400" width="300" height="80" rx="10" fill="#f2e9d4" stroke="#b8954f" stroke-width="2"/>
+<text x="930.0" y="434.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="930.0" dy="0">Geldlücke oder</tspan><tspan x="930.0" dy="27">drohender Ruin?</tspan></text>
+<rect x="780" y="580" width="300" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="930.0" y="627.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="930.0" dy="0">Einzelner Notverkauf</tspan></text>
+<rect x="410" y="580" width="300" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="560.0" y="614.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="560.0" dy="0">Eigentum und</tspan><tspan x="560.0" dy="27">Miete behalten</tspan></text>
+<rect x="40" y="760" width="300" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="190.0" y="794.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="190.0" dy="0">90 % Erlös</tspan><tspan x="190.0" dy="27">Nettomiete endet</tspan></text>
+<rect x="780" y="760" width="300" height="80" rx="10" fill="#ffffff" stroke="#d8dbd3" stroke-width="2"/>
+<text x="930.0" y="794.0" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#1d2830"><tspan x="930.0" dy="0">Wohnmiete zum</tspan><tspan x="930.0" dy="27">Grundbedarf</tspan></text>
+<polyline points="560,160 560,215" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="560,215 565.0,204.0 555.0,204.0" fill="#7a5a1f"/>
+<polyline points="410,255 190,255 190,400" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="190,400 195.0,389.0 185.0,389.0" fill="#7a5a1f"/>
+<text x="225" y="324" text-anchor="start" font-family="sans-serif" font-size="17" fill="#1d2830"><tspan x="225" dy="0">Ja, außerhalb</tspan><tspan x="225" dy="27">des Todesjahrs</tspan></text>
+<polyline points="710,255 930,255 930,400" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="930,400 935.0,389.0 925.0,389.0" fill="#7a5a1f"/>
+<text x="740" y="324" text-anchor="start" font-family="sans-serif" font-size="17" fill="#1d2830"><tspan x="740" dy="0">Nein oder vor Ruin</tspan><tspan x="740" dy="27">im Todesjahr</tspan></text>
+<polyline points="930,480 930,580" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="930,580 935.0,569.0 925.0,569.0" fill="#7a5a1f"/>
+<text x="950" y="535" text-anchor="middle" font-family="sans-serif" font-size="17" fill="#1d2830"><tspan x="950" dy="0">Ja</tspan></text>
+<polyline points="780,440 560,440 560,580" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="560,580 565.0,569.0 555.0,569.0" fill="#7a5a1f"/>
+<text x="590" y="485" text-anchor="middle" font-family="sans-serif" font-size="17" fill="#1d2830"><tspan x="590" dy="0">Nein</tspan></text>
+<polyline points="190,480 190,760" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="190,760 195.0,749.0 185.0,749.0" fill="#7a5a1f"/>
+<polyline points="780,620 735,620 735,710 190,710 190,760" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="190,760 195.0,749.0 185.0,749.0" fill="#7a5a1f"/>
+<polyline points="930,660 930,760" fill="none" stroke="#7a5a1f" stroke-width="2.5" stroke-linejoin="round"/>
+<polygon points="930,760 935.0,749.0 925.0,749.0" fill="#7a5a1f"/>
+<text x="1005" y="710" text-anchor="middle" font-family="sans-serif" font-size="16" fill="#1d2830"><tspan x="1005" dy="0">Selbstnutzung</tspan></text>
+<text x="560" y="873" text-anchor="middle" font-family="sans-serif" font-size="17" fill="#1d2830"><tspan x="560" dy="0">Pfeile: Bedingungen und Geldfolgen · Lebenszeitregeln können den Verkauf sperren</tspan></text>
+</svg>

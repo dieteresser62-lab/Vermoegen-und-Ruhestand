@@ -1,0 +1,179 @@
+{
+  "testDate": "2026-10-23",
+  "seed": 12345,
+  "paths": 2000,
+  "twoHomes": {
+    "before": {
+      "testDate": "2026-10-23",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "emergencyPaths": 24,
+      "emergencyEvents": 24,
+      "singleHomeEvents": 0,
+      "soldHomes": 48,
+      "soldHomesPerEmergency": 2,
+      "distribution": {
+        "2": 24
+      },
+      "ruin": 3,
+      "technical": 0,
+      "coveredPct": 99.85000000000001,
+      "completeOutputSha256": "0d323cd751a8a00c48244cd0b11f6a83d2cc50ceaca0b57debeb04f6626faf34",
+      "noHomeNoDeathSha256": "e9b57dbe7c4815dc6b6c97564dacef1cd193d0d86079be7276c8a7b0a6e3a268",
+      "singleHomeNoDeathSha256": "50e4a426f019371f4660007ba8319ba2993784047371d8ea5c9ea23624b52a3c"
+    },
+    "after": {
+      "testDate": "2026-10-23",
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "emergencyPaths": 24,
+      "emergencyEvents": 29,
+      "singleHomeEvents": 29,
+      "soldHomes": 29,
+      "soldHomesPerEmergency": 1,
+      "distribution": {
+        "1": 29
+      },
+      "ruin": 4,
+      "technical": 0,
+      "coveredPct": 99.8,
+      "completeOutputSha256": "52823a90c967c7a4db1ef7bcc86332606d19fe97e91365597b2b88187cadee26",
+      "noHomeNoDeathSha256": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295",
+      "singleHomeNoDeathSha256": "ac6ee06af589260e761740c000ff3cd1102ffca658c27350df32e3df9d93556a"
+    }
+  },
+  "synthetic": {
+    "before": {
+      "B1": {
+        "equitySold": 145.2867864766231,
+        "tax": 145.2867864766233,
+        "moneyMarketLeft": 9000,
+        "shortfall": 2.842170943040401e-14
+      },
+      "B2": {
+        "extraTax": 131.875,
+        "annualTax": 131.875
+      },
+      "B11": {
+        "leaves": 0,
+        "accounts": 2
+      },
+      "B12": {
+        "kind": "success",
+        "healthUsed": 0,
+        "equitySold": 9000,
+        "flow": 0,
+        "forced": {
+          "phase": "after_forced_sales",
+          "total": 140000,
+          "equity": 91000,
+          "bonds": 0,
+          "gold": 0,
+          "cash": 49000,
+          "forcedShortfall": 2389.7954967981786,
+          "liquiditaetDelta": 9000,
+          "personalPayoutCoverage": 6610.204503201821,
+          "healthBucketUsed": 0
+        }
+      }
+    },
+    "after": {
+      "B1": {
+        "equitySold": 0,
+        "tax": 151.90784736800748,
+        "moneyMarketLeft": 8848.092152659658,
+        "shortfall": 2.7666203550325008e-08
+      },
+      "B2": {
+        "extraTax": 0,
+        "annualTax": 0
+      },
+      "B11": {
+        "leaves": 100000,
+        "accounts": 1,
+        "survivor": {
+          "deathYearIndex": 0,
+          "deceasedProfileId": "muster_a",
+          "survivorProfileId": "muster_b"
+        },
+        "nextDeath": false
+      },
+      "B12": {
+        "kind": "success",
+        "healthUsed": 9000,
+        "equitySold": 0,
+        "flow": 0,
+        "forced": {
+          "phase": "after_forced_sales",
+          "total": 149000,
+          "equity": 100000,
+          "bonds": 0,
+          "gold": 0,
+          "cash": 49000,
+          "forcedShortfall": 0,
+          "liquiditaetDelta": 0,
+          "healthBucketUsed": 9000
+        }
+      }
+    }
+  },
+  "unchangedCompleteYears": [
+    {
+      "quietKind": "success",
+      "noHomeNoDeath": "e64a989dea84fb77f552a1ba1cad1f2d5f9c1a7780f35d3dd94c0d6373059eff",
+      "singleHomeKind": "success",
+      "singleHome": "cdfbc6461ac1c53e28b11c8920b8e78ec7f7117dd236412d356c2a46a05895eb"
+    },
+    {
+      "quietKind": "success",
+      "noHomeNoDeath": "e64a989dea84fb77f552a1ba1cad1f2d5f9c1a7780f35d3dd94c0d6373059eff",
+      "singleHomeKind": "success",
+      "singleHome": "cdfbc6461ac1c53e28b11c8920b8e78ec7f7117dd236412d356c2a46a05895eb"
+    }
+  ],
+  "singleHomeMeasurement": {
+    "before": {
+      "emergencyPaths": 35,
+      "ruin": 2,
+      "technical": 0
+    },
+    "after": {
+      "emergencyPaths": 35,
+      "ruin": 2,
+      "technical": 0
+    }
+  },
+  "pg4Measurement": {
+    "before": {
+      "ruin": 51,
+      "technical": 0
+    },
+    "after": {
+      "ruin": 51,
+      "technical": 0
+    }
+  },
+  "limits": [
+    "Der volle Max/Erika-Backtest ohne Haus und ohne Tod ist wegen der ausdrücklich korrigierten Auszahlungsverteilung B9 und der persönlichen Restverteilung nicht bytegleich. Die unbetroffenen vollständigen Jahresfälle sind bytegleich.",
+    "Die PG4-Ausgangsmessung ergibt auf dieser Laufzeit 51 statt der im Auftrag genannten 50 Ruinfälle."
+  ],
+  "isolatedEmergencySale": {
+    "scope": "Nur Einzelnotverkauf geändert, übrige Korrekturen ausdrücklich getrennt gehalten; vollständige Ergebnisse von 26 historischen Jahren.",
+    "noHomeNoDeathSha256": "e9b57dbe7c4815dc6b6c97564dacef1cd193d0d86079be7276c8a7b0a6e3a268",
+    "singleHomeNoDeathSha256": "50e4a426f019371f4660007ba8319ba2993784047371d8ea5c9ea23624b52a3c"
+  }
+}

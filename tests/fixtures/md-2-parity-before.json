@@ -1,0 +1,176 @@
+{
+  "runtime": {
+    "node": "v22.23.2",
+    "platform": "linux"
+  },
+  "params": {
+    "anzahl": 50,
+    "maxDauer": 35,
+    "blockSize": 5,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "cases": {
+    "block/no-home": {
+      "hashes": {
+        "totals": "75e1f56246bee1a972a1a697d1e2c237be07baa3ef6aa60721aaec073e2ed483",
+        "lists": "26c4a3b22064ff6d28ef93a75d727dcfe1eb43cb513e94165464ed3799c6a08a",
+        "pathSummaries": "314b9a6cf03df9f710903af03ae588a1123daaa553cb89597102678f3c422c98",
+        "heatmap": "02703fc4ec9224774f8182028d727c232ceec648f83c3153d018e8eaf09b5366",
+        "combined": "c6be4b46d4c51b5674b4fc2f621fa441840c76d3331d68991498d796405f1f1f"
+      },
+      "characteristicIndices": [
+        10,
+        18,
+        38,
+        23,
+        49,
+        26,
+        39,
+        31,
+        27,
+        30,
+        22,
+        29
+      ]
+    },
+    "regime_markov/no-home": {
+      "hashes": {
+        "totals": "341ee9f1187555d72a4b005ba0974f9ea9f64570567244e7659caee11802d45d",
+        "lists": "af377b60011de2473162cf294bb1fe9a1b59458efbe37b18ee15080e25372153",
+        "pathSummaries": "8650288cf6735024bc3c0152f93ab72ab1c572628c7cd075d3ce127aab335bc4",
+        "heatmap": "91683524ba55cdc27c4d0c6f2c1b44097e7ac6f63ede9fedebd51cd64c44e1d7",
+        "combined": "36916e7ca1c729d7c32ff87d14b0532cbfbf26fa27be9917fbd165a6ef5a1af6"
+      },
+      "characteristicIndices": [
+        31,
+        6,
+        34,
+        1,
+        18,
+        23,
+        43,
+        17,
+        35,
+        22,
+        47
+      ]
+    },
+    "regime_iid/no-home": {
+      "hashes": {
+        "totals": "b765738a15a04ad6cd7ab738997bda1e3f98f1e58f42b031a696de9fe7a1efcc",
+        "lists": "4bfe45608cf5df85bf8a0abef26b82184d60b16aa70d1fb70debdbc4050f7557",
+        "pathSummaries": "9958dd1ff879ee8d10354d5e95332d08776ab23b7e69b2b8d42459f62f76cd0c",
+        "heatmap": "5b5396a38adecf0867e2c80178ea776ecad15d82e58f6cfc1738409828dbf702",
+        "combined": "7e67ae2496b104b36127abaa41be8910bbe8f42bbc23ef9c499daa7aa8d9bd1e"
+      },
+      "characteristicIndices": [
+        29,
+        49,
+        31,
+        4,
+        26,
+        45,
+        35,
+        43,
+        17,
+        22,
+        47,
+        39
+      ]
+    },
+    "stationary/no-home": {
+      "hashes": {
+        "totals": "aa9cc3a81bf83c28fdd3b1983f6729acd2ba2b91214f02c05996b41f95989e2f",
+        "lists": "526f4e9d7782dc0c99ce5e87a0ff88e6fd5f4dd0b541aa7866c7ee1c71f66c50",
+        "pathSummaries": "29d1a955a7a4cfd01ef4484a3f35501d88afbe86d2077102838db375ab601ef4",
+        "heatmap": "0d0135d57fc93f4b71a858336bf28c7c81c11105e9e41cabd1026764a253fa70",
+        "combined": "5a2d32c3a61bb538222be23462c36c3cd6ecbd75564e55807d81df04861f5e07"
+      },
+      "characteristicIndices": [
+        30,
+        29,
+        2,
+        34,
+        14,
+        32,
+        5,
+        13,
+        21,
+        15,
+        22,
+        49
+      ]
+    },
+    "block/home": {
+      "hashes": {
+        "totals": "172842930ed19a12f296337d450aad4e9f525c7ef4590855b43539e6cb1766a5",
+        "lists": "913810f0777ff23b75c70280a6cf7b0684c23b96d39c37524d36bc6c9415c5aa",
+        "pathSummaries": "67816ad7d43f90d3eb36ae358a92dc9f2378ef5662d6300bcafaf765a5e5abad",
+        "heatmap": "02703fc4ec9224774f8182028d727c232ceec648f83c3153d018e8eaf09b5366",
+        "combined": "9fa6e0ab43e785aa171a0d99badfb85658bb300b17db585700fcbcae3aea06de"
+      },
+      "characteristicIndices": [
+        10,
+        46,
+        34,
+        0,
+        49,
+        26,
+        39,
+        31,
+        27,
+        30,
+        22,
+        29
+      ]
+    },
+    "regime_markov/home": {
+      "hashes": {
+        "totals": "341ee9f1187555d72a4b005ba0974f9ea9f64570567244e7659caee11802d45d",
+        "lists": "d83d2448c61165db083483cbf7837275ef0d07fec9606c28d93eba3441c0720a",
+        "pathSummaries": "3a060ec7011b6d0390d573833f952edacb290749ed0ceebe1127bf845288ae3e",
+        "heatmap": "91683524ba55cdc27c4d0c6f2c1b44097e7ac6f63ede9fedebd51cd64c44e1d7",
+        "combined": "d1aba53eee14c195fba2b69c5558b04ca1913a06eadfa06a849c2f85e828a8f4"
+      },
+      "characteristicIndices": [
+        31,
+        6,
+        34,
+        1,
+        20,
+        23,
+        11,
+        17,
+        35,
+        22,
+        47
+      ]
+    },
+    "regime_iid/home": {
+      "hashes": {
+        "totals": "1ea7747ff709e66abaa16ecc91bae6196b4bcf466130b6e1019e031030a7ef7a",
+        "lists": "4e4f817798ed34571cd104d2a963d1ca0acb4f942ee07056b3a46cbcdf3adc43",
+        "pathSummaries": "89ff45c6a819cb92b473ba32d84cf1da2d5680e661872d7f8ee6acdcac1fe3ff",
+        "heatmap": "5b5396a38adecf0867e2c80178ea776ecad15d82e58f6cfc1738409828dbf702",
+        "combined": "8b8470bd84d78a39a77469220e7227d4ff160b7c74bcdceffb0554b6408be655"
+      },
+      "characteristicIndices": [
+        29,
+        49,
+        31,
+        4,
+        40,
+        46,
+        28,
+        43,
+        17,
+        22,
+        47,
+        39
+      ]
+    }
+  }
+}

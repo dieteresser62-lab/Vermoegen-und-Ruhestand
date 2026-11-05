@@ -1,0 +1,169 @@
+{
+  "baselineRevision": "7f2740be5d28c71eef8b78a9b703402840984252",
+  "date": "2026-10-23",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "basis": "Ausschließlich synthetische App-Muster. Vollständige Chunk-Hashes einschließlich aller 2000 Pfadlogs, in 100er-Chunks; Backtest 2000–2025. Renate: selbst genutzte Wohnung 300000 EUR, heutiger Pflegegrad 3 üblich. Steuer nominal; betroffene 2027-Pfade haben Wohnungserlös, Aktienkauf, Aktienverkauf und Anleihenauffüllung zugleich.",
+  "byteEqual": true,
+  "before": {
+    "helga-werner": {
+      "inputsHash": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+      "chunksHash": "770236903db2d184418144669c0791ae365d17175fb947cfd8b460805302e281",
+      "backtestHash": "dffc86dd2c68464cec5a5a8de75ba27379030953feda1087904bb232f7bfab7b",
+      "technical": 0
+    },
+    "max-erika": {
+      "inputsHash": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+      "chunksHash": "74dcb320648e0a1fd9799cd844ebcf8758a93dae50bbc80d51de78d7d9314ad4",
+      "backtestHash": "e9b57dbe7c4815dc6b6c97564dacef1cd193d0d86079be7276c8a7b0a6e3a268",
+      "technical": 0
+    },
+    "jan-lena": {
+      "inputsHash": "ae072253d19ccc31f66cc104e44b7aefffebc282c59814d63d21aea8590ebb47",
+      "chunksHash": "87503d99b4ce1de66b050382385f45adc07d8141dd4281e760089f7f73761c69",
+      "backtestHash": "ac0712e0a39733a392c8461c82616804e1072f7c3135ba15ab9fd9b6c485385e",
+      "technical": 0
+    },
+    "sophie": {
+      "inputsHash": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+      "chunksHash": "75019540c4803e4f9fa93efc2b7e163af2bbea971aca41e57e6836b78e1c13c4",
+      "backtestHash": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341",
+      "technical": 0
+    },
+    "renate": {
+      "inputsHash": "f157e0a9695cd069bfa47d7126149bbe8b43f5e5f16bffe6b6d2525ac08c7db0",
+      "chunksHash": "836e9c43c1d2e70872707ede2044f752f4e090a784076cc62401179b36626c59",
+      "backtestHash": "e6d150b08c93b44d3a873d01dec5a5b1a4584fda0e87e26bad6b47bc6d1d64f7",
+      "technical": 0,
+      "affected2027Paths": 228,
+      "taxable2027Paths": 226,
+      "medianAffectedEquityTaxNominal": 3184.7020444222353,
+      "medianAll2027EquityTaxNominal": 0,
+      "examples": [
+        {
+          "simulationYear": 2,
+          "homeSale": 272177.41943723644,
+          "equitySale": 47014.02956679699,
+          "equityBuy": 110000,
+          "refillGross": 47014.02956679699,
+          "refillNet": 46454.88339361007,
+          "equityTax": 559.1461731869214,
+          "inflationFactor": 1.008064516434209
+        },
+        {
+          "simulationYear": 2,
+          "homeSale": 274860,
+          "equitySale": 58358.22344788214,
+          "equityBuy": 109999.99999999993,
+          "refillGross": 58358.22344788214,
+          "refillNet": 55576.45999999999,
+          "equityTax": 2781.763447882145,
+          "inflationFactor": 1.018
+        },
+        {
+          "simulationYear": 2,
+          "homeSale": 278100,
+          "equitySale": 54199.962088126566,
+          "equityBuy": 120000,
+          "refillGross": 54199.962088126566,
+          "refillNet": 51347.84,
+          "equityTax": 2852.122088126567,
+          "inflationFactor": 1.03
+        }
+      ]
+    }
+  },
+  "after": {
+    "helga-werner": {
+      "inputsHash": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+      "chunksHash": "770236903db2d184418144669c0791ae365d17175fb947cfd8b460805302e281",
+      "backtestHash": "dffc86dd2c68464cec5a5a8de75ba27379030953feda1087904bb232f7bfab7b",
+      "technical": 0
+    },
+    "max-erika": {
+      "inputsHash": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+      "chunksHash": "74dcb320648e0a1fd9799cd844ebcf8758a93dae50bbc80d51de78d7d9314ad4",
+      "backtestHash": "e9b57dbe7c4815dc6b6c97564dacef1cd193d0d86079be7276c8a7b0a6e3a268",
+      "technical": 0
+    },
+    "jan-lena": {
+      "inputsHash": "ae072253d19ccc31f66cc104e44b7aefffebc282c59814d63d21aea8590ebb47",
+      "chunksHash": "87503d99b4ce1de66b050382385f45adc07d8141dd4281e760089f7f73761c69",
+      "backtestHash": "ac0712e0a39733a392c8461c82616804e1072f7c3135ba15ab9fd9b6c485385e",
+      "technical": 0
+    },
+    "sophie": {
+      "inputsHash": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+      "chunksHash": "75019540c4803e4f9fa93efc2b7e163af2bbea971aca41e57e6836b78e1c13c4",
+      "backtestHash": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341",
+      "technical": 0
+    },
+    "renate": {
+      "inputsHash": "f157e0a9695cd069bfa47d7126149bbe8b43f5e5f16bffe6b6d2525ac08c7db0",
+      "chunksHash": "836e9c43c1d2e70872707ede2044f752f4e090a784076cc62401179b36626c59",
+      "backtestHash": "e6d150b08c93b44d3a873d01dec5a5b1a4584fda0e87e26bad6b47bc6d1d64f7",
+      "technical": 0,
+      "affected2027Paths": 228,
+      "taxable2027Paths": 226,
+      "medianAffectedEquityTaxNominal": 3184.7020444222353,
+      "medianAll2027EquityTaxNominal": 0,
+      "examples": [
+        {
+          "simulationYear": 2,
+          "homeSale": 272177.41943723644,
+          "equitySale": 47014.02956679699,
+          "equityBuy": 110000,
+          "refillGross": 47014.02956679699,
+          "refillNet": 46454.88339361007,
+          "equityTax": 559.1461731869214,
+          "inflationFactor": 1.008064516434209
+        },
+        {
+          "simulationYear": 2,
+          "homeSale": 274860,
+          "equitySale": 58358.22344788214,
+          "equityBuy": 109999.99999999993,
+          "refillGross": 58358.22344788214,
+          "refillNet": 55576.45999999999,
+          "equityTax": 2781.763447882145,
+          "inflationFactor": 1.018
+        },
+        {
+          "simulationYear": 2,
+          "homeSale": 278100,
+          "equitySale": 54199.962088126566,
+          "equityBuy": 120000,
+          "refillGross": 54199.962088126566,
+          "refillNet": 51347.84,
+          "equityTax": 2852.122088126567,
+          "inflationFactor": 1.03
+        }
+      ]
+    }
+  },
+  "smallLotControlDifferences": [
+    [
+      "/drei-topf/states/0/portfolio/depotTranchesAktien/2/tqf",
+      null,
+      0
+    ],
+    [
+      "/drei-topf/states/1/portfolio/depotTranchesAktien/2/tqf",
+      null,
+      0
+    ],
+    [
+      "/drei-topf/states/2/portfolio/depotTranchesAktien/2/tqf",
+      null,
+      0
+    ]
+  ],
+  "smallLotControlExplanation": "Alle vollständigen Ergebnisse der drei Ausgangsfälle verglichen: ausschließlich tqf:0 am automatisch erzeugten Anleihenlot in drei Folgezuständen ergänzt; Finanzwerte und übrige Zustände bytegleich."
+}

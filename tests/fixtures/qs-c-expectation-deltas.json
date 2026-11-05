@@ -1,0 +1,944 @@
+{
+  "reason": "QS-C: Kauf-Teilfreistellung nach vorhandener ETF-Vorlage, verrechnete Restaufträge vor Steuerfortschreibung, Prozentgrenzen, Ansparindexierung/Zinssteuer und gemeinsame Mustererfassungen. Vollfelder erhalten; Kontrolllauf mit den alten betroffenen Modulen muss die alten Referenzen erfüllen.",
+  "hashes": {
+    "be1def46b36b0628cde9402dcbe84d7a25fa2d61ed95131a6e1efc25d1f7e60a": "8d50593e620f097048c477efb4e596c22fb3ed4968a94385a78d78bc36129fd9",
+    "92aca73fa4e7eb91394d3c1f2f45c0c828e1ef7d920d6136c494bf4134aa5e0a": "c9ea524e2b117a95dcb0c62cebc4e2d7d0138721d9b04bff8c445066c0d63312",
+    "bef4a750c1990149aef2a4c2db36376eca0c82457896775d102eccfb13623e9b": "07a28ff151003e90b9e2233cd7f3f20c9602452dd44bb6aadba1bbcd4cb620b0",
+    "9eac4d9f8dbafd6edb2d433039933eedf3be7a5f6f00f79f686e7b8b15f204cd": "4fd93d7fb60bbdd0734c6433a7b0738fe61426919c0db2b07e8dfe6b728016be",
+    "0d4a440a1b38f9f0a4655eff1f8f490723d06fbd861408eb43e43a9e6a5a6851": "11ed9915b923463270a79eebfdfd3dbff97bc1292840d3813eee507f089c5b1f",
+    "ea85efe515202f1aada452afc1a22037588b6f1a6cdb2762bd9a265c7fba9244": "134c7ac6f913512f99bb249900a27e75781e6159ef5a6106c9a560c938cf1c9d",
+    "806a0fafecd0a200bd820be5d7a1283ace0a195b4e7cafbac0e944834b7c2b8e": "4c4c752f97c6b618c24683714395a0bbafec1ce7163204930946ef5172184e0e",
+    "27d79ae884b7e0a865f3aeec785f85c9914316d121902549232d2ece7658b495": "bbf6168588e97df21d2f13d953b5033c29597f70586a81e2ccb73255f982ca90",
+    "c2a53ea5ed4b0822a8dac8b445287bdf5b19206d1b9aa29f6f8b0bb86f805510": "d48ea7fcc0d3a922af3f6eed11608dc6823dacf6bebb39fedcfe6ed0e5f4eee7",
+    "f58d6113cca7a6e395800ee6e26215edc1864644206696034cd447c1b09d97d8": "ca856250ce9227c27c16df1904003609cd91cd9122256aee38f9f19bc82a9837",
+    "8a9cbcb4f79753a9f6e22f81015631663036140f26aa937449ac6bb42508b997": "93b2c148796ab162d6f5e377ac7c9b9898a13b4b46f8c267e0518f373686ef28",
+    "0eccb9306f09bdd90bb7f7ec1fa9c4d77f7bf893b266010e81f0b03731950bb8": "93ad84be3a0d84115a4b8099834f60113245afb54adb037a9c6b8726891d0f82",
+    "bfc7ce5dea81a50203ae72bbe80947b6f358954124e1c55597e250dc7eab3170": "ff59979d42b21d5eecb99491c2d63a6c027544b41db9d242e7485a3a69f07f27",
+    "3eb072ee3777c031a3e774cfa7e1b7dd6d9673229a081407aead0aa896ccc48e": "6143aa30c71ecb33f68c0af0b1bd76dff837f9787e068f0e5a5f851f29be3d87",
+    "54ec5a6b2346d0a44a4ff10f6b1bbca983f924085d24a3b03b8812ff2da45817": "732a42febcc36b23a752f0f9dbd110d18b1c86a3b3dbab560e98dcef9c8bb25f",
+    "61a6f8de39dba86d565c919f29c4c053b30b92a6379fb8cfea510919e0fb3bfe": "ff7299184192df2b4c4e46b22d67560f82c409b81a997a4326d6ccd11beed7c0",
+    "166f65bee8ed7745cbbc06766199d35a4761119ca58230c7eea0b385f9004b41": "b2510fe90453bfbb49c725c45490a3788eeba5090e9bbe153035cf04fbd37b14",
+    "6959ff93e2150f14db15065fb894aff3228982599c4d2143ff7ce9c003d8882f": "e9a29aed252a9b44aff3677a7e4b57156d4a4aa0af0f1752f1bffb241349003a",
+    "5804cc4624925644e49f1db6706184e8d831942cdfdd540924e3a6296aa2207f": "58850a6306afd18afd293daa517426310cfda6ae4688f84f18524aff6f9d2baa",
+    "b9ba579cf8cdb56299ab27becaca92cac74ef5172d1b0a835b5d8b1de622d1de": "e005ed979d72efc2d588b6163d6b70741006a5976064fb5c559993a2ea9441a9",
+    "14e73cca1edcccbb116356dd027cbedf1a21bc00af10cc4a3b5a7dc1249b33b3": "66e7f028d91cfd20a7d11f9e8db9c222d9d85b27b9ce47372c9c3e7ab7db3f46",
+    "6caa62cd137e923659cca8bb18e25c57723c1f55dcce42c79594cbe0cc285094": "1a1798efd7dcad843e532e482b919450fe14ffda27b6da682627438ab159fe8f",
+    "6a4a0aad895ee5ea00a7a3c04217897e7a181e9c7070d72273b8414722cf6d35": "2255c7b1d89f4cdca1db38a9058e3c76e2b4c4f7820d6acd6a2ed85494c08df1",
+    "35fbd77e7345c468d33f27d3e112339ae498ab10a5177d892b085c29bd824803": "cd58241bdc5d9614562d4afc7a70751b972a4f9f6c02b23c8a927df256917ed3",
+    "dfc5ce4af25eff6a443cb9f312c3abd33bf943251c9c0e7f788c00c74f72692f": "89a57df223414c4c506d78acecef2693b38c0e6f5c14a0402f69d8d7fd2d9a2f",
+    "fbaf8871e37bef2afc945d33f034620fdf8ea1fa55dd75e1048da0f9523476f7": "21f121ae603a15127b384e0032772abc2a77c62a39b1a91317aaace6a99ee1e7",
+    "15ebf5b59f14243807b49e5fd4cf3239bd8bc80f3be493a857fb1e39fc719262": "6361a47a86e157a54758b10925d04c55ab0aecefad52bae93f329dd45fddfd83",
+    "6eef82b599741d4bf4e09a895d5bbbcba918e2a3ca17c016b609054910d0aa56": "713454c47c84de103489e73552749f8d83e1dd912e7b4340b43e8930cf8384fe",
+    "9008f6726014887dc959effc2bd6540cf2f89ddefad0420028580e023a3b9a68": "2960ba2117d58ae6b9e157c43e3f6ff9b786e3f931ea0c1b39d4c078ff1d2aea",
+    "73ec674306e492e6eb316d87265a6c9a99db77a44199b122799b780e6e0a5e92": "2c3ddae02898b44cf8904b4d9e118dc13e6692aeb3d18d1b2bf6f3949aa67317",
+    "da0f5f9acc47ced75b29c85356e97910d2bd57ee1dc1f145e36ce9cb5a36215b": "5c7490aad88c8947a5c2d63e91d72eac79dab1eac3d1acae83b68e03757c4245",
+    "c82ecfc1f392d75aa13e120a44f8570a8ba08c3fc786e809bec5147a68926a90": "634ab32a633831be2e39666a5a0c18bedf0277bb33f2952c98037f33dc1fea29",
+    "9786992f6355542b6b305a6daf9ad5c4fd2a03ae45b817d7660f3dd7c935fd64": "670eab060b16048160f456aae98d4117a12902a67b2188d01fbe9099b9b5d0f3",
+    "b84ba3df7621738e2ff5575f18aaf4d4ba5fc7bfe17b2ac01283be42c55f8542": "c50ee772c86e619ca234a11fa51ede740d808d3a83f7260fa2c2b4a8adba41d1",
+    "3fe1ef0da0b2e53b942ed57bdcf125469ba57c32ea5a094eecfff7f2c080ce10": "695b42c50fdf249117eae6a344996799fd75c5d5191acc86ebf874e4e2d09c2b",
+    "e48ef7d88db4e7517c0c2b5f9bb3e33d323896d05af2a2e0604710af7c90455c": "36ffc3cfb792fc929fbc10f6d5cbe9f8db57c28f98ec478b3999c5e78e060cb3",
+    "20ab24fd78be60a8b5b2fdb928916e82c6a4815837d588219f7d4f1fac9dc60d": "7c4efa59d512ad77744510aff212f8aa229ec031ef31f29235a14df6f8883d14",
+    "e94fe8a54bc483dee2a35fa90d85f522d94bea957c2ffd5f11ca462b57244c6c": "f3c57428d68b3f914de7f24dba7209cdb87f00169525f0e1fe676a16840f22ac",
+    "d15f20e2c323a31777812d1ce6e1cb700db409c331e21b976181d601fb91a9cd": "1da5b18f1f9ca890ff6a91dbf5d5868a856e8869625dad75e3e94e78d9a5039d",
+    "024f2a2eae89d472db6c6a4c26b6f12ae63d3f5d1c9343ba666caaadb310c3aa": "7c9ccbd200858b544a3ff6f96765347e43513fc85678674111528e9aa54be4b4",
+    "e087719304ac01fc9bf3e69c2376a36b351984591037e9829fcca5d6cc6c9d54": "2acf7eec31999e3f8fafdfd1379c18a77e3dcbbf78425ac79e32adc9c441d049",
+    "7990fd12f6dd4e87685bc2e0a724fa21da3d951a756202f99b3c5d25bd37f1ec": "3bfc5a62479ce0a1917476b326e9b350b171a4a266f95180ea3dd6097853ef5e",
+    "56afdc3d44a8dc6e5d14d9b20517936c28882bd381aee9b1cf082e12078b2280": "2beb019152b0509e3cc0efd9295054061f75e77f80d9dddcf753f204187269e0",
+    "251f66c60ae579c2e67d8674272c53a8d2d31c6583806baabe00cf749ec81cdd": "b5c9d7ba2743c3d71a0e6ef0e5bcf4bf187f379e6932a2ba4d0ded7ffb3780ca",
+    "0ed222171e89f1dca39b382a61c531ad7d7aadc5c2be5455fdfea6cae0c5052f": "5f5ee68ebbfcdbebc646726b69eb58bdc59aa8286bd4c6852dc2f03c48b20018",
+    "8bd60f49daafb235daab4d2e471b3270ccc7464bbdafd728b38292346734b315": "2195a0077abfe5c9e43ff5f70787204526874072ebf251cec6bc2fc605f14209",
+    "e45eea4f6572c8af77d13ef071ed787f6b5d5623677dfdeef9a698bf3f9f823f": "ae7b22de4e3fd6cfa1a4628e17ea38f8afdc00f44cf25f3eadfd86c5b9f6b0d7",
+    "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295": "2aec51b55c33b20036e316c34e1f74f3e59975976d312ab4bc2e0b2cfcc9b134",
+    "1c5daecbda57601346944ee9ac2857984bb8fe38f9c7dac1f2d0e9ca525ffd4b": "28ec660bf15cbbddb70a6a8b89580d9229fe5d8a7797f431780a4a3e4f74649a",
+    "72d10f383fe3550fba91f62bfd06d8326436df55a7484626ac585349c3550a2a": "95d76ab9f04b2800550ad438b06af7bf2d7a5b9e1cf33586612d279bcf8ddfe9",
+    "fdc7121a5f348afe8859033cbf0f846d70befb3898fa64739becadc7f992235c": "d277e7dda73f095c699d795af92b0a81bac1ccd8df13f9d3c5c08683ff421de8",
+    "b74c6aed80211b36fb90fea933aa274976a8fc7f8f924247b5f22c33fcefd8dc": "0a53f9d13f2df896023404018892335c74b7112ed408eae7120bf2f38a4e348d",
+    "3e93ea81cbfb577adcf89ea0ed1af4f04d115fd240d0f87317c1d4a73b064843": "40b28a0cafad9ced3218988648baab7e5717f230f61b384b62ff625827e32ded",
+    "5662808c7b31d20ac5ac9a54b68ed20bd9af15bce416a96f931cbc12c9cfbbb3": "3cf9549aec121f0bd1e1014fddc983cb18c1e65d04deaa72c3b6938bfaf3d489",
+    "8b1a99e24a1a78d0ceae2d8a6a9aa710b1846d34d750c2a66d84810a59f70224": "635aff4b3253e2591577d3a021780a5f8034a28dd0666b4443633b2cd581e3d8",
+    "6e4420068a81ec70ea7ad585c9116aef6819da0e0fe00c2dc75a57f8a024e067": "7770085cb642c8518d423f8209c3bebd08f61748af56c12d555456ca7eb355c7",
+    "e4e46504a1830df8428d924f69d4702adcebe2ab344e4edcd475e23968ff735a": "89e8013cef680da9441e16637b28f7bc7e3f01c75dd2af87ebd91c213e80db0e",
+    "39319aa7c8fad6bf2d6dc98117f252291598d68d2ec25ce7630d355dcef903b6": "977a4ec07f8271e501261efc31c960f12dc8f29965296b511148f519c8d7cb3c",
+    "4e348b32696c10f5ceca6b2d1788337de3a683bf12623696d699d43f5cd5c1e8": "d86e7c16d957aeeb8b9b64fba034992c617b2a7c716eb105a76e1eb8bdd898aa",
+    "6c682ccdada5854362d50f4c9802dc2c032aff84de917f96d31ec400c9382f09": "4dfc754f1d657ca5fb6b9a736525b9d62839c3845808ed0375bb63dcae1fa5b4",
+    "63a63effc3b7a936002e91c2cc744ac92464dc897eee0844c0a52087df323c0a": "40592740869b30b86d5581716fbce6270d29d573e65176156c310bbb0acf70a1",
+    "877464b05783864461ea73c4b0f728892177795252709d3f123048d5dc34e57b": "d8192e4cc28d22c3d7a1b60028e11867632a0a0251a831a0126b19187fd88102",
+    "b043aab08fefd72f8bbceb3014bc5cc1c5f0e327b6204c17d74b672f04eed30f": "776c3c20f093a957c8164991f8fa81d08b42c153def18ad9be6d0dc177b82d0f",
+    "9f397379cd291d06832ffb52ec98fa3c82fe35f13da175721eb99cd0f214cd84": "e6584af2965d54d645ab2f0edf933ec10efe638fdc7a5c48c3b44da33e4ff82d",
+    "ddc1dcd276a3c6100ebb6785a675a2be5631ee37bfea08bbb974e83e1efb0ece": "34786425cecc3d838edadbef41bb4220ea7fa8c1ff75634ec00f63d2470d163f",
+    "a2e836343379da96bea3b24b5656e029b01dc7c937e3623f570eb175deccc341": "5528e970d30d52196453ff3ec4c98da70ae0a60afbc12435ab5983344bd2d0be",
+    "5eab9cf9c77a147cd16f3dc2df638ddf452d7b3ddf460d1552cd43816ccfcf61": "0851779bbfed676368f1a2857e9cfe4dc8e5f8dd55e748388f198b9710432fea",
+    "6047602183cbd7f24f547ef616bcf4df051eef054d8064fe5ef0b78c27a83c86": "d8018f1c6d5d99b9508e42a333568f8b4cc50c342d6dc43251c3b7891554e1a0",
+    "15f645ed5871c88522e87ec403aa380d4cc03f2c7aa1bd5fed64bb6b1a06bc34": "a404fcfacd703c8c32515db24b36cfb2c9e9b05bc88e6f7782809f700f56e709",
+    "3f787a06bee6536a43e4acfbe0bf88182c67d12b773a19fbddb6155d36d4b1d0": "e3cf5f154efb372249eeddc7a463e211e5bff95a27b26ac9a3f967f635c70025",
+    "fcbe5fc879f49df0950edd06c578236b7f35bed36b77077721a888d1eca6189a": "5e47a82e654fd8c5941e60d09dfcf8470dc2fca656d3b3b38cea069155e1ed62",
+    "85255166e0283fc9eb3601739376d15b85862dc2704f7ecfc56184e36590c018": "0541ebd2b38e2a9c06d70afb8ce33fac239161bbb5d573de1b3ad8c8f7e2ee96",
+    "fb45ab0656076c52088b0f84fadb73d1849f0bb2a7349b74768e72a8b8544373": "ed1654781521b610dd1e0d3ee375d11f4565c77ed05fe4fc03558f9d2a1e3cd8",
+    "37deaedca036ecc282fe9ed8e02ebc4cc60f1b983e2fc6b1d453ea14b90e7f73": "ea8805f067fe05c39f4d6fc12e4a11f85dbf93a8ba1ee9230aecd72bdaa7c2a0",
+    "dbd3ce9919e9ec96439b513dd6b6be8dca7cc4abb6da1752a6acf0bb2ec7114f": "bb1d9fe8a302fa8b59600c9b117c60a2a9aeee579008d00c4e5ac239d7d11bea",
+    "07db3e09e4cd573576e2ca8a47948844e511d0526f1a40731aea3d3fc0f1d076": "957c365a17bbb904accfaf15dec2bece029563dab96f8955ace555b9237294bf",
+    "1b31e347f8146bde57f552797776673f3703d9029b44180f024af986c4e0696d": "bcf84c85146f377dea553cacfe44cf228cd7ce9df435b7c4893117c602be426f",
+    "1b140485fad60446ed01abafb14d7f993977f343e571989281e282f338d86b5d": "61a9667aad99b9f15adc89d3264acb5a58bf5a7645521bad05cbfaff27517e2e",
+    "19d7c9520d8ce60981767b05d85ce15ab101f30d2989199d7e19f7962bb4ff26": "e105f3fdd74915dc591ac6ec2da57938084916f57524635e2f9056783779630d",
+    "27b5e519002662fa445fb586c92112fc73d3e80ec1e1c8189684c72c877fe1e8": "8bd1f0de35b98a004dacab18950272689fe7e83843c7d810f1322b494743714c",
+    "888c8fd906af60478f74331dcf24b855a108734fbaa392b8ebc2f16837e93bf2": "f6050d07b4bb2920d9f88a070e19e0998b6408869de359114861ce8379a29ef4",
+    "5e2fb4b2196c7e2261594d5861d68ed668c7da9d2a07caa668cac841b10af9a5": "439af38630f7bcb6a3cdf1c8638e6d39e94a270d9930a0e582e997926b76a5e6",
+    "6bf1b28ab8371cbc8f4f5ab8d958bb686a5017b8bf3d85ac7bebc51d0c2c0f7c": "3d9d0a3af90c3c7289722ee2fff09b664cd429149c3367b31ff5799b0101d67f",
+    "25f08dae8a5dddde939acd7d2f82ddd82ccdde5156f727163afe7dc501f21265": "bc79d5f0c3a7fff44a8dc77fd023a39ce4de530b644e7511712299a3bbcb878c",
+    "af1849c96acb088a8c93f96779aa9fdd002ab88149e6ed73a2394c37e909a140": "601a598395986025ea9e5025753b4a5aaa486ee4403d55073bd190da5a648a26",
+    "b91900ed6626546c2f9b7d92c8c4db7572988dc73907055897351e47590ff4d3": "b9e0ab68b35145f0468c01309bbb07334d133fbaddf671a73fa6ce7cb6202010",
+    "353ab3fbf32343374d3b014f4090ea04d642176f4a249552d1b104c06774f429": "05c6ff39f81525400784deb1f9ffdeb05c36e124b00fd2fa728e143d17ccd9bf",
+    "39fbc3bb7c7093597daa5425fde1016341539b344bf93a153e7447b1353db27e": "4455b7a34e8e647b6ab4c6a4863b813e6864da2e29b202eaa6e9a922549ad596",
+    "987b960dffd5a1fea2942339d7f2d15585ed0fecec074cf00263177ebe13578d": "8882b6edd32d17efe999667b65cc7c5205a60540953732a6f1b015dc6a386149",
+    "7ac7ed6481f4c1ff36b21df08f4f820abeeea1fa2294d3225bf7c4ab31e0b0d6": "76f1e100ccd5d081f87a5894bf0f9ba8a8e2335b854e8aa0f21afd08fa5900ed",
+    "0d60e7153862f471747c6b410270b7be2462e1d99f33c3bb825f72a8f9b2e44a": "e43c129a778fd1ae1b24892fec5cab9d2ab25908f4c9d56b518ac3bbebff5e7c",
+    "b2a2660597ada9d0f31217236beec66005f59d7270aaa8e23bd9db5b35b41619": "d517191c742aa1df7488323bf96119a1449a4ca831fd0f0c599a481580a49966",
+    "5a6299c59fc0c071cf79b154da02e089aad8efe25121ba21f62b470f8f862cb4": "cfcdc02cc915eb136d694129cd1edb53c46a1cdf84b0e6502917244a9d949099",
+    "e5eda3cf2022b148a283d4e7fbe00823b78d7fb93a56945bdb64016477922ad9": "16256dc14088615a69985529691a4a00e4bcddb6f1407a5f2e96301350d50682",
+    "812a5b1aa3fc8960b65849c578249a0b4e592235418737a6b73e428882cf0969": "1fd66493a5d1217071e8a7308ca9d2c3e95308c652ad06cf44c11967c84a2031",
+    "03416b2c9054147a5dea738d481200d82fc34c0a4f26dce9a9ab34dc891e3b13": "2382122eab5e424d20893a6d605971845cab92cde5be930d458c8c91f4cdbdc2",
+    "6741adeea1cd41f725cc14cd1e11b9fcfd1b4092ff6b46979dfa088ebbb68df0": "7616363ebbe893ed94d242488b27dfdfdf8be95510123ea9a0df9973c52b9e11",
+    "25eae35b5b95abb8bf75617f3eb2997ca51c506269282388f2f4421a5744a0ea": "1bda472e42709a023f88413f1e14e3a6f6903b36d8c0b77851f43c5c221b0dce",
+    "33c29b816476152b1c3567c4c0d4293e42df6c395cd977620bfeffe4d6aea55a": "88f09dc220e917bafe587f9b850ff4ab5a60c701f57d572cfb0e838a904d56df",
+    "dd2e8256ae285fd300b7ed79e82cae757692ff16fdaf0bf9fcacf1e3f9526fb7": "aa5683169fe44fc001f290fab7535d8d8c301c5a195741682eb44d1802e03b7d",
+    "5f9fff3ad6e6c518598204ea46fc0cd3261f67b96455754c4b46fc6da8227c05": "a3708e1ef2b8661e278bd0f9f0a7ad73d3a283c6700002de45895a9eb4052d9d",
+    "72da0cf56e47fbc3d3e994714794d16a0f2d80ed903e1aef9ecc0805615ea595": "f16660e5cc0121ce9e9ba93d91b05c5729127849880dc1e86ff2fa82b1561a32",
+    "111eb7a8d1ffbb679e8c565398865f876b08c4ee49682437c6e796303ae45c3d": "1f890576de81843603589925495d0873ed76441846d03364d0fbc931eacda22c",
+    "e64a989dea84fb77f552a1ba1cad1f2d5f9c1a7780f35d3dd94c0d6373059eff": "2a4289fa0332b8b5c2d7359c6c4e3d0aff972efa39b1b172261986210cd3835d",
+    "cdfbc6461ac1c53e28b11c8920b8e78ec7f7117dd236412d356c2a46a05895eb": "dd0e56db1eafa28894c828586185863f3812b31ec9125c6add138aebbc644024"
+  },
+  "numericLeaves": {
+    "mc": 756910,
+    "engineResults": 1066946
+  },
+  "evidence": [
+    {
+      "file": "annual-care-values.test.mjs",
+      "expected": "be1def46b36b0628cde9402dcbe84d7a25fa2d61ed95131a6e1efc25d1f7e60a",
+      "actual": "8d50593e620f097048c477efb4e596c22fb3ed4968a94385a78d78bc36129fd9",
+      "label": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen.no-care.parity"
+    },
+    {
+      "file": "annual-care-values.test.mjs",
+      "expected": "92aca73fa4e7eb91394d3c1f2f45c0c828e1ef7d920d6136c494bf4134aa5e0a",
+      "actual": "c9ea524e2b117a95dcb0c62cebc4e2d7d0138721d9b04bff8c445066c0d63312",
+      "label": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen.no-care.mc"
+    },
+    {
+      "file": "annual-care-values.test.mjs",
+      "expected": "bef4a750c1990149aef2a4c2db36376eca0c82457896775d102eccfb13623e9b",
+      "actual": "07a28ff151003e90b9e2233cd7f3f20c9602452dd44bb6aadba1bbcd4cb620b0",
+      "label": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen.family.parity"
+    },
+    {
+      "file": "annual-care-values.test.mjs",
+      "expected": "9eac4d9f8dbafd6edb2d433039933eedf3be7a5f6f00f79f686e7b8b15f204cd",
+      "actual": "4fd93d7fb60bbdd0734c6433a7b0738fe61426919c0db2b07e8dfe6b728016be",
+      "label": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen.family.mc"
+    },
+    {
+      "file": "annual-care-values.test.mjs",
+      "expected": "0d4a440a1b38f9f0a4655eff1f8f490723d06fbd861408eb43e43a9e6a5a6851",
+      "actual": "11ed9915b923463270a79eebfdfd3dbff97bc1292840d3813eee507f089c5b1f",
+      "label": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen.official.parity"
+    },
+    {
+      "file": "annual-care-values.test.mjs",
+      "expected": "ea85efe515202f1aada452afc1a22037588b6f1a6cdb2762bd9a265c7fba9244",
+      "actual": "134c7ac6f913512f99bb249900a27e75781e6159ef5a6106c9a560c938cf1c9d",
+      "label": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen.official.mc"
+    },
+    {
+      "file": "asset-strategy.test.mjs",
+      "expected": "806a0fafecd0a200bd820be5d7a1283ace0a195b4e7cafbac0e944834b7c2b8e",
+      "actual": "4c4c752f97c6b618c24683714395a0bbafec1ce7163204930946ef5172184e0e",
+      "label": "Max und Erika: vollständige Musterrecords mit belegter FR-57-Anlage"
+    },
+    {
+      "file": "asset-strategy.test.mjs",
+      "expected": "27d79ae884b7e0a865f3aeec785f85c9914316d121902549232d2ece7658b495",
+      "actual": "bbf6168588e97df21d2f13d953b5033c29597f70586a81e2ccb73255f982ca90",
+      "label": "Jan und Lena: vollständige Musterrecords mit belegter FR-57-Anlage"
+    },
+    {
+      "file": "asset-strategy.test.mjs",
+      "expected": "c2a53ea5ed4b0822a8dac8b445287bdf5b19206d1b9aa29f6f8b0bb86f805510",
+      "actual": "d48ea7fcc0d3a922af3f6eed11608dc6823dacf6bebb39fedcfe6ed0e5f4eee7",
+      "label": "Helga und Werner: vollständige Musterrecords mit belegter FR-57-Anlage"
+    },
+    {
+      "file": "asset-strategy.test.mjs",
+      "expected": "f58d6113cca7a6e395800ee6e26215edc1864644206696034cd447c1b09d97d8",
+      "actual": "ca856250ce9227c27c16df1904003609cd91cd9122256aee38f9f19bc82a9837",
+      "label": "Sophie: vollständige Records mit Personenzuordnung im Jahresbeleg"
+    },
+    {
+      "file": "asset-strategy.test.mjs",
+      "expected": "8a9cbcb4f79753a9f6e22f81015631663036140f26aa937449ac6bb42508b997",
+      "actual": "93b2c148796ab162d6f5e377ac7c9b9898a13b4b46f8c267e0518f373686ef28",
+      "label": "Sophie: vollständige Musterrecords mit belegter FR-57-Anlage"
+    },
+    {
+      "file": "care-death-year.test.mjs",
+      "expected": "0eccb9306f09bdd90bb7f7ec1fa9c4d77f7bf893b266010e81f0b03731950bb8",
+      "actual": "93ad84be3a0d84115a4b8099834f60113245afb54adb037a9c6b8726891d0f82",
+      "label": "Tod ohne Pflege: Sterbe- und Folgejahr mit belegten Text- und Nachlassprotokollfolgen"
+    },
+    {
+      "file": "care-price-continuation.test.mjs",
+      "expected": "bfc7ce5dea81a50203ae72bbe80947b6f358954124e1c55597e250dc7eab3170",
+      "actual": "ff59979d42b21d5eecb99491c2d63a6c027544b41db9d242e7485a3a69f07f27",
+      "label": "single-mc: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten"
+    },
+    {
+      "file": "care-price-continuation.test.mjs",
+      "expected": "3eb072ee3777c031a3e774cfa7e1b7dd6d9673229a081407aead0aa896ccc48e",
+      "actual": "6143aa30c71ecb33f68c0af0b1bd76dff837f9787e068f0e5a5f851f29be3d87",
+      "label": "couple-backtest: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten"
+    },
+    {
+      "file": "care-price-continuation.test.mjs",
+      "expected": "54ec5a6b2346d0a44a4ff10f6b1bbca983f924085d24a3b03b8812ff2da45817",
+      "actual": "732a42febcc36b23a752f0f9dbd110d18b1c86a3b3dbab560e98dcef9c8bb25f",
+      "label": "couple-mc: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten"
+    },
+    {
+      "file": "care-price-continuation.test.mjs",
+      "expected": "61a6f8de39dba86d565c919f29c4c053b30b92a6379fb8cfea510919e0fb3bfe",
+      "actual": "ff7299184192df2b4c4e46b22d67560f82c409b81a997a4326d6ccd11beed7c0",
+      "label": "couple-sweep: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten"
+    },
+    {
+      "file": "care-today.test.mjs",
+      "expected": "166f65bee8ed7745cbbc06766199d35a4761119ca58230c7eea0b385f9004b41",
+      "actual": "b2510fe90453bfbb49c725c45490a3788eeba5090e9bbe153035cf04fbd37b14",
+      "label": "none, Paar false: vollständiges MC-Ergebnis mit belegten PA-1-Folgen"
+    },
+    {
+      "file": "care-today.test.mjs",
+      "expected": "166f65bee8ed7745cbbc06766199d35a4761119ca58230c7eea0b385f9004b41",
+      "actual": "b2510fe90453bfbb49c725c45490a3788eeba5090e9bbe153035cf04fbd37b14",
+      "label": "zero, Paar false: vollständiges MC-Ergebnis mit belegten PA-1-Folgen"
+    },
+    {
+      "file": "care-today.test.mjs",
+      "expected": "6959ff93e2150f14db15065fb894aff3228982599c4d2143ff7ce9c003d8882f",
+      "actual": "e9a29aed252a9b44aff3677a7e4b57156d4a4aa0af0f1752f1bffb241349003a",
+      "label": "usual, Paar true: vollständiges MC-Ergebnis mit belegten PA-1-Folgen"
+    },
+    {
+      "file": "care-today.test.mjs",
+      "expected": "5804cc4624925644e49f1db6706184e8d831942cdfdd540924e3a6296aa2207f",
+      "actual": "58850a6306afd18afd293daa517426310cfda6ae4688f84f18524aff6f9d2baa",
+      "label": "usual, Paar true: vollständiger Backtest bytegleich zu vor LV-1"
+    },
+    {
+      "file": "care-today.test.mjs",
+      "expected": "b9ba579cf8cdb56299ab27becaca92cac74ef5172d1b0a835b5d8b1de622d1de",
+      "actual": "e005ed979d72efc2d588b6163d6b70741006a5976064fb5c559993a2ea9441a9",
+      "label": "none, Paar true: vollständiges MC-Ergebnis mit belegten PA-1-Folgen"
+    },
+    {
+      "file": "care-today.test.mjs",
+      "expected": "14e73cca1edcccbb116356dd027cbedf1a21bc00af10cc4a3b5a7dc1249b33b3",
+      "actual": "66e7f028d91cfd20a7d11f9e8db9c222d9d85b27b9ce47372c9c3e7ab7db3f46",
+      "label": "none, Paar true: vollständiger Backtest bytegleich zu vor LV-1"
+    },
+    {
+      "file": "care-today.test.mjs",
+      "expected": "b9ba579cf8cdb56299ab27becaca92cac74ef5172d1b0a835b5d8b1de622d1de",
+      "actual": "e005ed979d72efc2d588b6163d6b70741006a5976064fb5c559993a2ea9441a9",
+      "label": "zero, Paar true: vollständiges MC-Ergebnis mit belegten PA-1-Folgen"
+    },
+    {
+      "file": "care-today.test.mjs",
+      "expected": "6caa62cd137e923659cca8bb18e25c57723c1f55dcce42c79594cbe0cc285094",
+      "actual": "1a1798efd7dcad843e532e482b919450fe14ffda27b6da682627438ab159fe8f",
+      "label": "zero, Paar true: vollständiger Backtest bytegleich zu vor LV-1"
+    },
+    {
+      "file": "care-today.test.mjs",
+      "expected": "6a4a0aad895ee5ea00a7a3c04217897e7a181e9c7070d72273b8414722cf6d35",
+      "actual": "2255c7b1d89f4cdca1db38a9058e3c76e2b4c4f7820d6acd6a2ed85494c08df1",
+      "label": "slower, Paar true: vollständiger Backtest bytegleich zu vor LV-1"
+    },
+    {
+      "file": "care-today.test.mjs",
+      "expected": "35fbd77e7345c468d33f27d3e112339ae498ab10a5177d892b085c29bd824803",
+      "actual": "cd58241bdc5d9614562d4afc7a70751b972a4f9f6c02b23c8a927df256917ed3",
+      "label": "much_slower, Paar true: vollständiger Backtest bytegleich zu vor LV-1"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "dfc5ce4af25eff6a443cb9f312c3abd33bf943251c9c0e7f788c00c74f72692f",
+      "actual": "89a57df223414c4c506d78acecef2693b38c0e6f5c14a0402f69d8d7fd2d9a2f",
+      "label": "backtest: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "fbaf8871e37bef2afc945d33f034620fdf8ea1fa55dd75e1048da0f9523476f7",
+      "actual": "21f121ae603a15127b384e0032772abc2a77c62a39b1a91317aaace6a99ee1e7",
+      "label": "backtest: vollständige Referenz ohne Grund und Anmerkung"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "15ebf5b59f14243807b49e5fd4cf3239bd8bc80f3be493a857fb1e39fc719262",
+      "actual": "6361a47a86e157a54758b10925d04c55ab0aecefad52bae93f329dd45fddfd83",
+      "label": "backtest: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "6eef82b599741d4bf4e09a895d5bbbcba918e2a3ca17c016b609054910d0aa56",
+      "actual": "713454c47c84de103489e73552749f8d83e1dd912e7b4340b43e8930cf8384fe",
+      "label": "backtest: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "9008f6726014887dc959effc2bd6540cf2f89ddefad0420028580e023a3b9a68",
+      "actual": "2960ba2117d58ae6b9e157c43e3f6ff9b786e3f931ea0c1b39d4c078ff1d2aea",
+      "label": "mc: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "73ec674306e492e6eb316d87265a6c9a99db77a44199b122799b780e6e0a5e92",
+      "actual": "2c3ddae02898b44cf8904b4d9e118dc13e6692aeb3d18d1b2bf6f3949aa67317",
+      "label": "mc: vollständige Referenz ohne Grund und Anmerkung"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "da0f5f9acc47ced75b29c85356e97910d2bd57ee1dc1f145e36ce9cb5a36215b",
+      "actual": "5c7490aad88c8947a5c2d63e91d72eac79dab1eac3d1acae83b68e03757c4245",
+      "label": "mc: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "c82ecfc1f392d75aa13e120a44f8570a8ba08c3fc786e809bec5147a68926a90",
+      "actual": "634ab32a633831be2e39666a5a0c18bedf0277bb33f2952c98037f33dc1fea29",
+      "label": "mc: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "9786992f6355542b6b305a6daf9ad5c4fd2a03ae45b817d7660f3dd7c935fd64",
+      "actual": "670eab060b16048160f456aae98d4117a12902a67b2188d01fbe9099b9b5d0f3",
+      "label": "engineResults: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "b84ba3df7621738e2ff5575f18aaf4d4ba5fc7bfe17b2ac01283be42c55f8542",
+      "actual": "c50ee772c86e619ca234a11fa51ede740d808d3a83f7260fa2c2b4a8adba41d1",
+      "label": "engineResults: vollständige Referenz ohne Grund und Anmerkung"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "b84ba3df7621738e2ff5575f18aaf4d4ba5fc7bfe17b2ac01283be42c55f8542",
+      "actual": "c50ee772c86e619ca234a11fa51ede740d808d3a83f7260fa2c2b4a8adba41d1",
+      "label": "engineResults: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen"
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "expected": "3fe1ef0da0b2e53b942ed57bdcf125469ba57c32ea5a094eecfff7f2c080ce10",
+      "actual": "695b42c50fdf249117eae6a344996799fd75c5d5191acc86ebf874e4e2d09c2b",
+      "label": "engineResults: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste"
+    },
+    {
+      "file": "decision-comparison-pool.test.mjs",
+      "expected": "e48ef7d88db4e7517c0c2b5f9bb3e33d323896d05af2a2e0604710af7c90455c",
+      "actual": "36ffc3cfb792fc929fbc10f6d5cbe9f8db57c28f98ec478b3999c5e78e060cb3"
+    },
+    {
+      "file": "decision-comparison-pool.test.mjs",
+      "expected": "20ab24fd78be60a8b5b2fdb928916e82c6a4815837d588219f7d4f1fac9dc60d",
+      "actual": "7c4efa59d512ad77744510aff212f8aa229ec031ef31f29235a14df6f8883d14"
+    },
+    {
+      "file": "decision-comparison-pool.test.mjs",
+      "expected": "e94fe8a54bc483dee2a35fa90d85f522d94bea957c2ffd5f11ca462b57244c6c",
+      "actual": "f3c57428d68b3f914de7f24dba7209cdb87f00169525f0e1fe676a16840f22ac"
+    },
+    {
+      "file": "flex-safety-bytegleich.test.mjs",
+      "expected": "d15f20e2c323a31777812d1ce6e1cb700db409c331e21b976181d601fb91a9cd",
+      "actual": "1da5b18f1f9ca890ff6a91dbf5d5868a856e8869625dad75e3e94e78d9a5039d",
+      "label": "Drei vollständige Simulator-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz"
+    },
+    {
+      "file": "ff-g-regression.test.mjs",
+      "expected": "024f2a2eae89d472db6c6a4c26b6f12ae63d3f5d1c9343ba666caaadb310c3aa",
+      "actual": "7c9ccbd200858b544a3ff6f96765347e43513fc85678674111528e9aa54be4b4",
+      "label": "Helga/Werner: vollständiger Backtest nach FR-63, Tagesgeld zuerst in Anleihen und keine Auffüllung im Bärenmarkt"
+    },
+    {
+      "file": "immobilien-empty-bytegleich.test.mjs",
+      "expected": "e087719304ac01fc9bf3e69c2376a36b351984591037e9829fcca5d6cc6c9d54",
+      "actual": "2acf7eec31999e3f8fafdfd1379c18a77e3dcbbf78425ac79e32adc9c441d049",
+      "label": "Ohne Immobilien: vollständiger Backtest 2000–2025 bytegleich zum Ausgangsstand"
+    },
+    {
+      "file": "immobilien-empty-bytegleich.test.mjs",
+      "expected": "7990fd12f6dd4e87685bc2e0a724fa21da3d951a756202f99b3c5d25bd37f1ec",
+      "actual": "3bfc5a62479ce0a1917476b326e9b350b171a4a266f95180ea3dd6097853ef5e",
+      "label": "Ohne Immobilien: vollständige 24 MC-Pfade mit Seed 12345 und belegter Ehe-Erbschaftsteuer"
+    },
+    {
+      "file": "immobilien-empty-bytegleich.test.mjs",
+      "expected": "56afdc3d44a8dc6e5d14d9b20517936c28882bd381aee9b1cf082e12078b2280",
+      "actual": "2beb019152b0509e3cc0efd9295054061f75e77f80d9dddcf753f204187269e0",
+      "label": "Ohne Immobilien: vollständiger Paritätsbeleg mit bisheriger Anzeigebasis bytegleich zum Ausgangsstand"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "expected": "251f66c60ae579c2e67d8674272c53a8d2d31c6583806baabe00cf749ec81cdd",
+      "actual": "b5c9d7ba2743c3d71a0e6ef0e5bcf4bf187f379e6932a2ba4d0ded7ffb3780ca",
+      "label": "2026-01-01: Max und Erika entsprechen der FF-E-Referenz samt berechnetem Jahresplan"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "expected": "0ed222171e89f1dca39b382a61c531ad7d7aadc5c2be5455fdfea6cae0c5052f",
+      "actual": "5f5ee68ebbfcdbebc646726b69eb58bdc59aa8286bd4c6852dc2f03c48b20018",
+      "label": "2026-10-16: Max und Erika entsprechen der FF-E-Referenz samt berechnetem Jahresplan"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "expected": "8bd60f49daafb235daab4d2e471b3270ccc7464bbdafd728b38292346734b315",
+      "actual": "2195a0077abfe5c9e43ff5f70787204526874072ebf251cec6bc2fc605f14209",
+      "label": "2031-06-15: Max und Erika entsprechen der FF-E-Referenz samt berechnetem Jahresplan"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "expected": "e45eea4f6572c8af77d13ef071ed787f6b5d5623677dfdeef9a698bf3f9f823f",
+      "actual": "ae7b22de4e3fd6cfa1a4628e17ea38f8afdc00f44cf25f3eadfd86c5b9f6b0d7",
+      "label": "2060-06-15: Max und Erika entsprechen der FF-E-Referenz samt berechnetem Jahresplan"
+    },
+    {
+      "file": "muster-max-erika-parity.test.mjs",
+      "expected": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295",
+      "actual": "2aec51b55c33b20036e316c34e1f74f3e59975976d312ab4bc2e0b2cfcc9b134",
+      "label": "Max/Erika vollständiger Backtest bytegleich"
+    },
+    {
+      "file": "muster-max-erika-parity.test.mjs",
+      "expected": "1c5daecbda57601346944ee9ac2857984bb8fe38f9c7dac1f2d0e9ca525ffd4b",
+      "actual": "28ec660bf15cbbddb70a6a8b89580d9229fe5d8a7797f431780a4a3e4f74649a",
+      "label": "Max/Erika MC 2.000 Läufe, Seed 12345, 23.10.2026 mit belegten PA-1-Folgen"
+    },
+    {
+      "file": "muster-variants.test.mjs",
+      "expected": "806a0fafecd0a200bd820be5d7a1283ace0a195b4e7cafbac0e944834b7c2b8e",
+      "actual": "4c4c752f97c6b618c24683714395a0bbafec1ce7163204930946ef5172184e0e",
+      "label": "max-erika: vollständige Records, Drei-Töpfe-Korrekturen gesondert belegt"
+    },
+    {
+      "file": "muster-variants.test.mjs",
+      "expected": "72d10f383fe3550fba91f62bfd06d8326436df55a7484626ac585349c3550a2a",
+      "actual": "95d76ab9f04b2800550ad438b06af7bf2d7a5b9e1cf33586612d279bcf8ddfe9",
+      "label": "renate: vollständige Records, Drei-Töpfe-Korrekturen gesondert belegt"
+    },
+    {
+      "file": "muster-variants.test.mjs",
+      "expected": "27d79ae884b7e0a865f3aeec785f85c9914316d121902549232d2ece7658b495",
+      "actual": "bbf6168588e97df21d2f13d953b5033c29597f70586a81e2ccb73255f982ca90",
+      "label": "jan-lena: vollständige Records, Drei-Töpfe-Korrekturen gesondert belegt"
+    },
+    {
+      "file": "muster-variants.test.mjs",
+      "expected": "c2a53ea5ed4b0822a8dac8b445287bdf5b19206d1b9aa29f6f8b0bb86f805510",
+      "actual": "d48ea7fcc0d3a922af3f6eed11608dc6823dacf6bebb39fedcfe6ed0e5f4eee7",
+      "label": "helga-werner: vollständige Records, Drei-Töpfe-Korrekturen gesondert belegt"
+    },
+    {
+      "file": "muster-variants.test.mjs",
+      "expected": "f58d6113cca7a6e395800ee6e26215edc1864644206696034cd447c1b09d97d8",
+      "actual": "ca856250ce9227c27c16df1904003609cd91cd9122256aee38f9f19bc82a9837",
+      "label": "sophie: vollständige Records, Drei-Töpfe-Korrekturen gesondert belegt"
+    },
+    {
+      "file": "plan-view-income.test.mjs",
+      "expected": "fdc7121a5f348afe8859033cbf0f846d70befb3898fa64739becadc7f992235c",
+      "actual": "d277e7dda73f095c699d795af92b0a81bac1ccd8df13f9d3c5c08683ff421de8",
+      "label": "Vollständiges Backtestergebnis mit belegten NR-1-Anzeigeänderungen"
+    },
+    {
+      "file": "plan-view-income.test.mjs",
+      "expected": "b74c6aed80211b36fb90fea933aa274976a8fc7f8f924247b5f22c33fcefd8dc",
+      "actual": "0a53f9d13f2df896023404018892335c74b7112ed408eae7120bf2f38a4e348d",
+      "label": "Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "0ed222171e89f1dca39b382a61c531ad7d7aadc5c2be5455fdfea6cae0c5052f",
+      "actual": "5f5ee68ebbfcdbebc646726b69eb58bdc59aa8286bd4c6852dc2f03c48b20018",
+      "label": "max-erika: vollständige Musterreferenz; Renate mit 3 Töpfen nach FR-58"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "3e93ea81cbfb577adcf89ea0ed1af4f04d115fd240d0f87317c1d4a73b064843",
+      "actual": "40b28a0cafad9ced3218988648baab7e5717f230f61b384b62ff625827e32ded",
+      "label": "Renate: vollständige Musterrecords mit Personenzuordnung im Beleg"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "5662808c7b31d20ac5ac9a54b68ed20bd9af15bce416a96f931cbc12c9cfbbb3",
+      "actual": "3cf9549aec121f0bd1e1014fddc983cb18c1e65d04deaa72c3b6938bfaf3d489",
+      "label": "renate: vollständige Musterreferenz; Renate mit 3 Töpfen nach FR-58"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "8b1a99e24a1a78d0ceae2d8a6a9aa710b1846d34d750c2a66d84810a59f70224",
+      "actual": "635aff4b3253e2591577d3a021780a5f8034a28dd0666b4443633b2cd581e3d8",
+      "label": "helga-werner: vollständige Musterreferenz; Renate mit 3 Töpfen nach FR-58"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "6e4420068a81ec70ea7ad585c9116aef6819da0e0fe00c2dc75a57f8a024e067",
+      "actual": "7770085cb642c8518d423f8209c3bebd08f61748af56c12d555456ca7eb355c7",
+      "label": "jan-lena: vollständige Musterreferenz; Renate mit 3 Töpfen nach FR-58"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "e4e46504a1830df8428d924f69d4702adcebe2ab344e4edcd475e23968ff735a",
+      "actual": "89e8013cef680da9441e16637b28f7bc7e3f01c75dd2af87ebd91c213e80db0e",
+      "label": "Vorgabe: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "39319aa7c8fad6bf2d6dc98117f252291598d68d2ec25ce7630d355dcef903b6",
+      "actual": "977a4ec07f8271e501261efc31c960f12dc8f29965296b511148f519c8d7cb3c",
+      "label": "Vorgabe: vollständiger PM-1c-Backtest und MC-Pfad 0"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "4e348b32696c10f5ceca6b2d1788337de3a683bf12623696d699d43f5cd5c1e8",
+      "actual": "d86e7c16d957aeeb8b9b64fba034992c617b2a7c716eb105a76e1eb8bdd898aa",
+      "label": "Vorgabe/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "4e348b32696c10f5ceca6b2d1788337de3a683bf12623696d699d43f5cd5c1e8",
+      "actual": "d86e7c16d957aeeb8b9b64fba034992c617b2a7c716eb105a76e1eb8bdd898aa",
+      "label": "Vorgabe/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "6c682ccdada5854362d50f4c9802dc2c032aff84de917f96d31ec400c9382f09",
+      "actual": "4dfc754f1d657ca5fb6b9a736525b9d62839c3845808ed0375bb63dcae1fa5b4",
+      "label": "Vorgabe: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "63a63effc3b7a936002e91c2cc744ac92464dc897eee0844c0a52087df323c0a",
+      "actual": "40592740869b30b86d5581716fbce6270d29d573e65176156c310bbb0acf70a1",
+      "label": "konservativ: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "877464b05783864461ea73c4b0f728892177795252709d3f123048d5dc34e57b",
+      "actual": "d8192e4cc28d22c3d7a1b60028e11867632a0a0251a831a0126b19187fd88102",
+      "label": "konservativ: vollständiger PM-1c-Backtest und MC-Pfad 0"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "b043aab08fefd72f8bbceb3014bc5cc1c5f0e327b6204c17d74b672f04eed30f",
+      "actual": "776c3c20f093a957c8164991f8fa81d08b42c153def18ad9be6d0dc177b82d0f",
+      "label": "konservativ/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "b043aab08fefd72f8bbceb3014bc5cc1c5f0e327b6204c17d74b672f04eed30f",
+      "actual": "776c3c20f093a957c8164991f8fa81d08b42c153def18ad9be6d0dc177b82d0f",
+      "label": "konservativ/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "9f397379cd291d06832ffb52ec98fa3c82fe35f13da175721eb99cd0f214cd84",
+      "actual": "e6584af2965d54d645ab2f0edf933ec10efe638fdc7a5c48c3b44da33e4ff82d",
+      "label": "konservativ: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "ddc1dcd276a3c6100ebb6785a675a2be5631ee37bfea08bbb974e83e1efb0ece",
+      "actual": "34786425cecc3d838edadbef41bb4220ea7fa8c1ff75634ec00f63d2470d163f",
+      "label": "ausgewogen: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "a2e836343379da96bea3b24b5656e029b01dc7c937e3623f570eb175deccc341",
+      "actual": "5528e970d30d52196453ff3ec4c98da70ae0a60afbc12435ab5983344bd2d0be",
+      "label": "ausgewogen: vollständiger PM-1c-Backtest und MC-Pfad 0"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "5eab9cf9c77a147cd16f3dc2df638ddf452d7b3ddf460d1552cd43816ccfcf61",
+      "actual": "0851779bbfed676368f1a2857e9cfe4dc8e5f8dd55e748388f198b9710432fea",
+      "label": "ausgewogen/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "5eab9cf9c77a147cd16f3dc2df638ddf452d7b3ddf460d1552cd43816ccfcf61",
+      "actual": "0851779bbfed676368f1a2857e9cfe4dc8e5f8dd55e748388f198b9710432fea",
+      "label": "ausgewogen/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "6047602183cbd7f24f547ef616bcf4df051eef054d8064fe5ef0b78c27a83c86",
+      "actual": "d8018f1c6d5d99b9508e42a333568f8b4cc50c342d6dc43251c3b7891554e1a0",
+      "label": "ausgewogen: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "15f645ed5871c88522e87ec403aa380d4cc03f2c7aa1bd5fed64bb6b1a06bc34",
+      "actual": "a404fcfacd703c8c32515db24b36cfb2c9e9b05bc88e6f7782809f700f56e709",
+      "label": "offensiv: vollständiger PM-1c-Pfad mit alten Flex-Werten"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "3f787a06bee6536a43e4acfbe0bf88182c67d12b773a19fbddb6155d36d4b1d0",
+      "actual": "e3cf5f154efb372249eeddc7a463e211e5bff95a27b26ac9a3f967f635c70025",
+      "label": "offensiv: vollständiger PM-1c-Backtest und MC-Pfad 0"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "fcbe5fc879f49df0950edd06c578236b7f35bed36b77077721a888d1eca6189a",
+      "actual": "5e47a82e654fd8c5941e60d09dfcf8470dc2fca656d3b3b38cea069155e1ed62",
+      "label": "offensiv/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "fcbe5fc879f49df0950edd06c578236b7f35bed36b77077721a888d1eca6189a",
+      "actual": "5e47a82e654fd8c5941e60d09dfcf8470dc2fca656d3b3b38cea069155e1ed62",
+      "label": "offensiv/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "expected": "85255166e0283fc9eb3601739376d15b85862dc2704f7ecfc56184e36590c018",
+      "actual": "0541ebd2b38e2a9c06d70afb8ce33fac239161bbb5d573de1b3ad8c8f7e2ee96",
+      "label": "offensiv: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten"
+    },
+    {
+      "file": "profile-person-data.test.mjs",
+      "expected": "fb45ab0656076c52088b0f84fadb73d1849f0bb2a7349b74768e72a8b8544373",
+      "actual": "ed1654781521b610dd1e0d3ee375d11f4565c77ed05fe4fc03558f9d2a1e3cd8",
+      "label": "Vollständiger alter Offset-/Ansparrequest gegen BK-2-Referenz mit korrigierter Kirchensteuer"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "expected": "37deaedca036ecc282fe9ed8e02ebc4cc60f1b983e2fc6b1d453ea14b90e7f73",
+      "actual": "ea8805f067fe05c39f4d6fc12e4a11f85dbf93a8ba1ee9230aecd72bdaa7c2a0",
+      "label": "off: Backtest entspricht BK-2-Referenz"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "expected": "dbd3ce9919e9ec96439b513dd6b6be8dca7cc4abb6da1752a6acf0bb2ec7114f",
+      "actual": "bb1d9fe8a302fa8b59600c9b117c60a2a9aeee579008d00c4e5ac239d7d11bea",
+      "label": "off: MC-Pfad 0 mit FR-21–24/27"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "expected": "07db3e09e4cd573576e2ca8a47948844e511d0526f1a40731aea3d3fc0f1d076",
+      "actual": "957c365a17bbb904accfaf15dec2bece029563dab96f8955ace555b9237294bf",
+      "label": "konservativ: Backtest entspricht BK-2-Referenz"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "expected": "1b31e347f8146bde57f552797776673f3703d9029b44180f024af986c4e0696d",
+      "actual": "bcf84c85146f377dea553cacfe44cf228cd7ce9df435b7c4893117c602be426f",
+      "label": "ausgewogen: Backtest entspricht BK-2-Referenz"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "expected": "1b140485fad60446ed01abafb14d7f993977f343e571989281e282f338d86b5d",
+      "actual": "61a9667aad99b9f15adc89d3264acb5a58bf5a7645521bad05cbfaff27517e2e",
+      "label": "offensiv: Backtest entspricht BK-2-Referenz"
+    },
+    {
+      "file": "simulator-household-pension.test.mjs",
+      "expected": "19d7c9520d8ce60981767b05d85ce15ab101f30d2989199d7e19f7962bb4ff26",
+      "actual": "e105f3fdd74915dc591ac6ec2da57938084916f57524635e2f9056783779630d",
+      "label": "FR-16: Alt-Kalenderpfad nutzt Partner-Liquidität für persönliche Ansparsteuer"
+    },
+    {
+      "file": "simulator-household-pension.test.mjs",
+      "expected": "27b5e519002662fa445fb586c92112fc73d3e80ec1e1c8189684c72c877fe1e8",
+      "actual": "8bd1f0de35b98a004dacab18950272689fe7e83843c7d810f1322b494743714c",
+      "label": "PA-A7: Kontrollierter Lauf enthält persönliche Ansparsteuer"
+    },
+    {
+      "file": "simulator-household-pension.test.mjs",
+      "expected": "888c8fd906af60478f74331dcf24b855a108734fbaa392b8ebc2f16837e93bf2",
+      "actual": "f6050d07b4bb2920d9f88a070e19e0998b6408869de359114861ce8379a29ef4",
+      "label": "FR-11: Höhere Nettorente senkt die vorherige Vermögensentnahme"
+    },
+    {
+      "file": "simulator-household-pension.test.mjs",
+      "expected": "5e2fb4b2196c7e2261594d5861d68ed668c7da9d2a07caa668cac841b10af9a5",
+      "actual": "439af38630f7bcb6a3cdf1c8638e6d39e94a270d9930a0e582e997926b76a5e6",
+      "label": "PA-A7: Entnahmebeleg enthält persönliche Steuerdiagnose"
+    },
+    {
+      "file": "simulator-married-inheritance.test.mjs",
+      "expected": "6bf1b28ab8371cbc8f4f5ab8d958bb686a5017b8bf3d85ac7bebc51d0c2c0f7c",
+      "actual": "3d9d0a3af90c3c7289722ee2fff09b664cd429149c3367b31ff5799b0101d67f",
+      "label": "100 Prozent ohne Steuer: vollständiger Rechenzustand bytegleich zur Basis vor EP-1"
+    },
+    {
+      "file": "simulator-small-lot-backtest-regression.test.mjs",
+      "expected": "25f08dae8a5dddde939acd7d2f82ddd82ccdde5156f727163afe7dc501f21265",
+      "actual": "bc79d5f0c3a7fff44a8dc77fd023a39ce4de530b644e7511712299a3bbcb878c",
+      "label": "standard: vollständige Finanzbytes und Folgezustände, Drei Töpfe mit FR-63, übrige BK-2-Belege unverändert"
+    },
+    {
+      "file": "simulator-small-lot-backtest-regression.test.mjs",
+      "expected": "af1849c96acb088a8c93f96779aa9fdd002ab88149e6ed73a2394c37e909a140",
+      "actual": "601a598395986025ea9e5025753b4a5aaa486ee4403d55073bd190da5a648a26",
+      "label": "drei-topf: vollständige Finanzbytes und Folgezustände, Drei Töpfe mit FR-63, übrige BK-2-Belege unverändert"
+    },
+    {
+      "file": "simulator-small-lot-backtest-regression.test.mjs",
+      "expected": "b91900ed6626546c2f9b7d92c8c4db7572988dc73907055897351e47590ff4d3",
+      "actual": "b9e0ab68b35145f0468c01309bbb07334d133fbaddf671a73fa6ce7cb6202010",
+      "label": "offene-lots: vollständige Finanzbytes und Folgezustände, Drei Töpfe mit FR-63, übrige BK-2-Belege unverändert"
+    },
+    {
+      "file": "simulator-small-lot-backtest-regression.test.mjs",
+      "expected": "353ab3fbf32343374d3b014f4090ea04d642176f4a249552d1b104c06774f429",
+      "actual": "05c6ff39f81525400784deb1f9ffdeb05c36e124b00fd2fa728e143d17ccd9bf",
+      "label": "liquiditaet: vollständige Finanzbytes und Folgezustände, Drei Töpfe mit FR-63, übrige BK-2-Belege unverändert"
+    },
+    {
+      "file": "simulator-small-lot-backtest-regression.test.mjs",
+      "expected": "39fbc3bb7c7093597daa5425fde1016341539b344bf93a153e7447b1353db27e",
+      "actual": "4455b7a34e8e647b6ab4c6a4863b813e6864da2e29b202eaa6e9a922549ad596",
+      "label": "ruin: vollständige Finanzbytes und Folgezustände, Drei Töpfe mit FR-63, übrige BK-2-Belege unverändert"
+    },
+    {
+      "file": "simulator-small-lot-backtest-regression.test.mjs",
+      "expected": "987b960dffd5a1fea2942339d7f2d15585ed0fecec074cf00263177ebe13578d",
+      "actual": "8882b6edd32d17efe999667b65cc7c5205a60540953732a6f1b015dc6a386149",
+      "label": "kohorte-2006: vollständige Finanzbytes und Folgezustände, Drei Töpfe mit FR-63, übrige BK-2-Belege unverändert"
+    },
+    {
+      "file": "simulator-small-lot-backtest-regression.test.mjs",
+      "expected": "7ac7ed6481f4c1ff36b21df08f4f820abeeea1fa2294d3225bf7c4ab31e0b0d6",
+      "actual": "76f1e100ccd5d081f87a5894bf0f9ba8a8e2335b854e8aa0f21afd08fa5900ed",
+      "label": "kohorte-2007: vollständige Finanzbytes und Folgezustände, Drei Töpfe mit FR-63, übrige BK-2-Belege unverändert"
+    },
+    {
+      "file": "surplus-payout-buffer.test.mjs",
+      "expected": "0d60e7153862f471747c6b410270b7be2462e1d99f33c3bb825f72a8f9b2e44a",
+      "actual": "e43c129a778fd1ae1b24892fec5cab9d2ab25908f4c9d56b518ac3bbebff5e7c",
+      "label": "2 Jahre, geplante Ausgabe 0 €: vollständiges Ergebnis bytegleich zum Ausgangsstand"
+    },
+    {
+      "file": "surplus-payout-buffer.test.mjs",
+      "expected": "b2a2660597ada9d0f31217236beec66005f59d7270aaa8e23bd9db5b35b41619",
+      "actual": "d517191c742aa1df7488323bf96119a1449a4ca831fd0f0c599a481580a49966",
+      "label": "2 Jahre, geplante Ausgabe 12000 €: vollständiges Ergebnis bytegleich zum Ausgangsstand"
+    },
+    {
+      "file": "simulator-unmarried-parity.test.mjs",
+      "expected": "5a6299c59fc0c071cf79b154da02e089aad8efe25121ba21f62b470f8f862cb4",
+      "actual": "cfcdc02cc915eb136d694129cd1edb53c46a1cdf84b0e6502917244a9d949099",
+      "label": "Verheiratet: vollständiger serieller MC mit belegten FR-51-Folgen"
+    },
+    {
+      "file": "simulator-unmarried-parity.test.mjs",
+      "expected": "e5eda3cf2022b148a283d4e7fbe00823b78d7fb93a56945bdb64016477922ad9",
+      "actual": "16256dc14088615a69985529691a4a00e4bcddb6f1407a5f2e96301350d50682",
+      "label": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51.0"
+    },
+    {
+      "file": "simulator-unmarried-parity.test.mjs",
+      "expected": "812a5b1aa3fc8960b65849c578249a0b4e592235418737a6b73e428882cf0969",
+      "actual": "1fd66493a5d1217071e8a7308ca9d2c3e95308c652ad06cf44c11967c84a2031",
+      "label": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51.1"
+    },
+    {
+      "file": "simulator-unmarried-parity.test.mjs",
+      "expected": "03416b2c9054147a5dea738d481200d82fc34c0a4f26dce9a9ab34dc891e3b13",
+      "actual": "2382122eab5e424d20893a6d605971845cab92cde5be930d458c8c91f4cdbdc2",
+      "label": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51.2"
+    },
+    {
+      "file": "simulator-unmarried-parity.test.mjs",
+      "expected": "6741adeea1cd41f725cc14cd1e11b9fcfd1b4092ff6b46979dfa088ebbb68df0",
+      "actual": "7616363ebbe893ed94d242488b27dfdfdf8be95510123ea9a0df9973c52b9e11",
+      "label": "Verheiratet: vollständiger Sweep mit FR-51"
+    },
+    {
+      "file": "simulator-unmarried-parity.test.mjs",
+      "expected": "25eae35b5b95abb8bf75617f3eb2997ca51c506269282388f2f4421a5744a0ea",
+      "actual": "1bda472e42709a023f88413f1e14e3a6f6903b36d8c0b77851f43c5c221b0dce",
+      "label": "Nicht verheiratet 0/100: vollständiger Backtest bytegleich zum Kopf vor UP-1b.0"
+    },
+    {
+      "file": "simulator-unmarried-parity.test.mjs",
+      "expected": "33c29b816476152b1c3567c4c0d4293e42df6c395cd977620bfeffe4d6aea55a",
+      "actual": "88f09dc220e917bafe587f9b850ff4ab5a60c701f57d572cfb0e838a904d56df",
+      "label": "Nicht verheiratet 0/100: vollständiger Backtest bytegleich zum Kopf vor UP-1b.100"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "expected": "dd2e8256ae285fd300b7ed79e82cae757692ff16fdaf0bf9fcacf1e3f9526fb7",
+      "actual": "aa5683169fe44fc001f290fab7535d8d8c301c5a195741682eb44d1802e03b7d",
+      "label": "off: Backtest ohne Tod entspricht BK-2-Referenz"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "expected": "5f9fff3ad6e6c518598204ea46fc0cd3261f67b96455754c4b46fc6da8227c05",
+      "actual": "a3708e1ef2b8661e278bd0f9f0a7ad73d3a283c6700002de45895a9eb4052d9d",
+      "label": "off: MC ohne Tod entspricht BK-2-Referenz"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "expected": "72da0cf56e47fbc3d3e994714794d16a0f2d80ed903e1aef9ecc0805615ea595",
+      "actual": "f16660e5cc0121ce9e9ba93d91b05c5729127849880dc1e86ff2fa82b1561a32",
+      "label": "konservativ: Backtest ohne Tod entspricht BK-2-Referenz"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "expected": "111eb7a8d1ffbb679e8c565398865f876b08c4ee49682437c6e796303ae45c3d",
+      "actual": "1f890576de81843603589925495d0873ed76441846d03364d0fbc931eacda22c",
+      "label": "ausgewogen: Backtest ohne Tod entspricht BK-2-Referenz"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "expected": "6eef82b599741d4bf4e09a895d5bbbcba918e2a3ca17c016b609054910d0aa56",
+      "actual": "713454c47c84de103489e73552749f8d83e1dd912e7b4340b43e8930cf8384fe",
+      "label": "offensiv: Backtest ohne Tod entspricht BK-2-Referenz"
+    },
+    {
+      "file": "vf-2b-regression.test.mjs",
+      "expected": "e64a989dea84fb77f552a1ba1cad1f2d5f9c1a7780f35d3dd94c0d6373059eff",
+      "actual": "2a4289fa0332b8b5c2d7359c6c4e3d0aff972efa39b1b172261986210cd3835d",
+      "label": "Unbetroffener Paarfall: vollständige Ausgabe bytegleich"
+    },
+    {
+      "file": "vf-2b-regression.test.mjs",
+      "expected": "cdfbc6461ac1c53e28b11c8920b8e78ec7f7117dd236412d356c2a46a05895eb",
+      "actual": "dd0e56db1eafa28894c828586185863f3812b31ec9125c6add138aebbc644024",
+      "label": "Einzelimmobilie: Notverkauf ohne Immobilien-Anzeigefeld bytegleich"
+    }
+  ],
+  "baselineCommit": "b26cff4fd1a5378f263984bf69fca0dc1e0be427",
+  "controls": [
+    {
+      "file": "annual-care-values.test.mjs",
+      "assertions": 51,
+      "failedAssertions": 0
+    },
+    {
+      "file": "asset-strategy.test.mjs",
+      "assertions": 36,
+      "failedAssertions": 0
+    },
+    {
+      "file": "care-death-year.test.mjs",
+      "assertions": 56,
+      "failedAssertions": 0
+    },
+    {
+      "file": "care-price-continuation.test.mjs",
+      "assertions": 135,
+      "failedAssertions": 0
+    },
+    {
+      "file": "care-today.test.mjs",
+      "assertions": 207,
+      "failedAssertions": 0
+    },
+    {
+      "file": "cut-reason-bytegleich.test.mjs",
+      "assertions": 2594,
+      "failedAssertions": 0
+    },
+    {
+      "file": "decision-comparison-pool.test.mjs",
+      "assertions": 79,
+      "failedAssertions": 0
+    },
+    {
+      "file": "flex-safety-bytegleich.test.mjs",
+      "assertions": 23,
+      "failedAssertions": 0
+    },
+    {
+      "file": "ff-g-regression.test.mjs",
+      "assertions": 92,
+      "failedAssertions": 0
+    },
+    {
+      "file": "immobilien-empty-bytegleich.test.mjs",
+      "assertions": 6,
+      "failedAssertions": 0
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "assertions": 4381,
+      "failedAssertions": 0
+    },
+    {
+      "file": "muster-max-erika-parity.test.mjs",
+      "assertions": 6,
+      "failedAssertions": 0
+    },
+    {
+      "file": "muster-variants.test.mjs",
+      "assertions": 100,
+      "failedAssertions": 0
+    },
+    {
+      "file": "plan-view-income.test.mjs",
+      "assertions": 85,
+      "failedAssertions": 0
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "assertions": 207,
+      "failedAssertions": 0
+    },
+    {
+      "file": "profile-person-data.test.mjs",
+      "assertions": 343,
+      "failedAssertions": 0
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "assertions": 12,
+      "failedAssertions": 0
+    },
+    {
+      "file": "simulator-household-pension.test.mjs",
+      "assertions": 299,
+      "failedAssertions": 0
+    },
+    {
+      "file": "simulator-married-inheritance.test.mjs",
+      "assertions": 76,
+      "failedAssertions": 0
+    },
+    {
+      "file": "simulator-small-lot-backtest-regression.test.mjs",
+      "assertions": 75,
+      "failedAssertions": 0
+    },
+    {
+      "file": "surplus-payout-buffer.test.mjs",
+      "assertions": 34,
+      "failedAssertions": 0
+    },
+    {
+      "file": "simulator-unmarried-parity.test.mjs",
+      "assertions": 4,
+      "failedAssertions": 0
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "assertions": 20,
+      "failedAssertions": 0
+    },
+    {
+      "file": "vf-2b-regression.test.mjs",
+      "assertions": 65,
+      "failedAssertions": 0
+    }
+  ]
+}

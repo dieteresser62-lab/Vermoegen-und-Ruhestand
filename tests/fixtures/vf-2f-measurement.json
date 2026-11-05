@@ -1,0 +1,3266 @@
+{
+  "baseline": "f05f4006",
+  "date": "2026-10-23",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 5,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "commands": [
+    "node auftrag/VF-2a-mess-vergleich.mjs",
+    "node scripts/measure-vf-2c.mjs",
+    "node auftrag/VF-1-mess-pg4.mjs"
+  ],
+  "additionalControls": [
+    "sophie/grund",
+    "sophie/teilzeit",
+    "jan-lena/halten",
+    "martin-petra/hundert"
+  ],
+  "method": "Je Fall 2.000 gepaarte Pfade, Seed 12345. Vollständige JSON-Chunks und Backtests mit SHA-256, keine Fachfelder herausgefiltert. Nur in isolierter Messkopie ergänzt die Sonde Käufe und tatsächliche Verkäufe je Person/Klasse; ihr Zusatzfeld wird vor der Prüfsumme entfernt. Für Renate/grund stimmen alle 20 Sonden-Chunks mit dem Lauf ohne Sonde überein. Hin-und-Her-Steuer: Verkaufssteuer derselben Person/Klasse × min(Kauf, Bruttoverkauf) / Bruttoverkauf, nach Planverrechnung. Bei Drei Töpfen ist die neue Auszahlungsquelle die einzige Regeländerung.",
+  "nonThreeBucket": {
+    "measurementCases": 11,
+    "distinctHouseholdVariants": 10,
+    "paths": 22000,
+    "completeChunks": 220,
+    "backtests": 38,
+    "controls": [
+      {
+        "group": "a",
+        "case": "max-erika",
+        "inputsSha256": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+        "beforeRuin": 6,
+        "afterRuin": 6,
+        "chunksEqual": true,
+        "backtestsEqual": true
+      },
+      {
+        "group": "a",
+        "case": "renate-standard",
+        "inputsSha256": "7f8fefe0aca3909ba632b8cbe0932a99aaff39be854cc14b67a49327832d82e5",
+        "beforeRuin": 1247,
+        "afterRuin": 1247,
+        "chunksEqual": true,
+        "backtestsEqual": true
+      },
+      {
+        "group": "a",
+        "case": "martin-ehe",
+        "inputsSha256": "b01b07df59e0ae874a6142da5c0e447a0940e73369044272fbd5c482ba06d0f4",
+        "beforeRuin": 0,
+        "afterRuin": 0,
+        "chunksEqual": true,
+        "backtestsEqual": true
+      },
+      {
+        "group": "a",
+        "case": "martin-petra",
+        "inputsSha256": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+        "beforeRuin": 4,
+        "afterRuin": 4,
+        "chunksEqual": true,
+        "backtestsEqual": true
+      },
+      {
+        "group": "c",
+        "case": "max-erika/grund",
+        "inputsSha256": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+        "beforeRuin": 6,
+        "afterRuin": 6,
+        "chunksEqual": true,
+        "backtestsEqual": true
+      },
+      {
+        "group": "c",
+        "case": "max-erika/grund/haus",
+        "inputsSha256": "382a16328d60089accd7fbcf3690ff808fb6d7f25b6cdd0d7f4c9264cdc55021",
+        "beforeRuin": 2,
+        "afterRuin": 2,
+        "chunksEqual": true,
+        "backtestsEqual": true
+      },
+      {
+        "group": "c",
+        "case": "jan-lena/grund",
+        "inputsSha256": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+        "beforeRuin": 5,
+        "afterRuin": 5,
+        "chunksEqual": true,
+        "backtestsEqual": true
+      },
+      {
+        "group": "extra",
+        "case": "sophie",
+        "inputsSha256": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+        "beforeRuin": 60,
+        "afterRuin": 60,
+        "chunksEqual": true,
+        "backtestsEqual": true
+      },
+      {
+        "group": "extra",
+        "case": "sophie@teilzeit",
+        "inputsSha256": "0ccb65c20a976ec95aa91f5c1f0b244d7fe8ba32c14c4c85487a5936327f8b2e",
+        "beforeRuin": 85,
+        "afterRuin": 85,
+        "chunksEqual": true,
+        "backtestsEqual": true
+      },
+      {
+        "group": "extra",
+        "case": "jan-lena@halten",
+        "inputsSha256": "ab9b9d059adf07739776fec57454e61c14ab402611bd38066ba78c3f57d79d0c",
+        "beforeRuin": 7,
+        "afterRuin": 7,
+        "chunksEqual": true,
+        "backtestsEqual": true
+      },
+      {
+        "group": "extra",
+        "case": "martin-petra@hundert",
+        "inputsSha256": "ddfdcbd5100334422050d27f28d9f3a0cd7aca977b06753c29a84bfa253c351e",
+        "beforeRuin": 3,
+        "afterRuin": 3,
+        "chunksEqual": true,
+        "backtestsEqual": true
+      }
+    ]
+  },
+  "changedCases": [
+    {
+      "group": "a",
+      "case": "renate",
+      "inputsSha256": "450c3bc8645911754ec750c0eab55ed59e43cc2d77c9778b4d6c3b607d8facde",
+      "beforeRuin": 821,
+      "afterRuin": 805,
+      "chunksEqual": false,
+      "backtestsEqual": false
+    },
+    {
+      "group": "a",
+      "case": "helga-werner",
+      "inputsSha256": "6255dec96bebe1a317fdc4abc91b81a8250690cb7b87ed690f9fdf12f35760d2",
+      "beforeRuin": 56,
+      "afterRuin": 52,
+      "chunksEqual": false,
+      "backtestsEqual": false
+    },
+    {
+      "group": "c",
+      "case": "renate/grund",
+      "inputsSha256": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+      "beforeRuin": 153,
+      "afterRuin": 124,
+      "chunksEqual": false,
+      "backtestsEqual": false
+    },
+    {
+      "group": "c",
+      "case": "helga-werner/haus-pg3",
+      "inputsSha256": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+      "beforeRuin": 5,
+      "afterRuin": 3,
+      "chunksEqual": false,
+      "backtestsEqual": false
+    },
+    {
+      "group": "c",
+      "case": "helga-werner/haus-pg3/pg4",
+      "inputsSha256": "9273771819bda16b801f6f8ffe08db641e25d1cf84490a95987470ad04ad6864",
+      "beforeRuin": 54,
+      "afterRuin": 41,
+      "chunksEqual": false,
+      "backtestsEqual": false
+    }
+  ],
+  "roundTripTax": [
+    {
+      "case": "renate",
+      "taxEur": 0,
+      "paths": 14,
+      "taxedExamples": [],
+      "purchaseAndSaleExamples": []
+    },
+    {
+      "case": "helga-werner",
+      "taxEur": 8.878577894976722,
+      "paths": 6,
+      "taxedExamples": [
+        {
+          "run": 177,
+          "year": 9,
+          "profileId": "muster_werner",
+          "key": "bonds",
+          "buy": 15074.520787132533,
+          "sold": 233.16017935406126,
+          "hhTax": 8.878577894976722,
+          "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 80769.94 € / Anleihen verkauft 233.16 €"
+        }
+      ],
+      "purchaseAndSaleExamples": [
+        {
+          "purchases": [
+            {
+              "profileId": "muster_helga",
+              "uses": {
+                "aktien": 0,
+                "gold": 0,
+                "bonds": 15075.168806437414
+              }
+            },
+            {
+              "profileId": "muster_werner",
+              "uses": {
+                "aktien": 0,
+                "gold": 0,
+                "bonds": 15074.520787132533
+              }
+            }
+          ],
+          "sales": [
+            {
+              "kind": "aktien_alt",
+              "category": "equity",
+              "sourceProfileId": "muster_helga",
+              "brutto": 17416.07216000631,
+              "steuer": 2398.6840270818975,
+              "taxableAfterTqfSigned": 9361.839289513675
+            },
+            {
+              "kind": "aktien_alt",
+              "category": "equity",
+              "sourceProfileId": "muster_werner",
+              "brutto": 17415.31583658552,
+              "steuer": 2399.220793287826,
+              "taxableAfterTqfSigned": 9361.43273525441
+            },
+            {
+              "kind": "gold",
+              "category": "gold",
+              "sourceProfileId": "muster_helga",
+              "brutto": 12500.271423084283,
+              "steuer": 0,
+              "taxableAfterTqfSigned": 0
+            },
+            {
+              "kind": "gold",
+              "category": "gold",
+              "sourceProfileId": "muster_werner",
+              "brutto": 12499.728576915717,
+              "steuer": 0,
+              "taxableAfterTqfSigned": 0
+            },
+            {
+              "kind": "aktien_alt",
+              "category": "equity",
+              "sourceProfileId": "muster_helga",
+              "brutto": 4529.18924376418,
+              "steuer": 623.7970189165972,
+              "taxableAfterTqfSigned": 2434.6213900792004
+            },
+            {
+              "kind": "aktien_alt",
+              "category": "equity",
+              "sourceProfileId": "muster_werner",
+              "brutto": 4528.992708675032,
+              "steuer": 623.9366303351815,
+              "taxableAfterTqfSigned": 2434.515744563814
+            },
+            {
+              "kind": "anleihe",
+              "category": "bonds",
+              "sourceProfileId": "muster_werner",
+              "brutto": 233.16017935406126,
+              "steuer": 8.878577894976722,
+              "taxableAfterTqfSigned": 34.64300158662809
+            },
+            {
+              "kind": "gold",
+              "category": "gold",
+              "sourceProfileId": "muster_helga",
+              "brutto": 35741.87793318974,
+              "steuer": 0,
+              "taxableAfterTqfSigned": 0
+            },
+            {
+              "kind": "gold",
+              "category": "gold",
+              "sourceProfileId": "muster_werner",
+              "brutto": 35736.722317112755,
+              "steuer": 0,
+              "taxableAfterTqfSigned": 0
+            }
+          ],
+          "taxSources": [
+            {
+              "kind": "gold",
+              "category": "gold",
+              "trancheId": "muster_helga:muster_helga_lot_5",
+              "sourceProfileId": "muster_helga",
+              "sourceProfileName": "Helga",
+              "name": "Xetra-Gold ETC",
+              "isin": "DE000A0S9GB0",
+              "purchaseDate": "2022-03-15",
+              "brutto": 12500.271423084283,
+              "steuer": 0,
+              "netto": 12500.271423084283,
+              "tqf": 0,
+              "taxExempt": true,
+              "gainQuotePlan": 0.47857549342095895,
+              "gainQuoteSigned": 0.47857549342095895,
+              "realizedGainSigned": 5982.323564198474,
+              "taxableAfterTqfSigned": 0,
+              "steuerPlan": 0
+            },
+            {
+              "kind": "aktien_alt",
+              "category": "equity",
+              "trancheId": "muster_helga:muster_helga_lot_1",
+              "sourceProfileId": "muster_helga",
+              "sourceProfileName": "Helga",
+              "name": "Muster Aktien-ETF",
+              "isin": "IE00B3RBWM25",
+              "purchaseDate": "2016-06-15",
+              "brutto": 17416.07216000631,
+              "steuer": 2340.9061091670314,
+              "netto": 15075.16605083928,
+              "tqf": 0.3,
+              "taxExempt": false,
+              "gainQuotePlan": 0.7679146023859741,
+              "gainQuoteSigned": 0.7679146023859741,
+              "realizedGainSigned": 13374.05612787668,
+              "taxableAfterTqfSigned": 9361.839289513675,
+              "steuerPlan": 0
+            },
+            {
+              "kind": "gold",
+              "category": "gold",
+              "trancheId": "muster_werner:muster_werner_lot_5",
+              "sourceProfileId": "muster_werner",
+              "sourceProfileName": "Werner",
+              "name": "Xetra-Gold ETC",
+              "isin": "DE000A0S9GB0",
+              "purchaseDate": "2022-03-15",
+              "brutto": 12499.728576915715,
+              "steuer": 0,
+              "netto": 12499.728576915715,
+              "tqf": 0,
+              "taxExempt": true,
+              "gainQuotePlan": 0.47857549342095906,
+              "gainQuoteSigned": 0.47857549342095906,
+              "realizedGainSigned": 5982.063771325501,
+              "taxableAfterTqfSigned": 0,
+              "steuerPlan": 0
+            },
+            {
+              "kind": "aktien_alt",
+              "category": "equity",
+              "trancheId": "muster_werner:muster_werner_lot_1",
+              "sourceProfileId": "muster_werner",
+              "sourceProfileName": "Werner",
+              "name": "Muster Aktien-ETF",
+              "isin": "IE00B3RBWM25",
+              "purchaseDate": "2016-06-15",
+              "brutto": 17415.315836585516,
+              "steuer": 2340.792293854841,
+              "netto": 15074.523542730676,
+              "tqf": 0.3,
+              "taxExempt": false,
+              "gainQuotePlan": 0.7679146023859742,
+              "gainQuoteSigned": 0.7679146023859742,
+              "realizedGainSigned": 13373.475336077727,
+              "taxableAfterTqfSigned": 9361.432735254408,
+              "steuerPlan": 0
+            },
+            {
+              "kind": "gold",
+              "category": "gold",
+              "trancheId": "muster_helga:muster_helga_lot_5",
+              "sourceProfileId": "muster_helga",
+              "sourceProfileName": "Helga",
+              "name": "Xetra-Gold ETC",
+              "isin": "DE000A0S9GB0",
+              "purchaseDate": "2022-03-15",
+              "brutto": 34939.58883452898,
+              "steuer": 0,
+              "netto": 34939.58883452898,
+              "tqf": 0,
+              "taxExempt": true,
+              "gainQuotePlan": 0.478575493420959,
+              "gainQuoteSigned": 0.478575493420959,
+              "realizedGainSigned": 16721.230966410138,
+              "taxableAfterTqfSigned": 0,
+              "steuerPlan": 0
+            },
+            {
+              "kind": "gold",
+              "category": "gold",
+              "trancheId": "muster_werner:muster_werner_lot_5",
+              "sourceProfileId": "muster_werner",
+              "sourceProfileName": "Werner",
+              "name": "Xetra-Gold ETC",
+              "isin": "DE000A0S9GB0",
+              "purchaseDate": "2022-03-15",
+              "brutto": 35736.722317112755,
+              "steuer": 0,
+              "netto": 35736.722317112755,
+              "tqf": 0,
+              "taxExempt": true,
+              "gainQuotePlan": 0.47857549342095906,
+              "gainQuoteSigned": 0.47857549342095906,
+              "realizedGainSigned": 17102.719516160036,
+              "taxableAfterTqfSigned": 0,
+              "steuerPlan": 0
+            },
+            {
+              "kind": "anleihe",
+              "category": "bonds",
+              "trancheId": "muster_werner:muster_werner_lot_4",
+              "sourceProfileId": "muster_werner",
+              "sourceProfileName": "Werner",
+              "name": "iShares Core € Govt Bond ETF",
+              "isin": "IE00B4WXJJ64",
+              "purchaseDate": "2020-05-18",
+              "brutto": 233.16017935406342,
+              "steuer": 8.878577894977091,
+              "netto": 223.46183294411458,
+              "tqf": 0,
+              "taxExempt": false,
+              "gainQuotePlan": 0.14858026650435316,
+              "gainQuoteSigned": 0.14858026650435316,
+              "realizedGainSigned": 34.643001586629524,
+              "taxableAfterTqfSigned": 34.643001586629524,
+              "steuerPlan": 0
+            },
+            {
+              "kind": "gold",
+              "category": "gold",
+              "trancheId": "muster_helga:muster_helga_lot_5",
+              "sourceProfileId": "muster_helga",
+              "sourceProfileName": "Helga",
+              "name": "Xetra-Gold ETC",
+              "isin": "DE000A0S9GB0",
+              "purchaseDate": "2022-03-15",
+              "brutto": 802.2890986607599,
+              "steuer": 0,
+              "netto": 802.2890986607599,
+              "tqf": 0,
+              "taxExempt": true,
+              "gainQuotePlan": 0.47857549342095745,
+              "gainQuoteSigned": 0.47857549342095745,
+              "realizedGainSigned": 383.9559012578284,
+              "taxableAfterTqfSigned": 0,
+              "steuerPlan": 0
+            },
+            {
+              "kind": "aktien_alt",
+              "category": "equity",
+              "trancheId": "muster_helga:muster_helga_lot_1",
+              "sourceProfileId": "muster_helga",
+              "sourceProfileName": "Helga",
+              "name": "Muster Aktien-ETF",
+              "isin": "IE00B3RBWM25",
+              "purchaseDate": "2016-06-15",
+              "brutto": 4529.189243764182,
+              "steuer": 623.7970189165974,
+              "netto": 3847.614306932718,
+              "tqf": 0.3,
+              "taxExempt": false,
+              "gainQuotePlan": 0.767914602385974,
+              "gainQuoteSigned": 0.767914602385974,
+              "realizedGainSigned": 3478.030557256002,
+              "taxableAfterTqfSigned": 2434.6213900792013,
+              "steuerPlan": 0
+            },
+            {
+              "kind": "aktien_alt",
+              "category": "equity",
+              "trancheId": "muster_werner:muster_werner_lot_1",
+              "sourceProfileId": "muster_werner",
+              "sourceProfileName": "Werner",
+              "name": "Muster Aktien-ETF",
+              "isin": "IE00B3RBWM25",
+              "purchaseDate": "2016-06-15",
+              "brutto": 4528.99270867503,
+              "steuer": 623.9366303351812,
+              "netto": 3847.4473474218357,
+              "tqf": 0.3,
+              "taxExempt": false,
+              "gainQuotePlan": 0.7679146023859741,
+              "gainQuoteSigned": 0.7679146023859741,
+              "realizedGainSigned": 3477.8796350911616,
+              "taxableAfterTqfSigned": 2434.515744563813,
+              "steuerPlan": 0
+            }
+          ],
+          "annualTaxes": [
+            {
+              "profileId": "muster_helga",
+              "taxDue": 3034.491463456266,
+              "taxStateNext": {
+                "lossCarry": 0
+              },
+              "details": {
+                "keSt": 0.2799511002444988,
+                "sumRealizedGainSigned": 39939.59711699911,
+                "sumTaxableAfterTqfSigned": 11839.362520118888,
+                "lossCarryStart": 0,
+                "signedAfterCarry": 11839.362520118888,
+                "spbUsedThisYear": 1000,
+                "taxBaseBeforeCarry": 10839.362520118888,
+                "taxBaseAfterCarry": 10839.362520118888,
+                "taxBeforeLossCarry": 3034.491463456266,
+                "taxAfterLossCarry": 3034.491463456266,
+                "taxSavedByLossCarry": 0,
+                "jointAssessment": true,
+                "partnerLossUsed": 0,
+                "partnerAllowanceUsed": 0
+              },
+              "cashInterestIncomeSigned": 42.9018405260123,
+              "saleTaxDue": 3022.481045998495,
+              "taxFundingGross": 0,
+              "taxReserved": 3022.481045998494,
+              "taxCashAdjustment": -12.010417457771837
+            },
+            {
+              "profileId": "muster_werner",
+              "taxDue": 3046.6807889816073,
+              "taxStateNext": {
+                "lossCarry": 0
+              },
+              "details": {
+                "keSt": 0.2799511002444988,
+                "sumRealizedGainSigned": 39970.78126024106,
+                "sumTaxableAfterTqfSigned": 11882.903429637356,
+                "lossCarryStart": 0,
+                "signedAfterCarry": 11882.903429637356,
+                "spbUsedThisYear": 1000,
+                "taxBaseBeforeCarry": 10882.903429637356,
+                "taxBaseAfterCarry": 10882.903429637356,
+                "taxBeforeLossCarry": 3046.6807889816073,
+                "taxAfterLossCarry": 3046.6807889816073,
+                "taxSavedByLossCarry": 0,
+                "jointAssessment": true,
+                "partnerLossUsed": 0,
+                "partnerAllowanceUsed": 0
+              },
+              "cashInterestIncomeSigned": 52.31194823250301,
+              "saleTaxDue": 3032.0360015179845,
+              "taxFundingGross": 0,
+              "taxReserved": 3022.3376551080346,
+              "taxCashAdjustment": -24.343133873572697
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "renate/grund",
+      "taxEur": 0,
+      "paths": 26
+    }
+  ],
+  "residual": {
+    "profileId": "muster_werner",
+    "runZeroBased": 177,
+    "year": 9,
+    "bondSaleEur": 233.16017935406126,
+    "bondPurchaseEur": 15074.520787132533,
+    "taxEur": 8.878577894976722,
+    "reason": "Persönlicher Auszahlungsverkauf nach finaler Planverrechnung und nach Finanzierung der noch auszuführenden Käufe. Verrechnung braucht eine gemeinsame Anpassung der Kaufreservierung, persönlichen Nachfinanzierung und Steuerbuchung; keine kleine Änderung im bisherigen Verrechnungsweg."
+  },
+  "expectationBaselineChecks": [
+    {
+      "file": "tests/accumulation-surplus.test.mjs",
+      "assertions": 98,
+      "baselineMatchesExistingReferences": true
+    },
+    {
+      "file": "tests/asset-strategy.test.mjs",
+      "assertions": 36,
+      "baselineMatchesExistingReferences": true
+    },
+    {
+      "file": "tests/ff-g-regression.test.mjs",
+      "assertions": 92,
+      "baselineMatchesExistingReferences": true
+    },
+    {
+      "file": "tests/muster-haushalt.test.mjs",
+      "assertions": 4381,
+      "baselineMatchesExistingReferences": true
+    },
+    {
+      "file": "tests/muster-variants.test.mjs",
+      "assertions": 89,
+      "baselineMatchesExistingReferences": true
+    },
+    {
+      "file": "tests/planned-inflows.test.mjs",
+      "assertions": 207,
+      "baselineMatchesExistingReferences": true
+    },
+    {
+      "file": "tests/rechenregeln-bytegleich.test.mjs",
+      "assertions": 12,
+      "baselineMatchesExistingReferences": true
+    },
+    {
+      "file": "tests/simulator-small-lot-backtest-regression.test.mjs",
+      "assertions": 75,
+      "baselineMatchesExistingReferences": true
+    }
+  ],
+  "measurements": {
+    "a": {
+      "before": {
+        "date": "2026-10-23",
+        "parameters": {
+          "anzahl": 2000,
+          "maxDauer": 35,
+          "blockSize": 5,
+          "seed": 12345,
+          "methode": "regime_markov",
+          "rngMode": "per-run-seed",
+          "startYearMode": "UNIFORM"
+        },
+        "cases": {
+          "renate": {
+            "inputsHash": "450c3bc8645911754ec750c0eab55ed59e43cc2d77c9778b4d6c3b607d8facde",
+            "ruin": 821,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 0,
+            "equityRoundTripExamples": [],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 5554302.658464896,
+            "realBudgetDropsOver5OutsideBear": 16,
+            "maxRealBudgetJumpPct": 231.19813864379805,
+            "maxRealBudgetDropPct": 18.36734693877551,
+            "chunks": [
+              "0badac3897a1c7047b1b400a47ffc68b5ab4958133f57d4aed9660a2bd294201",
+              "99fbfaeefa43a7896d63321e4f916b2dd5233b331491dce0b3159a7c9a9d14a9",
+              "6efa0e83107ed225ac74f8f0282aba0ea604030422aaaafc8d3b13c5a136d90c",
+              "f404b097d2b29dfb32c2720b581690ccd8172f4a0c47d76379e5e0041596df3d",
+              "92f1a0b3e1ee312c7a32e64d8af542ec4acaafe0bce562e3ee45dc0724814c81",
+              "a35f1e18d2ce0c1f2a243ac8d7aa2a8ede72c6589b44a910a899a2da46194bf8",
+              "977d7726a5abcc2eb8d3df4617fd5b6dff506629fb9a006230e3aa056050c568",
+              "cfac67c040b534d18a4d6f6ebea76ce6faafccb5a62dca71dd1c4e347c06007e",
+              "378242d7090c34a58d9706b7ce88ce5802b24765e7c26d4ca0ce195a738419ff",
+              "2a0557addd1648f170cf0f7ac619d17626e17c40f19083c9bc2936f746d9549b",
+              "5249d80f0a9f3828c42f7ca862b94647d57d6803902186c30f92155d57395347",
+              "54437a1508de26f338a097330d83a47a39a941e1646dc91cf0330292df92a68f",
+              "9d18db2add6407e95cc433d571e54f42fbb25b23e5bf97ccb8e2698f667a238f",
+              "6e0e7e3fdbbe0b308a19158fee4455122211e9b40a9774ea03c20404548ec1d0",
+              "861d82e1ada47891384c4b9a3751d31919669a30c2f6f6de8bd85cdb0002c38e",
+              "5668b0f950a380f77a91ef9ab385143f2642b24f4cfdebf50d7d4d2f2fdb10ed",
+              "dbaefebaf6751d8a7cefdbf036e8ac6aafbf9ce8a81485f1f9a3392412888201",
+              "1cc3eb04e121981abd71cddb4d3176851c497a80d253006268be47679892c28b",
+              "b0dfa1104740e97034ebcd5b0331b2754ad88e0eb0d88a52ae063b894cf9ad7d",
+              "acc7243c309bb6713de992f9f229f6e4282c5e4297e573d430a3e639109df5f5"
+            ],
+            "coveredPct": 58.95,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "caa126a09706d5f7941f77a3ac59152e6d507e246ed0ab6112ebddf1f5a5f8f8",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "61b7d34b7123e60ca6e542ef2850c5cc2d221af0cddd119ccf46b9c9f8512045",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 861912.8378841036,
+                "cutYears": 22
+              },
+              {
+                "period": "1965–1999",
+                "hash": "15201df7440abb4ab0c99e2235f6e94907dfa43852a2361362455659f4cf9938",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 368717.7511691711,
+                "cutYears": 23
+              },
+              {
+                "period": "2000–2025",
+                "hash": "f5cbdc6c6605ab5697cb2618a7623627459bf2b17eda67c27693e9e1ccd3b054",
+                "outcome": "ruin",
+                "years": 23,
+                "endWealth": 14157.268734949563,
+                "cutYears": 22
+              }
+            ]
+          },
+          "helga-werner": {
+            "inputsHash": "6255dec96bebe1a317fdc4abc91b81a8250690cb7b87ed690f9fdf12f35760d2",
+            "ruin": 56,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 0,
+            "equityRoundTripExamples": [],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 175607.09144393785,
+            "realBudgetDropsOver5OutsideBear": 2141,
+            "maxRealBudgetJumpPct": 292.6242304363118,
+            "maxRealBudgetDropPct": 54.78293942890213,
+            "chunks": [
+              "7d2bcd270718bc2012e4f23927358bf91d12c6465b5625a218cf31edcb43c24f",
+              "1a317f29b661b949029aacf266fced491349f1a5fc47d3ccd6ba3dd31e8cc6f4",
+              "17d1b885eaf56cc6825570207456b39901c60a80555989ea98ab28de8683a0d0",
+              "7c2156bf9289438367afa1fb4518204cec5693d2a0517f5190f521f7e5e3af5a",
+              "fd498bd82ca23b14e24c95eddd16e8c3a7cf1d8f0d144af132cd29079e0811d5",
+              "047f73c5731f6b64178810716364d813d3e068eb3abb1b403c441fe264058ab8",
+              "efb7c8b2066c94b362c71d2d6db9d7074123b624ae58ce5da52ff14476d4812a",
+              "8515d873bb30b44e78f49e22657846637af510749631431cad00394de5887671",
+              "647131fc970b40669c566fb9eb37b4b825ab4ed0c3d561e126af1c4688a63ed3",
+              "5052bb4b83425dd1db3dd3b1fff916f98d0c433c8ec91505988bd34e23ecd2fc",
+              "04ba32f515d5d8a4a83722c302b92acac40dbc9e98e20f7a357d0972a103cf47",
+              "524341837c88bd6dcf6f48fa086f0f4b845b5ad868fa27a714fb4623dec47044",
+              "a7fd18c7e65bf8cce6ca33accee65917c47a0ac024c207b6a776c5e4963c1dba",
+              "4f1726c24c4cf8e87ab516cb7859f2744b14f43b0528d0aac73638925b8df791",
+              "58fc66959a375a8e9dd160bb0acaf4943a3ff1a082ad43de139b716d6968678a",
+              "cd379a7d1ac35eb49ac7cdf50398894051e0c8e12b8cc48c515110c5db0ca001",
+              "590aec829a7c7e8939295aa3cc2113fac2f58343917a19c41c84c107e8217b6d",
+              "a10bc7791a84020aac832cd061674d5a3c3207158126c9f060b4ff1aebfcee66",
+              "7e49f94171561e1c63d753a447ecaa07a1588695b0b856c1a04530fe104a5385",
+              "55e416ec191379d425982f244aa7e3576809aa4bb61b5adbe7467a3632ee11a5"
+            ],
+            "coveredPct": 97.2,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "1d737431ada80b0f0a304b4045716ccaaaa7a44b95a32121ba398af8fab21193",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "19f1ead4e194e78c9fe3b6c4ab0a8120300eb504d6ae5986bfcca48c98c10dbe",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 10570618.484233953,
+                "cutYears": 0
+              },
+              {
+                "period": "1965–1999",
+                "hash": "cf872ebe1c9f9e0ef59f621b9ddea817e01a5f536134ef10a833706adc1257f8",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 25598723.83102599,
+                "cutYears": 0
+              },
+              {
+                "period": "2000–2025",
+                "hash": "bcfad60501d498c9a9335c7eee50d55e32bff5fd1b12f6ef7b653c8a411d26c9",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 2423697.324969811,
+                "cutYears": 0
+              }
+            ]
+          },
+          "max-erika": {
+            "inputsHash": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+            "ruin": 6,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 1078,
+            "equityRoundTripExamples": [
+              {
+                "run": 1,
+                "year": 9,
+                "regime": "side_long",
+                "equityBuy": 32054.98,
+                "equitySale": 193685.98889866215,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              },
+              {
+                "run": 4,
+                "year": 11,
+                "regime": "peak_hot",
+                "equityBuy": 50000,
+                "equitySale": 381388.4294582288,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              },
+              {
+                "run": 5,
+                "year": 14,
+                "regime": "peak_hot",
+                "equityBuy": 38230.55,
+                "equitySale": 182108.51647522504,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              }
+            ],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 6109199.864143535,
+            "realBudgetDropsOver5OutsideBear": 2865,
+            "maxRealBudgetJumpPct": 86.78009521785899,
+            "maxRealBudgetDropPct": 64.08604533445585,
+            "chunks": [
+              "c2bf10120781daa46e831dd66c74881448daa41aef1d9fb66a99ab3882a8c531",
+              "160bcf2465d5a76db549827c1224c4b2817452f2e22cdc76ace0b2965c20d4d9",
+              "8bab8fafc38154c0684f00bcc3a794545960a24301e8a7c16c833352dc546aa8",
+              "abfa10ef1993c77d4f4d93c3866a7ed3c425acf928fdec6f404bb38da1601915",
+              "9f69ba6fa16244335f063a0931e25dc06d6fbeff715c289e443b0a82182e8ef7",
+              "c82798cdd91ffda3f27183bd087f17733bcb14e6d430eb037e38eed37b42e98b",
+              "c1e0528ee68ac701dd29d75d793c152c731b805e88865c97cf4cec3c5b6e5245",
+              "f134a13aedbd11bbd0bd9d4d93a5d4c7f6bb2c28fcc79002e2f4d12244f68f9e",
+              "a866673834400523f20a6da12d517c7e2938e9dba57ac4f4d14577a93866436b",
+              "ace7a9955426227108af2f2f74ebf7f3132821197fd9346364106dfca1091bc4",
+              "ff73082181b9b03b36a6ecaa517994ede16e231889c6275934d4349986196ddf",
+              "6e74a75f50b76ef68ae683f3d131d42afbae48ef78e3ab71dd26532aad3672c2",
+              "a7387ec3aa2ed507e5601f6865de5d5d021d3a508eff717a7fd6e1cb83587b82",
+              "2179f85b73e37719bd757b9e9c19fa6edc0637cb4ecb97a14f38fa09990e1192",
+              "c0e07181d20e3cd5891e030b3718863bf1548606118e21a5d4705131ab593317",
+              "3540de9a694a1e7ace1637e9bacc00e2552c5e02aaa9ce358e208730f91f1a4b",
+              "8559c2968088ac2aaf263bc218285888cda22ec7ae99ed27ae7ab97f5be7a380",
+              "83ca5248cd924cc7be1a498be4ac99805e10fffac15103fbdceab7cf780f4d80",
+              "044e3e3d5e3fdc9c8cc2d7fd73d330fdae86604a301cf3e4a53045bdb9a764e9",
+              "bb606eece865ff5ac5642864d763d189ce5f3dffb92e19722f7e764937e17972"
+            ],
+            "coveredPct": 99.7,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "3fe40bfa873a572aa559681587cd9a99f64bb28e3cfe770cb55cdf2102fb8b41",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "099fc7f195af428666acf18d5154aacb21d81ca21a8ba52be051a93fbc0dce98",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 26541226.714951817,
+                "cutYears": 3
+              },
+              {
+                "period": "1965–1999",
+                "hash": "21ec6cf86a9f949fb59feee25696a5c5de280b79d9afe13403ae669b0e5e9433",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 37647753.559412554,
+                "cutYears": 5
+              },
+              {
+                "period": "2000–2025",
+                "hash": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 2361600.621178225,
+                "cutYears": 25
+              }
+            ]
+          },
+          "renate-standard": {
+            "inputsHash": "7f8fefe0aca3909ba632b8cbe0932a99aaff39be854cc14b67a49327832d82e5",
+            "ruin": 1247,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 0,
+            "equityRoundTripExamples": [],
+            "firstYearPayoutSalePaths": 12,
+            "firstYearTax": 375217.30063189776,
+            "realBudgetDropsOver5OutsideBear": 1744,
+            "maxRealBudgetJumpPct": 96.94744231037747,
+            "maxRealBudgetDropPct": 31.034482758620683,
+            "chunks": [
+              "87e56a8b25f7c3f904a646c9f4ce70c1ed06ab96bb48c31169f25e751b83fa51",
+              "ce5870ee7a6b08c41d64dae1f302770faa3d499fdda336de62790ee6ebed3780",
+              "67d606bf20d05087b40a833a3b8ba99a8084b0d31a803edea854a8fd66f2a040",
+              "3c627149de7cab99f89b7f7538c44bc9fa321cfd5650453678a0c6172005de9d",
+              "cc98ff78fdfcb6a734acf66413a2909fa2d60b1bb88c8de857c32f8eb63e71ae",
+              "78041dbab79c1bdf2ca9644073e976797021e982d0af613f6cfe3092d61a5dbc",
+              "c3c2beaea69cba475f1dce7b26046829a6e6138bd808083f36b7fe7de3e2c11f",
+              "16e297ab2366af6f29891eca5251a94ed356eca1a3a34df906e283aa1ae17b91",
+              "8d10c0217c41f6a67af45dfeef3d291a716398678dea43340791e6db8f8e4965",
+              "75e1257f4b3a5166253b7d485a1038af4110be7bac061bb41d55b082eb44305b",
+              "65a4ae12ac1cd06c5f941298e924060ed3987535d98a839f6f353de709bd7452",
+              "1c0f9d7874fc5ad0183421bc0be8aa6fb8526359110cbd1d5624218f271e2c97",
+              "69a633b682e9801d36a98220682600198d7aa9ef597eabcae19a981b302e355a",
+              "eb1911e7a08f614eac4f9379c916b4ed694abe46dcde8d440d1ae91390a5d465",
+              "bfb50576d0eccba252bc68fae889141d39bbaf4cdb58d51017cc10057058f62f",
+              "164c90404096dd7f543ab69dd64146277d443774821891d279335fcb2ce4dad5",
+              "0eadc7b6a0a716c0ef443a7dc27e122ff274fb1c2772c66c98364667e002a496",
+              "db280973aa3f5e950d91ceb87b5012b4a79fff0d2e31a12150cce81413f0210b",
+              "ac56f1b1aa7016dfc78e306bf7052bfbcf17e2881533f6839e114e6cb739d16d",
+              "05ab7f0c2bbe34d283e60643d02491cee3073d973603e4d246c2f3e59f33e140"
+            ],
+            "coveredPct": 37.65,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "695603f70bdf460338bcf915bdee373b1d07e3d7c2dbf1e1ede4f15140cb0712",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "8127c7f8c4d05ae8b96b71edbaef39ca34264ed5145d44cf4eeb375295abb0e7",
+                "outcome": "ruin",
+                "years": 12,
+                "endWealth": 0,
+                "cutYears": 11
+              },
+              {
+                "period": "1965–1999",
+                "hash": "91cfafd56682072b2b1d3276206da1b2c378a4e0173f70d81b7f78182efe5e9a",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 0,
+                "cutYears": 35
+              },
+              {
+                "period": "2000–2025",
+                "hash": "c56dc6f5ae499999b91b433169811b7d0f31d23250f0180360a4e1f31b440a35",
+                "outcome": "ruin",
+                "years": 7,
+                "endWealth": 4251.555892844397,
+                "cutYears": 6
+              }
+            ]
+          },
+          "martin-ehe": {
+            "inputsHash": "b01b07df59e0ae874a6142da5c0e447a0940e73369044272fbd5c482ba06d0f4",
+            "ruin": 0,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 1499,
+            "equityRoundTripExamples": [
+              {
+                "run": 0,
+                "year": 15,
+                "regime": "side_long",
+                "equityBuy": 24177.15,
+                "equitySale": 779538.8689788708,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              },
+              {
+                "run": 1,
+                "year": 9,
+                "regime": "side_long",
+                "equityBuy": 41301.22,
+                "equitySale": 366767.4770104807,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              },
+              {
+                "run": 2,
+                "year": 21,
+                "regime": "peak_hot",
+                "equityBuy": 52972.21,
+                "equitySale": 7504217.718660604,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              }
+            ],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 0,
+            "realBudgetDropsOver5OutsideBear": 2853,
+            "maxRealBudgetJumpPct": 109.33482132072987,
+            "maxRealBudgetDropPct": 68.62623835732987,
+            "chunks": [
+              "cd1bdad979a4ee57ba8818bd2188c4842550d3895ec9d335e7550e78f62e2dca",
+              "5a3a0feaf83d99227eb18de4f5b5db2a5cb4eba24197c7765a8840238d682ad6",
+              "b7e2bdb4352be03c6ec0cfc838ef6f7114511b803ac4ece0a528d84fd1e9aeb6",
+              "929547596ce0a91ea47442fe090c2bfdfbe183f75529834a49cb1267b616a980",
+              "a06862a21c2d5e4b437afb2ec4639d026ffd0a3ce2c3429a4584ceaa891d7d92",
+              "0075caf0192a83c1e668ba73488b795d801aaeed8dcb099bd02a04280874ec15",
+              "ce907ffb4b99115d8ea99b0270ebef1a394c252c5de5715c3b0a59333f0a5131",
+              "63459a21cd35dd64f0d55db9e065b7a57e4fb356e23b12d1ca0beecb0aa020d7",
+              "25b92a82b77c2f3b3414ed00f1a137ba88114bc039374edfab4c9db425ae523f",
+              "7d395f058f211f5374c98465ef7370be7a1741b8cd0fc424e8d92b38f88de593",
+              "d93b60ce82869da4a3cffb5b04306d49eac06099d5ed72898eebfecccfc3a087",
+              "f238a59bdffba57fc3ad37c9881fdf496e487fe57529d1cfbd3f5501008b73df",
+              "8236655a3dcef8be9f1837ec110fb3ac1d57df8a13f7ee25278569e8aff7cde2",
+              "0733ad93f74b1491af476d83f8a2e0479889f74a7dff0e88c59b40d191ecabd4",
+              "b70b8839eb704f106a763fc2d304a710bb60d21490bf78b32b0fb1016b8ae875",
+              "e333aec8d4a041f1f04dd480c5434b8130e5dfeef607940ef1512e1d1e109bfb",
+              "b2a5688b31e391f32af5d39987aee03c489eecbe96c8b42cc640bcb62af3d784",
+              "786e4ccd3f489e3f4d7bec0e6d0076993657c50ac6b21d12a7b65ea9292c88da",
+              "bf919c7bdec3c8ec46a03b67404e0fb2ade32c852b654546a195551ecd162cfd",
+              "77cf029f02e16ea234a6eff78bd77f057668b51ad999350ce73cd4ba29de9249"
+            ],
+            "coveredPct": 100,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "8c8840de9dab01a0a826cbe25f8a50c27a3e236e8a517b4a7d1c26349b1f1714",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "ecb948983350319a62e85eb24a6b0716206ca3035bacb7fb3f07e23cec907540",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 32215581.70165653,
+                "cutYears": 0
+              },
+              {
+                "period": "1965–1999",
+                "hash": "b161f340227e4687600ce7886aeaa6c4b6c6e2968418a4e09c013460ff7e895d",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 47634910.21580382,
+                "cutYears": 0
+              },
+              {
+                "period": "2000–2025",
+                "hash": "d33f64a2d43423cc346ece4bbeb6ebf983987e8802452603ec7ba28a768c6aa0",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 3823542.584742294,
+                "cutYears": 0
+              }
+            ]
+          },
+          "martin-petra": {
+            "inputsHash": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+            "ruin": 4,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 1999,
+            "equityRoundTripExamples": [
+              {
+                "run": 0,
+                "year": 2,
+                "regime": "side_long",
+                "equityBuy": 19463.13,
+                "equitySale": 11393.156042605246,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11393.16 € / Rebal.(A+)"
+              },
+              {
+                "run": 0,
+                "year": 3,
+                "regime": "peak_hot",
+                "equityBuy": 26121.25,
+                "equitySale": 11667.79718043578,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11667.80 € / Rebal.(A+)"
+              },
+              {
+                "run": 0,
+                "year": 4,
+                "regime": "peak_hot",
+                "equityBuy": 26730.97,
+                "equitySale": 10191.113077338436,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 10191.11 € / Rebal.(A+)"
+              }
+            ],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 504516.1006515269,
+            "realBudgetDropsOver5OutsideBear": 2855,
+            "maxRealBudgetJumpPct": 108.45819317958556,
+            "maxRealBudgetDropPct": 68.62623835732987,
+            "chunks": [
+              "24ebed127a1712ab89fb3eb767591a2911635ba6296ce2a822282b5f03846142",
+              "b703f9edd3b086e074a53576a13fb311820803187722f0b474c3791a0e17ce42",
+              "f1cb69448ab53f72da2e3e5bad1e9d8269c340f366f841614ebf19553c3e3758",
+              "bc4401bf7b6fe24139f56f5cff423d09da99937bf10b6eb1bc6c4f29f6ea1de4",
+              "3e8b2d270dd84825cc4df80d363bd95834a49dd722afb92f5d9ea0bb6b9e1f8e",
+              "add4b0849d88e6ac472632c48d0f0ee81009b5be837f386f49f9946be9514104",
+              "de4a684c6e054a667289c06753a738a62591d6fba2b20e1e286149c0f3d451b9",
+              "711b30bda8d1822c7e7b033e0cd9c14cdb23b3d44437eed3fcd55db8dbff2bca",
+              "f7474accd6c4d6f72d980d31c7d0978694aea9f64a987d08c35b9e5799c4d6f9",
+              "10424bd4912c00227b9cae893e7f0e07835f38eb1f31304d7b68aa2c365bf438",
+              "3cbfdb0419f77fb35a44c93ecdf6c32c2eced4478433dfcf3d41941136b08065",
+              "e1785cfc1da652568671b41e0cc7aa7155261768cf602566890f6ad7401144d0",
+              "aa622a9f6bf77a4d9d348b8102e253942e2bfd505de16ab50ed6cb2cfd5e02b0",
+              "c3cdca4099d0da009e1e210648aeb10b3906211e5dee8a22327b3b4a4170e063",
+              "ef1a83e3ece0873d95bdad4dc61cefdfeda7b1b28156b9b448f75b9d8d1e99d2",
+              "5f392f10181cae52e644c466d2145949d9390bb2e31239e2a41ec31866a29207",
+              "a54fe91ee75ad952ba278d57fd31dcd8623873797e54777309e1f4b4c27f14fc",
+              "06ca6ad55bf41f5ba508465f8ee71530da53482b68996d04be4001ffa09ca2da",
+              "055c961a9d9f74c74a12aaf6d0f22605e129715ad4b4e13b8bd5a661c1cf56c2",
+              "6f3d4af4e0fdc93927910f596988b12ace37ac40842a9a78fa19ce2f0ae6cd9f"
+            ],
+            "coveredPct": 99.8,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "8cdc1848871259020223825a34bd09730ea638c7bcff9e58550b4b030c771caa",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "fc8e8153f43fb4e1ecfb8b0b756ddaa29d6ac4332d364d2f26f215e9ba72fc5e",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 32215581.70165653,
+                "cutYears": 0
+              },
+              {
+                "period": "1965–1999",
+                "hash": "342fc261516a9db531e7116d60ee780b0f86463397a1df2360b91b5a97bdd601",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 47634910.21580382,
+                "cutYears": 0
+              },
+              {
+                "period": "2000–2025",
+                "hash": "322b411d84c6ff3429ea5f58209d5e36d407d214326c714ff680ebd914cbc0a9",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 3823542.584742294,
+                "cutYears": 0
+              }
+            ]
+          }
+        }
+      },
+      "after": {
+        "date": "2026-10-23",
+        "parameters": {
+          "anzahl": 2000,
+          "maxDauer": 35,
+          "blockSize": 5,
+          "seed": 12345,
+          "methode": "regime_markov",
+          "rngMode": "per-run-seed",
+          "startYearMode": "UNIFORM"
+        },
+        "cases": {
+          "renate": {
+            "mode": "3_bucket_jilge",
+            "inputsHash": "450c3bc8645911754ec750c0eab55ed59e43cc2d77c9778b4d6c3b607d8facde",
+            "hhTax": 0,
+            "hhPaths": 14,
+            "ruin": 805,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 0,
+            "equityRoundTripExamples": [],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 5554302.658464896,
+            "realBudgetDropsOver5OutsideBear": 141,
+            "maxRealBudgetJumpPct": 231.19813864379805,
+            "maxRealBudgetDropPct": 18.36734693877551,
+            "chunks": [
+              "30edc27984e96217c7fbe0f4164a3368b1bf1445f5968bfe0e495ac61d0c6777",
+              "57738bdf6b7766ac05a8bf2c18b713a2cab1fe8bc9ad699178f45fe78ea7c5b3",
+              "7be37778764846a6abb40eab970fe0495ab986d7b0a25a634602b24d39c7b7c3",
+              "c399887585792071232143f99e6179e429af9111c43214e9dbc65eda3b694fa8",
+              "50ad30ab9b62816ea8719d7454c91753bf84692230768200e486e524f53b098f",
+              "3455a73ea990ddca549fc5b0fa0acc9f9fb7632b04e5c05468889098620e3266",
+              "934f9dee875798d0309628f6088920a862b6283204f404d5ffb105ab1bec5842",
+              "106d98a1c39884cb0db4cb61f9de708b914574f425ee567b6009379de1cb9f3e",
+              "5d5b8020b09bc001902c5c57f9d53128635cbfff42e4cdc015a218c479fc8d33",
+              "6415629145cb78875512816ee831ecebac127525d251ad8121f7aee14489e887",
+              "f666b425a13d0658635f01490ca6221b5298fe0e2509af5f001af11cd779c4a6",
+              "fcaa400f0bf0d960fdb6beb0aa28f763e3494c7e192cca1546f0d41c74bc8892",
+              "d14be03fdebada2e935714e09555e8c6a9614e5590ad0b77925533d211fa0b02",
+              "b92387cbc761596b98b5745280078a33f042c0613d7545fc259d30f7c88280a6",
+              "4364e2e66f39af843212e67697e8f5f3738f6e4cb5879c92f86d86f82b0b884a",
+              "d590c5bf532bd73d4ed9963e0e5b81e9dac2f2356a1072ca98d7f97ac3207bb8",
+              "736bb49e556814ef7494e9297a12da7a90d9fe9471ed9bf351b8292887e0c8f5",
+              "35d7842629e5bc22368a66b2fd4f1ada8cc635620e312cddaa69eaa81860985f",
+              "ab6a4f8f6c828dd97413199a355b9a4b04c61a3e41a4785704f8feff423bfe3f",
+              "cb92c247a97ee56b5be8453ddef72ff2675aebd746ad5c6710647a0efd3f01fb"
+            ],
+            "coveredPct": 59.75,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "caa126a09706d5f7941f77a3ac59152e6d507e246ed0ab6112ebddf1f5a5f8f8",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "fa15a2741090863d0de2a85bcad8e2157fb0348d6cede2bb298e2daa64389a2a",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 861392.204735603,
+                "cutYears": 22
+              },
+              {
+                "period": "1965–1999",
+                "hash": "289e1295e1d2ff8a42cc1e43d482af655c22c3f2cae63dffc78ddd1fe15ebb5d",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 685949.2854770735,
+                "cutYears": 23
+              },
+              {
+                "period": "2000–2025",
+                "hash": "15e14adfbb2394403cd619b56cedc18863cecf3782d6d00b891898fd7db2477a",
+                "outcome": "ruin",
+                "years": 23,
+                "endWealth": 13798.394068466921,
+                "cutYears": 22
+              }
+            ]
+          },
+          "helga-werner": {
+            "mode": "3_bucket_jilge",
+            "inputsHash": "6255dec96bebe1a317fdc4abc91b81a8250690cb7b87ed690f9fdf12f35760d2",
+            "hhTax": 8.878577894976722,
+            "hhPaths": 6,
+            "ruin": 52,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 0,
+            "equityRoundTripExamples": [],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 175607.09144393785,
+            "realBudgetDropsOver5OutsideBear": 2141,
+            "maxRealBudgetJumpPct": 292.6242304363118,
+            "maxRealBudgetDropPct": 54.78293942890213,
+            "chunks": [
+              "2386dcf6a764da636d3845e1390eb78122e8681d07351432eee68fbf45bbbebd",
+              "99cb5fb01e6ff977a105b945ceee64a0624254ae10555af2db155be7abf7151a",
+              "c77d34b103cc26a22633c4533abbb024baf0101f7d4cbbd1e3ff78c68eec31f0",
+              "c68ac89c6e454e879a740d38b01765183447d0f5fdcb00b5d6813d195eba998b",
+              "a2bca72c16c1097c8eceecd67bdc49f52dcfd7f6a8c43e16f9ccef980c6a3129",
+              "c0cd126e3a7ed1c42a9aababf840d90a7ba79290279a7b30abf3f8998ae34d88",
+              "137a0a191ef5f23970a06565c91622f07423c8cead78a37e54c1621ee3626a2c",
+              "e1f8c959970cf1968f00270e14dadabac74c0ed99614884c9ef804eb8ca2db3e",
+              "e2c344d16fa15b0ef5cd68bac4eb63491cd9570c40b9ea250aef3f4047646b37",
+              "54c5da03ef5925f89cfcb1fb0748d0e9f667d555871dc108709757f8b45ac404",
+              "c1cd9dcfe15ce6a38f7e8dd9b9386d2497fda0fbd5ae2e38ad790578200f4459",
+              "0f8c3b12d035dc4758d369b0e84b587beedfe10f79f18a56715e7a76cf2eb751",
+              "48bf0050caca808dd32487accddd33bbd17c8a4f70afc293956afd0c0c412a32",
+              "dd60e62948a15b2d784cc876e0a5329864b1b6520699286c5715949c8e5a0d68",
+              "eb8d6dae41de720d85c7a188ba1a17dbb4dda09305cd529261b2fd0311b90d13",
+              "ebeac893ef60468c1a41355e4e2e6915c2062c82e0b9468cd23ca1caf1b7c6e1",
+              "7b714fc2544197c3b246bec006e4ed9fe9727f3c368c418448611cebf8b6124b",
+              "ddbbf5d67de1a2ec708ef246727e35b89d8dedcf31e828385bce44b2ba962438",
+              "eefc4edb23a2670474f85a8a15f45d076fa24ac812fcb29ffd6232f7c6186fe1",
+              "83af4b1e068e69d9a70028b9008b7b5ba85627302c045020eea4c3ca2087907c"
+            ],
+            "coveredPct": 97.39999999999999,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "1d737431ada80b0f0a304b4045716ccaaaa7a44b95a32121ba398af8fab21193",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "7d9ea54a185ddbd5e551bb14141e3a01494234bfb0ac71abc253b85943aae9a6",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 10619536.699005708,
+                "cutYears": 0
+              },
+              {
+                "period": "1965–1999",
+                "hash": "f05dc455e6989b8016e943802c0994f8b551806dcf5445349ca07453ba7e8bda",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 25598723.83102599,
+                "cutYears": 0
+              },
+              {
+                "period": "2000–2025",
+                "hash": "6b48e7694c8bef8356b59b92c120ea9cdec2be521bae2c2324dcce8c0e43ac1e",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 2446955.641542792,
+                "cutYears": 0
+              }
+            ]
+          },
+          "max-erika": {
+            "mode": "standard",
+            "inputsHash": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+            "hhTax": 0,
+            "hhPaths": 0,
+            "ruin": 6,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 1078,
+            "equityRoundTripExamples": [
+              {
+                "run": 1,
+                "year": 9,
+                "regime": "side_long",
+                "equityBuy": 32054.98,
+                "equitySale": 193685.98889866215,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              },
+              {
+                "run": 4,
+                "year": 11,
+                "regime": "peak_hot",
+                "equityBuy": 50000,
+                "equitySale": 381388.4294582288,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              },
+              {
+                "run": 5,
+                "year": 14,
+                "regime": "peak_hot",
+                "equityBuy": 38230.55,
+                "equitySale": 182108.51647522504,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              }
+            ],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 6109199.864143535,
+            "realBudgetDropsOver5OutsideBear": 2865,
+            "maxRealBudgetJumpPct": 86.78009521785899,
+            "maxRealBudgetDropPct": 64.08604533445585,
+            "chunks": [
+              "c2bf10120781daa46e831dd66c74881448daa41aef1d9fb66a99ab3882a8c531",
+              "160bcf2465d5a76db549827c1224c4b2817452f2e22cdc76ace0b2965c20d4d9",
+              "8bab8fafc38154c0684f00bcc3a794545960a24301e8a7c16c833352dc546aa8",
+              "abfa10ef1993c77d4f4d93c3866a7ed3c425acf928fdec6f404bb38da1601915",
+              "9f69ba6fa16244335f063a0931e25dc06d6fbeff715c289e443b0a82182e8ef7",
+              "c82798cdd91ffda3f27183bd087f17733bcb14e6d430eb037e38eed37b42e98b",
+              "c1e0528ee68ac701dd29d75d793c152c731b805e88865c97cf4cec3c5b6e5245",
+              "f134a13aedbd11bbd0bd9d4d93a5d4c7f6bb2c28fcc79002e2f4d12244f68f9e",
+              "a866673834400523f20a6da12d517c7e2938e9dba57ac4f4d14577a93866436b",
+              "ace7a9955426227108af2f2f74ebf7f3132821197fd9346364106dfca1091bc4",
+              "ff73082181b9b03b36a6ecaa517994ede16e231889c6275934d4349986196ddf",
+              "6e74a75f50b76ef68ae683f3d131d42afbae48ef78e3ab71dd26532aad3672c2",
+              "a7387ec3aa2ed507e5601f6865de5d5d021d3a508eff717a7fd6e1cb83587b82",
+              "2179f85b73e37719bd757b9e9c19fa6edc0637cb4ecb97a14f38fa09990e1192",
+              "c0e07181d20e3cd5891e030b3718863bf1548606118e21a5d4705131ab593317",
+              "3540de9a694a1e7ace1637e9bacc00e2552c5e02aaa9ce358e208730f91f1a4b",
+              "8559c2968088ac2aaf263bc218285888cda22ec7ae99ed27ae7ab97f5be7a380",
+              "83ca5248cd924cc7be1a498be4ac99805e10fffac15103fbdceab7cf780f4d80",
+              "044e3e3d5e3fdc9c8cc2d7fd73d330fdae86604a301cf3e4a53045bdb9a764e9",
+              "bb606eece865ff5ac5642864d763d189ce5f3dffb92e19722f7e764937e17972"
+            ],
+            "coveredPct": 99.7,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "3fe40bfa873a572aa559681587cd9a99f64bb28e3cfe770cb55cdf2102fb8b41",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "099fc7f195af428666acf18d5154aacb21d81ca21a8ba52be051a93fbc0dce98",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 26541226.714951817,
+                "cutYears": 3
+              },
+              {
+                "period": "1965–1999",
+                "hash": "21ec6cf86a9f949fb59feee25696a5c5de280b79d9afe13403ae669b0e5e9433",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 37647753.559412554,
+                "cutYears": 5
+              },
+              {
+                "period": "2000–2025",
+                "hash": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 2361600.621178225,
+                "cutYears": 25
+              }
+            ]
+          },
+          "renate-standard": {
+            "mode": "standard",
+            "inputsHash": "7f8fefe0aca3909ba632b8cbe0932a99aaff39be854cc14b67a49327832d82e5",
+            "hhTax": 0,
+            "hhPaths": 0,
+            "ruin": 1247,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 0,
+            "equityRoundTripExamples": [],
+            "firstYearPayoutSalePaths": 12,
+            "firstYearTax": 375217.30063189776,
+            "realBudgetDropsOver5OutsideBear": 1744,
+            "maxRealBudgetJumpPct": 96.94744231037747,
+            "maxRealBudgetDropPct": 31.034482758620683,
+            "chunks": [
+              "87e56a8b25f7c3f904a646c9f4ce70c1ed06ab96bb48c31169f25e751b83fa51",
+              "ce5870ee7a6b08c41d64dae1f302770faa3d499fdda336de62790ee6ebed3780",
+              "67d606bf20d05087b40a833a3b8ba99a8084b0d31a803edea854a8fd66f2a040",
+              "3c627149de7cab99f89b7f7538c44bc9fa321cfd5650453678a0c6172005de9d",
+              "cc98ff78fdfcb6a734acf66413a2909fa2d60b1bb88c8de857c32f8eb63e71ae",
+              "78041dbab79c1bdf2ca9644073e976797021e982d0af613f6cfe3092d61a5dbc",
+              "c3c2beaea69cba475f1dce7b26046829a6e6138bd808083f36b7fe7de3e2c11f",
+              "16e297ab2366af6f29891eca5251a94ed356eca1a3a34df906e283aa1ae17b91",
+              "8d10c0217c41f6a67af45dfeef3d291a716398678dea43340791e6db8f8e4965",
+              "75e1257f4b3a5166253b7d485a1038af4110be7bac061bb41d55b082eb44305b",
+              "65a4ae12ac1cd06c5f941298e924060ed3987535d98a839f6f353de709bd7452",
+              "1c0f9d7874fc5ad0183421bc0be8aa6fb8526359110cbd1d5624218f271e2c97",
+              "69a633b682e9801d36a98220682600198d7aa9ef597eabcae19a981b302e355a",
+              "eb1911e7a08f614eac4f9379c916b4ed694abe46dcde8d440d1ae91390a5d465",
+              "bfb50576d0eccba252bc68fae889141d39bbaf4cdb58d51017cc10057058f62f",
+              "164c90404096dd7f543ab69dd64146277d443774821891d279335fcb2ce4dad5",
+              "0eadc7b6a0a716c0ef443a7dc27e122ff274fb1c2772c66c98364667e002a496",
+              "db280973aa3f5e950d91ceb87b5012b4a79fff0d2e31a12150cce81413f0210b",
+              "ac56f1b1aa7016dfc78e306bf7052bfbcf17e2881533f6839e114e6cb739d16d",
+              "05ab7f0c2bbe34d283e60643d02491cee3073d973603e4d246c2f3e59f33e140"
+            ],
+            "coveredPct": 37.65,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "695603f70bdf460338bcf915bdee373b1d07e3d7c2dbf1e1ede4f15140cb0712",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "8127c7f8c4d05ae8b96b71edbaef39ca34264ed5145d44cf4eeb375295abb0e7",
+                "outcome": "ruin",
+                "years": 12,
+                "endWealth": 0,
+                "cutYears": 11
+              },
+              {
+                "period": "1965–1999",
+                "hash": "91cfafd56682072b2b1d3276206da1b2c378a4e0173f70d81b7f78182efe5e9a",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 0,
+                "cutYears": 35
+              },
+              {
+                "period": "2000–2025",
+                "hash": "c56dc6f5ae499999b91b433169811b7d0f31d23250f0180360a4e1f31b440a35",
+                "outcome": "ruin",
+                "years": 7,
+                "endWealth": 4251.555892844397,
+                "cutYears": 6
+              }
+            ]
+          },
+          "martin-ehe": {
+            "mode": "standard",
+            "inputsHash": "b01b07df59e0ae874a6142da5c0e447a0940e73369044272fbd5c482ba06d0f4",
+            "hhTax": 0,
+            "hhPaths": 0,
+            "ruin": 0,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 1499,
+            "equityRoundTripExamples": [
+              {
+                "run": 0,
+                "year": 15,
+                "regime": "side_long",
+                "equityBuy": 24177.15,
+                "equitySale": 779538.8689788708,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              },
+              {
+                "run": 1,
+                "year": 9,
+                "regime": "side_long",
+                "equityBuy": 41301.22,
+                "equitySale": 366767.4770104807,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              },
+              {
+                "run": 2,
+                "year": 21,
+                "regime": "peak_hot",
+                "equityBuy": 52972.21,
+                "equitySale": 7504217.718660604,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Rebal.(A+)"
+              }
+            ],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 0,
+            "realBudgetDropsOver5OutsideBear": 2853,
+            "maxRealBudgetJumpPct": 109.33482132072987,
+            "maxRealBudgetDropPct": 68.62623835732987,
+            "chunks": [
+              "cd1bdad979a4ee57ba8818bd2188c4842550d3895ec9d335e7550e78f62e2dca",
+              "5a3a0feaf83d99227eb18de4f5b5db2a5cb4eba24197c7765a8840238d682ad6",
+              "b7e2bdb4352be03c6ec0cfc838ef6f7114511b803ac4ece0a528d84fd1e9aeb6",
+              "929547596ce0a91ea47442fe090c2bfdfbe183f75529834a49cb1267b616a980",
+              "a06862a21c2d5e4b437afb2ec4639d026ffd0a3ce2c3429a4584ceaa891d7d92",
+              "0075caf0192a83c1e668ba73488b795d801aaeed8dcb099bd02a04280874ec15",
+              "ce907ffb4b99115d8ea99b0270ebef1a394c252c5de5715c3b0a59333f0a5131",
+              "63459a21cd35dd64f0d55db9e065b7a57e4fb356e23b12d1ca0beecb0aa020d7",
+              "25b92a82b77c2f3b3414ed00f1a137ba88114bc039374edfab4c9db425ae523f",
+              "7d395f058f211f5374c98465ef7370be7a1741b8cd0fc424e8d92b38f88de593",
+              "d93b60ce82869da4a3cffb5b04306d49eac06099d5ed72898eebfecccfc3a087",
+              "f238a59bdffba57fc3ad37c9881fdf496e487fe57529d1cfbd3f5501008b73df",
+              "8236655a3dcef8be9f1837ec110fb3ac1d57df8a13f7ee25278569e8aff7cde2",
+              "0733ad93f74b1491af476d83f8a2e0479889f74a7dff0e88c59b40d191ecabd4",
+              "b70b8839eb704f106a763fc2d304a710bb60d21490bf78b32b0fb1016b8ae875",
+              "e333aec8d4a041f1f04dd480c5434b8130e5dfeef607940ef1512e1d1e109bfb",
+              "b2a5688b31e391f32af5d39987aee03c489eecbe96c8b42cc640bcb62af3d784",
+              "786e4ccd3f489e3f4d7bec0e6d0076993657c50ac6b21d12a7b65ea9292c88da",
+              "bf919c7bdec3c8ec46a03b67404e0fb2ade32c852b654546a195551ecd162cfd",
+              "77cf029f02e16ea234a6eff78bd77f057668b51ad999350ce73cd4ba29de9249"
+            ],
+            "coveredPct": 100,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "8c8840de9dab01a0a826cbe25f8a50c27a3e236e8a517b4a7d1c26349b1f1714",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "ecb948983350319a62e85eb24a6b0716206ca3035bacb7fb3f07e23cec907540",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 32215581.70165653,
+                "cutYears": 0
+              },
+              {
+                "period": "1965–1999",
+                "hash": "b161f340227e4687600ce7886aeaa6c4b6c6e2968418a4e09c013460ff7e895d",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 47634910.21580382,
+                "cutYears": 0
+              },
+              {
+                "period": "2000–2025",
+                "hash": "d33f64a2d43423cc346ece4bbeb6ebf983987e8802452603ec7ba28a768c6aa0",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 3823542.584742294,
+                "cutYears": 0
+              }
+            ]
+          },
+          "martin-petra": {
+            "mode": "standard",
+            "inputsHash": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+            "hhTax": 0,
+            "hhPaths": 0,
+            "ruin": 4,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 1999,
+            "equityRoundTripExamples": [
+              {
+                "run": 0,
+                "year": 2,
+                "regime": "side_long",
+                "equityBuy": 19463.13,
+                "equitySale": 11393.156042605246,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11393.16 € / Rebal.(A+)"
+              },
+              {
+                "run": 0,
+                "year": 3,
+                "regime": "peak_hot",
+                "equityBuy": 26121.25,
+                "equitySale": 11667.79718043578,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11667.80 € / Rebal.(A+)"
+              },
+              {
+                "run": 0,
+                "year": 4,
+                "regime": "peak_hot",
+                "equityBuy": 26730.97,
+                "equitySale": 10191.113077338436,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 10191.11 € / Rebal.(A+)"
+              }
+            ],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 504516.1006515269,
+            "realBudgetDropsOver5OutsideBear": 2855,
+            "maxRealBudgetJumpPct": 108.45819317958556,
+            "maxRealBudgetDropPct": 68.62623835732987,
+            "chunks": [
+              "24ebed127a1712ab89fb3eb767591a2911635ba6296ce2a822282b5f03846142",
+              "b703f9edd3b086e074a53576a13fb311820803187722f0b474c3791a0e17ce42",
+              "f1cb69448ab53f72da2e3e5bad1e9d8269c340f366f841614ebf19553c3e3758",
+              "bc4401bf7b6fe24139f56f5cff423d09da99937bf10b6eb1bc6c4f29f6ea1de4",
+              "3e8b2d270dd84825cc4df80d363bd95834a49dd722afb92f5d9ea0bb6b9e1f8e",
+              "add4b0849d88e6ac472632c48d0f0ee81009b5be837f386f49f9946be9514104",
+              "de4a684c6e054a667289c06753a738a62591d6fba2b20e1e286149c0f3d451b9",
+              "711b30bda8d1822c7e7b033e0cd9c14cdb23b3d44437eed3fcd55db8dbff2bca",
+              "f7474accd6c4d6f72d980d31c7d0978694aea9f64a987d08c35b9e5799c4d6f9",
+              "10424bd4912c00227b9cae893e7f0e07835f38eb1f31304d7b68aa2c365bf438",
+              "3cbfdb0419f77fb35a44c93ecdf6c32c2eced4478433dfcf3d41941136b08065",
+              "e1785cfc1da652568671b41e0cc7aa7155261768cf602566890f6ad7401144d0",
+              "aa622a9f6bf77a4d9d348b8102e253942e2bfd505de16ab50ed6cb2cfd5e02b0",
+              "c3cdca4099d0da009e1e210648aeb10b3906211e5dee8a22327b3b4a4170e063",
+              "ef1a83e3ece0873d95bdad4dc61cefdfeda7b1b28156b9b448f75b9d8d1e99d2",
+              "5f392f10181cae52e644c466d2145949d9390bb2e31239e2a41ec31866a29207",
+              "a54fe91ee75ad952ba278d57fd31dcd8623873797e54777309e1f4b4c27f14fc",
+              "06ca6ad55bf41f5ba508465f8ee71530da53482b68996d04be4001ffa09ca2da",
+              "055c961a9d9f74c74a12aaf6d0f22605e129715ad4b4e13b8bd5a661c1cf56c2",
+              "6f3d4af4e0fdc93927910f596988b12ace37ac40842a9a78fa19ce2f0ae6cd9f"
+            ],
+            "coveredPct": 99.8,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "8cdc1848871259020223825a34bd09730ea638c7bcff9e58550b4b030c771caa",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "fc8e8153f43fb4e1ecfb8b0b756ddaa29d6ac4332d364d2f26f215e9ba72fc5e",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 32215581.70165653,
+                "cutYears": 0
+              },
+              {
+                "period": "1965–1999",
+                "hash": "342fc261516a9db531e7116d60ee780b0f86463397a1df2360b91b5a97bdd601",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 47634910.21580382,
+                "cutYears": 0
+              },
+              {
+                "period": "2000–2025",
+                "hash": "322b411d84c6ff3429ea5f58209d5e36d407d214326c714ff680ebd914cbc0a9",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 3823542.584742294,
+                "cutYears": 0
+              }
+            ]
+          }
+        }
+      }
+    },
+    "c": {
+      "before": {
+        "date": "2026-10-23",
+        "parameters": {
+          "anzahl": 2000,
+          "maxDauer": 35,
+          "blockSize": 5,
+          "seed": 12345,
+          "methode": "regime_markov",
+          "rngMode": "per-run-seed",
+          "startYearMode": "UNIFORM"
+        },
+        "cases": {
+          "max-erika/grund": {
+            "inputsSha256": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+            "completeOutputSha256": "94c8671131ff0f9cc8ff004614af45f5919a4a51b6f01295f2005a8c032121cc",
+            "chunks": [
+              "c2bf10120781daa46e831dd66c74881448daa41aef1d9fb66a99ab3882a8c531",
+              "160bcf2465d5a76db549827c1224c4b2817452f2e22cdc76ace0b2965c20d4d9",
+              "8bab8fafc38154c0684f00bcc3a794545960a24301e8a7c16c833352dc546aa8",
+              "abfa10ef1993c77d4f4d93c3866a7ed3c425acf928fdec6f404bb38da1601915",
+              "9f69ba6fa16244335f063a0931e25dc06d6fbeff715c289e443b0a82182e8ef7",
+              "c82798cdd91ffda3f27183bd087f17733bcb14e6d430eb037e38eed37b42e98b",
+              "c1e0528ee68ac701dd29d75d793c152c731b805e88865c97cf4cec3c5b6e5245",
+              "f134a13aedbd11bbd0bd9d4d93a5d4c7f6bb2c28fcc79002e2f4d12244f68f9e",
+              "a866673834400523f20a6da12d517c7e2938e9dba57ac4f4d14577a93866436b",
+              "ace7a9955426227108af2f2f74ebf7f3132821197fd9346364106dfca1091bc4",
+              "ff73082181b9b03b36a6ecaa517994ede16e231889c6275934d4349986196ddf",
+              "6e74a75f50b76ef68ae683f3d131d42afbae48ef78e3ab71dd26532aad3672c2",
+              "a7387ec3aa2ed507e5601f6865de5d5d021d3a508eff717a7fd6e1cb83587b82",
+              "2179f85b73e37719bd757b9e9c19fa6edc0637cb4ecb97a14f38fa09990e1192",
+              "c0e07181d20e3cd5891e030b3718863bf1548606118e21a5d4705131ab593317",
+              "3540de9a694a1e7ace1637e9bacc00e2552c5e02aaa9ce358e208730f91f1a4b",
+              "8559c2968088ac2aaf263bc218285888cda22ec7ae99ed27ae7ab97f5be7a380",
+              "83ca5248cd924cc7be1a498be4ac99805e10fffac15103fbdceab7cf780f4d80",
+              "044e3e3d5e3fdc9c8cc2d7fd73d330fdae86604a301cf3e4a53045bdb9a764e9",
+              "bb606eece865ff5ac5642864d763d189ce5f3dffb92e19722f7e764937e17972"
+            ],
+            "coveredPct": 99.7,
+            "ruin": 6,
+            "careSales": 0,
+            "emergencySales": 0,
+            "allowance": 30899253.156676874,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 0
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "21ec6cf86a9f949fb59feee25696a5c5de280b79d9afe13403ae669b0e5e9433",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 0
+              }
+            ]
+          },
+          "max-erika/grund/haus": {
+            "inputsSha256": "382a16328d60089accd7fbcf3690ff808fb6d7f25b6cdd0d7f4c9264cdc55021",
+            "completeOutputSha256": "033b0da8dbadaf406f3c0a76bf02619ac3b19bd65ffbd120328385d4cf898f64",
+            "chunks": [
+              "7c0cd3b5fb93f1e2cd31efbcaa8e658a04046f9f92fba62ae80d17e727117f11",
+              "d4a9e3ca8f601899e61155bed3aee752acf49fb70ead801b1193457f7445906f",
+              "37b7fae4efabd9a546c3e4f912e14a91ce7ba6099e9394f694679fcc2f7a4bcb",
+              "77c9c299737283374cc7bb829e9869eae66eb7f663e1a8cc5c4384721d29bb10",
+              "2aeac81d54fa0608e1ba726b1bffc8df10d9216c5d33051fc6769c2813cfe40b",
+              "fa0b87bc810fa38275d3766afea131f53e3f552267880c8ad1dc2fc5002c63b6",
+              "aa2063fda445e25529d76e58cab5ffd1d0b8f6093544665cf88d2f627ad7bf19",
+              "b94daaea9beb6c80e3b5256309949a344d07a45153697d09e9e08fc9cd9b001c",
+              "aa951a093526bce2e4ea22061036a469da07850b0321f3086c9631b3713b0fc7",
+              "6171198b1b46df5d8b61cd2f809612e345cc7c585fc8a5d425d48a7ffeb680a4",
+              "a256d3b035e1c619aa3aaa43bfa30e172b01ad449968bb1bbdcb89193f0d171e",
+              "d86e9a9cb097a8300fabecb201ee5a511f940c7f1b468c3cf9a077d98a068d86",
+              "44d7658520f70105647c4234958dfe84a16abe57e3fee443aa3dc41e1a01b0af",
+              "c8388406766d6078801740ff0ed81b0135fa7c927fe7d21160e5e7a4b9b088c6",
+              "26eca8f1473852366d57170ba63e08449ea7a778f015795eedc6de31e9864e23",
+              "a89159daead400f225e8cc3e51ffaed021633ed741df360fe3cc1f0bac799484",
+              "9b3fd84a5fb944f309eac654bb41933f24e8f42a77c0164b94043a0b4b68dc0e",
+              "c0e056e1afaf44f2c6e1326b5001bafecd2038ec2650b7313c746f24afb26f1c",
+              "bb88a1895dc593c7883971b5ed2a6b4cc4779c843bbe93c7660a2af9d5463ff7",
+              "da7cf3035eb4babb349541ddfa04235eb26212294cb95d8fd6b8cedc0b6ea010"
+            ],
+            "coveredPct": 99.9,
+            "ruin": 2,
+            "careSales": 199,
+            "emergencySales": 2,
+            "allowance": 30902975.581302717,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "c4d2c4958c84c053c9a95dfea5cfceb09896234acdc88afed7d29c8c0ea36812",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 0
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "89d099326f7c1b92d8b002e87f92ec2b754868c0ba9ab032815b87f6eebb3e03",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 0
+              }
+            ]
+          },
+          "jan-lena/grund": {
+            "inputsSha256": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+            "completeOutputSha256": "3d8523dedcc1820513b7c7bfb38d50d5895fb2a8483c78b7b29abb739f7ad4ef",
+            "chunks": [
+              "936a4788a114bb66be0d933171feef49963082b904cfdd812329447c5bc571cd",
+              "59c69823aa1bf8c37412ea9da9b075b78aa79c19352fbcab5ae3402c99b43cfb",
+              "0fbc8667f2db6230f65dc63d0ef349e04f92028ab58f37057f7f7f6acf46b21f",
+              "287f835487521d80da57cc029179258f900b2462d6d24c3aaa41e17872712dce",
+              "f66ce510586321fa955f185dfb24982923d4b212180f02e2e054d023bc319490",
+              "733b664f2ee147da533d50d160bfbdc104c697ba3785759f597310b275dc0d6c",
+              "fe8256d5c3a61b3871aad6adc718be1873d3b1d3c6c3107a473bcc263064a109",
+              "09320d76b2739336e5205c6e4e047cc07d933aa7af637fb84cbef55e5be34ec9",
+              "bc90e1ea1d9bc3e750b12d13116311a186cbf14238cdc4f7a8aaf556c6af95ce",
+              "f5f437b647d1460eeae261dc9041ed90c956424162f379847a7aaaaebb816fc5",
+              "5929559185c87b75db67d3ca1b5e8095839d4f920b3d1c2ad1e09e33a873797d",
+              "05d415c5dea263f0f689ad5721eb3571f4b1bbf5742745cd3adb021e9a88bd36",
+              "0c94c4e0b0461eb08589fc6e73c5d69cad2456291f2fc315776fa41c8bfb3437",
+              "d8c474f8a90c296dc49b55eb95e835eb5ec79252e980c761c23c36353824d45d",
+              "ec5fb948977c4ccf1a18f2a14a993f167d3d58b1f417a8c7d943fa825cf0a6b9",
+              "d275cd756c260dfddf0e79c90bd263fb60bf7a4702153066b21f69025b503328",
+              "55c818d3b4d2f14a2df0468bf8aca753877b3dc4a007c0463908bd2a9ede019c",
+              "7f05f83aba85e42151ac50621a524bef8ec661c75ae0d133c705325b4b075be5",
+              "1b21d9f7a960790cd02a758ddc7df1d1e515e0209d41600f51180c9ef6bfbd27",
+              "36a41ae220c122fbfe89da584509bfc88862a3aafd1dbc300cc6fbb203d55355"
+            ],
+            "coveredPct": 99.75,
+            "ruin": 5,
+            "careSales": 0,
+            "emergencySales": 0,
+            "allowance": 35077368.33557799,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "dc7dea48fe3f6397bd9dc8d7c91cd40a5764b33dc36a7ba9960af6917b8c306b",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 0
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "212827022172414f266b544b3df012a47955ac235c00fbff009c772d11f31523",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 0
+              }
+            ]
+          },
+          "renate/grund": {
+            "inputsSha256": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+            "completeOutputSha256": "6505422a370f45b924d36f03afc58f146294754bd8482436a62e6cc06e860d19",
+            "chunks": [
+              "4b876cbe9f2f49c039f3e7f547c822e5d9d6dc8f423200ef2ae0b525d68a0a16",
+              "a264a243834aaa4017bd226cea2d7ad901d7abba36360077cbab37f64ab5a4c6",
+              "d2b550a42eed9093ef1ceec3fb736967b4d71108b6cde57f2ffa2fe19217c711",
+              "e810ec682325e7752865c350ccdbc654d047301eb1ca05294176712372fdd986",
+              "f7d27482a2407a58bf22a76b56d16c5b103e7d1e609a471a29d27a579766216e",
+              "efe783a532145e7669da514bb7a9e1ff52f3f33e315d1c79b70d34d6b05d5b7c",
+              "bd0977b8de4aae2c35f549fa010e1457136470b67004a1fe5763cc4a75a83ee2",
+              "860d5eb98e3b7e57fe20523ca221e544dd2f78bae31bd8c7d4be343b2c51a3db",
+              "1673e2e8c0ef4f67a9f794744aebe9127d1457302dcf06ba41c358738d5ef19b",
+              "483dc052f9aa6dea73a9a371ac04f239030e7abc452f6129c85391b265855c62",
+              "1a016b36e737e05c5563f1e5da6033d31e54c9b6a3b70adc56d5f504ff12599a",
+              "be49584baff0ca632e837ed9e994de7c7412a7a75e9ba208b4bafc9625f2389e",
+              "5288312482d23b7dc92dd8b69771586824987df66e6295f6b30db4bc5be0fee4",
+              "224a1df5bfb80345cd4f37577673c1e88087f2c4fcda09eaaaae2da34341cb95",
+              "90d25c5b72a16c365315fd83e0fc37397264d0e9fb155ef654dd7e45a0f54c4e",
+              "1d349ef1256a00824dec90370db7bc178b7961c87cb0e6e05a2e8b67bd8a843b",
+              "58e57f85c6272af9963f098a4d836980d91dd4e30735a559ec3f094aa88362fd",
+              "ec48e85f45913d6aa97d5d3d958a6b86c4d9a3a780508479b3a6ac249be41c8e",
+              "f49bea3738b4f40f9bec273dbd4bf73edb5308cf5893c501370de755f75224a9",
+              "08a5149788778fe3c81f850c3c7cfa1562e9a2571bf94e3c8f058e89557c06e4"
+            ],
+            "coveredPct": 92.35,
+            "ruin": 153,
+            "careSales": 0,
+            "emergencySales": 0,
+            "allowance": 18713245.738696758,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "c405d5906e25e0a2420a2eda7c6717ec255838b1486c5dc13cc5d7c69d67bc55",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 0
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "1328faa76fdf6eed6bdb73f3cd7afb4c5fd0b04973f6ef3a5d1156efb8c30b2f",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 0
+              }
+            ]
+          },
+          "helga-werner/haus-pg3": {
+            "inputsSha256": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+            "completeOutputSha256": "dc0ba5f8efed07e8f974cab1cc24c6844501a0591e7b65676161ca501507445c",
+            "chunks": [
+              "12aa014e0af6a0440ada9188b69a276fe2744727c414a38a53d135991bc2f553",
+              "20f76ddf53acc5af71bbaa11fe1598a6ce4eaf7edc7e962fc81059b31195a985",
+              "4d1a1b2a095383cb9146fd6461b377bccf982f415414c747f7404cb02c2aae0d",
+              "13fa7b936b9614836a8e3359677c1bbe4d9f3a1039c5db2cd7468ded2765af26",
+              "d9651a254f841abd4598e7c1f0ee5236c024a9e3fa22d8a6d75c448cf260177c",
+              "242d968f15ac1ba0de6bec4f14421958977c5cd7886553e5291f87d7f133f459",
+              "1e9845b074dc8eb5be052b500fc5a3e4d3c25f619947dbf770eeaea33187e970",
+              "256a88fa98a3ffdf7976566a176346d6d1883cf859673ba1b71bfb45486a75f6",
+              "89311d597791f3b9816de4c5474cfc7dd839ee4f882d8096c5797e35526dca00",
+              "db8b15b559068c4ee62139610e4fb95efbe3005b437928580cfbf111b53e5ee8",
+              "710d85e5ad5228da0fbc1e3850729b275c3cbb6bac5d1d99bdde76157f1d4b57",
+              "7a1215d8b87afa0fae4d99ebffbab5dde1a640736979beba31557b5e6a452691",
+              "aba8674206fdea138f28d5f63f33a7eb3558af8f898f742e71e3ad757cd93152",
+              "5e10a0a2e5052e46011cf65a1aceb6f8d7de950b4537d7d46ec7b913c5f4a9cb",
+              "97e56d1c25113497e76f44f0e2410e784dd9573abf284ccb00a1eb81b98b2d6a",
+              "449e45afadef7c88d1b0761c4317470d3d1e5b7a48687983d0a5ca5a2f575d22",
+              "9340e885870198d1663d4ba6a17c6386cce51d073dab98f5c28c967b25f160fd",
+              "b8b4fa470a0fa6deaaeb0c257a1c9d111f523e149703cfff9bb7a2a384cad191",
+              "9dfacc09bb896a12d10b8cae736e25ee7b9f640364305c0b9f0b09d8c0777480",
+              "a822bd16efab92eee40cde424a8dd0541447e43b22cd952548bb6e77077b17b9"
+            ],
+            "coveredPct": 99.75,
+            "ruin": 5,
+            "careSales": 292,
+            "emergencySales": 55,
+            "allowance": 66171507.22250149,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "b3ab600a4ac7142feedbd0d7dc8dfdce85d8e58b3eb146c38c323f1582db0d02",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 228996.90206354205
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "229863415c0b5eb4e1a8a9f24548373814ca4f48384a332aed43b8f9132b930d",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 495049.60682878504
+              }
+            ]
+          },
+          "helga-werner/haus-pg3/pg4": {
+            "inputsSha256": "9273771819bda16b801f6f8ffe08db641e25d1cf84490a95987470ad04ad6864",
+            "completeOutputSha256": "d8106f523d174d819cee2dfb02733ac3c8e6586bf73fa44fac1e8999b5b914e7",
+            "chunks": [
+              "01a4caffa90b5d3136a952983b0adae52b10fa3c438ddb0915bf609f0885762b",
+              "e1cb3adc301d8a00738196920f2d19c9296c7efd815e22a3aa5022da92df56e8",
+              "497e09078cda4d814842e7ab071f672e6b86aa10e479c399be897edb95f9e521",
+              "d79f13024d893b1e17519b98bc87a3c0a69812ece165bc72d9ce0ba49013cb53",
+              "29dd6eac1ac57e5cb61f8df6700987dd977f7d46e6250a8226dd1c5c59e4a3d8",
+              "2ea85ca16c2873c8260a7286e8deeb01a567ea7689931020766af9fb26bcd195",
+              "2cb54cfe0a4c55cbb6649d71a57bb687b1edd9a5302ce8eb43305a1a690f7dec",
+              "6c7dd344029f49f2509eef957ca6e9189c6bae881e6b9249bcd12aaab66d33c7",
+              "b4aa823bf0cc3c39a254db50fcd526f28576ff711e12d65fcda2aeaa86d8d8e1",
+              "1bd12de44f4293d6991c49e857bb97fe0c189904e819cf0de75936d7b0cd0ede",
+              "caedcf9134a2d882b0bf5c778aa0fec7fd49b9cb8304145474d9f0e0cd367f69",
+              "8d3bf692662aef7a88c856f7b714eaa1262d58655f0b4daa9f31aa0924ed2975",
+              "172921a4a6a3d35b2d3aab2aa729bc3e2e3a40251cc0af6d62d37628e0d8e481",
+              "8eca0586d3ee0a887de29461834b868493f32a131511685f50f226d82245fc85",
+              "64b54d127570b8a98c7790390cd67449e7aa93e664ac026a702617c1127d8025",
+              "80c957dfd9f82181ab9442e91c19617ef35d9de3d49faa23264d5c6957f4a2d3",
+              "acc4be53d5af410c9c679af2162e85c81813eebd4216e33bc2668faecbb2c88e",
+              "accc0407042b13d8b6fc8e8e9509b36d413f28adba35a86cd0fd0cbf46b68466",
+              "3dcf31286b16088b8ba7e6d128c16594e7757862387bce2355a3bde04e87db76",
+              "8d160fa8a4b6f9b9e19fcfa8f14e9d6e53a326926af42b3172606f148cfb1bf8"
+            ],
+            "coveredPct": 97.3,
+            "ruin": 54,
+            "careSales": 1949,
+            "emergencySales": 0,
+            "allowance": 0,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "9633a563d23a7f824988879874dc998276a2fa3a379d809f125e15a4531cf9d9",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 0
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "414432e3bea12734cdaa2d4986959ab2986292a053ce70c067247e06b7405889",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 0
+              }
+            ]
+          }
+        }
+      },
+      "after": {
+        "date": "2026-10-23",
+        "parameters": {
+          "anzahl": 2000,
+          "maxDauer": 35,
+          "blockSize": 5,
+          "seed": 12345,
+          "methode": "regime_markov",
+          "rngMode": "per-run-seed",
+          "startYearMode": "UNIFORM"
+        },
+        "cases": {
+          "max-erika/grund": {
+            "inputsSha256": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+            "completeOutputSha256": "94c8671131ff0f9cc8ff004614af45f5919a4a51b6f01295f2005a8c032121cc",
+            "chunks": [
+              "c2bf10120781daa46e831dd66c74881448daa41aef1d9fb66a99ab3882a8c531",
+              "160bcf2465d5a76db549827c1224c4b2817452f2e22cdc76ace0b2965c20d4d9",
+              "8bab8fafc38154c0684f00bcc3a794545960a24301e8a7c16c833352dc546aa8",
+              "abfa10ef1993c77d4f4d93c3866a7ed3c425acf928fdec6f404bb38da1601915",
+              "9f69ba6fa16244335f063a0931e25dc06d6fbeff715c289e443b0a82182e8ef7",
+              "c82798cdd91ffda3f27183bd087f17733bcb14e6d430eb037e38eed37b42e98b",
+              "c1e0528ee68ac701dd29d75d793c152c731b805e88865c97cf4cec3c5b6e5245",
+              "f134a13aedbd11bbd0bd9d4d93a5d4c7f6bb2c28fcc79002e2f4d12244f68f9e",
+              "a866673834400523f20a6da12d517c7e2938e9dba57ac4f4d14577a93866436b",
+              "ace7a9955426227108af2f2f74ebf7f3132821197fd9346364106dfca1091bc4",
+              "ff73082181b9b03b36a6ecaa517994ede16e231889c6275934d4349986196ddf",
+              "6e74a75f50b76ef68ae683f3d131d42afbae48ef78e3ab71dd26532aad3672c2",
+              "a7387ec3aa2ed507e5601f6865de5d5d021d3a508eff717a7fd6e1cb83587b82",
+              "2179f85b73e37719bd757b9e9c19fa6edc0637cb4ecb97a14f38fa09990e1192",
+              "c0e07181d20e3cd5891e030b3718863bf1548606118e21a5d4705131ab593317",
+              "3540de9a694a1e7ace1637e9bacc00e2552c5e02aaa9ce358e208730f91f1a4b",
+              "8559c2968088ac2aaf263bc218285888cda22ec7ae99ed27ae7ab97f5be7a380",
+              "83ca5248cd924cc7be1a498be4ac99805e10fffac15103fbdceab7cf780f4d80",
+              "044e3e3d5e3fdc9c8cc2d7fd73d330fdae86604a301cf3e4a53045bdb9a764e9",
+              "bb606eece865ff5ac5642864d763d189ce5f3dffb92e19722f7e764937e17972"
+            ],
+            "coveredPct": 99.7,
+            "ruin": 6,
+            "careSales": 0,
+            "emergencySales": 0,
+            "allowance": 30899253.156676874,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 0
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "21ec6cf86a9f949fb59feee25696a5c5de280b79d9afe13403ae669b0e5e9433",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 0
+              }
+            ]
+          },
+          "max-erika/grund/haus": {
+            "inputsSha256": "382a16328d60089accd7fbcf3690ff808fb6d7f25b6cdd0d7f4c9264cdc55021",
+            "completeOutputSha256": "033b0da8dbadaf406f3c0a76bf02619ac3b19bd65ffbd120328385d4cf898f64",
+            "chunks": [
+              "7c0cd3b5fb93f1e2cd31efbcaa8e658a04046f9f92fba62ae80d17e727117f11",
+              "d4a9e3ca8f601899e61155bed3aee752acf49fb70ead801b1193457f7445906f",
+              "37b7fae4efabd9a546c3e4f912e14a91ce7ba6099e9394f694679fcc2f7a4bcb",
+              "77c9c299737283374cc7bb829e9869eae66eb7f663e1a8cc5c4384721d29bb10",
+              "2aeac81d54fa0608e1ba726b1bffc8df10d9216c5d33051fc6769c2813cfe40b",
+              "fa0b87bc810fa38275d3766afea131f53e3f552267880c8ad1dc2fc5002c63b6",
+              "aa2063fda445e25529d76e58cab5ffd1d0b8f6093544665cf88d2f627ad7bf19",
+              "b94daaea9beb6c80e3b5256309949a344d07a45153697d09e9e08fc9cd9b001c",
+              "aa951a093526bce2e4ea22061036a469da07850b0321f3086c9631b3713b0fc7",
+              "6171198b1b46df5d8b61cd2f809612e345cc7c585fc8a5d425d48a7ffeb680a4",
+              "a256d3b035e1c619aa3aaa43bfa30e172b01ad449968bb1bbdcb89193f0d171e",
+              "d86e9a9cb097a8300fabecb201ee5a511f940c7f1b468c3cf9a077d98a068d86",
+              "44d7658520f70105647c4234958dfe84a16abe57e3fee443aa3dc41e1a01b0af",
+              "c8388406766d6078801740ff0ed81b0135fa7c927fe7d21160e5e7a4b9b088c6",
+              "26eca8f1473852366d57170ba63e08449ea7a778f015795eedc6de31e9864e23",
+              "a89159daead400f225e8cc3e51ffaed021633ed741df360fe3cc1f0bac799484",
+              "9b3fd84a5fb944f309eac654bb41933f24e8f42a77c0164b94043a0b4b68dc0e",
+              "c0e056e1afaf44f2c6e1326b5001bafecd2038ec2650b7313c746f24afb26f1c",
+              "bb88a1895dc593c7883971b5ed2a6b4cc4779c843bbe93c7660a2af9d5463ff7",
+              "da7cf3035eb4babb349541ddfa04235eb26212294cb95d8fd6b8cedc0b6ea010"
+            ],
+            "coveredPct": 99.9,
+            "ruin": 2,
+            "careSales": 199,
+            "emergencySales": 2,
+            "allowance": 30902975.581302717,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "c4d2c4958c84c053c9a95dfea5cfceb09896234acdc88afed7d29c8c0ea36812",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 0
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "89d099326f7c1b92d8b002e87f92ec2b754868c0ba9ab032815b87f6eebb3e03",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 0
+              }
+            ]
+          },
+          "jan-lena/grund": {
+            "inputsSha256": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+            "completeOutputSha256": "3d8523dedcc1820513b7c7bfb38d50d5895fb2a8483c78b7b29abb739f7ad4ef",
+            "chunks": [
+              "936a4788a114bb66be0d933171feef49963082b904cfdd812329447c5bc571cd",
+              "59c69823aa1bf8c37412ea9da9b075b78aa79c19352fbcab5ae3402c99b43cfb",
+              "0fbc8667f2db6230f65dc63d0ef349e04f92028ab58f37057f7f7f6acf46b21f",
+              "287f835487521d80da57cc029179258f900b2462d6d24c3aaa41e17872712dce",
+              "f66ce510586321fa955f185dfb24982923d4b212180f02e2e054d023bc319490",
+              "733b664f2ee147da533d50d160bfbdc104c697ba3785759f597310b275dc0d6c",
+              "fe8256d5c3a61b3871aad6adc718be1873d3b1d3c6c3107a473bcc263064a109",
+              "09320d76b2739336e5205c6e4e047cc07d933aa7af637fb84cbef55e5be34ec9",
+              "bc90e1ea1d9bc3e750b12d13116311a186cbf14238cdc4f7a8aaf556c6af95ce",
+              "f5f437b647d1460eeae261dc9041ed90c956424162f379847a7aaaaebb816fc5",
+              "5929559185c87b75db67d3ca1b5e8095839d4f920b3d1c2ad1e09e33a873797d",
+              "05d415c5dea263f0f689ad5721eb3571f4b1bbf5742745cd3adb021e9a88bd36",
+              "0c94c4e0b0461eb08589fc6e73c5d69cad2456291f2fc315776fa41c8bfb3437",
+              "d8c474f8a90c296dc49b55eb95e835eb5ec79252e980c761c23c36353824d45d",
+              "ec5fb948977c4ccf1a18f2a14a993f167d3d58b1f417a8c7d943fa825cf0a6b9",
+              "d275cd756c260dfddf0e79c90bd263fb60bf7a4702153066b21f69025b503328",
+              "55c818d3b4d2f14a2df0468bf8aca753877b3dc4a007c0463908bd2a9ede019c",
+              "7f05f83aba85e42151ac50621a524bef8ec661c75ae0d133c705325b4b075be5",
+              "1b21d9f7a960790cd02a758ddc7df1d1e515e0209d41600f51180c9ef6bfbd27",
+              "36a41ae220c122fbfe89da584509bfc88862a3aafd1dbc300cc6fbb203d55355"
+            ],
+            "coveredPct": 99.75,
+            "ruin": 5,
+            "careSales": 0,
+            "emergencySales": 0,
+            "allowance": 35077368.33557799,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "dc7dea48fe3f6397bd9dc8d7c91cd40a5764b33dc36a7ba9960af6917b8c306b",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 0
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "212827022172414f266b544b3df012a47955ac235c00fbff009c772d11f31523",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 0
+              }
+            ]
+          },
+          "renate/grund": {
+            "inputsSha256": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+            "completeOutputSha256": "7f4ab739d48dab2914c6a06dc639280c1ef925c2fefdeb220f328fda42dab681",
+            "chunks": [
+              "7e3d9f2352b06608777898d83521f76f5337c02ab7294661381d5da96550937c",
+              "e4dff916053104263e02baeaf91a1d5cd256b08641c0e1dc4f3ffd8a428f79dc",
+              "42ec2758d914f3b0c31eeefef8e0ab1ddf343be5d2f78f2b28b4be0f6c13c3fa",
+              "9578ceabf9e8f8fd2652eda1fc81f81b905b99a955f3c19da5622c9d1448489e",
+              "e70758a9823befbbff9f0341a89517da8c53eff63c329de73abcb967b295bcc4",
+              "5cf19bce0977b38fffa0017988133e2dc1b9399aec7a529fddea491978631f53",
+              "3f2bb4e821e9f021a7dacf15256ef1d1a6e97293c7b485422c082a1ff773f8fc",
+              "0b698669e262f5f1dd550f0e16e4d3726d9920ba129763b6c2d2407e470d3ce9",
+              "cbef752ac033ea62ee71c673c924306166bd499232f389535479c8b93d3e8e65",
+              "cef8858429ad6ca5c3489fb555b074bb3d51e724cf54c8d786d7943a55b33255",
+              "2f7771bb2988476a61afbfceb1b68182e94a6fb219428f761912b7761e6eea42",
+              "453936b06d163edb671b919a9dfd734b587f843c4a64c08f4a70eb9152885a25",
+              "2bbe794687c92f86a64b51d576ee1a71a8c96f07f8ce5586eecc3878305f9ba3",
+              "1e1664b874d779b69996e31ffaa8d28d902e3a9dc016da04df7b1d7cdc750541",
+              "46ec05f084637fc88ef15749d1ddb5de92330bf1c55bb6413315972134bad176",
+              "126de0e916902991bf85cd48f971ba196b6253cfbd8b6a2ea6c16e78d87d9ac6",
+              "79ae0bb7305d8e653f3ba5fb1998a4bbe0e5ce4d7a062ea6dc63d2f0a524899a",
+              "6ac62f055600382da34504ce1b9811bc70c1f238961e1e21af82d991c9c5563c",
+              "ca5abe69de79b4310fa1e5f6b8c949d946ca846e50b4c75dc5cd430f4bd34a63",
+              "9bc8a02f6b855c21c22ea2df03d83a6f8021e709975cefc42a32c2172e775cf2"
+            ],
+            "coveredPct": 93.8,
+            "ruin": 124,
+            "careSales": 0,
+            "emergencySales": 0,
+            "allowance": 18703998.001930833,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "373ed483058841c431e98cb8bb6659c37561d6ce7ed3077211baf51879df18c0",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 0
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "f02250dad42669afc2a8f3064a6edfb789c6ea85e10fe0d8161aa0bc7aa19273",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 0
+              }
+            ]
+          },
+          "helga-werner/haus-pg3": {
+            "inputsSha256": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+            "completeOutputSha256": "0f1de3d7277cc275bd1ac0d369ac2f321afcb5a2d7db941c080445955c023d8f",
+            "chunks": [
+              "8eb37c45dadbbc45326c8e72fe893f11a988dbc32be186c8ace6a7ebc9925c79",
+              "c53ee576d26c3c9489793d1c51c6bfe77da53563b27c3dbe21d1138fcc2df919",
+              "56eb1452f80c8b410e85c38fccf3f0383772ee1e72659d3dcf5d32c2299feae8",
+              "1129ef5dbb48d825785eac3c9a452ae1aab741124959db6122f4c2004c8c3dc6",
+              "9cdd098c4496e5f7c24cb5a33b5855f7f2f1917d0c261f9228fe796c80ecb4f0",
+              "1110b56da00c3b6c498093308718416d20b25df66c04d4deec082d99c7d82453",
+              "f1cd3b62d91472d108ea8430d966ae6d927c1759033847dec5a98be74334ca37",
+              "957d0ca3d5004a777f709d8a9036f3a196eaf47e2bbcdee83c12b9bf6f3d8f58",
+              "fae7f2ad4620cec46bd5b06c5c97f00056558e31324b55140b006b3ae2f07b66",
+              "d866528551a3c3f85bff6017200ff5a750652c6a74d646356d71c9cef2121826",
+              "9c24efcc24bb4fae1eaeac83821f1367d6550f334a08a789b2ceb714b2a48bfd",
+              "95015cef84c08ff582ae8ac7cb3b959bfcbc778424b348147dfc9fce8cf8211d",
+              "7266b2572862b7d9fa85b8b99b8ffa94d6b2a5b13cfb3710105fec40df92181a",
+              "86696ff9c4cb6a9ff54d2dd8f6c0df75912ba83dcb2e40a8d3b6207f9cb8b3c4",
+              "1262c088e96afb2215f71c19e0ab2eaf35d32c59d513c7aecd411bf9be40e028",
+              "04125a94157fa3cbe1dd804e75b45f5b90eea3a2efd89dd0f358ce8b6f0835c2",
+              "bbb40b5d0413b5fe651dc0bdfb5d39067bce7f372ef0348720e3bb41267c1282",
+              "5f9ff8839d57067684bb53dda6e06998d7153ae34976d3e8656c7ce1dbb25c6e",
+              "60bbfa7f7228f15bf9de499b06921021d894f1cbaee8195013a3ebea90518010",
+              "4053647f1ecfd13e045ea33a6fdd25561553403a3623383abdfa500217d0ff27"
+            ],
+            "coveredPct": 99.85,
+            "ruin": 3,
+            "careSales": 292,
+            "emergencySales": 52,
+            "allowance": 66176073.39865215,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "261937d98630f35e4e6ff2b645a2ecd2faeb8d44af6285a918e351f8bddac94e",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 228996.90206354205
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "229863415c0b5eb4e1a8a9f24548373814ca4f48384a332aed43b8f9132b930d",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 495049.60682878504
+              }
+            ]
+          },
+          "helga-werner/haus-pg3/pg4": {
+            "inputsSha256": "9273771819bda16b801f6f8ffe08db641e25d1cf84490a95987470ad04ad6864",
+            "completeOutputSha256": "1ef73dccf674a092230eb9a918205b28c71fb6895b60ead1e4c4fae485d4d50d",
+            "chunks": [
+              "b77b3c446a3ab4a7bc6baeccbe405ff92e06a9f2d64cb2f56413a0b0a73ac4aa",
+              "0833c5a787407a41898a676c068df0fa092e8cf40e50def584039fbb16527247",
+              "409c1809b46518bd793adf2de8cf0e91d37e671cccf159a94c4f1d7925ca43dd",
+              "c20eaf2bd8746e2c3d644c5dd059e1b6f1efa61e037e00e70ccdd6350324654a",
+              "df4eadc4194707cc7a680b64aff9af2f6bff8d82ec45c39fd3f8ae5a7c398dd8",
+              "d21e51dbd05536ae96a26ce0ae4f8403276d155e47e1c9ae05e29aaa00692ec5",
+              "1d4340e4ff37d3600683354610780978e167b3971f1ce199a7bb5b9e74e9ca29",
+              "e209ca53dab74c4ec478a60c0c430886c5e3f3a9690230f368f75f1e7491346f",
+              "764e90ff69879717eaea83306c97a4f655f854654a2299dbf72bba0c5474157a",
+              "6382c5e19bd4d234a83d6bf0cfd841eed7ade3d87c7015d25c0030ff9e5502b1",
+              "8a96ade79cc5d7a291509c0a59131107042e59298052cae68fc3712cb79b76dc",
+              "718d1d92141c641bde5eddbb68aad23654bffe01ac5279fe88b1d3ec1893ab98",
+              "85ab819c451b32983cb6994428ef74b12de9009c326c7688d1e4cb05959915a3",
+              "ceda75d9296859704c19905b242023dd601bffd2479b33afc76a4a2cdea30cba",
+              "43bedc70ccc9c6ebc330a9f3079a1369b10fd0b97c5f2ec204c6480fcb940ef5",
+              "cf3a83da3786ea5daefc6c5830d2cb1c81f8b11078bd3021f634cca20d4d59d7",
+              "5224d326df3463d22889ac9e359978069c4df092e9bf08c9989b77c3cb3e39cf",
+              "8a81b277699e0d9b09828243cc2523ad519c6679046a170a11ab5d8c352d6a13",
+              "e13d5b587c9fc7dd5b0671f7c680ebdfeaf267421a7b6e5a70383a5bf80166e0",
+              "775c9e405af0be4ebec9d8f32c3e657394ddd70d6f0efa588cbcd5652ab1b76e"
+            ],
+            "coveredPct": 97.95,
+            "ruin": 41,
+            "careSales": 1949,
+            "emergencySales": 0,
+            "allowance": 0,
+            "technical": 0,
+            "backtests": [
+              {
+                "period": "2000–2025",
+                "sha256": "225b82c2ea73b78d3322ea7b2fe8df4d79eddba3f6d4515098eb13a5d087494d",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 2025
+                },
+                "allowance": 0
+              },
+              {
+                "period": "1965–1999",
+                "sha256": "414432e3bea12734cdaa2d4986959ab2986292a053ce70c067247e06b7405889",
+                "outcome": {
+                  "kind": "completed",
+                  "lastCompletedYear": 1999
+                },
+                "allowance": 0
+              }
+            ]
+          }
+        }
+      }
+    },
+    "extra": {
+      "before": {
+        "date": "2026-10-23",
+        "parameters": {
+          "anzahl": 2000,
+          "maxDauer": 35,
+          "blockSize": 5,
+          "seed": 12345,
+          "methode": "regime_markov",
+          "rngMode": "per-run-seed",
+          "startYearMode": "UNIFORM"
+        },
+        "cases": {
+          "sophie": {
+            "mode": "standard",
+            "inputsHash": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+            "ruin": 60,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 0,
+            "equityRoundTripExamples": [],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 0,
+            "realBudgetDropsOver5OutsideBear": 0,
+            "maxRealBudgetJumpPct": 130.0921157608539,
+            "maxRealBudgetDropPct": 26.666666666666682,
+            "chunks": [
+              "14e270601fab143e5095ec697a1213ecc5083e0f8d5f862e0db5574f3e6e21dc",
+              "6505aa7290ae2a4cc30c676a9dd66d97fbbb4c25efcd6da72ad7fd96618b73a5",
+              "a5efc7252dd46b6e84688f84467ae543454461699f1cd4a70a65802dfda049bc",
+              "24fc8426f4a6980f834dd21c969fa85adfc03ee53dc3a94ff73a0dcb244ba325",
+              "669a1500bbfd69abb46d71862409399f64ba0071519d3dc4a3267fb636ee39a9",
+              "2e0f2558ffd595c4539b9df18a852fba018e21a1d36989fea99f285a33d853d2",
+              "21dbe4ed3d1d3de75e7895ab90cbf3f3b2487aecd8281a9ac4e5226bb4224d48",
+              "eef31e3c80920ace71df64e74ab734e112e24cba6fccfd4f00396b60e345d20e",
+              "2e341ebe92883afdbf279ada253fa01f52a26e0990a5b3701adc405d84ef739d",
+              "1bc4f9ded1ba8192e470cda90f1a550eac4349886b762ccc839955fedcff67b8",
+              "8fe5d6372a2a23e009fad9c066d721b3befb39236d543d5e4ecd966b1d204834",
+              "0ea567326a2dd835fabe0bee116f6262e872fa2b54e715f7daf6189a9a9db38c",
+              "77b5368487150065a0074b0e8ba29aa2f3830c06f8f4cd8de8b46aadd7b57f97",
+              "6dc1cd3a00156dee07663a7224dcfd5e23e420287262acf50eb57078f16e5ff3",
+              "1dc7a45ad0dd22255bf6531e414d9fed880f000aff6e422d06f0f4339e5f0338",
+              "bd2d383626237728ae70b488b47a6fe61fc205b445a0777fc1d1f084aa46a5af",
+              "f400a2bb19010968efa99e7c5ca227cf82f91af3dfec9be6e7b9c3536096e796",
+              "dda6a0839abc8019c510791437a359866a056b56f26a6c9329adbe6dd483a598",
+              "43a09d66987046cc9781e9bd11daa5e76bae5984b23e736e023deace4a161510",
+              "fe995f1374175ab4a7f9979483967a99fbcaeba56911d5617d77cbcc2f1a3065"
+            ],
+            "coveredPct": 97,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "38481fc8a3617673a1fc5f3bd4da79f6118fa59c9deaeb9d303e8a8475c4827b",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "d2edc21fa46b004289e4ac478f6f10f98390b3b2e0581b232cbf4dc0fcb9bb9c",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 8491597.152357375,
+                "cutYears": 9
+              },
+              {
+                "period": "1965–1999",
+                "hash": "2dab7f6846220147c5b4343acd929a49030d4cc515d35ebbbbf1fd1af05191f6",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 13189532.777937498,
+                "cutYears": 5
+              },
+              {
+                "period": "2000–2025",
+                "hash": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 589565.7367414373,
+                "cutYears": 14
+              }
+            ]
+          },
+          "sophie@teilzeit": {
+            "mode": "standard",
+            "inputsHash": "0ccb65c20a976ec95aa91f5c1f0b244d7fe8ba32c14c4c85487a5936327f8b2e",
+            "ruin": 85,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 0,
+            "equityRoundTripExamples": [],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 0,
+            "realBudgetDropsOver5OutsideBear": 1,
+            "maxRealBudgetJumpPct": 130.0921157608539,
+            "maxRealBudgetDropPct": 26.666666666666682,
+            "chunks": [
+              "a7f64e49a09f0e98f92106b35699ab4896ff2c079f16542f05ce94470aea89f0",
+              "8f48905f04ebca945d7e0d7ffaef3bb33da9cdff2f55463cd7db8e5bb82e4c63",
+              "c303d3d4c66636456ea1686d907072fbc609025e326ae8c02c574271baa5d98b",
+              "97347307ca8b11fbc5ca4f6055fe0875eb6a2e5c473fb5aa0457b31084b5d922",
+              "d692757b93ce72b67db999626b07cab0bb14c15c7e62da8866626893cc9267f5",
+              "4f5e966767f0f6a46e7deed2ff892964db55e2a69b084898c9037dd9cb4fa6d2",
+              "31dd7588ed18e696263892137c9ac246b5b01ed3d6f0c4c727bfaf7c5ba2ccad",
+              "0c1a180e88134c61978a66de5907c13b2c656fa6e0d5ced8a7508e0dd49b6d08",
+              "aa5f84b4a80d5b10cb3a0ef102b67085b2fed6ea3dad1fe4ed51b2759dca1835",
+              "7ddd08a3b698b62fa84f9ed3136d4a00b16829f40e5d47235098879fc8ae9762",
+              "bbf87a036dfa619e25c1559be7d6c65550b341f573baad68eacd9b0e511c0e11",
+              "5e9b0e1e59c21e0d293d7ccee2b30765efafc3f602e393a47d1b1415fd94dc76",
+              "ba42647f735c65a9429a9371440eac0e5cc8ac1d1a319ce3084cca32f7b89310",
+              "ca114271ea757f4dd11463f45af892774601b2ba4f043ee82b4b91aeb01d23d3",
+              "3ee55b38ed78b4aa86344be653136081a00be896e5ca91f205ad3c256263dc16",
+              "f01a579f73e8e13e2ea88661bb6e414e44ae526bd7089a67650985bf1672d949",
+              "3b71b59cf1547529dfb6a00e6a4036b28007f18e2b721bc50118cbe0a163c5ab",
+              "7411374f8be77bb34876c79eebdaa7c5a1bcfcc29a83231854f9d28ca77620d4",
+              "2b992b577543a77b9b41d373f2420bb855f50e9b3283d433e103a8923fa7c06e",
+              "22c0d20e6947dff3c5404bc2c0217861a3672f6f601097323be8144aaceb425f"
+            ],
+            "coveredPct": 95.75,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "00b0ef457695a4d548c833c85d403316667738cd49959edf699eb69fd0e9fecb",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "90f4ac6aedb22bea3f9b9e777217456b675b263aecb1067a3c6a963effe07df6",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 7263484.717173522,
+                "cutYears": 9
+              },
+              {
+                "period": "1965–1999",
+                "hash": "fc8687b031fac7732725aae68c593ef786ce1685bcb93183f1fb2f5241b5f9c6",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 10477428.461915784,
+                "cutYears": 5
+              },
+              {
+                "period": "2000–2025",
+                "hash": "76554554fbe16e45e241ae065390332b337eef4f4c912b3c4e487948a8e1eed4",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 351578.13325704634,
+                "cutYears": 14
+              }
+            ]
+          },
+          "jan-lena@halten": {
+            "mode": "standard",
+            "inputsHash": "ab9b9d059adf07739776fec57454e61c14ab402611bd38066ba78c3f57d79d0c",
+            "ruin": 7,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 140,
+            "equityRoundTripExamples": [
+              {
+                "run": 27,
+                "year": 27,
+                "regime": "side_long",
+                "equityBuy": 12704.633618216787,
+                "equitySale": 20001.804255227908,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Dynamic-Flex-Obergrenze (114461.37 €/Jahr) / Rebal.(A+)"
+              },
+              {
+                "run": 50,
+                "year": 24,
+                "regime": "side_long",
+                "equityBuy": 43576.93712942081,
+                "equitySale": 50000,
+                "bondRefillTax": 0,
+                "action": "Opportunistisches Rebalancing & Liquidität auffüllen / Dynamic-Flex-Obergrenze (56045.01 €/Jahr) / Rebal.(A+)"
+              },
+              {
+                "run": 61,
+                "year": 25,
+                "regime": "side_long",
+                "equityBuy": 90000,
+                "equitySale": 110719.62325038016,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Dynamic-Flex-Obergrenze (75174.24 €/Jahr) / Rebal.(A+)"
+              }
+            ],
+            "firstYearPayoutSalePaths": 41,
+            "firstYearTax": 10494186.893298933,
+            "realBudgetDropsOver5OutsideBear": 6213,
+            "maxRealBudgetJumpPct": 150.8936898855722,
+            "maxRealBudgetDropPct": 66.24891631783892,
+            "chunks": [
+              "7b8f114c5602a5bd429436828d95629a0a2ee577fd59aa9545a3fb162ed636d1",
+              "a0f0c98718d4412e0c105ea7a892bd95be546f4f3bf3f5ca93b718880c180bcb",
+              "268b42eacb52afb6bc6cc960e9fd881c05defa12e86694ba976af8621eb5eb06",
+              "3d72ffb901c93ce1ece5162924b20590a2679335cae1dad00d1fa49443764fce",
+              "9d02d9c9a3fcdc60dd7b23957b02a2951f7a873995927500134e9cc3f579dc38",
+              "d334d2e5363852df763d61901c8c918339f6b96e091572ebcb706ec60012f67a",
+              "94f7d0b03573e151960debd5334984a963cb44f55fa7a294d90d868a0a9ad2ce",
+              "e87eff0ee6db62a76ed0c2693a9705cd8649ef55217150d661319fafbdac6e74",
+              "3dd6b467191a3c2ba363f42be59bcc55a107e13b13614fdfb7fe16a10e201ce7",
+              "2f898eaf927aed1fe54df7e37a7b8beb4f7de81c395e79abfc91a1ee565de4a2",
+              "2410c6ad35f16e3ba06a6afe3636cea528fc02c75c7db2746478327700b46e16",
+              "0e332f34e433aa79b548523263d10929c39109157afb4dedd8be6cfcacc1634c",
+              "429e68f63bf2e9874b964625d136478e0ef97a16acfea890451fa48fa9cffb95",
+              "d4d70752eaeccc639d12d242b85ddfbbc9e48e90da1c48190518f573459f2574",
+              "c12d4a612b4589115a63be5c5724ac3230f877ce324aa3791cbcedac03108e13",
+              "2de07ce614bf7fa8df5539f80cf26c5e92b201c168b27e74b48b63392d551be7",
+              "d9e95be5a8192b7057cf8743fe3a96bb2d5e544d776538a4771dda4929341198",
+              "cd535581b675cd5994e840456ad48b76129ba3bcb209687955e5e5aba6f2d9a2",
+              "17a1aef346396706925b172c51e8e1ece14a1e65ae496ca278e4ec1ba69b13a1",
+              "1dd5184a94e32b376d96fadffd7f341821df7f90eb5d9a4c264dd9a9d097593d"
+            ],
+            "coveredPct": 99.65,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "4eef2e2b61ba84376cc37335234712ba93643de754a965379acf5f38477179d9",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "35d0a3e5c2effc79e9e4add9db45ccec3337670cfab7be900f96a3c536c51edf",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 14984279.815738164,
+                "cutYears": 11
+              },
+              {
+                "period": "1965–1999",
+                "hash": "9494a9d4fb5d74720af004db11cad27f173e39b44a1e0610998af0859c8522ac",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 18232860.15981523,
+                "cutYears": 8
+              },
+              {
+                "period": "2000–2025",
+                "hash": "57f93b224b6a018c8e4d66baccde178a541ca78819b6c84a1abce5c5df33379f",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 2625093.96009325,
+                "cutYears": 15
+              }
+            ]
+          },
+          "martin-petra@hundert": {
+            "mode": "standard",
+            "inputsHash": "ddfdcbd5100334422050d27f28d9f3a0cd7aca977b06753c29a84bfa253c351e",
+            "ruin": 3,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 1999,
+            "equityRoundTripExamples": [
+              {
+                "run": 0,
+                "year": 2,
+                "regime": "side_long",
+                "equityBuy": 19463.13,
+                "equitySale": 11393.156042605246,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11393.16 € / Rebal.(A+)"
+              },
+              {
+                "run": 0,
+                "year": 3,
+                "regime": "peak_hot",
+                "equityBuy": 26121.25,
+                "equitySale": 11667.79718043578,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11667.80 € / Rebal.(A+)"
+              },
+              {
+                "run": 0,
+                "year": 4,
+                "regime": "peak_hot",
+                "equityBuy": 26730.97,
+                "equitySale": 10191.113077338436,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 10191.11 € / Rebal.(A+)"
+              }
+            ],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 390749.77345122956,
+            "realBudgetDropsOver5OutsideBear": 2854,
+            "maxRealBudgetJumpPct": 108.45819317958556,
+            "maxRealBudgetDropPct": 68.62623835732987,
+            "chunks": [
+              "74f4229913a38ce9c5ca278f1954ac912ff3506b57fb866307e19ecad07bb937",
+              "cf9ce262b78a6c7be486d4826fcb4b8a397622896a6d1d091af6da229d0ada68",
+              "8e2d2d0d4793f5606b08c6c6077bb7acb3da0aac62515faf6121ff12b04a808b",
+              "0cbb8abf118f5fff9e49ee785c9193a6480eb087a0885cc48da061ec4cbc6290",
+              "a96649acdce79e05ba60824051ac6fc351368f095a7f0a0fecb10c249320cd5d",
+              "9ba310242d074e7e8f25aa5627472cd05c696ab69ce69abb3ae8a8d5f3b367cc",
+              "39fe364eef57cd0b3a4c5058958e9ddb30a0a7f93445af2dd16eb2772a103d87",
+              "74f9ad1cd94880f45fe5bdfeb0b6e0031960c2375c7b7d4ba7dac2c706dd62c8",
+              "d9e992cf57879df59f6151df4ec429d3446cf0725c93cd352ce311db47c492e4",
+              "b54a9d8d7cdb7b289770798b0cf64503449f82925d5a5897030245c9344fb511",
+              "6b5b431c7066794d21585b3f1692d511642b4f7aae2fb7c735e52f0ea0528575",
+              "61ae1320d6c99ad69934bb038cae50c1d74c9b494c44eab0c48417177a765198",
+              "9f02a8aaf9f9ee7fd46b9231106bb97cec4eeb977cd9b0683cb5562a941fdaae",
+              "6168ec96f00a63d1b91af6c9d4c538129cf5fd61a00463aee431d33ae41a3f78",
+              "91bccdb7c7618c28d21b03fae52500a918fc92a96bb7adf5d3ca55d565e566d9",
+              "c16e3fe0db3ccd2b64cae35e408bc6705394a147c8fe779fecb90416d68d8833",
+              "dad79580ac50edb6c4a81fc8bbbad32b07260df584d0d8e27f8cc8b89167a110",
+              "37b11fb1682252e3b456cd29b198421269e70d15736a46ef40a1861694f86cef",
+              "9753d7dc954304045a3aa12e7b309ce38872735f136c39eef67a390d337d8783",
+              "45335f32945a63c3703124be549cc91747c1ac6153498b184a245f62a0d8e684"
+            ],
+            "coveredPct": 99.85000000000001,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "64df9cf2eb3f9cf260ca552a6c870dd1144954547d7e5be2add3d6f56cc99761",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "e1e1b872f0eafb0be2fdcaf6022e286376c44f3648b18319ef612a13fb509aaf",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 32215581.70165653,
+                "cutYears": 0
+              },
+              {
+                "period": "1965–1999",
+                "hash": "4eab3c5111c2ac9bcadd6d4bbdb726eea21fac6b1a7abf728dfcbbdacf21d17a",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 47634910.21580382,
+                "cutYears": 0
+              },
+              {
+                "period": "2000–2025",
+                "hash": "c96e3ce33c72e095a96e4ec6d0fe713f39c129547503eee0c72a02b0518cf7c6",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 3823542.584742294,
+                "cutYears": 0
+              }
+            ]
+          }
+        }
+      },
+      "after": {
+        "date": "2026-10-23",
+        "parameters": {
+          "anzahl": 2000,
+          "maxDauer": 35,
+          "blockSize": 5,
+          "seed": 12345,
+          "methode": "regime_markov",
+          "rngMode": "per-run-seed",
+          "startYearMode": "UNIFORM"
+        },
+        "cases": {
+          "sophie": {
+            "mode": "standard",
+            "inputsHash": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+            "ruin": 60,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 0,
+            "equityRoundTripExamples": [],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 0,
+            "realBudgetDropsOver5OutsideBear": 0,
+            "maxRealBudgetJumpPct": 130.0921157608539,
+            "maxRealBudgetDropPct": 26.666666666666682,
+            "chunks": [
+              "14e270601fab143e5095ec697a1213ecc5083e0f8d5f862e0db5574f3e6e21dc",
+              "6505aa7290ae2a4cc30c676a9dd66d97fbbb4c25efcd6da72ad7fd96618b73a5",
+              "a5efc7252dd46b6e84688f84467ae543454461699f1cd4a70a65802dfda049bc",
+              "24fc8426f4a6980f834dd21c969fa85adfc03ee53dc3a94ff73a0dcb244ba325",
+              "669a1500bbfd69abb46d71862409399f64ba0071519d3dc4a3267fb636ee39a9",
+              "2e0f2558ffd595c4539b9df18a852fba018e21a1d36989fea99f285a33d853d2",
+              "21dbe4ed3d1d3de75e7895ab90cbf3f3b2487aecd8281a9ac4e5226bb4224d48",
+              "eef31e3c80920ace71df64e74ab734e112e24cba6fccfd4f00396b60e345d20e",
+              "2e341ebe92883afdbf279ada253fa01f52a26e0990a5b3701adc405d84ef739d",
+              "1bc4f9ded1ba8192e470cda90f1a550eac4349886b762ccc839955fedcff67b8",
+              "8fe5d6372a2a23e009fad9c066d721b3befb39236d543d5e4ecd966b1d204834",
+              "0ea567326a2dd835fabe0bee116f6262e872fa2b54e715f7daf6189a9a9db38c",
+              "77b5368487150065a0074b0e8ba29aa2f3830c06f8f4cd8de8b46aadd7b57f97",
+              "6dc1cd3a00156dee07663a7224dcfd5e23e420287262acf50eb57078f16e5ff3",
+              "1dc7a45ad0dd22255bf6531e414d9fed880f000aff6e422d06f0f4339e5f0338",
+              "bd2d383626237728ae70b488b47a6fe61fc205b445a0777fc1d1f084aa46a5af",
+              "f400a2bb19010968efa99e7c5ca227cf82f91af3dfec9be6e7b9c3536096e796",
+              "dda6a0839abc8019c510791437a359866a056b56f26a6c9329adbe6dd483a598",
+              "43a09d66987046cc9781e9bd11daa5e76bae5984b23e736e023deace4a161510",
+              "fe995f1374175ab4a7f9979483967a99fbcaeba56911d5617d77cbcc2f1a3065"
+            ],
+            "coveredPct": 97,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "38481fc8a3617673a1fc5f3bd4da79f6118fa59c9deaeb9d303e8a8475c4827b",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "d2edc21fa46b004289e4ac478f6f10f98390b3b2e0581b232cbf4dc0fcb9bb9c",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 8491597.152357375,
+                "cutYears": 9
+              },
+              {
+                "period": "1965–1999",
+                "hash": "2dab7f6846220147c5b4343acd929a49030d4cc515d35ebbbbf1fd1af05191f6",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 13189532.777937498,
+                "cutYears": 5
+              },
+              {
+                "period": "2000–2025",
+                "hash": "e77ea7bd3170286acf279d66bb2f9141bd0596800886241733817b602c613341",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 589565.7367414373,
+                "cutYears": 14
+              }
+            ]
+          },
+          "sophie@teilzeit": {
+            "mode": "standard",
+            "inputsHash": "0ccb65c20a976ec95aa91f5c1f0b244d7fe8ba32c14c4c85487a5936327f8b2e",
+            "ruin": 85,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 0,
+            "equityRoundTripExamples": [],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 0,
+            "realBudgetDropsOver5OutsideBear": 1,
+            "maxRealBudgetJumpPct": 130.0921157608539,
+            "maxRealBudgetDropPct": 26.666666666666682,
+            "chunks": [
+              "a7f64e49a09f0e98f92106b35699ab4896ff2c079f16542f05ce94470aea89f0",
+              "8f48905f04ebca945d7e0d7ffaef3bb33da9cdff2f55463cd7db8e5bb82e4c63",
+              "c303d3d4c66636456ea1686d907072fbc609025e326ae8c02c574271baa5d98b",
+              "97347307ca8b11fbc5ca4f6055fe0875eb6a2e5c473fb5aa0457b31084b5d922",
+              "d692757b93ce72b67db999626b07cab0bb14c15c7e62da8866626893cc9267f5",
+              "4f5e966767f0f6a46e7deed2ff892964db55e2a69b084898c9037dd9cb4fa6d2",
+              "31dd7588ed18e696263892137c9ac246b5b01ed3d6f0c4c727bfaf7c5ba2ccad",
+              "0c1a180e88134c61978a66de5907c13b2c656fa6e0d5ced8a7508e0dd49b6d08",
+              "aa5f84b4a80d5b10cb3a0ef102b67085b2fed6ea3dad1fe4ed51b2759dca1835",
+              "7ddd08a3b698b62fa84f9ed3136d4a00b16829f40e5d47235098879fc8ae9762",
+              "bbf87a036dfa619e25c1559be7d6c65550b341f573baad68eacd9b0e511c0e11",
+              "5e9b0e1e59c21e0d293d7ccee2b30765efafc3f602e393a47d1b1415fd94dc76",
+              "ba42647f735c65a9429a9371440eac0e5cc8ac1d1a319ce3084cca32f7b89310",
+              "ca114271ea757f4dd11463f45af892774601b2ba4f043ee82b4b91aeb01d23d3",
+              "3ee55b38ed78b4aa86344be653136081a00be896e5ca91f205ad3c256263dc16",
+              "f01a579f73e8e13e2ea88661bb6e414e44ae526bd7089a67650985bf1672d949",
+              "3b71b59cf1547529dfb6a00e6a4036b28007f18e2b721bc50118cbe0a163c5ab",
+              "7411374f8be77bb34876c79eebdaa7c5a1bcfcc29a83231854f9d28ca77620d4",
+              "2b992b577543a77b9b41d373f2420bb855f50e9b3283d433e103a8923fa7c06e",
+              "22c0d20e6947dff3c5404bc2c0217861a3672f6f601097323be8144aaceb425f"
+            ],
+            "coveredPct": 95.75,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "00b0ef457695a4d548c833c85d403316667738cd49959edf699eb69fd0e9fecb",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "90f4ac6aedb22bea3f9b9e777217456b675b263aecb1067a3c6a963effe07df6",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 7263484.717173522,
+                "cutYears": 9
+              },
+              {
+                "period": "1965–1999",
+                "hash": "fc8687b031fac7732725aae68c593ef786ce1685bcb93183f1fb2f5241b5f9c6",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 10477428.461915784,
+                "cutYears": 5
+              },
+              {
+                "period": "2000–2025",
+                "hash": "76554554fbe16e45e241ae065390332b337eef4f4c912b3c4e487948a8e1eed4",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 351578.13325704634,
+                "cutYears": 14
+              }
+            ]
+          },
+          "jan-lena@halten": {
+            "mode": "standard",
+            "inputsHash": "ab9b9d059adf07739776fec57454e61c14ab402611bd38066ba78c3f57d79d0c",
+            "ruin": 7,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 140,
+            "equityRoundTripExamples": [
+              {
+                "run": 27,
+                "year": 27,
+                "regime": "side_long",
+                "equityBuy": 12704.633618216787,
+                "equitySale": 20001.804255227908,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Dynamic-Flex-Obergrenze (114461.37 €/Jahr) / Rebal.(A+)"
+              },
+              {
+                "run": 50,
+                "year": 24,
+                "regime": "side_long",
+                "equityBuy": 43576.93712942081,
+                "equitySale": 50000,
+                "bondRefillTax": 0,
+                "action": "Opportunistisches Rebalancing & Liquidität auffüllen / Dynamic-Flex-Obergrenze (56045.01 €/Jahr) / Rebal.(A+)"
+              },
+              {
+                "run": 61,
+                "year": 25,
+                "regime": "side_long",
+                "equityBuy": 90000,
+                "equitySale": 110719.62325038016,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Dynamic-Flex-Obergrenze (75174.24 €/Jahr) / Rebal.(A+)"
+              }
+            ],
+            "firstYearPayoutSalePaths": 41,
+            "firstYearTax": 10494186.893298933,
+            "realBudgetDropsOver5OutsideBear": 6213,
+            "maxRealBudgetJumpPct": 150.8936898855722,
+            "maxRealBudgetDropPct": 66.24891631783892,
+            "chunks": [
+              "7b8f114c5602a5bd429436828d95629a0a2ee577fd59aa9545a3fb162ed636d1",
+              "a0f0c98718d4412e0c105ea7a892bd95be546f4f3bf3f5ca93b718880c180bcb",
+              "268b42eacb52afb6bc6cc960e9fd881c05defa12e86694ba976af8621eb5eb06",
+              "3d72ffb901c93ce1ece5162924b20590a2679335cae1dad00d1fa49443764fce",
+              "9d02d9c9a3fcdc60dd7b23957b02a2951f7a873995927500134e9cc3f579dc38",
+              "d334d2e5363852df763d61901c8c918339f6b96e091572ebcb706ec60012f67a",
+              "94f7d0b03573e151960debd5334984a963cb44f55fa7a294d90d868a0a9ad2ce",
+              "e87eff0ee6db62a76ed0c2693a9705cd8649ef55217150d661319fafbdac6e74",
+              "3dd6b467191a3c2ba363f42be59bcc55a107e13b13614fdfb7fe16a10e201ce7",
+              "2f898eaf927aed1fe54df7e37a7b8beb4f7de81c395e79abfc91a1ee565de4a2",
+              "2410c6ad35f16e3ba06a6afe3636cea528fc02c75c7db2746478327700b46e16",
+              "0e332f34e433aa79b548523263d10929c39109157afb4dedd8be6cfcacc1634c",
+              "429e68f63bf2e9874b964625d136478e0ef97a16acfea890451fa48fa9cffb95",
+              "d4d70752eaeccc639d12d242b85ddfbbc9e48e90da1c48190518f573459f2574",
+              "c12d4a612b4589115a63be5c5724ac3230f877ce324aa3791cbcedac03108e13",
+              "2de07ce614bf7fa8df5539f80cf26c5e92b201c168b27e74b48b63392d551be7",
+              "d9e95be5a8192b7057cf8743fe3a96bb2d5e544d776538a4771dda4929341198",
+              "cd535581b675cd5994e840456ad48b76129ba3bcb209687955e5e5aba6f2d9a2",
+              "17a1aef346396706925b172c51e8e1ece14a1e65ae496ca278e4ec1ba69b13a1",
+              "1dd5184a94e32b376d96fadffd7f341821df7f90eb5d9a4c264dd9a9d097593d"
+            ],
+            "coveredPct": 99.65,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "4eef2e2b61ba84376cc37335234712ba93643de754a965379acf5f38477179d9",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "35d0a3e5c2effc79e9e4add9db45ccec3337670cfab7be900f96a3c536c51edf",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 14984279.815738164,
+                "cutYears": 11
+              },
+              {
+                "period": "1965–1999",
+                "hash": "9494a9d4fb5d74720af004db11cad27f173e39b44a1e0610998af0859c8522ac",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 18232860.15981523,
+                "cutYears": 8
+              },
+              {
+                "period": "2000–2025",
+                "hash": "57f93b224b6a018c8e4d66baccde178a541ca78819b6c84a1abce5c5df33379f",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 2625093.96009325,
+                "cutYears": 15
+              }
+            ]
+          },
+          "martin-petra@hundert": {
+            "mode": "standard",
+            "inputsHash": "ddfdcbd5100334422050d27f28d9f3a0cd7aca977b06753c29a84bfa253c351e",
+            "ruin": 3,
+            "technical": 0,
+            "taxedRoundTripPaths": 0,
+            "roundTripTax": 0,
+            "equityRoundTripPaths": 1999,
+            "equityRoundTripExamples": [
+              {
+                "run": 0,
+                "year": 2,
+                "regime": "side_long",
+                "equityBuy": 19463.13,
+                "equitySale": 11393.156042605246,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11393.16 € / Rebal.(A+)"
+              },
+              {
+                "run": 0,
+                "year": 3,
+                "regime": "peak_hot",
+                "equityBuy": 26121.25,
+                "equitySale": 11667.79718043578,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 11667.80 € / Rebal.(A+)"
+              },
+              {
+                "run": 0,
+                "year": 4,
+                "regime": "peak_hot",
+                "equityBuy": 26730.97,
+                "equitySale": 10191.113077338436,
+                "bondRefillTax": 0,
+                "action": "Profilverbund-Transaktionen / Verkauf für die Auszahlung 10191.11 € / Rebal.(A+)"
+              }
+            ],
+            "firstYearPayoutSalePaths": 0,
+            "firstYearTax": 390749.77345122956,
+            "realBudgetDropsOver5OutsideBear": 2854,
+            "maxRealBudgetJumpPct": 108.45819317958556,
+            "maxRealBudgetDropPct": 68.62623835732987,
+            "chunks": [
+              "74f4229913a38ce9c5ca278f1954ac912ff3506b57fb866307e19ecad07bb937",
+              "cf9ce262b78a6c7be486d4826fcb4b8a397622896a6d1d091af6da229d0ada68",
+              "8e2d2d0d4793f5606b08c6c6077bb7acb3da0aac62515faf6121ff12b04a808b",
+              "0cbb8abf118f5fff9e49ee785c9193a6480eb087a0885cc48da061ec4cbc6290",
+              "a96649acdce79e05ba60824051ac6fc351368f095a7f0a0fecb10c249320cd5d",
+              "9ba310242d074e7e8f25aa5627472cd05c696ab69ce69abb3ae8a8d5f3b367cc",
+              "39fe364eef57cd0b3a4c5058958e9ddb30a0a7f93445af2dd16eb2772a103d87",
+              "74f9ad1cd94880f45fe5bdfeb0b6e0031960c2375c7b7d4ba7dac2c706dd62c8",
+              "d9e992cf57879df59f6151df4ec429d3446cf0725c93cd352ce311db47c492e4",
+              "b54a9d8d7cdb7b289770798b0cf64503449f82925d5a5897030245c9344fb511",
+              "6b5b431c7066794d21585b3f1692d511642b4f7aae2fb7c735e52f0ea0528575",
+              "61ae1320d6c99ad69934bb038cae50c1d74c9b494c44eab0c48417177a765198",
+              "9f02a8aaf9f9ee7fd46b9231106bb97cec4eeb977cd9b0683cb5562a941fdaae",
+              "6168ec96f00a63d1b91af6c9d4c538129cf5fd61a00463aee431d33ae41a3f78",
+              "91bccdb7c7618c28d21b03fae52500a918fc92a96bb7adf5d3ca55d565e566d9",
+              "c16e3fe0db3ccd2b64cae35e408bc6705394a147c8fe779fecb90416d68d8833",
+              "dad79580ac50edb6c4a81fc8bbbad32b07260df584d0d8e27f8cc8b89167a110",
+              "37b11fb1682252e3b456cd29b198421269e70d15736a46ef40a1861694f86cef",
+              "9753d7dc954304045a3aa12e7b309ce38872735f136c39eef67a390d337d8783",
+              "45335f32945a63c3703124be549cc91747c1ac6153498b184a245f62a0d8e684"
+            ],
+            "coveredPct": 99.85000000000001,
+            "backtests": [
+              {
+                "period": "1925–1999",
+                "hash": "64df9cf2eb3f9cf260ca552a6c870dd1144954547d7e5be2add3d6f56cc99761",
+                "outcome": "incomplete",
+                "years": 0,
+                "endWealth": null,
+                "cutYears": 0,
+                "details": {
+                  "kind": "incomplete",
+                  "lastCompletedYear": null,
+                  "missingYears": [],
+                  "missingFields": [],
+                  "exclusionReason": "period_out_of_bounds"
+                }
+              },
+              {
+                "period": "1929–1963",
+                "hash": "e1e1b872f0eafb0be2fdcaf6022e286376c44f3648b18319ef612a13fb509aaf",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 32215581.70165653,
+                "cutYears": 0
+              },
+              {
+                "period": "1965–1999",
+                "hash": "4eab3c5111c2ac9bcadd6d4bbdb726eea21fac6b1a7abf728dfcbbdacf21d17a",
+                "outcome": "completed",
+                "years": 35,
+                "endWealth": 47634910.21580382,
+                "cutYears": 0
+              },
+              {
+                "period": "2000–2025",
+                "hash": "c96e3ce33c72e095a96e4ec6d0fe713f39c129547503eee0c72a02b0518cf7c6",
+                "outcome": "completed",
+                "years": 26,
+                "endWealth": 3823542.584742294,
+                "cutYears": 0
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "sourceFiles": [
+    {
+      "path": "engine/transactions/transaction-action.mjs",
+      "beforeSha256": "4de937ee565faf21d611e9738b22b12731d3aece5264520879f971a77bd060c8",
+      "afterSha256": "f7515fb7805760e9394bef9e6b890cbfc6293d5f65cec47e4a2979be4c480418",
+      "measuredSourcesMatchWorkingTree": true
+    },
+    {
+      "path": "engine/transactions/three-bucket-logic.mjs",
+      "beforeSha256": "76de7444675fcb122c704cde2da402cb229d02c560069bcaf9285b6f35f7cfeb",
+      "afterSha256": "9a90543049813a6f1f13f0511e6b0d6eb8d975486c9493f5ae4cdbccd06d07da",
+      "measuredSourcesMatchWorkingTree": true
+    },
+    {
+      "path": "app/simulator/simulator-personal-tax.js",
+      "beforeSha256": "e18dc000abc41c961070807bd9f0d8383eb0777ab2fec0a21a9cf7ff6227e7ad",
+      "afterSha256": "6129746f9b767e4e6f12c21713ab5252258edce69686f32f80b6eb69083616a6",
+      "measuredSourcesMatchWorkingTree": true
+    },
+    {
+      "path": "app/simulator/simulator-engine-direct.js",
+      "beforeSha256": "3e93c72f586c5dcd1c09f65d3007444574ece3fdcbf3b97fa3801232dfb86645",
+      "afterSha256": "f2b3ae1727b57219979dd8286ea50244a8e9355bf522de5ef9f79eac599dcde8",
+      "measuredSourcesMatchWorkingTree": true
+    }
+  ],
+  "validation": {
+    "npmTest": {
+      "assertions": 135085,
+      "passed": 135085,
+      "failedAssertions": 0,
+      "failedFiles": 0,
+      "separateGates": 4,
+      "openHandles": 0,
+      "execution": "Vollständige Suite nach Ende sämtlicher Messläufe; Wiederholung ohne Sandbox-Beschränkung nach gesperrten Unterprozessstarts (EPERM)."
+    },
+    "regressionAssertions": 51,
+    "parity": {
+      "cases": 208,
+      "scenarios": 4,
+      "decisionsEqualPerScenario": "26/26",
+      "personPlansEqualPerScenario": "26/26",
+      "errors": 0,
+      "unclassified": 0,
+      "openDomainQuestions": 0,
+      "complete": false,
+      "existingResidualClasses": [
+        "MARKTZEIT_HERKUNFT_FEHLT",
+        "QUELLREVISION_FEHLT",
+        "JAHRESENDE_NUR_SIMULATOR",
+        "FOLGELAUF_AUSFUEHRUNG_FEHLT"
+      ],
+      "seconds": 9.12
+    },
+    "docs": {
+      "files": 47,
+      "errors": 0,
+      "warnings": 6
+    },
+    "inventoryCurrent": true,
+    "generators": [
+      "docs:parameter",
+      "docs:beispiele",
+      "generate-funktionsinventar.mjs"
+    ]
+  }
+}

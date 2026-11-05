@@ -1,0 +1,99 @@
+{
+  "testDate": "2026-10-23",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "note": "Steuer und Steuergeld: Median der nominalen Pfadsummen über alle Läufe, einschließlich Null. Endvermögen ist Geldvermögen nach Simulatorvertrag.",
+  "measurements": [
+    {
+      "householdId": "martin-petra",
+      "variantId": "grund",
+      "coveredPct": 99.85000000000001,
+      "ruin": 3,
+      "emergencySales": 24,
+      "careSales": 219,
+      "medianInheritanceTax": 327619.8577637717,
+      "medianTaxCashGross": 378747.86849851924,
+      "medianEndWealthReal": 1406911.7864405166,
+      "completeOutputSha256": "22dc68aa200edb27d8986916b486b8d22b5675a0bc6d233ee46667dfd8b76d77"
+    },
+    {
+      "householdId": "martin-petra",
+      "variantId": "hundert",
+      "coveredPct": 99.85000000000001,
+      "ruin": 3,
+      "emergencySales": 11,
+      "careSales": 222,
+      "medianInheritanceTax": 649975.8639487746,
+      "medianTaxCashGross": 0,
+      "medianEndWealthReal": 2633890.91213343,
+      "completeOutputSha256": "e5e0a44160a071886522686844ee287348a1670afa1dac50431a2612beac52a3"
+    },
+    {
+      "householdId": "martin-petra",
+      "variantId": "ehe",
+      "coveredPct": 100,
+      "ruin": 0,
+      "emergencySales": 0,
+      "careSales": 223,
+      "medianInheritanceTax": 213952.22843361073,
+      "medianTaxCashGross": 0,
+      "medianEndWealthReal": 3734190.3369149594,
+      "completeOutputSha256": "c58eb545989c63680362b93b57ac72a87f5eb1ab1eb2caab4012351756accb04"
+    },
+    {
+      "householdId": "renate",
+      "variantId": "klein",
+      "coveredPct": 37.65,
+      "ruin": 1247,
+      "emergencySales": 0,
+      "careSales": 0,
+      "medianInheritanceTax": 0,
+      "medianTaxCashGross": 0,
+      "medianEndWealthReal": 0,
+      "completeOutputSha256": "165c1ed71070fc1a47ab4eb076af1b7f3e4efcb545c52877a8e4419e7e60781a"
+    },
+    {
+      "householdId": "jan-lena",
+      "variantId": "halten",
+      "coveredPct": 99.65,
+      "ruin": 7,
+      "emergencySales": 0,
+      "careSales": 0,
+      "medianInheritanceTax": 202606.18493070413,
+      "medianTaxCashGross": 0,
+      "medianEndWealthReal": 3611927.2325263144,
+      "completeOutputSha256": "f7111208dab899ded9f80178498e35cfb07e927f080a337534f9414fa45226e7"
+    },
+    {
+      "householdId": "helga-werner",
+      "variantId": "haus-pg3",
+      "coveredPct": 99.75,
+      "ruin": 5,
+      "emergencySales": 64,
+      "careSales": 284,
+      "medianInheritanceTax": 0,
+      "medianTaxCashGross": 0,
+      "medianEndWealthReal": 520904.2246608387,
+      "completeOutputSha256": "f5ebf1bb0fa5c4b4419b11658961245741f3767757c05826a87b58914652cb6a"
+    },
+    {
+      "householdId": "sophie",
+      "variantId": "teilzeit",
+      "coveredPct": 95.75,
+      "ruin": 85,
+      "emergencySales": 0,
+      "careSales": 0,
+      "medianInheritanceTax": 0,
+      "medianTaxCashGross": 0,
+      "medianEndWealthReal": 967838.6650326359,
+      "completeOutputSha256": "7b05a340e7c53b3284bc75c668bbf1e3edb811700eaba2ba449ab43e72f4a39c"
+    }
+  ]
+}

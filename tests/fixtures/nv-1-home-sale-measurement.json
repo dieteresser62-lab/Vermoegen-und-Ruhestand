@@ -1,0 +1,1368 @@
+{
+  "synthetic": true,
+  "beforeRevision": "4cd40a58bfd6330c91885cc01b3390017b30fdb3",
+  "testDate": "2026-10-23",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "basis": "Renate Wohnung 300000 EUR, heute PG3; Max/Erika unverheiratet, Haus 800000 EUR bei Max, Immobilien und Steuer + 0 % Geld. Groß 3 Mio. EUR Geld 90/10, Haus 800000 EUR bei Max, Erika heute PG2, gleiche Erbwahl. Groß und Max/Erika Standard ohne Anleihen; Renate 3 Töpfe mit 145000 EUR Anleihen. Pflege an, Marktregime, 35 Jahre. Endvermögen real. Mietmedian: erste aktive Jahresmiete pro Notverkaufspfad in heutigen Euro, ohne Fälle mit sofort entfallener Miete. Kalenderjahr des ersten Notverkaufs. Vorherige Ruin-Pfade mit Immobilien berücksichtigen nur im Haushalt verbliebene Anteile.",
+  "historicalLimitation": "1925–1999 ist im bestehenden Datenvertrag nicht ausführbar: vier Vorjahre fehlen, erster Start 1929. Zusätzlich Gegenproben 1929–1963 und 1965–1999 mit je 35 Jahren innerhalb des unabhängigen Zeitraums. Der gesamte 71-Jahreslauf ab 1929 wäre für die älteren Musterpersonen außerhalb der Engine-Altersgrenze. Keine erfundenen Daten oder geänderten Altersannahmen.",
+  "checks": {
+    "monteCarlo2000": true,
+    "independentHistoricalPeriod": true,
+    "sensitivityPlusMinus30": true,
+    "requested1925Backtest": false
+  },
+  "before": {
+    "synthetic": true,
+    "testDate": "2026-10-23",
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "scenarios": {
+      "renate": {
+        "strategy": "3_bucket_jilge",
+        "bonds": 145000,
+        "inputsSha256": "a7eca5876ab6689afb135f23baa6b331a760f03cc44b59c6dfbdbf8a6664e386",
+        "coveredPct": 83,
+        "ruin": 340,
+        "ruinWithHome": 0,
+        "emergency": 0,
+        "medianEmergencyYear": null,
+        "care": 1425,
+        "medianRentReal": null,
+        "realP10": 0,
+        "realP50": 356000.5930906086,
+        "sha256": "147bd4ec3984ff0d86146ccbbfa1ae70d1efade01436286752a4bbf107abba08",
+        "maxFlowDelta": 9.313225746154785e-10,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "d8725f05731b50252f9017f206273e8c5dc2d1a76dc265ccdfa7b421685cdca4"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 348993.17726864206,
+            "sha256": "b8242564a49f81dabc7537072f1d97567bb69f9429fc256dfbfaff6f0bdeb136"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 5271499.895924766,
+            "sha256": "0f38451949dc8ba4e84ddacf7bd0070e4bee6b23b0073570ac0f2cd54e8e5757"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 6540192.263681113,
+            "sha256": "6bd963b86765ae393d09a02d711c6699b3362904abff0e5ee4951dd350b38e8f"
+          }
+        ]
+      },
+      "muster": {
+        "strategy": "standard",
+        "bonds": 0,
+        "inputsSha256": "8daae7ab40303d488e8f5ec8bfbe8d44e9b82f223bc0fe806f8bf94aff6f2a73",
+        "coveredPct": 98.2,
+        "ruin": 36,
+        "ruinWithHome": 35,
+        "emergency": 0,
+        "medianEmergencyYear": null,
+        "care": 193,
+        "medianRentReal": null,
+        "realP10": 290102.75399681873,
+        "realP50": 1235065.0420844043,
+        "sha256": "b9811a1dc2081e2dedab56b3b0eca466643c9a26ffb3c3173dab6a3f6ec1e759",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "d969e0577528fc4c91c78c4088b30171827395812a1b9d8a3f14d0a11c4fda8e"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 2361600.621178225,
+            "sha256": "fd02734aa92db91fc342295e9d674c136a4956044890b711792f8a18ab62aa98"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 26541226.714951817,
+            "sha256": "1ccc13b1980d1843fdf966987203981d5a25c54ea168aae3b9ad61e5f4bc4919"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 37647753.559412554,
+            "sha256": "4f3c601dea715f490b6f5e596bcd865e1010288faf8bc1976944979e7fdb0b81"
+          }
+        ]
+      },
+      "gross": {
+        "strategy": "standard",
+        "bonds": 0,
+        "inputsSha256": "c10dce986dfdd03189e104fd69339c47282348ff01ac11292f37e171118ce044",
+        "coveredPct": 96.6,
+        "ruin": 68,
+        "ruinWithHome": 54,
+        "emergency": 0,
+        "medianEmergencyYear": null,
+        "care": 677,
+        "medianRentReal": null,
+        "realP10": 405617.82734801254,
+        "realP50": 3647039.2524339487,
+        "sha256": "6d5b8bf5adaa37cee48e020fb771f431c3173ffcf23d35e0b086daa9810b55f4",
+        "maxFlowDelta": 5.960464477539063e-8,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "1b051b84c13dd8fbd3af5e929643bb2b36c8b200cc3eaba5970c92fd2e004622"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 12463313.018230205,
+            "sha256": "966302a1a83a3d7e8ee9e1a07c88556889e89502af3eb71427aea9d497081904"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 91472220.07496423,
+            "sha256": "16d841a71f0e5bae2fe1f5e4a29a4f7ce51840e89cc7bbe81b4a115834376bbe"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 127180423.97606868,
+            "sha256": "aba0c8bccbd46899285e03b62f67caa8b58bfb117155073ec87d34f7ccfeb31e"
+          }
+        ]
+      },
+      "sophie": {
+        "strategy": "standard",
+        "bonds": 0,
+        "inputsSha256": "fd18bc71be75bd7002fde1edd0bd105456663fcf8adb26db5290a3a781d1d0ab",
+        "coveredPct": 97,
+        "ruin": 60,
+        "ruinWithHome": 0,
+        "emergency": 0,
+        "medianEmergencyYear": null,
+        "care": 0,
+        "medianRentReal": null,
+        "realP10": 190512.05319385367,
+        "realP50": 1167456.9258694316,
+        "sha256": "75019540c4803e4f9fa93efc2b7e163af2bbea971aca41e57e6836b78e1c13c4",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "4f32a64216a07ec256a26abd03af2b5493496f3f90057741d31eed26f2c41601"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 589565.7367414373,
+            "sha256": "fb65c3d3edab760ede36b44af23cc5d720a962457f317f442803313303366a6d"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 8491597.152357375,
+            "sha256": "29180862c2fdf71cccb9c3973d29b75f17cfa378ee766a6fdaad3ae80608830a"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 13189532.777937498,
+            "sha256": "6ebfcc0eefc60944c90dbb97a401f93b41f0d7ed71a53af07a8fc4df518a8191"
+          }
+        ]
+      },
+      "noHome": {
+        "strategy": "standard",
+        "bonds": 0,
+        "inputsSha256": "931b4f4a79d8c0dff02621e7ca853f2e91cc59161fafea001d54226f4fc38c99",
+        "coveredPct": 99.7,
+        "ruin": 6,
+        "ruinWithHome": 0,
+        "emergency": 0,
+        "medianEmergencyYear": null,
+        "care": 0,
+        "medianRentReal": null,
+        "realP10": 838855.1466977138,
+        "realP50": 2706228.0992867304,
+        "sha256": "74dcb320648e0a1fd9799cd844ebcf8758a93dae50bbc80d51de78d7d9314ad4",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "cfb8dc7b55671585227ad758fa75f824ad9ac5ea35aa4f2e41acadf798ec5dba"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 2361600.621178225,
+            "sha256": "27901f1d0f99faa786ea04c144d24b042a335da45c5e907883d2ca6df607a1ee"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 26541226.714951817,
+            "sha256": "f249c6a64ea96522f075519acf2165b6fbb02557fd94e4d78a6da17c49e77b5b"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 37647753.559412554,
+            "sha256": "a4f8ba825851a7d62840e4f60fd5db84e0f27ae6e639a288ce4be98cd56e8696"
+          }
+        ]
+      },
+      "helga-werner": {
+        "strategy": "3_bucket_jilge",
+        "bonds": 150000,
+        "inputsSha256": "437f6f5b2cfcc521a1ed59e88842c1849f18497b5ff44aede1257e8bcdbc1dad",
+        "coveredPct": 99.85,
+        "ruin": 3,
+        "ruinWithHome": 0,
+        "emergency": 0,
+        "medianEmergencyYear": null,
+        "care": 0,
+        "medianRentReal": null,
+        "realP10": 445589.1183930873,
+        "realP50": 801817.2990043954,
+        "sha256": "770236903db2d184418144669c0791ae365d17175fb947cfd8b460805302e281",
+        "maxFlowDelta": 1.862645149230957e-9,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "1df57eddf192f07ecc821d52818197f7c7a60db08fcdaa8d64fcd6694258b73f"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 2073749.63677212,
+            "sha256": "70acdb636764cc46866340d6dd7c1deed72bf433a9f1fd9bd967d8632fbb439e"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 9858699.677143147,
+            "sha256": "565c110501f480d77682c0009cd7b547b7749f90b81ffcf4ca67ee212ec0b3e0"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 25259166.01611117,
+            "sha256": "82b377c5d47e6adfe749b1d95d73408434def66030b1a65526eafa9dbb39a09f"
+          }
+        ]
+      }
+    },
+    "compatibility": {
+      "parity": "581d0c55dd295fc60ac34a730072792633f0048d69c74554588d6c4bd9fc1a9a",
+      "balanceInput": "4c51dd2b278a97f85177e7d4ccb8b72ba9b175bd8d837a40ca2dc620ebb25fa3",
+      "balanceCalculation": "bfe1d39a837bfc5154942bc366ec93d50f88bf10d4f581346b7cf4c29759d128"
+    }
+  },
+  "after": {
+    "synthetic": true,
+    "testDate": "2026-10-23",
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "scenarios": {
+      "renate": {
+        "strategy": "3_bucket_jilge",
+        "bonds": 145000,
+        "inputsSha256": "a7eca5876ab6689afb135f23baa6b331a760f03cc44b59c6dfbdbf8a6664e386",
+        "coveredPct": 83,
+        "ruin": 340,
+        "ruinWithHome": 0,
+        "emergency": 0,
+        "medianEmergencyYear": null,
+        "care": 1425,
+        "medianRentReal": null,
+        "realP10": 0,
+        "realP50": 356000.5930906086,
+        "sha256": "147bd4ec3984ff0d86146ccbbfa1ae70d1efade01436286752a4bbf107abba08",
+        "maxFlowDelta": 9.313225746154785e-10,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "d8725f05731b50252f9017f206273e8c5dc2d1a76dc265ccdfa7b421685cdca4"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 348993.17726864206,
+            "sha256": "b8242564a49f81dabc7537072f1d97567bb69f9429fc256dfbfaff6f0bdeb136"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 5271499.895924766,
+            "sha256": "0f38451949dc8ba4e84ddacf7bd0070e4bee6b23b0073570ac0f2cd54e8e5757"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 6540192.263681113,
+            "sha256": "6bd963b86765ae393d09a02d711c6699b3362904abff0e5ee4951dd350b38e8f"
+          }
+        ]
+      },
+      "muster": {
+        "strategy": "standard",
+        "bonds": 0,
+        "inputsSha256": "8daae7ab40303d488e8f5ec8bfbe8d44e9b82f223bc0fe806f8bf94aff6f2a73",
+        "coveredPct": 99.9,
+        "ruin": 2,
+        "ruinWithHome": 0,
+        "emergency": 35,
+        "medianEmergencyYear": 2042,
+        "care": 193,
+        "medianRentReal": 32000,
+        "realP10": 326293.2519259753,
+        "realP50": 1235065.0420844043,
+        "sha256": "390e0aac3ecf2493ba8043e0b11bf5625c0312444d9f44255d7199c5181ef5b0",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "d969e0577528fc4c91c78c4088b30171827395812a1b9d8a3f14d0a11c4fda8e"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 2361600.621178225,
+            "sha256": "fd02734aa92db91fc342295e9d674c136a4956044890b711792f8a18ab62aa98"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 26541226.714951817,
+            "sha256": "1ccc13b1980d1843fdf966987203981d5a25c54ea168aae3b9ad61e5f4bc4919"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 37647753.559412554,
+            "sha256": "4f3c601dea715f490b6f5e596bcd865e1010288faf8bc1976944979e7fdb0b81"
+          }
+        ]
+      },
+      "gross": {
+        "strategy": "standard",
+        "bonds": 0,
+        "inputsSha256": "c10dce986dfdd03189e104fd69339c47282348ff01ac11292f37e171118ce044",
+        "coveredPct": 98.3,
+        "ruin": 34,
+        "ruinWithHome": 0,
+        "emergency": 54,
+        "medianEmergencyYear": 2039,
+        "care": 677,
+        "medianRentReal": null,
+        "realP10": 451666.26944621606,
+        "realP50": 3647039.2524339487,
+        "sha256": "34938b78df3dcfb3e0e58196938ba52cc24dc887952566a0cb47d456e6057afd",
+        "maxFlowDelta": 5.960464477539063e-8,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "1b051b84c13dd8fbd3af5e929643bb2b36c8b200cc3eaba5970c92fd2e004622"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 12463313.018230205,
+            "sha256": "966302a1a83a3d7e8ee9e1a07c88556889e89502af3eb71427aea9d497081904"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 91472220.07496423,
+            "sha256": "16d841a71f0e5bae2fe1f5e4a29a4f7ce51840e89cc7bbe81b4a115834376bbe"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 127180423.97606868,
+            "sha256": "aba0c8bccbd46899285e03b62f67caa8b58bfb117155073ec87d34f7ccfeb31e"
+          }
+        ]
+      },
+      "sophie": {
+        "strategy": "standard",
+        "bonds": 0,
+        "inputsSha256": "fd18bc71be75bd7002fde1edd0bd105456663fcf8adb26db5290a3a781d1d0ab",
+        "coveredPct": 97,
+        "ruin": 60,
+        "ruinWithHome": 0,
+        "emergency": 0,
+        "medianEmergencyYear": null,
+        "care": 0,
+        "medianRentReal": null,
+        "realP10": 190512.05319385367,
+        "realP50": 1167456.9258694316,
+        "sha256": "75019540c4803e4f9fa93efc2b7e163af2bbea971aca41e57e6836b78e1c13c4",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "4f32a64216a07ec256a26abd03af2b5493496f3f90057741d31eed26f2c41601"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 589565.7367414373,
+            "sha256": "fb65c3d3edab760ede36b44af23cc5d720a962457f317f442803313303366a6d"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 8491597.152357375,
+            "sha256": "29180862c2fdf71cccb9c3973d29b75f17cfa378ee766a6fdaad3ae80608830a"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 13189532.777937498,
+            "sha256": "6ebfcc0eefc60944c90dbb97a401f93b41f0d7ed71a53af07a8fc4df518a8191"
+          }
+        ]
+      },
+      "noHome": {
+        "strategy": "standard",
+        "bonds": 0,
+        "inputsSha256": "931b4f4a79d8c0dff02621e7ca853f2e91cc59161fafea001d54226f4fc38c99",
+        "coveredPct": 99.7,
+        "ruin": 6,
+        "ruinWithHome": 0,
+        "emergency": 0,
+        "medianEmergencyYear": null,
+        "care": 0,
+        "medianRentReal": null,
+        "realP10": 838855.1466977138,
+        "realP50": 2706228.0992867304,
+        "sha256": "74dcb320648e0a1fd9799cd844ebcf8758a93dae50bbc80d51de78d7d9314ad4",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "cfb8dc7b55671585227ad758fa75f824ad9ac5ea35aa4f2e41acadf798ec5dba"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 2361600.621178225,
+            "sha256": "27901f1d0f99faa786ea04c144d24b042a335da45c5e907883d2ca6df607a1ee"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 26541226.714951817,
+            "sha256": "f249c6a64ea96522f075519acf2165b6fbb02557fd94e4d78a6da17c49e77b5b"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 37647753.559412554,
+            "sha256": "a4f8ba825851a7d62840e4f60fd5db84e0f27ae6e639a288ce4be98cd56e8696"
+          }
+        ]
+      },
+      "helga-werner": {
+        "strategy": "3_bucket_jilge",
+        "bonds": 150000,
+        "inputsSha256": "437f6f5b2cfcc521a1ed59e88842c1849f18497b5ff44aede1257e8bcdbc1dad",
+        "coveredPct": 99.85,
+        "ruin": 3,
+        "ruinWithHome": 0,
+        "emergency": 0,
+        "medianEmergencyYear": null,
+        "care": 0,
+        "medianRentReal": null,
+        "realP10": 445589.1183930873,
+        "realP50": 801817.2990043954,
+        "sha256": "770236903db2d184418144669c0791ae365d17175fb947cfd8b460805302e281",
+        "maxFlowDelta": 1.862645149230957e-9,
+        "counterchecks": [
+          {
+            "period": "1925–1999",
+            "outcome": "incomplete",
+            "ruin": null,
+            "incompleteReason": {
+              "code": "period_out_of_bounds",
+              "bounds": {
+                "startYear": 1929,
+                "endYear": 2025,
+                "datasetStartYear": 1925,
+                "datasetEndYear": 2025,
+                "lookbackYears": 4
+              }
+            },
+            "sales": [],
+            "finalNominal": null,
+            "sha256": "1df57eddf192f07ecc821d52818197f7c7a60db08fcdaa8d64fcd6694258b73f"
+          },
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 2073749.63677212,
+            "sha256": "70acdb636764cc46866340d6dd7c1deed72bf433a9f1fd9bd967d8632fbb439e"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 9858699.677143147,
+            "sha256": "565c110501f480d77682c0009cd7b547b7749f90b81ffcf4ca67ee212ec0b3e0"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "ruin": false,
+            "sales": [],
+            "finalNominal": 25259166.01611117,
+            "sha256": "82b377c5d47e6adfe749b1d95d73408434def66030b1a65526eafa9dbb39a09f"
+          }
+        ]
+      }
+    },
+    "compatibility": {
+      "parity": "581d0c55dd295fc60ac34a730072792633f0048d69c74554588d6c4bd9fc1a9a",
+      "balanceInput": "4c51dd2b278a97f85177e7d4ccb8b72ba9b175bd8d837a40ca2dc620ebb25fa3",
+      "balanceCalculation": "bfe1d39a837bfc5154942bc366ec93d50f88bf10d4f581346b7cf4c29759d128"
+    }
+  },
+  "sensitivity": {
+    "threshold07": {
+      "thresholdYears": 0.7,
+      "rentRate": 0.04,
+      "scenarios": {
+        "renate": {
+          "strategy": "3_bucket_jilge",
+          "bonds": 145000,
+          "inputsSha256": "a7eca5876ab6689afb135f23baa6b331a760f03cc44b59c6dfbdbf8a6664e386",
+          "coveredPct": 83,
+          "ruin": 340,
+          "ruinWithHome": 0,
+          "emergency": 0,
+          "medianEmergencyYear": null,
+          "care": 1425,
+          "medianRentReal": null,
+          "realP10": 0,
+          "realP50": 356000.5930906086,
+          "sha256": "147bd4ec3984ff0d86146ccbbfa1ae70d1efade01436286752a4bbf107abba08",
+          "maxFlowDelta": 9.313225746154785e-10,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d8725f05731b50252f9017f206273e8c5dc2d1a76dc265ccdfa7b421685cdca4"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 348993.17726864206,
+              "sha256": "b8242564a49f81dabc7537072f1d97567bb69f9429fc256dfbfaff6f0bdeb136"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 5271499.895924766,
+              "sha256": "0f38451949dc8ba4e84ddacf7bd0070e4bee6b23b0073570ac0f2cd54e8e5757"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 6540192.263681113,
+              "sha256": "6bd963b86765ae393d09a02d711c6699b3362904abff0e5ee4951dd350b38e8f"
+            }
+          ]
+        },
+        "muster": {
+          "strategy": "standard",
+          "bonds": 0,
+          "inputsSha256": "8daae7ab40303d488e8f5ec8bfbe8d44e9b82f223bc0fe806f8bf94aff6f2a73",
+          "coveredPct": 99.9,
+          "ruin": 2,
+          "ruinWithHome": 0,
+          "emergency": 35,
+          "medianEmergencyYear": 2042,
+          "care": 193,
+          "medianRentReal": 32000,
+          "realP10": 326293.2519259753,
+          "realP50": 1235065.0420844043,
+          "sha256": "390e0aac3ecf2493ba8043e0b11bf5625c0312444d9f44255d7199c5181ef5b0",
+          "maxFlowDelta": 1.4901161193847656e-8,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d969e0577528fc4c91c78c4088b30171827395812a1b9d8a3f14d0a11c4fda8e"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 2361600.621178225,
+              "sha256": "fd02734aa92db91fc342295e9d674c136a4956044890b711792f8a18ab62aa98"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 26541226.714951817,
+              "sha256": "1ccc13b1980d1843fdf966987203981d5a25c54ea168aae3b9ad61e5f4bc4919"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 37647753.559412554,
+              "sha256": "4f3c601dea715f490b6f5e596bcd865e1010288faf8bc1976944979e7fdb0b81"
+            }
+          ]
+        }
+      }
+    },
+    "threshold13": {
+      "thresholdYears": 1.3,
+      "rentRate": 0.04,
+      "scenarios": {
+        "renate": {
+          "strategy": "3_bucket_jilge",
+          "bonds": 145000,
+          "inputsSha256": "a7eca5876ab6689afb135f23baa6b331a760f03cc44b59c6dfbdbf8a6664e386",
+          "coveredPct": 83,
+          "ruin": 340,
+          "ruinWithHome": 0,
+          "emergency": 0,
+          "medianEmergencyYear": null,
+          "care": 1425,
+          "medianRentReal": null,
+          "realP10": 0,
+          "realP50": 356000.5930906086,
+          "sha256": "147bd4ec3984ff0d86146ccbbfa1ae70d1efade01436286752a4bbf107abba08",
+          "maxFlowDelta": 9.313225746154785e-10,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d8725f05731b50252f9017f206273e8c5dc2d1a76dc265ccdfa7b421685cdca4"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 348993.17726864206,
+              "sha256": "b8242564a49f81dabc7537072f1d97567bb69f9429fc256dfbfaff6f0bdeb136"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 5271499.895924766,
+              "sha256": "0f38451949dc8ba4e84ddacf7bd0070e4bee6b23b0073570ac0f2cd54e8e5757"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 6540192.263681113,
+              "sha256": "6bd963b86765ae393d09a02d711c6699b3362904abff0e5ee4951dd350b38e8f"
+            }
+          ]
+        },
+        "muster": {
+          "strategy": "standard",
+          "bonds": 0,
+          "inputsSha256": "8daae7ab40303d488e8f5ec8bfbe8d44e9b82f223bc0fe806f8bf94aff6f2a73",
+          "coveredPct": 99.9,
+          "ruin": 2,
+          "ruinWithHome": 0,
+          "emergency": 35,
+          "medianEmergencyYear": 2042,
+          "care": 193,
+          "medianRentReal": 32000,
+          "realP10": 326293.2519259753,
+          "realP50": 1235065.0420844043,
+          "sha256": "d09d6b0afac331952be97f694c87d92807e76a73d6c4d027d6a5f71091aa8b39",
+          "maxFlowDelta": 1.4901161193847656e-8,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d969e0577528fc4c91c78c4088b30171827395812a1b9d8a3f14d0a11c4fda8e"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 2361600.621178225,
+              "sha256": "fd02734aa92db91fc342295e9d674c136a4956044890b711792f8a18ab62aa98"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 26541226.714951817,
+              "sha256": "1ccc13b1980d1843fdf966987203981d5a25c54ea168aae3b9ad61e5f4bc4919"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 37647753.559412554,
+              "sha256": "4f3c601dea715f490b6f5e596bcd865e1010288faf8bc1976944979e7fdb0b81"
+            }
+          ]
+        }
+      }
+    },
+    "rent028": {
+      "thresholdYears": 1,
+      "rentRate": 0.028,
+      "scenarios": {
+        "renate": {
+          "strategy": "3_bucket_jilge",
+          "bonds": 145000,
+          "inputsSha256": "a7eca5876ab6689afb135f23baa6b331a760f03cc44b59c6dfbdbf8a6664e386",
+          "coveredPct": 83,
+          "ruin": 340,
+          "ruinWithHome": 0,
+          "emergency": 0,
+          "medianEmergencyYear": null,
+          "care": 1425,
+          "medianRentReal": null,
+          "realP10": 0,
+          "realP50": 356000.5930906086,
+          "sha256": "147bd4ec3984ff0d86146ccbbfa1ae70d1efade01436286752a4bbf107abba08",
+          "maxFlowDelta": 9.313225746154785e-10,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d8725f05731b50252f9017f206273e8c5dc2d1a76dc265ccdfa7b421685cdca4"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 348993.17726864206,
+              "sha256": "b8242564a49f81dabc7537072f1d97567bb69f9429fc256dfbfaff6f0bdeb136"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 5271499.895924766,
+              "sha256": "0f38451949dc8ba4e84ddacf7bd0070e4bee6b23b0073570ac0f2cd54e8e5757"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 6540192.263681113,
+              "sha256": "6bd963b86765ae393d09a02d711c6699b3362904abff0e5ee4951dd350b38e8f"
+            }
+          ]
+        },
+        "muster": {
+          "strategy": "standard",
+          "bonds": 0,
+          "inputsSha256": "8daae7ab40303d488e8f5ec8bfbe8d44e9b82f223bc0fe806f8bf94aff6f2a73",
+          "coveredPct": 99.9,
+          "ruin": 2,
+          "ruinWithHome": 0,
+          "emergency": 35,
+          "medianEmergencyYear": 2042,
+          "care": 193,
+          "medianRentReal": 22400,
+          "realP10": 328622.287900769,
+          "realP50": 1235065.0420844043,
+          "sha256": "e0f0c5a15fe13374ff2586d3aa24dcec167034c547e1e8855ab408b93abaf76c",
+          "maxFlowDelta": 1.4901161193847656e-8,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d969e0577528fc4c91c78c4088b30171827395812a1b9d8a3f14d0a11c4fda8e"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 2361600.621178225,
+              "sha256": "fd02734aa92db91fc342295e9d674c136a4956044890b711792f8a18ab62aa98"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 26541226.714951817,
+              "sha256": "1ccc13b1980d1843fdf966987203981d5a25c54ea168aae3b9ad61e5f4bc4919"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 37647753.559412554,
+              "sha256": "4f3c601dea715f490b6f5e596bcd865e1010288faf8bc1976944979e7fdb0b81"
+            }
+          ]
+        }
+      }
+    },
+    "rent052": {
+      "thresholdYears": 1,
+      "rentRate": 0.052,
+      "scenarios": {
+        "renate": {
+          "strategy": "3_bucket_jilge",
+          "bonds": 145000,
+          "inputsSha256": "a7eca5876ab6689afb135f23baa6b331a760f03cc44b59c6dfbdbf8a6664e386",
+          "coveredPct": 83,
+          "ruin": 340,
+          "ruinWithHome": 0,
+          "emergency": 0,
+          "medianEmergencyYear": null,
+          "care": 1425,
+          "medianRentReal": null,
+          "realP10": 0,
+          "realP50": 356000.5930906086,
+          "sha256": "147bd4ec3984ff0d86146ccbbfa1ae70d1efade01436286752a4bbf107abba08",
+          "maxFlowDelta": 9.313225746154785e-10,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d8725f05731b50252f9017f206273e8c5dc2d1a76dc265ccdfa7b421685cdca4"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 348993.17726864206,
+              "sha256": "b8242564a49f81dabc7537072f1d97567bb69f9429fc256dfbfaff6f0bdeb136"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 5271499.895924766,
+              "sha256": "0f38451949dc8ba4e84ddacf7bd0070e4bee6b23b0073570ac0f2cd54e8e5757"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 6540192.263681113,
+              "sha256": "6bd963b86765ae393d09a02d711c6699b3362904abff0e5ee4951dd350b38e8f"
+            }
+          ]
+        },
+        "muster": {
+          "strategy": "standard",
+          "bonds": 0,
+          "inputsSha256": "8daae7ab40303d488e8f5ec8bfbe8d44e9b82f223bc0fe806f8bf94aff6f2a73",
+          "coveredPct": 99.9,
+          "ruin": 2,
+          "ruinWithHome": 0,
+          "emergency": 35,
+          "medianEmergencyYear": 2042,
+          "care": 193,
+          "medianRentReal": 41600,
+          "realP10": 325167.9604010417,
+          "realP50": 1235065.0420844043,
+          "sha256": "7c2e1effe55e4483a90e45e0d0c823069b60ac86b5188075a1d2050512e87a74",
+          "maxFlowDelta": 1.4901161193847656e-8,
+          "counterchecks": [
+            {
+              "period": "1925–1999",
+              "outcome": "incomplete",
+              "ruin": null,
+              "incompleteReason": {
+                "code": "period_out_of_bounds",
+                "bounds": {
+                  "startYear": 1929,
+                  "endYear": 2025,
+                  "datasetStartYear": 1925,
+                  "datasetEndYear": 2025,
+                  "lookbackYears": 4
+                }
+              },
+              "sales": [],
+              "finalNominal": null,
+              "sha256": "d969e0577528fc4c91c78c4088b30171827395812a1b9d8a3f14d0a11c4fda8e"
+            },
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 2361600.621178225,
+              "sha256": "fd02734aa92db91fc342295e9d674c136a4956044890b711792f8a18ab62aa98"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 26541226.714951817,
+              "sha256": "1ccc13b1980d1843fdf966987203981d5a25c54ea168aae3b9ad61e5f4bc4919"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "ruin": false,
+              "sales": [],
+              "finalNominal": 37647753.559412554,
+              "sha256": "4f3c601dea715f490b6f5e596bcd865e1010288faf8bc1976944979e7fdb0b81"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "compatibility": {
+    "sophie": {
+      "mc": "75019540c4803e4f9fa93efc2b7e163af2bbea971aca41e57e6836b78e1c13c4",
+      "backtests": [
+        {
+          "period": "1925–1999",
+          "sha256": "4f32a64216a07ec256a26abd03af2b5493496f3f90057741d31eed26f2c41601",
+          "outcome": "incomplete"
+        },
+        {
+          "period": "2000–2025",
+          "sha256": "fb65c3d3edab760ede36b44af23cc5d720a962457f317f442803313303366a6d",
+          "outcome": "completed"
+        },
+        {
+          "period": "1929–1963",
+          "sha256": "29180862c2fdf71cccb9c3973d29b75f17cfa378ee766a6fdaad3ae80608830a",
+          "outcome": "completed"
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "6ebfcc0eefc60944c90dbb97a401f93b41f0d7ed71a53af07a8fc4df518a8191",
+          "outcome": "completed"
+        }
+      ]
+    },
+    "noHome": {
+      "mc": "74dcb320648e0a1fd9799cd844ebcf8758a93dae50bbc80d51de78d7d9314ad4",
+      "backtests": [
+        {
+          "period": "1925–1999",
+          "sha256": "cfb8dc7b55671585227ad758fa75f824ad9ac5ea35aa4f2e41acadf798ec5dba",
+          "outcome": "incomplete"
+        },
+        {
+          "period": "2000–2025",
+          "sha256": "27901f1d0f99faa786ea04c144d24b042a335da45c5e907883d2ca6df607a1ee",
+          "outcome": "completed"
+        },
+        {
+          "period": "1929–1963",
+          "sha256": "f249c6a64ea96522f075519acf2165b6fbb02557fd94e4d78a6da17c49e77b5b",
+          "outcome": "completed"
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "a4f8ba825851a7d62840e4f60fd5db84e0f27ae6e639a288ce4be98cd56e8696",
+          "outcome": "completed"
+        }
+      ]
+    },
+    "helga-werner": {
+      "mc": "770236903db2d184418144669c0791ae365d17175fb947cfd8b460805302e281",
+      "backtests": [
+        {
+          "period": "1925–1999",
+          "sha256": "1df57eddf192f07ecc821d52818197f7c7a60db08fcdaa8d64fcd6694258b73f",
+          "outcome": "incomplete"
+        },
+        {
+          "period": "2000–2025",
+          "sha256": "70acdb636764cc46866340d6dd7c1deed72bf433a9f1fd9bd967d8632fbb439e",
+          "outcome": "completed"
+        },
+        {
+          "period": "1929–1963",
+          "sha256": "565c110501f480d77682c0009cd7b547b7749f90b81ffcf4ca67ee212ec0b3e0",
+          "outcome": "completed"
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "82b377c5d47e6adfe749b1d95d73408434def66030b1a65526eafa9dbb39a09f",
+          "outcome": "completed"
+        }
+      ]
+    },
+    "parity": "581d0c55dd295fc60ac34a730072792633f0048d69c74554588d6c4bd9fc1a9a",
+    "balanceInput": "4c51dd2b278a97f85177e7d4ccb8b72ba9b175bd8d837a40ca2dc620ebb25fa3",
+    "balanceCalculation": "bfe1d39a837bfc5154942bc366ec93d50f88bf10d4f581346b7cf4c29759d128"
+  }
+}

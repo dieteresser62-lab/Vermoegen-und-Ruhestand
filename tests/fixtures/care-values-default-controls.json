@@ -1,0 +1,17 @@
+{
+  "no-care": {
+    "backtest": "45e7f0c42ac8cb924855d981580d1311adea4cf82d340e7ef7567cd376dfe080",
+    "parity": "8d18597a0eee5c84b98e4c8e8193a11c00ddffe7defaec737232669e8d8634bd",
+    "mc": "92997de9b81aeaafd98ab6fa16747bc947c07cdcf5641fe5aa203e3766c1e7b8"
+  },
+  "family": {
+    "backtest": "3c283d84733d6fa6c642ad59b503c1b477001d1b824d6968488de916eea5d28a",
+    "parity": "bef4a750c1990149aef2a4c2db36376eca0c82457896775d102eccfb13623e9b",
+    "mc": "74ae63429ffac8a127a3c7bc48ddbb33fdc99e3033a73bf336336b221eecb9e2"
+  },
+  "official": {
+    "backtest": "2139f565363e3d4a314be931a70728111fd16e1daf6e60fc7776991a1047ba89",
+    "parity": "6b6e16128e5a58769fd55aea1ad7a954270a982e9b38835f1fb162de3f0c1728",
+    "mc": "e23d3579ff24fda039717a386925fed37a470bc4715951914dbdf96e725dc085"
+  }
+}

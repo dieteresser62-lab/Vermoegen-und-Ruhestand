@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "useCapeSampling": false,
+  "sourceMeasurement": "scripts/measure-savings-year.mjs",
+  "allResultsByteEqual": true,
+  "households": {
+    "max-erika": {
+      "before": {
+        "inputsSha256": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+        "balanceEngineSha256": "4ddd2935a02b990f9fb938eb0be65a839133bb29f69ecee93954b01014104db8",
+        "backtestSha256": "46300ba917e11edccb2ed8b987af7c099ae738821052c78080750f305a185638",
+        "mcSha256": "c8f9a2968c05da2fcf2334741218b9f1448065c5281d2ddbbba5076d04d5bffb",
+        "exportsSha256": "117e22a81a2ab4288b07f065d766cd4437839eaf6e10f62f745ad154ecc5fbbe",
+        "exportSha256": [
+          "1fd90bda3d497b11314de2821130f7cdbf2aac6bf52a858ad0672c6a0e8b3e6e",
+          "0d7b080e8d92f0fd51632057293749c11ffb335a847fc783d437c51e523238ee",
+          "5ed6443f3d1dfca0020b13b2cf5a76c68a4252066bbe310e375e0c157115f371",
+          "a37169fdc2e429ca6fd35d28ac8786b16cba6b0c6fa704f1e6f889292a05d24f"
+        ]
+      },
+      "after": {
+        "inputsSha256": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+        "balanceEngineSha256": "4ddd2935a02b990f9fb938eb0be65a839133bb29f69ecee93954b01014104db8",
+        "backtestSha256": "46300ba917e11edccb2ed8b987af7c099ae738821052c78080750f305a185638",
+        "mcSha256": "c8f9a2968c05da2fcf2334741218b9f1448065c5281d2ddbbba5076d04d5bffb",
+        "exportsSha256": "117e22a81a2ab4288b07f065d766cd4437839eaf6e10f62f745ad154ecc5fbbe",
+        "exportSha256": [
+          "1fd90bda3d497b11314de2821130f7cdbf2aac6bf52a858ad0672c6a0e8b3e6e",
+          "0d7b080e8d92f0fd51632057293749c11ffb335a847fc783d437c51e523238ee",
+          "5ed6443f3d1dfca0020b13b2cf5a76c68a4252066bbe310e375e0c157115f371",
+          "a37169fdc2e429ca6fd35d28ac8786b16cba6b0c6fa704f1e6f889292a05d24f"
+        ]
+      }
+    },
+    "sophie": {
+      "before": {
+        "inputsSha256": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+        "balanceEngineSha256": "2d6cfd7e3582fdb2458a4c81c9f8c92a8e086a06f41bc9dc94cf646efc3fb52a",
+        "backtestSha256": "c174332a0617a5fefd3fcd31da6e310be5a004e4c743d8571e4e23102be2067a",
+        "mcSha256": "c333557cdfb8465392b6331b7539d34d43893ebb9fbac4f92645b55afb2a5726",
+        "exportsSha256": "0bf42e0c45025f571ab06c0b7c910469653fe01a5ab25bdf03f311ebb50d67a1",
+        "exportSha256": [
+          "3170de2cbf6035fe57e3fc2c64a45abc552e332c3736fb144739054e6a63a24b",
+          "ad635e27b75c78bcbc7eea593379eebabba2d220d1108da0d5990f6bfee8f7b8",
+          "eef9ee08253a430efbee3108b791b54c69f298cf42a24b8850c1be2878486a59",
+          "8c4f9eb3033dab6045739cf9c48420025e2b1da9eace50eaf3e03ee63bc302df"
+        ]
+      },
+      "after": {
+        "inputsSha256": "83ea14edc61ada8dc3812f5b548d739cc1bacb8ea6dd52d50c16df7f66c65c31",
+        "balanceEngineSha256": "2d6cfd7e3582fdb2458a4c81c9f8c92a8e086a06f41bc9dc94cf646efc3fb52a",
+        "backtestSha256": "c174332a0617a5fefd3fcd31da6e310be5a004e4c743d8571e4e23102be2067a",
+        "mcSha256": "c333557cdfb8465392b6331b7539d34d43893ebb9fbac4f92645b55afb2a5726",
+        "exportsSha256": "0bf42e0c45025f571ab06c0b7c910469653fe01a5ab25bdf03f311ebb50d67a1",
+        "exportSha256": [
+          "3170de2cbf6035fe57e3fc2c64a45abc552e332c3736fb144739054e6a63a24b",
+          "ad635e27b75c78bcbc7eea593379eebabba2d220d1108da0d5990f6bfee8f7b8",
+          "eef9ee08253a430efbee3108b791b54c69f298cf42a24b8850c1be2878486a59",
+          "8c4f9eb3033dab6045739cf9c48420025e2b1da9eace50eaf3e03ee63bc302df"
+        ]
+      }
+    }
+  },
+  "comparison": {
+    "household": "Max und Erika Mustermann",
+    "synthetic": true,
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "useCapeSampling": false,
+    "change": {
+      "kind": "budget",
+      "monthly": 300
+    },
+    "elapsedMs": 42396.44148,
+    "baseline": {
+      "coveragePct": 99.7,
+      "affectedPct": 1.7000000000000002,
+      "affectedYears": 2,
+      "budgetP10": 43499.99999999999,
+      "budgetP50": 59794.02285209055,
+      "wealthP10": 798924.7188191842,
+      "wealthP50": 2632531.6932210764
+    },
+    "variant": {
+      "coveragePct": 99.7,
+      "affectedPct": 1.7500000000000002,
+      "affectedYears": 2,
+      "budgetP10": 46199.999999999985,
+      "budgetP50": 63332.95765522716,
+      "wealthP10": 742273.7224297537,
+      "wealthP50": 2467340.7486939947
+    },
+    "differences": {
+      "coveragePct": 0,
+      "affectedPct": 0.050000000000000044,
+      "affectedYears": 0,
+      "budgetP10": 2699.9999999999927,
+      "budgetP50": 3538.93480313661,
+      "wealthP10": -56650.99638943048,
+      "wealthP50": -165190.94452708168
+    },
+    "worsePct": 0.1
+  }
+}

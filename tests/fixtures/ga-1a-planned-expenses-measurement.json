@@ -1,0 +1,192 @@
+{
+  "household": "Max und Erika Mustermann, synthetisch",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 3,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "expensePlan": [
+    {
+      "id": "auto",
+      "monat": "2028-04",
+      "betrag": 35000,
+      "bezeichnung": "Auto"
+    },
+    {
+      "id": "kredit",
+      "betragMonat": 450,
+      "ab": "2026-01",
+      "bis": "2027-12",
+      "anpassung": "keine",
+      "bezeichnung": "Kredit"
+    }
+  ],
+  "terminalMetric": "Endvermögen bis Tod, Ruin oder Horizont, real in Startkaufkraft",
+  "parity": {
+    "inputsHash": {
+      "before": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+      "after": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+      "equal": true
+    },
+    "monteCarloHash": {
+      "before": "be7026f85ca92315c2a9e12a911305a49437e9c907d88bb10c46a24c19826835",
+      "after": "be7026f85ca92315c2a9e12a911305a49437e9c907d88bb10c46a24c19826835",
+      "equal": true
+    },
+    "backtestHash": {
+      "before": "033301b1ce532005ed2662d05af5bfcb2ad1bc7139d157e0d9f1ee06e9e6bef6",
+      "after": "033301b1ce532005ed2662d05af5bfcb2ad1bc7139d157e0d9f1ee06e9e6bef6",
+      "equal": true
+    }
+  },
+  "cases": {
+    "without": {
+      "inputsHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+      "monteCarloHash": "be7026f85ca92315c2a9e12a911305a49437e9c907d88bb10c46a24c19826835",
+      "backtestHash": "033301b1ce532005ed2662d05af5bfcb2ad1bc7139d157e0d9f1ee06e9e6bef6",
+      "evaluable": 2000,
+      "technicalError": 0,
+      "successPct": 99.8,
+      "terminalRealP10": 923596.6626604886,
+      "terminalRealP50": 3053763.1413566153,
+      "counterchecks": [
+        {
+          "period": "2000–2025",
+          "hash": "033301b1ce532005ed2662d05af5bfcb2ad1bc7139d157e0d9f1ee06e9e6bef6",
+          "rowCount": 26,
+          "lastWealth": 2376100.5008673784
+        },
+        {
+          "period": "1965–1999",
+          "hash": "9b918a907bb8efe4509f1cdd75a641cf7a318899e295499f8191dc56d16c10f3",
+          "rowCount": 35,
+          "lastWealth": 26870904.80512132
+        }
+      ]
+    },
+    "auto": {
+      "inputsHash": "9567dad01fa5e1bddaad398e421d0b3fb09fd5aa5d370d75211627167c564a94",
+      "monteCarloHash": "60e4351a61ce8a115dac51cc1d73e2d32bcbba04b1d746499c49b280860ab67d",
+      "backtestHash": "c8981452ac36891d115529eb86c484e759936b92204369bad1f7938614b1c34a",
+      "evaluable": 2000,
+      "technicalError": 0,
+      "successPct": 99.8,
+      "terminalRealP10": 876358.838244556,
+      "terminalRealP50": 2973007.9110181183,
+      "counterchecks": [
+        {
+          "period": "2000–2025",
+          "hash": "c8981452ac36891d115529eb86c484e759936b92204369bad1f7938614b1c34a",
+          "rowCount": 26,
+          "lastWealth": 2187148.653499178
+        },
+        {
+          "period": "1965–1999",
+          "hash": "60e1908c00210f6741da6c59c57a43d208f10e271bd7ee7b18f552d7c02ced0a",
+          "rowCount": 35,
+          "lastWealth": 26723973.902630337
+        }
+      ]
+    },
+    "loan": {
+      "inputsHash": "fd26a7f24afec8798b66eac362afacad250b391af78bc1c5054ec280ac1634e6",
+      "monteCarloHash": "76b805c7fbdea91fcedf1c89771ad61b223da3298607a842f4b78747c4c01318",
+      "backtestHash": "a08e5cf2120fd1a5048de6d3e8a0771d3f935757d22d6354de3262365e8fcbc9",
+      "evaluable": 2000,
+      "technicalError": 0,
+      "successPct": 99.8,
+      "terminalRealP10": 905356.1342529748,
+      "terminalRealP50": 3026764.6189686116,
+      "counterchecks": [
+        {
+          "period": "2000–2025",
+          "hash": "a08e5cf2120fd1a5048de6d3e8a0771d3f935757d22d6354de3262365e8fcbc9",
+          "rowCount": 26,
+          "lastWealth": 2324073.074627568
+        },
+        {
+          "period": "1965–1999",
+          "hash": "c2a9423ad0bd4e4677ecdfd36f30a7944cdb83ec782c66e614c3a3affe88f351",
+          "rowCount": 35,
+          "lastWealth": 26824976.902450025
+        }
+      ]
+    },
+    "both": {
+      "inputsHash": "0bce8f6222f55f7649d02c56b7def45a96c1544ab8363730378db90e41c2916f",
+      "monteCarloHash": "4b14e94cf288748b26b3867239b836a1b2b888fc75d19e66e989b5cd1a1796d2",
+      "backtestHash": "154354d0b2c9bd1b7c932766e9834fb23df8959f0194d9894e79dabcfb91fd0a",
+      "evaluable": 2000,
+      "technicalError": 0,
+      "successPct": 99.8,
+      "terminalRealP10": 862476.8668642499,
+      "terminalRealP50": 2945478.786620222,
+      "counterchecks": [
+        {
+          "period": "2000–2025",
+          "hash": "154354d0b2c9bd1b7c932766e9834fb23df8959f0194d9894e79dabcfb91fd0a",
+          "rowCount": 26,
+          "lastWealth": 2143699.5656162733
+        },
+        {
+          "period": "1965–1999",
+          "hash": "10774322f8b5d4be60fd65c8fa0ddf5d326d53f85579a861f8b7033bf0fc0dff",
+          "rowCount": 35,
+          "lastWealth": 26678045.999959044
+        }
+      ]
+    },
+    "minus30": {
+      "inputsHash": "e610649773f87f12a8bdf736fbba441e82a354ed480f36cc0aa9dc126746e0bf",
+      "monteCarloHash": "f116d7dcf9cfdb36cefcc58311d03128e193c007f15c4e1fdf6358b0f9466fc9",
+      "backtestHash": "2ff81d642279db5b8fb091f0bb94686d00345826b207558afc70923aa2d59811",
+      "evaluable": 2000,
+      "technicalError": 0,
+      "successPct": 99.8,
+      "terminalRealP10": 879989.2679963585,
+      "terminalRealP50": 2978561.768356216,
+      "counterchecks": [
+        {
+          "period": "2000–2025",
+          "hash": "2ff81d642279db5b8fb091f0bb94686d00345826b207558afc70923aa2d59811",
+          "rowCount": 26,
+          "lastWealth": 2200154.342374387
+        },
+        {
+          "period": "1965–1999",
+          "hash": "e64f3d7b7e00ab7831c9050900fb9e96700e08bf8456e6c5129abaa1f3559656",
+          "rowCount": 35,
+          "lastWealth": 26735600.07425758
+        }
+      ]
+    },
+    "plus30": {
+      "inputsHash": "cb4dc657bdb1f25c9112b40717c78a9cdb1c8307f70df845caeb03a3f691a5ba",
+      "monteCarloHash": "8f9154c3994f08e848831f97719f7debcd9caefecff139ac47039d00479c2a50",
+      "backtestHash": "8c8525c88babd41cd14cd45423d37dab26049cc085d9131f3d05769e1b7215a5",
+      "evaluable": 2000,
+      "technicalError": 0,
+      "successPct": 99.8,
+      "terminalRealP10": 838446.7758670398,
+      "terminalRealP50": 2909380.9980789376,
+      "counterchecks": [
+        {
+          "period": "2000–2025",
+          "hash": "8c8525c88babd41cd14cd45423d37dab26049cc085d9131f3d05769e1b7215a5",
+          "rowCount": 26,
+          "lastWealth": 2069422.2068744386
+        },
+        {
+          "period": "1965–1999",
+          "hash": "75b698ef06e94969818205126b6b4926479e429e6f818401182ceeda5febb5b2",
+          "rowCount": 35,
+          "lastWealth": 26620221.253784124
+        }
+      ]
+    }
+  }
+}

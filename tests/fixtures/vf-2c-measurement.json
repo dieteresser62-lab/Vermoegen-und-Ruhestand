@@ -1,0 +1,421 @@
+{
+  "schemaVersion": 1,
+  "baselineRevision": "b8635bbf3a71b7e6da098ede0f1f342bce9c4686",
+  "testDate": "2026-10-23",
+  "parameters": {
+    "anzahl": 2000,
+    "maxDauer": 35,
+    "blockSize": 5,
+    "seed": 12345,
+    "methode": "regime_markov",
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM"
+  },
+  "hashScope": "SHA-256 of concatenated JSON.stringify(chunk), all 20 chunks of 100 runs including every log row; backtest hashes cover JSON.stringify(fullResult).",
+  "unchangedCases": [
+    "max-erika/grund",
+    "max-erika/grund/haus",
+    "jan-lena/grund",
+    "renate/grund"
+  ],
+  "before": {
+    "max-erika/grund": {
+      "inputsSha256": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+      "completeOutputSha256": "94c8671131ff0f9cc8ff004614af45f5919a4a51b6f01295f2005a8c032121cc",
+      "coveredPct": 99.7,
+      "ruin": 6,
+      "careSales": 0,
+      "emergencySales": 0,
+      "allowance": 30899253.156676874,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 0
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "21ec6cf86a9f949fb59feee25696a5c5de280b79d9afe13403ae669b0e5e9433",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 0
+        }
+      ]
+    },
+    "max-erika/grund/haus": {
+      "inputsSha256": "382a16328d60089accd7fbcf3690ff808fb6d7f25b6cdd0d7f4c9264cdc55021",
+      "completeOutputSha256": "9af5402be23a2b502d1516911bd8711ad502d3c97d22aee81bb6e5cb37f2fbc5",
+      "coveredPct": 99.9,
+      "ruin": 2,
+      "careSales": 199,
+      "emergencySales": 2,
+      "allowance": 30902975.581302717,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "c4d2c4958c84c053c9a95dfea5cfceb09896234acdc88afed7d29c8c0ea36812",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 0
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "89d099326f7c1b92d8b002e87f92ec2b754868c0ba9ab032815b87f6eebb3e03",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 0
+        }
+      ]
+    },
+    "jan-lena/grund": {
+      "inputsSha256": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+      "completeOutputSha256": "3d8523dedcc1820513b7c7bfb38d50d5895fb2a8483c78b7b29abb739f7ad4ef",
+      "coveredPct": 99.75,
+      "ruin": 5,
+      "careSales": 0,
+      "emergencySales": 0,
+      "allowance": 35077368.33557799,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "dc7dea48fe3f6397bd9dc8d7c91cd40a5764b33dc36a7ba9960af6917b8c306b",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 0
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "212827022172414f266b544b3df012a47955ac235c00fbff009c772d11f31523",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 0
+        }
+      ]
+    },
+    "renate/grund": {
+      "inputsSha256": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+      "completeOutputSha256": "7ff321ab09b502a78d7e8c4f665b7b1fc81d7a98491283a83326e7dfbfb37b59",
+      "coveredPct": 93.05,
+      "ruin": 139,
+      "careSales": 0,
+      "emergencySales": 0,
+      "allowance": 18705981.94213721,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "d8312d81327aa58f939217bf5688ded3efbd6878921451ca5a907999362891a6",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 0
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "7a54a78fed3d01a1a63b754d75a88595b23b462d6f69e0b61ab52b9f7419fb6e",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 0
+        }
+      ]
+    },
+    "helga-werner/haus-pg3": {
+      "inputsSha256": "77a7fe9a4513c1f6adbfd68269f8860fd6c18e3c838d52782f77eb1459f2ee48",
+      "completeOutputSha256": "ed7207e4afbf6ff83742f9afe8ba326ba9f65679594b947cdd6d7321fca2240d",
+      "coveredPct": 99.75,
+      "ruin": 5,
+      "careSales": 292,
+      "emergencySales": 76,
+      "allowance": 16380801.458329452,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "ad4c59d83d20a4556b59ef6f84a9f510322a47e06db78e7f6e30720b6fd4ab07",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 0
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "cd1125f7541dca49a68f2634b5444ebc35be01481451676e58d2f526ee4fdfa3",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 0
+        }
+      ]
+    },
+    "helga-werner/haus-pg3/pg4": {
+      "inputsSha256": "a1835424f3e74e05ae9a4c510a54edc4773da78a0cfe126a6c304b2f3eb11479",
+      "completeOutputSha256": "d9d85abfc02c4cc50f389dbde7eb683f0d1a559f05f4c46a910eca9c4f9227a0",
+      "coveredPct": 97.45,
+      "ruin": 51,
+      "careSales": 1949,
+      "emergencySales": 0,
+      "allowance": 0,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "cde5646f299c80a92f0221681c0289af65f1ab763d0c833ace9c005a78311309",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 0
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "c6c703b80eb03febba8cb9cb891b59b89b19f723e205ae2b1c9735795953b9b6",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 0
+        }
+      ]
+    }
+  },
+  "after": {
+    "max-erika/grund": {
+      "inputsSha256": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+      "completeOutputSha256": "94c8671131ff0f9cc8ff004614af45f5919a4a51b6f01295f2005a8c032121cc",
+      "coveredPct": 99.7,
+      "ruin": 6,
+      "careSales": 0,
+      "emergencySales": 0,
+      "allowance": 30899253.156676874,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "561894d2db804f28d0cdcef929512fd1eb7bb8e620ab8b40c0ff27707537e295",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 0
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "21ec6cf86a9f949fb59feee25696a5c5de280b79d9afe13403ae669b0e5e9433",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 0
+        }
+      ]
+    },
+    "max-erika/grund/haus": {
+      "inputsSha256": "382a16328d60089accd7fbcf3690ff808fb6d7f25b6cdd0d7f4c9264cdc55021",
+      "completeOutputSha256": "9af5402be23a2b502d1516911bd8711ad502d3c97d22aee81bb6e5cb37f2fbc5",
+      "coveredPct": 99.9,
+      "ruin": 2,
+      "careSales": 199,
+      "emergencySales": 2,
+      "allowance": 30902975.581302717,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "c4d2c4958c84c053c9a95dfea5cfceb09896234acdc88afed7d29c8c0ea36812",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 0
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "89d099326f7c1b92d8b002e87f92ec2b754868c0ba9ab032815b87f6eebb3e03",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 0
+        }
+      ]
+    },
+    "jan-lena/grund": {
+      "inputsSha256": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+      "completeOutputSha256": "3d8523dedcc1820513b7c7bfb38d50d5895fb2a8483c78b7b29abb739f7ad4ef",
+      "coveredPct": 99.75,
+      "ruin": 5,
+      "careSales": 0,
+      "emergencySales": 0,
+      "allowance": 35077368.33557799,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "dc7dea48fe3f6397bd9dc8d7c91cd40a5764b33dc36a7ba9960af6917b8c306b",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 0
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "212827022172414f266b544b3df012a47955ac235c00fbff009c772d11f31523",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 0
+        }
+      ]
+    },
+    "renate/grund": {
+      "inputsSha256": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+      "completeOutputSha256": "7ff321ab09b502a78d7e8c4f665b7b1fc81d7a98491283a83326e7dfbfb37b59",
+      "coveredPct": 93.05,
+      "ruin": 139,
+      "careSales": 0,
+      "emergencySales": 0,
+      "allowance": 18705981.94213721,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "d8312d81327aa58f939217bf5688ded3efbd6878921451ca5a907999362891a6",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 0
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "7a54a78fed3d01a1a63b754d75a88595b23b462d6f69e0b61ab52b9f7419fb6e",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 0
+        }
+      ]
+    },
+    "helga-werner/haus-pg3": {
+      "inputsSha256": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+      "completeOutputSha256": "4490ce2da4a3634f8218118c0aa12840172b5034be0dfd3c190a0a9aef2e828f",
+      "coveredPct": 99.75,
+      "ruin": 5,
+      "careSales": 292,
+      "emergencySales": 55,
+      "allowance": 66171507.22250149,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "569c49de688c287a9954c1143790c7de3eda560b22aae868a112af5246b7c79d",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 228996.90206354205
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "76e50f03032c98cbefa71924f4d232f2b6f84d4808dec0d9adabfd11ea2426d1",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 495049.60682878504
+        }
+      ]
+    },
+    "helga-werner/haus-pg3/pg4": {
+      "inputsSha256": "c6ce1aa43a6e0e73f8d2156344fa96d51108803ddfef56e76eb50696e75332fb",
+      "completeOutputSha256": "d9d85abfc02c4cc50f389dbde7eb683f0d1a559f05f4c46a910eca9c4f9227a0",
+      "coveredPct": 97.45,
+      "ruin": 51,
+      "careSales": 1949,
+      "emergencySales": 0,
+      "allowance": 0,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "227b18d038782678e1c90b6a25527eb450794ce722d3def0b3b35360e3198103",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 0
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "30951d6ed5881f857f38b760af04a9db5a8023831df041057ccfb5e764d5b3e6",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 0
+        }
+      ]
+    },
+    "helga-werner/haus-pg3/pg4-current": {
+      "inputsSha256": "a9fb3238d5c7862654723e891ca9de0a380ad8aea2aee2a1c7cf5b19cc1b4662",
+      "completeOutputSha256": "69273463a53b71dd99112e0a331804ce4b78873eb744510837c4c1155a894985",
+      "coveredPct": 97.35,
+      "ruin": 53,
+      "careSales": 1461,
+      "emergencySales": 0,
+      "allowance": 61844589.11288728,
+      "technical": 0,
+      "backtests": [
+        {
+          "period": "2000–2025",
+          "sha256": "c172ff17953139fdb2d4f4dc63e128b87d1ae84417220efc35c70c51d4b71e4f",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 2025
+          },
+          "allowance": 305838.93430857034
+        },
+        {
+          "period": "1965–1999",
+          "sha256": "a4892b5c91f28e28bcfce077e47da052bf757ff8fbe4de2e5d622fe8f6eadaff",
+          "outcome": {
+            "kind": "completed",
+            "lastCompletedYear": 1999
+          },
+          "allowance": 661168.0892538032
+        }
+      ]
+    }
+  },
+  "interpretation": {
+    "helga-werner/haus-pg3": "New example: Werner is currently cared for by family (EUR 599/month until first grade change). More allowance and fewer emergency sales; future grade table is unchanged.",
+    "helga-werner/haus-pg3/pg4": "Unmodified legacy PG4 records migrate to residential care. Full MC remains byte-identical. Both backtests differ only in request.inputs.careToday.form and request.inputs.partner.careToday.form (added residential); complete year outputs remain byte-identical.",
+    "helga-werner/haus-pg3/pg4-current": "Literal VF-1-mess-pg4.mjs helga-werner haus-pg3 4 4 changes only grades in the new example and retains Werner’s personal family form. EUR 800/month until first grade change, delayed residential sale. Baseline is before[helga-werner/haus-pg3/pg4]. Original script independently confirms ruin 51 -> 53, technical errors 0 -> 0.",
+    "sensitivity": "No new numerical parameter, rate or threshold; +/-30% parameter sensitivity is inapplicable. MC and historical countercheck 1965-1999 completed."
+  }
+}

@@ -1,0 +1,698 @@
+{
+  "reason": "ST-1 berichtigt die Jahresrechnung bei Tod während Pflege und ausgegebene Kürzungsgründe. Anzeigefälle behalten sämtliche numerischen Blätter bytegleich zu f3e81bd2; Pflegetodfälle ändern die Rechnung erst ab dem belegten Todesjahr. Historische Belege bleiben erhalten.",
+  "hashes": {
+    "e0cda0c1d71b8b74eec7719bff0addca334158a8e17db16cc9366b3c32d3f947": "8b8eaa6258ae23b4905974c237f4caa1e00badcf863e6ef2a786e2b11f0b0708",
+    "c836f6a70bd12b327acff8ff09dea88a0963ea8624dfe7c0190cf258dba9b697": "200c6c2bdb1d63f761b97fc83cee7dc509081de042c863d93fc30c0a367cc01b",
+    "2ec01e3f74060f33cff2c1d33c35117585e3727d361d56037b8b07063838cc88": "c20c04aed37cbd3e354fc3177f446233db17fe1c0e4f6f1abfbb6e8f11b82261",
+    "968d4da0df613f18ee36238034eb701b6d379b2f58e135c446aeb735086e2a51": "a84b8bce40d02e5c991efbf4e71cc761e4e6f20d2d86dc57535c6fc42bd2e10f",
+    "d4ef2924a53684d00a6f7d4ea0ed66e297c6f8aac1bd9bedaff2d5c3911359cb": "529c020a67650285893cf48d4630b85aef6a152493ca4327cd8f177e6cce2d4b",
+    "1d7c98b516bd07515f411bd4611c9b4949bd2bea4272c6c19a2c6933fad0041f": "9a3e32358781193c5d1a6cbbf02ef37b8716e86d0dac228166d4ee51f909f5aa",
+    "c12e991667ed28da619b3fbfd3db39ec23aee5a137c655c0eeef2c25018a0503": "b78a73adae2119db22f13be046fbb5f21691dc4a0baed3c620e62bcf78f63ba2",
+    "c0fa94bb7d8d08a4daccf12fc7c0579796f4636d6e3204f9d74f9336fad19b5e": "03f4a78e4767442ae3bf5d8251504b12a2119d33c882e1ada9a7cb436eaf727f",
+    "ccaf6627ef681256dfa4804ae0fe1b9c5c1e33a338f4a129e0a8a58755ba5a36": "48b66e7ab5c30679139dddcfb8b0a37dce06f27d1e8e0d0dde64a538f0b3eb84",
+    "e6c126eafcdda5a2a83464b1a8ffdd64e521db2c1df7b34559e4d247d5c0d1f4": "5e88045fe7441e7425a6749d8c47bece6ec10c42ffc9de3351666831ad5595a4",
+    "51132dfd776f917cae432b9d1d415f4aeb2fe0570b7391b97fdcb0983f51c0fb": "d33261e456c95c56ed5e7cc011f9a29da56dbd9acc9b2bf4376cc7df122c9736",
+    "4f2f2c7d56087d57a136afee3e1d378ca470f50c905a90d7ab1f78ecc9ad3c33": "bb0ef06558644d58cc82e9ed47dff066624e724290b70d495a0dcc53046b53aa",
+    "f0699f824b64f8805b61f60ac81c0f10172c735d84dbb5ef84cf3ae4e31d626c": "709715a719f6cceb734d5d30b2f0c85c8e9b572890743ad7ccd63d8b75f49ecf",
+    "3c899d209af6ad92de14835ffe2d90802263fb683fc448d80a131aab22aa27e7": "43939915ff3e79127cdd472d396f59290a28b33e539842ac4f4b3f0a17887f40",
+    "14f03874592824cdf9e6ec2c12c4a788e8a3549039df3ec4426afe0aa8c4690d": "e63d7f82e92581aa28f3675b03829a4ac9e9daed31509d89b5a6d4d6d3d2a2fa",
+    "300fabbc3f356446e0f995eb0d7e30f5a1854916e7dfae026bcf20ee2d6d3394": "7936923b684e10d4c66461c26a5bcb50b33e79e27ec644eaeec931902cdafd15",
+    "badf26bf44d38482926b7311512ec15ed5d6c3ca566f335bbbc3c3620a467bb7": "ed9c24963537daf2d579679da3a4bda27b0ce304c8a61adbbc4d1a18bbceb30c",
+    "c98b25cddd68435147a39527b7ac37779f2d9c7e85a8756fa45d53cd89ec456f": "f98bb1bcbec6b3851bc9c5723726028e1ce8f53b6f5b9cc1c75a4f1c4fe44dbf",
+    "65fce7e847ba6fa96e7256fd8ecbea698f349855e475f99849761a511adb2600": "58282c180aec55e320452df8d32c6976f8b160c1f698f6583201dba836c8be3d",
+    "a01678b5ea993ef49dd54d09f381f8090af9ec5d5a63b3f236945ffa7f20af70": "efa5d221782e735bd1ca45e4cd660d1176e8695e4a2b975247ebd3e1dbfd67ee",
+    "93ef454655dde825dd73e839cb4c1196ec18868f03f072bcac0f2fab66a46703": "c6098eaa81439dfd2b32b1c50b95224dbbcd779a1a53a54e791fc34d04054481",
+    "e0ed37bfdc8b0ab2d6ddfcf6867695efef59c8ea21e8fe8e299109bf2a12a721": "38f0b457cb76a3f67ebac68be157ab027affb60df888bb7c027140dd4b3e7bd6",
+    "b5e0550086e3c4b57387822856872c29666b6c7a3132abe2e3220b5466e818f2": "0531cfc24d3779641ba5b35e1a47fb573bb74755199da46a06009798e977d054",
+    "ba8a890bb654065ca2e422397a52cdd739d502e49c57fcc5ac708af118b79cda": "df625d6ae30302ee761794443632ff9b794d11e2562383cc0a76e996f0130963",
+    "3acdca131c3ff271fb8aad6260a5942eb030127cd299826210082a6959c87fa0": "54ade30b5150a5dfed38b5981b22a8f1a06b450d9e4b1918b03d59908096794d",
+    "a042cc1f5d4dbfaa31f4bc17cacc60d1845085b02f1a3d5db735ef4f7bae8012": "c7afa69a2b12d645391a1b31723e1c7d7981c2128841bcb9db4effdd7528145d",
+    "c62491e699031112494865b45786c72243c4fe181a6f23d677e40b330cd114e5": "e4e739e02405d9ce6bb9748bfb6eceaee45b93691a97fb4c10c54176aa88d868",
+    "7d0a65e64151400ddbb2ec73f52fa4d8154514650a0ff7ec17c30ee3a7cafeb3": "b7da2fb7a927868752a9ae822c33cef74276af7ac2ac44db45b8022abb7f09ac",
+    "08a334d52850ea84df0d87a129275be7848fecb67c4096210a3516c96dbd1900": "c6bdd9411051fd76633081321826820d83fbb0e85c1bfa06805c0f684c3feae8",
+    "704fd1d6c74c4c837f6929f858e542e759eb8adb19cd52c42ad8cc56989af8e7": "234869e4a7f63877d585a871c911c02d9ee96daebc00513b04a3d2c7eb489322",
+    "5eee5e0dc349f6fd7cf47964de91dedfb0f532b8105b1a7f81d648c5a844df37": "b7565bf6845043f6521450088cc0355972a02a30ced85cfff3356fa90a560603",
+    "76416f21306bd6ab1206261cc870deeb98a4e071e948758bd8f87592fef73c41": "38373a8537f4ad7a223b1366620c802d25a4cb3a365070908661372a9479a671",
+    "c2d8834af97b8ab1e1b486dd6701722d3de290ba3b7ec04930d8cebe9b31e065": "fe04dfb1781f5856d15157cffc1aeecdedd3af33db90db0ee5a23aaabef8b599"
+  },
+  "evidence": [
+    {
+      "test": "ff-d-regression.test.mjs",
+      "label": "Vollständige engines-Ergebnisse mit FR-20/33/34-Diagnosen",
+      "before": "e0cda0c1d71b8b74eec7719bff0addca334158a8e17db16cc9366b3c32d3f947",
+      "after": "8b8eaa6258ae23b4905974c237f4caa1e00badcf863e6ef2a786e2b11f0b0708",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 1104,
+      "numericSha256": "d6684944d6cd8c81faa7b7f86cee1992b69b4dcc22bcb20b9e2faca037b8510c",
+      "changedDisplayFields": [
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "ff-d-regression.test.mjs",
+      "label": "Vollständige singles-Ergebnisse mit FR-20/33/34-Diagnosen",
+      "before": "c836f6a70bd12b327acff8ff09dea88a0963ea8624dfe7c0190cf258dba9b697",
+      "after": "200c6c2bdb1d63f761b97fc83cee7dc509081de042c863d93fc30c0a367cc01b",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 1518,
+      "numericSha256": "4174e328dd30207c7385177120932ae10d84510afe5c2beaa0514fdefcc7a95d",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "ff-f-regression.test.mjs",
+      "label": "engines: vollständige Ergebnisse ohne Dynamik nach BK-2",
+      "before": "e0cda0c1d71b8b74eec7719bff0addca334158a8e17db16cc9366b3c32d3f947",
+      "after": "8b8eaa6258ae23b4905974c237f4caa1e00badcf863e6ef2a786e2b11f0b0708",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 1104,
+      "numericSha256": "d6684944d6cd8c81faa7b7f86cee1992b69b4dcc22bcb20b9e2faca037b8510c",
+      "changedDisplayFields": [
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "ff-f-regression.test.mjs",
+      "label": "singles: vollständige Ergebnisse ohne Dynamik nach BK-2",
+      "before": "c836f6a70bd12b327acff8ff09dea88a0963ea8624dfe7c0190cf258dba9b697",
+      "after": "200c6c2bdb1d63f761b97fc83cee7dc509081de042c863d93fc30c0a367cc01b",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 1518,
+      "numericSha256": "4174e328dd30207c7385177120932ae10d84510afe5c2beaa0514fdefcc7a95d",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "ff-g-regression.test.mjs",
+      "label": "staticResults: ungefilterte JSON-Bytes gegen BK-2",
+      "before": "2ec01e3f74060f33cff2c1d33c35117585e3727d361d56037b8b07063838cc88",
+      "after": "c20c04aed37cbd3e354fc3177f446233db17fe1c0e4f6f1abfbb6e8f11b82261",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 6780,
+      "numericSha256": "a698865cf1bc73f03410b72fd6222b9954aecd6eda4aa074227ba64b37bdffe9",
+      "changedDisplayFields": [
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "ff-g-regression.test.mjs",
+      "label": "dynamicUnaffected: ungefilterte JSON-Bytes gegen BK-2",
+      "before": "968d4da0df613f18ee36238034eb701b6d379b2f58e135c446aeb735086e2a51",
+      "after": "a84b8bce40d02e5c991efbf4e71cc761e4e6f20d2d86dc57535c6fc42bd2e10f",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 2530,
+      "numericSha256": "a8ea31dd264426e3688a0651045a7f13750647f20fd7aa6b83151c5bf8e87658",
+      "changedDisplayFields": [
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "ff-g-regression.test.mjs",
+      "label": "Helga/Werner: vollständiger Backtest 2000–2025 mit FR-35 und 60.000 EUR Rücklage nach FR-36",
+      "before": "d4ef2924a53684d00a6f7d4ea0ed66e297c6f8aac1bd9bedaff2d5c3911359cb",
+      "after": "529c020a67650285893cf48d4630b85aef6a152493ca4327cd8f177e6cce2d4b",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 9740,
+      "numericSha256": "0b7af253920a0e269f06b937ef7a6472d6e76c438e0b138fdc8c864117277f7c",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "flex-safety-bytegleich.test.mjs",
+      "label": "Sechs vollständige Engine-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz",
+      "before": "1d7c98b516bd07515f411bd4611c9b4949bd2bea4272c6c19a2c6933fad0041f",
+      "after": "9a3e32358781193c5d1a6cbbf02ef37b8716e86d0dac228166d4ee51f909f5aa",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 2445,
+      "numericSha256": "feb8dececa7a12704197a9f7c487091628b93d73253018f0005fd05cfde20a53",
+      "changedDisplayFields": [
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "flex-safety-bytegleich.test.mjs",
+      "label": "Drei vollständige Simulator-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz",
+      "before": "c12e991667ed28da619b3fbfd3db39ec23aee5a137c655c0eeef2c25018a0503",
+      "after": "b78a73adae2119db22f13be046fbb5f21691dc4a0baed3c620e62bcf78f63ba2",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 1473,
+      "numericSha256": "d645ba26db0d06675634bba9c3d3f67c74445a4186e15307417cf043efed4ecc",
+      "changedDisplayFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "Vorgabe: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "c0fa94bb7d8d08a4daccf12fc7c0579796f4636d6e3204f9d74f9336fad19b5e",
+      "after": "03f4a78e4767442ae3bf5d8251504b12a2119d33c882e1ada9a7cb436eaf727f",
+      "kind": "care_death_year",
+      "firstCareDeathRowIndex": 7,
+      "numericBeforeSha256": "1175d501c410d82993f940912a3620df08c3ddce9776ea56e85c50e3cc70d488",
+      "numericAfterSha256": "7d9ae7df97c0066713bb7b79d371ad764ea14a188bb9f42918b44178d7e52eaf",
+      "changedDisplayFields": [
+        "CareP1_GradeLabel",
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle",
+        "minimumFlexBlockReason",
+        "pflege_grade_label"
+      ]
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "konservativ: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "ccaf6627ef681256dfa4804ae0fe1b9c5c1e33a338f4a129e0a8a58755ba5a36",
+      "after": "48b66e7ab5c30679139dddcfb8b0a37dce06f27d1e8e0d0dde64a538f0b3eb84",
+      "kind": "care_death_year",
+      "firstCareDeathRowIndex": 7,
+      "numericBeforeSha256": "a05b96694906e7e21006df00620ce19365f8ea36f3297c95bcf5728a5b818512",
+      "numericAfterSha256": "efc1f17b0a1bc3a370a884963d84628a459e713933134c007107bf767c9f4d77",
+      "changedDisplayFields": [
+        "CareP1_GradeLabel",
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle",
+        "minimumFlexBlockReason",
+        "pflege_grade_label"
+      ]
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "ausgewogen: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "e6c126eafcdda5a2a83464b1a8ffdd64e521db2c1df7b34559e4d247d5c0d1f4",
+      "after": "5e88045fe7441e7425a6749d8c47bece6ec10c42ffc9de3351666831ad5595a4",
+      "kind": "care_death_year",
+      "firstCareDeathRowIndex": 7,
+      "numericBeforeSha256": "1f1660e2bf2188fa523ab3de99b936cff8f4e9c537df4294d2dd3973ad948c58",
+      "numericAfterSha256": "7e548f46eb25b7c9a2994423fa06448e1bd0db685fab0e3dc499358b573bf1fd",
+      "changedDisplayFields": [
+        "CareP1_GradeLabel",
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle",
+        "minimumFlexBlockReason",
+        "pflege_grade_label"
+      ]
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "label": "offensiv: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "51132dfd776f917cae432b9d1d415f4aeb2fe0570b7391b97fdcb0983f51c0fb",
+      "after": "d33261e456c95c56ed5e7cc011f9a29da56dbd9acc9b2bf4376cc7df122c9736",
+      "kind": "care_death_year",
+      "firstCareDeathRowIndex": 7,
+      "numericBeforeSha256": "0bc7eb1a8458515d138db9aeacf37fee69a8c52833f8e96b4a6aeebf0d4da9ef",
+      "numericAfterSha256": "36fd6691d31dc3b1c89cf3bcc106e69ada1f0f8a80a3477002072b9631bf585f",
+      "changedDisplayFields": [
+        "CareP1_GradeLabel",
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle",
+        "minimumFlexBlockReason",
+        "pflege_grade_label"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "off: Backtest entspricht BK-2-Referenz",
+      "before": "4f2f2c7d56087d57a136afee3e1d378ca470f50c905a90d7ab1f78ecc9ad3c33",
+      "after": "bb0ef06558644d58cc82e9ed47dff066624e724290b70d495a0dcc53046b53aa",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 3768,
+      "numericSha256": "c4aee622fbf99ad6f6ab2304254a194c1b38b4024449ab784c5a72b39751caa7",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "off: MC-Pfad 0 mit FR-21–24/27",
+      "before": "f0699f824b64f8805b61f60ac81c0f10172c735d84dbb5ef84cf3ae4e31d626c",
+      "after": "709715a719f6cceb734d5d30b2f0c85c8e9b572890743ad7ccd63d8b75f49ecf",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 5697,
+      "numericSha256": "757ae9c3c759a5c8ea56f56c07f42e6913bde9a61ab7df9361e3b04c289a1331",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "konservativ: Backtest entspricht BK-2-Referenz",
+      "before": "3c899d209af6ad92de14835ffe2d90802263fb683fc448d80a131aab22aa27e7",
+      "after": "43939915ff3e79127cdd472d396f59290a28b33e539842ac4f4b3f0a17887f40",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 3973,
+      "numericSha256": "079c02b58344ee839839d2324c67c92c31c89a2e789864faeb875518304eba68",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "konservativ: MC-Pfad 0 mit FR-21–24/27",
+      "before": "14f03874592824cdf9e6ec2c12c4a788e8a3549039df3ec4426afe0aa8c4690d",
+      "after": "e63d7f82e92581aa28f3675b03829a4ac9e9daed31509d89b5a6d4d6d3d2a2fa",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 6291,
+      "numericSha256": "21f154a5100f3d6e7277c03233bca6d57ce180803b751e0722d0f5f6e065ae6f",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "ausgewogen: Backtest entspricht BK-2-Referenz",
+      "before": "300fabbc3f356446e0f995eb0d7e30f5a1854916e7dfae026bcf20ee2d6d3394",
+      "after": "7936923b684e10d4c66461c26a5bcb50b33e79e27ec644eaeec931902cdafd15",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 3928,
+      "numericSha256": "7e4e745c03fc542568c96733063e84cc6334ccea465eb75a406c16392a9874b6",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "ausgewogen: MC-Pfad 0 mit FR-21–24/27",
+      "before": "badf26bf44d38482926b7311512ec15ed5d6c3ca566f335bbbc3c3620a467bb7",
+      "after": "ed9c24963537daf2d579679da3a4bda27b0ce304c8a61adbbc4d1a18bbceb30c",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 6293,
+      "numericSha256": "b3158195766432d3c7ddb8c7732e27d9eeaa990e4a8c8789a468926a302a7a27",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "offensiv: Backtest entspricht BK-2-Referenz",
+      "before": "c98b25cddd68435147a39527b7ac37779f2d9c7e85a8756fa45d53cd89ec456f",
+      "after": "f98bb1bcbec6b3851bc9c5723726028e1ce8f53b6f5b9cc1c75a4f1c4fe44dbf",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 3903,
+      "numericSha256": "c104efbb2dc1aaf51f37cce0b372b06b36b19956fc54cd9cde63a012934791e1",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "label": "offensiv: MC-Pfad 0 mit FR-21–24/27",
+      "before": "65fce7e847ba6fa96e7256fd8ecbea698f349855e475f99849761a511adb2600",
+      "after": "58282c180aec55e320452df8d32c6976f8b160c1f698f6583201dba836c8be3d",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 6287,
+      "numericSha256": "6d336b68acdcf0b95f245ade80bd82241c0eaa44280ba571d81146ef8d12251b",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-household-pension.test.mjs",
+      "label": "FR-16: Alt-Kalenderpfad nutzt Partner-Liquidität für persönliche Ansparsteuer",
+      "before": "a01678b5ea993ef49dd54d09f381f8090af9ec5d5a63b3f236945ffa7f20af70",
+      "after": "efa5d221782e735bd1ca45e4cd660d1176e8695e4a2b975247ebd3e1dbfd67ee",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 1297,
+      "numericSha256": "002c6b72aad904326193d730859a3aa8b2dd5e2cffb74fc28ee9a40b5f84b479",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-household-pension.test.mjs",
+      "label": "PA-A7: Kontrollierter Lauf enthält persönliche Ansparsteuer",
+      "before": "93ef454655dde825dd73e839cb4c1196ec18868f03f072bcac0f2fab66a46703",
+      "after": "c6098eaa81439dfd2b32b1c50b95224dbbcd779a1a53a54e791fc34d04054481",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 1125,
+      "numericSha256": "685876bbb557b3be0585cd878fe9ce7057e0e1bc8ce7aa5095b04e362efe29fe",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-household-pension.test.mjs",
+      "label": "PA-A7: Entnahmebeleg enthält persönliche Steuerdiagnose",
+      "before": "e0ed37bfdc8b0ab2d6ddfcf6867695efef59c8ea21e8fe8e299109bf2a12a721",
+      "after": "38f0b457cb76a3f67ebac68be157ab027affb60df888bb7c027140dd4b3e7bd6",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 661,
+      "numericSha256": "6c82e11cddff10778e8f221e3cd26475b954ee80e73a6497e3c0f895406bfc2c",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression.test.mjs",
+      "label": "standard: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "before": "b5e0550086e3c4b57387822856872c29666b6c7a3132abe2e3220b5466e818f2",
+      "after": "0531cfc24d3779641ba5b35e1a47fb573bb74755199da46a06009798e977d054",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 1334,
+      "numericSha256": "41dcfca04b23b50ca9effd8aeb16ab63e5971d7ea193c2f54235c97d5aef5396",
+      "changedDisplayFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression.test.mjs",
+      "label": "drei-topf: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "before": "ba8a890bb654065ca2e422397a52cdd739d502e49c57fcc5ac708af118b79cda",
+      "after": "df625d6ae30302ee761794443632ff9b794d11e2562383cc0a76e996f0130963",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 1329,
+      "numericSha256": "189ce1e9c81de1159488e420ba57fac6774bc6514f18a789a5d17614207abc42",
+      "changedDisplayFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression.test.mjs",
+      "label": "kohorte-2006: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "before": "3acdca131c3ff271fb8aad6260a5942eb030127cd299826210082a6959c87fa0",
+      "after": "54ade30b5150a5dfed38b5981b22a8f1a06b450d9e4b1918b03d59908096794d",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 1334,
+      "numericSha256": "56deb2ffc4dfaf3776675da493ebc9e749400beb6b33709e897bef976d5b7852",
+      "changedDisplayFields": [
+        "CutReason",
+        "anmerkung",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "off: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "a042cc1f5d4dbfaa31f4bc17cacc60d1845085b02f1a3d5db735ef4f7bae8012",
+      "after": "c7afa69a2b12d645391a1b31723e1c7d7981c2128841bcb9db4effdd7528145d",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 8808,
+      "numericSha256": "0ddbf8853c55a3f555ba7340f0dfedc7c853ca93ec3220eb9c2cd7180c57e4af",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "off: MC ohne Tod entspricht BK-2-Referenz",
+      "before": "c62491e699031112494865b45786c72243c4fe181a6f23d677e40b330cd114e5",
+      "after": "e4e739e02405d9ce6bb9748bfb6eceaee45b93691a97fb4c10c54176aa88d868",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 3422,
+      "numericSha256": "2c9f77c752592de608194c6776545cea1bed71f43a37762dd95332cedbc1e596",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "konservativ: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "7d0a65e64151400ddbb2ec73f52fa4d8154514650a0ff7ec17c30ee3a7cafeb3",
+      "after": "b7da2fb7a927868752a9ae822c33cef74276af7ac2ac44db45b8022abb7f09ac",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 9251,
+      "numericSha256": "bab18400c6e9477d6d00993101021705979cfdc1eda1961b4447c3e9fc393e52",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "konservativ: MC ohne Tod entspricht BK-2-Referenz",
+      "before": "08a334d52850ea84df0d87a129275be7848fecb67c4096210a3516c96dbd1900",
+      "after": "c6bdd9411051fd76633081321826820d83fbb0e85c1bfa06805c0f684c3feae8",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 3754,
+      "numericSha256": "10dfe9d53f257564e531ef48e521e81cefa9a319be3ffcff387f8f05d63f66ee",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "ausgewogen: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "704fd1d6c74c4c837f6929f858e542e759eb8adb19cd52c42ad8cc56989af8e7",
+      "after": "234869e4a7f63877d585a871c911c02d9ee96daebc00513b04a3d2c7eb489322",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 9208,
+      "numericSha256": "a2c8a10be7177cd44574a4a2bfb0f1a076fd7d1645a879f3dfc8183370e3fb09",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "ausgewogen: MC ohne Tod entspricht BK-2-Referenz",
+      "before": "5eee5e0dc349f6fd7cf47964de91dedfb0f532b8105b1a7f81d648c5a844df37",
+      "after": "b7565bf6845043f6521450088cc0355972a02a30ced85cfff3356fa90a560603",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 3756,
+      "numericSha256": "e6ddfdf08d85ee05e95b5ffbb3811d3d3ac5a2bcc1077b53365764e1905be75a",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "offensiv: Backtest ohne Tod entspricht BK-2-Referenz",
+      "before": "76416f21306bd6ab1206261cc870deeb98a4e071e948758bd8f87592fef73c41",
+      "after": "38373a8537f4ad7a223b1366620c802d25a4cb3a365070908661372a9479a671",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 9183,
+      "numericSha256": "dcef450798ebb61ba4c1590dfb12518274e96aa037f8c86ba91562f2cd9f7a98",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "label": "offensiv: MC ohne Tod entspricht BK-2-Referenz",
+      "before": "c2d8834af97b8ab1e1b486dd6701722d3de290ba3b7ec04930d8cebe9b31e065",
+      "after": "fe04dfb1781f5856d15157cffc1aeecdedd3af33db90db0ee5a23aaabef8b599",
+      "kind": "display_only",
+      "unchangedNumericLeaves": 3751,
+      "numericSha256": "807003077e6d033a4249d93217093d52e630db950731e193d063d04ab4d4010a",
+      "changedDisplayFields": [
+        "CutReason",
+        "kuerzungQuelle"
+      ]
+    }
+  ],
+  "monteCarloComparison": {
+    "baseline": "f3e81bd2",
+    "profile": "Max und Erika Mustermann, tests/extended/parity-replay-fixture.mjs",
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 30,
+      "methode": "regime_markov",
+      "seed": 12345,
+      "useCapeSampling": false
+    },
+    "careVariant": {
+      "pflegefallLogikAktivieren": true,
+      "pflegeModellTyp": "chronisch",
+      "pflegeRampUp": 3,
+      "pflegeMaxFloor": 60000,
+      "pflegeKostenDrift": 0.035,
+      "pflegeGradeConfigs": {
+        "1": {
+          "zusatz": 3000,
+          "flexCut": 0.92,
+          "mortalityFactor": 1
+        },
+        "2": {
+          "zusatz": 6000,
+          "flexCut": 0.84,
+          "mortalityFactor": 1
+        },
+        "3": {
+          "zusatz": 9000,
+          "flexCut": 0.76,
+          "mortalityFactor": 1.25
+        },
+        "4": {
+          "zusatz": 12000,
+          "flexCut": 0.6799999999999999,
+          "mortalityFactor": 1.5
+        },
+        "5": {
+          "zusatz": 15000,
+          "flexCut": 0.6,
+          "mortalityFactor": 1.75
+        }
+      }
+    },
+    "countPolicy": "Tod mit aktiver Pflege unmittelbar vor der Bereinigung; einschließlich terminalem Tod aller Personen. Pfade werden einmal gezählt.",
+    "withdrawalPolicy": "Summe der tatsächlich ausgezahlten Entnahmen je Pfad; Mittelwert und P10 über 2000 Pfade, linear bei (n-1)*q.",
+    "originalProfile": {
+      "pathsWithDeathInCare": 0,
+      "matchingNumericPathHashes": 2000,
+      "before": {
+        "totalWithdrawal": {
+          "mean": 252842.7,
+          "p10": 85200
+        },
+        "totalWithdrawalReal": {
+          "mean": 202612.8103854892,
+          "p10": 81546.29092236666
+        },
+        "finalWealth": {
+          "mean": 10505946.890537009,
+          "p10": 1502034.9742466186
+        },
+        "finalWealthReal": {
+          "mean": 6228688.456996994,
+          "p10": 1030599.1702759543
+        }
+      },
+      "after": {
+        "totalWithdrawal": {
+          "mean": 252842.7,
+          "p10": 85200
+        },
+        "totalWithdrawalReal": {
+          "mean": 202612.8103854892,
+          "p10": 81546.29092236666
+        },
+        "finalWealth": {
+          "mean": 10505946.890537009,
+          "p10": 1502034.9742466186
+        },
+        "finalWealthReal": {
+          "mean": 6228688.456996994,
+          "p10": 1030599.1702759543
+        }
+      }
+    },
+    "careEnabled": {
+      "pathsWithDeathInCareBefore": 1620,
+      "pathsWithDeathInCareAfter": 1620,
+      "pathsWithChangedCashOutcomes": 530,
+      "before": {
+        "totalWithdrawal": {
+          "mean": 275125.7199135264,
+          "p10": 93000
+        },
+        "totalWithdrawalReal": {
+          "mean": 220476.92317150184,
+          "p10": 88086.75734773718
+        },
+        "finalWealth": {
+          "mean": 9791304.161955297,
+          "p10": 1423317.0570441498
+        },
+        "finalWealthReal": {
+          "mean": 5884987.282164138,
+          "p10": 1002882.708147588
+        }
+      },
+      "after": {
+        "totalWithdrawal": {
+          "mean": 275811.51991352637,
+          "p10": 93000
+        },
+        "totalWithdrawalReal": {
+          "mean": 220980.57149740576,
+          "p10": 88086.75734773718
+        },
+        "finalWealth": {
+          "mean": 9788956.958306605,
+          "p10": 1423203.3690573703
+        },
+        "finalWealthReal": {
+          "mean": 5883609.763137059,
+          "p10": 1002787.1443552617
+        }
+      },
+      "annualWithdrawalsBefore": {
+        "nominal": {
+          "sampleSize": 43948,
+          "mean": 12520.511509671722,
+          "p10": 0
+        },
+        "real": {
+          "sampleSize": 43948,
+          "mean": 10033.536141417322,
+          "p10": 0
+        }
+      },
+      "annualWithdrawalsAfter": {
+        "nominal": {
+          "sampleSize": 43948,
+          "mean": 12551.721121030601,
+          "p10": 0
+        },
+        "real": {
+          "sampleSize": 43948,
+          "mean": 10056.45633464132,
+          "p10": 0
+        }
+      }
+    },
+    "annualWithdrawalPolicy": "Alle finanziellen Jahreszeilen gemeinsam, einschließlich rentenbedingt null Euro Depotentnahme; Jahreszahlungen in nominalen Euro beziehungsweise Kaufkraft zum Laufstart."
+  },
+  "backtestNumericComparison": {
+    "baseline": "f3e81bd2",
+    "profile": "Max und Erika Mustermann",
+    "period": {
+      "startYear": 2000,
+      "endYear": 2025
+    },
+    "presets": {
+      "off": {
+        "beforeSha256": "e65074134fc45599a7f265356460deecbc15836333b9aa177820e604463b544c",
+        "afterSha256": "e65074134fc45599a7f265356460deecbc15836333b9aa177820e604463b544c",
+        "numericLeaves": 9837
+      },
+      "konservativ": {
+        "beforeSha256": "16dc93786abb438020716195e33f559ae85b1f4095afce3cf4a8a5dec3b640d0",
+        "afterSha256": "16dc93786abb438020716195e33f559ae85b1f4095afce3cf4a8a5dec3b640d0",
+        "numericLeaves": 10268
+      },
+      "ausgewogen": {
+        "beforeSha256": "de015a01b6fab68d5ac5be0e1138a509666e649c6bab1e9affba145e404c93e9",
+        "afterSha256": "de015a01b6fab68d5ac5be0e1138a509666e649c6bab1e9affba145e404c93e9",
+        "numericLeaves": 10225
+      },
+      "offensiv": {
+        "beforeSha256": "1a282afffe05509477f0c22e7360897ee53ce7aa02bcb9df1865e0231549dce2",
+        "afterSha256": "1a282afffe05509477f0c22e7360897ee53ce7aa02bcb9df1865e0231549dce2",
+        "numericLeaves": 10200
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "command": "node scripts/measure-ph1.mjs . <Ausgabe.json>",
+  "date": "2026-10-28",
+  "checks": 8,
+  "note": "Alle acht Prüfsummen bytegleich zum MH-1-Endstand; Messhelfer prüft die Jahresbasis. Anzeige separat durch MH-2-Test.",
+  "before": {
+    "max-erika": {
+      "balance": "9dc6402524b5858e812d34ecac99e289ba67e6e9f89259fde5f3fee28d584eaa",
+      "backtest": "74a2ab0ca889cad120a6271d583442d5d8f205b7d1fdc82ef8e14b68c529d0bf",
+      "monteCarlo": "f88f866270c4a5fb88a7ea1cab4c0e750ac2c376f94eef5112d3c454d6c2c315",
+      "overview": "93531860858b7734b6b8efe9f64adfe89cb27c01d9af22fd0a820a90ecada26b"
+    },
+    "renate": {
+      "balance": "5c150cb7fea0c00527b37cbc6ff2efe257ed006b9660ba8a223127aa7014dc16",
+      "backtest": "48ae11b17ec61471aae9f720d16232231fdd7ae2a17ef39e293b400b097223bd",
+      "monteCarlo": "919ea437417bb52fe4284f199ecadf37bb4c14842c29837e4d315bee533df6c2",
+      "overview": "ec60dc03d3ee4de8381e1cca083724d20f84f65c6954a67fc3bcadab2188e056"
+    }
+  },
+  "after": {
+    "max-erika": {
+      "balance": "9dc6402524b5858e812d34ecac99e289ba67e6e9f89259fde5f3fee28d584eaa",
+      "backtest": "74a2ab0ca889cad120a6271d583442d5d8f205b7d1fdc82ef8e14b68c529d0bf",
+      "monteCarlo": "f88f866270c4a5fb88a7ea1cab4c0e750ac2c376f94eef5112d3c454d6c2c315",
+      "overview": "93531860858b7734b6b8efe9f64adfe89cb27c01d9af22fd0a820a90ecada26b"
+    },
+    "renate": {
+      "balance": "5c150cb7fea0c00527b37cbc6ff2efe257ed006b9660ba8a223127aa7014dc16",
+      "backtest": "48ae11b17ec61471aae9f720d16232231fdd7ae2a17ef39e293b400b097223bd",
+      "monteCarlo": "919ea437417bb52fe4284f199ecadf37bb4c14842c29837e4d315bee533df6c2",
+      "overview": "ec60dc03d3ee4de8381e1cca083724d20f84f65c6954a67fc3bcadab2188e056"
+    }
+  }
+}

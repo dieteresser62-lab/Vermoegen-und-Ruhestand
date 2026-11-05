@@ -1,0 +1,5951 @@
+{
+  "schemaVersion": 1,
+  "baseRevision": "947b456e",
+  "privacy": "Ausschließlich synthetische Testhaushalte. Keine Nutzerexporte.",
+  "unchanged": {
+    "staticResults": {
+      "before": "416f319c1beac67a1b20006068cbea4e1feb19437608653d4e43231de63ae267",
+      "after": "416f319c1beac67a1b20006068cbea4e1feb19437608653d4e43231de63ae267",
+      "count": 18
+    },
+    "dynamicUnaffected": {
+      "before": "3d3fbedb056469788fd1ef8b77fed541d45bca313329c0132c3033285a54a20b",
+      "after": "3d3fbedb056469788fd1ef8b77fed541d45bca313329c0132c3033285a54a20b",
+      "count": 6
+    },
+    "engines": {
+      "before": "9f0944dd2469c674cd2dc26997973ed2f3ac6536a06b2e60b5891b969e626f0d",
+      "after": "9f0944dd2469c674cd2dc26997973ed2f3ac6536a06b2e60b5891b969e626f0d",
+      "count": 3
+    },
+    "households": {
+      "before": "9e263745520a52e2cb4d29e3725e646d8a984bf013ccb692e78bd4161eae404d",
+      "after": "9e263745520a52e2cb4d29e3725e646d8a984bf013ccb692e78bd4161eae404d",
+      "count": 3
+    },
+    "singles": {
+      "before": "5bf4e5f56e31bdd537eab60a40dc02726e1743a84c7a06c0b045ba73ce3a7892",
+      "after": "5bf4e5f56e31bdd537eab60a40dc02726e1743a84c7a06c0b045ba73ce3a7892",
+      "count": 3
+    },
+    "helgaWerner": {
+      "before": "395662c94bce1c1397e72163897a81f851fe968398339013c482fd51f50c1551",
+      "after": "395662c94bce1c1397e72163897a81f851fe968398339013c482fd51f50c1551",
+      "count": 26,
+      "afterFFE": "395662c94bce1c1397e72163897a81f851fe968398339013c482fd51f50c1551"
+    }
+  },
+  "parity": {
+    "scenarios": [
+      {
+        "key": "off",
+        "decisionEqualYears": 26,
+        "transactionEqualYears": 26,
+        "errorYears": 0
+      },
+      {
+        "key": "konservativ",
+        "decisionEqualYears": 26,
+        "transactionEqualYears": 25,
+        "errorYears": 0
+      },
+      {
+        "key": "ausgewogen",
+        "decisionEqualYears": 26,
+        "transactionEqualYears": 26,
+        "errorYears": 0
+      },
+      {
+        "key": "offensiv",
+        "decisionEqualYears": 26,
+        "transactionEqualYears": 25,
+        "errorYears": 0
+      }
+    ],
+    "changes": [
+      {
+        "preset": "ausgewogen",
+        "year": 2001,
+        "before": {
+          "annualWithdrawal": 31200,
+          "liquidityTarget": 156000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 31200,
+              "cashUsed": 31200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 219.6056136718032,
+          "liquidityEnd": 132493.16620534426,
+          "wealthEnd": 655283.8962976901
+        },
+        "after": {
+          "annualWithdrawal": 25200,
+          "liquidityTarget": 126000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 25200,
+              "cashUsed": 25200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 288.9191136718032,
+          "liquidityEnd": 138686.65270534426,
+          "wealthEnd": 661477.3827976901
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2002,
+        "before": {
+          "annualWithdrawal": 21000,
+          "liquidityTarget": 105000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 21000,
+              "cashUsed": 21000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 67.7274382767001,
+          "liquidityEnd": 115082.41461860284,
+          "wealthEnd": 484189.9591392615
+        },
+        "after": {
+          "annualWithdrawal": 16200,
+          "liquidityTarget": 81000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 16200,
+              "cashUsed": 16200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 121.3072899882001,
+          "liquidityEnd": 126382.90762409133,
+          "wealthEnd": 495490.45214475
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2003,
+        "before": {
+          "annualWithdrawal": 24000,
+          "liquidityTarget": 120000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 24000,
+              "cashUsed": 24000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 316.12152007734534,
+          "liquidityEnd": 92879.40511767956,
+          "wealthEnd": 494133.78233131807
+        },
+        "after": {
+          "annualWithdrawal": 16800,
+          "liquidityTarget": 84000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 16800,
+              "cashUsed": 16800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 16.798645177795812,
+          "liquidityEnd": 112108.43243579246,
+          "wealthEnd": 513362.809649431
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2004,
+        "before": {
+          "annualWithdrawal": 24000,
+          "liquidityTarget": 120000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 24000,
+              "cashUsed": 24000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 70291.432922592,
+          "wealthEnd": 518469.282640317
+        },
+        "after": {
+          "annualWithdrawal": 18600,
+          "liquidityTarget": 93000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 18600,
+              "cashUsed": 18600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 95425.3553007262,
+          "wealthEnd": 543603.2050184512
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2005,
+        "before": {
+          "annualWithdrawal": 24000,
+          "liquidityTarget": 120000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 24000,
+              "cashUsed": 24000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 98303.92387067416,
+          "wealthEnd": 605610.0127680879
+        },
+        "after": {
+          "annualWithdrawal": 8400,
+          "liquidityTarget": 60400,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 8400,
+              "cashUsed": 8400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 88844.18522651137,
+          "wealthEnd": 646150.2741239251
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2006,
+        "before": {
+          "annualWithdrawal": 27600,
+          "liquidityTarget": 138000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 25934.58,
+              "cashUsed": 25934.57811940179,
+              "sellAmount": 0.001880598210846074,
+              "taxEstimate": 6.569631950107233e-05
+            },
+            "muster_b": {
+              "withdrawalAmount": 1665.42,
+              "cashUsed": 1665.42,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 2076.434524119104,
+          "liquidityEnd": 116898.67010675874,
+          "wealthEnd": 643335.0333168022
+        },
+        "after": {
+          "annualWithdrawal": 10800,
+          "liquidityTarget": 61900,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 10800,
+              "cashUsed": 10800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 80260.6400869443,
+          "wealthEnd": 708017.6719934755
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2007,
+        "before": {
+          "annualWithdrawal": 27600,
+          "liquidityTarget": 138000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 6983.82,
+              "cashUsed": 6983.82,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 20616.18,
+              "cashUsed": 20616.18,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 471.71809407769547,
+          "liquidityEnd": 92273.88067880191,
+          "wealthEnd": 617484.5168688312
+        },
+        "after": {
+          "annualWithdrawal": 22200,
+          "liquidityTarget": 111000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 22200,
+              "cashUsed": 22200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 686.7015372630165,
+          "liquidityEnd": 101257.29845908406,
+          "wealthEnd": 687443.158797429
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2008,
+        "before": {
+          "annualWithdrawal": 15600,
+          "liquidityTarget": 78000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 15600,
+              "cashUsed": 15600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 204.58080087725247,
+          "liquidityEnd": 79428.91167212641,
+          "wealthEnd": 422055.7814069907
+        },
+        "after": {
+          "annualWithdrawal": 21000,
+          "liquidityTarget": 105000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 21000,
+              "cashUsed": 21000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 617.9498518232158,
+          "liquidityEnd": 82737.2803277834,
+          "wealthEnd": 465142.00058919366
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2009,
+        "before": {
+          "annualWithdrawal": 7800,
+          "liquidityTarget": 66000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 7800,
+              "cashUsed": 7800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 72144.63983616573,
+          "wealthEnd": 490701.19298214535
+        },
+        "after": {
+          "annualWithdrawal": 31200,
+          "liquidityTarget": 156000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 29229.06,
+              "cashUsed": 29229.06,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 1970.94,
+              "cashUsed": 1970.94,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1814.7240321236143,
+          "liquidityEnd": 50093.624714019825,
+          "wealthEnd": 517243.2144214075
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2010,
+        "before": {
+          "annualWithdrawal": 10200,
+          "liquidityTarget": 65700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 10200,
+              "cashUsed": 10200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 62217.19625144487,
+          "wealthEnd": 556572.0552834384
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 65700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 38261.236662761505,
+          "wealthEnd": 590009.065793286
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2011,
+        "before": {
+          "annualWithdrawal": 11400,
+          "liquidityTarget": 61200,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 11400,
+              "cashUsed": 11400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 51259.305858832435,
+          "wealthEnd": 535973.5821305662
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 61200,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 51707.20942172753,
+          "wealthEnd": 567695.2159018951
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2012,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 61100,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 39349.602262307744,
+          "wealthEnd": 583124.5115268199
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 61100,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 39798.5360033975,
+          "wealthEnd": 618657.7632650142
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2013,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60400,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1815.6789446147932,
+          "liquidityEnd": 55668.79981672716,
+          "wealthEnd": 702577.9276890901
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60400,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1242.2520951158774,
+          "liquidityEnd": 56651.98828524836,
+          "wealthEnd": 747280.5754625956
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2014,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 43712.468616543876,
+          "wealthEnd": 809230.6367421668
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 3868.517918704429,
+              "cashUsed": 3868.517918704429,
+              "sellAmount": 0.002081295570860675,
+              "taxEstimate": 0.00017953026707101614
+            },
+            "muster_b": {
+              "withdrawalAmount": 8131.482081295571,
+              "cashUsed": 8131.48,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 44696.640273533594,
+          "wealthEnd": 861950.1124111252
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2015,
+        "before": {
+          "annualWithdrawal": 10800,
+          "liquidityTarget": 56600,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 10800,
+              "cashUsed": 10800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 32876.264901065675,
+          "wealthEnd": 902050.133684657
+        },
+        "after": {
+          "annualWithdrawal": 34800,
+          "liquidityTarget": 174000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 34800,
+              "cashUsed": 34800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 14081.839226962165,
+          "liquidityEnd": 145654.29412612822,
+          "wealthEnd": 923568.7339544016
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2016,
+        "before": {
+          "annualWithdrawal": 33600,
+          "liquidityTarget": 168000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 3721.96,
+              "cashUsed": 2998.2294772920054,
+              "sellAmount": 723.7305227079946,
+              "taxEstimate": 74.3585715206627
+            },
+            "muster_b": {
+              "withdrawalAmount": 29878.04,
+              "cashUsed": 29878.035423773672,
+              "sellAmount": 0.004576226328936173,
+              "taxEstimate": 0.0005638426139056733
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 18215.78482280397,
+          "liquidityEnd": 140650.5438097936,
+          "wealthEnd": 900235.4692886039
+        },
+        "after": {
+          "annualWithdrawal": 40800,
+          "liquidityTarget": 204000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 40800,
+              "cashUsed": 40800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 6713.3727045702335,
+          "liquidityEnd": 167651.5453456724,
+          "wealthEnd": 920678.9758392549
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2017,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 11566.72985675642,
+          "liquidityEnd": 192830.43264938012,
+          "wealthEnd": 911280.0178467757
+        },
+        "after": {
+          "annualWithdrawal": 33600,
+          "liquidityTarget": 168000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 33600,
+              "cashUsed": 33600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 133568.95978242796,
+          "wealthEnd": 954909.4839546342
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2018,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 146700.40309184234,
+          "wealthEnd": 889622.2146078836
+        },
+        "after": {
+          "annualWithdrawal": 38400,
+          "liquidityTarget": 192000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 38400,
+              "cashUsed": 38400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 7355.772746663056,
+          "liquidityEnd": 157286.31814233036,
+          "wealthEnd": 936562.3889396854
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2019,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 14347.633087745475,
+          "liquidityEnd": 195985.43420108088,
+          "wealthEnd": 960662.7799021928
+        },
+        "after": {
+          "annualWithdrawal": 43200,
+          "liquidityTarget": 216000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 43200,
+              "cashUsed": 43200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 8233.515184935186,
+          "liquidityEnd": 175166.97702586136,
+          "wealthEnd": 1022645.9291951163
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2020,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 3931.29,
+              "cashUsed": 3931.29,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 41668.71,
+              "cashUsed": 41668.71,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 149558.31431297495,
+          "wealthEnd": 927891.4094411302
+        },
+        "after": {
+          "annualWithdrawal": 37200,
+          "liquidityTarget": 186000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 37200,
+              "cashUsed": 37200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1619.5313345096092,
+          "liquidityEnd": 135588.62731771497,
+          "wealthEnd": 998202.0153121945
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2021,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 14240.804654584028,
+          "liquidityEnd": 188636.11985333808,
+          "wealthEnd": 1045962.1678366553
+        },
+        "after": {
+          "annualWithdrawal": 43200,
+          "liquidityTarget": 216000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 43200,
+              "cashUsed": 43200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 15717.635120042432,
+          "liquidityEnd": 185606.9675421458,
+          "wealthEnd": 1136595.2138793822
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2022,
+        "before": {
+          "annualWithdrawal": 46800,
+          "liquidityTarget": 234000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 46800,
+              "cashUsed": 46800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 141821.93624135276,
+          "wealthEnd": 967924.3640124081
+        },
+        "after": {
+          "annualWithdrawal": 38400,
+          "liquidityTarget": 192000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 38400,
+              "cashUsed": 38400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 147192.24684539158,
+          "wealthEnd": 1063545.7169504042
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2023,
+        "before": {
+          "annualWithdrawal": 52800,
+          "liquidityTarget": 264000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 52800,
+              "cashUsed": 52800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 25341.62933609062,
+          "liquidityEnd": 230921.7535598412,
+          "wealthEnd": 978928.8168168801
+        },
+        "after": {
+          "annualWithdrawal": 49200,
+          "liquidityTarget": 246000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 49200,
+              "cashUsed": 49200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 19098.419460155805,
+          "liquidityEnd": 205331.4935723966,
+          "wealthEnd": 1092537.6163536313
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2024,
+        "before": {
+          "annualWithdrawal": 56400,
+          "liquidityTarget": 282000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 56400,
+              "cashUsed": 56400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1147.9960950512552,
+          "liquidityEnd": 179726.34929436815,
+          "wealthEnd": 1066898.7689040666
+        },
+        "after": {
+          "annualWithdrawal": 44400,
+          "liquidityTarget": 222000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 44400,
+              "cashUsed": 44400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1198.0460349904413,
+          "liquidityEnd": 165591.35390344137,
+          "wealthEnd": 1217860.565390677
+        }
+      },
+      {
+        "preset": "ausgewogen",
+        "year": 2025,
+        "before": {
+          "annualWithdrawal": 55200,
+          "liquidityTarget": 276000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 55200,
+              "cashUsed": 55200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 19707.30832655891,
+          "liquidityEnd": 229748.43886647536,
+          "wealthEnd": 1081968.3579778024
+        },
+        "after": {
+          "annualWithdrawal": 50400,
+          "liquidityTarget": 252000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 50400,
+              "cashUsed": 50400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 17997.235077311285,
+          "liquidityEnd": 211736.41182660314,
+          "wealthEnd": 1254879.887731246
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2000,
+        "before": {
+          "annualWithdrawal": 34800,
+          "liquidityTarget": 174000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 34800,
+              "cashUsed": 34800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 2107.6453638286416,
+          "liquidityEnd": 159580.27049988124,
+          "wealthEnd": 764728.6214851846
+        },
+        "after": {
+          "annualWithdrawal": 31200,
+          "liquidityTarget": 162000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 31200,
+              "cashUsed": 31200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1891.8917483352975,
+          "liquidityEnd": 153138.43406201812,
+          "wealthEnd": 768286.7850473216
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2001,
+        "before": {
+          "annualWithdrawal": 28800,
+          "liquidityTarget": 144000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 28800,
+              "cashUsed": 28800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 261.61421788225323,
+          "liquidityEnd": 136246.83212989382,
+          "wealthEnd": 659037.5622222397
+        },
+        "after": {
+          "annualWithdrawal": 22200,
+          "liquidityTarget": 113300,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 22200,
+              "cashUsed": 22200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 263.44136289294863,
+          "liquidityEnd": 136410.09611104155,
+          "wealthEnd": 667839.8769293975
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2002,
+        "before": {
+          "annualWithdrawal": 19800,
+          "liquidityTarget": 99000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 19800,
+              "cashUsed": 19800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 100.20040218997826,
+          "liquidityEnd": 120166.08782156435,
+          "wealthEnd": 489273.632342223
+        },
+        "after": {
+          "annualWithdrawal": 15000,
+          "liquidityTarget": 75000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 15000,
+              "cashUsed": 15000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 101.6127988908874,
+          "liquidityEnd": 125290.73446459282,
+          "wealthEnd": 500497.7344976011
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2003,
+        "before": {
+          "annualWithdrawal": 22800,
+          "liquidityTarget": 114000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 22800,
+              "cashUsed": 22800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 226.18702232607447,
+          "liquidityEnd": 99398.79403670033,
+          "wealthEnd": 500653.17125033884
+        },
+        "after": {
+          "annualWithdrawal": 17400,
+          "liquidityTarget": 87000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 17400,
+              "cashUsed": 17400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 2.531993774824426,
+          "liquidityEnd": 110391.26751039657,
+          "wealthEnd": 518276.3225827835
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2004,
+        "before": {
+          "annualWithdrawal": 25200,
+          "liquidityTarget": 126000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 25200,
+              "cashUsed": 25200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 75719.86931445269,
+          "wealthEnd": 523897.7190321777
+        },
+        "after": {
+          "annualWithdrawal": 19800,
+          "liquidityTarget": 99000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 19800,
+              "cashUsed": 19800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 92448.3884943597,
+          "wealthEnd": 548032.3205221166
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2005,
+        "before": {
+          "annualWithdrawal": 30000,
+          "liquidityTarget": 150000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 30000,
+              "cashUsed": 30000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 135.70697988951477,
+          "liquidityEnd": 128211.70760323523,
+          "wealthEnd": 605517.7965006491
+        },
+        "after": {
+          "annualWithdrawal": 8400,
+          "liquidityTarget": 60400,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 8400,
+              "cashUsed": 8400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 85804.9998138918,
+          "wealthEnd": 652320.5013782989
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2006,
+        "before": {
+          "annualWithdrawal": 10800,
+          "liquidityTarget": 61900,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 10800,
+              "cashUsed": 10800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 560.2511362459436,
+          "liquidityEnd": 120185.94896292267,
+          "wealthEnd": 657829.9109550735
+        },
+        "after": {
+          "annualWithdrawal": 10800,
+          "liquidityTarget": 61900,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 10800,
+              "cashUsed": 10800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 77135.14180860632,
+          "wealthEnd": 715265.7793092768
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2007,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 63200,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 910.8611865730111,
+          "liquidityEnd": 111451.06540632548,
+          "wealthEnd": 647843.205188964
+        },
+        "after": {
+          "annualWithdrawal": 22200,
+          "liquidityTarget": 111000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 22200,
+              "cashUsed": 22200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 647.7457980203951,
+          "liquidityEnd": 98050.11168644488,
+          "wealthEnd": 694585.4242557491
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2008,
+        "before": {
+          "annualWithdrawal": 10800,
+          "liquidityTarget": 65200,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 5841.28,
+              "cashUsed": 5841.28,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 4958.72,
+              "cashUsed": 4958.72,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 556.8738298321387,
+          "liquidityEnd": 103979.32270117747,
+          "wealthEnd": 453900.56789396517
+        },
+        "after": {
+          "annualWithdrawal": 21000,
+          "liquidityTarget": 105000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 21000,
+              "cashUsed": 21000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 617.9498518232164,
+          "liquidityEnd": 79406.29614572035,
+          "wealthEnd": 468562.59411143506
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2009,
+        "before": {
+          "annualWithdrawal": 11400,
+          "liquidityTarget": 66000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 11400,
+              "cashUsed": 11400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 93245.89382462596,
+          "wealthEnd": 520713.33201410377
+        },
+        "after": {
+          "annualWithdrawal": 31200,
+          "liquidityTarget": 156000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 29985.13,
+              "cashUsed": 29985.13,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 1214.87,
+              "cashUsed": 1214.87,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1868.4879121895974,
+          "liquidityEnd": 46684.89356577994,
+          "wealthEnd": 522082.28092662565
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2010,
+        "before": {
+          "annualWithdrawal": 12600,
+          "liquidityTarget": 65700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12600,
+              "cashUsed": 12600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 81000.73575745433,
+          "wealthEnd": 585880.1924487574
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 65700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 54925.507097469366,
+          "wealthEnd": 596414.764992287
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2011,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 61200,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 69601.04215854418,
+          "wealthEnd": 564634.6723200579
+        },
+        "after": {
+          "annualWithdrawal": 11400,
+          "liquidityTarget": 61200,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 11400,
+              "cashUsed": 11400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 43904.17900921735,
+          "wealthEnd": 574833.6701511632
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2012,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 61100,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 57733.52455550882,
+          "wealthEnd": 613085.1626266174
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 61100,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 232.87244601738678,
+          "liquidityEnd": 56894.57497320281,
+          "wealthEnd": 627423.1738862584
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2013,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60400,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 45774.68472760878,
+          "wealthEnd": 737181.3412681007
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60400,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 6653.7,
+              "cashUsed": 6653.7,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 5346.3,
+              "cashUsed": 5346.3,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 44934.98009067869,
+          "wealthEnd": 755236.7852772126
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2014,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 33808.45941233638,
+          "wealthEnd": 851982.6578279882
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1435.2617632605563,
+          "liquidityEnd": 56586.809556752065,
+          "wealthEnd": 872089.976410458
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2015,
+        "before": {
+          "annualWithdrawal": 32400,
+          "liquidityTarget": 162000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 32400,
+              "cashUsed": 32400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 16212.955345413138,
+          "liquidityEnd": 135044.48923318167,
+          "wealthEnd": 914004.32713888
+        },
+        "after": {
+          "annualWithdrawal": 32400,
+          "liquidityTarget": 162000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 3059.91,
+              "cashUsed": 3059.9075011022937,
+              "sellAmount": 0.0024988977061184414,
+              "taxEstimate": 0.00024486653095656154
+            },
+            "muster_b": {
+              "withdrawalAmount": 29340.09,
+              "cashUsed": 29340.09,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 11961.34042783766,
+          "liquidityEnd": 142069.02111287258,
+          "wealthEnd": 937996.1539398346
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2016,
+        "before": {
+          "annualWithdrawal": 46800,
+          "liquidityTarget": 234000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 46800,
+              "cashUsed": 46800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 11850.545256201327,
+          "liquidityEnd": 195814.15822891737,
+          "wealthEnd": 899947.677383957
+        },
+        "after": {
+          "annualWithdrawal": 39600,
+          "liquidityTarget": 198000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 39600,
+              "cashUsed": 39600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 6713.372704570236,
+          "liquidityEnd": 165273.90520605916,
+          "wealthEnd": 937359.7555670603
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2017,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 149673.3872592933,
+          "wealthEnd": 917684.4454101811
+        },
+        "after": {
+          "annualWithdrawal": 32400,
+          "liquidityTarget": 162000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 32400,
+              "cashUsed": 32400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 132395.55914731734,
+          "wealthEnd": 974523.443686382
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2018,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 11331.041171381261,
+          "liquidityEnd": 192048.47364199552,
+          "wealthEnd": 886219.9483586845
+        },
+        "after": {
+          "annualWithdrawal": 37200,
+          "liquidityTarget": 186000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 37200,
+              "cashUsed": 37200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 7355.772746663057,
+          "liquidityEnd": 157312.82174950617,
+          "wealthEnd": 958084.3234561019
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2019,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 38686.02564177142,
+              "cashUsed": 38686.02564177142,
+              "sellAmount": 0.004358228579803836,
+              "taxEstimate": 0.0006030746269811237
+            },
+            "muster_a": {
+              "withdrawalAmount": 6913.97435822858,
+              "cashUsed": 6913.97,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 102.73986481298847,
+          "liquidityEnd": 145774.58472997873,
+          "wealthEnd": 963055.8296130545
+        },
+        "after": {
+          "annualWithdrawal": 42000,
+          "liquidityTarget": 210000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 42000,
+              "cashUsed": 42000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 8113.364313801099,
+          "liquidityEnd": 176541.74703559375,
+          "wealthEnd": 1049294.7989451664
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2020,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 14783.127219527132,
+          "liquidityEnd": 194316.8044941441,
+          "wealthEnd": 916193.2089622244
+        },
+        "after": {
+          "annualWithdrawal": 36000,
+          "liquidityTarget": 180000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 36000,
+              "cashUsed": 36000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 139768.767426898,
+          "wealthEnd": 1028107.6047079951
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2021,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 147869.11870852747,
+          "wealthEnd": 1035755.1532963882
+        },
+        "after": {
+          "annualWithdrawal": 42000,
+          "liquidityTarget": 210000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 42000,
+              "cashUsed": 42000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 13975.506760608272,
+          "liquidityEnd": 182745.63908049185,
+          "wealthEnd": 1175375.4060626877
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2022,
+        "before": {
+          "annualWithdrawal": 46800,
+          "liquidityTarget": 234000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 1873.76,
+              "cashUsed": 1873.76,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 44926.24,
+              "cashUsed": 44926.24,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 15564.045488254242,
+          "liquidityEnd": 195485.5227129512,
+          "wealthEnd": 941034.9493079073
+        },
+        "after": {
+          "annualWithdrawal": 37200,
+          "liquidityTarget": 186000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 37200,
+              "cashUsed": 37200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 145531.08451658377,
+          "wealthEnd": 1102009.500529631
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2023,
+        "before": {
+          "annualWithdrawal": 52800,
+          "liquidityTarget": 264000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 52800,
+              "cashUsed": 52800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 14809.915908327268,
+          "liquidityEnd": 224929.1315687775,
+          "wealthEnd": 954396.6970884713
+        },
+        "after": {
+          "annualWithdrawal": 46800,
+          "liquidityTarget": 234000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 46800,
+              "cashUsed": 46800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 17307.57453170487,
+          "liquidityEnd": 197611.9610018329,
+          "wealthEnd": 1138921.2519526677
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2024,
+        "before": {
+          "annualWithdrawal": 56400,
+          "liquidityTarget": 282000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 56400,
+              "cashUsed": 56400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1319.187965560317,
+          "liquidityEnd": 173344.40399232067,
+          "wealthEnd": 1038528.0859631379
+        },
+        "after": {
+          "annualWithdrawal": 56400,
+          "liquidityTarget": 282000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 56400,
+              "cashUsed": 56400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 18484.294858492387,
+          "liquidityEnd": 241269.49604882527,
+          "wealthEnd": 1247707.6719367094
+        }
+      },
+      {
+        "preset": "konservativ",
+        "year": 2025,
+        "before": {
+          "annualWithdrawal": 55200,
+          "liquidityTarget": 276000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 3781.15,
+              "cashUsed": 3781.147553244511,
+              "sellAmount": 0.00244675548901796,
+              "taxEstimate": 0.00038607109432851276
+            },
+            "muster_a": {
+              "withdrawalAmount": 51418.85,
+              "cashUsed": 51418.85,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 22923.243729321566,
+          "liquidityEnd": 240378.63575142203,
+          "wealthEnd": 1048501.8987267995
+        },
+        "after": {
+          "annualWithdrawal": 48000,
+          "liquidityTarget": 240000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 48000,
+              "cashUsed": 48000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1915.9963666063495,
+          "liquidityEnd": 195566.77469608563,
+          "wealthEnd": 1298485.689130713
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2001,
+        "before": {
+          "annualWithdrawal": 39600,
+          "liquidityTarget": 198000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 39600,
+              "cashUsed": 39600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1242.9005311476283,
+          "liquidityEnd": 165355.77735839807,
+          "wealthEnd": 644951.2538206929
+        },
+        "after": {
+          "annualWithdrawal": 32400,
+          "liquidityTarget": 162000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 32400,
+              "cashUsed": 32400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1108.8803914828,
+          "liquidityEnd": 173005.15749806093,
+          "wealthEnd": 652600.6339603558
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2002,
+        "before": {
+          "annualWithdrawal": 26400,
+          "liquidityTarget": 132000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 16357.75,
+              "cashUsed": 16357.75,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 10042.25,
+              "cashUsed": 10042.25,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 914.7225853331392,
+          "liquidityEnd": 142598.8042704204,
+          "wealthEnd": 481209.071229331
+        },
+        "after": {
+          "annualWithdrawal": 21600,
+          "liquidityTarget": 108000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 21600,
+              "cashUsed": 21600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1163.9610803080845,
+          "liquidityEnd": 155207.28558369022,
+          "wealthEnd": 493817.55254260084
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2003,
+        "before": {
+          "annualWithdrawal": 28800,
+          "liquidityTarget": 144000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 28800,
+              "cashUsed": 28800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 267.7461091961441,
+          "liquidityEnd": 116171.190420298,
+          "wealthEnd": 484272.1783401943
+        },
+        "after": {
+          "annualWithdrawal": 20400,
+          "liquidityTarget": 102000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 2121.709123013772,
+              "cashUsed": 2121.709123013772,
+              "sellAmount": 0.0008769862279223162,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 18278.290876986226,
+              "cashUsed": 18278.29,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 396.2970063520421,
+          "liquidityEnd": 137538.5176028798,
+          "wealthEnd": 505639.5055227761
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2004,
+        "before": {
+          "annualWithdrawal": 26400,
+          "liquidityTarget": 132000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 26400,
+              "cashUsed": 26400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 72.59745905129874,
+          "liquidityEnd": 91538.9023648628,
+          "wealthEnd": 502686.3405324282
+        },
+        "after": {
+          "annualWithdrawal": 7200,
+          "liquidityTarget": 60700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 7200,
+              "cashUsed": 7200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 291.93992621162056,
+          "liquidityEnd": 132718.5172875272,
+          "wealthEnd": 543865.9554550926
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2005,
+        "before": {
+          "annualWithdrawal": 31200,
+          "liquidityTarget": 156000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 31200,
+              "cashUsed": 31200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 974.2354066696744,
+          "liquidityEnd": 142483.00821102966,
+          "wealthEnd": 573553.2675009331
+        },
+        "after": {
+          "annualWithdrawal": 9000,
+          "liquidityTarget": 60400,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 9000,
+              "cashUsed": 9000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 263.17591858623655,
+          "liquidityEnd": 126041.05838025028,
+          "wealthEnd": 637300.0839426977
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2006,
+        "before": {
+          "annualWithdrawal": 10200,
+          "liquidityTarget": 61900,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 10200,
+              "cashUsed": 10200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 296.42877291629213,
+          "liquidityEnd": 135743.41687130663,
+          "wealthEnd": 621306.7220388207
+        },
+        "after": {
+          "annualWithdrawal": 11400,
+          "liquidityTarget": 61900,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 11400,
+              "cashUsed": 11400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 379.86584375241176,
+          "liquidityEnd": 117516.99859449697,
+          "wealthEnd": 693406.0025303317
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2007,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 63200,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 516.2247740585351,
+          "liquidityEnd": 128003.68798848054,
+          "wealthEnd": 612436.4328363349
+        },
+        "after": {
+          "annualWithdrawal": 21600,
+          "liquidityTarget": 108000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 21600,
+              "cashUsed": 21600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 412.0956991703106,
+          "liquidityEnd": 99207.29904107423,
+          "wealthEnd": 673755.4330029031
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2008,
+        "before": {
+          "annualWithdrawal": 10800,
+          "liquidityTarget": 65200,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 10800,
+              "cashUsed": 10800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 541.0762449686981,
+          "liquidityEnd": 121186.67409986717,
+          "wealthEnd": 437211.6429929849
+        },
+        "after": {
+          "annualWithdrawal": 21000,
+          "liquidityTarget": 105000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 21000,
+              "cashUsed": 21000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 220.19214986895634,
+          "liquidityEnd": 81005.90863419074,
+          "wealthEnd": 455818.6315435636
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2009,
+        "before": {
+          "annualWithdrawal": 10800,
+          "liquidityTarget": 66000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 7766.318551705941,
+              "cashUsed": 7766.318551705941,
+              "sellAmount": 0.0014482940587186022,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 3033.6814482940586,
+              "cashUsed": 3033.68,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 111181.45815338624,
+          "wealthEnd": 497240.85212422954
+        },
+        "after": {
+          "annualWithdrawal": 32400,
+          "liquidityTarget": 162000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 32400,
+              "cashUsed": 32400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 48955.871176356915,
+          "wealthEnd": 506830.99783412693
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2010,
+        "before": {
+          "annualWithdrawal": 12600,
+          "liquidityTarget": 65700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12600,
+              "cashUsed": 12600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 99015.21656926113,
+          "wealthEnd": 554987.8583782412
+        },
+        "after": {
+          "annualWithdrawal": 10800,
+          "liquidityTarget": 65700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 10800,
+              "cashUsed": 10800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 58411.757009532885,
+          "wealthEnd": 579205.568483351
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2011,
+        "before": {
+          "annualWithdrawal": 11400,
+          "liquidityTarget": 61200,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 11400,
+              "cashUsed": 11400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 88377.4689534137,
+          "wealthEnd": 535458.0327146905
+        },
+        "after": {
+          "annualWithdrawal": 11400,
+          "liquidityTarget": 61200,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 11400,
+              "cashUsed": 11400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 47420.75929551582,
+          "wealthEnd": 558058.3929775839
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2012,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 61100,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 76553.13713200655,
+          "wealthEnd": 578108.8058924738
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 61100,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 35502.22704189551,
+          "wealthEnd": 608359.1584660636
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2013,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60400,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 64611.23495542535,
+          "wealthEnd": 689042.5037837035
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60400,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1238.7399892857368,
+          "liquidityEnd": 52311.96939522079,
+          "wealthEnd": 735511.0831433503
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2014,
+        "before": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 12000,
+              "cashUsed": 12000,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 52663.84619038077,
+          "wealthEnd": 791582.9005650398
+        },
+        "after": {
+          "annualWithdrawal": 12000,
+          "liquidityTarget": 60700,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 3868.5179187044164,
+              "cashUsed": 3868.5179187044164,
+              "sellAmount": 0.002081295583593601,
+              "taxEstimate": 0.00017953026816934438
+            },
+            "muster_b": {
+              "withdrawalAmount": 8131.482081295584,
+              "cashUsed": 8131.48,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 40352.28136461601,
+          "wealthEnd": 848814.1061987014
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2015,
+        "before": {
+          "annualWithdrawal": 10800,
+          "liquidityTarget": 56600,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 10800,
+              "cashUsed": 10800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 41817.79595957135,
+          "wealthEnd": 880790.8732168849
+        },
+        "after": {
+          "annualWithdrawal": 42000,
+          "liquidityTarget": 210000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 1647.72,
+              "cashUsed": 0,
+              "sellAmount": 1647.72,
+              "taxEstimate": 161.45978260729254
+            },
+            "muster_b": {
+              "withdrawalAmount": 40352.28,
+              "cashUsed": 40352.28,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 20611.544766271407,
+          "liquidityEnd": 167603.39443373797,
+          "wealthEnd": 895485.7985670931
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2016,
+        "before": {
+          "annualWithdrawal": 39600,
+          "liquidityTarget": 198000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 39600,
+              "cashUsed": 39600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 20322.339952853818,
+          "liquidityEnd": 161418.68241972927,
+          "wealthEnd": 869049.509459284
+        },
+        "after": {
+          "annualWithdrawal": 40800,
+          "liquidityTarget": 204000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 40800,
+              "cashUsed": 40800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 126397.62357155001,
+          "wealthEnd": 896537.2397349748
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2017,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 8321.856662544418,
+          "liquidityEnd": 186821.8371844589,
+          "wealthEnd": 878647.4717700677
+        },
+        "after": {
+          "annualWithdrawal": 33600,
+          "liquidityTarget": 168000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 33600,
+              "cashUsed": 33600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 92463.55212669242,
+          "wealthEnd": 932468.6441202697
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2018,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 140713.43857059482,
+          "wealthEnd": 856104.4197740429
+        },
+        "after": {
+          "annualWithdrawal": 38400,
+          "liquidityTarget": 192000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 38400,
+              "cashUsed": 38400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 12957.104960404517,
+          "liquidityEnd": 160567.72253638352,
+          "wealthEnd": 909144.1239661339
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2019,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 4063.3,
+              "cashUsed": 4063.3,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 41536.7,
+              "cashUsed": 41536.7,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 14693.869818769239,
+          "liquidityEnd": 189676.9324336935,
+          "wealthEnd": 921940.9161773382
+        },
+        "after": {
+          "annualWithdrawal": 43200,
+          "liquidityTarget": 216000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 43200,
+              "cashUsed": 43200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 8789.392568529482,
+          "liquidityEnd": 177881.8744809793,
+          "wealthEnd": 989216.6390653227
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2020,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 143284.5093053082,
+          "wealthEnd": 888625.3986649854
+        },
+        "after": {
+          "annualWithdrawal": 37200,
+          "liquidityTarget": 186000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 37200,
+              "cashUsed": 37200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 139908.12417133394,
+          "wealthEnd": 965731.8549960131
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2021,
+        "before": {
+          "annualWithdrawal": 45600,
+          "liquidityTarget": 228000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 45600,
+              "cashUsed": 45600,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 15717.635120042432,
+          "liquidityEnd": 190872.66300240974,
+          "wealthEnd": 997619.3007559858
+        },
+        "after": {
+          "annualWithdrawal": 43200,
+          "liquidityTarget": 216000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 43200,
+              "cashUsed": 43200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 14240.804654584028,
+          "liquidityEnd": 181427.25579550443,
+          "wealthEnd": 1097165.3421106657
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2022,
+        "before": {
+          "annualWithdrawal": 46800,
+          "liquidityTarget": 234000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 46800,
+              "cashUsed": 46800,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 144058.25573610948,
+          "wealthEnd": 921423.3639257698
+        },
+        "after": {
+          "annualWithdrawal": 38400,
+          "liquidityTarget": 192000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 38400,
+              "cashUsed": 38400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 0,
+          "liquidityEnd": 143012.95306992487,
+          "wealthEnd": 1025400.0659855651
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2023,
+        "before": {
+          "annualWithdrawal": 52800,
+          "liquidityTarget": 264000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 50295.15,
+              "cashUsed": 50295.14547380628,
+              "sellAmount": 0.004526193719357252,
+              "taxEstimate": 0.0006777748157309575
+            },
+            "muster_b": {
+              "withdrawalAmount": 2504.85,
+              "cashUsed": 2504.85,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 23774.26167441671,
+          "liquidityEnd": 224524.29471260158,
+          "wealthEnd": 928961.9349338972
+        },
+        "after": {
+          "annualWithdrawal": 49200,
+          "liquidityTarget": 246000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 49200,
+              "cashUsed": 49200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 20673.884963473978,
+          "liquidityEnd": 209715.51082287123,
+          "wealthEnd": 1049587.6527268467
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2024,
+        "before": {
+          "annualWithdrawal": 56400,
+          "liquidityTarget": 282000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 56400,
+              "cashUsed": 56400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1066.8385967211443,
+          "liquidityEnd": 173177.1804434191,
+          "wealthEnd": 1008674.1649478527
+        },
+        "after": {
+          "annualWithdrawal": 44400,
+          "liquidityTarget": 222000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 44400,
+              "cashUsed": 44400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 1308.889492254511,
+          "liquidityEnd": 170024.10592456924,
+          "wealthEnd": 1166152.9353119545
+        }
+      },
+      {
+        "preset": "offensiv",
+        "year": 2025,
+        "before": {
+          "annualWithdrawal": 55200,
+          "liquidityTarget": 276000,
+          "balancePersons": {
+            "muster_b": {
+              "withdrawalAmount": 55200,
+              "cashUsed": 55200,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_a": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 22910.03040625047,
+          "liquidityEnd": 240220.98005222552,
+          "wealthEnd": 1015811.6732908797
+        },
+        "after": {
+          "annualWithdrawal": 50400,
+          "liquidityTarget": 252000,
+          "balancePersons": {
+            "muster_a": {
+              "withdrawalAmount": 50400,
+              "cashUsed": 50400,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            },
+            "muster_b": {
+              "withdrawalAmount": 0,
+              "cashUsed": 0,
+              "sellAmount": 0,
+              "taxEstimate": 0
+            }
+          },
+          "simulatorPersons": {
+            "muster_a": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            },
+            "muster_b": {
+              "withdrawalAmount": null,
+              "cashUsed": null,
+              "sellAmount": null,
+              "taxEstimate": null
+            }
+          },
+          "taxes": 18052.80665636186,
+          "liquidityEnd": 216210.22626274114,
+          "wealthEnd": 1197831.5036211223
+        }
+      }
+    ],
+    "limitation": "Konservativ 2025 und Offensiv 2024: steuerlich gleiche Auszahlung mit verschiedener Reihenfolge durch Preisrundlauf; nicht als gleich gezählt."
+  },
+  "changedExpectations": [
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "konservativ: Backtest entspricht FF-F-Referenz",
+      "before": "b3421a51bf40c921c1738340bbeee2984236dcb1860b9ffaafdf2bc08f7583e5",
+      "after": "4482bf9ce66f8dcc9519bf0f03690171d1f30e0a4b63624287d4db97290e26af",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "konservativ: MC-Pfad 0 mit FR-21–24/27",
+      "before": "646cdbfb83c47ac2db74249fdfc7aba0064b9521e690c8309a978da9ffdbd8e0",
+      "after": "1a77ec3e59949b4348bccbe503eee55625565e278322dc9b6bb906c94d004c77",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "ausgewogen: Backtest entspricht FF-F-Referenz",
+      "before": "699695ceb458d5c8e03bb1c106743346743c3126dd6a3e561a6ac545c015a978",
+      "after": "63baf4d9b99120b022eb7faee5fa740508cf39bd5abf3fa0a5ebe3efe380412b",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "ausgewogen: MC-Pfad 0 mit FR-21–24/27",
+      "before": "6cf16d5c9b70a760dd785d1af89af8ee9f3964c83ab443fdd8affb1f7d07a87d",
+      "after": "7a3a95ea253d29bd7fdf872f7b395f0e1318fbc8f7e4fe58ba07551f56c20072",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "offensiv: Backtest entspricht FF-F-Referenz",
+      "before": "a8150564c92de5f468101837b2842138beb81098b2c60e589295a841e923f79d",
+      "after": "ac155409561dbb26bbfb54ada2bb5d10b996a023532344a2635854f9e4bf93e3",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "offensiv: MC-Pfad 0 mit FR-21–24/27",
+      "before": "0b044d7a64a22f50df27f22361cee4cd4bad1d33460c38b046507ce571b8203a",
+      "after": "7170b15febeaadc0489e93952801274badc0a6d759828e2261ad541a93a5e330",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "konservativ: Backtest ohne Tod entspricht FF-F-Referenz",
+      "before": "41ed02e7c56e23bf2a64e056e220670630627f83e14811d9d919095592de9063",
+      "after": "62e3422e8a05573cb60b2537bb904a888439d9c0771e163c915e919549935d7b",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "konservativ: MC ohne Tod entspricht FF-F-Referenz",
+      "before": "f7a78d61374598ce05ba4919f88338cecb5925feb35e2470e1a900927fb27818",
+      "after": "a629fd81a650f4138b19e0680a17acf49c9943673a83ce0f2e3d2f36e26e2884",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "ausgewogen: Backtest ohne Tod entspricht FF-F-Referenz",
+      "before": "56f69ab068f5a85a15f102824cb07639153921b99e5db028c8acd0e2f99d6cef",
+      "after": "463c7ce47a7d81f759063f74ec2c48fece9cbdaeebb8e13cdf51de66b11694b5",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "ausgewogen: MC ohne Tod entspricht FF-F-Referenz",
+      "before": "cc42eade7060b27fdd611334d13139cea75ed964f3d816d7db6ea8e857c901fd",
+      "after": "6d6a49038d150f9533cefa5401c5928ee1552a336541098273277e6eb16aeebb",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "offensiv: Backtest ohne Tod entspricht FF-F-Referenz",
+      "before": "4f1bdd132a5f50549e9d0447b1d5901bafb44fe95f91a9d3c6546db39fe5469a",
+      "after": "dcf4c1ff7914fae2e00ce93b707e81405c6c962d0754e8005aaa309c2d14ccb6",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "offensiv: MC ohne Tod entspricht FF-F-Referenz",
+      "before": "a501149a3fe1e59263bb05994131ee9ae10eff952d5da1dd553bb8bed5d875a4",
+      "after": "8e716846f6841e7df55564e6c04be3bb4757d33606d316760854b9f7514d31e9",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "konservativ: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "ac17eda6844c9d2d7ad3bae345fc266ea4356dbe0d2da7c783e709e2928db4de",
+      "after": "d6fc213ef868f3332bb913ef0ea8706847c2188c83b4a7fb1abe5f4587c5714d",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "ausgewogen: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "d7be153b66219c2f162cbc3f587f4afbd349a0a5ba5189a65f58e9300d78e991",
+      "after": "eed63343c4f614cffd204866e371b82a3cb2b4d41bb6cb092b2dfa4947941302",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "offensiv: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz",
+      "before": "9d3ac3a7404bbacc332ed13f7f1f38d67da61113e6d303066b11a3bbc7d2ca2b",
+      "after": "ef16a0def8e2590a7badd88622f8cf8cb6c111f64101658a4d60290f0f22fc9a",
+      "reason": "FR-32 begrenzt den dynamischen Mehrbetrag; Folgevermögen, Steuern und Protokoll folgen daraus."
+    },
+    {
+      "test": "log-analysis-muster-backtest.test.mjs",
+      "before": {
+        "observedCutYears": 2,
+        "longestCutYears": 2,
+        "cutPhases": [
+          [
+            2009,
+            2010
+          ]
+        ],
+        "minimumRealWealth": 369031.7281163015,
+        "realEndWealth": 670793.9224129985,
+        "liquidityBelowTargetYears": [
+          2003,
+          2004,
+          2006,
+          2014,
+          2018,
+          2020,
+          2022,
+          2024
+        ],
+        "taxPeak": {
+          "year": 2023,
+          "amount": 25421.19345856439
+        },
+        "wealthRecoveryYears": [],
+        "cutCard": "2 Jahre · 2009–2010",
+        "chartBands": [
+          "Flex gekürzt 2009–2010"
+        ],
+        "chartMarkers": [
+          {
+            "type": "minimum_real_year_end_wealth",
+            "year": 2008
+          },
+          {
+            "type": "liquidity_below_target",
+            "year": 2003
+          },
+          {
+            "type": "policy_state_change",
+            "year": 2001
+          },
+          {
+            "type": "tax_peak",
+            "year": 2023
+          },
+          {
+            "type": "large_sale",
+            "year": 2016
+          }
+        ]
+      },
+      "after": {
+        "observedCutYears": 1,
+        "longestCutYears": 1,
+        "cutPhases": [
+          [
+            2005,
+            2005
+          ]
+        ],
+        "minimumRealWealth": 397345.13376459805,
+        "realEndWealth": 768634.8400268521,
+        "liquidityBelowTargetYears": [
+          2008,
+          2009,
+          2010,
+          2012,
+          2014,
+          2017,
+          2020,
+          2022,
+          2024
+        ],
+        "taxPeak": {
+          "year": 2023,
+          "amount": 19075.325197799568
+        },
+        "wealthRecoveryYears": [
+          2021
+        ],
+        "cutCard": "1 Jahr · 2005",
+        "chartBands": [
+          "Flex gekürzt 2005–2005"
+        ],
+        "chartMarkers": [
+          {
+            "type": "minimum_real_year_end_wealth",
+            "year": 2008
+          },
+          {
+            "type": "real_wealth_recovery",
+            "year": 2021
+          },
+          {
+            "type": "liquidity_below_target",
+            "year": 2009
+          },
+          {
+            "type": "policy_state_change",
+            "year": 2001
+          },
+          {
+            "type": "tax_peak",
+            "year": 2023
+          }
+        ]
+      },
+      "reason": "Frühe Begrenzung des dynamischen Mehrbetrags senkt spätere Kürzungen und erhält Vermögen; keine Toleranz erweitert."
+    }
+  ],
+  "monteCarlo": {
+    "seed": 12345,
+    "count": 2000,
+    "before": {
+      "ruins": 0,
+      "technicalErrors": 0,
+      "evaluable": 2000
+    },
+    "after": {
+      "ruins": 0,
+      "technicalErrors": 0,
+      "evaluable": 2000
+    }
+  },
+  "changedFiles": [
+    "engine/core.mjs",
+    "engine/config.mjs",
+    "engine/planners/flex-rate-policy.mjs",
+    "engine/planners/SpendingPlanner.mjs",
+    "app/balance/balance-flex-trace.js",
+    "tests/ff-g-regression.test.mjs",
+    "tests/helpers/ff-g-scenarios.mjs",
+    "tests/fixtures/ff-g-expectation-deltas.json",
+    "tests/fixtures/planned-inflows-empty-ff-g.json",
+    "tests/log-analysis-muster-backtest.test.mjs",
+    "tests/planned-inflows.test.mjs",
+    "tests/rechenregeln-bytegleich.test.mjs",
+    "tests/survivor-bytegleich.test.mjs",
+    "Handbuch.html",
+    "README.md",
+    "engine/README.md",
+    "docs/reference/TECHNICAL.md",
+    "docs/reference/FACHKONZEPT.md",
+    "docs/reference/ENGINE_DECISION_LOGIC.md",
+    "docs/reference/PARITY_REPLAY.md",
+    "docs/internal/design/fachregeln.md",
+    "docs/design/funktionsinventar.json"
+  ]
+}

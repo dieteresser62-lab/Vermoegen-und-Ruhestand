@@ -1,0 +1,353 @@
+{
+  "synthetic": true,
+  "beforeRevision": "fac1e1f56af7290c259c0c2c16e5fa06b5482953",
+  "before": {
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "useCapeSampling": false,
+    "basis": "App-Muster 16.10.2026; Groß wie EP-2: 3 Mio. EUR Geld 90/10, Haus 800000 EUR bei Max, Erika PG2 üblich. Endvermögen real, Käufe und Liquidität nominal. Medianpfad: unterer mittlerer Endvermögensrang, Laufnummer als Gleichstandsregel.",
+    "paritySha256": "4710c6492f68adee461b71da4764ba5a16525e85b6c885682bbfb279d139bafc",
+    "households": {
+      "sophie": {
+        "inputsSha256": "07e48efb70be5ef948b307e70656d85b826b911e9b525745cd88eb0aeda743da",
+        "mcSha256": "04ef05f909d680bd8c9db2ddcd0e48baaa812331470c23450aea711e9fee423a",
+        "prefixSha256": "72fec401dcfff7b7344ff05ed61675228ec4fe472020970c41b96975c3719c3d",
+        "prefixYears": 4,
+        "backtestSha256": "edc35528773eb6ef90ea974daea81a15bba5b9e565786e5cf31d438f7017cb53",
+        "countercheckSha256": "559c209685eff319aae3826ca5110fb0d9ef19cd08a1cb430b8320d9278104fb",
+        "balanceSha256": "062bced52f4b01f04deb4dd05ea99815373aba15e5fc98d2c04e579e25ffc297",
+        "coveredPct": 96.65,
+        "ruinPaths": 67,
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 7.450580596923828e-9,
+        "savingsYears": 32299,
+        "realP10": 176736.39581486007,
+        "realP50": 1113740.6878190879,
+        "medianSavingEquityPurchases": 210000,
+        "medianSalaryEquityPurchases": 195000,
+        "medianPath": {
+          "run": 1461,
+          "real": 1107777.6145879512,
+          "equityPurchases": 330000,
+          "lastSavingYear": 28,
+          "lastSavingLiquidity": 16559.55782809142,
+          "salaryEquityPurchases": 275000,
+          "salaryEndLiquidity": 11365.37001859621
+        },
+        "countercheck": {
+          "rows": 42,
+          "lastPortfolio": 12571824.101202456
+        }
+      },
+      "max-erika": {
+        "inputsSha256": "73d3bf8f1b002d65ebccc2b01a0582a46bc1a2972130918b00753395ae356c99",
+        "mcSha256": "19b5a6419ab78a0e555852a1097ffb8311fa4f22647f4ff222bc2554c54bf37e",
+        "prefixSha256": "b19b13997e4cf2c717fe4b88d407fd128cd4ff72dcfc13eaf135c020efe9356b",
+        "prefixYears": 22771,
+        "backtestSha256": "0489b64017749432bcfd154385227783d64f12d864ac4ceb63d08390c40172e4",
+        "countercheckSha256": "55a7bb1cf01bf0a0248f2cbb1864aa5cfcddc04043e1c1af8d2a72e3140c7383",
+        "balanceSha256": "b037c21a039388b06f487ea763b2975cc5e40018b5f73597761d691b4e96fbcc",
+        "coveredPct": 99.7,
+        "ruinPaths": 6,
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 1.4901161193847656e-8,
+        "savingsYears": 14777,
+        "realP10": 832854.0939372542,
+        "realP50": 2703675.4323359537,
+        "medianSavingEquityPurchases": 35000,
+        "medianPath": {
+          "run": 559,
+          "real": 2703546.5455528903,
+          "equityPurchases": 120000,
+          "lastSavingYear": 22,
+          "lastSavingLiquidity": 28820.971713776373
+        },
+        "countercheck": {
+          "rows": 42,
+          "lastPortfolio": 38707807.35130285
+        }
+      },
+      "renate": {
+        "inputsSha256": "951a08f618802b91e2728aee672b35e010e691ec327beab0a21dba30aa83a77d",
+        "mcSha256": "68394a768b9a03afb9dc86253de234d55a25df250cb530eac15a1e41450a225f",
+        "prefixSha256": "3d4fd1f3a8b889a2ed57a5df34643953d04cb2d29c545fc4b1c170b40b178135",
+        "prefixYears": 34140,
+        "backtestSha256": "000108406834db90d2cafb689da28f1ebe2d1426be8e820cc6a3206b5321bc2d",
+        "countercheckSha256": "528a67b3e1e65da146335c286a3f3343dffeae1849ec851eb0cd582dc4c63da3",
+        "balanceSha256": "f13e07d02608fce31bc43dc3fb82fb3839bf8596414a6469d935ecb4f2bc5afd",
+        "coveredPct": 92.7,
+        "ruinPaths": 146,
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 1.862645149230957e-9,
+        "savingsYears": 98,
+        "realP10": 57187.13274286389,
+        "realP50": 340564.77834761504,
+        "medianSavingEquityPurchases": 0,
+        "medianPath": {
+          "run": 1754,
+          "real": 340181.6532416402,
+          "equityPurchases": 0,
+          "lastSavingYear": null,
+          "lastSavingLiquidity": null
+        },
+        "countercheck": {
+          "rows": 42,
+          "lastPortfolio": 6609309.123225941
+        }
+      },
+      "helga-werner": {
+        "inputsSha256": "c7ca441e7431b1bdbb60a1c170d7df613e537745f071afe9a305360823294acc",
+        "mcSha256": "8b3929690d092cc90db6505e0fd9e46d42099079ae991a8f9c4dfb7db2e77d5d",
+        "prefixSha256": "c83d9c979e0b7907e130cd1a01296d6e243be6f973f6078e88ac1819df11a128",
+        "prefixYears": 24754,
+        "backtestSha256": "614be7e077ad9ba3d92f43056be4b6001cf05440ee28868f6b6c3d728a98585a",
+        "countercheckSha256": "095aec35eba52ac09fae82985ebdcd7666d8ae3c9b5c4253c70fb1a22fd3c8f9",
+        "balanceSha256": "05ced9fc05e05ef24e03f298b6c67806c5d1c69c9c47c921ca79d8acd5ac9542",
+        "coveredPct": 99.85000000000001,
+        "ruinPaths": 3,
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 9.313225746154785e-10,
+        "savingsYears": 1213,
+        "realP10": 447726.1797786296,
+        "realP50": 802114.3403978681,
+        "medianSavingEquityPurchases": 0,
+        "medianPath": {
+          "run": 1180,
+          "real": 802002.4114084346,
+          "equityPurchases": 0,
+          "lastSavingYear": null,
+          "lastSavingLiquidity": null
+        },
+        "countercheck": {
+          "rows": 42,
+          "lastPortfolio": 14865002.370291285
+        }
+      },
+      "gross": {
+        "inputsSha256": "f83409da5ea3db4fd9a9fb83b33c76bc9b831e9dc718cba9d7460cddddbd74c5",
+        "mcSha256": "31dedcadc04a351a576f1f60ea6a8545d2e6163e8df65e491b0006af5202c80c",
+        "prefixSha256": "b90ce0a14934a8773da13e1fe4efdde4f8100f13eb323602ae7a67945ee49dd5",
+        "prefixYears": 26694,
+        "backtestSha256": "16be12e360c0d89a5c982e61b583d968d189725bd53d044cf628dbc0ad1505ba",
+        "countercheckSha256": "1a976154f14a8f6a4959849edbc174d49631494f3f781e9a03d5668b74715e9b",
+        "balanceSha256": "b037c21a039388b06f487ea763b2975cc5e40018b5f73597761d691b4e96fbcc",
+        "coveredPct": 100,
+        "ruinPaths": 0,
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 5.960464477539063e-8,
+        "savingsYears": 5649,
+        "realP10": 3122584.4484685776,
+        "realP50": 8662707.853816263,
+        "medianSavingEquityPurchases": 0,
+        "medianPath": {
+          "run": 465,
+          "real": 8661331.373327963,
+          "equityPurchases": 0,
+          "lastSavingYear": null,
+          "lastSavingLiquidity": null
+        },
+        "countercheck": {
+          "rows": 42,
+          "lastPortfolio": 130221442.79773869
+        }
+      }
+    }
+  },
+  "after": {
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "useCapeSampling": false,
+    "basis": "App-Muster 16.10.2026; Groß wie EP-2: 3 Mio. EUR Geld 90/10, Haus 800000 EUR bei Max, Erika PG2 üblich. Endvermögen real, Käufe und Liquidität nominal. Medianpfad: unterer mittlerer Endvermögensrang, Laufnummer als Gleichstandsregel.",
+    "paritySha256": "4710c6492f68adee461b71da4764ba5a16525e85b6c885682bbfb279d139bafc",
+    "households": {
+      "sophie": {
+        "inputsSha256": "07e48efb70be5ef948b307e70656d85b826b911e9b525745cd88eb0aeda743da",
+        "mcSha256": "e0156786e08d1d204ad1d253e7b551090e0f9a7ec0d098594c4ce0502fcedc20",
+        "prefixSha256": "72fec401dcfff7b7344ff05ed61675228ec4fe472020970c41b96975c3719c3d",
+        "prefixYears": 4,
+        "backtestSha256": "f9d58c21c18ef6ec1c204ceda3d0467b5fea761847e8f8a2dd9b000210d006e6",
+        "countercheckSha256": "aa27ec84641c2780826b1bb5ed6c2252eb88ec612d72b2f803b01cfbe8602e8f",
+        "balanceSha256": "dd0465bfda7a1cf25020c9c6334f0b195f7949fa012be2c8ce5bc3f9a0858524",
+        "coveredPct": 97,
+        "ruinPaths": 60,
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 7.450580596923828e-9,
+        "savingsYears": 32299,
+        "realP10": 190440.12436402336,
+        "realP50": 1167436.8537793662,
+        "medianSavingEquityPurchases": 242281.06999999998,
+        "medianSalaryEquityPurchases": 220473.57,
+        "medianPath": {
+          "run": 1681,
+          "real": 1167319.642388458,
+          "equityPurchases": 271938.13,
+          "lastSavingYear": 12,
+          "lastSavingLiquidity": 6709.308080230702,
+          "salaryEquityPurchases": 271938.13,
+          "salaryEndLiquidity": 6709.308080230702
+        },
+        "countercheck": {
+          "rows": 42,
+          "lastPortfolio": 12794679.528641315
+        }
+      },
+      "max-erika": {
+        "inputsSha256": "73d3bf8f1b002d65ebccc2b01a0582a46bc1a2972130918b00753395ae356c99",
+        "mcSha256": "a71ee013d587dbcc640be60f2cb3f3ab2c2a41a10a6ad3987363903df949fe4e",
+        "prefixSha256": "b19b13997e4cf2c717fe4b88d407fd128cd4ff72dcfc13eaf135c020efe9356b",
+        "prefixYears": 22771,
+        "backtestSha256": "0489b64017749432bcfd154385227783d64f12d864ac4ceb63d08390c40172e4",
+        "countercheckSha256": "99602b1b6f38ead10e891331d7543b1d53eeeb361775b011cdafe3b0af7cd2a8",
+        "balanceSha256": "b037c21a039388b06f487ea763b2975cc5e40018b5f73597761d691b4e96fbcc",
+        "coveredPct": 99.7,
+        "ruinPaths": 6,
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 1.4901161193847656e-8,
+        "savingsYears": 14777,
+        "realP10": 838770.3694638204,
+        "realP50": 2705987.82485969,
+        "medianSavingEquityPurchases": 66083.57,
+        "medianPath": {
+          "run": 914,
+          "real": 2704915.795706468,
+          "equityPurchases": 52730.26,
+          "lastSavingYear": 13,
+          "lastSavingLiquidity": 0
+        },
+        "countercheck": {
+          "rows": 42,
+          "lastPortfolio": 39839818.61373387
+        }
+      },
+      "renate": {
+        "inputsSha256": "951a08f618802b91e2728aee672b35e010e691ec327beab0a21dba30aa83a77d",
+        "mcSha256": "145fb6798bb98499fcf2c749205793d813f2781f3b37e385c5a010ff7d8bc62c",
+        "prefixSha256": "3d4fd1f3a8b889a2ed57a5df34643953d04cb2d29c545fc4b1c170b40b178135",
+        "prefixYears": 34140,
+        "backtestSha256": "000108406834db90d2cafb689da28f1ebe2d1426be8e820cc6a3206b5321bc2d",
+        "countercheckSha256": "27000e1019dccd53db12b27ca1d7e2445a44d7871a447774b7438205270c2380",
+        "balanceSha256": "f13e07d02608fce31bc43dc3fb82fb3839bf8596414a6469d935ecb4f2bc5afd",
+        "coveredPct": 92.7,
+        "ruinPaths": 146,
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 1.862645149230957e-9,
+        "savingsYears": 98,
+        "realP10": 57187.13274286389,
+        "realP50": 340564.77834761504,
+        "medianSavingEquityPurchases": 0,
+        "medianPath": {
+          "run": 1754,
+          "real": 340181.6532416402,
+          "equityPurchases": 0,
+          "lastSavingYear": null,
+          "lastSavingLiquidity": null
+        },
+        "countercheck": {
+          "rows": 42,
+          "lastPortfolio": 6642120.104154093
+        }
+      },
+      "helga-werner": {
+        "inputsSha256": "c7ca441e7431b1bdbb60a1c170d7df613e537745f071afe9a305360823294acc",
+        "mcSha256": "5c6320dc3b836b34ab21d81476fe12d43ca644d02b3a2ca77d8ce5f59a1fb608",
+        "prefixSha256": "c83d9c979e0b7907e130cd1a01296d6e243be6f973f6078e88ac1819df11a128",
+        "prefixYears": 24754,
+        "backtestSha256": "614be7e077ad9ba3d92f43056be4b6001cf05440ee28868f6b6c3d728a98585a",
+        "countercheckSha256": "6e8fe7c6da141c14974b2e1d2b763178bca5bd77e8ef800c1af27fa29bf9ad23",
+        "balanceSha256": "05ced9fc05e05ef24e03f298b6c67806c5d1c69c9c47c921ca79d8acd5ac9542",
+        "coveredPct": 99.85000000000001,
+        "ruinPaths": 3,
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 9.313225746154785e-10,
+        "savingsYears": 1213,
+        "realP10": 445320.66140152677,
+        "realP50": 801826.4637165915,
+        "medianSavingEquityPurchases": 0,
+        "medianPath": {
+          "run": 159,
+          "real": 801650.5160247483,
+          "equityPurchases": 0,
+          "lastSavingYear": null,
+          "lastSavingLiquidity": null
+        },
+        "countercheck": {
+          "rows": 42,
+          "lastPortfolio": 15021857.98844315
+        }
+      },
+      "gross": {
+        "inputsSha256": "f83409da5ea3db4fd9a9fb83b33c76bc9b831e9dc718cba9d7460cddddbd74c5",
+        "mcSha256": "86e29af35c95afccebba0cb8bbc7cfaf0e361954464d757aa9f32ea51b699a18",
+        "prefixSha256": "b90ce0a14934a8773da13e1fe4efdde4f8100f13eb323602ae7a67945ee49dd5",
+        "prefixYears": 26694,
+        "backtestSha256": "16be12e360c0d89a5c982e61b583d968d189725bd53d044cf628dbc0ad1505ba",
+        "countercheckSha256": "bf7ff667e5d15d1f6208c31347c28e6a7378f5f98daa6efb2fefa82dce30452d",
+        "balanceSha256": "b037c21a039388b06f487ea763b2975cc5e40018b5f73597761d691b4e96fbcc",
+        "coveredPct": 100,
+        "ruinPaths": 0,
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 5.960464477539063e-8,
+        "savingsYears": 5649,
+        "realP10": 3122988.6108270627,
+        "realP50": 8656543.116645623,
+        "medianSavingEquityPurchases": 0,
+        "medianPath": {
+          "run": 442,
+          "real": 8651754.859963283,
+          "equityPurchases": 200027.9,
+          "lastSavingYear": 26,
+          "lastSavingLiquidity": 14400.077321928631
+        },
+        "countercheck": {
+          "rows": 42,
+          "lastPortfolio": 131882973.11675183
+        }
+      }
+    }
+  },
+  "sensitivity": {
+    "household": "sophie",
+    "paths": 2000,
+    "seed": 12345,
+    "thresholds": {
+      "350": {
+        "coveredPct": 97,
+        "ruinPaths": 60,
+        "realP10": 190440.12436402336,
+        "realP50": 1167436.8537793662,
+        "mcSha256": "aceb3d6001e0f83d3e0c8a61f5ffb1d3d6c96ae33e64e6771bd8ab6fbdf54b9a",
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 7.450580596923828e-9
+      },
+      "650": {
+        "coveredPct": 97,
+        "ruinPaths": 60,
+        "realP10": 190440.12436402336,
+        "realP50": 1167436.8537793662,
+        "mcSha256": "81476d30a5f239ecb6f4e3a1ceb2f21902660e55b104b090c61289807ca554a1",
+        "technicalErrors": 0,
+        "maxAbsFlowDelta": 7.450580596923828e-9
+      }
+    }
+  },
+  "unchanged": {
+    "prefixBeforeSha256": "c5a268a7e967a3ee2ca4aa5f196c42f798e82ceef44a79d013b5a446c5221773",
+    "prefixAfterSha256": "c5a268a7e967a3ee2ca4aa5f196c42f798e82ceef44a79d013b5a446c5221773",
+    "withdrawalProbes": 16,
+    "withdrawalResultsSha256": "c53618fd64a8d209800ee3dfd819bb280e27f1b76d563a1e0cef21a79316c49e"
+  }
+}

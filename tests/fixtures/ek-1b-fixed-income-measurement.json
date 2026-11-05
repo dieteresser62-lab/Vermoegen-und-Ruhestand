@@ -1,0 +1,264 @@
+{
+  "description": "EK-1b / FR-42. Synthetischer Musterhaushalt Max und Erika Mustermann, Stand 2026-10-16, 790000 Euro Startvermögen, 30000 Euro Grundbedarf und 30000 Euro Wunsch-Flex; Dynamic Flex aus. Keine Nutzerdaten.",
+  "date": "2026-10-21",
+  "runtime": "v22.23.2 / Linux x86_64",
+  "method": "Je Fall 2000 Pfade, Seed 12345, regime_markov, per-run-seed, 35 Jahre Höchstdauer, Block 3, UNIFORM, CAPE-Sampling aus. Messläufe sequenziell; 100er-Chunks mit allen Jahreslogs für genaue Jahreswerte. Keine Parameter- oder Regelschwellenänderung.",
+  "terminalWealthBasis": "Reale Kaufkraft zum Laufstart; Endwert bei Tod aller Personen, Ruin (0) oder Horizont. P10/P50 aus allen 2000 auswertbaren Pfaden.",
+  "salaryEndBasis": "Ende des fünften abgeschlossenen Finanzjahrs (2030); P50 nominal und real, jeweils nur die 1987 Pfade mit auswertbarem Finanzjahr 5, ohne terminale Todeszeilen.",
+  "countercheckBasis": "Getrennte historische Perioden 2000–2025 und 1965–1999; 1925 liegt außerhalb des Backtestbereichs. Sensitivität: Monatsgehalt 2800/5200 Euro, jeweils 2000 Pfade mit identischem Seed.",
+  "noOtherIncomeByteParity": {
+    "basis": "Stand nach EK-1a, vollständiges JSON.stringify ohne Feldfilter. Gesamter 2000er-MC-Chunk ohne Log-Opt-in, vollständiger Backtest und Eingaben.",
+    "before": {
+      "inputsHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+      "backtestHash": "033301b1ce532005ed2662d05af5bfcb2ad1bc7139d157e0d9f1ee06e9e6bef6",
+      "monteCarloHash": "96666c27c023afcddc7a454d974cfbd49d1bec27c6b0abbec4295081da953169"
+    },
+    "after": {
+      "inputsHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+      "backtestHash": "033301b1ce532005ed2662d05af5bfcb2ad1bc7139d157e0d9f1ee06e9e6bef6",
+      "monteCarloHash": "96666c27c023afcddc7a454d974cfbd49d1bec27c6b0abbec4295081da953169"
+    }
+  },
+  "cases": {
+    "empty": {
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "salary": 0,
+      "salaryPeriod": "2026-01 bis einschließlich 2030-12",
+      "inputsHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+      "chunks": [
+        "d4d3ba7a1318ee76d06f5e92cf0939bb281d8dea6f960e6bb6411ae7c31abe49",
+        "fab9f6bceebfdccbde00904095409c3595c9b9ad77308ed8d4a8769d2a335e89",
+        "84787f5bab3f65b64788677adb3ed577172c2a88d2252ab8573401d60ab3d6ca",
+        "a9496f24f0beea4dbd15682cd6cc4dc2ee023aaca7f1e2879fc2dc5699bc795c",
+        "e902e55c811d416351efcd8e167a9c5c36b2de2520e8deab723f532a064a44dd",
+        "5c0b44b4e88fed2c12d4ea16a30eeb0a91960665aaccd98a8009ffc521978840",
+        "77c79019d7c1093a13dc0f87b619ec9a583668d4332578ebdf41b5d475837517",
+        "afce01578747741ce06bd32e3397f35a8ae24ae062d8719ea9f615d19478bba8",
+        "5288fd676d27f35fcbebbe0c5faf3c0ae7705de4960011bdb5b69402efd78972",
+        "c00489cd467267b6673534f14ed08edb8da76d68f0f1d78b7d18682faeb4f347",
+        "5d26376bfb21ecb30c9ad9d743f51fa2a114986923ca301e81bbf66cdb3c024f",
+        "af9690df6f6303373f0876f69758293257752da0ebd9e679f61ee287c2f81d8d",
+        "495fda0c593a81c459a1cddf672e5fbdd71ff8446f08b894a2300d6668d25ed8",
+        "d778f77eb57e093e4f125c2b200e9e8a85bd44716b88c3802b484cf3b2a238fa",
+        "65fed4e9057980aa41fe18ea22f6e6ebc9d3c207be33337835a4ae20dd7b71f6",
+        "89f861c48834cd031b29c37d36dd792b56729b04d30f98d74028a2fdb0966ea1",
+        "d936c125d4278d9fae4fe50b90f58ce0583ffac8904f85ddcb63d30d02654076",
+        "b95ae6e5dfe426d329afa38b94d1de75ea78a8671219bb23ca19fc6e92c76ab5",
+        "fb619d98a37d1ddede79101957f74c0af834c50206afa8d3e44efee31e9e08a4",
+        "b424a027b63bd8fdc6e7e088ccfe84cb6a43f3fc5bb38ea8a81835ed5d581821"
+      ],
+      "technicalError": 0,
+      "evaluable": 2000,
+      "successPct": 99.8,
+      "terminalRealP10": 899786.4438069048,
+      "terminalRealP50": 3010017.869420668,
+      "salaryEndYear": {
+        "financialYearCount": 1987,
+        "nominalP50": 1178451.7505297952,
+        "realP50": 1060897.2506954563
+      },
+      "counterchecks": [
+        {
+          "period": "2000–2025",
+          "hash": "033301b1ce532005ed2662d05af5bfcb2ad1bc7139d157e0d9f1ee06e9e6bef6",
+          "rowCount": 26,
+          "lastWealth": 2376100.5008673784
+        },
+        {
+          "period": "1965–1999",
+          "hash": "6dd10163a36a686dce04d096d9b5c4db75c7ac1cc486df694206a49a93014f4d",
+          "rowCount": 35,
+          "lastWealth": 24678892.052823674
+        }
+      ]
+    },
+    "salary": {
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "salary": 4000,
+      "salaryPeriod": "2026-01 bis einschließlich 2030-12",
+      "inputsHash": "6683526114557387a30d6b776c8160783d701911c40fb17161340507cc02d43c",
+      "chunks": [
+        "dd4baa7362a9542073204d8f0ae5af1d4aa387298f068479224c8e4bcaffdcae",
+        "dc6f07a77c15b07dafc316b998d21b1638ca5d0ed296105d37b2691b1df4c928",
+        "c956b1e190d2d20afff2351b7c0a89b3280438667741f317d3dd25fbce9bf797",
+        "917ce53dfd6f4dfaa112b5f8df8b06ac026a8ef16123ee3388518c3c6e964b17",
+        "24cd22bf23fd155c39e13bd8d90553da934ebb50faf0470073123a65943d7856",
+        "eaef371f7595a0f5d90a76a41ad94f31efb57f292799479bc75d6ada3a45e8a5",
+        "19f9e4c580ca3c4cce6fb77f8a59f0ff6940cc31375c7f2fea140769258f97b0",
+        "829fc863881c91fd3e0322bfdda437365e70e7e4016fdf79e80d090806f2b422",
+        "1c7a5bbe4a52765e9358519d4307e39615e03760c6fecd36e1d9f5f35f58b475",
+        "9eef66e1f5fa46c2c318d9e11d6703e587debbabbdce8147ce6568b706526912",
+        "b047328a0989859f564b41d3db40b349083e7741cd3d62531a4e5df3664b9974",
+        "097e9fa78df79518bf94e438541103b4d36da51cb025b89503aa6f8b7f66e1a0",
+        "cfc890a3fc5100ea90f6b682c140847b102a42e0767739cb3fc0c21abc04dfdd",
+        "e0f6de46bceafdb854f94e5467e883f9330a61ee6932439aeee8b7db73c8a076",
+        "9fc08129b233ac90d37d4e1be8fa75321c5727fe1749078142d16255c04360d9",
+        "56ed72f40d36f452ec54b5d2757275af558abc73d0be25137cb93c563ff85fc8",
+        "5944d91f056a9f4ae8651f5340de33e9e98d0f00549a5ed38dc164d939db801b",
+        "5c50d5e9d6df1f72b7af2396f732b11f587d794d34a4c0462a02ab4f4844dc86",
+        "66e7a1aad12b78349c6a42840f8eb73151848cb25ade5385182d828b66d86993",
+        "58acff415f8812b47d63de59c37a81ac6e3c471be1ed6dbeee3ab5f27422b1d4"
+      ],
+      "technicalError": 0,
+      "evaluable": 2000,
+      "successPct": 99.9,
+      "terminalRealP10": 1188698.5268021612,
+      "terminalRealP50": 3609159.7812251514,
+      "salaryEndYear": {
+        "financialYearCount": 1987,
+        "nominalP50": 1464710.569458573,
+        "realP50": 1318783.8469271818
+      },
+      "counterchecks": [
+        {
+          "period": "2000–2025",
+          "hash": "b78038c3eac55d1c6b9467d6757271bc959fa8020257adc742be9ccb1436554e",
+          "rowCount": 26,
+          "lastWealth": 3139567.726363159
+        },
+        {
+          "period": "1965–1999",
+          "hash": "77780dcd27608667c90acdaa42feb1ba67dfcc7a6e11906d10db69f864834719",
+          "rowCount": 35,
+          "lastWealth": 28668485.289255038
+        }
+      ]
+    },
+    "low": {
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "salary": 2800,
+      "salaryPeriod": "2026-01 bis einschließlich 2030-12",
+      "inputsHash": "5a4e12194ccf21a088b0d7fe1e17a7fe9900dc6a13302f23f2a01bb58a5ae6a6",
+      "chunks": [
+        "232a7ce9f448601ed729c1281f28cfe9b2a12c1b00f3f8226849f7790493eca0",
+        "0bab62fbeeb9d25f51da148a725e00da733f0055c425b91a28c5ca1e085bbfae",
+        "8ab3b0c61967f52cc83a2c69c339e76c294b4635135dd87036c354a857ab4747",
+        "ed39f0b73219495588a17e6d0f372b26877fa5b4f4bd29d39aed924e813f93a2",
+        "9c0d28f2ee1469ef27dd5c6d2baa24787c0c1dc63c9b25d0552f0f24d97f2a77",
+        "f95bdb706dd126d0479cdc079600ccf7c1f1c08b5d77b0c2af66e5120bfb20bc",
+        "fe11c1fd57696a9ae6a2e43517c43580ddc4abe0d2b8739a0e6ef1e9d45bfd0e",
+        "e7a4c7c17c18df5239b4edb3d37359305c224c21e550b2647b100a5ee1e08c60",
+        "b95f82b7c69cff46c6f6b116bd1abab68018aa9dab9e8c005c42b23fcae79c91",
+        "985f04e2da8ee08bdc4c937a7295a143f767a4a00fc287fc3c1066373f26e8a2",
+        "1b95f1c32784adee0c97864fc525c2f48afa94e1aa4c11366fc0e9a138d25230",
+        "44baa192feeb05774d1109ddf5970f683f596f255546fe8d57575eb46b508a41",
+        "194face95bcb0c226a7f70cb7282af1cdbfee2e5b02156187cac754c8ad75eb8",
+        "e95275400ca885102336bdf3516d3e82087e42b84bc5451733eb5821613df287",
+        "a51743970a01f818b45dafff35075e88352a2d2f6c1a248a7cd305b5bc444ded",
+        "bea5f20064db9750d30903825010241b900f106f9120d8e43910a9d392760528",
+        "1e8d3d18453119976fef724667efd942bec840c3d03a2739c049e37d1f267cfb",
+        "17e460f129bfbff67d7c659554dd3fb8ae398bd6de5c6fea0e9c2f6dd085195d",
+        "dce1f1f66bab3f9d400cd3dad8cc151ab30de48d1e90597e899562f6475b87c2",
+        "670a7ed5123809c34c72d03fe6c0bd6713013de1f469144d29c31e7758d23482"
+      ],
+      "technicalError": 0,
+      "evaluable": 2000,
+      "successPct": 99.9,
+      "terminalRealP10": 1104858.5950014205,
+      "terminalRealP50": 3504120.0726284226,
+      "salaryEndYear": {
+        "financialYearCount": 1987,
+        "nominalP50": 1388721.7408345325,
+        "realP50": 1248185.5666689945
+      },
+      "counterchecks": [
+        {
+          "period": "2000–2025",
+          "hash": "f978cebf3428121cb35791cd04f2f9cf02cef4bdd28d709aa3ef30ad1aca6871",
+          "rowCount": 26,
+          "lastWealth": 3028138.469069505
+        },
+        {
+          "period": "1965–1999",
+          "hash": "c9f52626d5d8e7f031feb6b05f8b7932d47ea5540a761cbf2b835ed8d9ad3e82",
+          "rowCount": 35,
+          "lastWealth": 28382254.06005755
+        }
+      ]
+    },
+    "high": {
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "salary": 5200,
+      "salaryPeriod": "2026-01 bis einschließlich 2030-12",
+      "inputsHash": "11a64e558de064381455d3750946c2d32a4f03e6a072276c652594df5ccb2186",
+      "chunks": [
+        "89292655b744ed8a61ffb9b34edefe9bc9aca4b0e4df588214f8935fa8d50531",
+        "196331e924660c3a4f2e29b568d6831c113cfcf38d950d442ac50c0f14a50efd",
+        "dd9f6044e431699b5a47cbd8eaca32b6162ef640d6a6b3fe10b8b413542be91c",
+        "d7c5c1e893b08dda5ced36a565a52542c971500692586c7672043e7b6d1c657e",
+        "b76a846952a699cab642ac161917e59d52c2bbe8bacc35ddf764e3ce70fa1d6b",
+        "16c2727b177276c14f5aeb319a62b6237c4f32fbc198adf90817e882aafdc6c2",
+        "0c5dd1412bf5c431bc82cc745ce46d91ec903066204284b11d7891ba3e838964",
+        "2d82c5927eea87673720b25b5d51e9eb82dc4a13f507bc44bb3be3eb5fad69bc",
+        "e9536d632db85ccb5f02706e29019777ca32b0442b888c173c9fa8fe30c786af",
+        "78140756779b78c128b8b511888d52bf62c0bb5d5a44e7fd337d9da526c7c079",
+        "8e84dd141cf8dc9a19225b220b52103751bedf62c6cae3baf139aa727712d4e7",
+        "12b0792f6964f4991aef325722b0105f1f3dd960bc266542b987cfcefb2e4d23",
+        "242d17601fa099d5be784ae69d15a5938c4df105b0beb5503b02a2ae02e515be",
+        "c9446cd979baaaea93cc7a40559ec5b81e54dbc48d176d5c281dce94d12e2817",
+        "f585a7da565d6348454032f0aafb0753fbb63030364db9dfd2bf5649434b60e0",
+        "ecad6ae892cdc8b511e636b681e287f952479882f7565a9ad39bc196dc29d09e",
+        "eec936ad07c35e97577069cce91ccc56d6f771ee7aec1977fdbe59ac429a0cd7",
+        "0e51e47461184595a811c17056d3d6af35d7380e7af1d3518ad716a963b4a655",
+        "56fbd7f7a7fef28cc69e37af0eb145d951454f985a9b3258a905f18c69f6ec1a",
+        "2c1cabafdef46a98ed1cf92b4a52c060e0ffb277755b0ec595f71341e3c67021"
+      ],
+      "technicalError": 0,
+      "evaluable": 2000,
+      "successPct": 99.9,
+      "terminalRealP10": 1254147.5399634943,
+      "terminalRealP50": 3688533.078060735,
+      "salaryEndYear": {
+        "financialYearCount": 1987,
+        "nominalP50": 1539042.7945739008,
+        "realP50": 1386735.436865499
+      },
+      "counterchecks": [
+        {
+          "period": "2000–2025",
+          "hash": "6eda0a3ce6864296c6c1c042878cab8404fca0e0e79505189bd22fffb872eb7c",
+          "rowCount": 26,
+          "lastWealth": 3231066.4052689956
+        },
+        {
+          "period": "1965–1999",
+          "hash": "d022bac193d7535e9371c3fe96bd317894e20561a9a755e966f7737df4e2253b",
+          "rowCount": 35,
+          "lastWealth": 28954486.8101547
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-22",
+  "household": "Max und Erika Mustermann",
+  "notes": {
+    "money": "Endvermögen und Folgejahr in realen Euro; Abgang und Erbschaftsteuer als nominale Pfadsummen, gemittelt über alle 2.000 Pfade.",
+    "afterFirstDeath": "Nur auswertbare Folgejahre; Ruin im Folgejahr zählt mit null. Vorher verstorbene Haushalte und Horizontzensierung liefern keinen Jahreswert.",
+    "homes": "Max: Haus selbst genutzt 450.000 EUR; Wohnung vermietet 210.000 EUR, netto 650 EUR/Monat mit Inflation; Stand Oktober 2026.",
+    "baseline": "Aktueller Kopf nach UP-1a; vollständige unveränderte Chunk-Ergebnisse einschließlich Protokollen verglichen."
+  },
+  "marriedBaseline": {
+    "completeOutputSha256": "2f909145ac5379bf81e43e1e27411084d584051492f032272119d31d4248c73d",
+    "backtestSha256": "6b038f5dd3b2c4d7b2ffe3495fe8d242f1d2c954123db560836faa66ddd60404",
+    "inputHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b"
+  },
+  "scenarios": {
+    "married": {
+      "variant": "married",
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "inputHash": "1eeb604eca89422fd7c165d42733cb72762414d1d68ed7419050edbc8dd6389b",
+      "completeOutputSha256": "2f909145ac5379bf81e43e1e27411084d584051492f032272119d31d4248c73d",
+      "backtestSha256": "6b038f5dd3b2c4d7b2ffe3495fe8d242f1d2c954123db560836faa66ddd60404",
+      "successPct": 99.8,
+      "realP10": 926503.3349817804,
+      "realP50": 3183271.931211826,
+      "afterFirstDeathRealP10": 719222.3499593238,
+      "afterFirstDeathRealP50": 1715703.0569517182,
+      "pathsWithDeath": 1944,
+      "afterFirstDeathEvaluablePaths": 1801,
+      "meanLeaves": 0,
+      "meanInheritanceTax": 0
+    },
+    "zero": {
+      "variant": "zero",
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "inputHash": "9120c176da8ab6c9beb637e87b9905ab8d0549ac8881d1ca4160cceffafd8417",
+      "completeOutputSha256": "2ec85e00f0c57b311b35672df6f9d68f5a5d97cb335567ee29987be6f1b2dd1b",
+      "backtestSha256": "5f22e12701c6dc2129ba0c11883db257fb06330791035a68f551e7f5acd5d27e",
+      "successPct": 97.45,
+      "realP10": 285566.32306006306,
+      "realP50": 1284618.2847491154,
+      "afterFirstDeathRealP10": 326225.15492896544,
+      "afterFirstDeathRealP50": 795009.7337218542,
+      "pathsWithDeath": 1943,
+      "afterFirstDeathEvaluablePaths": 1800,
+      "meanLeaves": 1740939.8109070854,
+      "meanInheritanceTax": 0
+    },
+    "full": {
+      "variant": "full",
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "inputHash": "c2d7336bc413fc66714baf942b332f48b862ddfc6c55b3bba6bb487f8302c932",
+      "completeOutputSha256": "622e91e770faf23bf30b659c975ef664543500156000bdafbc9bbbe957d8d5b8",
+      "backtestSha256": "54de3f60eb9a7faaa764dc99faccd67cb44e84712b9b471b53bb069812a3cc26",
+      "successPct": 99.6,
+      "realP10": 645099.2525462111,
+      "realP50": 2398031.4244630523,
+      "afterFirstDeathRealP10": 594134.9511348241,
+      "afterFirstDeathRealP50": 1384394.7801116747,
+      "pathsWithDeath": 1943,
+      "afterFirstDeathEvaluablePaths": 1800,
+      "meanLeaves": 0,
+      "meanInheritanceTax": 544708.092965519
+    },
+    "home": {
+      "variant": "home",
+      "params": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "inputHash": "ab753f2d8858603e84b8375ce9cdf5b86eb3b6d54a4cfc1f21e8fa69432a11be",
+      "completeOutputSha256": "1e7391742f0c640b089d1394f605abef4c3da31afeca72ec0801cbecf9c43198",
+      "backtestSha256": "a6c6b173bdecd434a0d71bf0c4f24215a0168e230d0f10c28c00381b93650e52",
+      "successPct": 99.05,
+      "realP10": 583096.9145583803,
+      "realP50": 2472515.7759228824,
+      "afterFirstDeathRealP10": 469079.05642267293,
+      "afterFirstDeathRealP50": 1386645.6705377025,
+      "pathsWithDeath": 1944,
+      "afterFirstDeathEvaluablePaths": 1799,
+      "meanLeaves": 0,
+      "meanInheritanceTax": 796705.7094351163
+    }
+  }
+}

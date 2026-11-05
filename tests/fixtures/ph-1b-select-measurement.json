@@ -1,0 +1,65 @@
+[
+  {
+    "viewport": 1366,
+    "mode": "Plan",
+    "width": 96,
+    "textWidth": 29,
+    "textSpace": 50
+  },
+  {
+    "viewport": 1920,
+    "mode": "Plan",
+    "width": 96,
+    "textWidth": 29,
+    "textSpace": 50
+  },
+  {
+    "viewport": 2560,
+    "mode": "Plan",
+    "width": 96,
+    "textWidth": 29,
+    "textSpace": 50
+  },
+  {
+    "viewport": 1366,
+    "mode": "Versuch",
+    "width": 96,
+    "textWidth": 29,
+    "textSpace": 50
+  },
+  {
+    "viewport": 1920,
+    "mode": "Versuch",
+    "width": 96,
+    "textWidth": 29,
+    "textSpace": 50
+  },
+  {
+    "viewport": 2560,
+    "mode": "Versuch",
+    "width": 96,
+    "textWidth": 29,
+    "textSpace": 50
+  },
+  {
+    "viewport": 1366,
+    "mode": "Versuch, Dynamik Ausgewogen",
+    "width": 96,
+    "textWidth": 29,
+    "textSpace": 50
+  },
+  {
+    "viewport": 1920,
+    "mode": "Versuch, Dynamik Ausgewogen",
+    "width": 96,
+    "textWidth": 29,
+    "textSpace": 50
+  },
+  {
+    "viewport": 2560,
+    "mode": "Versuch, Dynamik Ausgewogen",
+    "width": 96,
+    "textWidth": 29,
+    "textSpace": 50
+  }
+]

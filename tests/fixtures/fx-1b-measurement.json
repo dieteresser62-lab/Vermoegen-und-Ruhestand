@@ -1,0 +1,208 @@
+{
+  "sourceRevision": "2266fd878eba761422bd62802e48832855bfce75",
+  "method": {
+    "pathsPerCase": 2000,
+    "seed": 12345,
+    "maxYears": 30,
+    "method": "regime_markov",
+    "blockSize": 3,
+    "rngMode": "per-run-seed",
+    "startYearMode": "UNIFORM",
+    "capeSampling": true,
+    "nativeMortality": true,
+    "musterDate": "2026-10-16",
+    "scenarios": {
+      "K": "Native Max/Erika",
+      "D": "MC-D aus BM-6; unveränderte synthetische Eingaben",
+      "HW": "Native Helga/Werner, Drei Töpfe und Gold"
+    },
+    "withdrawalP50": "Median der realen jährlichen Pfadmittel; keine Folgejahre nach Tod; bei Ruin null bis zum Horizont",
+    "withdrawalP10": "P10 derselben Pfadmittel; ohne erfundene Entnahme für Tod vor dem ersten Finanzjahr",
+    "endReal": "Endvermögen in Kaufkraft des Laufstarts; auch Terminalpfade vor dem ersten Finanzjahr bleiben enthalten",
+    "refillYears": "Summe protokollierter Finanzjahre mit Runway-Notfüllung im Aktionsgrund"
+  },
+  "results": {
+    "K": {
+      "baseline": {
+        "count": 2000,
+        "ruins": 0,
+        "withdrawalP50": 5840.722681721881,
+        "withdrawalP10": 3261.306649174498,
+        "withdrawalSumP50": 127200,
+        "endRealP50": 3201347.7305975007,
+        "endRealP10": 1036515.6557785474,
+        "refillYears": 30,
+        "flowMax": 1.4901161193847656e-08,
+        "zeroFinancialYears": 0,
+        "withdrawalRealAnnualMean": 6807.013623415586,
+        "endRealMean": 5162235.2078460995
+      },
+      "B3": {
+        "count": 2000,
+        "ruins": 0,
+        "withdrawalP50": 5840.722681721881,
+        "withdrawalP10": 3261.306649174498,
+        "withdrawalSumP50": 127200,
+        "endRealP50": 3201347.7305975007,
+        "endRealP10": 1036515.6557785474,
+        "refillYears": 28,
+        "flowMax": 1.4901161193847656e-08,
+        "zeroFinancialYears": 0,
+        "withdrawalRealAnnualMean": 6806.9378217943395,
+        "endRealMean": 5161824.843298644
+      },
+      "F2": {
+        "count": 2000,
+        "ruins": 0,
+        "withdrawalP50": 5840.722681721881,
+        "withdrawalP10": 3261.306649174498,
+        "withdrawalSumP50": 127200,
+        "endRealP50": 3201347.7305975007,
+        "endRealP10": 1036515.6557785474,
+        "refillYears": 28,
+        "flowMax": 1.4901161193847656e-08,
+        "zeroFinancialYears": 0,
+        "withdrawalRealAnnualMean": 6806.9378217943395,
+        "endRealMean": 5161824.843298644
+      }
+    },
+    "D": {
+      "baseline": {
+        "count": 2000,
+        "ruins": 0,
+        "withdrawalP50": 73456.19782434023,
+        "withdrawalP10": 46340.77083354309,
+        "withdrawalSumP50": 2147400,
+        "endRealP50": 3011912.187868413,
+        "endRealP10": 1081288.4139687484,
+        "refillYears": 669,
+        "flowMax": 1.4901161193847656e-08,
+        "zeroFinancialYears": 0,
+        "withdrawalRealAnnualMean": 71321.80282476963,
+        "endRealMean": 5115788.214941747
+      },
+      "B3": {
+        "count": 2000,
+        "ruins": 0,
+        "withdrawalP50": 73458.65858867309,
+        "withdrawalP10": 46279.605688647636,
+        "withdrawalSumP50": 2145600,
+        "endRealP50": 3011912.187868413,
+        "endRealP10": 1081835.7327332385,
+        "refillYears": 644,
+        "flowMax": 1.4901161193847656e-08,
+        "zeroFinancialYears": 0,
+        "withdrawalRealAnnualMean": 71310.80202079684,
+        "endRealMean": 5116053.459952654
+      },
+      "F2": {
+        "count": 2000,
+        "ruins": 0,
+        "withdrawalP50": 73458.65858867309,
+        "withdrawalP10": 46279.605688647636,
+        "withdrawalSumP50": 2145600,
+        "endRealP50": 3011912.187868413,
+        "endRealP10": 1081835.7327332385,
+        "refillYears": 644,
+        "flowMax": 1.4901161193847656e-08,
+        "zeroFinancialYears": 0,
+        "withdrawalRealAnnualMean": 71310.80202079684,
+        "endRealMean": 5116053.459952654
+      }
+    },
+    "HW": {
+      "baseline": {
+        "count": 2000,
+        "zeroFinancialYears": 2,
+        "ruins": 0,
+        "withdrawalP50": 10624.299318529735,
+        "withdrawalP10": 5532.337909431201,
+        "withdrawalSumP50": 148800,
+        "endRealP50": 927726.9094719514,
+        "endRealP10": 530031.0960614341,
+        "refillYears": 308,
+        "flowMax": 1.862645149230957e-09,
+        "withdrawalRealAnnualMean": 11370.535770404313,
+        "endRealMean": 1164733.6993922913
+      },
+      "B3": {
+        "count": 2000,
+        "zeroFinancialYears": 2,
+        "ruins": 0,
+        "withdrawalP50": 10624.299318529735,
+        "withdrawalP10": 5532.337909431201,
+        "withdrawalSumP50": 148800,
+        "endRealP50": 927726.9094719514,
+        "endRealP10": 530031.0960614341,
+        "refillYears": 308,
+        "flowMax": 1.862645149230957e-09,
+        "withdrawalRealAnnualMean": 11370.535770404313,
+        "endRealMean": 1164733.6993922913
+      },
+      "F2": {
+        "count": 2000,
+        "zeroFinancialYears": 2,
+        "ruins": 0,
+        "withdrawalP50": 10624.299318529735,
+        "withdrawalP10": 5532.337909431201,
+        "withdrawalSumP50": 148800,
+        "endRealP50": 928783.0258271414,
+        "endRealP10": 530021.10637424,
+        "refillYears": 304,
+        "flowMax": 1.862645149230957e-09,
+        "withdrawalRealAnnualMean": 11370.494152731237,
+        "endRealMean": 1166217.6618498426
+      }
+    }
+  },
+  "pairs": {
+    "K": {
+      "baseline->B3": {
+        "identicalMarketsInflationAndLife": true,
+        "changedFinancialPaths": 239,
+        "technicalErrors": 0,
+        "ruinPathsBefore": 0,
+        "ruinPathsAfter": 0
+      },
+      "B3->F2": {
+        "identicalMarketsInflationAndLife": true,
+        "changedFinancialPaths": 0,
+        "technicalErrors": 0,
+        "ruinPathsBefore": 0,
+        "ruinPathsAfter": 0
+      }
+    },
+    "D": {
+      "baseline->B3": {
+        "identicalMarketsInflationAndLife": true,
+        "changedFinancialPaths": 600,
+        "technicalErrors": 0,
+        "ruinPathsBefore": 0,
+        "ruinPathsAfter": 0
+      },
+      "B3->F2": {
+        "identicalMarketsInflationAndLife": true,
+        "changedFinancialPaths": 0,
+        "technicalErrors": 0,
+        "ruinPathsBefore": 0,
+        "ruinPathsAfter": 0
+      }
+    },
+    "HW": {
+      "baseline->B3": {
+        "identicalMarketsInflationAndLife": true,
+        "changedFinancialPaths": 1,
+        "technicalErrors": 0,
+        "ruinPathsBefore": 0,
+        "ruinPathsAfter": 0
+      },
+      "B3->F2": {
+        "identicalMarketsInflationAndLife": true,
+        "changedFinancialPaths": 880,
+        "technicalErrors": 0,
+        "ruinPathsBefore": 0,
+        "ruinPathsAfter": 0
+      }
+    }
+  }
+}

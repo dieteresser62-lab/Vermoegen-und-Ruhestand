@@ -1,0 +1,509 @@
+{
+  "testDate": "2026-10-16",
+  "seed": 12345,
+  "method": "regime_markov",
+  "blockSize": 3,
+  "capeSampling": false,
+  "findings": {
+    "sweep": {
+      "runs": 10,
+      "years": 10,
+      "before": 1626123.0444890896,
+      "after": 1672978.3721371093,
+      "normalMonteCarlo": 1672978.3721371093,
+      "samplingFingerprint": "fa3815f7"
+    },
+    "healthBucket": {
+      "runs": 1,
+      "years": 1,
+      "before": 597466.9792539494,
+      "after": 649051.9792539494,
+      "replay": 649051.9792539494,
+      "bucket": 51585
+    },
+    "targetGrid": {
+      "before": 1575,
+      "after": 1550,
+      "minimumFlexAnnual": 2000,
+      "runs": 3,
+      "years": 35
+    },
+    "championMode": {
+      "runs": 10,
+      "years": 10,
+      "evaluatedModeOff": 2112408.5883694673,
+      "wrongFormModeOn": 1607693.547211166,
+      "after": "mismatched form rejected before mutation"
+    },
+    "currentReference": {
+      "runs": 20,
+      "years": 10,
+      "before": 1663782.781251999,
+      "after": 1717875.1908568088
+    }
+  },
+  "unchangedPatterns": {
+    "parameters": {
+      "anzahl": 8,
+      "maxDauer": 35,
+      "blockSize": 5,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "cases": {
+      "max-erika/grund": {
+        "before": {
+          "inputs": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+          "mc": "6754d517408207b6e50c900c76bc70ae928fe16c61828a7fd52c5be482796b92",
+          "backtest": "2aec51b55c33b20036e316c34e1f74f3e59975976d312ab4bc2e0b2cfcc9b134",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 3199608.680558666,
+            "meanTaxes": 61493.54590591564,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+          "mc": "6754d517408207b6e50c900c76bc70ae928fe16c61828a7fd52c5be482796b92",
+          "backtest": "2aec51b55c33b20036e316c34e1f74f3e59975976d312ab4bc2e0b2cfcc9b134",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 3199608.680558666,
+            "meanTaxes": 61493.54590591564,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "max-erika/immobilien": {
+        "before": {
+          "inputs": "86ddc30151241ba05ff3db4b9eed89888a97a5a41d17de69d04b809cbd00d58e",
+          "mc": "4613d5765f84c0c1c27f538eb34c98d3b26fc38a9c15c3989841e801d5759db1",
+          "backtest": "f5a39b170a12b36ea47d00c58b389d58e6c0bcc76c857bf109dc5d68113aea58",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 3731227.9540003976,
+            "meanTaxes": 40651.90858964767,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "86ddc30151241ba05ff3db4b9eed89888a97a5a41d17de69d04b809cbd00d58e",
+          "mc": "4613d5765f84c0c1c27f538eb34c98d3b26fc38a9c15c3989841e801d5759db1",
+          "backtest": "f5a39b170a12b36ea47d00c58b389d58e6c0bcc76c857bf109dc5d68113aea58",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 3731227.9540003976,
+            "meanTaxes": 40651.90858964767,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "renate/grund": {
+        "before": {
+          "inputs": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+          "mc": "a4eee4ee50ce85c37ad9ec613bcc5fa5acb30a571c861f06e08725da4434f9fc",
+          "backtest": "373ed483058841c431e98cb8bb6659c37561d6ce7ed3077211baf51879df18c0",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 628037.450544882,
+            "meanTaxes": 73567.35431067659,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "234df266104a23dfd5eada92f41a44192d5e41f0af3f54e9d2165597b35c493b",
+          "mc": "a4eee4ee50ce85c37ad9ec613bcc5fa5acb30a571c861f06e08725da4434f9fc",
+          "backtest": "373ed483058841c431e98cb8bb6659c37561d6ce7ed3077211baf51879df18c0",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 628037.450544882,
+            "meanTaxes": 73567.35431067659,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "renate/klein": {
+        "before": {
+          "inputs": "7f8fefe0aca3909ba632b8cbe0932a99aaff39be854cc14b67a49327832d82e5",
+          "mc": "cec8713f87aa8ef575003395000415087d609cb54e70622522d66f5e20305721",
+          "backtest": "c56dc6f5ae499999b91b433169811b7d0f31d23250f0180360a4e1f31b440a35",
+          "metrics": {
+            "coveredPct": 12.5,
+            "ruin": 7,
+            "meanEndWealth": 11865.631759088288,
+            "meanTaxes": 12598.413395440683,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "7f8fefe0aca3909ba632b8cbe0932a99aaff39be854cc14b67a49327832d82e5",
+          "mc": "cec8713f87aa8ef575003395000415087d609cb54e70622522d66f5e20305721",
+          "backtest": "c56dc6f5ae499999b91b433169811b7d0f31d23250f0180360a4e1f31b440a35",
+          "metrics": {
+            "coveredPct": 12.5,
+            "ruin": 7,
+            "meanEndWealth": 11865.631759088288,
+            "meanTaxes": 12598.413395440683,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "jan-lena/grund": {
+        "before": {
+          "inputs": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+          "mc": "0660309494df1e3e319011376bce0a8f0511b48d81c8098717e571b8c3fd73ca",
+          "backtest": "5a64f5da5881d740ce586f86d6f90a284c2706f45c1fe567b6d8be4e33dfd1d0",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 16444858.744993368,
+            "meanTaxes": 272173.6054210334,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "4f68b12d56f679b45e612cad79f4a93d555c844c4e72ba9be2469effd54f57f9",
+          "mc": "0660309494df1e3e319011376bce0a8f0511b48d81c8098717e571b8c3fd73ca",
+          "backtest": "5a64f5da5881d740ce586f86d6f90a284c2706f45c1fe567b6d8be4e33dfd1d0",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 16444858.744993368,
+            "meanTaxes": 272173.6054210334,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "jan-lena/halten": {
+        "before": {
+          "inputs": "ab9b9d059adf07739776fec57454e61c14ab402611bd38066ba78c3f57d79d0c",
+          "mc": "2391785b4d3097eedaccb053aa23de0c3a2be7c626e5a89dede2920988cb6999",
+          "backtest": "16fcc3339c662162371fe2d53368ea0ba2a88f6572b7be2450fae0856f3a151b",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 16253931.138363987,
+            "meanTaxes": 271096.16951873194,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "ab9b9d059adf07739776fec57454e61c14ab402611bd38066ba78c3f57d79d0c",
+          "mc": "2391785b4d3097eedaccb053aa23de0c3a2be7c626e5a89dede2920988cb6999",
+          "backtest": "16fcc3339c662162371fe2d53368ea0ba2a88f6572b7be2450fae0856f3a151b",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 16253931.138363987,
+            "meanTaxes": 271096.16951873194,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "helga-werner/grund": {
+        "before": {
+          "inputs": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+          "mc": "e4af10b72172030c308ecfb56046cf1375191094248763c47f000b37574f2b6b",
+          "backtest": "b5dec862e2e14bc5a24f42f2cc0e4b1699ebbb7b812e0aa5ddb2a67eb9becf60",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 1078315.9280373387,
+            "meanTaxes": 62027.55924336451,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "3ba54dd5bd59c48d501d3f15c964be891926f3d5e6a55180f13ea0c83d7730bd",
+          "mc": "e4af10b72172030c308ecfb56046cf1375191094248763c47f000b37574f2b6b",
+          "backtest": "b5dec862e2e14bc5a24f42f2cc0e4b1699ebbb7b812e0aa5ddb2a67eb9becf60",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 1078315.9280373387,
+            "meanTaxes": 62027.55924336451,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "helga-werner/haus-pg3": {
+        "before": {
+          "inputs": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+          "mc": "b539f7a8ccae83c22ef540c90243da59a3deeadbc31a732efb72766cf9e3aa7f",
+          "backtest": "23d5fdb48bedcc0faed0a19255e520bc0e6e44a6b1ee8cc9623671d5d488cc3b",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 491763.34783086774,
+            "meanTaxes": 53887.546960325606,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "d04913a1bf1ae891049e711aab6f3c96fad2cd3de98638026bba35dcff32a7d5",
+          "mc": "b539f7a8ccae83c22ef540c90243da59a3deeadbc31a732efb72766cf9e3aa7f",
+          "backtest": "23d5fdb48bedcc0faed0a19255e520bc0e6e44a6b1ee8cc9623671d5d488cc3b",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 491763.34783086774,
+            "meanTaxes": 53887.546960325606,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "sophie/grund": {
+        "before": {
+          "inputs": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+          "mc": "965cdfb8972cf8e5f26ad0790e157e2a4ae1e4c77b2774982af7e5cba38a3e71",
+          "backtest": "d79c264eb8b68bc38e0dcfd9117052c2e4908bf5a1459a1ec807838d42ca4dcb",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 2704621.190067169,
+            "meanTaxes": 70295.84231770503,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "29cc52c975918dfb1adb030384a1b843d06db66e03785d5e88157630e874fd67",
+          "mc": "965cdfb8972cf8e5f26ad0790e157e2a4ae1e4c77b2774982af7e5cba38a3e71",
+          "backtest": "d79c264eb8b68bc38e0dcfd9117052c2e4908bf5a1459a1ec807838d42ca4dcb",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 2704621.190067169,
+            "meanTaxes": 70295.84231770503,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "sophie/teilzeit": {
+        "before": {
+          "inputs": "0ccb65c20a976ec95aa91f5c1f0b244d7fe8ba32c14c4c85487a5936327f8b2e",
+          "mc": "80dd645df2ce6a8efae9b77f64fdb03407f6f0bd7f7e8421d7e66f8d82981a18",
+          "backtest": "28f2c6d98df0c710a08b76e1079a6fc38fe8ae81454f7b63a2f9267b23cd3583",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 2314525.417431464,
+            "meanTaxes": 76740.4570815501,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "0ccb65c20a976ec95aa91f5c1f0b244d7fe8ba32c14c4c85487a5936327f8b2e",
+          "mc": "80dd645df2ce6a8efae9b77f64fdb03407f6f0bd7f7e8421d7e66f8d82981a18",
+          "backtest": "28f2c6d98df0c710a08b76e1079a6fc38fe8ae81454f7b63a2f9267b23cd3583",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 2314525.417431464,
+            "meanTaxes": 76740.4570815501,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "martin-petra/grund": {
+        "before": {
+          "inputs": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+          "mc": "38b4f05901d997d02fcd39696e994da7795696ff08df0a129a64722fb7ed2ffa",
+          "backtest": "4572add1e6c75750ff9ebd8c371288ab2dd80d86e45e69b1cfe2a51ae258d7fb",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 1685779.6670432321,
+            "meanTaxes": 90381.42543872888,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "024a261e1937232729136e129c516536cf80e5db1c3fd688a020c0bb02bbc394",
+          "mc": "38b4f05901d997d02fcd39696e994da7795696ff08df0a129a64722fb7ed2ffa",
+          "backtest": "4572add1e6c75750ff9ebd8c371288ab2dd80d86e45e69b1cfe2a51ae258d7fb",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 1685779.6670432321,
+            "meanTaxes": 90381.42543872888,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "martin-petra/hundert": {
+        "before": {
+          "inputs": "ddfdcbd5100334422050d27f28d9f3a0cd7aca977b06753c29a84bfa253c351e",
+          "mc": "996713f6c4737b7645588a63206a750d6a33cbffb7bfc8e6a974e5d1d39c373f",
+          "backtest": "c6fcb6711f6124426e2246e40b630b6575568c2d76389c34e3de4e89811d6eb0",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 3420153.2973946575,
+            "meanTaxes": 435755.50268662686,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "ddfdcbd5100334422050d27f28d9f3a0cd7aca977b06753c29a84bfa253c351e",
+          "mc": "996713f6c4737b7645588a63206a750d6a33cbffb7bfc8e6a974e5d1d39c373f",
+          "backtest": "c6fcb6711f6124426e2246e40b630b6575568c2d76389c34e3de4e89811d6eb0",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 3420153.2973946575,
+            "meanTaxes": 435755.50268662686,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "martin-petra/ehe": {
+        "before": {
+          "inputs": "b01b07df59e0ae874a6142da5c0e447a0940e73369044272fbd5c482ba06d0f4",
+          "mc": "a5bd09f89b851b6a4426166bfe5cf55e0c55c44771b0f00d646933e60dcf968c",
+          "backtest": "d33f64a2d43423cc346ece4bbeb6ebf983987e8802452603ec7ba28a768c6aa0",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 4556321.878058619,
+            "meanTaxes": 215606.79524314354,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "b01b07df59e0ae874a6142da5c0e447a0940e73369044272fbd5c482ba06d0f4",
+          "mc": "a5bd09f89b851b6a4426166bfe5cf55e0c55c44771b0f00d646933e60dcf968c",
+          "backtest": "d33f64a2d43423cc346ece4bbeb6ebf983987e8802452603ec7ba28a768c6aa0",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 4556321.878058619,
+            "meanTaxes": 215606.79524314354,
+            "technicalErrors": 0
+          }
+        }
+      },
+      "martin-petra/testament": {
+        "before": {
+          "inputs": "010e14c6b7ec8e029d141bfe03490dd1259ad4539c9c7acce1c0a93d7aaaa735",
+          "mc": "320e9c547352c686695f2d228482050356f4caf63957d766cdcb89e587897406",
+          "backtest": "cc606c55cc2ce3bc5c7a489b07f1b2741c94ff995e2b3fb33f75b07ee02a433c",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 2370848.280193424,
+            "meanTaxes": 129199.37500403322,
+            "technicalErrors": 0
+          }
+        },
+        "after": {
+          "inputs": "010e14c6b7ec8e029d141bfe03490dd1259ad4539c9c7acce1c0a93d7aaaa735",
+          "mc": "320e9c547352c686695f2d228482050356f4caf63957d766cdcb89e587897406",
+          "backtest": "cc606c55cc2ce3bc5c7a489b07f1b2741c94ff995e2b3fb33f75b07ee02a433c",
+          "metrics": {
+            "coveredPct": 100,
+            "ruin": 0,
+            "meanEndWealth": 2370848.280193424,
+            "meanTaxes": 129199.37500403322,
+            "technicalErrors": 0
+          }
+        }
+      }
+    }
+  },
+  "specialBacktest": {
+    "description": "Helga/Werner 2000–2025, expliziter historischer Testbestand mit Pflege-Rücklage; nur Vermögenssummen und daraus abgeleitete Kennzahlen ändern sich.",
+    "beforeHash": "7c9ccbd200858b544a3ff6f96765347e43513fc85678674111528e9aa54be4b4",
+    "afterHash": "f2793991db1b45695bf6107646a64f6e3e1f0da34e324605e3abb7c2de693214",
+    "rowsBeforeHash": "7a37a899dfa39d5b3ad85a693a4acc3f95645002845a66858498722f6e7d0e12",
+    "rowsAfterHash": "7a37a899dfa39d5b3ad85a693a4acc3f95645002845a66858498722f6e7d0e12",
+    "before": {
+      "portfolioStart": 600000,
+      "portfolioEnd": 1886504.6999465716,
+      "metrics": {
+        "minimum_flex_restriction_years": 0,
+        "minimum_flex_restriction_share_pct": 0,
+        "minimum_flex_paid_median_nominal_eur": 14301.721994712527,
+        "minimum_flex_desired_median_nominal_eur": 14609.448982296697,
+        "minimum_flex_paid_minimum_nominal_eur": 8975.673436799996,
+        "wealth_start_nominal_eur": 600000,
+        "wealth_end_nominal_eur": 1886504.6999465716,
+        "wealth_end_real_eur": 1154957.3365261639,
+        "withdrawal_total_nominal_eur": 344400,
+        "floor_shortfall_occurred": false,
+        "floor_shortfall_years": 0,
+        "floor_shortfall_total_nominal_eur": 0,
+        "floor_shortfall_total_real_eur": 0,
+        "floor_shortfall_max_real_eur": 0,
+        "floor_shortfall_longest_streak_years": 0,
+        "flex_required_total_nominal_eur": 382298.6678857131,
+        "flex_fulfilled_total_nominal_eur": 362326.2456206778,
+        "flex_fulfillment_total_pct": 94.7757018418369,
+        "flex_reduction_years_gte_10_pct": 6,
+        "flex_reduction_max_pct": 29.316694469028704,
+        "flex_reduction_longest_streak_gte_10_pct": 4,
+        "minimum_flex_shortfall_years": 0,
+        "minimum_flex_shortfall_total_nominal_eur": 0,
+        "runway_min_coverage_pct": 70.12887029704238,
+        "runway_stress_years_below_100_pct": 11,
+        "wealth_max_drawdown_nominal_end_series_pct": 15.867979180552256,
+        "tax_total_nominal_eur": 35087.15929970581,
+        "tax_saved_by_loss_carry_total_nominal_eur": 287.05666933646114,
+        "loss_carry_end_nominal_eur": 0,
+        "health_bucket_end_nominal_eur": 86843.15955741466,
+        "outcome_is_completed": true,
+        "outcome_is_ruin": false,
+        "outcome_is_incomplete": false,
+        "outcome_is_technical_error": false
+      }
+    },
+    "after": {
+      "portfolioStart": 660000,
+      "portfolioEnd": 1973347.8595039863,
+      "metrics": {
+        "minimum_flex_restriction_years": 0,
+        "minimum_flex_restriction_share_pct": 0,
+        "minimum_flex_paid_median_nominal_eur": 14301.721994712527,
+        "minimum_flex_desired_median_nominal_eur": 14609.448982296697,
+        "minimum_flex_paid_minimum_nominal_eur": 8975.673436799996,
+        "wealth_start_nominal_eur": 660000,
+        "wealth_end_nominal_eur": 1973347.8595039863,
+        "wealth_end_real_eur": 1208124.521458589,
+        "withdrawal_total_nominal_eur": 344400,
+        "floor_shortfall_occurred": false,
+        "floor_shortfall_years": 0,
+        "floor_shortfall_total_nominal_eur": 0,
+        "floor_shortfall_total_real_eur": 0,
+        "floor_shortfall_max_real_eur": 0,
+        "floor_shortfall_longest_streak_years": 0,
+        "flex_required_total_nominal_eur": 382298.6678857131,
+        "flex_fulfilled_total_nominal_eur": 362326.2456206778,
+        "flex_fulfillment_total_pct": 94.7757018418369,
+        "flex_reduction_years_gte_10_pct": 6,
+        "flex_reduction_max_pct": 29.316694469028704,
+        "flex_reduction_longest_streak_gte_10_pct": 4,
+        "minimum_flex_shortfall_years": 0,
+        "minimum_flex_shortfall_total_nominal_eur": 0,
+        "runway_min_coverage_pct": 70.12887029704238,
+        "runway_stress_years_below_100_pct": 11,
+        "wealth_max_drawdown_nominal_end_series_pct": 21.886867611958454,
+        "tax_total_nominal_eur": 35087.15929970581,
+        "tax_saved_by_loss_carry_total_nominal_eur": 287.05666933646114,
+        "loss_carry_end_nominal_eur": 0,
+        "health_bucket_end_nominal_eur": 86843.15955741466,
+        "outcome_is_completed": true,
+        "outcome_is_ruin": false,
+        "outcome_is_incomplete": false,
+        "outcome_is_technical_error": false
+      }
+    }
+  }
+}

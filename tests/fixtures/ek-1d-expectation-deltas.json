@@ -1,0 +1,339 @@
+{
+  "description": "EK-1d: Rentenreste werden gutgeschrieben. Historische Referenzen bleiben erhalten; vollständige neue Ausgaben, keine zusätzlichen Feldfilter.",
+  "hashes": {
+    "110a70f8957a357870305dcac8b8f0d1f51f565c14e8a27746d3e8041527f313": "8daec75801fe770ad2847b2f23c92c2dc34ee09c0467de15ddbe3ed3ab85792a",
+    "67c44adf6f004031bda97ba8186d149c8bbfdc37231f277d9c7146a7ebe73641": "f9f87cec1c6959b3c2941321f1293e476a180120bf4ecf2e757de51f8b217faf",
+    "ba78a300aee3cbef934886d756b3eae05cd9284840605599809893b5cd2773d3": "d51197a19245c91f4a9a3964b7241943b5d89c349cdc124221058b99c7307a97",
+    "8950679f76fb89c7853671271b6c4c39b97695c8d7b8433dcf3dfad612f73f46": "495ee67f36ec295e21a07ede6c40ffccdcc4ee07c0fe4856f19c36f82db36c6a",
+    "491593a16e17d438f5499f76df18d78f6aef1dc2ec609451670fdbfdd0d87210": "0e026799dd9c13c2749aea5d8ca67b89b08f1c2db9516b7abc03132c42db4075",
+    "e8ff29dc9a188b66e7353aca85dd822ba81b14ae50c87792093ed1e335ecaabf": "6d232d9302711475413f8ca1444321ebf2a8a135eb5e5eb66f1de676ff75b525",
+    "5fd1440a6a57a788697453b35337eaf3cfa3d374ad0961c2b3fd38b19ec30d3f": "1af652bfe3821e3e3c0feb5eeed1675354357e0fc8306220a583887f2c92ffa1",
+    "286095a2f2b93e9bb8edf4a68c9a55d1017aa2876a73af4c45c8dc1aef0123d7": "6240f62d10d9c5726593eed740e5688b3c9140811497048578c3166ab757c281",
+    "9543ddd77e72f75ed166819a0a384ce6120f9d5da75c17cae375402b156253ed": "8c7988355204e742290b3f1230d71690ad6784b1bb6f1189362538309d60e123",
+    "bbe0e2a8c0d06fc824237cbd63f7c30878dde5b3b9f21f8468ff7aa1fc6ba3e4": "6a337b1ba87d6839453af84cffe0ca7fb84461c3d24e70b7b510afd13b27ebb3",
+    "ac4f83a06251939b6e3b6386f4b59b1cc9792c6b54a0e8d0b9b7ced61fa68351": "addaf448245ce963642518e9a3f56cbf7fd515503e63933beefb0435cc296a12",
+    "21ca5d099d59aa25db23e5244c2a079f3f77ee6d9b3428a7b445f80341db5714": "917cdd8e231a1266dfeeba5ceccb5357697749d0933e8268783ca922bd1eaa65",
+    "46f1dc8baf17355c0358aecc86055b5c928c7fc1ac20fbb9da643da78a26f22e": "5168d6a85dc932ef37548ca4e671d54bd47281eaf9774b8fefab664b6274930b",
+    "c1f3242cb8474a25cffaccb878002a18701d89d391ae0c3240fa19e77e892020": "9e166a40b4e62e174652eb89e7bc8fe47b77929cef4fb6135de421b423f30787",
+    "743542607af05d373aba856332f9eebee1815336cdf03bdc1d5d0fce90127ed9": "83b6230162905fd22422c85d1334af67526cc86d9c926500999f48a98233d59b",
+    "2e5a9bd7cc50987f1baf81157672b9a3ec53ae1f60d53bbf5075a22304ede1cf": "4b36c30d72123d42856cd3b4ecb2aa71004795c3914abeb7f1ffe03da5f0073b",
+    "8c4c3dd5eb3c20fa03b6cef78287e2bc8ac4b601899c516c39996fdf9e0b200c": "9d45022137126d595370f6e9d2daa2300aaa1a2c4a5474941f34a5a7f89cf30a",
+    "ebf0035ab5a1517a2afac5d1ab8aefb1fb0bdb56fb8e7eada66a0fb9123215f2": "48905e7d682bf7e052936454562105bb532867b13e1c98c4150856b0ef3ce154",
+    "59e1413a28528a05a4e90a0264051f35d8f61b1008d428d4734662cbc9199610": "09d1c8852d52def253f2bc42a7505258181417ed6263d0525446288585dc0f0c",
+    "a9db24ba0d48b45c00b0d18bd3ab893e4bd9ef582fb40f8951d8cf9da2082e0e": "8dbd4ddae30360d52735d4f1a8cfb486b87b46ea0948a9edbcff2d04403ab8df",
+    "9520617e072c7c91fd2ee0f5ec9556eb2a0be176119823695485721d0094dfbb": "12b4ace9b258b93d0ba87e312d48427106178a95dd592faa61d559a9f5648870",
+    "c34ea09381f39a4a1214ea109dfaa27b2b4293e34114862e668ff8573e7bf1d5": "576996bb88a5f8c4ccbec69269cbe3d792117ae9bbb3a4548f12d0896e5849a8",
+    "cfcc1d74e857a77f24f355e8cdf0c997f52ce46c1eaf026e81d9f8f3de8738ec": "4fcd206c72efc106a102b20626816f58dbc8e738ad6f8594069bff433eb0d864"
+  },
+  "kg1Groups": {
+    "mc": {
+      "numericLeaves": 739586,
+      "numericSha256": "d51197a19245c91f4a9a3964b7241943b5d89c349cdc124221058b99c7307a97",
+      "unchangedExceptTextsSha256": "495ee67f36ec295e21a07ede6c40ffccdcc4ee07c0fe4856f19c36f82db36c6a",
+      "afterSha256": "0e026799dd9c13c2749aea5d8ca67b89b08f1c2db9516b7abc03132c42db4075"
+    },
+    "engineResults": {
+      "numericLeaves": 1038985,
+      "numericSha256": "6d232d9302711475413f8ca1444321ebf2a8a135eb5e5eb66f1de676ff75b525",
+      "unchangedExceptTextsSha256": "1af652bfe3821e3e3c0feb5eeed1675354357e0fc8306220a583887f2c92ffa1",
+      "afterSha256": "6240f62d10d9c5726593eed740e5688b3c9140811497048578c3166ab757c281"
+    }
+  },
+  "changes": [
+    {
+      "test": "care-price-continuation",
+      "label": "couple-mc: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten",
+      "before": "110a70f8957a357870305dcac8b8f0d1f51f565c14e8a27746d3e8041527f313",
+      "after": "8daec75801fe770ad2847b2f23c92c2dc34ee09c0467de15ddbe3ed3ab85792a",
+      "firstDifference": "$.buffers.finalOutcomes.1",
+      "firstCredit": {
+        "path": "$.worstRun.logDataRows[7]",
+        "year": 8,
+        "saved": 2895.7141872256616,
+        "pension": 68575.00738147863,
+        "floor": 32839.646597126484,
+        "flex": 32839.646597126484
+      }
+    },
+    {
+      "test": "care-price-continuation",
+      "label": "couple-sweep: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten",
+      "before": "67c44adf6f004031bda97ba8186d149c8bbfdc37231f277d9c7146a7ebe73641",
+      "after": "f9f87cec1c6959b3c2941321f1293e476a180120bf4ecf2e757de51f8b217faf",
+      "firstDifference": "$.results[0].metrics.p10EndWealth"
+    },
+    {
+      "test": "cut-reason-bytegleich",
+      "label": "mc: jedes Zahlenfeld mit Pfad bytegleich zur Basis",
+      "before": "ba78a300aee3cbef934886d756b3eae05cd9284840605599809893b5cd2773d3",
+      "after": "d51197a19245c91f4a9a3964b7241943b5d89c349cdc124221058b99c7307a97"
+    },
+    {
+      "test": "cut-reason-bytegleich",
+      "label": "mc: jedes Feld außer Grund und Anmerkung bytegleich zur Basis",
+      "before": "8950679f76fb89c7853671271b6c4c39b97695c8d7b8433dcf3dfad612f73f46",
+      "after": "495ee67f36ec295e21a07ede6c40ffccdcc4ee07c0fe4856f19c36f82db36c6a",
+      "firstDifference": "$.buffers.finalOutcomes.9",
+      "firstCredit": {
+        "path": "$.runMeta[9].logDataRows[28]",
+        "year": 29,
+        "saved": 742.9809557772605,
+        "pension": 81421.81614409077,
+        "floor": 38948.403194358245,
+        "flex": 54330.431993955266
+      }
+    },
+    {
+      "test": "cut-reason-bytegleich",
+      "label": "mc: vollständige Ergebnisse einschließlich korrigierter Gründe",
+      "before": "491593a16e17d438f5499f76df18d78f6aef1dc2ec609451670fdbfdd0d87210",
+      "after": "0e026799dd9c13c2749aea5d8ca67b89b08f1c2db9516b7abc03132c42db4075",
+      "firstDifference": "$.buffers.finalOutcomes.9",
+      "firstCredit": {
+        "path": "$.runMeta[9].logDataRows[28]",
+        "year": 29,
+        "saved": 742.9809557772605,
+        "pension": 81421.81614409077,
+        "floor": 38948.403194358245,
+        "flex": 54330.431993955266
+      }
+    },
+    {
+      "test": "cut-reason-bytegleich",
+      "label": "engineResults: jedes Zahlenfeld mit Pfad bytegleich zur Basis",
+      "before": "e8ff29dc9a188b66e7353aca85dd822ba81b14ae50c87792093ed1e335ecaabf",
+      "after": "6d232d9302711475413f8ca1444321ebf2a8a135eb5e5eb66f1de676ff75b525"
+    },
+    {
+      "test": "cut-reason-bytegleich",
+      "label": "engineResults: jedes Feld außer Grund und Anmerkung bytegleich zur Basis",
+      "before": "5fd1440a6a57a788697453b35337eaf3cfa3d374ad0961c2b3fd38b19ec30d3f",
+      "after": "1af652bfe3821e3e3c0feb5eeed1675354357e0fc8306220a583887f2c92ffa1",
+      "firstDifference": "$[255].input.tagesgeld"
+    },
+    {
+      "test": "cut-reason-bytegleich",
+      "label": "engineResults: vollständige Ergebnisse einschließlich korrigierter Gründe",
+      "before": "286095a2f2b93e9bb8edf4a68c9a55d1017aa2876a73af4c45c8dc1aef0123d7",
+      "after": "6240f62d10d9c5726593eed740e5688b3c9140811497048578c3166ab757c281",
+      "firstDifference": "$[255].input.tagesgeld"
+    },
+    {
+      "test": "planned-inflows",
+      "label": "Vorgabe: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "before": "9543ddd77e72f75ed166819a0a384ce6120f9d5da75c17cae375402b156253ed",
+      "after": "8c7988355204e742290b3f1230d71690ad6784b1bb6f1189362538309d60e123",
+      "firstDifference": "$.path0[10].entscheidung.details.currentRealVermoegen",
+      "firstCredit": {
+        "path": "$.path0[10]",
+        "year": 11,
+        "saved": 1108.2749447480164,
+        "pension": 84760.76925261234,
+        "floor": 48320.22023769121,
+        "flex": 35332.274070173116
+      }
+    },
+    {
+      "test": "planned-inflows",
+      "label": "Vorgabe: vollständiger PM-1c-Backtest und MC-Pfad 0",
+      "before": "bbe0e2a8c0d06fc824237cbd63f7c30878dde5b3b9f21f8468ff7aa1fc6ba3e4",
+      "after": "6a337b1ba87d6839453af84cffe0ca7fb84461c3d24e70b7b510afd13b27ebb3",
+      "firstDifference": "$.path0[11].entscheidung.details.currentRealVermoegen",
+      "firstCredit": {
+        "path": "$.path0[11]",
+        "year": 12,
+        "saved": 1155.0884031318055,
+        "pension": 88744.52540748513,
+        "floor": 49374.049370054076,
+        "flex": 38215.387634299244
+      }
+    },
+    {
+      "test": "planned-inflows",
+      "label": "Vorgabe: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "before": "ac4f83a06251939b6e3b6386f4b59b1cc9792c6b54a0e8d0b9b7ced61fa68351",
+      "after": "addaf448245ce963642518e9a3f56cbf7fd515503e63933beefb0435cc296a12",
+      "firstDifference": "$.path0[8].entscheidung.details.currentRealVermoegen",
+      "firstCredit": {
+        "path": "$.path0[8]",
+        "year": 9,
+        "saved": 919.8201631515112,
+        "pension": 68926.11471333067,
+        "floor": 34003.14727508958,
+        "flex": 34003.14727508958
+      }
+    },
+    {
+      "test": "planned-inflows",
+      "label": "konservativ: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "before": "21ca5d099d59aa25db23e5244c2a079f3f77ee6d9b3428a7b445f80341db5714",
+      "after": "917cdd8e231a1266dfeeba5ceccb5357697749d0933e8268783ca922bd1eaa65",
+      "firstDifference": "$.path0[15].entscheidung.details.currentRealVermoegen",
+      "firstCredit": {
+        "path": "$.path0[15]",
+        "year": 16,
+        "saved": 4359.615613560662,
+        "pension": 82972.84980605914,
+        "floor": 61720.62344330564,
+        "flex": 16892.610749192838
+      }
+    },
+    {
+      "test": "planned-inflows",
+      "label": "konservativ: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "before": "46f1dc8baf17355c0358aecc86055b5c928c7fc1ac20fbb9da643da78a26f22e",
+      "after": "5168d6a85dc932ef37548ca4e671d54bd47281eaf9774b8fefab664b6274930b",
+      "firstDifference": "$.path0[17].entscheidung.details.currentRealVermoegen",
+      "firstCredit": {
+        "path": "$.path0[17]",
+        "year": 18,
+        "saved": 12214.426636676624,
+        "pension": 135987.18922530333,
+        "floor": 40464.172384743346,
+        "flex": 83308.59020388336
+      }
+    },
+    {
+      "test": "planned-inflows",
+      "label": "ausgewogen: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "before": "c1f3242cb8474a25cffaccb878002a18701d89d391ae0c3240fa19e77e892020",
+      "after": "9e166a40b4e62e174652eb89e7bc8fe47b77929cef4fb6135de421b423f30787",
+      "firstDifference": "$.path0[15].entscheidung.details.currentRealVermoegen",
+      "firstCredit": {
+        "path": "$.path0[15]",
+        "year": 16,
+        "saved": 4359.615613560662,
+        "pension": 82972.84980605914,
+        "floor": 61720.62344330564,
+        "flex": 16892.610749192838
+      }
+    },
+    {
+      "test": "planned-inflows",
+      "label": "ausgewogen: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "before": "743542607af05d373aba856332f9eebee1815336cdf03bdc1d5d0fce90127ed9",
+      "after": "83b6230162905fd22422c85d1334af67526cc86d9c926500999f48a98233d59b",
+      "firstDifference": "$.path0[17].entscheidung.details.currentRealVermoegen",
+      "firstCredit": {
+        "path": "$.path0[17]",
+        "year": 18,
+        "saved": 12214.426636676624,
+        "pension": 135987.18922530333,
+        "floor": 40464.172384743346,
+        "flex": 83308.59020388336
+      }
+    },
+    {
+      "test": "planned-inflows",
+      "label": "offensiv: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "before": "2e5a9bd7cc50987f1baf81157672b9a3ec53ae1f60d53bbf5075a22304ede1cf",
+      "after": "4b36c30d72123d42856cd3b4ecb2aa71004795c3914abeb7f1ffe03da5f0073b",
+      "firstDifference": "$.path0[15].entscheidung.details.currentRealVermoegen",
+      "firstCredit": {
+        "path": "$.path0[15]",
+        "year": 16,
+        "saved": 4359.615613560662,
+        "pension": 82972.84980605914,
+        "floor": 61720.62344330564,
+        "flex": 16892.610749192838
+      }
+    },
+    {
+      "test": "planned-inflows",
+      "label": "offensiv: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "before": "8c4c3dd5eb3c20fa03b6cef78287e2bc8ac4b601899c516c39996fdf9e0b200c",
+      "after": "9d45022137126d595370f6e9d2daa2300aaa1a2c4a5474941f34a5a7f89cf30a",
+      "firstDifference": "$.path0[17].entscheidung.details.currentRealVermoegen",
+      "firstCredit": {
+        "path": "$.path0[17]",
+        "year": 18,
+        "saved": 12214.426636676624,
+        "pension": 135987.18922530333,
+        "floor": 40464.172384743346,
+        "flex": 83308.59020388336
+      }
+    },
+    {
+      "test": "rechenregeln-bytegleich",
+      "label": "off: MC-Pfad 0 mit FR-21–24/27",
+      "before": "ebf0035ab5a1517a2afac5d1ab8aefb1fb0bdb56fb8e7eada66a0fb9123215f2",
+      "after": "48905e7d682bf7e052936454562105bb532867b13e1c98c4150856b0ef3ce154",
+      "firstDifference": "$[10].entscheidung.details.currentRealVermoegen",
+      "firstCredit": {
+        "path": "$[10]",
+        "year": 11,
+        "saved": 6329.486964847121,
+        "pension": 84760.76925261234,
+        "floor": 39215.64114388261,
+        "flex": 39215.64114388261
+      }
+    },
+    {
+      "test": "simulator-household-pension",
+      "label": "FR-16: Alt-Kalenderpfad nutzt Partner-Liquidität für persönliche Ansparsteuer",
+      "before": "59e1413a28528a05a4e90a0264051f35d8f61b1008d428d4734662cbc9199610",
+      "after": "09d1c8852d52def253f2bc42a7505258181417ed6263d0525446288585dc0f0c",
+      "firstDifference": "$[0].newState.portfolio.depotTranchesAktien[2].shares",
+      "firstCredit": {
+        "path": "$[3].logData",
+        "year": null,
+        "saved": 2203.488000000005,
+        "pension": 38203.488000000005,
+        "floor": 24000,
+        "flex": 12000
+      }
+    },
+    {
+      "test": "simulator-household-pension",
+      "label": "PA-A7: Kontrollierter Lauf enthält persönliche Ansparsteuer",
+      "before": "a9db24ba0d48b45c00b0d18bd3ab893e4bd9ef582fb40f8951d8cf9da2082e0e",
+      "after": "8dbd4ddae30360d52735d4f1a8cfb486b87b46ea0948a9edbcff2d04403ab8df",
+      "firstDifference": "$[0].newState.portfolio.depotTranchesAktien[3].shares",
+      "firstCredit": {
+        "path": "$[3].logData",
+        "year": null,
+        "saved": 2203.488000000005,
+        "pension": 38203.488000000005,
+        "floor": 24000,
+        "flex": 12000
+      }
+    },
+    {
+      "test": "simulator-household-pension",
+      "label": "FR-11: Höhere Nettorente senkt die vorherige Vermögensentnahme",
+      "before": "9520617e072c7c91fd2ee0f5ec9556eb2a0be176119823695485721d0094dfbb",
+      "after": "12b4ace9b258b93d0ba87e312d48427106178a95dd592faa61d559a9f5648870",
+      "firstDifference": "$.portfolio.depotTranchesAktien[3].shares"
+    },
+    {
+      "test": "simulator-household-pension",
+      "label": "PA-A7: Entnahmebeleg enthält persönliche Steuerdiagnose",
+      "before": "c34ea09381f39a4a1214ea109dfaa27b2b4293e34114862e668ff8573e7bf1d5",
+      "after": "576996bb88a5f8c4ccbec69269cbe3d792117ae9bbb3a4548f12d0896e5849a8",
+      "firstDifference": "$.portfolio.depotTranchesAktien[3].shares",
+      "firstCredit": {
+        "path": "$.logData",
+        "year": null,
+        "saved": 2203.488000000005,
+        "pension": 38203.488000000005,
+        "floor": 24000,
+        "flex": 12000
+      }
+    },
+    {
+      "test": "survivor-bytegleich",
+      "label": "off: MC ohne Tod entspricht BK-2-Referenz",
+      "before": "cfcc1d74e857a77f24f355e8cdf0c997f52ce46c1eaf026e81d9f8f3de8738ec",
+      "after": "4fcd206c72efc106a102b20626816f58dbc8e738ad6f8594069bff433eb0d864",
+      "firstDifference": "$[8].entscheidung.details.currentRealVermoegen",
+      "firstCredit": {
+        "path": "$[8]",
+        "year": 9,
+        "saved": 919.8201631515112,
+        "pension": 68926.11471333067,
+        "floor": 34003.14727508958,
+        "flex": 34003.14727508958
+      }
+    }
+  ]
+}

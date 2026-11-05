@@ -1,0 +1,879 @@
+{
+  "synthetic": true,
+  "baseline": "aaec0829",
+  "testDate": "2026-10-24",
+  "inputs": {
+    "startVermoegen": 790000,
+    "depotwertAlt": 340000,
+    "tagesgeld": 30000,
+    "geldmarktEtf": 60000,
+    "einstandAlt": 209029,
+    "zielLiquiditaet": 90000,
+    "startFloorBedarf": 30000,
+    "startFlexBedarf": 30000,
+    "minimumFlexAnnual": 7500,
+    "flexBudgetAnnual": 0,
+    "flexBudgetYears": 0,
+    "flexBudgetRecharge": 0,
+    "risikoprofil": "sicherheits-dynamisch",
+    "goldAktiv": false,
+    "goldZielProzent": 0,
+    "goldFloorProzent": 0,
+    "rebalancingBand": 25,
+    "goldSteuerfrei": false,
+    "stressPreset": "NONE",
+    "marketCapeRatio": 25,
+    "capeRatio": 25,
+    "dynamicFlex": false,
+    "horizonMethod": "survival_quantile",
+    "horizonYears": 30,
+    "survivalQuantile": 0.85,
+    "goGoActive": false,
+    "goGoMultiplier": 1,
+    "longevityMode": "none",
+    "longevityQuantileShift": 0.05,
+    "longevityRelativePct": 0.05,
+    "longevityBufferYears": 2,
+    "startAlter": 67,
+    "geschlecht": "m",
+    "startSPB": 2000,
+    "kirchensteuerSatz": 0,
+    "renteMonatlich": 2300,
+    "renteStartOffsetJahre": 0,
+    "renteStartMonate": 12,
+    "renteKalenderbeginn": false,
+    "rentAdjMode": "wage",
+    "rentAdjPct": 0,
+    "renteIndexierungsart": "wage",
+    "renteFesterSatz": 0,
+    "pflegefallLogikAktivieren": true,
+    "pflegeModellTyp": "chronisch",
+    "pflegeGradeConfigs": {
+      "1": {
+        "zusatz": 6000,
+        "flexCut": 1,
+        "mortalityFactor": 1.5
+      },
+      "2": {
+        "zusatz": 12000,
+        "flexCut": 1,
+        "mortalityFactor": 2
+      },
+      "3": {
+        "zusatz": 18000,
+        "flexCut": 0.5,
+        "mortalityFactor": 3
+      },
+      "4": {
+        "zusatz": 32000,
+        "flexCut": 0,
+        "mortalityFactor": 4
+      },
+      "5": {
+        "zusatz": 60000,
+        "flexCut": 0,
+        "mortalityFactor": 5
+      }
+    },
+    "pflegeStufe1Zusatz": 6000,
+    "pflegeStufe1FlexCut": 1,
+    "pflegeMaxFloor": 120000,
+    "pflegeRampUp": 5,
+    "pflegeMinDauer": 5,
+    "pflegeMaxDauer": 10,
+    "pflegeKostenDrift": 0.035,
+    "pflegeRegionalZuschlag": 0,
+    "decumulation": {
+      "mode": "standard",
+      "bondTargetFactor": 5,
+      "drawdownTrigger": 15,
+      "bondRefillThreshold": null
+    },
+    "partner": {
+      "aktiv": true,
+      "geschlecht": "w",
+      "startAlter": 64,
+      "startInJahren": 1,
+      "renteStartMonate": 6,
+      "renteKalenderbeginn": true,
+      "monatsrente": 1600,
+      "sparerPauschbetrag": 1000,
+      "kirchensteuerPct": 0,
+      "steuerquotePct": 80,
+      "brutto": 19200
+    },
+    "survivorFloorPercent": 75,
+    "survivorFlexPercent": 50,
+    "survivorMinimumFlexPercent": 50,
+    "widowOptions": {
+      "mode": "percent",
+      "percent": 0.55,
+      "marriageOffsetYears": 0,
+      "minMarriageYears": 1
+    },
+    "liquidityRunwayYears": 5,
+    "minCashBufferMonths": 2,
+    "maxSkimPctOfEq": 0,
+    "maxBearRefillPctOfEq": 0,
+    "accumulationPhase": {
+      "enabled": false,
+      "durationYears": 0,
+      "sparrate": 0,
+      "sparrateIndexing": "none"
+    },
+    "transitionYear": 0,
+    "transitionAge": 67,
+    "tailRiskEnabled": false,
+    "tailRiskModel": "event_injection",
+    "tailRiskAnnualProbabilityPct": 0,
+    "tailRiskReturnShockPct": -35,
+    "tailRiskInflationShockPct": 6,
+    "tailRiskDurationYears": 1,
+    "tailRiskCooldownYears": 10,
+    "tailRiskValidationErrors": [],
+    "tailRiskConfigValid": true,
+    "tailRiskHorizonYears": 35,
+    "detailledTranches": [
+      {
+        "schemaVersion": 2,
+        "trancheId": "muster_a:muster_a_lot_1",
+        "name": "Muster Aktien-ETF",
+        "type": "aktien_alt",
+        "category": "equity",
+        "ticker": "VWRL.DE",
+        "isin": "IE00B3RBWM25",
+        "shares": 2078.1354451561238,
+        "purchasePrice": 53.250829,
+        "currentPrice": 86.616106,
+        "asOf": 1792713600,
+        "purchaseDate": "2016-06-15",
+        "tqf": 0.3,
+        "taxExempt": false,
+        "notes": "Synthetischer Musterbestand",
+        "marketValue": 180000,
+        "costBasis": 110662.43522884764,
+        "instrumentId": "isin:IE00B3RBWM25",
+        "sourceProfileId": "muster_a"
+      },
+      {
+        "schemaVersion": 2,
+        "trancheId": "muster_a:muster_a_lot_2",
+        "name": "Muster Aktien-ETF",
+        "type": "aktien_neu",
+        "category": "equity",
+        "ticker": "VWCE.DE",
+        "isin": "IE00BK5BQT80",
+        "shares": 1245.93530910063,
+        "purchasePrice": 121.41709,
+        "currentPrice": 144.46978,
+        "asOf": 1792713600,
+        "purchaseDate": "2020-05-18",
+        "tqf": 0.3,
+        "taxExempt": false,
+        "notes": "Synthetischer Musterbestand",
+        "marketValue": 180000,
+        "costBasis": 151277.83955924903,
+        "instrumentId": "isin:IE00BK5BQT80",
+        "sourceProfileId": "muster_a"
+      },
+      {
+        "schemaVersion": 2,
+        "trancheId": "muster_a:muster_a_lot_3",
+        "name": "Muster Geldmarkt",
+        "type": "geldmarkt",
+        "category": "money_market",
+        "ticker": "XEON.DE",
+        "isin": "LU0290358497",
+        "shares": 296.3488805392226,
+        "purchasePrice": 116.070752,
+        "currentPrice": 121.478441,
+        "asOf": 1792713600,
+        "purchaseDate": "2024-04-12",
+        "tqf": 0,
+        "taxExempt": false,
+        "notes": "Synthetischer Musterbestand",
+        "marketValue": 36000,
+        "costBasis": 34397.437418545735,
+        "instrumentId": "isin:LU0290358497",
+        "sourceProfileId": "muster_a"
+      },
+      {
+        "schemaVersion": 2,
+        "trancheId": "muster_b:muster_b_lot_1",
+        "name": "Muster Aktien-ETF",
+        "type": "aktien_alt",
+        "category": "equity",
+        "ticker": "VWRL.DE",
+        "isin": "IE00B3RBWM25",
+        "shares": 1847.2315068054434,
+        "purchasePrice": 53.250829,
+        "currentPrice": 86.616106,
+        "asOf": 1792713600,
+        "purchaseDate": "2016-06-15",
+        "tqf": 0.3,
+        "taxExempt": false,
+        "notes": "Synthetischer Musterbestand",
+        "marketValue": 160000,
+        "costBasis": 98366.60909230901,
+        "instrumentId": "isin:IE00B3RBWM25",
+        "sourceProfileId": "muster_b"
+      },
+      {
+        "schemaVersion": 2,
+        "trancheId": "muster_b:muster_b_lot_2",
+        "name": "Muster Aktien-ETF",
+        "type": "aktien_neu",
+        "category": "equity",
+        "ticker": "VWCE.DE",
+        "isin": "IE00BK5BQT80",
+        "shares": 1245.93530910063,
+        "purchasePrice": 132.801431,
+        "currentPrice": 144.46978,
+        "asOf": 1792713600,
+        "purchaseDate": "2025-02-14",
+        "tqf": 0.3,
+        "taxExempt": false,
+        "notes": "Synthetischer Musterbestand",
+        "marketValue": 180000,
+        "costBasis": 165461.991981991,
+        "instrumentId": "isin:IE00BK5BQT80",
+        "sourceProfileId": "muster_b"
+      },
+      {
+        "schemaVersion": 2,
+        "trancheId": "muster_b:muster_b_lot_3",
+        "name": "Muster Geldmarkt",
+        "type": "geldmarkt",
+        "category": "money_market",
+        "ticker": "XEON.DE",
+        "isin": "LU0290358497",
+        "shares": 197.56592035948174,
+        "purchasePrice": 116.070752,
+        "currentPrice": 121.478441,
+        "asOf": 1792713600,
+        "purchaseDate": "2024-04-12",
+        "tqf": 0,
+        "taxExempt": false,
+        "notes": "Synthetischer Musterbestand",
+        "marketValue": 24000,
+        "costBasis": 22931.624945697156,
+        "instrumentId": "isin:LU0290358497",
+        "sourceProfileId": "muster_b"
+      }
+    ],
+    "simulationSourceProfileId": "muster_a",
+    "floorBedarf": 30000,
+    "flexBedarf": 30000,
+    "entnahmeStrategie": "standard",
+    "mode": "standard",
+    "bondTargetFactor": 5,
+    "drawdownTrigger": 15,
+    "bondRefillThreshold": null,
+    "householdWithdrawalMode": "tax_optimized",
+    "simulationPeople": [
+      {
+        "profileId": "muster_a",
+        "name": "Max",
+        "tagesgeld": 18000,
+        "sparerPauschbetrag": 1000,
+        "taxState": {
+          "lossCarry": 0
+        },
+        "kirchensteuerSatz": 0,
+        "liquidityRunwayYears": 5
+      },
+      {
+        "profileId": "muster_b",
+        "name": "Erika",
+        "tagesgeld": 12000,
+        "sparerPauschbetrag": 1000,
+        "taxState": {
+          "lossCarry": 0
+        },
+        "kirchensteuerSatz": 0,
+        "liquidityRunwayYears": 5
+      }
+    ]
+  },
+  "definitions": {
+    "yearsToGrade4": "Jahre ab Start bis zum ersten Grad >=4, nur erreichte Pfade; Anzahl separat, Tod/Horizont konkurrieren.",
+    "careYearsTotal": "Summe Pflegepersonenjahre Max + Erika, auch nach Ruin; Sterbejahr halb.",
+    "grade5Years": "Pflegejahre Erika in Grad 5, auch nach Ruin; Sterbejahr halb.",
+    "lifeYears": "Verbleibende Lebensjahre Erika ab Start, Sterbejahr halb, bei Horizont rechtszensiert.",
+    "money": "Endvermögen real in Euro zum Start; Grundbedarf gedeckt = 100 % minus Ruinquote.",
+    "historical": "Unabhängige Gegenprobe: Blockbootstrap aus 1925–1999, Blockgröße 3; kein Marktregime."
+  },
+  "before": {
+    "synthetic": true,
+    "baseline": "aaec0829",
+    "testDate": "2026-10-24",
+    "runtime": {
+      "node": "v22.23.2",
+      "platform": "linux",
+      "arch": "x64"
+    },
+    "selection": "main",
+    "slowerFactor": 0.5,
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "definitions": {
+      "yearsToGrade4": "Jahre ab Start bis zum ersten Grad >=4, nur erreichte Pfade; Anzahl separat, Tod/Horizont konkurrieren.",
+      "careYearsTotal": "Summe Pflegepersonenjahre Max + Erika, auch nach Ruin; Sterbejahr halb.",
+      "grade5Years": "Pflegejahre Erika in Grad 5, auch nach Ruin; Sterbejahr halb.",
+      "lifeYears": "Verbleibende Lebensjahre Erika ab Start, Sterbejahr halb, bei Horizont rechtszensiert.",
+      "money": "Endvermögen real in Euro zum Start; Grundbedarf gedeckt = 100 % minus Ruinquote.",
+      "historical": "Unabhängige Gegenprobe: Blockbootstrap aus 1925–1999, Blockgröße 3; kein Marktregime."
+    },
+    "scenarios": {
+      "usual": {
+        "inputsSha256": "44463c63ee0888dce2c71c9e7a14a56f16b86b5d567818dc432989b98b9c36a5",
+        "coveredPct": 96.7,
+        "ruin": 66,
+        "meanYearsToGrade4": 7.767540751240255,
+        "reachedGrade4": 1411,
+        "meanCareYearsTotal": 15.8225,
+        "meanErikaCareYears": 13.4355,
+        "meanGrade5Years": 2.09225,
+        "meanErikaLifeYears": 13.4355,
+        "meanErikaDeathAgeRestricted": 77.4355,
+        "erikaCensored": 0,
+        "realEndP50": 1574124.8302137007,
+        "completeChunksSha256": "021e59215a7439971252177383a4ade1fe6a8a1958c65ec40b4e82953064acad",
+        "lifePathsSha256": "27196928bf4faab7326dc18ba3657baafcba9466209dd9bb3ccf1dc9c4872f43",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "sha256": "c7429c62c1152b3f6f2d4e4e2eb3a4863a24bb82bfeb9ec7899398d9157b704a"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "sha256": "772a3356a7142c6cc9bae07b85b902d1af69bf70b435135fa380e51757df5874"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "sha256": "aae324cda4a14740afcfe8a8d9049561c7ea072a2f33c786a12cf817865e38aa"
+          }
+        ]
+      },
+      "slower": {
+        "inputsSha256": "d4646db69b7caf147bd713568e961a560db6197189997ac51ce884f5848c08fc",
+        "coveredPct": 98,
+        "ruin": 40,
+        "meanYearsToGrade4": 9.461728395061728,
+        "reachedGrade4": 1215,
+        "meanCareYearsTotal": 16.86975,
+        "meanErikaCareYears": 14.46625,
+        "meanGrade5Years": 1.54375,
+        "meanErikaLifeYears": 14.46625,
+        "meanErikaDeathAgeRestricted": 78.46625,
+        "erikaCensored": 1,
+        "realEndP50": 1808825.1179074477,
+        "completeChunksSha256": "19e5dfe835fad923be1d39c544dd28e4ce3c73583d84506909125def777d3ff4",
+        "lifePathsSha256": "a219554451c0c608c66627dcaa3a5a447687a7a5a256c4abbe6db1318ef11686",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "sha256": "9ff2e81f0623a148afada7670fded121fcfc50e21949ab3904a5c22ff8cf327a"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "sha256": "422f569797f56160ecfc16fef05007dc312ad63b46383291f657f0f563fe9fef"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "sha256": "73c80462d001a99ac8d24817d8ab00ed0cd25e3793efbdfcebfb0b0defb5a731"
+          }
+        ]
+      },
+      "much_slower": {
+        "inputsSha256": "e4ca365b3b20444d6d28a1685873b683d8d288cb66b4f1426e31deebc8a674aa",
+        "coveredPct": 98.85,
+        "ruin": 23,
+        "meanYearsToGrade4": 11.005580357142858,
+        "reachedGrade4": 896,
+        "meanCareYearsTotal": 18.75625,
+        "meanErikaCareYears": 16.34025,
+        "meanGrade5Years": 0.9655,
+        "meanErikaLifeYears": 16.34025,
+        "meanErikaDeathAgeRestricted": 80.34025,
+        "erikaCensored": 1,
+        "realEndP50": 2169492.5700749196,
+        "completeChunksSha256": "c8acc4b7db09bf3a083de245c164e5d30e3e8d0e494f3b2e86bb17f17fa8defe",
+        "lifePathsSha256": "54c875038d6eb687b6433b8232e9b9f190915d321a949ca3036a41aebfc336c3",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "sha256": "0f3670e446e7061427b1908104bc0eb72b713f504bcb713b5008a5d8f60a61fb"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "sha256": "491015fff7aededc563894d7edd9dd8562c53bd5904eb91c7080540ed5b2bfc2"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "sha256": "7aa525296e132daf16ef1275a8c18e80ec9f4e8504583f077432f1420ef933f0"
+          }
+        ]
+      },
+      "none": {
+        "inputsSha256": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+        "coveredPct": 99.7,
+        "ruin": 6,
+        "meanYearsToGrade4": 18.10472972972973,
+        "reachedGrade4": 296,
+        "meanCareYearsTotal": 6.11025,
+        "meanErikaCareYears": 3.72075,
+        "meanGrade5Years": 0.104,
+        "meanErikaLifeYears": 19.276,
+        "meanErikaDeathAgeRestricted": 83.276,
+        "erikaCensored": 0,
+        "realEndP50": 2706228.0992867304,
+        "completeChunksSha256": "74dcb320648e0a1fd9799cd844ebcf8758a93dae50bbc80d51de78d7d9314ad4",
+        "lifePathsSha256": "06eda1667509f3f401417f506be3881b21c9c929961c6efdaad3e3a59ded2ff9",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "sha256": "e9b57dbe7c4815dc6b6c97564dacef1cd193d0d86079be7276c8a7b0a6e3a268"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "sha256": "099fc7f195af428666acf18d5154aacb21d81ca21a8ba52be051a93fbc0dce98"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "sha256": "21ec6cf86a9f949fb59feee25696a5c5de280b79d9afe13403ae669b0e5e9433"
+          }
+        ]
+      }
+    }
+  },
+  "after": {
+    "synthetic": true,
+    "baseline": "aaec0829",
+    "testDate": "2026-10-24",
+    "runtime": {
+      "node": "v22.23.2",
+      "platform": "linux",
+      "arch": "x64"
+    },
+    "selection": "main",
+    "slowerFactor": 0.5,
+    "parameters": {
+      "anzahl": 2000,
+      "maxDauer": 35,
+      "blockSize": 3,
+      "seed": 12345,
+      "methode": "regime_markov",
+      "rngMode": "per-run-seed",
+      "startYearMode": "UNIFORM"
+    },
+    "definitions": {
+      "yearsToGrade4": "Jahre ab Start bis zum ersten Grad >=4, nur erreichte Pfade; Anzahl separat, Tod/Horizont konkurrieren.",
+      "careYearsTotal": "Summe Pflegepersonenjahre Max + Erika, auch nach Ruin; Sterbejahr halb.",
+      "grade5Years": "Pflegejahre Erika in Grad 5, auch nach Ruin; Sterbejahr halb.",
+      "lifeYears": "Verbleibende Lebensjahre Erika ab Start, Sterbejahr halb, bei Horizont rechtszensiert.",
+      "money": "Endvermögen real in Euro zum Start; Grundbedarf gedeckt = 100 % minus Ruinquote.",
+      "historical": "Unabhängige Gegenprobe: Blockbootstrap aus 1925–1999, Blockgröße 3; kein Marktregime."
+    },
+    "scenarios": {
+      "usual": {
+        "inputsSha256": "44463c63ee0888dce2c71c9e7a14a56f16b86b5d567818dc432989b98b9c36a5",
+        "coveredPct": 96.7,
+        "ruin": 66,
+        "meanYearsToGrade4": 7.767540751240255,
+        "reachedGrade4": 1411,
+        "meanCareYearsTotal": 15.8225,
+        "meanErikaCareYears": 13.4355,
+        "meanGrade5Years": 2.09225,
+        "meanErikaLifeYears": 13.4355,
+        "meanErikaDeathAgeRestricted": 77.4355,
+        "erikaCensored": 0,
+        "realEndP50": 1574124.8302137007,
+        "completeChunksSha256": "021e59215a7439971252177383a4ade1fe6a8a1958c65ec40b4e82953064acad",
+        "lifePathsSha256": "27196928bf4faab7326dc18ba3657baafcba9466209dd9bb3ccf1dc9c4872f43",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "sha256": "c7429c62c1152b3f6f2d4e4e2eb3a4863a24bb82bfeb9ec7899398d9157b704a"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "sha256": "772a3356a7142c6cc9bae07b85b902d1af69bf70b435135fa380e51757df5874"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "sha256": "aae324cda4a14740afcfe8a8d9049561c7ea072a2f33c786a12cf817865e38aa"
+          }
+        ]
+      },
+      "slower": {
+        "inputsSha256": "d4646db69b7caf147bd713568e961a560db6197189997ac51ce884f5848c08fc",
+        "coveredPct": 99,
+        "ruin": 20,
+        "meanYearsToGrade4": 10.579374275782156,
+        "reachedGrade4": 863,
+        "meanCareYearsTotal": 17.3435,
+        "meanErikaCareYears": 14.91075,
+        "meanGrade5Years": 0.59075,
+        "meanErikaLifeYears": 14.91075,
+        "meanErikaDeathAgeRestricted": 78.91075000000001,
+        "erikaCensored": 1,
+        "realEndP50": 1972478.3163556806,
+        "completeChunksSha256": "406cf7d491a8a986378240d9dc6530fc15b6e0c73ead7f4db3d160e8025198c2",
+        "lifePathsSha256": "a4416941058cdaad676cc03a898520aed52e94edc93ac6bb79e3c4310764e76a",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "sha256": "9ff2e81f0623a148afada7670fded121fcfc50e21949ab3904a5c22ff8cf327a"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "sha256": "422f569797f56160ecfc16fef05007dc312ad63b46383291f657f0f563fe9fef"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "sha256": "73c80462d001a99ac8d24817d8ab00ed0cd25e3793efbdfcebfb0b0defb5a731"
+          }
+        ]
+      },
+      "much_slower": {
+        "inputsSha256": "e4ca365b3b20444d6d28a1685873b683d8d288cb66b4f1426e31deebc8a674aa",
+        "coveredPct": 99.8,
+        "ruin": 4,
+        "meanYearsToGrade4": 12.613466334164588,
+        "reachedGrade4": 401,
+        "meanCareYearsTotal": 19.22675,
+        "meanErikaCareYears": 16.80325,
+        "meanGrade5Years": 0.06525,
+        "meanErikaLifeYears": 16.80325,
+        "meanErikaDeathAgeRestricted": 80.80324999999999,
+        "erikaCensored": 1,
+        "realEndP50": 2320728.7159074573,
+        "completeChunksSha256": "5fb4914e0695e542a5161a2c2adfa83150f1bfdfeb90fbfd9b7d8a7d1ee0d6ad",
+        "lifePathsSha256": "1664b88f0a8c9f5412226ff4a4db6219745def45b99bb613d584e8c348c6b788",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "sha256": "0f3670e446e7061427b1908104bc0eb72b713f504bcb713b5008a5d8f60a61fb"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "sha256": "491015fff7aededc563894d7edd9dd8562c53bd5904eb91c7080540ed5b2bfc2"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "sha256": "7aa525296e132daf16ef1275a8c18e80ec9f4e8504583f077432f1420ef933f0"
+          }
+        ]
+      },
+      "none": {
+        "inputsSha256": "b62e42a4f1d0009ec683e3832b8db2a104bb535a68b24f5ef1f8c5210c01cdbf",
+        "coveredPct": 99.7,
+        "ruin": 6,
+        "meanYearsToGrade4": 18.10472972972973,
+        "reachedGrade4": 296,
+        "meanCareYearsTotal": 6.11025,
+        "meanErikaCareYears": 3.72075,
+        "meanGrade5Years": 0.104,
+        "meanErikaLifeYears": 19.276,
+        "meanErikaDeathAgeRestricted": 83.276,
+        "erikaCensored": 0,
+        "realEndP50": 2706228.0992867304,
+        "completeChunksSha256": "74dcb320648e0a1fd9799cd844ebcf8758a93dae50bbc80d51de78d7d9314ad4",
+        "lifePathsSha256": "06eda1667509f3f401417f506be3881b21c9c929961c6efdaad3e3a59ded2ff9",
+        "maxFlowDelta": 1.4901161193847656e-8,
+        "counterchecks": [
+          {
+            "period": "2000–2025",
+            "outcome": "completed",
+            "sha256": "e9b57dbe7c4815dc6b6c97564dacef1cd193d0d86079be7276c8a7b0a6e3a268"
+          },
+          {
+            "period": "1929–1963",
+            "outcome": "completed",
+            "sha256": "099fc7f195af428666acf18d5154aacb21d81ca21a8ba52be051a93fbc0dce98"
+          },
+          {
+            "period": "1965–1999",
+            "outcome": "completed",
+            "sha256": "21ec6cf86a9f949fb59feee25696a5c5de280b79d9afe13403ae669b0e5e9433"
+          }
+        ]
+      }
+    }
+  },
+  "historical": {
+    "before": {
+      "synthetic": true,
+      "baseline": "aaec0829",
+      "testDate": "2026-10-24",
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "linux",
+        "arch": "x64"
+      },
+      "selection": "historical",
+      "slowerFactor": 0.5,
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "block",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "definitions": {
+        "yearsToGrade4": "Jahre ab Start bis zum ersten Grad >=4, nur erreichte Pfade; Anzahl separat, Tod/Horizont konkurrieren.",
+        "careYearsTotal": "Summe Pflegepersonenjahre Max + Erika, auch nach Ruin; Sterbejahr halb.",
+        "grade5Years": "Pflegejahre Erika in Grad 5, auch nach Ruin; Sterbejahr halb.",
+        "lifeYears": "Verbleibende Lebensjahre Erika ab Start, Sterbejahr halb, bei Horizont rechtszensiert.",
+        "money": "Endvermögen real in Euro zum Start; Grundbedarf gedeckt = 100 % minus Ruinquote.",
+        "historical": "Unabhängige Gegenprobe: Blockbootstrap aus 1925–1999, Blockgröße 3; kein Marktregime."
+      },
+      "scenarios": {
+        "slower": {
+          "inputsSha256": "d4646db69b7caf147bd713568e961a560db6197189997ac51ce884f5848c08fc",
+          "coveredPct": 98.35,
+          "ruin": 33,
+          "meanYearsToGrade4": 9.523265306122449,
+          "reachedGrade4": 1225,
+          "meanCareYearsTotal": 16.90975,
+          "meanErikaCareYears": 14.572,
+          "meanGrade5Years": 1.5705,
+          "meanErikaLifeYears": 14.572,
+          "meanErikaDeathAgeRestricted": 78.572,
+          "erikaCensored": 0,
+          "realEndP50": 2106216.700565419,
+          "completeChunksSha256": "49f99369c6c667497cbee9480047a61a79e96d06f6e6e3cdc949484893441e67",
+          "lifePathsSha256": "37ee90ea372b328fdb67e53dc75c71cb9baef134a23accad5a1f8ba889d619bc",
+          "maxFlowDelta": 1.1175870895385742e-8,
+          "counterchecks": []
+        }
+      }
+    },
+    "after": {
+      "synthetic": true,
+      "baseline": "aaec0829",
+      "testDate": "2026-10-24",
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "linux",
+        "arch": "x64"
+      },
+      "selection": "historical",
+      "slowerFactor": 0.5,
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "block",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "definitions": {
+        "yearsToGrade4": "Jahre ab Start bis zum ersten Grad >=4, nur erreichte Pfade; Anzahl separat, Tod/Horizont konkurrieren.",
+        "careYearsTotal": "Summe Pflegepersonenjahre Max + Erika, auch nach Ruin; Sterbejahr halb.",
+        "grade5Years": "Pflegejahre Erika in Grad 5, auch nach Ruin; Sterbejahr halb.",
+        "lifeYears": "Verbleibende Lebensjahre Erika ab Start, Sterbejahr halb, bei Horizont rechtszensiert.",
+        "money": "Endvermögen real in Euro zum Start; Grundbedarf gedeckt = 100 % minus Ruinquote.",
+        "historical": "Unabhängige Gegenprobe: Blockbootstrap aus 1925–1999, Blockgröße 3; kein Marktregime."
+      },
+      "scenarios": {
+        "slower": {
+          "inputsSha256": "d4646db69b7caf147bd713568e961a560db6197189997ac51ce884f5848c08fc",
+          "coveredPct": 99.3,
+          "ruin": 14,
+          "meanYearsToGrade4": 10.55868544600939,
+          "reachedGrade4": 852,
+          "meanCareYearsTotal": 17.3135,
+          "meanErikaCareYears": 14.9705,
+          "meanGrade5Years": 0.593,
+          "meanErikaLifeYears": 14.9705,
+          "meanErikaDeathAgeRestricted": 78.9705,
+          "erikaCensored": 0,
+          "realEndP50": 2283856.10382881,
+          "completeChunksSha256": "2dbca24fb839e5488abd0ecbbecef70e908c0e7e6c4ab7d11d35680ce59f2914",
+          "lifePathsSha256": "c824ce376b496431fb1d6f2b1834e7be429c8d8f9230831faddefb014f90a340",
+          "maxFlowDelta": 1.1175870895385742e-8,
+          "counterchecks": []
+        }
+      }
+    }
+  },
+  "sensitivity": [
+    {
+      "synthetic": true,
+      "baseline": "aaec0829",
+      "testDate": "2026-10-24",
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "linux",
+        "arch": "x64"
+      },
+      "selection": "sensitivity",
+      "slowerFactor": 0.35,
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "definitions": {
+        "yearsToGrade4": "Jahre ab Start bis zum ersten Grad >=4, nur erreichte Pfade; Anzahl separat, Tod/Horizont konkurrieren.",
+        "careYearsTotal": "Summe Pflegepersonenjahre Max + Erika, auch nach Ruin; Sterbejahr halb.",
+        "grade5Years": "Pflegejahre Erika in Grad 5, auch nach Ruin; Sterbejahr halb.",
+        "lifeYears": "Verbleibende Lebensjahre Erika ab Start, Sterbejahr halb, bei Horizont rechtszensiert.",
+        "money": "Endvermögen real in Euro zum Start; Grundbedarf gedeckt = 100 % minus Ruinquote.",
+        "historical": "Unabhängige Gegenprobe: Blockbootstrap aus 1925–1999, Blockgröße 3; kein Marktregime."
+      },
+      "scenarios": {
+        "slower": {
+          "inputsSha256": "d4646db69b7caf147bd713568e961a560db6197189997ac51ce884f5848c08fc",
+          "coveredPct": 99.45,
+          "ruin": 11,
+          "meanYearsToGrade4": 11.931089743589743,
+          "reachedGrade4": 624,
+          "meanCareYearsTotal": 18.25175,
+          "meanErikaCareYears": 15.81175,
+          "meanGrade5Years": 0.219,
+          "meanErikaLifeYears": 15.81175,
+          "meanErikaDeathAgeRestricted": 79.81175,
+          "erikaCensored": 1,
+          "realEndP50": 2183001.662343707,
+          "completeChunksSha256": "a7eb076995edad5e1a3c564895458e35e137d53763e0c011f736fef8870a127f",
+          "lifePathsSha256": "4130f0b6c10e6313a58822caacf4c3c5c3e2e854c0dd0eef48c6b67f54dfbe7b",
+          "maxFlowDelta": 1.4901161193847656e-8,
+          "counterchecks": [
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "sha256": "9ff2e81f0623a148afada7670fded121fcfc50e21949ab3904a5c22ff8cf327a"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "sha256": "422f569797f56160ecfc16fef05007dc312ad63b46383291f657f0f563fe9fef"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "sha256": "73c80462d001a99ac8d24817d8ab00ed0cd25e3793efbdfcebfb0b0defb5a731"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "synthetic": true,
+      "baseline": "aaec0829",
+      "testDate": "2026-10-24",
+      "runtime": {
+        "node": "v22.23.2",
+        "platform": "linux",
+        "arch": "x64"
+      },
+      "selection": "sensitivity",
+      "slowerFactor": 0.65,
+      "parameters": {
+        "anzahl": 2000,
+        "maxDauer": 35,
+        "blockSize": 3,
+        "seed": 12345,
+        "methode": "regime_markov",
+        "rngMode": "per-run-seed",
+        "startYearMode": "UNIFORM"
+      },
+      "definitions": {
+        "yearsToGrade4": "Jahre ab Start bis zum ersten Grad >=4, nur erreichte Pfade; Anzahl separat, Tod/Horizont konkurrieren.",
+        "careYearsTotal": "Summe Pflegepersonenjahre Max + Erika, auch nach Ruin; Sterbejahr halb.",
+        "grade5Years": "Pflegejahre Erika in Grad 5, auch nach Ruin; Sterbejahr halb.",
+        "lifeYears": "Verbleibende Lebensjahre Erika ab Start, Sterbejahr halb, bei Horizont rechtszensiert.",
+        "money": "Endvermögen real in Euro zum Start; Grundbedarf gedeckt = 100 % minus Ruinquote.",
+        "historical": "Unabhängige Gegenprobe: Blockbootstrap aus 1925–1999, Blockgröße 3; kein Marktregime."
+      },
+      "scenarios": {
+        "slower": {
+          "inputsSha256": "d4646db69b7caf147bd713568e961a560db6197189997ac51ce884f5848c08fc",
+          "coveredPct": 98.15,
+          "ruin": 37,
+          "meanYearsToGrade4": 9.717015468607825,
+          "reachedGrade4": 1099,
+          "meanCareYearsTotal": 16.73075,
+          "meanErikaCareYears": 14.316,
+          "meanGrade5Years": 0.96425,
+          "meanErikaLifeYears": 14.316,
+          "meanErikaDeathAgeRestricted": 78.316,
+          "erikaCensored": 0,
+          "realEndP50": 1827539.6557618845,
+          "completeChunksSha256": "6f98a2f6b3afe9d185a91a1b124cbe4fd119ed68bbd88890ebfede317dae5026",
+          "lifePathsSha256": "e94b7b2dcd944e889f21e61776566315a41ae3301fc5f35ba010a6666b3f4aa3",
+          "maxFlowDelta": 1.4901161193847656e-8,
+          "counterchecks": [
+            {
+              "period": "2000–2025",
+              "outcome": "completed",
+              "sha256": "9ff2e81f0623a148afada7670fded121fcfc50e21949ab3904a5c22ff8cf327a"
+            },
+            {
+              "period": "1929–1963",
+              "outcome": "completed",
+              "sha256": "422f569797f56160ecfc16fef05007dc312ad63b46383291f657f0f563fe9fef"
+            },
+            {
+              "period": "1965–1999",
+              "outcome": "completed",
+              "sha256": "73c80462d001a99ac8d24817d8ab00ed0cd25e3793efbdfcebfb0b0defb5a731"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "byteEquality": {
+    "usualCompleteMcSha256": "021e59215a7439971252177383a4ade1fe6a8a1958c65ec40b4e82953064acad",
+    "noCurrentGradeCompleteMcSha256": "74dcb320648e0a1fd9799cd844ebcf8758a93dae50bbc80d51de78d7d9314ad4",
+    "allTwelveBacktestsSha256": "9cbe1e6f7902910665af0c2fd1406cdf9e20b33a454a9290423c5420de1aa0cb",
+    "backtestCount": 12,
+    "policy": "SHA-256 über vollständige serialisierte Ergebnisse ohne Feldfilter; MC sequenziell in 100er-Chunks."
+  }
+}

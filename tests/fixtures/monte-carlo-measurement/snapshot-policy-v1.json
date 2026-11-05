@@ -1,0 +1,72 @@
+{
+  "schemaVersion": "monte-carlo-snapshot-policy-v1",
+  "referenceClasses": [
+    {
+      "id": "pre-hardening-v1",
+      "file": "pre-hardening-v1.json",
+      "immutable": true,
+      "overwriteAllowed": false,
+      "purpose": "Characterize the implementation before semantic hardening."
+    },
+    {
+      "idPattern": "post-slice-{sliceNumber}-v{revision}",
+      "filePattern": "post-slice-{sliceNumber}-v{revision}.json",
+      "immutableAfterReview": true,
+      "overwriteAllowed": false,
+      "requiresDeltaLedger": true,
+      "purpose": "Record an explicitly reviewed semantic transition without changing earlier references."
+    },
+    {
+      "idPattern": "post-suite-data-{sliceNumber}-v{revision}",
+      "filePattern": "post-suite-data-{sliceNumber}-v{revision}.json",
+      "immutableAfterReview": true,
+      "overwriteAllowed": false,
+      "requiresDeltaLedger": true,
+      "purpose": "Record Suite-Datenintegritaet semantic transitions without overwriting the completed Monte Carlo hardening references."
+    },
+    {
+      "idPattern": "post-backtest-data-{sliceNumber}-v{revision}",
+      "filePattern": "post-backtest-data-{sliceNumber}-v{revision}.json",
+      "immutableAfterReview": true,
+      "overwriteAllowed": false,
+      "requiresDeltaLedger": true,
+      "purpose": "Record Backtest-Datenpruefung data transitions without overwriting reviewed Monte Carlo references."
+    },
+    {
+      "id": "monte-carlo-v1-final",
+      "file": "monte-carlo-v1-final.json",
+      "candidateOnlyUntilExternalApproval": true,
+      "overwriteAllowed": false,
+      "purpose": "Integration candidate created in Slice 12."
+    }
+  ],
+  "pendingDataCandidates": [
+    "post-backtest-data-02-v3",
+    "post-backtest-data-03-v1",
+    "post-backtest-data-04-v1",
+    "post-backtest-data-05-v1",
+    "post-backtest-data-06-v2",
+    "post-backtest-data-07-v1"
+  ],
+  "comparisonRules": {
+    "sameRuntime": "exact",
+    "crossRuntime": "field-specific tolerances declared in the snapshot before execution",
+    "discreteFields": "exact-always",
+    "widenToleranceAfterFailure": false,
+    "unexplainedDelta": "block"
+  },
+  "historicalFixtureCompatibility": {
+    "appliesToSnapshotIds": [
+      "post-backtest-data-03-v1",
+      "post-backtest-data-04-v1",
+      "post-backtest-data-05-v1",
+      "post-backtest-data-06-v1",
+      "post-backtest-data-06-v2"
+    ],
+    "ignoredResultPaths": [
+      "contracts.snapshotPolicy.currentReference",
+      "contracts.snapshotPolicy.ignoredHistoricalFixtureFields"
+    ],
+    "reason": "Immutable pending fixtures retain snapshot-policy metadata written by their historical runtime. Comparison removes only these non-financial fixture fields; the public product contract does not carry fixture-specific ignore paths."
+  }
+}

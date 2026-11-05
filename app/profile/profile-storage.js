@@ -1,0 +1,11 @@
+export { HOUSEHOLD_OWNED_BALANCE_STATE_KEYS, createProfileOwnedBalanceState, mergeProfileLiveData } from './profile-storage/balance-ownership.js';
+export { PROFILE_LIVE_BASE_KEY, profileLiveBaseRecord, trackCurrentProfileLiveBase } from './profile-storage/live-base.js';
+export { ProfileRecoveryError } from './profile-storage/storage-access.js';
+export { assertProfileIdentityRecords, assertProfileDataLoadable, getProfileRecoveryFromError } from './profile-storage/load-guards.js';
+export { assertProfileContextReady, getCurrentProfileId, setCurrentProfileId, listProfiles, getProfileMeta, getProfileData, createProfile, renameProfile, setProfileVerbundMembership, updateProfileData, getActiveProfileId, ensureProfileRegistry } from './profile-storage/registry-context.js';
+export { saveCurrentProfileFromLocalStorage, loadProfileIntoLocalStorage, patchInactiveProfileQuotes } from './profile-storage/live-storage.js';
+export { deleteProfile, switchProfile } from './profile-storage/profile-selection.js';
+export { exportProfilesBundle, exportProfilesBundleToWindowName, importProfilesBundle, importProfilesBundleFromWindowName } from './profile-storage/bundle-transfer.js';
+export { PROFILE_RECOVERY_SCHEMA, PROFILE_RECOVERY_SCHEMA_VERSION, createProfileRecoveryDocument } from './profile-storage/recovery-document.js';
+export { getLastProfileBootstrapResult, bootstrapProfileContext, resetProfileRecovery } from './profile-storage/bootstrap-recovery.js';
+export { hasProfileScopedDataInLocalStorage } from './profile-live-storage.js';

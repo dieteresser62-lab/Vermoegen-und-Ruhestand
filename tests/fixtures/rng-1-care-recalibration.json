@@ -1,0 +1,1214 @@
+{
+  "basisRevision": "7bb0c6b6579186615c63cbfb5972986411142d53",
+  "reproduce": "node scripts/calibrate-care-model.mjs --persons=200000 --seed=4102026; jeweils in Altstand, Altstand mit neuer simulator-utils.js und korrigiertem Stand ausführen.",
+  "method": "Unveränderte Kohorte: 200000 Personen je Geschlecht, Seed 4102026, Startbestand/amtliche Ziele/Toleranzen/Gradanteile unverändert. Altersbänder aufsteigend nur nachziehen, wenn die Abweichung mit neuem RNG größer als im Ausgangsstand ist. Binäre Suche auf fünf Nachkommastellen der Eintrittssumme; Ziel amtlicher Wert + min(0,02 Punkte, halbe alte absolute Abweichung). Gradanteil 0,5402/0,4598 unverändert. Alle sechs Summen steigen (G-V). Keine übrigen Bänder und keine Fortschritts-/Sterblichkeitsparameter geändert. Divers bleibt Mittelung.",
+  "changedEntryTotals": [
+    {
+      "sex": "m",
+      "age": 65,
+      "before": 0.009,
+      "after": 0.01016
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "before": 0.06565,
+      "after": 0.07015
+    },
+    {
+      "sex": "m",
+      "age": 85,
+      "before": 0.17299,
+      "after": 0.1822
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "before": 0.4379,
+      "after": 0.45781
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "before": 0.08726,
+      "after": 0.09713
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "before": 0.22982,
+      "after": 0.24528
+    }
+  ],
+  "changedContractLeaves": [
+    {
+      "path": "$.hashes.careEntryModelHash",
+      "before": "0156aad6aa24f80eaaf5988ee9881fbf98a9a505003725b9547db03c09efc3cd",
+      "after": "1274dd938dd6991b40b0aca21f00707dd6bf94b4abc62becae26bacea4e377c5"
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesByAgeAndInitialGrade.65.1",
+      "before": 0.0048618,
+      "after": 0.005175115
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesByAgeAndInitialGrade.65.2",
+      "before": 0.0041382,
+      "after": 0.004404885
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesByAgeAndInitialGrade.80.1",
+      "before": 0.04130099,
+      "after": 0.04518233000000001
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesByAgeAndInitialGrade.80.2",
+      "before": 0.03515401,
+      "after": 0.03845767
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesByAgeAndInitialGrade.85.1",
+      "before": 0.10879897999999999,
+      "after": 0.11546235
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesByAgeAndInitialGrade.85.2",
+      "before": 0.09260602,
+      "after": 0.09827765
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesByAgeAndInitialGrade.90.1",
+      "before": 0.26904931,
+      "after": 0.274427
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesByAgeAndInitialGrade.90.2",
+      "before": 0.22900568999999998,
+      "after": 0.23358299999999999
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.m.65.1",
+      "before": 0.0048618,
+      "after": 0.00548843
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.m.65.2",
+      "before": 0.0041382,
+      "after": 0.00467157
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.m.80.1",
+      "before": 0.03546413,
+      "after": 0.03789503
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.m.80.2",
+      "before": 0.03018587,
+      "after": 0.03225497
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.m.85.1",
+      "before": 0.0934492,
+      "after": 0.09842444
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.m.85.2",
+      "before": 0.0795408,
+      "after": 0.08377556
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.m.90.1",
+      "before": 0.23655358,
+      "after": 0.24730896
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.m.90.2",
+      "before": 0.20134642,
+      "after": 0.21050104
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.w.80.1",
+      "before": 0.04713785,
+      "after": 0.05246963
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.w.80.2",
+      "before": 0.04012215,
+      "after": 0.04466037
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.w.85.1",
+      "before": 0.12414876,
+      "after": 0.13250026
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.w.85.2",
+      "before": 0.10567124,
+      "after": 0.11277974
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.d.65.1",
+      "before": 0.0048618,
+      "after": 0.005175115
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.d.65.2",
+      "before": 0.0041382,
+      "after": 0.004404885
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.d.80.1",
+      "before": 0.04130099,
+      "after": 0.04518233000000001
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.d.80.2",
+      "before": 0.03515401,
+      "after": 0.03845767
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.d.85.1",
+      "before": 0.10879897999999999,
+      "after": 0.11546235
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.d.85.2",
+      "before": 0.09260602,
+      "after": 0.09827765
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.d.90.1",
+      "before": 0.26904931,
+      "after": 0.274427
+    },
+    {
+      "path": "$.care.entryModel.probabilitiesBySexAndAgeAndInitialGrade.d.90.2",
+      "before": 0.22900568999999998,
+      "after": 0.23358299999999999
+    }
+  ],
+  "sources": {
+    "scripts/calibrate-care-model.mjs": {
+      "beforeSha256": "c15b95696de2efca4e36292126fb2f5071572d252a5ac7298f25b5827dec0a9e",
+      "afterSha256": "c15b95696de2efca4e36292126fb2f5071572d252a5ac7298f25b5827dec0a9e"
+    },
+    "tests/care-model-calibration.test.mjs": {
+      "beforeSha256": "a298d3b4d88e8e4e5a6fa5942d2bed6d6d13ef8fa9ee57a6350be22d99ae9f42",
+      "afterSha256": "a298d3b4d88e8e4e5a6fa5942d2bed6d6d13ef8fa9ee57a6350be22d99ae9f42"
+    },
+    "scripts/build-german-demography-care-survivor-contract.mjs": {
+      "beforeSha256": "c29ed75dcc148a6542d7fdebcb844bc167b37e7445ad98cdd1ae890dd427eafd",
+      "afterSha256": "7b354be8b393bd367eecc26f67cc51516edaa8b70886525573b209eb15c44175"
+    },
+    "app/simulator/german-demography-care-survivor-contract.js": {
+      "beforeSha256": "5de3b99584e662c628f4b5d8d6e4dbc54ba0cb46db22986731d89661acb58a87",
+      "afterSha256": "92b5a44b64441814c22d9e0ef7b9cfdd4c11fa805f11a5d4b32be461ef81828e"
+    }
+  },
+  "oldGeneratorOldParameters": {
+    "personsPerSex": 200000,
+    "seed": 4102026,
+    "observation": "year-end surviving person-years; observed stock at 65; chronic care; no mortality improvement; care duration counted from age 65 only",
+    "initialStock": {
+      "runtimeRole": "offline_calibration_only_simulator_starts_without_care",
+      "source": "22421-02!I46 (male), I68 (female), ages 60-64; proxy for stock at age 65.",
+      "prevalencePctBySex": {
+        "m": 4.25,
+        "w": 4.42
+      },
+      "gradeDistribution": "22421-01!C34:C38, all ages; normalized over assigned grades 1-5."
+    },
+    "gradeReference": "All ages: tables 22421-01/-02 contain age and grade separately, no age-by-grade cross-tabulation.",
+    "bySex": {
+      "m": {
+        "initialCases": 8500,
+        "initialPrevalencePct": 4.25,
+        "cases": 99014,
+        "careYears": 480735,
+        "meanCareYearsPerCase": 4.855222493788757,
+        "deathsInCarePct": 49.507,
+        "prevalence": {
+          "65": {
+            "alive": 937039,
+            "care": 61955,
+            "modelPct": 6.611784568198336,
+            "officialPct": 6.57,
+            "tolerancePp": 3
+          },
+          "70": {
+            "alive": 797987,
+            "care": 82417,
+            "modelPct": 10.328113114624674,
+            "officialPct": 10.2,
+            "tolerancePp": 3
+          },
+          "75": {
+            "alive": 609483,
+            "care": 107846,
+            "modelPct": 17.694669088391308,
+            "officialPct": 16.48,
+            "tolerancePp": 3
+          },
+          "80": {
+            "alive": 369591,
+            "care": 106478,
+            "modelPct": 28.80968421850099,
+            "officialPct": 28.24,
+            "tolerancePp": 3
+          },
+          "85": {
+            "alive": 131923,
+            "care": 62648,
+            "modelPct": 47.48830757335718,
+            "officialPct": 47.45,
+            "tolerancePp": 3
+          },
+          "90": {
+            "alive": 13391,
+            "care": 9795,
+            "modelPct": 73.14614293181988,
+            "officialPct": 73.43,
+            "tolerancePp": 5
+          },
+          "95": {
+            "alive": 110,
+            "care": 89,
+            "modelPct": 80.9090909090909,
+            "officialPct": 84.74,
+            "tolerancePp": 5
+          }
+        }
+      },
+      "w": {
+        "initialCases": 8840,
+        "initialPrevalencePct": 4.42,
+        "cases": 132099,
+        "careYears": 771387.5,
+        "meanCareYearsPerCase": 5.839465098146087,
+        "deathsInCarePct": 66.0495,
+        "prevalence": {
+          "65": {
+            "alive": 963888,
+            "care": 67378,
+            "modelPct": 6.99023123018442,
+            "officialPct": 6.55,
+            "tolerancePp": 3
+          },
+          "70": {
+            "alive": 879080,
+            "care": 107199,
+            "modelPct": 12.194453292078082,
+            "officialPct": 11.11,
+            "tolerancePp": 3
+          },
+          "75": {
+            "alive": 738758,
+            "care": 169390,
+            "modelPct": 22.92902411885895,
+            "officialPct": 20.75,
+            "tolerancePp": 3
+          },
+          "80": {
+            "alive": 507484,
+            "care": 203732,
+            "modelPct": 40.1455021242049,
+            "officialPct": 39.07,
+            "tolerancePp": 3
+          },
+          "85": {
+            "alive": 207696,
+            "care": 135626,
+            "modelPct": 65.30024651413605,
+            "officialPct": 65.01,
+            "tolerancePp": 3
+          },
+          "90": {
+            "alive": 24205,
+            "care": 21796,
+            "modelPct": 90.04751084486676,
+            "officialPct": 89.42,
+            "tolerancePp": 5
+          },
+          "95": {
+            "alive": 220,
+            "care": 217,
+            "modelPct": 98.63636363636364,
+            "officialPct": 97.81,
+            "tolerancePp": 5
+          }
+        }
+      }
+    },
+    "gradeShares": [
+      {
+        "grade": 1,
+        "count": 143695,
+        "modelPct": 12.642908550845265,
+        "officialPct": 13.814287243694398,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 2,
+        "count": 432425,
+        "modelPct": 38.04662465708107,
+        "officialPct": 40.445880643188424,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 3,
+        "count": 336590,
+        "modelPct": 29.614646223800467,
+        "officialPct": 29.643913225921963,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 4,
+        "count": 150671,
+        "modelPct": 13.256687249134673,
+        "officialPct": 11.765248775901723,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 5,
+        "count": 73185,
+        "modelPct": 6.439133319138528,
+        "officialPct": 4.2938060882068,
+        "tolerancePp": 4
+      }
+    ],
+    "passed": true
+  },
+  "newGeneratorOldParameters": {
+    "personsPerSex": 200000,
+    "seed": 4102026,
+    "observation": "year-end surviving person-years; observed stock at 65; chronic care; no mortality improvement; care duration counted from age 65 only",
+    "initialStock": {
+      "runtimeRole": "offline_calibration_only_simulator_starts_without_care",
+      "source": "22421-02!I46 (male), I68 (female), ages 60-64; proxy for stock at age 65.",
+      "prevalencePctBySex": {
+        "m": 4.25,
+        "w": 4.42
+      },
+      "gradeDistribution": "22421-01!C34:C38, all ages; normalized over assigned grades 1-5."
+    },
+    "gradeReference": "All ages: tables 22421-01/-02 contain age and grade separately, no age-by-grade cross-tabulation.",
+    "bySex": {
+      "m": {
+        "initialCases": 8500,
+        "initialPrevalencePct": 4.25,
+        "cases": 101880,
+        "careYears": 518498,
+        "meanCareYearsPerCase": 5.089301138594425,
+        "deathsInCarePct": 50.94,
+        "prevalence": {
+          "65": {
+            "alive": 945407,
+            "care": 59483,
+            "modelPct": 6.291787558162781,
+            "officialPct": 6.57,
+            "tolerancePp": 3
+          },
+          "70": {
+            "alive": 824394,
+            "care": 80037,
+            "modelPct": 9.708585943129135,
+            "officialPct": 10.2,
+            "tolerancePp": 3
+          },
+          "75": {
+            "alive": 657068,
+            "care": 108531,
+            "modelPct": 16.517468511630454,
+            "officialPct": 16.48,
+            "tolerancePp": 3
+          },
+          "80": {
+            "alive": 433653,
+            "care": 118232,
+            "modelPct": 27.264195105303088,
+            "officialPct": 28.24,
+            "tolerancePp": 3
+          },
+          "85": {
+            "alive": 183048,
+            "care": 83163,
+            "modelPct": 45.43234561426511,
+            "officialPct": 47.45,
+            "tolerancePp": 3
+          },
+          "90": {
+            "alive": 25111,
+            "care": 17772,
+            "modelPct": 70.77376448568357,
+            "officialPct": 73.43,
+            "tolerancePp": 5
+          },
+          "95": {
+            "alive": 405,
+            "care": 340,
+            "modelPct": 83.95061728395062,
+            "officialPct": 84.74,
+            "tolerancePp": 5
+          }
+        }
+      },
+      "w": {
+        "initialCases": 8840,
+        "initialPrevalencePct": 4.42,
+        "cases": 134060,
+        "careYears": 817990,
+        "meanCareYearsPerCase": 6.101670893629718,
+        "deathsInCarePct": 67.03,
+        "prevalence": {
+          "65": {
+            "alive": 969483,
+            "care": 64876,
+            "modelPct": 6.6918140906029295,
+            "officialPct": 6.55,
+            "tolerancePp": 3
+          },
+          "70": {
+            "alive": 896805,
+            "care": 102008,
+            "modelPct": 11.374602059533567,
+            "officialPct": 11.11,
+            "tolerancePp": 3
+          },
+          "75": {
+            "alive": 774268,
+            "care": 164188,
+            "modelPct": 21.20557739697366,
+            "officialPct": 20.75,
+            "tolerancePp": 3
+          },
+          "80": {
+            "alive": 568541,
+            "care": 212772,
+            "modelPct": 37.42421390893533,
+            "officialPct": 39.07,
+            "tolerancePp": 3
+          },
+          "85": {
+            "alive": 272300,
+            "care": 168795,
+            "modelPct": 61.988615497612926,
+            "officialPct": 65.01,
+            "tolerancePp": 3
+          },
+          "90": {
+            "alive": 42851,
+            "care": 37701,
+            "modelPct": 87.98161069753331,
+            "officialPct": 89.42,
+            "tolerancePp": 5
+          },
+          "95": {
+            "alive": 633,
+            "care": 620,
+            "modelPct": 97.94628751974723,
+            "officialPct": 97.81,
+            "tolerancePp": 5
+          }
+        }
+      }
+    },
+    "gradeShares": [
+      {
+        "grade": 1,
+        "count": 151349,
+        "modelPct": 12.420743887246639,
+        "officialPct": 13.814287243694398,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 2,
+        "count": 491392,
+        "modelPct": 40.3270201999478,
+        "officialPct": 40.445880643188424,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 3,
+        "count": 357575,
+        "modelPct": 29.34507327753878,
+        "officialPct": 29.643913225921963,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 4,
+        "count": 149629,
+        "modelPct": 12.27958881198308,
+        "officialPct": 11.765248775901723,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 5,
+        "count": 68573,
+        "modelPct": 5.627573823283694,
+        "officialPct": 4.2938060882068,
+        "tolerancePp": 4
+      }
+    ],
+    "passed": false
+  },
+  "newGeneratorNewParameters": {
+    "personsPerSex": 200000,
+    "seed": 4102026,
+    "observation": "year-end surviving person-years; observed stock at 65; chronic care; no mortality improvement; care duration counted from age 65 only",
+    "initialStock": {
+      "runtimeRole": "offline_calibration_only_simulator_starts_without_care",
+      "source": "22421-02!I46 (male), I68 (female), ages 60-64; proxy for stock at age 65.",
+      "prevalencePctBySex": {
+        "m": 4.25,
+        "w": 4.42
+      },
+      "gradeDistribution": "22421-01!C34:C38, all ages; normalized over assigned grades 1-5."
+    },
+    "gradeReference": "All ages: tables 22421-01/-02 contain age and grade separately, no age-by-grade cross-tabulation.",
+    "bySex": {
+      "m": {
+        "initialCases": 8500,
+        "initialPrevalencePct": 4.25,
+        "cases": 103688,
+        "careYears": 532591,
+        "meanCareYearsPerCase": 5.136476737906026,
+        "deathsInCarePct": 51.844,
+        "prevalence": {
+          "65": {
+            "alive": 945276,
+            "care": 62381,
+            "modelPct": 6.59923662507035,
+            "officialPct": 6.57,
+            "tolerancePp": 3
+          },
+          "70": {
+            "alive": 823550,
+            "care": 83645,
+            "modelPct": 10.156638941169328,
+            "officialPct": 10.2,
+            "tolerancePp": 3
+          },
+          "75": {
+            "alive": 655367,
+            "care": 110166,
+            "modelPct": 16.809818010366712,
+            "officialPct": 16.48,
+            "tolerancePp": 3
+          },
+          "80": {
+            "alive": 431066,
+            "care": 121792,
+            "modelPct": 28.25367809105798,
+            "officialPct": 28.24,
+            "tolerancePp": 3
+          },
+          "85": {
+            "alive": 179476,
+            "care": 85189,
+            "modelPct": 47.46539927344046,
+            "officialPct": 47.45,
+            "tolerancePp": 3
+          },
+          "90": {
+            "alive": 23547,
+            "care": 17296,
+            "modelPct": 73.45309381237524,
+            "officialPct": 73.43,
+            "tolerancePp": 5
+          },
+          "95": {
+            "alive": 324,
+            "care": 278,
+            "modelPct": 85.80246913580247,
+            "officialPct": 84.74,
+            "tolerancePp": 5
+          }
+        }
+      },
+      "w": {
+        "initialCases": 8840,
+        "initialPrevalencePct": 4.42,
+        "cases": 135742,
+        "careYears": 830803,
+        "meanCareYearsPerCase": 6.120456454155677,
+        "deathsInCarePct": 67.871,
+        "prevalence": {
+          "65": {
+            "alive": 969483,
+            "care": 64876,
+            "modelPct": 6.6918140906029295,
+            "officialPct": 6.55,
+            "tolerancePp": 3
+          },
+          "70": {
+            "alive": 896805,
+            "care": 102008,
+            "modelPct": 11.374602059533567,
+            "officialPct": 11.11,
+            "tolerancePp": 3
+          },
+          "75": {
+            "alive": 774268,
+            "care": 164188,
+            "modelPct": 21.20557739697366,
+            "officialPct": 20.75,
+            "tolerancePp": 3
+          },
+          "80": {
+            "alive": 567331,
+            "care": 221770,
+            "modelPct": 39.090055011977135,
+            "officialPct": 39.07,
+            "tolerancePp": 3
+          },
+          "85": {
+            "alive": 267172,
+            "care": 173756,
+            "modelPct": 65.03525818573803,
+            "officialPct": 65.01,
+            "tolerancePp": 3
+          },
+          "90": {
+            "alive": 40164,
+            "care": 35788,
+            "modelPct": 89.10467084951698,
+            "officialPct": 89.42,
+            "tolerancePp": 5
+          },
+          "95": {
+            "alive": 557,
+            "care": 546,
+            "modelPct": 98.02513464991023,
+            "officialPct": 97.81,
+            "tolerancePp": 5
+          }
+        }
+      }
+    },
+    "gradeShares": [
+      {
+        "grade": 1,
+        "count": 154035,
+        "modelPct": 12.385430645689121,
+        "officialPct": 13.814287243694398,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 2,
+        "count": 502748,
+        "modelPct": 40.42425738474317,
+        "officialPct": 40.445880643188424,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 3,
+        "count": 365216,
+        "modelPct": 29.36577686042781,
+        "officialPct": 29.643913225921963,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 4,
+        "count": 152362,
+        "modelPct": 12.25091040372958,
+        "officialPct": 11.765248775901723,
+        "tolerancePp": 4
+      },
+      {
+        "grade": 5,
+        "count": 69318,
+        "modelPct": 5.573624705410319,
+        "officialPct": 4.2938060882068,
+        "tolerancePp": 4
+      }
+    ],
+    "passed": true
+  },
+  "allBandsComparison": [
+    {
+      "sex": "m",
+      "age": 65,
+      "officialPct": 6.57,
+      "beforeDeviationPp": 0.041784568198335315,
+      "afterDeviationPp": 0.029236625070349298,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "m",
+      "age": 70,
+      "officialPct": 10.2,
+      "beforeDeviationPp": 0.128113114624675,
+      "afterDeviationPp": -0.043361058830670984,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "m",
+      "age": 75,
+      "officialPct": 16.48,
+      "beforeDeviationPp": 1.2146690883913074,
+      "afterDeviationPp": 0.32981801036671143,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "officialPct": 28.24,
+      "beforeDeviationPp": 0.569684218500992,
+      "afterDeviationPp": 0.01367809105798301,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "m",
+      "age": 85,
+      "officialPct": 47.45,
+      "beforeDeviationPp": 0.03830757335718005,
+      "afterDeviationPp": 0.015399273440458217,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "officialPct": 73.43,
+      "beforeDeviationPp": -0.2838570681801258,
+      "afterDeviationPp": 0.023093812375236666,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "m",
+      "age": 95,
+      "officialPct": 84.74,
+      "beforeDeviationPp": -3.8309090909090884,
+      "afterDeviationPp": 1.0624691358024734,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "w",
+      "age": 65,
+      "officialPct": 6.55,
+      "beforeDeviationPp": 0.4402312301844198,
+      "afterDeviationPp": 0.1418140906029297,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "w",
+      "age": 70,
+      "officialPct": 11.11,
+      "beforeDeviationPp": 1.0844532920780825,
+      "afterDeviationPp": 0.2646020595335674,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "w",
+      "age": 75,
+      "officialPct": 20.75,
+      "beforeDeviationPp": 2.179024118858951,
+      "afterDeviationPp": 0.4555773969736592,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "officialPct": 39.07,
+      "beforeDeviationPp": 1.0755021242049025,
+      "afterDeviationPp": 0.020055011977134996,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "officialPct": 65.01,
+      "beforeDeviationPp": 0.29024651413604374,
+      "afterDeviationPp": 0.025258185738024963,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "w",
+      "age": 90,
+      "officialPct": 89.42,
+      "beforeDeviationPp": 0.6275108448667623,
+      "afterDeviationPp": -0.31532915048302357,
+      "deviationNoLargerThanBefore": true
+    },
+    {
+      "sex": "w",
+      "age": 95,
+      "officialPct": 97.81,
+      "beforeDeviationPp": 0.826363636363638,
+      "afterDeviationPp": 0.21513464991022602,
+      "deviationNoLargerThanBefore": true
+    }
+  ],
+  "searchTrials": [
+    {
+      "sex": "m",
+      "age": 65,
+      "total": 0.0065,
+      "value": 5.644455160336536,
+      "target": 6.59
+    },
+    {
+      "sex": "m",
+      "age": 65,
+      "total": 0.00975,
+      "value": 6.490647552030331,
+      "target": 6.59
+    },
+    {
+      "sex": "m",
+      "age": 65,
+      "total": 0.01137,
+      "value": 6.907836266219751,
+      "target": 6.59
+    },
+    {
+      "sex": "m",
+      "age": 65,
+      "total": 0.01056,
+      "value": 6.693947158505441,
+      "target": 6.59
+    },
+    {
+      "sex": "m",
+      "age": 65,
+      "total": 0.01016,
+      "value": 6.59923662507035,
+      "target": 6.59
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "total": 0.10361,
+      "value": 34.24015911473664,
+      "target": 28.259999999999998
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "total": 0.06893,
+      "value": 28.03515321561489,
+      "target": 28.259999999999998
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "total": 0.08627,
+      "value": 31.119760088054772,
+      "target": 28.259999999999998
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "total": 0.0776,
+      "value": 29.56209726366019,
+      "target": 28.259999999999998
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "total": 0.07326,
+      "value": 28.7984655432251,
+      "target": 28.259999999999998
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "total": 0.0711,
+      "value": 28.417469036529585,
+      "target": 28.259999999999998
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "total": 0.07001,
+      "value": 28.228403080634685,
+      "target": 28.259999999999998
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "total": 0.07056,
+      "value": 28.324690541653617,
+      "target": 28.259999999999998
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "total": 0.07029,
+      "value": 28.278183644635405,
+      "target": 28.259999999999998
+    },
+    {
+      "sex": "m",
+      "age": 80,
+      "total": 0.07015,
+      "value": 28.25367809105798,
+      "target": 28.259999999999998
+    },
+    {
+      "sex": "m",
+      "age": 85,
+      "total": 0.25403,
+      "value": 56.073870388123794,
+      "target": 47.46915378667859
+    },
+    {
+      "sex": "m",
+      "age": 85,
+      "total": 0.16209,
+      "value": 44.82117128804147,
+      "target": 47.46915378667859
+    },
+    {
+      "sex": "m",
+      "age": 85,
+      "total": 0.20806,
+      "value": 50.64135454079015,
+      "target": 47.46915378667859
+    },
+    {
+      "sex": "m",
+      "age": 85,
+      "total": 0.18507,
+      "value": 47.84512817651817,
+      "target": 47.46915378667859
+    },
+    {
+      "sex": "m",
+      "age": 85,
+      "total": 0.17358,
+      "value": 46.39629637853321,
+      "target": 47.46915378667859
+    },
+    {
+      "sex": "m",
+      "age": 85,
+      "total": 0.17933,
+      "value": 47.10084851857004,
+      "target": 47.46915378667859
+    },
+    {
+      "sex": "m",
+      "age": 85,
+      "total": 0.1822,
+      "value": 47.46539927344046,
+      "target": 47.46915378667859
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "total": 0.35314,
+      "value": 65.5467666965669,
+      "target": 73.45
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "total": 0.43861,
+      "value": 71.88854749779031,
+      "target": 73.45
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "total": 0.48135,
+      "value": 75.04386152595319,
+      "target": 73.45
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "total": 0.45998,
+      "value": 73.57239972807614,
+      "target": 73.45
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "total": 0.44929,
+      "value": 72.62121148074566,
+      "target": 73.45
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "total": 0.45464,
+      "value": 73.1262975045545,
+      "target": 73.45
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "total": 0.45731,
+      "value": 73.39531329597554,
+      "target": 73.45
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "total": 0.45864,
+      "value": 73.54002973030367,
+      "target": 73.45
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "total": 0.45798,
+      "value": 73.46644010195412,
+      "target": 73.45
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "total": 0.45764,
+      "value": 73.41288377425793,
+      "target": 73.45
+    },
+    {
+      "sex": "m",
+      "age": 90,
+      "total": 0.45781,
+      "value": 73.45309381237524,
+      "target": 73.45
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "total": 0.13586,
+      "value": 45.43480925740701,
+      "target": 39.09
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "total": 0.08888,
+      "value": 37.68994714208293,
+      "target": 39.09
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "total": 0.11237,
+      "value": 41.657263926372124,
+      "target": 39.09
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "total": 0.10062,
+      "value": 39.67489570378994,
+      "target": 39.09
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "total": 0.09475,
+      "value": 38.655955180888455,
+      "target": 39.09
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "total": 0.09768,
+      "value": 39.17656806402708,
+      "target": 39.09
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "total": 0.09621,
+      "value": 38.91635165261219,
+      "target": 39.09
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "total": 0.09695,
+      "value": 39.05511922051918,
+      "target": 39.09
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "total": 0.09731,
+      "value": 39.11748271224324,
+      "target": 39.09
+    },
+    {
+      "sex": "w",
+      "age": 80,
+      "total": 0.09713,
+      "value": 39.090055011977135,
+      "target": 39.09
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "total": 0.32767,
+      "value": 72.22752324391995,
+      "target": 65.03
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "total": 0.2124,
+      "value": 61.72165724907339,
+      "target": 65.03
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "total": 0.27004,
+      "value": 67.39236809021583,
+      "target": 65.03
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "total": 0.24122,
+      "value": 64.62651917591599,
+      "target": 65.03
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "total": 0.25563,
+      "value": 66.06995452430623,
+      "target": 65.03
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "total": 0.24843,
+      "value": 65.34455443319588,
+      "target": 65.03
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "total": 0.24483,
+      "value": 64.99504126045545,
+      "target": 65.03
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "total": 0.24663,
+      "value": 65.17005784025606,
+      "target": 65.03
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "total": 0.24573,
+      "value": 65.07874118910988,
+      "target": 65.03
+    },
+    {
+      "sex": "w",
+      "age": 85,
+      "total": 0.24528,
+      "value": 65.03525818573803,
+      "target": 65.03
+    }
+  ]
+}

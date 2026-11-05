@@ -1,0 +1,698 @@
+{
+  "baseRevision": "94db2031",
+  "privacy": "Nur synthetische Testhaushalte, keine Nutzerexporte.",
+  "cause": "FR-20: tatsächlicher Auslöser und getrennte Diagnose; FR-33: Renditeannahme; FR-34: Folgeanker vor Rundung.",
+  "hashes": {
+    "832dc244733ac154d465fe07cf618c7d5318fd3360b01b8c36832b2cda460fc5": "7d487a9cc56b551b7fce1d5433ca63d6e0b1216e0bbb28a7de49179a254b5eb2",
+    "9f0944dd2469c674cd2dc26997973ed2f3ac6536a06b2e60b5891b969e626f0d": "b67d8f07fcffa09faf1cf7a83652a266364263ffa132bd7285cf4d27f00bb343",
+    "9e263745520a52e2cb4d29e3725e646d8a984bf013ccb692e78bd4161eae404d": "b36aa608d5c0451332c75efad00f8a1c6cb6d7f5a1cd5be66097494e1e0e545d",
+    "5bf4e5f56e31bdd537eab60a40dc02726e1743a84c7a06c0b045ba73ce3a7892": "c836f6a70bd12b327acff8ff09dea88a0963ea8624dfe7c0190cf258dba9b697",
+    "3e70b3b4afbecaa04dc98abfa74db3e60a65874eebdd5d6071d93a3389ef8782": "b2be0fbc49d047565d168d90ea642c2651a12bf11199b11f6617bc9807cd0b4c",
+    "416f319c1beac67a1b20006068cbea4e1feb19437608653d4e43231de63ae267": "0ca622bf902efd0ca6f3e8c5546ec9015f4539a3971115abac339adfe92dd335",
+    "3d3fbedb056469788fd1ef8b77fed541d45bca313329c0132c3033285a54a20b": "3aa7eb2d07e830792d42da27f39d8fc5038509cf68f88c39247f091aceee4bd9",
+    "395662c94bce1c1397e72163897a81f851fe968398339013c482fd51f50c1551": "4987f2890a00028c05476a8816f28d4e1c65076e1bfdaca11d76447265a7317f",
+    "24f28a344a88655419142c793823d5e144374f79ac6bc7d3a32fd9a1505540f1": "f54fa84794651a29d3f07a096df9942a7f750b0e86ec2a289581bae61f59eb75",
+    "655b41d2cadae97afe19a25bca9c6e956e0610bd4a0e7afb370ab2d9b8cdc387": "c12e991667ed28da619b3fbfd3db39ec23aee5a137c655c0eeef2c25018a0503",
+    "97f161502fc68b1d2ddd2b19773531bd3ba987ce83071de7dc10094ade57d685": "f3a6f21d17f4590e7b7ba0c9376c60b3fe88351089445397be1368f1da3179d5",
+    "4069e9987048229a4bb3bf687b2fdc802f35b343e1724a70ac2a4d75aa3d296d": "518735a217b66489dbfdc7872e71d8c7941662a32b1b024b6986209ea3d0d1f3",
+    "a0924ac00a6ad3a3f79cac5d73484e8c5a41cf9be0e25f0f1a26129cbecd0c1f": "e49a82ab7e635795e01a8514c6783b649ae870d0bcd2068c5a9e79b3fcd60b87",
+    "6e02affd11e0755af1f3b489b7c856db84224658d189b904cd2e89abeef3b212": "de2b3761429161c069697620d8a216d11fabff84acf7167df195cf758dc86603",
+    "d6fc213ef868f3332bb913ef0ea8706847c2188c83b4a7fb1abe5f4587c5714d": "ccaf6627ef681256dfa4804ae0fe1b9c5c1e33a338f4a129e0a8a58755ba5a36",
+    "eed63343c4f614cffd204866e371b82a3cb2b4d41bb6cb092b2dfa4947941302": "e6c126eafcdda5a2a83464b1a8ffdd64e521db2c1df7b34559e4d247d5c0d1f4",
+    "ef16a0def8e2590a7badd88622f8cf8cb6c111f64101658a4d60290f0f22fc9a": "51132dfd776f917cae432b9d1d415f4aeb2fe0570b7391b97fdcb0983f51c0fb",
+    "bf25bc1ef4b2e06b959567ab13ee3b54f3af8e32a0121cd8e4f26a6273f34e00": "b44374e99a3baa2b07db0a8bedeb062727bcf7868f2149c7f579f312585b8b47",
+    "c7d3fec4441968156bebac963f9fa0c1d2aff7ad3dc2865af9acd5e25645f02a": "3396f2014f6f4a1f702233be2d7c0a5658ee5d8968fcbc1e8e3dff35d04d9876",
+    "5cd6b331e6bdc0312c7f828d91ba4f8c5fe23334066c641dbcc09d7b7b752933": "45ae2f53206bc15a2fcf0009e857baf17599299524ccfab7d2310220e305784a",
+    "fb3f3d5c0ef6aeca9f2f6c80945cb391f907cf045f2affbdb244297fbf18940a": "f0699f824b64f8805b61f60ac81c0f10172c735d84dbb5ef84cf3ae4e31d626c",
+    "4482bf9ce66f8dcc9519bf0f03690171d1f30e0a4b63624287d4db97290e26af": "3c899d209af6ad92de14835ffe2d90802263fb683fc448d80a131aab22aa27e7",
+    "1a77ec3e59949b4348bccbe503eee55625565e278322dc9b6bb906c94d004c77": "14f03874592824cdf9e6ec2c12c4a788e8a3549039df3ec4426afe0aa8c4690d",
+    "63baf4d9b99120b022eb7faee5fa740508cf39bd5abf3fa0a5ebe3efe380412b": "300fabbc3f356446e0f995eb0d7e30f5a1854916e7dfae026bcf20ee2d6d3394",
+    "7a3a95ea253d29bd7fdf872f7b395f0e1318fbc8f7e4fe58ba07551f56c20072": "badf26bf44d38482926b7311512ec15ed5d6c3ca566f335bbbc3c3620a467bb7",
+    "ac155409561dbb26bbfb54ada2bb5d10b996a023532344a2635854f9e4bf93e3": "c98b25cddd68435147a39527b7ac37779f2d9c7e85a8756fa45d53cd89ec456f",
+    "7170b15febeaadc0489e93952801274badc0a6d759828e2261ad541a93a5e330": "65fce7e847ba6fa96e7256fd8ecbea698f349855e475f99849761a511adb2600",
+    "a424929bf1d5e4e6106158059e9db4190b1d2e4fc320e0bec9a892762625b2d2": "a01678b5ea993ef49dd54d09f381f8090af9ec5d5a63b3f236945ffa7f20af70",
+    "2ed323b89896895c605f0603fca19347d5419e64464c146c9b84701fea91f9eb": "93ef454655dde825dd73e839cb4c1196ec18868f03f072bcac0f2fab66a46703",
+    "0ebd427957fb8971a61387eaae16939657ae74dbcda6ce9325eca53576ed8c26": "e6891f4d7b3351453b329b98878c6a3e039cd80b612280f97d9703d274060079",
+    "16ac9d27864db6775f13a22cec7c76b959cb9a9b6584121d971ce373ea672e6e": "e0ed37bfdc8b0ab2d6ddfcf6867695efef59c8ea21e8fe8e299109bf2a12a721",
+    "57f609d0b3694537641ffdf5aa7e9e2de24d4e0d3b35de115cd661514829a377": "de3154e6a31ea76ed33d63292233d18b1d34a066d6c427b66dd7f48eb7ac037a",
+    "a085792e2c662d83b54e4decfca84ffa9fa118b81cb04df61c4a9a1624e8ad14": "c62491e699031112494865b45786c72243c4fe181a6f23d677e40b330cd114e5",
+    "62e3422e8a05573cb60b2537bb904a888439d9c0771e163c915e919549935d7b": "7d0a65e64151400ddbb2ec73f52fa4d8154514650a0ff7ec17c30ee3a7cafeb3",
+    "a629fd81a650f4138b19e0680a17acf49c9943673a83ce0f2e3d2f36e26e2884": "08a334d52850ea84df0d87a129275be7848fecb67c4096210a3516c96dbd1900",
+    "463c7ce47a7d81f759063f74ec2c48fece9cbdaeebb8e13cdf51de66b11694b5": "704fd1d6c74c4c837f6929f858e542e759eb8adb19cd52c42ad8cc56989af8e7",
+    "6d6a49038d150f9533cefa5401c5928ee1552a336541098273277e6eb16aeebb": "5eee5e0dc349f6fd7cf47964de91dedfb0f532b8105b1a7f81d648c5a844df37",
+    "dcf4c1ff7914fae2e00ce93b707e81405c6c962d0754e8005aaa309c2d14ccb6": "76416f21306bd6ab1206261cc870deeb98a4e071e948758bd8f87592fef73c41",
+    "8e716846f6841e7df55564e6c04be3bb4757d33606d316760854b9f7514d31e9": "c2d8834af97b8ab1e1b486dd6701722d3de290ba3b7ec04930d8cebe9b31e065"
+  },
+  "assertions": [
+    {
+      "file": "balance-person-data-readonly.test.mjs",
+      "type": "equal",
+      "actual": "7d487a9cc56b551b7fce1d5433ca63d6e0b1216e0bbb28a7de49179a254b5eb2",
+      "expected": "832dc244733ac154d465fe07cf618c7d5318fd3360b01b8c36832b2cda460fc5",
+      "message": "Vollständige Balance-JSON-Bytes entsprechen dem FF-E-Sollstand: fehlender Beginn"
+    },
+    {
+      "file": "balance-person-data-readonly.test.mjs",
+      "type": "equal",
+      "actual": "7d487a9cc56b551b7fce1d5433ca63d6e0b1216e0bbb28a7de49179a254b5eb2",
+      "expected": "832dc244733ac154d465fe07cf618c7d5318fd3360b01b8c36832b2cda460fc5",
+      "message": "Vollständige Balance-JSON-Bytes entsprechen dem FF-E-Sollstand: 2026-01-01"
+    },
+    {
+      "file": "balance-person-data-readonly.test.mjs",
+      "type": "equal",
+      "actual": "7d487a9cc56b551b7fce1d5433ca63d6e0b1216e0bbb28a7de49179a254b5eb2",
+      "expected": "832dc244733ac154d465fe07cf618c7d5318fd3360b01b8c36832b2cda460fc5",
+      "message": "Vollständige Balance-JSON-Bytes entsprechen dem FF-E-Sollstand: 2024-07-01"
+    },
+    {
+      "file": "budget-assets-regression.test.mjs",
+      "type": "equal",
+      "actual": 46800,
+      "expected": 49200,
+      "message": "Freie Vermögensbasis ergibt 49.200 EUR Jahresentnahme"
+    },
+    {
+      "file": "budget-assets-regression.test.mjs",
+      "type": "equal",
+      "actual": 51600,
+      "expected": 54000,
+      "message": "Ohne Rücklage bleibt die bisherige Entnahme bei 2 Prozent Inflation erhalten"
+    },
+    {
+      "file": "ff-d-regression.test.mjs",
+      "type": "equal",
+      "actual": "b67d8f07fcffa09faf1cf7a83652a266364263ffa132bd7285cf4d27f00bb343",
+      "expected": "9f0944dd2469c674cd2dc26997973ed2f3ac6536a06b2e60b5891b969e626f0d",
+      "message": "Sonst bytegleich: vollständige engines-Ergebnisse nach FF-E"
+    },
+    {
+      "file": "ff-d-regression.test.mjs",
+      "type": "equal",
+      "actual": "b36aa608d5c0451332c75efad00f8a1c6cb6d7f5a1cd5be66097494e1e0e545d",
+      "expected": "9e263745520a52e2cb4d29e3725e646d8a984bf013ccb692e78bd4161eae404d",
+      "message": "Sonst bytegleich: vollständige households-Ergebnisse nach FF-E"
+    },
+    {
+      "file": "ff-d-regression.test.mjs",
+      "type": "equal",
+      "actual": "c836f6a70bd12b327acff8ff09dea88a0963ea8624dfe7c0190cf258dba9b697",
+      "expected": "5bf4e5f56e31bdd537eab60a40dc02726e1743a84c7a06c0b045ba73ce3a7892",
+      "message": "Sonst bytegleich: vollständige singles-Ergebnisse nach FF-E"
+    },
+    {
+      "file": "ff-e-regression.test.mjs",
+      "type": "equal",
+      "actual": "2002,2003,2004,2008,2009",
+      "expected": "2002,2003,2004,2005,2008,2009",
+      "message": "Nach FF-D noch elf, nach FR-32 sechs Jahre mit mindestens 10 % Kürzung"
+    },
+    {
+      "file": "ff-f-regression.test.mjs",
+      "type": "equal",
+      "actual": "b67d8f07fcffa09faf1cf7a83652a266364263ffa132bd7285cf4d27f00bb343",
+      "expected": "9f0944dd2469c674cd2dc26997973ed2f3ac6536a06b2e60b5891b969e626f0d",
+      "message": "engines: vollständige Ergebnisse ohne Dynamik bytegleich zu ba789814"
+    },
+    {
+      "file": "ff-f-regression.test.mjs",
+      "type": "equal",
+      "actual": "b36aa608d5c0451332c75efad00f8a1c6cb6d7f5a1cd5be66097494e1e0e545d",
+      "expected": "9e263745520a52e2cb4d29e3725e646d8a984bf013ccb692e78bd4161eae404d",
+      "message": "households: vollständige Ergebnisse ohne Dynamik bytegleich zu ba789814"
+    },
+    {
+      "file": "ff-f-regression.test.mjs",
+      "type": "equal",
+      "actual": "c836f6a70bd12b327acff8ff09dea88a0963ea8624dfe7c0190cf258dba9b697",
+      "expected": "5bf4e5f56e31bdd537eab60a40dc02726e1743a84c7a06c0b045ba73ce3a7892",
+      "message": "singles: vollständige Ergebnisse ohne Dynamik bytegleich zu ba789814"
+    },
+    {
+      "file": "ff-f-regression.test.mjs",
+      "type": "equal",
+      "actual": "b2be0fbc49d047565d168d90ea642c2651a12bf11199b11f6617bc9807cd0b4c",
+      "expected": "3e70b3b4afbecaa04dc98abfa74db3e60a65874eebdd5d6071d93a3389ef8782",
+      "message": "Dynamic Flex ohne Kürzung: vollständiges newState-Objekt bytegleich zu 6050b1c1; FR-32-Diagnosen separat"
+    },
+    {
+      "file": "ff-g-regression.test.mjs",
+      "type": "equal",
+      "actual": "0ca622bf902efd0ca6f3e8c5546ec9015f4539a3971115abac339adfe92dd335",
+      "expected": "416f319c1beac67a1b20006068cbea4e1feb19437608653d4e43231de63ae267",
+      "message": "staticResults: ungefilterte JSON-Bytes gegen 947b456e"
+    },
+    {
+      "file": "ff-g-regression.test.mjs",
+      "type": "equal",
+      "actual": "3aa7eb2d07e830792d42da27f39d8fc5038509cf68f88c39247f091aceee4bd9",
+      "expected": "3d3fbedb056469788fd1ef8b77fed541d45bca313329c0132c3033285a54a20b",
+      "message": "dynamicUnaffected: ungefilterte JSON-Bytes gegen 947b456e"
+    },
+    {
+      "file": "ff-g-regression.test.mjs",
+      "type": "equal",
+      "actual": "4987f2890a00028c05476a8816f28d4e1c65076e1bfdaca11d76447265a7317f",
+      "expected": "395662c94bce1c1397e72163897a81f851fe968398339013c482fd51f50c1551",
+      "message": "Helga/Werner: vollständiger Backtest 2000–2025 bytegleich zu FF-E und FF-F"
+    },
+    {
+      "file": "ff-g-regression.test.mjs",
+      "type": "equal",
+      "actual": "2002,2003,2004,2008,2009",
+      "expected": "2002,2003,2004,2005,2008,2009",
+      "message": "Helga/Werner: sechs stärkere Kürzungsjahre wie nach FF-E"
+    },
+    {
+      "file": "flex-safety-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "f54fa84794651a29d3f07a096df9942a7f750b0e86ec2a289581bae61f59eb75",
+      "expected": "24f28a344a88655419142c793823d5e144374f79ac6bc7d3a32fd9a1505540f1",
+      "message": "Sechs vollständige Engine-Ergebnisse nach FR-32 auf FF-E-Referenz"
+    },
+    {
+      "file": "flex-safety-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "c12e991667ed28da619b3fbfd3db39ec23aee5a137c655c0eeef2c25018a0503",
+      "expected": "655b41d2cadae97afe19a25bca9c6e956e0610bd4a0e7afb370ab2d9b8cdc387",
+      "message": "Drei vollständige Simulator-Ergebnisse nach FR-32 auf FF-E-Referenz"
+    },
+    {
+      "file": "household-payout-regression.test.mjs",
+      "type": "equal",
+      "actual": "f3a6f21d17f4590e7b7ba0c9376c60b3fe88351089445397be1368f1da3179d5",
+      "expected": "97f161502fc68b1d2ddd2b19773531bd3ba987ce83071de7dc10094ade57d685",
+      "message": "Drei vollständige Haushaltsjahre nach FF-E auf Referenz"
+    },
+    {
+      "file": "household-payout-regression.test.mjs",
+      "type": "equal",
+      "actual": "518735a217b66489dbfdc7872e71d8c7941662a32b1b024b6986209ea3d0d1f3",
+      "expected": "4069e9987048229a4bb3bf687b2fdc802f35b343e1724a70ac2a4d75aa3d296d",
+      "message": "Vollständige Backtest-/MC-Jahreslogs samt Backtest-Ende nach FR-30 gegen FF-E-Referenz"
+    },
+    {
+      "file": "log-analysis-muster-backtest.test.mjs",
+      "type": "equal",
+      "actual": 0,
+      "expected": 1,
+      "message": "FF-G: ein Kürzungsjahr relativ zum angezeigten Wunsch-Flex"
+    },
+    {
+      "file": "log-analysis-muster-backtest.test.mjs",
+      "type": "equal",
+      "actual": 0,
+      "expected": 1,
+      "message": "FF-G: längste Kürzungsphase umfasst ein Jahr"
+    },
+    {
+      "file": "log-analysis-muster-backtest.test.mjs",
+      "type": "equal",
+      "actual": "",
+      "expected": "2005-2005",
+      "message": "FF-G: frühe Kürzung spart Vermögen für die Folgejahre"
+    },
+    {
+      "file": "minimum-flex-restriction.test.mjs",
+      "type": "close",
+      "actual": 771613.6520978438,
+      "expected": 772882.2626989415,
+      "tolerance": 1e-08,
+      "message": "FR-20: Backtest-Endvermögen mit tragfähigem Teil-Flex"
+    },
+    {
+      "file": "minimum-flex-restriction.test.mjs",
+      "type": "close",
+      "actual": 4748.206951447233,
+      "expected": 4772.785621789534,
+      "tolerance": 1e-08,
+      "message": "FR-20: Steuerfolge des zusätzlichen Teil-Flex"
+    },
+    {
+      "file": "minimum-flex-restriction.test.mjs",
+      "type": "close",
+      "actual": 1544216.605572421,
+      "expected": 1547087.7955388809,
+      "tolerance": 1e-08,
+      "message": "FR-20: kurzer MC-Pfad mit tragfähigem Teil-Flex"
+    },
+    {
+      "file": "minimum-flex-restriction.test.mjs",
+      "type": "close",
+      "actual": 25865.198692312257,
+      "expected": 25748.041583518294,
+      "tolerance": 1e-08,
+      "message": "FR-20: zugehörige Steuerfolge im kurzen MC-Pfad"
+    },
+    {
+      "file": "minimum-flex-restriction.test.mjs",
+      "type": "close",
+      "actual": 1362498.3385993452,
+      "expected": 1363747.5089331935,
+      "tolerance": 1e-08,
+      "message": "FR-20: kurzer MC-Pfad mit tragfähigem Teil-Flex"
+    },
+    {
+      "file": "minimum-flex-restriction.test.mjs",
+      "type": "close",
+      "actual": 14627.604390229551,
+      "expected": 14645.21889013112,
+      "tolerance": 1e-08,
+      "message": "FR-20: zugehörige Steuerfolge im kurzen MC-Pfad"
+    },
+    {
+      "file": "minimum-flex-restriction.test.mjs",
+      "type": "close",
+      "actual": 2026305.6301099185,
+      "expected": 2033378.9477052272,
+      "tolerance": 1e-08,
+      "message": "FR-20: kurzer MC-Pfad mit tragfähigem Teil-Flex"
+    },
+    {
+      "file": "minimum-flex-restriction.test.mjs",
+      "type": "close",
+      "actual": 32839.891423350666,
+      "expected": 29943.507403485273,
+      "tolerance": 1e-08,
+      "message": "FR-20: zugehörige Steuerfolge im kurzen MC-Pfad"
+    },
+    {
+      "file": "minimum-flex-restriction.test.mjs",
+      "type": "close",
+      "actual": 1718313.9209080425,
+      "expected": 1719591.4472422097,
+      "tolerance": 1e-08,
+      "message": "FR-20: kurzer MC-Pfad mit tragfähigem Teil-Flex"
+    },
+    {
+      "file": "minimum-flex-restriction.test.mjs",
+      "type": "close",
+      "actual": 19859.529906543205,
+      "expected": 19887.302498239784,
+      "tolerance": 1e-08,
+      "message": "FR-20: zugehörige Steuerfolge im kurzen MC-Pfad"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "type": "assert",
+      "actual": false,
+      "message": "Jan und Lena starten ohne Kürzung ihres Planbudgets"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "type": "assert",
+      "actual": false,
+      "message": "Auch der dynamische Wunsch-Flex bleibt bis auf Rundungsreste ungekürzt"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "type": "equal",
+      "actual": 58800,
+      "expected": 63000,
+      "message": "Jan und Lena erhalten das volle Startbudget von 63.000 €"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "type": "assert",
+      "actual": false,
+      "message": "Jan und Lena starten ohne Kürzung ihres Planbudgets"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "type": "assert",
+      "actual": false,
+      "message": "Auch der dynamische Wunsch-Flex bleibt bis auf Rundungsreste ungekürzt"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "type": "equal",
+      "actual": 58800,
+      "expected": 63000,
+      "message": "Jan und Lena erhalten das volle Startbudget von 63.000 €"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "type": "assert",
+      "actual": false,
+      "message": "Jan und Lena starten ohne Kürzung ihres Planbudgets"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "type": "assert",
+      "actual": false,
+      "message": "Auch der dynamische Wunsch-Flex bleibt bis auf Rundungsreste ungekürzt"
+    },
+    {
+      "file": "muster-haushalt.test.mjs",
+      "type": "equal",
+      "actual": 58800,
+      "expected": 63000,
+      "message": "Jan und Lena erhalten das volle Startbudget von 63.000 €"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "type": "equal",
+      "actual": "e49a82ab7e635795e01a8514c6783b649ae870d0bcd2068c5a9e79b3fcd60b87",
+      "expected": "a0924ac00a6ad3a3f79cac5d73484e8c5a41cf9be0e25f0f1a26129cbecd0c1f",
+      "message": "jan-lena: Musterrecords beziehungsweise Jan/Lenas Balance-Jahresrechnung entsprechen der Referenz"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "type": "equal",
+      "actual": "de2b3761429161c069697620d8a216d11fabff84acf7167df195cf758dc86603",
+      "expected": "6e02affd11e0755af1f3b489b7c856db84224658d189b904cd2e89abeef3b212",
+      "message": "Vorgabe: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "type": "equal",
+      "actual": "ccaf6627ef681256dfa4804ae0fe1b9c5c1e33a338f4a129e0a8a58755ba5a36",
+      "expected": "d6fc213ef868f3332bb913ef0ea8706847c2188c83b4a7fb1abe5f4587c5714d",
+      "message": "konservativ: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "type": "equal",
+      "actual": "e6c126eafcdda5a2a83464b1a8ffdd64e521db2c1df7b34559e4d247d5c0d1f4",
+      "expected": "eed63343c4f614cffd204866e371b82a3cb2b4d41bb6cb092b2dfa4947941302",
+      "message": "ausgewogen: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz"
+    },
+    {
+      "file": "planned-inflows.test.mjs",
+      "type": "equal",
+      "actual": "51132dfd776f917cae432b9d1d415f4aeb2fe0570b7391b97fdcb0983f51c0fb",
+      "expected": "ef16a0def8e2590a7badd88622f8cf8cb6c111f64101658a4d60290f0f22fc9a",
+      "message": "offensiv: Backtest und MC-Pfad 0 samt Jahresprotokoll entsprechen der korrigierten Referenz"
+    },
+    {
+      "file": "profile-person-data.test.mjs",
+      "type": "equal",
+      "actual": "b44374e99a3baa2b07db0a8bedeb062727bcf7868f2149c7f579f312585b8b47",
+      "expected": "bf25bc1ef4b2e06b959567ab13ee3b54f3af8e32a0121cd8e4f26a6273f34e00",
+      "message": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen FF-E-Referenz mit korrigierter Kirchensteuer: fehlender Beginn"
+    },
+    {
+      "file": "profile-person-data.test.mjs",
+      "type": "equal",
+      "actual": "b44374e99a3baa2b07db0a8bedeb062727bcf7868f2149c7f579f312585b8b47",
+      "expected": "bf25bc1ef4b2e06b959567ab13ee3b54f3af8e32a0121cd8e4f26a6273f34e00",
+      "message": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen FF-E-Referenz mit korrigierter Kirchensteuer: 2026-01-01"
+    },
+    {
+      "file": "profile-person-data.test.mjs",
+      "type": "equal",
+      "actual": "b44374e99a3baa2b07db0a8bedeb062727bcf7868f2149c7f579f312585b8b47",
+      "expected": "bf25bc1ef4b2e06b959567ab13ee3b54f3af8e32a0121cd8e4f26a6273f34e00",
+      "message": "Gleiche numerische Personenparameter: vollständiger JSON.stringify-Altpfad gegen FF-E-Referenz mit korrigierter Kirchensteuer: 2024-07-15"
+    },
+    {
+      "file": "profile-person-data.test.mjs",
+      "type": "equal",
+      "actual": "3396f2014f6f4a1f702233be2d7c0a5658ee5d8968fcbc1e8e3dff35d04d9876",
+      "expected": "c7d3fec4441968156bebac963f9fa0c1d2aff7ad3dc2865af9acd5e25645f02a",
+      "message": "Vollständiger alter Offset-/Ansparrequest gegen FF-E-Referenz mit korrigierter Kirchensteuer"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "45ae2f53206bc15a2fcf0009e857baf17599299524ccfab7d2310220e305784a",
+      "expected": "5cd6b331e6bdc0312c7f828d91ba4f8c5fe23334066c641dbcc09d7b7b752933",
+      "message": "off: Backtest entspricht FF-G-Referenz"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "f0699f824b64f8805b61f60ac81c0f10172c735d84dbb5ef84cf3ae4e31d626c",
+      "expected": "fb3f3d5c0ef6aeca9f2f6c80945cb391f907cf045f2affbdb244297fbf18940a",
+      "message": "off: MC-Pfad 0 mit FR-21–24/27"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "3c899d209af6ad92de14835ffe2d90802263fb683fc448d80a131aab22aa27e7",
+      "expected": "4482bf9ce66f8dcc9519bf0f03690171d1f30e0a4b63624287d4db97290e26af",
+      "message": "konservativ: Backtest entspricht FF-G-Referenz"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "14f03874592824cdf9e6ec2c12c4a788e8a3549039df3ec4426afe0aa8c4690d",
+      "expected": "1a77ec3e59949b4348bccbe503eee55625565e278322dc9b6bb906c94d004c77",
+      "message": "konservativ: MC-Pfad 0 mit FR-21–24/27"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "300fabbc3f356446e0f995eb0d7e30f5a1854916e7dfae026bcf20ee2d6d3394",
+      "expected": "63baf4d9b99120b022eb7faee5fa740508cf39bd5abf3fa0a5ebe3efe380412b",
+      "message": "ausgewogen: Backtest entspricht FF-G-Referenz"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "badf26bf44d38482926b7311512ec15ed5d6c3ca566f335bbbc3c3620a467bb7",
+      "expected": "7a3a95ea253d29bd7fdf872f7b395f0e1318fbc8f7e4fe58ba07551f56c20072",
+      "message": "ausgewogen: MC-Pfad 0 mit FR-21–24/27"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "c98b25cddd68435147a39527b7ac37779f2d9c7e85a8756fa45d53cd89ec456f",
+      "expected": "ac155409561dbb26bbfb54ada2bb5d10b996a023532344a2635854f9e4bf93e3",
+      "message": "offensiv: Backtest entspricht FF-G-Referenz"
+    },
+    {
+      "file": "rechenregeln-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "65fce7e847ba6fa96e7256fd8ecbea698f349855e475f99849761a511adb2600",
+      "expected": "7170b15febeaadc0489e93952801274badc0a6d759828e2261ad541a93a5e330",
+      "message": "offensiv: MC-Pfad 0 mit FR-21–24/27"
+    },
+    {
+      "file": "simulator-household-pension.test.mjs",
+      "type": "equal",
+      "actual": "a01678b5ea993ef49dd54d09f381f8090af9ec5d5a63b3f236945ffa7f20af70",
+      "expected": "a424929bf1d5e4e6106158059e9db4190b1d2e4fc320e0bec9a892762625b2d2",
+      "message": "FR-16: Alt-Kalenderpfad nutzt Partner-Liquidität für persönliche Ansparsteuer"
+    },
+    {
+      "file": "simulator-household-pension.test.mjs",
+      "type": "equal",
+      "actual": "93ef454655dde825dd73e839cb4c1196ec18868f03f072bcac0f2fab66a46703",
+      "expected": "2ed323b89896895c605f0603fca19347d5419e64464c146c9b84701fea91f9eb",
+      "message": "PA-A7: Kontrollierter Lauf enthält persönliche Ansparsteuer"
+    },
+    {
+      "file": "simulator-household-pension.test.mjs",
+      "type": "equal",
+      "actual": "e6891f4d7b3351453b329b98878c6a3e039cd80b612280f97d9703d274060079",
+      "expected": "0ebd427957fb8971a61387eaae16939657ae74dbcda6ce9325eca53576ed8c26",
+      "message": "FR-11: Höhere Nettorente senkt die vorherige Vermögensentnahme"
+    },
+    {
+      "file": "simulator-household-pension.test.mjs",
+      "type": "equal",
+      "actual": "e0ed37bfdc8b0ab2d6ddfcf6867695efef59c8ea21e8fe8e299109bf2a12a721",
+      "expected": "16ac9d27864db6775f13a22cec7c76b959cb9a9b6584121d971ce373ea672e6e",
+      "message": "PA-A7: Entnahmebeleg enthält persönliche Steuerdiagnose"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "de3154e6a31ea76ed33d63292233d18b1d34a066d6c427b66dd7f48eb7ac037a",
+      "expected": "57f609d0b3694537641ffdf5aa7e9e2de24d4e0d3b35de115cd661514829a377",
+      "message": "off: Backtest ohne Tod entspricht FF-G-Referenz"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "c62491e699031112494865b45786c72243c4fe181a6f23d677e40b330cd114e5",
+      "expected": "a085792e2c662d83b54e4decfca84ffa9fa118b81cb04df61c4a9a1624e8ad14",
+      "message": "off: MC ohne Tod entspricht FF-G-Referenz"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "7d0a65e64151400ddbb2ec73f52fa4d8154514650a0ff7ec17c30ee3a7cafeb3",
+      "expected": "62e3422e8a05573cb60b2537bb904a888439d9c0771e163c915e919549935d7b",
+      "message": "konservativ: Backtest ohne Tod entspricht FF-G-Referenz"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "08a334d52850ea84df0d87a129275be7848fecb67c4096210a3516c96dbd1900",
+      "expected": "a629fd81a650f4138b19e0680a17acf49c9943673a83ce0f2e3d2f36e26e2884",
+      "message": "konservativ: MC ohne Tod entspricht FF-G-Referenz"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "704fd1d6c74c4c837f6929f858e542e759eb8adb19cd52c42ad8cc56989af8e7",
+      "expected": "463c7ce47a7d81f759063f74ec2c48fece9cbdaeebb8e13cdf51de66b11694b5",
+      "message": "ausgewogen: Backtest ohne Tod entspricht FF-G-Referenz"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "5eee5e0dc349f6fd7cf47964de91dedfb0f532b8105b1a7f81d648c5a844df37",
+      "expected": "6d6a49038d150f9533cefa5401c5928ee1552a336541098273277e6eb16aeebb",
+      "message": "ausgewogen: MC ohne Tod entspricht FF-G-Referenz"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "76416f21306bd6ab1206261cc870deeb98a4e071e948758bd8f87592fef73c41",
+      "expected": "dcf4c1ff7914fae2e00ce93b707e81405c6c962d0754e8005aaa309c2d14ccb6",
+      "message": "offensiv: Backtest ohne Tod entspricht FF-G-Referenz"
+    },
+    {
+      "file": "survivor-bytegleich.test.mjs",
+      "type": "equal",
+      "actual": "c2d8834af97b8ab1e1b486dd6701722d3de290ba3b7ec04930d8cebe9b31e065",
+      "expected": "8e716846f6841e7df55564e6c04be3bb4757d33606d316760854b9f7514d31e9",
+      "message": "offensiv: MC ohne Tod entspricht FF-G-Referenz"
+    },
+    {
+      "file": "vpw-dynamic-flex.test.mjs",
+      "type": "equal",
+      "actual": "legacy_cape_linear",
+      "expected": "legacy_cape_step",
+      "message": "legacy source should identify CAPE step input"
+    },
+    {
+      "file": "vpw-dynamic-flex.test.mjs",
+      "type": "close",
+      "actual": 0.03227272727272728,
+      "expected": 0.027727272727272725,
+      "tolerance": 1e-09,
+      "message": "expected real return mismatch"
+    },
+    {
+      "file": "vpw-dynamic-flex.test.mjs",
+      "type": "close",
+      "actual": 0.0686359883208431,
+      "expected": 0.06581129411855574,
+      "tolerance": 1e-09,
+      "message": "vpw rate mismatch"
+    },
+    {
+      "file": "vpw-dynamic-flex.test.mjs",
+      "type": "close",
+      "actual": 7549.958715292741,
+      "expected": 7239.2423530411315,
+      "tolerance": 1e-06,
+      "message": "vpw total mismatch"
+    },
+    {
+      "file": "vpw-dynamic-flex.test.mjs",
+      "type": "close",
+      "actual": 6549.958715292741,
+      "expected": 6239.2423530411315,
+      "tolerance": 1e-06,
+      "message": "dynamic flex mismatch"
+    },
+    {
+      "file": "vpw-dynamic-flex.test.mjs",
+      "type": "equal",
+      "actual": 0.02318181818181818,
+      "expected": 0,
+      "message": "expected real return should clamp at lower bound"
+    },
+    {
+      "file": "vpw-dynamic-flex.test.mjs",
+      "type": "close",
+      "actual": 432255.60263476154,
+      "expected": 430124.75266668544,
+      "tolerance": 1e-06,
+      "message": "Fixture should retain a high raw VPW budget"
+    },
+    {
+      "file": "vpw-dynamic-flex.test.mjs",
+      "type": "assert",
+      "actual": false,
+      "message": "FR-32: Safety-Zeuge ohne S-Kurve behält seine Kürzung durch Glättung"
+    },
+    {
+      "file": "vpw-dynamic-flex.test.mjs",
+      "type": "close",
+      "actual": 48.648799086204995,
+      "expected": 48.09866266212295,
+      "tolerance": 1e-09,
+      "message": "FR-32: Safety-Zeuge ohne S-Kurve behält seine Kürzung durch Glättung"
+    },
+    {
+      "file": "log-analysis-muster-backtest.test.mjs",
+      "type": "close",
+      "actual": 401872.24505748914,
+      "expected": 397000,
+      "tolerance": 1000,
+      "message": "FF-G: reales Tief rund 397.000 Euro, ohne plattformgebundene Bytes"
+    },
+    {
+      "file": "log-analysis-muster-backtest.test.mjs",
+      "type": "equal",
+      "actual": 6,
+      "expected": 9,
+      "message": "FF-G: neun Unterschreitungen des bedarfsbezogenen Liquiditätsziels"
+    },
+    {
+      "file": "log-analysis-muster-backtest.test.mjs",
+      "type": "equal",
+      "actual": 2024,
+      "expected": 2023,
+      "message": "FF-F: stärkste Steuerspitze 2023 zuerst"
+    },
+    {
+      "file": "log-analysis-muster-backtest.test.mjs",
+      "type": "close",
+      "actual": 21637.538595234357,
+      "expected": 19100,
+      "tolerance": 100,
+      "message": "FF-G: Steuerspitze rund 19.100 Euro"
+    },
+    {
+      "file": "log-analysis-muster-backtest.test.mjs",
+      "type": "equal",
+      "actual": "minimum_flex_held,cuts_none,minimum_real_year_end_wealth",
+      "expected": "minimum_flex_held,decision_flex_cut_phase,minimum_real_year_end_wealth",
+      "message": "Musterlauf zeigt die drei Karten des abgenommenen Entwurfs"
+    },
+    {
+      "file": "log-analysis-muster-backtest.test.mjs",
+      "type": "equal",
+      "actual": "Keine ab 10 %",
+      "expected": "1 Jahr · 2005",
+      "message": "Musterkarte nennt längste Kürzung"
+    },
+    {
+      "file": "log-analysis-muster-backtest.test.mjs",
+      "type": "equal",
+      "actual": 2024,
+      "expected": 2023,
+      "message": "Weitere Punkte verlinken stärkstes Steuerjahr"
+    },
+    {
+      "file": "log-analysis-muster-backtest.test.mjs",
+      "type": "equal",
+      "actual": "",
+      "expected": "Flex gekürzt 2005–2005",
+      "message": "Chartbänder entsprechen den belegten Musterphasen"
+    }
+  ],
+  "additionalExpectations": {
+    "smallLot": {
+      "file": "simulator-small-lot-bk-2-hashes.json",
+      "cause": "Neue Diagnosefelder und ungerundete Glättungsanker; historische Belege bleiben unverändert."
+    },
+    "monteCarloMeasurement": {
+      "file": "minimum-flex-bk-2-measurement-v1.json",
+      "cause": "Drei neue Zielprojektionshashes für integrierten Regelstand; historische Messung unverändert."
+    },
+    "enginePolicyInventory": {
+      "before": "ff674a80e43fa644505c87093437305d1493e00b38315f31d3f8db47fc9ffba8",
+      "after": "3444e6f56f487ff33322df5c6221358aa15a2d0559778db6ecb5651744b79c6e",
+      "cause": "FR-33 ergänzt Konstanten; Inventarprüfung bleibt aktiv."
+    },
+    "flexTrace": "1876 bestehende Assertions unverändert grün; zusätzlicher Wert geplanteEntnahmequoteRatio."
+  }
+}

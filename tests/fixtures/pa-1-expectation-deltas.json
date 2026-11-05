@@ -1,0 +1,132 @@
+{
+  "rule": "PA-1 / FR-47: Pflegeperson fällt im selben Jahr aus, Staffel des aktuellen Grads und kein Pflegegeld. Historische Ergebnisbytes bleiben als Ausgangsnachweis erhalten.",
+  "hashes": {
+    "ea3033c8c061dc8081ff8863cda9ed52143ef00d3851f17453e54ab90605ab67": "6959ff93e2150f14db15065fb894aff3228982599c4d2143ff7ce9c003d8882f",
+    "0feb187e13b732651e6c3417472ad87736698310953d8721225e653814692b8e": "b9ba579cf8cdb56299ab27becaca92cac74ef5172d1b0a835b5d8b1de622d1de",
+    "46022f6acb3bacff25825f842affa4f8d29344d57078541ea6f409b7c35d3e26": "7990fd12f6dd4e87685bc2e0a724fa21da3d951a756202f99b3c5d25bd37f1ec",
+    "67abf8d59b112fb0e2c71ab9c3d44d7119e355cfb5fc6cc99916c25d0367d52d": "b74c6aed80211b36fb90fea933aa274976a8fc7f8f924247b5f22c33fcefd8dc",
+    "afc811c2f589c12b6573609fa70963cc9ae162242fb9e9bf03b3f19907115a16": "5a6299c59fc0c071cf79b154da02e089aad8efe25121ba21f62b470f8f862cb4",
+    "71809caaede0d2edfc47572fc88e2d7327228d7bad58576814bc99b0189fefd8": "e5eda3cf2022b148a283d4e7fbe00823b78d7fb93a56945bdb64016477922ad9",
+    "992cfdbb892123880266dc599b0cadff67e39b81456b0be7fb202c9ec36a0681": "812a5b1aa3fc8960b65849c578249a0b4e592235418737a6b73e428882cf0969",
+    "289be7f403fc958679554084d77035b1db30eb40407dc417a622fab1581ee59d": "03416b2c9054147a5dea738d481200d82fc34c0a4f26dce9a9ab34dc891e3b13",
+    "8d7dc8f0058c6b43965c211fa098e9bc75f4bfce23809f6384fbb32f613058dc": "6741adeea1cd41f725cc14cd1e11b9fcfd1b4092ff6b46979dfa088ebbb68df0",
+    "6cef58240adba4a4e022c5230e58ce8cf1a8b87ce7d6f3a3dd9037945ebbfdca": "8c2974d45a5a97413d32c889629e89e6ada05b2083b2a5330ec5de16fd7f301f",
+    "55d66972d56334dcf4846bd8507eb17ff49e5b2b662327abdeac842c2e4e8092": "e48ef7d88db4e7517c0c2b5f9bb3e33d323896d05af2a2e0604710af7c90455c",
+    "37e5826676904692a9829467fa262f799f4225f0e4b387600540cd6cfa4bae29": "20ab24fd78be60a8b5b2fdb928916e82c6a4815837d588219f7d4f1fac9dc60d",
+    "19daf904c924de6db6067d42c2e35286c6bfce0cbd6170c5396f2d543ec1c6f3": "e94fe8a54bc483dee2a35fa90d85f522d94bea957c2ffd5f11ca462b57244c6c"
+  },
+  "evidence": [
+    {
+      "file": "tests/care-today.test.mjs",
+      "baselineMatched": true,
+      "changes": [
+        {
+          "label": "usual, Paar true: vollständiges MC-Ergebnis bytegleich zu vor LV-1",
+          "actual": "6959ff93e2150f14db15065fb894aff3228982599c4d2143ff7ce9c003d8882f",
+          "expected": "ea3033c8c061dc8081ff8863cda9ed52143ef00d3851f17453e54ab90605ab67"
+        },
+        {
+          "label": "none, Paar true: vollständiges MC-Ergebnis bytegleich zu vor LV-1",
+          "actual": "b9ba579cf8cdb56299ab27becaca92cac74ef5172d1b0a835b5d8b1de622d1de",
+          "expected": "0feb187e13b732651e6c3417472ad87736698310953d8721225e653814692b8e"
+        },
+        {
+          "label": "zero, Paar true: vollständiges MC-Ergebnis bytegleich zu vor LV-1",
+          "actual": "b9ba579cf8cdb56299ab27becaca92cac74ef5172d1b0a835b5d8b1de622d1de",
+          "expected": "0feb187e13b732651e6c3417472ad87736698310953d8721225e653814692b8e"
+        }
+      ]
+    },
+    {
+      "file": "tests/immobilien-empty-bytegleich.test.mjs",
+      "baselineMatched": true,
+      "changes": [
+        {
+          "label": "Ohne Immobilien: vollständige 24 MC-Pfade mit Seed 12345 und belegter Ehe-Erbschaftsteuer",
+          "actual": "7990fd12f6dd4e87685bc2e0a724fa21da3d951a756202f99b3c5d25bd37f1ec",
+          "expected": "46022f6acb3bacff25825f842affa4f8d29344d57078541ea6f409b7c35d3e26"
+        }
+      ]
+    },
+    {
+      "file": "tests/plan-view-income.test.mjs",
+      "baselineMatched": true,
+      "changes": [
+        {
+          "label": "Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen",
+          "actual": "b74c6aed80211b36fb90fea933aa274976a8fc7f8f924247b5f22c33fcefd8dc",
+          "expected": "67abf8d59b112fb0e2c71ab9c3d44d7119e355cfb5fc6cc99916c25d0367d52d"
+        }
+      ]
+    },
+    {
+      "file": "tests/simulator-unmarried-parity.test.mjs",
+      "baselineMatched": true,
+      "changes": [
+        {
+          "label": "Verheiratet: vollständiger serieller MC mit belegten FR-51-Folgen",
+          "actual": "5a6299c59fc0c071cf79b154da02e089aad8efe25121ba21f62b470f8f862cb4",
+          "expected": "afc811c2f589c12b6573609fa70963cc9ae162242fb9e9bf03b3f19907115a16"
+        },
+        {
+          "label": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51",
+          "actual": "e5eda3cf2022b148a283d4e7fbe00823b78d7fb93a56945bdb64016477922ad9",
+          "expected": "71809caaede0d2edfc47572fc88e2d7327228d7bad58576814bc99b0189fefd8"
+        },
+        {
+          "label": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51",
+          "actual": "812a5b1aa3fc8960b65849c578249a0b4e592235418737a6b73e428882cf0969",
+          "expected": "992cfdbb892123880266dc599b0cadff67e39b81456b0be7fb202c9ec36a0681"
+        },
+        {
+          "label": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51",
+          "actual": "03416b2c9054147a5dea738d481200d82fc34c0a4f26dce9a9ab34dc891e3b13",
+          "expected": "289be7f403fc958679554084d77035b1db30eb40407dc417a622fab1581ee59d"
+        },
+        {
+          "label": "Verheiratet: vollständiger Sweep mit FR-51",
+          "actual": "6741adeea1cd41f725cc14cd1e11b9fcfd1b4092ff6b46979dfa088ebbb68df0",
+          "expected": "8d7dc8f0058c6b43965c211fa098e9bc75f4bfce23809f6384fbb32f613058dc"
+        }
+      ]
+    },
+    {
+      "file": "tests/muster-max-erika-parity.test.mjs",
+      "baselineMatched": true,
+      "changes": [
+        {
+          "label": "Max/Erika MC 2.000 Läufe, Seed 12345, 23.10.2026 vollständig bytegleich",
+          "actual": "8c2974d45a5a97413d32c889629e89e6ada05b2083b2a5330ec5de16fd7f301f",
+          "expected": "6cef58240adba4a4e022c5230e58ce8cf1a8b87ce7d6f3a3dd9037945ebbfdca"
+        }
+      ]
+    },
+    {
+      "file": "tests/decision-comparison-pool.test.mjs",
+      "baselineMatched": true,
+      "changes": [
+        {
+          "actual": "e48ef7d88db4e7517c0c2b5f9bb3e33d323896d05af2a2e0604710af7c90455c",
+          "expected": "55d66972d56334dcf4846bd8507eb17ff49e5b2b662327abdeac842c2e4e8092"
+        },
+        {
+          "actual": "20ab24fd78be60a8b5b2fdb928916e82c6a4815837d588219f7d4f1fac9dc60d",
+          "expected": "37e5826676904692a9829467fa262f799f4225f0e4b387600540cd6cfa4bae29"
+        },
+        {
+          "actual": "e94fe8a54bc483dee2a35fa90d85f522d94bea957c2ffd5f11ca462b57244c6c",
+          "expected": "19daf904c924de6db6067d42c2e35286c6bfce0cbd6170c5396f2d543ec1c6f3"
+        }
+      ]
+    }
+  ],
+  "parity": {
+    "cases": 208,
+    "onlyProvenanceChanged": true,
+    "keyCounts": {
+      "sourceHash": 416,
+      "logHash": 208,
+      "caseHash": 208
+    }
+  }
+}

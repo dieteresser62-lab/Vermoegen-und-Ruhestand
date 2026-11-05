@@ -1,0 +1,102 @@
+{
+  "scope": "VF-2e: vollständige synthetische Ergebnisse; Drei-Töpfe-Auszahlungsquelle, tatsächliche Anleihenentnahme und persönliche Verrechnung vor Buchung. Historische Referenzdateien bleiben erhalten.",
+  "hashes": {
+    "3e88a41ef206df21be218eaa89bdd9f2a292b40ed1526caa5c25caed72026f7d": "ae6e4cfcf22865ad8e4ef140fb76d2b9a6c8b687437adcbf55f6401eb0af8431",
+    "098f56d508f2728fc611b9b389dc96abbb211ca3e872bbccb3062daa71c3ea2a": "936a7d76edd6b692c85ac1f90796aea571311dc744e930d1a4711f7c671a7c43",
+    "9f54347061cb277ca3ac4e92da3dfe2d34758eca315f25dc157b946e4b0bd532": "bf2154956f75b8e60edf26f676ad0abadc4a90a06a561b3ec66d923d46637484",
+    "37e7f9b83210d805eb4b84da62a2a5947ed067d77585cb06a46cf836dcc25c87": "ef25e672ecd8044c62fc637fc0565fc07d6ec7e893bb1fddf0da80a7020e211b",
+    "6594d332a069d2fa379838cd0c79af8c43943f98d2f57d00bedfcb9f2eb22b5d": "25c71e7d85fc8ba5e63fbf21462d8d16076ea6f055140e53dc5acbb04d915b2e",
+    "7b2ea06a189a5e367a95d5eb5adc0d8be4a64c26f30de0607214e3dd7f3f1df9": "ca0a68257b9b060b40856b2bc450145dcf8c167b41c0e022957b55530321b042",
+    "1ee9d80e5c53a822f69110180a2b50b651991df822874c3087244c6525796712": "fed730d26c16827c4fe78e21a7e52c7b519e49059163c06e4372d04109921e11",
+    "8c16199c7a3167a2872d434f167657d0826a74f62e90b6306639119cfddd2172": "72d42e391041e62bee9b87ff58bfda178c2650b8596be70ed68711c2a060f654",
+    "e812d0fe17c583609ef27c3107490d9552c192fcc5f39462ea54724d1bdb526a": "4cd783e00fa8cff28fed740d189568a4209b5760a38839d79f5c132e779cc952",
+    "89f0ddf55542ee3a1f08ebbf8772df67fdd6500dc7ce4e9c6974d883eeaa5fe0": "00c9bd0fd1e8cf6f13c5256fd6cb17f458edc574f68783ef46683ad1267ec023",
+    "275897befbebcda640ba150dd16039a44aa90adb145016d2ba09045dd90e5458": "82e4103f9395ab8c6df557c3528d040f97764a31695dcae0a715aeb49a1753fc",
+    "8b5716e03dac3beccf0e73abda125c63c3e8ecba681a4b3bdb1fc8821ef07a2d": "bbececc44e977e8722dcddef367389de238b42c310fb1c32247ae5eeb009adc3",
+    "d70f827e3e6290501c7dc596f1a1a750a886893725442d143c231b3f93d6d115": "04cff32a9a7c32de282731e78df151a6188ed117c8f27e3dfaac84f8b3535e4a",
+    "0e8bc1e8cfb45b6edac14057d6a6990e850331402a88f0c78896b26529d5ae20": "542fe0d13f41764f6258ef26107a0d218efba63e53045b3ee183415b17384914",
+    "615c0e31b4e5acc1d456b626cfbd5af489414edd0972b4f548765ca7f79605ff": "6363bcfb4554cac99b8ca9bcdffe0ef30427a9f660efd834b98dce8b6ae2f673"
+  },
+  "cases": [
+    {
+      "before": "3e88a41ef206df21be218eaa89bdd9f2a292b40ed1526caa5c25caed72026f7d",
+      "after": "ae6e4cfcf22865ad8e4ef140fb76d2b9a6c8b687437adcbf55f6401eb0af8431",
+      "message": "Helga und Werner: vollständige Musterrecords mit belegter FR-57-Anlage"
+    },
+    {
+      "before": "098f56d508f2728fc611b9b389dc96abbb211ca3e872bbccb3062daa71c3ea2a",
+      "after": "936a7d76edd6b692c85ac1f90796aea571311dc744e930d1a4711f7c671a7c43",
+      "message": "Helga/Werner: vollständiger Backtest nach FR-63, Tagesgeld zuerst in Anleihen und keine Auffüllung im Bärenmarkt"
+    },
+    {
+      "before": "9f54347061cb277ca3ac4e92da3dfe2d34758eca315f25dc157b946e4b0bd532",
+      "after": "bf2154956f75b8e60edf26f676ad0abadc4a90a06a561b3ec66d923d46637484",
+      "message": "drei-topf: vollständige Finanzbytes und Folgezustände, Drei Töpfe mit FR-63, übrige BK-2-Belege unverändert"
+    },
+    {
+      "before": "37e7f9b83210d805eb4b84da62a2a5947ed067d77585cb06a46cf836dcc25c87",
+      "after": "ef25e672ecd8044c62fc637fc0565fc07d6ec7e893bb1fddf0da80a7020e211b",
+      "message": "renate: vollständige bisherige Records bytegleich"
+    },
+    {
+      "before": "3e88a41ef206df21be218eaa89bdd9f2a292b40ed1526caa5c25caed72026f7d",
+      "after": "ae6e4cfcf22865ad8e4ef140fb76d2b9a6c8b687437adcbf55f6401eb0af8431",
+      "message": "helga-werner: vollständige bisherige Records bytegleich"
+    },
+    {
+      "before": "6594d332a069d2fa379838cd0c79af8c43943f98d2f57d00bedfcb9f2eb22b5d",
+      "after": "25c71e7d85fc8ba5e63fbf21462d8d16076ea6f055140e53dc5acbb04d915b2e",
+      "message": "renate/statisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich"
+    },
+    {
+      "before": "7b2ea06a189a5e367a95d5eb5adc0d8be4a64c26f30de0607214e3dd7f3f1df9",
+      "after": "ca0a68257b9b060b40856b2bc450145dcf8c167b41c0e022957b55530321b042",
+      "message": "renate/statisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich"
+    },
+    {
+      "before": "1ee9d80e5c53a822f69110180a2b50b651991df822874c3087244c6525796712",
+      "after": "fed730d26c16827c4fe78e21a7e52c7b519e49059163c06e4372d04109921e11",
+      "message": "renate/dynamisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich"
+    },
+    {
+      "before": "8c16199c7a3167a2872d434f167657d0826a74f62e90b6306639119cfddd2172",
+      "after": "72d42e391041e62bee9b87ff58bfda178c2650b8596be70ed68711c2a060f654",
+      "message": "renate/dynamisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich"
+    },
+    {
+      "before": "e812d0fe17c583609ef27c3107490d9552c192fcc5f39462ea54724d1bdb526a",
+      "after": "4cd783e00fa8cff28fed740d189568a4209b5760a38839d79f5c132e779cc952",
+      "message": "helga-werner/statisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich"
+    },
+    {
+      "before": "89f0ddf55542ee3a1f08ebbf8772df67fdd6500dc7ce4e9c6974d883eeaa5fe0",
+      "after": "00c9bd0fd1e8cf6f13c5256fd6cb17f458edc574f68783ef46683ad1267ec023",
+      "message": "helga-werner/statisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich"
+    },
+    {
+      "before": "275897befbebcda640ba150dd16039a44aa90adb145016d2ba09045dd90e5458",
+      "after": "82e4103f9395ab8c6df557c3528d040f97764a31695dcae0a715aeb49a1753fc",
+      "message": "helga-werner/dynamisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich"
+    },
+    {
+      "before": "8b5716e03dac3beccf0e73abda125c63c3e8ecba681a4b3bdb1fc8821ef07a2d",
+      "after": "bbececc44e977e8722dcddef367389de238b42c310fb1c32247ae5eeb009adc3",
+      "message": "helga-werner/dynamisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich"
+    },
+    {
+      "before": "d70f827e3e6290501c7dc596f1a1a750a886893725442d143c231b3f93d6d115",
+      "after": "04cff32a9a7c32de282731e78df151a6188ed117c8f27e3dfaac84f8b3535e4a",
+      "message": "Renate: vollständige Musterrecords mit Personenzuordnung im Beleg"
+    },
+    {
+      "before": "0e8bc1e8cfb45b6edac14057d6a6990e850331402a88f0c78896b26529d5ae20",
+      "after": "542fe0d13f41764f6258ef26107a0d218efba63e53045b3ee183415b17384914",
+      "message": "renate: vollständige Musterreferenz; Renate mit 3 Töpfen nach FR-58"
+    },
+    {
+      "before": "615c0e31b4e5acc1d456b626cfbd5af489414edd0972b4f548765ca7f79605ff",
+      "after": "6363bcfb4554cac99b8ca9bcdffe0ef30427a9f660efd834b98dce8b6ae2f673",
+      "message": "helga-werner: vollständige Musterreferenz; Renate mit 3 Töpfen nach FR-58"
+    }
+  ]
+}

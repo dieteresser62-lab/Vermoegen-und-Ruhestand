@@ -1,0 +1,118 @@
+{
+  "baselineRevision": "8ed9cb4a",
+  "reason": "PM-1c: nur Eintritt 65/70 geändert. Pflegebeginn im festen Pfad Jahr 9 (PG1) statt Jahr 2 (PG2), PG3-Tod Jahr 15 statt 8. Vollständige JSON.stringify({rows,path0})-Referenzen ohne Feldfilter; alle Backtestzeilen und Präfix vor erster geänderter Pflegeziehung bytegleich. Historische SN-1-/FR-40-Referenzen bleiben erhalten.",
+  "presets": {
+    "Vorgabe": {
+      "payload": {
+        "beforeSha256": "103b7ec4c3e345b81bc8c0898710720a30f91d72767a49cd282900a9f7d9de8b",
+        "beforeHistoricalSha256": "df3851ccffb836a25a63b45f42c64e97bf949e533df25533a9bb3ce4b56dc7d5",
+        "afterSha256": "bbe0e2a8c0d06fc824237cbd63f7c30878dde5b3b9f21f8468ff7aa1fc6ba3e4",
+        "backtestSha256": "1e479e1ba5635bc929dfbd281d84fb40db1ee22ce3a7e9cb3b3b69aa36b9fcd3",
+        "prefixLength": 1,
+        "prefixSha256": "708cdd93cb8f441bbbfb46a2d2e862c9595a895591336c872ed98a8e6524b54d",
+        "firstChangedYear": 2,
+        "firstCareYear": 9,
+        "firstCareGrade": 1,
+        "deathYear": 15,
+        "deathGrade": 3
+      },
+      "legacyPayload": {
+        "beforeSha256": "ed7e2d126e3d5eed5a9352332fa829085a382bf8792bce4dd05c6770e7e4a399",
+        "beforeHistoricalSha256": "5d90af273b2586e3d68c6993e792ff5f2f61a3e1f9af1d18b3a04ddc1729ef25",
+        "afterSha256": "9543ddd77e72f75ed166819a0a384ce6120f9d5da75c17cae375402b156253ed",
+        "backtestSha256": "1e479e1ba5635bc929dfbd281d84fb40db1ee22ce3a7e9cb3b3b69aa36b9fcd3",
+        "prefixLength": 1,
+        "prefixSha256": "708cdd93cb8f441bbbfb46a2d2e862c9595a895591336c872ed98a8e6524b54d",
+        "firstChangedYear": 2,
+        "firstCareYear": 9,
+        "firstCareGrade": 1,
+        "deathYear": 15,
+        "deathGrade": 3
+      }
+    },
+    "konservativ": {
+      "payload": {
+        "beforeSha256": "aba640a409beefb3a7237882f218572711671c6f4ca00b3d25ad792ffed2e1ed",
+        "beforeHistoricalSha256": "c35b0f9b2b0fdbc45aa7d52ac15cff65e55a2cb6161c5779cc8150a9a5d527d3",
+        "afterSha256": "7ca9db880b57880f4ec09bc030c8d86ccdcaad74c735ea519ce8227fca5696a7",
+        "backtestSha256": "afe07d69b277b488ad993f01fa16445d378b138da9d301fb1abc58a29cbafa45",
+        "prefixLength": 1,
+        "prefixSha256": "eda54f8646f51f7eb3ce030c529708124da0948f6cf9355c894fe22786a2d7d4",
+        "firstChangedYear": 2,
+        "firstCareYear": 9,
+        "firstCareGrade": 1,
+        "deathYear": 15,
+        "deathGrade": 3
+      },
+      "legacyPayload": {
+        "beforeSha256": "2a6506ded2c8f1d1a35598ed7b9d66e5adfe70b8e6b518ee73a5726cf09bbd93",
+        "beforeHistoricalSha256": "6f1eef2a5e35fcf2dc297fdbdab9168b937eac8c6c5021facdaca3c021aaaca2",
+        "afterSha256": "21ca5d099d59aa25db23e5244c2a079f3f77ee6d9b3428a7b445f80341db5714",
+        "backtestSha256": "afe07d69b277b488ad993f01fa16445d378b138da9d301fb1abc58a29cbafa45",
+        "prefixLength": 1,
+        "prefixSha256": "eda54f8646f51f7eb3ce030c529708124da0948f6cf9355c894fe22786a2d7d4",
+        "firstChangedYear": 2,
+        "firstCareYear": 9,
+        "firstCareGrade": 1,
+        "deathYear": 15,
+        "deathGrade": 3
+      }
+    },
+    "ausgewogen": {
+      "payload": {
+        "beforeSha256": "d799e782a6e6acbad5f5fa6cbcbb3a21111329a27604a98a01ccb9c8b4e76770",
+        "beforeHistoricalSha256": "02bae22bc1bd04c36498cbc8ae8decff1ff1bab446ad0f794ee06359a5d537a3",
+        "afterSha256": "d4971500ef1798166cbec24f18d2fb723c000ce06ac79cf5b7e16265ee6e8645",
+        "backtestSha256": "f78d7bb04fc2386901d17a7807500922a239db7350b6fa3b10bd239c9a2dc7d6",
+        "prefixLength": 1,
+        "prefixSha256": "d13259b7fb50f435593f839418dae4530ec2c4184b2b4eabbecd651bc21e0de9",
+        "firstChangedYear": 2,
+        "firstCareYear": 9,
+        "firstCareGrade": 1,
+        "deathYear": 15,
+        "deathGrade": 3
+      },
+      "legacyPayload": {
+        "beforeSha256": "38582eb6d84ff7d222bd7e3ec890f692dba4a5778d3a74a508d01d67ecf2d587",
+        "beforeHistoricalSha256": "092d42dd2d0bf54bf8f82aa44f3f44e1f642b60c8702c95ad167911126366189",
+        "afterSha256": "c1f3242cb8474a25cffaccb878002a18701d89d391ae0c3240fa19e77e892020",
+        "backtestSha256": "f78d7bb04fc2386901d17a7807500922a239db7350b6fa3b10bd239c9a2dc7d6",
+        "prefixLength": 1,
+        "prefixSha256": "d13259b7fb50f435593f839418dae4530ec2c4184b2b4eabbecd651bc21e0de9",
+        "firstChangedYear": 2,
+        "firstCareYear": 9,
+        "firstCareGrade": 1,
+        "deathYear": 15,
+        "deathGrade": 3
+      }
+    },
+    "offensiv": {
+      "payload": {
+        "beforeSha256": "50ef3b7ff6d28c057b38642d9bae8efb9efe753637c9532dcdb561e75212376c",
+        "beforeHistoricalSha256": "10e3d9f1178ea3456e0d00ef5f52aa045648f9a29087cb2b7850afcce5e006d1",
+        "afterSha256": "520d2f71faa41970940d7c56da907cd994cccd7ea93ee35a7f8d6748d20aff5a",
+        "backtestSha256": "823409ae0322ccf1d6ed5a7e6b92b479c6a9718960245ced82bd75b2cff51b7f",
+        "prefixLength": 1,
+        "prefixSha256": "772bd5ac4c89bf77a8f8acf886647b5535672a3abcf2fb715fba92fbbc457eed",
+        "firstChangedYear": 2,
+        "firstCareYear": 9,
+        "firstCareGrade": 1,
+        "deathYear": 15,
+        "deathGrade": 3
+      },
+      "legacyPayload": {
+        "beforeSha256": "8bd236c3317a839095c6b6f1b558f11a0f4dc4c433da9fb5c642e5ff594bb8e2",
+        "beforeHistoricalSha256": "4248f1db2832cc3d6a2e79dba6d81d62999b1af2a43ce7764251319f9d86d86b",
+        "afterSha256": "2e5a9bd7cc50987f1baf81157672b9a3ec53ae1f60d53bbf5075a22304ede1cf",
+        "backtestSha256": "823409ae0322ccf1d6ed5a7e6b92b479c6a9718960245ced82bd75b2cff51b7f",
+        "prefixLength": 1,
+        "prefixSha256": "772bd5ac4c89bf77a8f8acf886647b5535672a3abcf2fb715fba92fbbc457eed",
+        "firstChangedYear": 2,
+        "firstCareYear": 9,
+        "firstCareGrade": 1,
+        "deathYear": 15,
+        "deathGrade": 3
+      }
+    }
+  }
+}

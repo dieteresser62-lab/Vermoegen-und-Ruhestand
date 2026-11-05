@@ -1,0 +1,30 @@
+import fs from 'node:fs';
+import { BUDGET_REFERENCE, replaceGenerated } from './jahresbudget-parameter.mjs';
+import { renderBudgetExamples, renderBudgetTechnicalExamples, renderBudgetCurves, renderHandbookBudgetExamples } from './jahresbudget-beispiele.mjs';
+import { readHandbookBudgetImages } from './jahresbudget-pruefung.mjs';
+import { fileURLToPath } from 'node:url';
+import { ACTION_REFERENCE } from './handlungsanweisung-parameter.mjs';
+import { calculateActionExamples, renderActionExamples, renderActionTechnicalExamples, renderHandbookActionExample } from './handlungsanweisung-beispiele.mjs';
+import { TECHNICAL_REFERENCE, technicalProjection } from './docs-reader-parameters.mjs';
+const file = new URL(`../${BUDGET_REFERENCE}`, import.meta.url);
+const source = fs.readFileSync(file, 'utf8');
+const examples = renderBudgetExamples(), curves = renderBudgetCurves();
+fs.writeFileSync(file, replaceGenerated(source, 'docs:beispiele', examples));
+const handbook = new URL('../Handbuch.html', import.meta.url);
+const images = readHandbookBudgetImages(fileURLToPath(new URL('../', import.meta.url)));
+fs.writeFileSync(handbook, replaceGenerated(fs.readFileSync(handbook, 'utf8'), 'docs:monatsbetrag', renderHandbookBudgetExamples(images)));
+const actionExamples = calculateActionExamples();
+const actionFile = new URL(`../${ACTION_REFERENCE}`, import.meta.url);
+fs.writeFileSync(actionFile, replaceGenerated(fs.readFileSync(actionFile, 'utf8'), 'docs:beispiele', renderActionExamples(actionExamples)));
+fs.writeFileSync(handbook, replaceGenerated(fs.readFileSync(handbook, 'utf8'), 'docs:handlungsanweisung', renderHandbookActionExample(actionExamples)));
+const technicalFile = new URL(`../${TECHNICAL_REFERENCE}`, import.meta.url);
+let technical = fs.readFileSync(technicalFile, 'utf8');
+technical = replaceGenerated(technical, 'docs:budget-examples', technicalProjection(renderBudgetTechnicalExamples(), BUDGET_REFERENCE));
+technical = replaceGenerated(technical, 'docs:action-examples', technicalProjection(renderActionTechnicalExamples(actionExamples), ACTION_REFERENCE));
+fs.writeFileSync(technicalFile, technical);
+for (const [path, svg] of Object.entries(curves)) {
+    const target = new URL(`../${path}`, import.meta.url);
+    fs.mkdirSync(new URL('.', target), { recursive: true });
+    fs.writeFileSync(target, svg);
+}
+console.log('Budget- und Handlungsbeispiele, Handbuchzahlen und zwei SVG-Kurven erneuert.');

@@ -1,0 +1,1460 @@
+{
+  "hashes": {
+    "5eaa16314a8ef4e21c51cff9e5650b4986b207db78f239512e482e0667d7b146": "69e398e46e2a9c54f495ea7099b736ca18deae26511d89d45e0ed48b6bc3028e",
+    "b2a45474afe309b0b223e3063aa16df98ad9854a7bc1d72d6f70562aa7195f84": "57d6e5100d5d8799271251e865e4a38c4240440ea1b6c41c408827ec7790aa86",
+    "db13126e9a2c0b40483e2cc78455f6be68cc68425f562935dd833d25b284495c": "fe56ac2da71bc5d96823a7b90be8426091ad38514a4d91ba147eab3c4f2e3563",
+    "6628eb817b0d68249e4aaf38dbd764dd9159581a12d2ec4a5f455e956ec4343d": "815aa55f1a786541d3209d53d04613cc07d2261dae24f968b178f1fa95bac138",
+    "84695650e4c224eb7ac3cb49d97dad7d1bceb1afb908bfda7847a25dcaf9c2c6": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8",
+    "f5b352504d24489fc929185b9f63b227a967edc13affe801a95dda22fc31b265": "d58f618bcf7e55ae4362d963badc4936acae514821da005ca4e3f04973c9048e",
+    "1cd0d34b917f992762f81b3efa8b0a5a0d55e08df60f4aff44b747f1cbe3644a": "9758a31817a20c85d5d1add7ce75e228c9f68ccd4a3cf9b86b38f2633f321293",
+    "04dc6e11d6b302bc9bada49c88641de0d7777e65e523b809b29095708c4e4b6d": "3461649b6c0a20d888fc057aa02d6a406a7eb8667bf271d2cfa19f212f950724",
+    "d12dbd5d4501e34e2724b4394a59aecbd37f5d9321096043e5ec0bfeb535b722": "1946d6dec675510ad7437246a884d2acb252ddc29ce469e713ba26e6629f96b6",
+    "1a0154064d16b66394e2c0290bc713ba67d89fd9500a4db3fbe3a53241e53c3e": "baeb3b12ca056c1464194efd581fc66492a3ac67106c89247a4c1148e3ef3d0e",
+    "2b81d4d65a1fb921234be30fadff36b33d6eaf27dcd105e846b031493cd1eb86": "4b810a88246d1cd021a2e4803e6e25654c8338b5534d8eb710a863e6e7a232d2",
+    "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854": "f5ae92321c4f72e3ed2596843a0f6206046a99702671a883df9c8e64903be526",
+    "6e67051159e427ae5df2e5dce65d50962fa6c701dd648c8cb88b5fc9fa8f34d7": "1e55cf568ceb00a0794834777743ea9fa122b781f68e822df179b190b4a35c6f",
+    "04b70026b5bd90db7219e8dfb8eb1592d11ddac7dcb25da1c8252616c1e63398": "aef6205b68f5b91e8c0782663bba84b91eca6ebc6043d52b59fb7a5e65ee2576",
+    "7395300a53b34a19073e7fb3efa1005bf6b04797d27ee528b0461b66dcbdb2a5": "e25d006659db895a281278d4b6768aa3146d0e731c287139c3f03d4eb961c135",
+    "d2e88e1788ae4a7007276b0bc5031d1650540aa561d82f44c70f08851ee21c0c": "7cc0f245f7ba20f8e6c19fb90effebaa8e4a3df97a951b8ccf8c98615ca542a0",
+    "08c40d36f78665ef38343480095b67330d226b63846f200318a798d95075797c": "55164c76e9b0cd9c655a652c299ef878ff8cf2380cd21e99648338ee38f398de",
+    "07c69b03d315e2ddc434b47155a2819c1e49430b039b0d5d6bfe2bad9123b443": "314cf7d15c0de3aaca25babd8f11192c7581ac98dd5f7213b66fe8e60b59daec",
+    "8d18597a0eee5c84b98e4c8e8193a11c00ddffe7defaec737232669e8d8634bd": "702f62fa1ecb1cbcf94eb27f4fe4de01643494488dc6fa6accc6386854cb9192",
+    "6b6e16128e5a58769fd55aea1ad7a954270a982e9b38835f1fb162de3f0c1728": "450d1e9aa3c2112ee41199ffedc0e4cd2963c7035bbc51b3aab4b936efaa2353",
+    "e2e2ad0bc3f3f867e361d39c4f8e5a979a42c38d056e8c24ce1f212af3a5da66": "340fcab92cf933596557dd02fae1a08c62df217e7dfe7d459101ec32d19b5c14",
+    "443c3fc94da09bd8445ef325127770e0164d66f6eb91d26d951d704edfa3d816": "8ed965eca08f36b06e824bcd11cb3ed4038e3aae7d997ec87018d28001378d9f",
+    "d305b98292ef02c9301c5d9c4d987647e60604ea49648313492e1bea870cb7ea": "825263d4255f7087b7a44e39dd5e5c3917eda44b19c20fbcfb800b00d8201284",
+    "b67deefafc92d7b5849fda6986286c127e3683bb7c0712546e1105df0e5af5ee": "5468f5558e90e4a69d1dbab9b11a5751c4a43d98a98f327c45c969e955eb678b",
+    "20dafd09205e510596f41f3629bf2681f326e6054fb71040446ed160f4d674b7": "48a5ba71058be4073120e039ea0eafe8b5446d85ea8257f18a5cd1a71e39fafd",
+    "8d801b27d516c7e038bc32cb3ff872d2eb2bda361542f880ab8e954df59c504c": "81b40af6d9b9c353ae244a7f3122457e93241a22ba51027953464bd3ae3cd070",
+    "a5719dfdcaaa2b4bf123e9582f08d029009b2d0d8ef5f48aac0a8e5a002e0c30": "0d8b34964159a874e26ff6d89a7d2868901e999f847269e462efb555bea31cf2",
+    "b912841a74ebfb070dad7bb13f850d1aec202482c148284449fdb41cc86e2104": "6574f103bb5edc33bf12a8e87c40dfa388b1540e6143acb7008b0df19aa7f9aa",
+    "7dc360b806bebab46eca70eafa9d8f1d0995b9728e976a26c9594b9e69c303b8": "8835247d9527e1dc8dd2c611ff7ea4fcf84cc620f677826820cffe261dab5d38",
+    "5291acaaf815e7976e23f016b5d14477b3dfcf0c0efbdbd305467c4f8f21d8af": "7e66b5b1a2f025bb717538ac13851e930271e1d25b6067c081fa7513c75361b4",
+    "8facae313160f4aa93ad8531b36829bd4d3e34e5d588404dac657a5699057f5f": "f3c31c46aa5cb261e9970162178a62d617597ed2493cfbe87001ad411c79d540",
+    "115be1e99e5b2512404ebfa89d09428eec167268cf39740be653031535bb055e": "9e2d23d131ccd7435685e00e799245cbda42acee278e3c28da69fa9683ede7bb",
+    "7dc2f1d20fd829291bb383c40d95c13575da72d9b34bdff88b349d1804cbf7f6": "b0fadc51123cb881e42b99a2d2f835ddbca2de2cadb3d193b11d7a0a7a09acfb",
+    "909882a6b901008a5b6149f10a81cc7e1e9348c0a07c70066976de4d999f7da6": "4d5c2f7420a3987c05b3c354f9b97c8d2a02732270cc98ceced742577ac1feb0",
+    "5da6c0bfcbcbd3572e7826a43d757893416e4477015eda12b6ce1245bd2e28a0": "d7c4065f594292ccad7623d0846023fa20c9f677233e0501bc09abf66539ee54",
+    "0ca24e78036b4c80dd1c9704be9563e2834f7a5d64d46c56e98929ec621cb8a1": "8667c3bc7b54b4b82942b664612729ef6138694c1a020d1c9d02b7a1b1e1b5ac",
+    "b5ed62053cacb3568606375ed504e8f7cf2573ea1b231feb530b804e20f742e9": "946b9821e3621d4d8a8fdf652eca02158376a7be08e7634d465d39a0343a81e9",
+    "d93978c876ff4119f55f18bd080d7de419bdd0bde58e2042f1a7a4608e4ca2f8": "ccd3681ea8f18cabf358dde7e8876a63bf6511be35d8255818d5e533c3b64330",
+    "79373ec2d67d5e24493894a2f27f7371d4b478ca235c8d76a055ebd28bcac206": "9b184777fff8651dee2b0cac7c3298fbe7ea629b7af3800c95f43599c1f6081f",
+    "3c325f8cc4b4f90a3b8975f73496f4a4cb46ebf3c314f52cb88261c33da8d8d7": "508b6fedb45bc749ff213804c64831c92c0b50a0eb0ed02df8d73e7af2d105d0",
+    "c974c81b84a1116995644faf05bb5ed5fec7f0c8e82d1fde8df2f74a030c713b": "ec506798cee206a381d0ef8b7ab7bb6cee5e71baea592bf55477dfa14a516a8b",
+    "fde480100d42d813db1f81b2a6111bff613a9e1c251446b1bda0f306830695ff": "13f136e400874f2f71af64c86ba76e14b4bb4b20667fa378a1bff4d4bdc96181",
+    "37b7af3c2f0ae75ab65ef919da9c9b57ff34db9c5d5d2aeff9fb50a70d69c5a8": "965873dfbad401aaad187865bfd36f8dbbd78e167fb9805a6719065c760860ce",
+    "168f59940f8dd9fcb4f7cc9ad2d5d42c5af18e2a98d868f3d9bb7269c331061c": "76cf2e5aae75ea69445d67666398486b93362f112766e8ca1667c39e3b9605e6",
+    "574dc8a7f05025846b262fb36b5fa1c46f4b65224c868d6cdd4184712112bc92": "23f0522cdf872e08a823101021a17e0b09d72be6265328c2d2e312c567180b3f",
+    "0792b3219e900ab16de38de882214cf35dfeda77af9978ed0541c76770463feb": "2df9117e713afb2c8211a95f93f70f7f92036731cb55035acaba1162c1ed6dc0",
+    "d1227e3adbbd60e2914536e62f35aecb5409309ee259905d02b6c7036f5d8ca9": "331bbacc59add3a12059b3893fb4089f5e3d648a3b38bb423e57e35c0ece7315",
+    "dbf035cec75f42b3d57f2cb5d97474d81e1ead25fb1757ce1280b513cab00234": "6c02c3c06fa6f2ba8a8aeea54d78437d970a53c0dec976ff2dd03d06caac418e",
+    "109e425d100b82fa8a852ca7526db84f6d8effabf8d833dea4fe7fdde798fd78": "e7c2d10cafb547d8c880ecb200844b125a0a5d1b3f6805a1c9cb8ac33f98dd31",
+    "d78b608c1c6613391af5fbc3b930e48099f37290f1f249681a382caaeaa42aac": "0d1eb5d74ba0efc0888f8a6a5adcf3f13c45d0eaed82d457457ca91b82f63b6c",
+    "6acec3b4dd4988c80c86ff7803429c6ddeb23e30afaa35a622bce8c9be169832": "8bf0f6bb8ac45b953789939dab93afc67a194fddf8892fd436331820a962ab21",
+    "2a02fef0cc8a7134fa04b4580d8d6e091514f281f29aae952d8a65fa276745a3": "c8e411f948fd91c8cb0339976067da9f6fe1fe5c3dc23d2c9700fa98af69d729",
+    "5df6ae8f758cefb50793c991bb7ad3115b3fbd4c22eb4c1ca739fcd7911dcdc1": "c164b8b0ed2b556acc1f670e8cfedf985d5ffdaef895827cbbebaa1a88a1b7b1",
+    "ba1c59a017dc03480456fe7da19f6144f539630a3f927393c692013a7f74cad8": "55920ee0627095a907e3db84890c73eea1660eebf4b39f043685b6e4bfd506b7",
+    "c628d205bf55690d197481be9953ac9efbe2f5c4896325dc00c5220f5396d69b": "bad09054a7e9f0f4afcbe0a724fc7dd8251be9afba572e8f3e335ef43927928e",
+    "d407f17a63b56be6c4640938c38a391fd0a96a6ac0dca2cd38159b2887ccc9f6": "f425e2c4a05d5e574e7de58625aa65ec15cfaf5c62e2c68ac6d2e9fb4a61badb",
+    "75dc69fe0a264887b1bc4000d9a198853fe7d6a66733b4d9acb595af2bf2fcd1": "03aa015bb0c24c5c2b638729daa550114a19b48c6e21dc78e38cec5ba567a89a",
+    "89fd013f74e6c12a7312996234def276e7d98316642018c90d7ef6d442e03409": "13977b397229e2fa0d493b3cd1d0b87a4256bc9b98bddc340922ed6ec26c55d5",
+    "265fe554baca98ca34be4a0b96f60c5831c3a789b08c84c6574c6b9446337387": "a86644769ed43e2969ef61fa80268937d5f79b8ad3d5817332df56f4b0234894",
+    "92e4aa59e062817e45d1e0213fbf7e4e027fb06b0222f3ca8ce27fa1ac675d2c": "4442bf77c4df8f5715dbf685b9d293a5c5c39eef27720af8f005fe4fdadbc0a8",
+    "c817472712d66080454a19d07ef97538330a86f2d7e9c2f4053392614cd7ea1b": "ec57f42aeca6394ad0074035ebff0d84f1cd53e7a69ded20556c78106aac5240",
+    "20c4561c2da51f4cf0e578a5b677ea1c9a3997f49e82ba011fab1fadd5aa317c": "5cb8a6c88e509f519136ae06e0b27401486824884a85591d20f8d29b5ccc7e26",
+    "cce3e1e1bdb4dbc7755881f2af11a322c07230c91287623d03a7c1d96be80b52": "065874bee50051735bf4f4516655a9fb9f73b36090ccbbe052448fc9476005d3",
+    "ff07d0a54281cdca7918e74d4408ea8b22fd1169d922000a448862958efb33c8": "265d761e7b7567b1d3369b284c472f638152a4ccc09aa44c22449b0adcf2a3f2",
+    "282339bfedc70dc7aa703991e7dab6126d238e82100c50380892e9e482f6386a": "3401b4a7d6df8b307aadbe14c5f64ad28e9cb2745b160ea0dfe5d8bbee659d5f",
+    "0820f11710e08b73324a1210392cd1eb97d384f960719a4a95f87e646de638d8": "ed4eebde75849564bb04bf6f845f5b2384ef379ae6b8c91d3a167a2550b636a6",
+    "ef71568fd3a4cb33eae4ce5a47be9b1f0e941b2ccd234081f97267edb61b692d": "d07d93216f8ab03e7c0266860a49dbd83e310925fc8c68d8f0cdfecf47439a49",
+    "59749b35190eb2f2b96215d25a2c9f199ce0e78382272b938f6dca46940858d8": "8378f6b3de5b3e7b03b0023dfcd7088cea82f4ebd80d8c725937e06f0675f826",
+    "f08d56da57534ced873e39a894575ddc1fef86e4f23f07a8f8ad0231707b2994": "326540ba6d880d41a31fc62ce64b2a6dffe8eac3b80bd0fccc2644a5541f410f",
+    "edeeeb3749ef9aa9269909b26b4b46f7fc30d5d38df22c3ac218622431939975": "78b82158393134f4599b007065e587b2e0d7dc2d7e62db319dbcfd9dd70d2c25",
+    "e87d8196dadd4d3ffd52468531c73b3e7887cbda891f47797cc4cd8d448f8c49": "25f08dae8a5dddde939acd7d2f82ddd82ccdde5156f727163afe7dc501f21265",
+    "5dccd2cff4ff9424e8c248f057a6ac943cc8531fbdd9aed9904b05fa1000144c": "674a00f8fa4a918630019865655466970818ff6f5d08cea375c082a45d589b9a",
+    "244b5d9c72c108b27e8764e46ad426b7b2a7cb6becbed0b5f7181e1e34f2ade4": "debc08290f4bccfee2e026d14ee3b0f8b26a43a11bbf346d1d6781407a933190",
+    "f4ce36cbd93c3d38b9dbf88db996a31f16ec76c840e77fdebb3421ac86f32c9c": "a0ba2031b0111d9fcf34a058a06128b266adb3db8e580ffdafeb7af2021cd141"
+  },
+  "cases": [
+    {
+      "test": "care-death-year.test.mjs",
+      "message": "Tod ohne Pflege: Sterbe- und Folgejahr mit belegten Text- und Nachlassprotokollfolgen",
+      "beforeSha256": "5eaa16314a8ef4e21c51cff9e5650b4986b207db78f239512e482e0667d7b146",
+      "afterSha256": "69e398e46e2a9c54f495ea7099b736ca18deae26511d89d45e0ed48b6bc3028e",
+      "changedLeaves": 12,
+      "changedKeys": {
+        "minimumFlexEffectiveAfter": 6,
+        "minimumFlexEffectiveBefore": 6
+      }
+    },
+    {
+      "test": "monte-carlo-measurement-contract.test.mjs",
+      "message": "Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.autoOptimizeResultSha256",
+      "beforeSha256": "b2a45474afe309b0b223e3063aa16df98ad9854a7bc1d72d6f70562aa7195f84",
+      "afterSha256": "57d6e5100d5d8799271251e865e4a38c4240440ea1b6c41c408827ec7790aa86",
+      "changedLeaves": 7,
+      "changedKeys": {
+        "meanWithdrawalRateRatio[2]": 2,
+        "values[2]": 1,
+        "p50": 1,
+        "p50_successful": 1,
+        "medianRatio": 1,
+        "runMeanRatios[2]": 1
+      }
+    },
+    {
+      "test": "monte-carlo-measurement-contract.test.mjs",
+      "message": "Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.finalResultSha256",
+      "beforeSha256": "db13126e9a2c0b40483e2cc78455f6be68cc68425f562935dd833d25b284495c",
+      "afterSha256": "fe56ac2da71bc5d96823a7b90be8426091ad38514a4d91ba147eab3c4f2e3563",
+      "changedLeaves": 1,
+      "changedKeys": {
+        "volatilityPct[2]": 1
+      }
+    },
+    {
+      "test": "flex-safety-bytegleich.test.mjs",
+      "message": "Sechs vollständige Engine-Ergebnisse nach FR-20/33/34 auf BK-2-Referenz",
+      "beforeSha256": "6628eb817b0d68249e4aaf38dbd764dd9159581a12d2ec4a5f455e956ec4343d",
+      "afterSha256": "815aa55f1a786541d3209d53d04613cc07d2261dae24f968b178f1fa95bac138",
+      "changedLeaves": 12,
+      "changedKeys": {
+        "impact": 6,
+        "threshold": 6
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.0.result",
+      "beforeSha256": "84695650e4c224eb7ac3cb49d97dad7d1bceb1afb908bfda7847a25dcaf9c2c6",
+      "afterSha256": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.1.result",
+      "beforeSha256": "f5b352504d24489fc929185b9f63b227a967edc13affe801a95dda22fc31b265",
+      "afterSha256": "d58f618bcf7e55ae4362d963badc4936acae514821da005ca4e3f04973c9048e",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.2.result",
+      "beforeSha256": "1cd0d34b917f992762f81b3efa8b0a5a0d55e08df60f4aff44b747f1cbe3644a",
+      "afterSha256": "9758a31817a20c85d5d1add7ce75e228c9f68ccd4a3cf9b86b38f2633f321293",
+      "changedLeaves": 1,
+      "changedKeys": {
+        "threshold": 1
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.3.result",
+      "beforeSha256": "04dc6e11d6b302bc9bada49c88641de0d7777e65e523b809b29095708c4e4b6d",
+      "afterSha256": "3461649b6c0a20d888fc057aa02d6a406a7eb8667bf271d2cfa19f212f950724",
+      "changedLeaves": 1,
+      "changedKeys": {
+        "threshold": 1
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.4.result",
+      "beforeSha256": "84695650e4c224eb7ac3cb49d97dad7d1bceb1afb908bfda7847a25dcaf9c2c6",
+      "afterSha256": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.5.result",
+      "beforeSha256": "f5b352504d24489fc929185b9f63b227a967edc13affe801a95dda22fc31b265",
+      "afterSha256": "d58f618bcf7e55ae4362d963badc4936acae514821da005ca4e3f04973c9048e",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.6.result",
+      "beforeSha256": "84695650e4c224eb7ac3cb49d97dad7d1bceb1afb908bfda7847a25dcaf9c2c6",
+      "afterSha256": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.7.result",
+      "beforeSha256": "f5b352504d24489fc929185b9f63b227a967edc13affe801a95dda22fc31b265",
+      "afterSha256": "d58f618bcf7e55ae4362d963badc4936acae514821da005ca4e3f04973c9048e",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.8.result",
+      "beforeSha256": "d12dbd5d4501e34e2724b4394a59aecbd37f5d9321096043e5ec0bfeb535b722",
+      "afterSha256": "1946d6dec675510ad7437246a884d2acb252ddc29ce469e713ba26e6629f96b6",
+      "changedLeaves": 13,
+      "changedKeys": {
+        "impact": 3,
+        "step": 2,
+        "minimumFlexEffectiveAfter": 2,
+        "minimumFlexEffectiveBefore": 2,
+        "length": 1,
+        "severity": 1,
+        "threshold": 1,
+        "value": 1
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.9.result",
+      "beforeSha256": "1a0154064d16b66394e2c0290bc713ba67d89fd9500a4db3fbe3a53241e53c3e",
+      "afterSha256": "baeb3b12ca056c1464194efd581fc66492a3ac67106c89247a4c1148e3ef3d0e",
+      "changedLeaves": 13,
+      "changedKeys": {
+        "impact": 3,
+        "step": 2,
+        "minimumFlexEffectiveAfter": 2,
+        "minimumFlexEffectiveBefore": 2,
+        "length": 1,
+        "severity": 1,
+        "threshold": 1,
+        "value": 1
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.10.result",
+      "beforeSha256": "84695650e4c224eb7ac3cb49d97dad7d1bceb1afb908bfda7847a25dcaf9c2c6",
+      "afterSha256": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "balance-planned-posts.test.mjs",
+      "message": "Ohne geplante Posten: vollständige Inputs und Engineergebnisse mit belegten NR-1-Anzeigeänderungen.11.result",
+      "beforeSha256": "f5b352504d24489fc929185b9f63b227a967edc13affe801a95dda22fc31b265",
+      "afterSha256": "d58f618bcf7e55ae4362d963badc4936acae514821da005ca4e3f04973c9048e",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "immobilien-empty-bytegleich.test.mjs",
+      "message": "Ohne Immobilien: vollständige 24 MC-Pfade mit Seed 12345 und belegter Ehe-Erbschaftsteuer",
+      "beforeSha256": "2b81d4d65a1fb921234be30fadff36b33d6eaf27dcd105e846b031493cd1eb86",
+      "afterSha256": "4b810a88246d1cd021a2e4803e6e25654c8338b5534d8eb710a863e6e7a232d2",
+      "changedLeaves": 4,
+      "changedKeys": {
+        "minimumFlexEffectiveAfter": 2,
+        "minimumFlexEffectiveBefore": 2
+      }
+    },
+    {
+      "test": "immobilien-empty-bytegleich.test.mjs",
+      "message": "Ohne Immobilien: vollständiger Paritätsbeleg mit bisheriger Anzeigebasis bytegleich zum Ausgangsstand",
+      "beforeSha256": "fa0dcd6a2b52cb59970da47d23041a4e4b170314e18f16baf5dc54ca91252854",
+      "afterSha256": "f5ae92321c4f72e3ed2596843a0f6206046a99702671a883df9c8e64903be526"
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "konservativ: Backtest entspricht BK-2-Referenz",
+      "beforeSha256": "6e67051159e427ae5df2e5dce65d50962fa6c701dd648c8cb88b5fc9fa8f34d7",
+      "afterSha256": "1e55cf568ceb00a0794834777743ea9fa122b781f68e822df179b190b4a35c6f",
+      "changedLeaves": 784,
+      "changedKeys": {
+        "cash": 47,
+        "equity": 47,
+        "total": 47,
+        "minimumFlexEffectiveAfter": 21,
+        "minimumFlexEffectiveBefore": 21,
+        "nextFlexRateSmoothingReferencePct": 12,
+        "plannedPortfolioWithdrawalRate": 12,
+        "finalRateAfterCapPct": 12,
+        "finalRateBeforeCapPct": 12,
+        "runwayMonths": 12,
+        "liquiditaet": 12,
+        "cashInterestEarned": 12,
+        "wertAktien": 12,
+        "tagesgeld": 11
+      }
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "konservativ: MC-Pfad 0 mit FR-21–24/27",
+      "beforeSha256": "04b70026b5bd90db7219e8dfb8eb1592d11ddac7dcb25da1c8252616c1e63398",
+      "afterSha256": "aef6205b68f5b91e8c0782663bba84b91eca6ebc6043d52b59fb7a5e65ee2576",
+      "changedLeaves": 1605,
+      "changedKeys": {
+        "total": 130,
+        "cash": 124,
+        "equity": 119,
+        "cashInterestEarned": 32,
+        "tagesgeld": 25,
+        "minimumFlexEffectiveAfter": 24,
+        "minimumFlexEffectiveBefore": 24,
+        "liquiditaet": 17,
+        "RunwayCoveragePct": 16,
+        "RunwayCoveragePostPayoutEndOfYearPct": 16,
+        "liqBasisForInterest": 16,
+        "taxCashAdjustment": 16,
+        "cash_interest_tax_delta": 16,
+        "cash_interest_taxable_signed": 16
+      }
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "ausgewogen: Backtest entspricht BK-2-Referenz",
+      "beforeSha256": "7395300a53b34a19073e7fb3efa1005bf6b04797d27ee528b0461b66dcbdb2a5",
+      "afterSha256": "e25d006659db895a281278d4b6768aa3146d0e731c287139c3f03d4eb961c135",
+      "changedLeaves": 15,
+      "changedKeys": {
+        "minimumFlexEffectiveAfter": 6,
+        "minimumFlexEffectiveBefore": 6,
+        "kuerzungQuelle": 2,
+        "CutReason": 1
+      }
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "ausgewogen: MC-Pfad 0 mit FR-21–24/27",
+      "beforeSha256": "d2e88e1788ae4a7007276b0bc5031d1650540aa561d82f44c70f08851ee21c0c",
+      "afterSha256": "7cc0f245f7ba20f8e6c19fb90effebaa8e4a3df97a951b8ccf8c98615ca542a0",
+      "changedLeaves": 1547,
+      "changedKeys": {
+        "total": 124,
+        "cash": 119,
+        "equity": 119,
+        "cashInterestEarned": 30,
+        "minimumFlexEffectiveAfter": 26,
+        "minimumFlexEffectiveBefore": 26,
+        "tagesgeld": 25,
+        "liquiditaet": 16,
+        "wertAktien": 16,
+        "QuoteEndPct": 15,
+        "RunwayCoveragePct": 15,
+        "RunwayCoveragePostPayoutEndOfYearPct": 15,
+        "portfolioTotalBeforePayout": 15,
+        "liqBasisForInterest": 15
+      }
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "offensiv: Backtest entspricht BK-2-Referenz",
+      "beforeSha256": "08c40d36f78665ef38343480095b67330d226b63846f200318a798d95075797c",
+      "afterSha256": "55164c76e9b0cd9c655a652c299ef878ff8cf2380cd21e99648338ee38f398de",
+      "changedLeaves": 6,
+      "changedKeys": {
+        "minimumFlexEffectiveAfter": 3,
+        "minimumFlexEffectiveBefore": 3
+      }
+    },
+    {
+      "test": "rechenregeln-bytegleich.test.mjs",
+      "message": "offensiv: MC-Pfad 0 mit FR-21–24/27",
+      "beforeSha256": "07c69b03d315e2ddc434b47155a2819c1e49430b039b0d5d6bfe2bad9123b443",
+      "afterSha256": "314cf7d15c0de3aaca25babd8f11192c7581ac98dd5f7213b66fe8e60b59daec",
+      "changedLeaves": 1735,
+      "changedKeys": {
+        "total": 127,
+        "cash": 116,
+        "equity": 111,
+        "minimumFlexEffectiveAfter": 30,
+        "minimumFlexEffectiveBefore": 30,
+        "cashInterestEarned": 30,
+        "tagesgeld": 25,
+        "liquiditaet": 16,
+        "amount": 16,
+        "planned": 16,
+        "tagesgeldUsed": 16,
+        "RunwayCoveragePct": 15,
+        "RunwayCoveragePostPayoutEndOfYearPct": 15,
+        "liqBasisForInterest": 15
+      }
+    },
+    {
+      "test": "annual-care-values.test.mjs",
+      "message": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen.no-care.parity",
+      "beforeSha256": "8d18597a0eee5c84b98e4c8e8193a11c00ddffe7defaec737232669e8d8634bd",
+      "afterSha256": "702f62fa1ecb1cbcf94eb27f4fe4de01643494488dc6fa6accc6386854cb9192",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "logHash": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "annual-care-values.test.mjs",
+      "message": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen.official.parity",
+      "beforeSha256": "6b6e16128e5a58769fd55aea1ad7a954270a982e9b38835f1fb162de3f0c1728",
+      "afterSha256": "450d1e9aa3c2112ee41199ffedc0e4cd2963c7035bbc51b3aab4b936efaa2353",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "logHash": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "konservativ: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "beforeSha256": "e2e2ad0bc3f3f867e361d39c4f8e5a979a42c38d056e8c24ce1f212af3a5da66",
+      "afterSha256": "340fcab92cf933596557dd02fae1a08c62df217e7dfe7d459101ec32d19b5c14",
+      "changedLeaves": 3759,
+      "changedKeys": {
+        "total": 267,
+        "cash": 254,
+        "equity": 254,
+        "minimumFlexEffectiveAfter": 83,
+        "minimumFlexEffectiveBefore": 83,
+        "cashInterestEarned": 64,
+        "liquiditaet": 54,
+        "wertAktien": 54,
+        "plannedPortfolioWithdrawalRate": 53,
+        "runwayMonths": 53,
+        "currentRealVermoegen": 50,
+        "entnahmequoteDepot": 50,
+        "entnahmequoteUsed": 50,
+        "realerDepotDrawdown": 50
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "konservativ: vollständiger PM-1c-Backtest und MC-Pfad 0",
+      "beforeSha256": "443c3fc94da09bd8445ef325127770e0164d66f6eb91d26d951d704edfa3d816",
+      "afterSha256": "8ed965eca08f36b06e824bcd11cb3ed4038e3aae7d997ec87018d28001378d9f",
+      "changedLeaves": 3766,
+      "changedKeys": {
+        "total": 264,
+        "cash": 251,
+        "equity": 246,
+        "minimumFlexEffectiveAfter": 83,
+        "minimumFlexEffectiveBefore": 83,
+        "cashInterestEarned": 64,
+        "liquiditaet": 54,
+        "plannedPortfolioWithdrawalRate": 53,
+        "runwayMonths": 53,
+        "wertAktien": 53,
+        "currentRealVermoegen": 50,
+        "entnahmequoteDepot": 50,
+        "entnahmequoteUsed": 50,
+        "realerDepotDrawdown": 50
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "konservativ/payload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+      "beforeSha256": "d305b98292ef02c9301c5d9c4d987647e60604ea49648313492e1bea870cb7ea",
+      "afterSha256": "825263d4255f7087b7a44e39dd5e5c3917eda44b19c20fbcfb800b00d8201284",
+      "changedLeaves": 4,
+      "changedKeys": {
+        "minimumFlexEffectiveAfter": 2,
+        "minimumFlexEffectiveBefore": 2
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "konservativ/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+      "beforeSha256": "b67deefafc92d7b5849fda6986286c127e3683bb7c0712546e1105df0e5af5ee",
+      "afterSha256": "5468f5558e90e4a69d1dbab9b11a5751c4a43d98a98f327c45c969e955eb678b",
+      "changedLeaves": 2617,
+      "changedKeys": {
+        "total": 174,
+        "cash": 167,
+        "equity": 167,
+        "minimumFlexEffectiveAfter": 63,
+        "minimumFlexEffectiveBefore": 63,
+        "plannedPortfolioWithdrawalRate": 42,
+        "runwayMonths": 42,
+        "liquiditaet": 42,
+        "cashInterestEarned": 42,
+        "wertAktien": 42,
+        "currentRealVermoegen": 40,
+        "entnahmequoteDepot": 40,
+        "entnahmequoteUsed": 40,
+        "realerDepotDrawdown": 40
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "konservativ/legacyPayload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+      "beforeSha256": "d305b98292ef02c9301c5d9c4d987647e60604ea49648313492e1bea870cb7ea",
+      "afterSha256": "825263d4255f7087b7a44e39dd5e5c3917eda44b19c20fbcfb800b00d8201284",
+      "changedLeaves": 4,
+      "changedKeys": {
+        "minimumFlexEffectiveAfter": 2,
+        "minimumFlexEffectiveBefore": 2
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "konservativ/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+      "beforeSha256": "b67deefafc92d7b5849fda6986286c127e3683bb7c0712546e1105df0e5af5ee",
+      "afterSha256": "5468f5558e90e4a69d1dbab9b11a5751c4a43d98a98f327c45c969e955eb678b",
+      "changedLeaves": 2617,
+      "changedKeys": {
+        "total": 174,
+        "cash": 167,
+        "equity": 167,
+        "minimumFlexEffectiveAfter": 63,
+        "minimumFlexEffectiveBefore": 63,
+        "plannedPortfolioWithdrawalRate": 42,
+        "runwayMonths": 42,
+        "liquiditaet": 42,
+        "cashInterestEarned": 42,
+        "wertAktien": 42,
+        "currentRealVermoegen": 40,
+        "entnahmequoteDepot": 40,
+        "entnahmequoteUsed": 40,
+        "realerDepotDrawdown": 40
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "konservativ: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "beforeSha256": "20dafd09205e510596f41f3629bf2681f326e6054fb71040446ed160f4d674b7",
+      "afterSha256": "48a5ba71058be4073120e039ea0eafe8b5446d85ea8257f18a5cd1a71e39fafd",
+      "changedLeaves": 3737,
+      "changedKeys": {
+        "total": 264,
+        "cash": 254,
+        "equity": 254,
+        "minimumFlexEffectiveAfter": 83,
+        "minimumFlexEffectiveBefore": 83,
+        "cashInterestEarned": 64,
+        "liquiditaet": 54,
+        "wertAktien": 54,
+        "plannedPortfolioWithdrawalRate": 53,
+        "runwayMonths": 53,
+        "currentRealVermoegen": 50,
+        "entnahmequoteDepot": 50,
+        "entnahmequoteUsed": 50,
+        "realerDepotDrawdown": 50
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "ausgewogen: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "beforeSha256": "8d801b27d516c7e038bc32cb3ff872d2eb2bda361542f880ab8e954df59c504c",
+      "afterSha256": "81b40af6d9b9c353ae244a7f3122457e93241a22ba51027953464bd3ae3cd070",
+      "changedLeaves": 3975,
+      "changedKeys": {
+        "total": 270,
+        "cash": 251,
+        "equity": 246,
+        "minimumFlexEffectiveAfter": 85,
+        "minimumFlexEffectiveBefore": 85,
+        "cashInterestEarned": 64,
+        "liquiditaet": 54,
+        "plannedPortfolioWithdrawalRate": 53,
+        "runwayMonths": 53,
+        "wertAktien": 53,
+        "tagesgeld": 51,
+        "currentRealVermoegen": 50,
+        "entnahmequoteDepot": 50,
+        "entnahmequoteUsed": 50
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "ausgewogen: vollständiger PM-1c-Backtest und MC-Pfad 0",
+      "beforeSha256": "a5719dfdcaaa2b4bf123e9582f08d029009b2d0d8ef5f48aac0a8e5a002e0c30",
+      "afterSha256": "0d8b34964159a874e26ff6d89a7d2868901e999f847269e462efb555bea31cf2",
+      "changedLeaves": 3945,
+      "changedKeys": {
+        "total": 269,
+        "cash": 251,
+        "equity": 246,
+        "minimumFlexEffectiveAfter": 81,
+        "minimumFlexEffectiveBefore": 81,
+        "cashInterestEarned": 64,
+        "liquiditaet": 54,
+        "plannedPortfolioWithdrawalRate": 53,
+        "runwayMonths": 53,
+        "wertAktien": 53,
+        "tagesgeld": 51,
+        "currentRealVermoegen": 50,
+        "entnahmequoteDepot": 50,
+        "entnahmequoteUsed": 50
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "ausgewogen/payload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+      "beforeSha256": "b912841a74ebfb070dad7bb13f850d1aec202482c148284449fdb41cc86e2104",
+      "afterSha256": "6574f103bb5edc33bf12a8e87c40dfa388b1540e6143acb7008b0df19aa7f9aa",
+      "changedLeaves": 4,
+      "changedKeys": {
+        "minimumFlexEffectiveAfter": 2,
+        "minimumFlexEffectiveBefore": 2
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "ausgewogen/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+      "beforeSha256": "7dc360b806bebab46eca70eafa9d8f1d0995b9728e976a26c9594b9e69c303b8",
+      "afterSha256": "8835247d9527e1dc8dd2c611ff7ea4fcf84cc620f677826820cffe261dab5d38",
+      "changedLeaves": 2778,
+      "changedKeys": {
+        "total": 178,
+        "cash": 167,
+        "equity": 167,
+        "minimumFlexEffectiveAfter": 63,
+        "minimumFlexEffectiveBefore": 63,
+        "plannedPortfolioWithdrawalRate": 42,
+        "runwayMonths": 42,
+        "liquiditaet": 42,
+        "cashInterestEarned": 42,
+        "wertAktien": 42,
+        "currentRealVermoegen": 40,
+        "entnahmequoteDepot": 40,
+        "entnahmequoteUsed": 40,
+        "realerDepotDrawdown": 40
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "ausgewogen/legacyPayload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+      "beforeSha256": "b912841a74ebfb070dad7bb13f850d1aec202482c148284449fdb41cc86e2104",
+      "afterSha256": "6574f103bb5edc33bf12a8e87c40dfa388b1540e6143acb7008b0df19aa7f9aa",
+      "changedLeaves": 4,
+      "changedKeys": {
+        "minimumFlexEffectiveAfter": 2,
+        "minimumFlexEffectiveBefore": 2
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "ausgewogen/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+      "beforeSha256": "7dc360b806bebab46eca70eafa9d8f1d0995b9728e976a26c9594b9e69c303b8",
+      "afterSha256": "8835247d9527e1dc8dd2c611ff7ea4fcf84cc620f677826820cffe261dab5d38",
+      "changedLeaves": 2778,
+      "changedKeys": {
+        "total": 178,
+        "cash": 167,
+        "equity": 167,
+        "minimumFlexEffectiveAfter": 63,
+        "minimumFlexEffectiveBefore": 63,
+        "plannedPortfolioWithdrawalRate": 42,
+        "runwayMonths": 42,
+        "liquiditaet": 42,
+        "cashInterestEarned": 42,
+        "wertAktien": 42,
+        "currentRealVermoegen": 40,
+        "entnahmequoteDepot": 40,
+        "entnahmequoteUsed": 40,
+        "realerDepotDrawdown": 40
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "ausgewogen: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "beforeSha256": "5291acaaf815e7976e23f016b5d14477b3dfcf0c0efbdbd305467c4f8f21d8af",
+      "afterSha256": "7e66b5b1a2f025bb717538ac13851e930271e1d25b6067c081fa7513c75361b4",
+      "changedLeaves": 3560,
+      "changedKeys": {
+        "total": 263,
+        "cash": 251,
+        "equity": 198,
+        "minimumFlexEffectiveAfter": 73,
+        "minimumFlexEffectiveBefore": 73,
+        "cashInterestEarned": 64,
+        "liquiditaet": 54,
+        "plannedPortfolioWithdrawalRate": 53,
+        "runwayMonths": 53,
+        "tagesgeld": 50,
+        "currentRealVermoegen": 50,
+        "realerDepotDrawdown": 50,
+        "wertAktien": 47,
+        "entnahmequoteDepot": 45
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "offensiv: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+      "beforeSha256": "8facae313160f4aa93ad8531b36829bd4d3e34e5d588404dac657a5699057f5f",
+      "afterSha256": "f3c31c46aa5cb261e9970162178a62d617597ed2493cfbe87001ad411c79d540",
+      "changedLeaves": 2341,
+      "changedKeys": {
+        "total": 169,
+        "cash": 158,
+        "equity": 156,
+        "minimumFlexEffectiveAfter": 48,
+        "minimumFlexEffectiveBefore": 48,
+        "cashInterestEarned": 40,
+        "liquiditaet": 30,
+        "wertAktien": 30,
+        "plannedPortfolioWithdrawalRate": 29,
+        "runwayMonths": 29,
+        "tagesgeld": 29,
+        "currentRealVermoegen": 26,
+        "entnahmequoteDepot": 26,
+        "entnahmequoteUsed": 26
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "offensiv: vollständiger PM-1c-Backtest und MC-Pfad 0",
+      "beforeSha256": "115be1e99e5b2512404ebfa89d09428eec167268cf39740be653031535bb055e",
+      "afterSha256": "9e2d23d131ccd7435685e00e799245cbda42acee278e3c28da69fa9683ede7bb",
+      "changedLeaves": 1250,
+      "changedKeys": {
+        "total": 78,
+        "cash": 71,
+        "equity": 71,
+        "minimumFlexEffectiveAfter": 34,
+        "minimumFlexEffectiveBefore": 34,
+        "nextFlexRateSmoothingReferencePct": 19,
+        "finalRateAfterCapPct": 19,
+        "finalRateBeforeCapPct": 19,
+        "entnahmequoteDepot": 19,
+        "plannedPortfolioWithdrawalRate": 18,
+        "runwayMonths": 18,
+        "liquiditaet": 18,
+        "cashInterestEarned": 18,
+        "tagesgeld": 18
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "offensiv/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+      "beforeSha256": "7dc2f1d20fd829291bb383c40d95c13575da72d9b34bdff88b349d1804cbf7f6",
+      "afterSha256": "b0fadc51123cb881e42b99a2d2f835ddbca2de2cadb3d193b11d7a0a7a09acfb",
+      "changedLeaves": 1222,
+      "changedKeys": {
+        "total": 78,
+        "cash": 71,
+        "equity": 71,
+        "minimumFlexEffectiveAfter": 30,
+        "minimumFlexEffectiveBefore": 30,
+        "plannedPortfolioWithdrawalRate": 18,
+        "runwayMonths": 18,
+        "liquiditaet": 18,
+        "cashInterestEarned": 18,
+        "tagesgeld": 18,
+        "wertAktien": 18,
+        "finalLimitingPolicy": 16,
+        "nextFlexRateSmoothingReferencePct": 16,
+        "finalRateAfterCapPct": 16
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "offensiv/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+      "beforeSha256": "7dc2f1d20fd829291bb383c40d95c13575da72d9b34bdff88b349d1804cbf7f6",
+      "afterSha256": "b0fadc51123cb881e42b99a2d2f835ddbca2de2cadb3d193b11d7a0a7a09acfb",
+      "changedLeaves": 1222,
+      "changedKeys": {
+        "total": 78,
+        "cash": 71,
+        "equity": 71,
+        "minimumFlexEffectiveAfter": 30,
+        "minimumFlexEffectiveBefore": 30,
+        "plannedPortfolioWithdrawalRate": 18,
+        "runwayMonths": 18,
+        "liquiditaet": 18,
+        "cashInterestEarned": 18,
+        "tagesgeld": 18,
+        "wertAktien": 18,
+        "finalLimitingPolicy": 16,
+        "nextFlexRateSmoothingReferencePct": 16,
+        "finalRateAfterCapPct": 16
+      }
+    },
+    {
+      "test": "planned-inflows.test.mjs",
+      "message": "offensiv: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+      "beforeSha256": "909882a6b901008a5b6149f10a81cc7e1e9348c0a07c70066976de4d999f7da6",
+      "afterSha256": "4d5c2f7420a3987c05b3c354f9b97c8d2a02732270cc98ceced742577ac1feb0",
+      "changedLeaves": 2234,
+      "changedKeys": {
+        "total": 165,
+        "cash": 155,
+        "equity": 150,
+        "minimumFlexEffectiveAfter": 46,
+        "minimumFlexEffectiveBefore": 46,
+        "cashInterestEarned": 40,
+        "liquiditaet": 30,
+        "tagesgeld": 30,
+        "plannedPortfolioWithdrawalRate": 29,
+        "runwayMonths": 29,
+        "wertAktien": 29,
+        "currentRealVermoegen": 26,
+        "entnahmequoteDepot": 26,
+        "entnahmequoteUsed": 26
+      }
+    },
+    {
+      "test": "ff-d-regression.test.mjs",
+      "message": "Vollständige engines-Ergebnisse mit FR-20/33/34-Diagnosen",
+      "beforeSha256": "5da6c0bfcbcbd3572e7826a43d757893416e4477015eda12b6ce1245bd2e28a0",
+      "afterSha256": "d7c4065f594292ccad7623d0846023fa20c9f677233e0501bc09abf66539ee54",
+      "changedLeaves": 37,
+      "changedKeys": {
+        "impact": 3,
+        "finalLimitingPolicy": 3,
+        "step": 2,
+        "minimumFlexEffectiveBefore": 2,
+        "minimumFlexEmergencyFloorPlusMinimumFlex": 2,
+        "minimumFlexEmergencyMinRunwayMonths": 2,
+        "minimumFlexEmergencyRequiredWealth": 2,
+        "minimumFlexEmergencyTotalWealth": 2,
+        "minimumFlexStatus": 2,
+        "gegriffen": 2,
+        "monatswirkungEur": 2,
+        "threshold": 1,
+        "length": 1,
+        "severity": 1
+      }
+    },
+    {
+      "test": "ff-g-regression.test.mjs",
+      "message": "staticResults: ungefilterte JSON-Bytes gegen BK-2",
+      "beforeSha256": "0ca24e78036b4c80dd1c9704be9563e2834f7a5d64d46c56e98929ec621cb8a1",
+      "afterSha256": "8667c3bc7b54b4b82942b664612729ef6138694c1a020d1c9d02b7a1b1e1b5ac",
+      "changedLeaves": 4,
+      "changedKeys": {
+        "threshold": 4
+      }
+    },
+    {
+      "test": "ff-g-regression.test.mjs",
+      "message": "dynamicUnaffected: ungefilterte JSON-Bytes gegen BK-2",
+      "beforeSha256": "b5ed62053cacb3568606375ed504e8f7cf2573ea1b231feb530b804e20f742e9",
+      "afterSha256": "946b9821e3621d4d8a8fdf652eca02158376a7be08e7634d465d39a0343a81e9",
+      "changedLeaves": 6,
+      "changedKeys": {
+        "threshold": 4,
+        "impact": 2
+      }
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "backtest: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+      "beforeSha256": "d93978c876ff4119f55f18bd080d7de419bdd0bde58e2042f1a7a4608e4ca2f8",
+      "afterSha256": "ccd3681ea8f18cabf358dde7e8876a63bf6511be35d8255818d5e533c3b64330",
+      "changedLeaves": 1179,
+      "changedKeys": {
+        "$[20][1]": 1,
+        "$[21][1]": 1,
+        "$[52][1]": 1,
+        "$[53][1]": 1,
+        "$[305][1]": 1,
+        "$[306][1]": 1,
+        "$[5624][1]": 1,
+        "$[5625][1]": 1,
+        "$[5650][1]": 1,
+        "$[5651][1]": 1,
+        "$[5902][1]": 1,
+        "$[5903][1]": 1,
+        "$[5961][1]": 1,
+        "$[5982][1]": 1
+      }
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "backtest: vollständige Referenz ohne Grund und Anmerkung",
+      "beforeSha256": "79373ec2d67d5e24493894a2f27f7371d4b478ca235c8d76a055ebd28bcac206",
+      "afterSha256": "9b184777fff8651dee2b0cac7c3298fbe7ea629b7af3800c95f43599c1f6081f",
+      "changedLeaves": 1211,
+      "changedKeys": {
+        "total": 78,
+        "cash": 71,
+        "equity": 71,
+        "minimumFlexEffectiveAfter": 30,
+        "minimumFlexEffectiveBefore": 30,
+        "plannedPortfolioWithdrawalRate": 18,
+        "runwayMonths": 18,
+        "liquiditaet": 18,
+        "cashInterestEarned": 18,
+        "tagesgeld": 18,
+        "wertAktien": 18,
+        "finalLimitingPolicy": 16,
+        "nextFlexRateSmoothingReferencePct": 16,
+        "finalRateAfterCapPct": 16
+      }
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "backtest: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+      "beforeSha256": "3c325f8cc4b4f90a3b8975f73496f4a4cb46ebf3c314f52cb88261c33da8d8d7",
+      "afterSha256": "508b6fedb45bc749ff213804c64831c92c0b50a0eb0ed02df8d73e7af2d105d0",
+      "changedLeaves": 1187,
+      "changedKeys": {
+        "total": 78,
+        "cash": 71,
+        "equity": 71,
+        "minimumFlexEffectiveAfter": 30,
+        "minimumFlexEffectiveBefore": 30,
+        "plannedPortfolioWithdrawalRate": 18,
+        "runwayMonths": 18,
+        "liquiditaet": 18,
+        "cashInterestEarned": 18,
+        "tagesgeld": 18,
+        "wertAktien": 18,
+        "finalLimitingPolicy": 16,
+        "nextFlexRateSmoothingReferencePct": 16,
+        "finalRateAfterCapPct": 16
+      }
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "backtest: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+      "beforeSha256": "c974c81b84a1116995644faf05bb5ed5fec7f0c8e82d1fde8df2f74a030c713b",
+      "afterSha256": "ec506798cee206a381d0ef8b7ab7bb6cee5e71baea592bf55477dfa14a516a8b",
+      "changedLeaves": 1220,
+      "changedKeys": {
+        "total": 78,
+        "cash": 71,
+        "equity": 71,
+        "minimumFlexEffectiveAfter": 30,
+        "minimumFlexEffectiveBefore": 30,
+        "plannedPortfolioWithdrawalRate": 18,
+        "runwayMonths": 18,
+        "liquiditaet": 18,
+        "cashInterestEarned": 18,
+        "tagesgeld": 18,
+        "wertAktien": 18,
+        "finalLimitingPolicy": 16,
+        "nextFlexRateSmoothingReferencePct": 16,
+        "finalRateAfterCapPct": 16
+      }
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "mc: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+      "beforeSha256": "fde480100d42d813db1f81b2a6111bff613a9e1c251446b1bda0f306830695ff",
+      "afterSha256": "13f136e400874f2f71af64c86ba76e14b4bb4b20667fa378a1bff4d4bdc96181"
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "mc: vollständige Referenz ohne Grund und Anmerkung",
+      "beforeSha256": "37b7af3c2f0ae75ab65ef919da9c9b57ff34db9c5d5d2aeff9fb50a70d69c5a8",
+      "afterSha256": "965873dfbad401aaad187865bfd36f8dbbd78e167fb9805a6719065c760860ce"
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "mc: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+      "beforeSha256": "168f59940f8dd9fcb4f7cc9ad2d5d42c5af18e2a98d868f3d9bb7269c331061c",
+      "afterSha256": "76cf2e5aae75ea69445d67666398486b93362f112766e8ca1667c39e3b9605e6"
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "mc: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+      "beforeSha256": "574dc8a7f05025846b262fb36b5fa1c46f4b65224c868d6cdd4184712112bc92",
+      "afterSha256": "23f0522cdf872e08a823101021a17e0b09d72be6265328c2d2e312c567180b3f"
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "engineResults: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+      "beforeSha256": "0792b3219e900ab16de38de882214cf35dfeda77af9978ed0541c76770463feb",
+      "afterSha256": "2df9117e713afb2c8211a95f93f70f7f92036731cb55035acaba1162c1ed6dc0"
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "engineResults: vollständige Referenz ohne Grund und Anmerkung",
+      "beforeSha256": "d1227e3adbbd60e2914536e62f35aecb5409309ee259905d02b6c7036f5d8ca9",
+      "afterSha256": "331bbacc59add3a12059b3893fb4089f5e3d648a3b38bb423e57e35c0ece7315"
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "engineResults: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+      "beforeSha256": "d1227e3adbbd60e2914536e62f35aecb5409309ee259905d02b6c7036f5d8ca9",
+      "afterSha256": "331bbacc59add3a12059b3893fb4089f5e3d648a3b38bb423e57e35c0ece7315"
+    },
+    {
+      "test": "cut-reason-bytegleich.test.mjs",
+      "message": "engineResults: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+      "beforeSha256": "dbf035cec75f42b3d57f2cb5d97474d81e1ead25fb1757ce1280b513cab00234",
+      "afterSha256": "6c02c3c06fa6f2ba8a8aeea54d78437d970a53c0dec976ff2dd03d06caac418e"
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "max-erika/statisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "109e425d100b82fa8a852ca7526db84f6d8effabf8d833dea4fe7fdde798fd78",
+      "afterSha256": "e7c2d10cafb547d8c880ecb200844b125a0a5d1b3f6805a1c9cb8ac33f98dd31",
+      "changedLeaves": 14,
+      "changedKeys": {
+        "impact": 3,
+        "step": 2,
+        "minimumFlexEffectiveAfter": 2,
+        "minimumFlexEffectiveBefore": 2,
+        "length": 1,
+        "severity": 1,
+        "status": 1,
+        "threshold": 1,
+        "value": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "max-erika/statisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "d78b608c1c6613391af5fbc3b930e48099f37290f1f249681a382caaeaa42aac",
+      "afterSha256": "0d1eb5d74ba0efc0888f8a6a5adcf3f13c45d0eaed82d457457ca91b82f63b6c",
+      "changedLeaves": 14,
+      "changedKeys": {
+        "impact": 3,
+        "step": 2,
+        "minimumFlexEffectiveAfter": 2,
+        "minimumFlexEffectiveBefore": 2,
+        "length": 1,
+        "severity": 1,
+        "status": 1,
+        "threshold": 1,
+        "value": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "max-erika/dynamisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "6acec3b4dd4988c80c86ff7803429c6ddeb23e30afaa35a622bce8c9be169832",
+      "afterSha256": "8bf0f6bb8ac45b953789939dab93afc67a194fddf8892fd436331820a962ab21",
+      "changedLeaves": 14,
+      "changedKeys": {
+        "impact": 3,
+        "step": 2,
+        "minimumFlexEffectiveAfter": 2,
+        "minimumFlexEffectiveBefore": 2,
+        "length": 1,
+        "severity": 1,
+        "status": 1,
+        "threshold": 1,
+        "value": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "max-erika/dynamisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "2a02fef0cc8a7134fa04b4580d8d6e091514f281f29aae952d8a65fa276745a3",
+      "afterSha256": "c8e411f948fd91c8cb0339976067da9f6fe1fe5c3dc23d2c9700fa98af69d729",
+      "changedLeaves": 14,
+      "changedKeys": {
+        "impact": 3,
+        "step": 2,
+        "minimumFlexEffectiveAfter": 2,
+        "minimumFlexEffectiveBefore": 2,
+        "length": 1,
+        "severity": 1,
+        "status": 1,
+        "threshold": 1,
+        "value": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "renate/statisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "5df6ae8f758cefb50793c991bb7ad3115b3fbd4c22eb4c1ca739fcd7911dcdc1",
+      "afterSha256": "c164b8b0ed2b556acc1f670e8cfedf985d5ffdaef895827cbbebaa1a88a1b7b1",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "renate/statisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "ba1c59a017dc03480456fe7da19f6144f539630a3f927393c692013a7f74cad8",
+      "afterSha256": "55920ee0627095a907e3db84890c73eea1660eebf4b39f043685b6e4bfd506b7",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "renate/dynamisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "c628d205bf55690d197481be9953ac9efbe2f5c4896325dc00c5220f5396d69b",
+      "afterSha256": "bad09054a7e9f0f4afcbe0a724fc7dd8251be9afba572e8f3e335ef43927928e",
+      "changedLeaves": 1,
+      "changedKeys": {
+        "threshold": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "renate/dynamisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "d407f17a63b56be6c4640938c38a391fd0a96a6ac0dca2cd38159b2887ccc9f6",
+      "afterSha256": "f425e2c4a05d5e574e7de58625aa65ec15cfaf5c62e2c68ac6d2e9fb4a61badb",
+      "changedLeaves": 1,
+      "changedKeys": {
+        "threshold": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "helga-werner/statisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "75dc69fe0a264887b1bc4000d9a198853fe7d6a66733b4d9acb595af2bf2fcd1",
+      "afterSha256": "03aa015bb0c24c5c2b638729daa550114a19b48c6e21dc78e38cec5ba567a89a",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "helga-werner/statisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "89fd013f74e6c12a7312996234def276e7d98316642018c90d7ef6d442e03409",
+      "afterSha256": "13977b397229e2fa0d493b3cd1d0b87a4256bc9b98bddc340922ed6ec26c55d5",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "helga-werner/dynamisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "265fe554baca98ca34be4a0b96f60c5831c3a789b08c84c6574c6b9446337387",
+      "afterSha256": "a86644769ed43e2969ef61fa80268937d5f79b8ad3d5817332df56f4b0234894",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "helga-werner/dynamisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "92e4aa59e062817e45d1e0213fbf7e4e027fb06b0222f3ca8ce27fa1ac675d2c",
+      "afterSha256": "4442bf77c4df8f5715dbf685b9d293a5c5c39eef27720af8f005fe4fdadbc0a8",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "sophie/statisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "c817472712d66080454a19d07ef97538330a86f2d7e9c2f4053392614cd7ea1b",
+      "afterSha256": "ec57f42aeca6394ad0074035ebff0d84f1cd53e7a69ded20556c78106aac5240",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "sophie/statisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "20c4561c2da51f4cf0e578a5b677ea1c9a3997f49e82ba011fab1fadd5aa317c",
+      "afterSha256": "5cb8a6c88e509f519136ae06e0b27401486824884a85591d20f8d29b5ccc7e26",
+      "changedLeaves": 2,
+      "changedKeys": {
+        "impact": 1,
+        "threshold": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "sophie/dynamisch/Hoch: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "cce3e1e1bdb4dbc7755881f2af11a322c07230c91287623d03a7c1d96be80b52",
+      "afterSha256": "065874bee50051735bf4f4516655a9fb9f73b36090ccbbe052448fc9476005d3",
+      "changedLeaves": 1,
+      "changedKeys": {
+        "threshold": 1
+      }
+    },
+    {
+      "test": "accumulation-surplus.test.mjs",
+      "message": "sophie/dynamisch/Bär: Entnahmejahr bei gleichem Vorjahreszustand vollständig bytegleich",
+      "beforeSha256": "ff07d0a54281cdca7918e74d4408ea8b22fd1169d922000a448862958efb33c8",
+      "afterSha256": "265d761e7b7567b1d3369b284c472f638152a4ccc09aa44c22449b0adcf2a3f2",
+      "changedLeaves": 1,
+      "changedKeys": {
+        "threshold": 1
+      }
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "konservativ: Backtest ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "282339bfedc70dc7aa703991e7dab6126d238e82100c50380892e9e482f6386a",
+      "afterSha256": "3401b4a7d6df8b307aadbe14c5f64ad28e9cb2745b160ea0dfe5d8bbee659d5f",
+      "changedLeaves": 2773,
+      "changedKeys": {
+        "total": 177,
+        "cash": 167,
+        "equity": 167,
+        "minimumFlexEffectiveAfter": 60,
+        "minimumFlexEffectiveBefore": 60,
+        "plannedPortfolioWithdrawalRate": 42,
+        "runwayMonths": 42,
+        "liquiditaet": 42,
+        "cashInterestEarned": 42,
+        "wertAktien": 42,
+        "tagesgeld": 40,
+        "currentRealVermoegen": 40,
+        "entnahmequoteDepot": 40,
+        "entnahmequoteUsed": 40
+      }
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "konservativ: MC ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "0820f11710e08b73324a1210392cd1eb97d384f960719a4a95f87e646de638d8",
+      "afterSha256": "ed4eebde75849564bb04bf6f845f5b2384ef379ae6b8c91d3a167a2550b636a6",
+      "changedLeaves": 1021,
+      "changedKeys": {
+        "total": 81,
+        "cash": 76,
+        "equity": 71,
+        "cashInterestEarned": 20,
+        "minimumFlexEffectiveAfter": 18,
+        "minimumFlexEffectiveBefore": 18,
+        "tagesgeld": 17,
+        "RunwayCoveragePct": 10,
+        "RunwayCoveragePostPayoutEndOfYearPct": 10,
+        "liqBasisForInterest": 10,
+        "taxCashAdjustment": 10,
+        "cash_interest_tax_delta": 10,
+        "cash_interest_taxable_signed": 10,
+        "entnahmequote": 10
+      }
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "ausgewogen: Backtest ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "ef71568fd3a4cb33eae4ce5a47be9b1f0e941b2ccd234081f97267edb61b692d",
+      "afterSha256": "d07d93216f8ab03e7c0266860a49dbd83e310925fc8c68d8f0cdfecf47439a49",
+      "changedLeaves": 2210,
+      "changedKeys": {
+        "total": 131,
+        "cash": 116,
+        "equity": 111,
+        "minimumFlexEffectiveAfter": 51,
+        "minimumFlexEffectiveBefore": 51,
+        "endgueltigeEntnahme": 30,
+        "flexRate": 30,
+        "minimumFlexEffectiveFinal": 30,
+        "nextFlexRateSmoothingReferencePct": 30,
+        "plannedPortfolioWithdrawalAnnual": 30,
+        "plannedPortfolioWithdrawalRate": 30,
+        "finalRateAfterCapPct": 30,
+        "finalRateBeforeCapPct": 30,
+        "jahresEntnahme": 30
+      }
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "ausgewogen: MC ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "59749b35190eb2f2b96215d25a2c9f199ce0e78382272b938f6dca46940858d8",
+      "afterSha256": "8378f6b3de5b3e7b03b0023dfcd7088cea82f4ebd80d8c725937e06f0675f826",
+      "changedLeaves": 955,
+      "changedKeys": {
+        "total": 76,
+        "cash": 71,
+        "equity": 71,
+        "minimumFlexEffectiveAfter": 18,
+        "minimumFlexEffectiveBefore": 18,
+        "cashInterestEarned": 18,
+        "tagesgeld": 17,
+        "QuoteEndPct": 9,
+        "RunwayCoveragePct": 9,
+        "RunwayCoveragePostPayoutEndOfYearPct": 9,
+        "portfolioTotalBeforePayout": 9,
+        "liqBasisForInterest": 9,
+        "taxCashAdjustment": 9,
+        "cash_interest_tax_delta": 9
+      }
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "offensiv: Backtest ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "c974c81b84a1116995644faf05bb5ed5fec7f0c8e82d1fde8df2f74a030c713b",
+      "afterSha256": "ec506798cee206a381d0ef8b7ab7bb6cee5e71baea592bf55477dfa14a516a8b",
+      "changedLeaves": 1220,
+      "changedKeys": {
+        "total": 78,
+        "cash": 71,
+        "equity": 71,
+        "minimumFlexEffectiveAfter": 30,
+        "minimumFlexEffectiveBefore": 30,
+        "plannedPortfolioWithdrawalRate": 18,
+        "runwayMonths": 18,
+        "liquiditaet": 18,
+        "cashInterestEarned": 18,
+        "tagesgeld": 18,
+        "wertAktien": 18,
+        "finalLimitingPolicy": 16,
+        "nextFlexRateSmoothingReferencePct": 16,
+        "finalRateAfterCapPct": 16
+      }
+    },
+    {
+      "test": "survivor-bytegleich.test.mjs",
+      "message": "offensiv: MC ohne Tod entspricht BK-2-Referenz",
+      "beforeSha256": "f08d56da57534ced873e39a894575ddc1fef86e4f23f07a8f8ad0231707b2994",
+      "afterSha256": "326540ba6d880d41a31fc62ce64b2a6dffe8eac3b80bd0fccc2644a5541f410f",
+      "changedLeaves": 1054,
+      "changedKeys": {
+        "total": 77,
+        "cash": 68,
+        "equity": 63,
+        "minimumFlexEffectiveAfter": 20,
+        "minimumFlexEffectiveBefore": 20,
+        "cashInterestEarned": 18,
+        "tagesgeld": 17,
+        "amount": 12,
+        "planned": 12,
+        "tagesgeldUsed": 12,
+        "FlexRatePct": 9,
+        "RunwayCoveragePct": 9,
+        "RunwayCoveragePostPayoutEndOfYearPct": 9,
+        "jahresEntnahmeTarget": 9
+      }
+    },
+    {
+      "test": "care-price-continuation.test.mjs",
+      "message": "single-mc: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten",
+      "beforeSha256": "edeeeb3749ef9aa9269909b26b4b46f7fc30d5d38df22c3ac218622431939975",
+      "afterSha256": "78b82158393134f4599b007065e587b2e0d7dc2d7e62db319dbcfd9dd70d2c25",
+      "changedLeaves": 645,
+      "changedKeys": {
+        "total": 77,
+        "cash": 76,
+        "cashInterestEarned": 20,
+        "minimumFlexEffectiveAfter": 20,
+        "minimumFlexEffectiveBefore": 20,
+        "2": 11,
+        "RunwayCoveragePostPayoutEndOfYearPct": 10,
+        "liqBasisForInterest": 10,
+        "nextFlexRateSmoothingReferencePct": 10,
+        "plannedPortfolioWithdrawalRate": 10,
+        "finalRateAfterCapPct": 10,
+        "finalRateBeforeCapPct": 10,
+        "runwayMonths": 10,
+        "liqEnd": 10
+      }
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression.test.mjs",
+      "message": "standard: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "beforeSha256": "e87d8196dadd4d3ffd52468531c73b3e7887cbda891f47797cc4cd8d448f8c49",
+      "afterSha256": "25f08dae8a5dddde939acd7d2f82ddd82ccdde5156f727163afe7dc501f21265",
+      "changedLeaves": 16,
+      "changedKeys": {
+        "minimumFlexEffectiveAfter": 3,
+        "minimumFlexEffectiveBefore": 3,
+        "finalLimitingPolicy": 2,
+        "safetyCapApplied": 2,
+        "capApplied": 2,
+        "finalRateBeforeCapPct": 2,
+        "FinalLimitingPolicy": 1,
+        "SafetyCapApplied": 1
+      }
+    },
+    {
+      "test": "simulator-small-lot-backtest-regression.test.mjs",
+      "message": "drei-topf: vollständige Finanzbytes und Folgezustände entsprechen dem BK-2-Fachvertrag",
+      "beforeSha256": "5dccd2cff4ff9424e8c248f057a6ac943cc8531fbdd9aed9904b05fa1000144c",
+      "afterSha256": "674a00f8fa4a918630019865655466970818ff6f5d08cea375c082a45d589b9a",
+      "changedLeaves": 16,
+      "changedKeys": {
+        "minimumFlexEffectiveAfter": 3,
+        "minimumFlexEffectiveBefore": 3,
+        "finalLimitingPolicy": 2,
+        "safetyCapApplied": 2,
+        "capApplied": 2,
+        "finalRateBeforeCapPct": 2,
+        "FinalLimitingPolicy": 1,
+        "SafetyCapApplied": 1
+      }
+    },
+    {
+      "test": "decision-comparison-pool.test.mjs",
+      "message": null,
+      "beforeSha256": "244b5d9c72c108b27e8764e46ad426b7b2a7cb6becbed0b5f7181e1e34f2ade4",
+      "afterSha256": "debc08290f4bccfee2e026d14ee3b0f8b26a43a11bbf346d1d6781407a933190",
+      "changedLeaves": 13,
+      "changedKeys": {
+        "5": 9,
+        "budgets[5][1]": 1,
+        "budgets[5][2]": 1,
+        "budgets[5][3]": 1,
+        "budgets[5][4]": 1
+      }
+    },
+    {
+      "test": "decision-comparison-pool.test.mjs",
+      "message": null,
+      "beforeSha256": "f4ce36cbd93c3d38b9dbf88db996a31f16ec76c840e77fdebb3421ac86f32c9c",
+      "afterSha256": "a0ba2031b0111d9fcf34a058a06128b266adb3db8e580ffdafeb7af2021cd141",
+      "changedLeaves": 71,
+      "changedKeys": {
+        "10": 11,
+        "1": 9,
+        "23": 9,
+        "14": 8,
+        "15": 6,
+        "12": 5,
+        "budgets[1][2]": 1,
+        "budgets[1][3]": 1,
+        "budgets[1][4]": 1,
+        "budgets[10][2]": 1,
+        "budgets[10][3]": 1,
+        "budgets[10][4]": 1,
+        "budgets[10][5]": 1,
+        "budgets[10][6]": 1
+      }
+    },
+    {
+      "test": "ff-f-regression.test.mjs",
+      "message": "engines: vollständige Ergebnisse ohne Dynamik nach BK-2",
+      "beforeSha256": "5da6c0bfcbcbd3572e7826a43d757893416e4477015eda12b6ce1245bd2e28a0",
+      "afterSha256": "d7c4065f594292ccad7623d0846023fa20c9f677233e0501bc09abf66539ee54",
+      "changedLeaves": 37,
+      "changedKeys": {
+        "impact": 3,
+        "finalLimitingPolicy": 3,
+        "step": 2,
+        "minimumFlexEffectiveBefore": 2,
+        "minimumFlexEmergencyFloorPlusMinimumFlex": 2,
+        "minimumFlexEmergencyMinRunwayMonths": 2,
+        "minimumFlexEmergencyRequiredWealth": 2,
+        "minimumFlexEmergencyTotalWealth": 2,
+        "minimumFlexStatus": 2,
+        "gegriffen": 2,
+        "monatswirkungEur": 2,
+        "threshold": 1,
+        "length": 1,
+        "severity": 1
+      }
+    }
+  ],
+  "rule": "FR-60; nur spending-guardrails gegenüber gesichertem Ausgangsstand ersetzt. Alle erfassten alten Hashreferenzen zuvor unverändert reproduziert.",
+  "beforeGuardrailsSha256": "442fd3a787fc5dafe3fae6c5b46efb24770a91cad807e951196a4e73c326ffed",
+  "numericLeaves": {
+    "mc": 756887,
+    "engineResults": 1069039
+  },
+  "fixedIncomeCompatibility": "16 bestehende AS-1-Fälle reproduzieren mit alter Guardrail und defensivem fixed-income-budget ihre bisherigen vollständigen Ergebnisbytes.",
+  "baselineCommit": "02f50003a8b2b4a164ae31ab2d5d2d6c5f4e022a"
+}
