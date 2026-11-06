@@ -18,7 +18,7 @@ const validatorPath = path.join(repoRoot, 'scripts', 'check-architecture-evidenc
 const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
 const validatorSource = fs.readFileSync(validatorPath, 'utf8');
 const documents = readEvidenceDocuments(repoRoot);
-const fixedToday = '2026-10-27';
+const fixedToday = '2026-11-05';
 
 function mutateDocument(sourceDocuments, relativePath, transform) {
     return {
@@ -124,7 +124,7 @@ assert(
 );
 
 const overdueModelReview = mutateDocument(documents, EVIDENCE_PATHS.dataSources, content => content.replace(
-    '| 2026-10-31 oder vor Steuerjahr-/Formelaenderung |',
+    '| 2027-01-15 oder vor Steuerjahr-/Formelaenderung |',
     '| 2026-07-16 oder vor Steuerjahr-/Formelaenderung |'
 ));
 const overdueModelReport = validateEvidenceDocuments(overdueModelReview, { today: fixedToday, repoRoot });
@@ -133,14 +133,14 @@ assert(
     'an overdue model-matrix row should block the date-sensitive documentation gate'
 );
 
-const novemberModelReport = validateEvidenceDocuments(documents, {
-    today: '2026-11-01',
+const januaryModelReport = validateEvidenceDocuments(documents, {
+    today: '2027-01-16',
     repoRoot
 });
 assertEqual(
-    novemberModelReport.errors.filter(error => error.code === 'OVERDUE_MODEL_REVIEW').length,
-    5,
-    'the documentation gate should deterministically report the five matrix rows due by 2026-10-31'
+    januaryModelReport.errors.filter(error => error.code === 'OVERDUE_MODEL_REVIEW').length,
+    10,
+    'the documentation gate should deterministically report all ten matrix rows due by 2027-01-15'
 );
 
 const brokenLocalLink = mutateDocument(documents, EVIDENCE_PATHS.market, content => content.replace(

@@ -37,10 +37,10 @@ Wechsle zu Balance. Vergleiche Monatsbudget, feste Einkünfte und Entnahme aus d
 
 Beende den Spielbereich und bestätige das Verwerfen der Beispieldaten. Vollsicherungen sind im Spielbereich gesperrt. Richte für die erste eigene Sicherung deinen Haushalt nach [Einrichten und erste Sicherung](Handbuch.html#erste-schritte) ein oder kehre zu deinem vorhandenen Bestand zurück.
 
-Öffne „Daten & Sicherung“ und klicke „Jetzt sichern“. Prüfe, ob die JSON-Datei am gewünschten Ablageort liegt. Der App-Hinweis bestätigt den gewählten Dateiordner nicht.
+Öffne „Daten & Sicherung“ und klicke „Jetzt sichern“. Die Datei enthält den geöffneten Haushalt. Prüfe, ob sie am gewünschten Ablageort liegt. Der App-Hinweis bestätigt den gewählten Dateiordner nicht.
 
 <!-- docs:control {"source":"Daten-Sicherung.html","selector":"#fullBackupBtn","text":"Jetzt sichern"} -->
 
 ### Eigene Einrichtung fortsetzen
 
-Das [Handbuch](Handbuch.html) führt durch Personenpflege, Monats- und Jahresabschluss. [Sicherung](docs/reference/SICHERUNG.md) erklärt Umfang und Rückkehrwege. Nutze die eigene Sicherungsdatei vor größeren Änderungen.
+Das [Handbuch](Handbuch.html) führt durch Personenpflege, Monats- und Jahresabschluss. [Sicherung](docs/reference/SICHERUNG.md) erklärt Umfang und Rückkehrwege. Nutze die eigene Sicherungsdatei vor größeren Änderungen. Führst du mehrere Haushalte, etwa für ein erwachsenes Kind, legst du sie über den Umschalter oben links an und sicherst jeden einzeln.

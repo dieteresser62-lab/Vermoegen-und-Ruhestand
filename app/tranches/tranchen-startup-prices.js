@@ -9,6 +9,7 @@ import { createNavigationOperationLifecycle } from '../shared/navigation-guard.j
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
 import { normalizeTranches, saveTranchesToStorage } from './tranchen-manager-state.js';
 import { createBatchQuoteFetcher, resolveTrancheQuote } from './tranchen-price-service.js';
+import { bindAutoPrices } from '../shared/auto-prices.js';
 
 export const STARTUP_PRICE_TIMEOUT_MS = 15000;
 const STARTUP_COMMIT_RESERVE_MS = 1000;
@@ -410,6 +411,8 @@ export function bindStartupPrices({ doc = globalThis.document, win = globalThis.
     win?.addEventListener?.('unload', leaveDocument);
     // Startseitenverwaltung hat eigene Writebesitzer. Vor deren Handler endet
     // der abbrechbare Abruf; während Commit darf kein Profilwechsel beginnen.
+    // Ein Rahmenlink wartet das Commit ab und folgt danach genau einmal (Kurse automatisch, Gutachten KA).
+    let current = null, replaying = false;
     const management = event => {
         const link = event.type === 'click' && event.target?.closest?.('a[href]');
         const navigation = link && shouldHandleAppNavigation(link, win)
@@ -417,9 +420,12 @@ export function bindStartupPrices({ doc = globalThis.document, win = globalThis.
         const target = navigation ? link : event.target?.closest?.('#profileSelect, #profileCreateBtn, #profileRenameBtn, #profileDeleteBtn');
         if (!target || !operation || (event.type === 'click' && target.id === 'profileSelect')) return;
         event.preventDefault(); event.stopImmediatePropagation();
-        if (operation.phase === 'commit') return;
-        cancel();
-        task.finally(() => {
+        if (operation.phase === 'commit' && !navigation) return;
+        if (replaying) return;
+        if (operation.phase !== 'commit') cancel();
+        replaying = true;
+        (current || task).finally(() => {
+            replaying = false;
             if (!documentValid || target.isConnected === false) return;
             if (event.type === 'click') target.click();
             else target.dispatchEvent(new (win.Event || Event)(event.type, { bubbles: true, cancelable: true }));
@@ -427,6 +433,37 @@ export function bindStartupPrices({ doc = globalThis.document, win = globalThis.
     };
     doc.addEventListener('change', management, true);
     doc.addEventListener('click', management, true);
+    const refreshOnce = () => lifecycle.run({}, async owner => {
+        operation = owner;
+        try { return await coordinator({ source: source(), operation: owner, valid: () => valid && !guard.isBusy(),
+            progress: render }); }
+        finally { operation = null; }
+    });
+    const visibleReport = report => {
+        const saved = sessionReport(report);
+        return { saved, visible: { ...saved, results: saved.results.map((result, index) => ({ ...result,
+            requestDurationMs: report.results[index]?.requestDurationMs })) } };
+    };
+    // Weitere Runden derselben Sitzung (Kurse automatisch): gleicher Ablauf, Bericht ersetzt den Sitzungsbefund.
+    // Ein Abbruch gilt nur seiner Runde; die Seite zeigt danach wieder den letzten bestätigten Bericht.
+    const automatic = () => {
+        if (!documentValid || operation) return undefined;
+        valid = true;
+        current = (async () => {
+            const report = await refreshOnce();
+            if (!documentValid) return;
+            if (report.status === 'cancelled') { render(readStartupPriceReport(session) || report); return; }
+            const { visible } = visibleReport(report);
+            publishStartupPriceReport(report, session);
+            sessionRuns.set(session, visible);
+            render(visible);
+        })();
+        return current;
+    };
+    const startAutomatic = () => {
+        if (documentValid) bindAutoPrices({ doc, win, session, run: automatic, lastRun: () => readStartupPriceReport(session)?.retrievedAt,
+            blocked: () => guard.isBusy() || guard.reasons().length > 0 });
+    };
     render({ status: 'waiting' });
     const task = (async () => {
         try {
@@ -435,30 +472,23 @@ export function bindStartupPrices({ doc = globalThis.document, win = globalThis.
             try { session ||= areaSessionStorage(win.sessionStorage); } catch { render({ status: 'unavailable' }); return; }
             if (!session) { render({ status: 'unavailable' }); return; }
             const retryable = report => ['started', 'cancelled'].includes(report?.status);
-            if (sessionRuns.has(session) && sessionRuns.get(session).status !== 'cancelled') { render(sessionRuns.get(session)); return; }
+            if (sessionRuns.has(session) && sessionRuns.get(session).status !== 'cancelled') { render(sessionRuns.get(session)); startAutomatic(); return; }
             let prior;
             try {
                 prior = session.getItem(STARTUP_PRICE_SESSION_KEY);
-                if (prior && !retryable(JSON.parse(prior))) { render(JSON.parse(prior)); return; }
+                if (prior && !retryable(JSON.parse(prior))) { render(JSON.parse(prior)); startAutomatic(); return; }
                 session.setItem(STARTUP_PRICE_SESSION_KEY, JSON.stringify({ status: 'started' }));
             } catch { render({ status: 'unavailable' }); return; }
             reservation = { status: 'started' };
             sessionRuns.set(session, reservation);
-            const report = await lifecycle.run({}, async owner => {
-                operation = owner;
-                try { return await coordinator({ source: source(), operation: owner, valid: () => valid && !guard.isBusy(),
-                    progress: render }); }
-                finally { operation = null; }
-            });
+            const report = await refreshOnce();
             if (report.status === 'cancelled') { releaseReservation(); if (documentValid) render(report); return; }
             // Ein alter Abbruch darf keinen inzwischen gestarteten Abruf überschreiben.
             if (sessionRuns.get(session) !== reservation) return;
-            const saved = sessionReport(report);
-            const visible = { ...saved, results: saved.results.map((result, index) => ({ ...result,
-                requestDurationMs: report.results[index]?.requestDurationMs })) };
+            const { saved, visible } = visibleReport(report);
             sessionRuns.set(session, visible);
             try { session.setItem(STARTUP_PRICE_SESSION_KEY, JSON.stringify(saved)); } catch { /* In-Memory-Sperre bleibt. */ }
-            if (documentValid) render(visible);
+            if (documentValid) { render(visible); startAutomatic(); }
         } catch (error) {
             // Ein beim Dokumentwechsel abgebrochener Abruf ist kein Sitzungsabschluss.
             if (!valid || error?.name === 'AbortError') releaseReservation();

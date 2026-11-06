@@ -81,7 +81,8 @@ async function initializeDataPage(doc, win) {
     };
     prices = bindDataPrices(doc, { win, refresh, readModel: () => readDataModel(PersistenceFacade, prices?.reportOptions()) });
     await bindPersistenceLocation(doc, { win });
-    doc.addEventListener('overview-backup-changed', refresh);
+    // Codex HV6-1: Nach „Jetzt sichern“ zeigt auch die Haushaltstabelle den neuen Sicherungsstand (ein Listener).
+    doc.addEventListener('overview-backup-changed', () => { const done = refresh(); renderDataHouseholds(doc); return done; });
     await refresh();
     if (!householdsShown) renderDataHouseholds(doc);
     bindDataRestoration(doc, { refresh });

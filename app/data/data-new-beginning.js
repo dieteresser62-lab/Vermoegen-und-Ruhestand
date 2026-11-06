@@ -34,7 +34,9 @@ export async function assertNewBeginningAllowed({ persistence = PersistenceFacad
     const states = [records[CONFIG.STORAGE.LS_KEY], ...Object.values(registry.profiles).map(profile => profile.data?.[CONFIG.STORAGE.LS_KEY])];
     if (states.some(raw => raw && JSON.parse(raw)?.annualPeriodMetadata?.pendingCommit)) throw new Error('Eine Jahresabschluss-Recovery ist offen. Bitte zuerst abschließen.');
     const points = await archive.listSnapshots({ storage: persistence });
-    for (const point of points) await archive.readSnapshot(point.id, { storage: persistence });
+    // Läuft bei Seitenstart, Klick und Fensterfokus: Punkte gesammelt lesen (H-DS-1).
+    if (archive.readSnapshots) await archive.readSnapshots(points.map(point => point.id), { storage: persistence });
+    else for (const point of points) await archive.readSnapshot(point.id, { storage: persistence });
     return { records, points, names: Object.values(registry.profiles).map(profile => profile.meta?.name?.trim() || 'Name unbekannt') };
 }
 

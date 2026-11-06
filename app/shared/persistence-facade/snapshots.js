@@ -48,6 +48,22 @@ export async function readSnapshot(id) {
 }
 
 /**
+ * Liest mehrere Punkte. Die Windows-App liest die Punktedatei dafür einmal statt einmal je Punkt.
+ * @param {string[]} ids
+ * @returns {Promise<D.Snapshot[]>}
+ */
+export async function readSnapshots(ids) {
+    const wanted = ids.map(id => String(id || ''));
+    if (!storeState.initialized && !storeState.adapterExplicitlyConfigured) await init();
+    if (typeof storeState.adapter?.readPersistedSnapshots !== 'function') return Promise.all(wanted.map(readSnapshot));
+    assertAreaWritable();
+    if (storeState.areaManager) await storeState.areaManager.assertCurrent();
+    const byId = new Map((await storeState.adapter.readPersistedSnapshots()).map(point => [String(point?.id || ''), point]));
+    // Nicht gefundene Kennungen laufen über das Einzellesen mit Altbestandsumzug und Fehlermeldung.
+    return Promise.all(wanted.map(id => byId.get(id) || readSnapshot(id)));
+}
+
+/**
  * @param {D.Snapshot} snapshot
  * @param {I.ReplaceOptions} [options]
  * @returns {Promise<boolean>}

@@ -2,9 +2,42 @@
 
 ## Aktuelle dokumentierte Fassung
 
+Stand 5. November 2026.
+
+### Haushalte und Sicherung
+
+- Eine Installation führt mehrere getrennte Haushalte, etwa den eigenen und den eines erwachsenen Kindes. Der Umschalter oben auf jeder Seite zeigt und wechselt den geöffneten Haushalt. Jeder Haushalt hat eigene Daten, Sicherungen, Kurse und einen eigenen Spielbereich.
+- Ein Haushalt lässt sich als Übergabedatei weitergeben und in einer anderen Installation einspielen.
+- Daten & Sicherung zeigt je Haushalt, wann die letzte Vollsicherung lief. Bei mehreren Haushalten trägt der Dateiname der Vollsicherung den Haushaltsnamen.
+- In einem neuen, leeren Haushalt ersetzt die erste angelegte Person den Platzhalter „Default“.
+
+### Abschlüsse und Budget
+
+- Monats- und Jahresabschluss öffnen ein Fenster mit Reitern.
+- Balance zeigt eine Budgetprüfung für das Folgejahr und den Abstand zum Jahreshoch. Führen Jahresendregel und Jahreshoch zu verschiedenen Folgen, wählst du im Jahresabschluss.
+- Liquidität ist ein Reserveziel für Tagesgeld und Geldmarkt; ein einstellbarer Teil davon liegt im Tagesgeld.
+- Ausgaben lassen sich mit Aufteilung in Grundbedarf (Floor) und Flex importieren und so auswerten.
+
+### Planungsumfang
+
+- Erbschaften, Verkäufe, Einmalzahlungen und größere Ausgaben lassen sich je Jahr planen, weitere Einkünfte je Person.
+- Für Partnerschaft und Todesfall rechnet die App Erbschaftsteuer mit Güterstand und Zugewinnausgleich. Testament, unverheiratete Paare und Immobilien, selbst genutzt oder vermietet, gehen in die Rechnung ein.
+- Das Pflegemodell nutzt amtliche Daten. Pflegegeld zählt als Einkunft, der Pflegeverlauf gilt je Person.
+- Der Simulator vergleicht Pläne, sucht Zielwerte und rechnet Monte Carlo schneller.
+
+### Hilfe und Hinweise
+
+- Handbuch und Themenseiten sind neu geschrieben. Im Spielbereich stehen weitere Beispielhaushalte mit Steckbrief bereit.
+- Info-Hinweise öffnen neben ihrem Symbol, auch in Simulator-Ergebnis und Monte Carlo.
+- README und Handbuch sagen ausdrücklich, dass die App keine Anlage-, Steuer- oder Rechtsberatung ist.
+
+## Frühere Fassungen
+
+### Oberfläche, Planung und neuer Name
+
 Stand 13. Oktober 2026.
 
-### Oberfläche
+#### Oberfläche und Navigation
 
 Balance und Simulator zeigen die drei Bedarfswerte offen; weitere Einstellungen liegen unter Alle Parameter. Personen & Vermögen bündelt Tagesgeld, Nettorente und sonstige Einkünfte unter Auf einen Blick sowie die übrigen Planfelder unter Weitere Planwerte. Tagesgeld speichert beim Verlassen oder mit Enter; die Karte Simulator-Werte zurücksetzen entfällt. Handbuchbilder und Texte zeigen die neue Bedienung.
 
@@ -12,7 +45,7 @@ Balance und Simulator zeigen die drei Bedarfswerte offen; weitere Einstellungen 
 - Haushalts- und Seitenstatus stehen im gemeinsamen Kopf. Die Seitenleiste lässt sich über den Knopf direkt oberhalb der Übersicht einklappen und wieder öffnen. Seitenaktionen stehen beim Titel; Ausgaben und Daten & Sicherung behalten ihre Arbeitsbereiche.
 - Personen & Vermögen zeigt die Personenreiter vor den Karten. Haushalt & Plan zeigt Vermögenskarten und die offene Bedarfszeile. Die Personendetails starten geschlossen; vom Kopf der Personenansicht kannst du zum Depot springen. Hinweise zum Verlauf stehen hinter den jeweiligen Info-Knöpfen, Warnungen zur Datenqualität bleiben sichtbar.
 
-### Planung
+#### Planung und Ergebnisse
 
 - Balance stellt Monatsbudget und Handlungsanweisung dichter zusammen. Hilfe ist über einen Symbolknopf erreichbar. Festgeschriebener Plan, aktuelle Vorschau und Diagnose bleiben getrennt lesbar.
 - Bei gekürztem Monatsbudget erklärt der Warum-Knopf die tatsächlichen Monatswirkungen als aufklappbare Treppe. Anhebungen erscheinen als Plusbeträge. Der Grundhinweis nennt die Kürzungsregel; die Marktphase steht in der Marktkarte. Ohne Kürzung zeigt die Karte Vollfinanzierung. Nach einer neuen Berechnung ist die Erklärung wieder geschlossen.
@@ -25,13 +58,11 @@ Balance und Simulator zeigen die drei Bedarfswerte offen; weitere Einstellungen 
 - Wenn ein Haushalt wirksam gewechselt wird, verwirft der Simulator das vorherige Ergebnis und seine Exporte. Das gilt auch, wenn die neuen Personendaten ungültig sind. Nach einem vollständigen Verkauf verwendet der historische Backtest das leere Depot statt erneut die Starttranchen.
 - Wenn ein Balance- oder Vollimport scheitert, zeigt Daten & Sicherung einen bereits angelegten Wiederherstellungspunkt sofort an. Die Fehlermeldung bleibt sichtbar.
 
-### Betrieb
+#### Namen und Build
 
 Seit 13.10.2026 heißen Repository und Windows-Build-Ordner `VermoegenUndRuhestand`; der alte Repo-Pfad bleibt als Symlink erreichbar. Der Entwickler-Build heißt „Vermögen & Ruhestand Entwicklung“, erzeugt `vermoegen_und_ruhestand.exe` und verwendet `de.vermoegen-ruhestand.entwicklung`. Prüfkandidaten heißen `VermoegenUndRuhestand_KANDIDAT_<datum>_<commit>.exe` und nutzen `de.vermoegen-ruhestand.entwicklung.kandidat`.
 
 Der Windows-Produktivbau nutzt die Release-Konfiguration und erzeugt `VermoegenUndRuhestand.exe` mit dem Produktnamen „Vermögen & Ruhestand“. Seine Kennung `de.vermoegen-ruhestand.suite` und die gespeicherten Daten bleiben erhalten. Die frühere `RuhestandSuite.exe` behält ihren Datenbereich `com.dieter.ruhestandsapp`; ein Bau mit dieser Kennung braucht ausdrücklich `-AltApp`.
-
-## Frühere Fassungen
 
 ### Browserstart und Desktop-Build
 

@@ -3,7 +3,7 @@ export { configurePersistence, init, isInitialized } from './persistence-facade/
 export { withProbelaufOperation, flush } from './persistence-facade/writes.js';
 export { getItemSync, setItemSync, removeItemSync, keysSync, keySync, clearAllowedSync, clearSync } from './persistence-facade/cache.js';
 export { exportAllSync, readPersistedRecords, replaceRecordsTransactional, importAll, replaceLiveRecords } from './persistence-facade/exchange.js';
-export { listSnapshots, readSnapshot, writeSnapshot, deleteSnapshot, migrateLegacySnapshotsIfNeeded } from './persistence-facade/snapshots.js';
+export { listSnapshots, readSnapshot, readSnapshots, writeSnapshot, deleteSnapshot, migrateLegacySnapshotsIfNeeded } from './persistence-facade/snapshots.js';
 export { observeInputChanges, bindLifecycleFlush, bindTauriClose, unbindLifecycleFlush } from './persistence-facade/lifecycle.js';
 export { getDirtyState, getPersistenceStatus, getMetadata, captureNewBeginningPreferences, resetNewBeginningBrowserStorage, resetPersistenceForTests, resetPersistenceRuntimeForTests } from './persistence-facade/maintenance.js';
 export { readRealRecords, readRealSnapshots, activatePlayArea, discardPlayArea, adoptPlayArea } from './persistence-facade/play-area.js';

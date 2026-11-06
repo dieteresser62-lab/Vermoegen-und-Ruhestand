@@ -4,7 +4,8 @@ Was eine Sicherung schützt und was beim Zurückholen verloren gehen kann. Für 
 
 ## Auf einen Blick
 
-- Die Vollsicherung überträgt den gespeicherten fachlichen App-Stand als Datei.
+- Die Vollsicherung überträgt den gespeicherten fachlichen Stand des geöffneten Haushalts als Datei.
+- Mit mehreren Haushalten sicherst du jeden Haushalt einzeln. Die Tabelle „Haushalte“ zeigt die letzte Vollsicherung je Haushalt.
 - Ein Wiederherstellungspunkt liegt im selben lokalen Datenbereich wie dein Bestand und schützt nur seinen ausgewiesenen Umfang.
 - Ergebnisexporte und einzelne Personendateien ersetzen keine Vollsicherung.
 - Browser und EXE haben getrennte Speicher. Ein leerer Bildschirm bedeutet deshalb noch keinen Datenverlust.
@@ -74,6 +75,12 @@ Prüfe zuerst Laufzeit, Adresse und Browserprofil. Lege einen scheinbar fehlende
 Widersprüchliche Personenkennungen und Dateien mit mehr als zwei Haushaltspersonen werden vor dem Vollimport abgewiesen. Ein eigener Altbestand mit mehr Mitgliedern bleibt sicherbar und über Archivpunkte zurückholbar; Rechnungen sind bis zur Haushaltskorrektur gesperrt. Eine ungültige Datei oder veränderte Importgrundlage kann den Import verhindern. Scheitert das Schreiben und bestätigt die App die Rücknahme, ist der bisherige Stand unverändert. Kann sie die Rücknahme nicht bestätigen, prüfe die Meldung und den angelegten Wiederherstellungspunkt. Nach bereits gespeichertem Restore mit fehlgeschlagenem Neuladen bleiben alte Formulare gesperrt; lade die Seite wie gemeldet neu.
 
 Fehlt nach einem abgebrochenen EXE-Schreibvorgang die Hauptdatei, lädt die App eine lesbare Rettungsdatei. Sind nur unlesbare Rettungsdateien vorhanden, meldet sie einen Fehler und erhält die Dateien. Eine beschädigte EXE-Bestandsdatei wird separat aufbewahrt. Lösche den Datenordner nicht als ersten Reparaturversuch.
+
+### Mehrere Haushalte
+
+Jeder Haushalt hat eigene Daten, Sicherungen und Wiederherstellungspunkte. Eine Vollsicherung enthält nur den geöffneten Haushalt; ihr Dateiname nennt ihn, sobald es mehrere gibt. Für einen Rechnerwechsel sicherst du jeden Haushalt und spielst ihn am neuen Rechner über „Neuer Haushalt …“ ein. In der EXE liegen alle Haushalte im App-Datenordner, weitere unter `households\`. Eine Sicherung dieses Ordners erfasst alle Haushalte zugleich, solange die App geschlossen ist.
+
+Die Übergabedatei („Als Datei weitergeben …“) ist für die Weitergabe gedacht und enthält keine Wiederherstellungspunkte. Vollsicherung und Übergabedatei sind unverschlüsselt.
 
 ### Sichere Dateiablage
 

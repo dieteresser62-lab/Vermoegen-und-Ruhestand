@@ -69,7 +69,8 @@ export function renderOverview(doc, model) {
     set('overviewBackupValue', backupDays === null ? 'Noch keine Vollsicherung'
         : backupDays === 0 ? 'heute' : backupDays === 1 ? 'vor 1 Tag' : `vor ${backupDays} Tagen`);
     const backupPill = doc.getElementById('overviewBackup');
-    const backupWarning = backup.warning && !isPlayArea(getStorageArea());
+    // Gutachten 05.11.2026: Beim allerersten Start ohne Daten ist noch keine Vollsicherung fällig.
+    const backupWarning = backup.warning && !isPlayArea(getStorageArea()) && !model.firstStart;
     if (backupPill) backupPill.dataset.warning = String(backupWarning);
     const reminder = doc.getElementById('overviewBackupReminder');
     if (reminder) reminder.hidden = !backupWarning;

@@ -44,9 +44,9 @@ Die Links führen zu Quellen und allen 18 Kriterien der untersuchten Stufe. „O
 
 ### Zugang und Preisstand
 
-Boldins fälliger Tarifabgleich bestätigt 168 USD jährlich. Die Release Notes nennen Gebühren- und Steuerverteilungsansichten vom 22.10.; die Übernahme einer Investmentstrategie in den Plan ist weiterhin angekündigt. Die Preisseite bezeichnet Gebührenansichten noch als kommend. Dieser Widerspruch bleibt im [Boldin-Record](MARKTVERGLEICH_EVIDENZREGISTER.md#mkt-bd-01) sichtbar.
+Boldins fälliger Tarifabgleich bestätigt 168 USD jährlich. Die Release Notes nennen Gebühren- und Steuerverteilungsansichten vom 22.10.; die Übernahme einer Investmentstrategie in den Plan ist weiterhin angekündigt. Die Preisseite bezeichnet Gebührenansichten noch als kommend. Der Abruf vom 05.11.2026 zeigt beides unverändert; der Widerspruch bleibt im [Boldin-Record](MARKTVERGLEICH_EVIDENZREGISTER.md#mkt-bd-01) sichtbar.
 
-Pralana bestätigt das Abo und den weiteren Betrieb vorhandener Excel-Dateien. Seine Bedingungen vom Mai 2025 nennen für Downloads weiterhin eine Einmalzahlung. Die erneute Prüfung löst den [Vertragswiderspruch](MARKTVERGLEICH_EVIDENZREGISTER.md#mkt-pr-07) nicht auf; Oktobererweiterungen sind ohne gesicherten Auslieferungsbeleg offen.
+Pralana bestätigt das Abo und den weiteren Betrieb vorhandener Excel-Dateien. Seine Bedingungen vom Mai 2025 nennen für Downloads weiterhin eine Einmalzahlung. Auch der Abruf vom 05.11.2026 löst den [Vertragswiderspruch](MARKTVERGLEICH_EVIDENZREGISTER.md#mkt-pr-07) nicht auf; Oktobererweiterungen sind ohne gesicherten Auslieferungsbeleg offen.
 
 ProjectionLabs alte selbst gehostete Installationen sind vom heutigen Premium-Angebot zu trennen. FI Calc beschreibt neben lokaler Rechnung Kontospeicherung und Links mit Finanzinputs. Browserrechnung allein belegt weder Offlinebetrieb noch ausschließliche Speicherung auf dem Gerät. [Betriebs- und Datenschutzbelege](MARKTVERGLEICH_EVIDENZREGISTER.md#kriterienmatrix-k-01-bis-k-18).
 

@@ -16,6 +16,7 @@ import { revealAssumptionControl } from './simulator-assumptions-ui.js';
 import { invalidateBacktestForHousehold, renderInvalidatedBacktestStatus } from './simulator-backtest.js';
 import { getEuroMode, bindEuroMode, subscribeEuroMode, euroBasisLabel } from './euro-display.js';
 import { projectBacktestEuroMetrics, backtestEuroBasis } from './backtest-euro-display.js';
+import { installInfoPlacement } from '../shared/designsystem-info-popover.js';
 
 const money = value => typeof value === 'number' && Number.isFinite(value)
     ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value) : '—';
@@ -43,6 +44,7 @@ const infoDocuments = new WeakSet();
  */
 export function bindSimulatorInfoPopups(doc = globalThis.document) {
     if (!doc?.querySelectorAll) return;
+    installInfoPlacement(doc);
     /** @type {NodeListOf<HTMLElement>} */ (doc.querySelectorAll('#tab-ergebnis .ds-info')).forEach(host => {
         if (infoHosts.has(host)) return;
         const button = /** @type {HTMLButtonElement} */ (host.querySelector('.ds-info-button'));

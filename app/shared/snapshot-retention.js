@@ -115,10 +115,13 @@ export function buildSnapshotRetentionPlan(points, { now = appNow(), neededIds =
 export async function previewSnapshotRetention({ persistence = PersistenceFacade, archive = SnapshotArchive, now = appNow() } = {}) {
     const records = await persistence.readPersistedRecords();
     const index = await archive.listSnapshots({ storage: persistence });
-    const points = await Promise.all(index.map(async point => {
+    const single = () => Promise.all(index.map(async point => {
         try { return await archive.readSnapshot(point.id, { storage: persistence }); }
         catch { return { ...point, damaged: true }; }
     }));
+    const points = archive.readSnapshots
+        ? await archive.readSnapshots(index.map(point => point.id), { storage: persistence }).catch(single)
+        : await single();
     return projectSnapshotRetention(points, records, { now });
 }
 

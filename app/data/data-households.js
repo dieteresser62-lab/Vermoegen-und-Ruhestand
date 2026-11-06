@@ -3,6 +3,9 @@ import { FIRST_HOUSEHOLD, HOUSEHOLD_NAME_MAX } from '../shared/household-registr
 import { changeWithGuard, householdLabel, householdTitle, openNewHouseholdDialog } from '../shared/household-switcher.js';
 import { buildHouseholdTransfer, householdTransferFilename } from '../shared/household-transfer.js';
 import { downloadJsonFile } from '../shared/persistence-backup.js';
+import { overviewBackupAge } from '../overview/overview-model.js';
+import { OVERVIEW_BACKUP_KEY } from '../overview/overview-storage.js';
+import { appNow } from '../shared/app-clock.js';
 
 // HV-2: Abschnitt „Haushalte“ auf Daten & Sicherung (Entwurf H5/H7): öffnen, umbenennen, endgültig löschen,
 // fehlenden Bereich wieder anlegen. Namen gelangen nur als Text ins Dokument.
@@ -87,6 +90,18 @@ function report(doc, error) {
     if (host) { host.textContent = /** @type {Error} */ (error)?.message || String(error); host.hidden = false; }
 }
 
+/** Text und Warnung für die Spalte „Letzte Vollsicherung“. @param {unknown} lastBackup @param {Date} [now] */
+export function householdBackupState(lastBackup, now = appNow()) {
+    const { days, warning } = overviewBackupAge(now, /** @type {string} */ (lastBackup));
+    const whole = days === null ? null : Math.floor(days);
+    return { text: whole === null ? 'noch nie' : whole === 0 ? 'heute' : whole === 1 ? 'vor 1 Tag' : `vor ${whole} Tagen`, warning };
+}
+/** @param {HTMLElement} cell @param {unknown} lastBackup */
+function showBackupAge(cell, lastBackup) {
+    const { text, warning } = householdBackupState(lastBackup);
+    cell.textContent = text; cell.dataset.warning = String(warning);
+}
+
 /** @param {Document} doc */
 export function renderDataHouseholds(doc = globalThis.document) {
     const host = doc?.getElementById('dataHouseholdsTable');
@@ -97,7 +112,7 @@ export function renderDataHouseholds(doc = globalThis.document) {
     const stay = () => win?.location.reload();
     const table = node(doc, 'table', '', 'ds-table data-households-table');
     const head = node(doc, 'thead'), headRow = node(doc, 'tr');
-    for (const title of ['Haushalt', 'Angelegt', 'Aktionen']) headRow.append(node(doc, 'th', title));
+    for (const title of ['Haushalt', 'Angelegt', 'Letzte Vollsicherung', 'Aktionen']) headRow.append(node(doc, 'th', title));
     head.append(headRow);
     const body = node(doc, 'tbody');
     for (const entry of registry.households) {
@@ -160,7 +175,11 @@ export function renderDataHouseholds(doc = globalThis.document) {
         }
         if (playing) for (const control of group.querySelectorAll('button')) { control.disabled = true; control.title = 'Im Spielbereich nicht verfügbar.'; }
         actions.append(group);
-        row.append(name, node(doc, 'td', dateText(entry.createdAt)), actions);
+        // HV-6 (Gutachten 05.11.): Sicherungsstand jedes Haushalts, nicht nur des geöffneten.
+        const backup = node(doc, 'td', entry.missing ? '—' : 'wird gelesen …'); backup.dataset.householdBackup = entry.id;
+        if (!entry.missing) void P.readHouseholdRecords(entry.id).then(records => showBackupAge(backup, records?.[OVERVIEW_BACKUP_KEY]))
+            .catch(() => { backup.textContent = 'nicht lesbar'; });
+        row.append(name, node(doc, 'td', dateText(entry.createdAt)), backup, actions);
         body.append(row);
     }
     table.append(head, body);

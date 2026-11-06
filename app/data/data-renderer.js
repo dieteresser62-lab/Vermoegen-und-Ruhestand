@@ -191,8 +191,8 @@ export function renderDataPage(doc, model) {
         else action.textContent = action.textContent.replace('Nachladen: Kursdienst nicht erreichbar · ', 'Nachladen: ');
     }
     set('dataPriceIntroduction', coverage?.startDate
-        ? `Aktuelle Kurse holt die App beim Öffnen, Tageskurse für den Vermögensverlauf seit ${day(coverage.startDate)} ebenfalls – nur fehlende Tage.`
-        : 'Aktuelle Kurse holt die App beim Öffnen. Für Tageskurse im Vermögensverlauf fehlt noch ein verlässlicher Beginn.');
+        ? `Aktuelle Kurse holt die App beim Öffnen, in der EXE werktags von 8 bis 22 Uhr zusätzlich alle 15 Minuten, solange Übersicht oder Personen & Vermögen offen sind (nicht im Spielbereich). Tageskurse für den Vermögensverlauf seit ${day(coverage.startDate)} holt sie nur für fehlende Tage.`
+        : 'Aktuelle Kurse holt die App beim Öffnen, in der EXE werktags von 8 bis 22 Uhr zusätzlich alle 15 Minuten, solange Übersicht oder Personen & Vermögen offen sind (nicht im Spielbereich). Für Tageskurse im Vermögensverlauf fehlt noch ein verlässlicher Beginn.');
     const intervals = items => items.map(([a, b]) => a === b ? day(a) : `${day(a)} – ${day(b)}`).join(', ');
     set('dataPriceIssues', [coverage?.attemptedAt ? 'Letzter Versuch: ' + date(coverage.attemptedAt) : 'Versuchszeit unbekannt',
         ...(coverage?.issues || []), ...(coverage?.rows || []).map(row =>

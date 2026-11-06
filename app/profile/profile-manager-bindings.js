@@ -4,10 +4,14 @@ import { validateProfileManagementRecords } from '../shared/persistence-backup.j
 import { isAllowedPersistenceImportKey } from '../shared/persistence-key-policy.js';
 import { setProfileVerbundMembership as validateMembershipOnCopy, householdMemberCount, HOUSEHOLD_MINIMUM_REASON } from './profile-registry.js';
 import { PROFILE_STORAGE_KEYS } from './profile-state.js';
+import { INCOME_KEY, INCOME_MIGRATION_KEY, readIncome } from './profile-income.js';
+import { captureProfileData } from './profile-live-storage.js';
+import { CONFIG } from '../balance/balance-config.js';
+import { WEALTH_CAPTURES_KEY } from '../../types/wealth-capture-contract.js';
 import { getProbelaufController } from '../shared/probelauf-state.js';
 import { PROBELAUF_RESTORE_HINT } from '../shared/probelauf-runtime.js';
 import { createProfile, renameProfile, deleteProfile, switchProfile, listProfiles,
-    getProfileMeta, setProfileVerbundMembership } from './profile-storage.js';
+    getProfileMeta, getProfileData, getCurrentProfileId, setProfileVerbundMembership } from './profile-storage.js';
 
 /** Gemeinsame Namensprüfung für Startseite und Manager; keine Speicherung. */
 export function validateProfileName(name) {
@@ -66,10 +70,42 @@ export async function confirmProfileDeletion(profileId, ask, options = {}) {
     }), options);
 }
 
+// Nur Verwaltungseinträge, die schon der bloße Start oder ein Seitenbesuch anlegt (Probe DP-1, 06.11.2026):
+// Schemastand, Einkünfte-Übernahme mit leerer Liste, Inflationsmarke der Balance, Ergebnisspeicher des Simulators.
+// Fehlt hier künftig ein solcher Eintrag, wird wie früher ergänzt; eine Person mit eigenen Werten wird nie umbenannt.
+const UNTOUCHED_DEFAULT_KEYS = new Set(['profile_person_schema_version', INCOME_KEY, INCOME_MIGRATION_KEY,
+    CONFIG.STORAGE.MIGRATION_FLAG, 'overview_simulation_summary_v1']);
+
+function hasNoIncome(data) {
+    const income = data[INCOME_KEY], marker = data[INCOME_MIGRATION_KEY];
+    if (marker == null) return income == null || income === '';
+    if (marker !== '1' || !income) return false;
+    try { return readIncome(income).length === 0; } catch { return false; }
+}
+
+const isBookkeepingOnly = data => Object.keys(data).every(key => UNTOUCHED_DEFAULT_KEYS.has(key)) && hasNoIncome(data);
+
+function isUntouchedDefault(storage = persistenceStorage) {
+    const profiles = listProfiles();
+    if (profiles.length !== 1 || profiles[0].id !== 'default' || profiles[0].name !== 'Default') return false;
+    // Gutachten DP/DPN: Gespeicherte und noch nicht übernommene Live-Werte getrennt prüfen; eine leere Quelle
+    // darf eigene Werte der anderen nicht verdecken. Jeder Lesefehler heißt: ergänzen statt umbenennen.
+    try {
+        if (!isBookkeepingOnly(getProfileData('default') || {})) return false;
+        if (getCurrentProfileId() === 'default' && !isBookkeepingOnly(captureProfileData(storage))) return false;
+        // Ausgaben und erfasste Vermögensstände liegen außerhalb der Personendaten.
+        return Array.from({ length: storage.length }, (_, index) => storage.key(index))
+            .every(key => !key?.startsWith('balance_expenses_') && key !== WEALTH_CAPTURES_KEY);
+    } catch { return false; }
+}
+
 /** Aufrufer besitzt Autosaveabschluss, Navigationsschutz, Flush und Recovery.
  * @param {{kind: string, profileId?: string, name?: string, belongs?: boolean}} request */
 export function applyProfileManagementAction({ kind, profileId, name, belongs }) {
     if (kind === 'create') {
+        // Gutachten 05.11.2026: Ein unberührtes „Default“ als einzige Person wird zur ersten echten Person
+        // umbenannt; sonst entsteht unbemerkt ein Zwei-Personen-Haushalt (Erststart und jeder neue Haushalt).
+        if (isUntouchedDefault()) return renameProfile('default', validateProfileName(name));
         const meta = createProfile(validateProfileName(name));
         if (!switchProfile(meta.id)) throw new Error('PROFILE_SWITCH_FAILED');
         return meta;

@@ -866,6 +866,45 @@ try {
             await bindStartupPrices({ ...page, session: broken, initialize: async () => true, guard: createNavigationGuard() }); }
         assert.equal(requests, 0);
     }
+    console.log('Kurse automatisch: Linkklick während Lesen und Commit, Abbruch gilt nur seiner Runde (Gutachten KA)');
+    {
+        const gate = { promise: Promise.resolve() };
+        const state = await setup([lot('one', 'ONE.DE')], undefined, { hold: gate });
+        let requests = 0, read = null;
+        globalThis.fetch = async url => { requests++; return read ? read.promise : json(quote(new URL(url).searchParams.get('symbol'), 120 + requests)); };
+        const { doc, win, host } = dom(); completeProfilePageReadiness(doc);
+        Object.assign(win, { __TAURI_INTERNALS__: {}, setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms), clearTimeout: id => globalThis.clearTimeout(id) });
+        doc.querySelectorAll = () => []; doc.removeEventListener = () => {};
+        const guard = createNavigationGuard({ decide: async () => true });
+        await bindStartupPrices({ doc, win, session: sessionStore(), initialize: async () => true, guard });
+        assert.equal(requests, 1, 'Startabruf läuft wie bisher');
+        let clicks = 0;
+        const link = { closest(selector) { return selector === 'a[href]' ? this : null; }, hasAttribute: () => false,
+            getAttribute: key => key === 'href' ? 'Balance.html' : '',
+            click() { clicks++; assert.equal(guard.reasons().length, 0, 'Rahmenlink erst nach vollständigem Rundenende'); } };
+        const click = () => doc.dispatch('click', { target: link, type: 'click', button: 0, preventDefault() {}, stopImmediatePropagation() {} });
+        // Runde 2: Klick während des Lesens bricht die Runde ab und folgt danach genau einmal.
+        const until = async condition => { for (let i = 0; i < 50 && !condition(); i++) await settle(); };
+        read = deferred();
+        await advance(15 * 60 * 1000); await until(() => requests === 2);
+        assert.equal(requests, 2, 'Automatische Runde nach 15 Minuten');
+        click(); click(); await settle();
+        read.resolve(json(quote('ONE.DE', 999))); await settle(); await advance(1000);
+        assert.equal(clicks, 1, 'Rahmenlink folgt genau einmal');
+        assert(host.children[0].textContent.startsWith('Kurse aktualisiert'), 'Nach Abbruch steht wieder der letzte bestätigte Bericht');
+        assert.equal(JSON.parse(state.backend.depot_tranchen)[0].currentPrice, 121, 'Abgebrochene Runde schreibt nichts');
+        // Runde 3: Die Seite blieb offen, die Automatik läuft weiter; ein Klick im Commit folgt nach dem Speichern.
+        read = null; const held = deferred(); gate.promise = held.promise;
+        await advance(15 * 60 * 1000); await until(() => guard.reasons().some(reason => reason.phase === 'commit'));
+        assert.equal(requests, 3, 'Abbruch legt die Automatik nicht still');
+        assert(guard.reasons().some(reason => reason.phase === 'commit'), 'Dritte Runde steht im Commit');
+        clicks = 0; click(); await settle();
+        assert.equal(clicks, 0, 'Kein Seitenwechsel mitten im Commit');
+        held.resolve(); gate.promise = Promise.resolve(); await settle(); await advance(1000);
+        assert.equal(clicks, 1, 'Rahmenlink folgt nach dem Commit');
+        assert.equal(JSON.parse(state.backend.depot_tranchen)[0].currentPrice, 123, 'Dritte Runde ist gespeichert');
+        win.dispatchEvent(new Event('pagehide'));
+    }
     console.log('✓ Startkurse: Sitzungs-, Deadline-, Navigations- und Backendverträge');
 } finally {
     resetPersistenceForTests(); globalThis.fetch = original.fetch; globalThis.setTimeout = original.setTimeout;

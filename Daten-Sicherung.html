@@ -51,7 +51,7 @@
         <div id="error-container" role="alert"></div>
         <p id="dataPageStatus" role="status" aria-live="polite"></p>
 
-        <header class="data-heading ds-page-head"><div class="ds-page-copy"><p class="data-eyebrow">Daten &amp; Sicherung</p><h1>Deine Daten, gut aufgehoben.</h1><p class="data-muted">Alles, was die App speichert, liegt auf diesem Rechner. Hier sicherst du es, holst einen früheren Stand zurück und siehst, wie es um Kurse und Speicher steht.</p></div><a class="ds-page-actions" href="Handbuch.html#daten-sicherung" data-profile-handoff>Hilfe im Handbuch</a></header>
+        <header class="data-heading ds-page-head"><div class="ds-page-copy"><p class="data-eyebrow">Daten &amp; Sicherung</p><h1>Deine Daten, gut aufgehoben.</h1><p class="data-muted">Alles, was die App speichert, liegt auf diesem Rechner. Hier sicherst du es, holst einen früheren Stand zurück und siehst, wie es um Kurse und Speicher steht.</p></div><div class="ds-page-actions"><a href="Handbuch.html#daten-sicherung" data-profile-handoff class="ds-help-link ds-button ds-button-secondary ds-icon-button" title="Hilfe" aria-label="Hilfe öffnen"><span aria-hidden="true">?</span></a></div></header>
         <div class="data-stats">
             <section id="dataBackupTile" class="data-stat" data-state="unknown"><span class="data-stat-label"><i class="data-status-dot" aria-hidden="true"></i>Letzte Vollsicherung</span><b id="dataBackupAge">Wird gelesen</b><span id="dataBackupDate" class="data-muted"></span></section>
             <section id="dataSnapshotTile" class="data-stat" data-state="unknown"><span class="data-stat-label"><i class="data-status-dot" aria-hidden="true"></i>Wiederherstellungspunkte</span><b id="dataSnapshotCount">Wird gelesen</b><span id="dataSnapshotDetail" class="data-muted"></span></section>
@@ -67,7 +67,7 @@
         <div class="data-grid">
             <div class="data-column">
                 <section class="data-section ds-card" id="daten-sicherung" aria-labelledby="dataFullTitle">
-                    <div class="data-section-heading"><h2 id="dataFullTitle">Vollsicherung</h2><p class="data-muted">Eine Datei mit allem: Personen, Depots, Ausgaben, Tagesgeld-Historie, Tageskurse und Einstellungen. Lege sie z. B. in deinen Sync-Ordner.</p></div>
+                    <div class="data-section-heading"><h2 id="dataFullTitle">Vollsicherung</h2><p class="data-muted">Eine Datei mit allem aus dem geöffneten Haushalt: Personen, Depots, Ausgaben, Tagesgeld-Historie, Tageskurse und Einstellungen. Lege sie z. B. in deinen Sync-Ordner.</p></div>
                     <div id="dataBackupBox" class="data-backup-box" data-state="unknown"><span class="data-backup-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path><path class="data-backup-check" d="m8.5 12 2.5 2.5 4.5-5"></path><path class="data-backup-alert" d="M12 8v5m0 3v.1"></path></svg></span><div class="data-backup-text"><b id="dataBackupTitle">Vollsicherung als Datei</b><p id="dataBackupChanges" class="data-muted" hidden></p></div><div class="ds-actions"><button id="fullBackupImportBtn" type="button" class="ds-button ds-button-secondary">Sicherung einspielen …</button><button id="fullBackupBtn" type="button" class="ds-button ds-button-primary">Jetzt sichern</button></div></div>
                     <p id="dataBackupReason" class="data-muted" role="status" hidden></p>
                     <input id="fullBackupImportFile" type="file" accept="application/json,.json" hidden>

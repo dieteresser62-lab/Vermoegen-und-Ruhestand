@@ -218,6 +218,19 @@ export async function readSnapshot(id, options = {}) {
     return normalized;
 }
 
+/** Mehrere Punkte mit derselben Prüfung wie readSnapshot; ohne Sammellesen des Speichers einzeln. */
+export async function readSnapshots(ids, options = {}) {
+    const storage = getStorage(options.storage);
+    if (typeof storage?.readSnapshots !== 'function') return Promise.all(ids.map(id => readSnapshot(id, options)));
+    const points = await storage.readSnapshots(ids.map(id => String(id || '')));
+    if (!Array.isArray(points) || points.length !== ids.length) throw new Error('Snapshot-Readback ist unvollständig.');
+    return points.map((point, index) => {
+        const normalized = validateSnapshot(point);
+        if (normalized.id !== String(ids[index])) throw new Error('Snapshot-Readback liefert eine andere ID.');
+        return normalized;
+    });
+}
+
 export async function listSnapshots(options = {}) {
     const list = requireStorageMethod(options.storage, 'listSnapshots');
     const snapshots = await list();
@@ -251,6 +264,7 @@ export const SnapshotArchive = {
     createSnapshot,
     listSnapshots,
     readSnapshot,
+    readSnapshots,
     writeSnapshot,
     deleteSnapshot,
     validateSnapshot,

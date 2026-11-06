@@ -9,7 +9,7 @@ import { readPersistedRecords, exportAllSync, importAll, replaceRecordsTransacti
 import { observeInputChanges, bindLifecycleFlush, bindTauriClose, unbindLifecycleFlush } from './lifecycle.js';
 import { configurePersistence, init, isInitialized } from './initialization.js';
 import { getItemSync, setItemSync, removeItemSync, clearAllowedSync, keysSync, keySync, clearSync } from './cache.js';
-import { listSnapshots, readSnapshot, writeSnapshot, deleteSnapshot, migrateLegacySnapshotsIfNeeded } from './snapshots.js';
+import { listSnapshots, readSnapshot, readSnapshots, writeSnapshot, deleteSnapshot, migrateLegacySnapshotsIfNeeded } from './snapshots.js';
 import { getDirtyState, getPersistenceStatus, getMetadata, captureNewBeginningPreferences, resetNewBeginningBrowserStorage, resetPersistenceForTests, resetPersistenceRuntimeForTests } from './maintenance.js';
 
 export const PersistenceFacade = {
@@ -48,6 +48,7 @@ export const PersistenceFacade = {
     replaceRecordsTransactional,
     listSnapshots,
     readSnapshot,
+    readSnapshots,
     writeSnapshot,
     deleteSnapshot,
     migrateLegacySnapshotsIfNeeded,

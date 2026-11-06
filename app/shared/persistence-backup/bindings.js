@@ -17,7 +17,8 @@ function importTargetText() {
     const registry = PersistenceFacade.getHouseholds?.();
     if (!registry || registry.households.length < 2) return '';
     const active = registry.households.find(entry => entry.id === registry.active);
-    return ` im Haushalt ${active?.id === 'h1' ? active.name || 'Haushalt 1' : active?.name}`;
+    const label = active?.id === 'h1' ? active.name || 'Haushalt 1' : active?.name || '';
+    return ` ${/^haushalt\b/i.test(label) ? 'in' : 'im Haushalt'} ${label}`;
 }
 // HV-3: Stammt die Datei aus einem anderen Haushalt, sagt die Bestätigung das ausdrücklich.
 /** @param {{household?: {id?: unknown, name?: unknown}, backupPurpose?: unknown}} backup */

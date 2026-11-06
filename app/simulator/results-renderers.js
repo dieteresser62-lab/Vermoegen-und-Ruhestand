@@ -4,6 +4,7 @@
 import { formatCurrencySafe, formatMetricStatus } from './results-formatting.js';
 import { renderHeatmapSVG, renderSizedSimulatorChart } from './simulator-heatmap.js';
 import { escapeBacktestHtml as escape } from './historical-backtest-ui.js';
+import { installInfoPlacement } from '../shared/designsystem-info-popover.js';
 
 let nextInfoId = 1;
 
@@ -53,6 +54,7 @@ const metricTooltip = kpi => `${kpi.tooltip || kpi.description || kpi.title}${kp
  */
 export function bindResultInfoPopups(documentRef = globalThis.document) {
     if (!documentRef?.querySelectorAll) return;
+    installInfoPlacement(documentRef);
     const hosts = () => /** @type {NodeListOf<HTMLElement & {closeInfo?: () => void}>} */ (documentRef.querySelectorAll('#tab-montecarlo .ds-info'));
     for (const host of hosts()) {
         if (popupHosts.has(host)) continue;

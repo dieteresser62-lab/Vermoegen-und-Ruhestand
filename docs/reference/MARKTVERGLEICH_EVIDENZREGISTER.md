@@ -148,7 +148,7 @@ Sonderprüfung zum 15.10. nachgeholt: 168 USD/Jahr bestätigt. Release Notes und
 
 | Quellen-ID | Klasse | Betreiber, Stufe und Quelle | Veröffentlichung und Abruf | Region/Sprache | Aussage und Kriterien | Grenze |
 | --- | --- | --- | --- | --- | --- | --- |
-| <a id="mkt-bd-01"></a>MKT-BD-01 | P1 | Boldin PlannerPlus, [Pricing](https://www.boldin.com/retirement/pricing/); ergänzt [Release Notes](https://www.boldin.com/retirement/release-notes/) | Releases bis 22.10.2026; Abruf 2026-10-27 | EN/USA | K-01/09/10/13/17: 168 USD/Jahr; Szenarien, Monte Carlo, Reports; Release Notes: Gebühren-/Steuerverteilungsansichten ab 22.10. | Preisblatt nennt Gebührenansicht noch kommend; Apply to Plan angekündigt. |
+| <a id="mkt-bd-01"></a>MKT-BD-01 | P1 | Boldin PlannerPlus, [Pricing](https://www.boldin.com/retirement/pricing/); ergänzt [Release Notes](https://www.boldin.com/retirement/release-notes/) | Releases bis 22.10.2026; Abruf 2026-11-05 | EN/USA | K-01/09/10/13/17: 168 USD/Jahr; Szenarien, Monte Carlo, Reports; Release Notes: Gebühren-/Steuerverteilungsansichten ab 22.10. | Preisblatt nennt Gebührenansicht noch kommend; Apply to Plan angekündigt. |
 | <a id="mkt-bd-02"></a>MKT-BD-02 | P2 | Boldin, [Outside the US](https://help.boldin.com/en/articles/6509299-is-plannerplus-suitable-for-canadians-or-other-non-us-citizens-planning-for-retirement) | 29.05.2026; Abruf 2026-10-27 | EN/USA | K-02: US-Recht; Nicht-US-Steuern und freie Auslandssteuersätze nicht unterstützt. | Steuerfreie Ausweichwege sind kein deutscher Steuervertrag. |
 | <a id="mkt-bd-03"></a>MKT-BD-03 | P1 | Boldin, [Monte Carlo](https://help.boldin.com/en/articles/5805671-boldin-s-monte-carlo-simulation) | nur relatives Updated; Abruf 2026-10-27 | EN/USA | K-07/08/14: 1.000 normalverteilte Läufe und Erfolgsdefinition. | Seed und genaue Schockfolge offen. |
 | <a id="mkt-bd-04"></a>MKT-BD-04 | P2 | Boldin, [Return Assumptions](https://help.boldin.com/en/articles/10563826-how-do-i-account-for-rate-of-return-assumptions) | nur relatives Updated; Abruf 2026-10-27 | EN/USA | K-06–08: S&P 500/US-Treasuries 1994–2024; eigene Modellraten. | Holdings-Ansichten belegen keine vollständige Kostenbasis-/Transaktionsrechnung. |
@@ -423,7 +423,7 @@ Sonderprüfung zum 20.10. nachgeholt: Abo/Startgebühr bestätigt; §-7.1-Widers
 | <a id="mkt-pr-04"></a>MKT-PR-04 | P2 | Pralana, [Analysis & Optimization](https://pralanaretirementcalculator.com/analysis-optimization/); ergänzt [Gold Changes](https://pralanaretirementcalculator.com/gold-changes/) | Changes 17.09.2026; Abruf 2026-10-27 | EN/USA | K-06–10/14: Historisch, Monte Carlo, drei Szenarien und Suchfunktionen. | Changelog endet 17.09.2026; Oktober-Auslieferung/Seed nicht geprüft. |
 | <a id="mkt-pr-05"></a>MKT-PR-05 | P2 | Pralana, [Income & Expenses](https://pralanaretirementcalculator.com/income-expenses/) | undatiert; Abruf 2026-10-27 | EN/USA | K-03–05: Partner-Einkommen, Survivor-Optionen, Immobilien und Einmalzahlungen. | US-Kontext; kein deutscher Pflegegrad-/Reservevertrag. |
 | <a id="mkt-pr-06"></a>MKT-PR-06 | P1 | Pralana, [Manuals](https://pralanaretirementcalculator.com/manuals/), [2026 Gold User Manual](https://pralanaretirementcalculator.com/product/pralana-2026-gold-user-manual/) | Handbuchangebot 2026; Abruf 2026-10-27 | EN/USA/Excel | K-08/13/14: Öffentliches Angebot des Gold-Handbuchs 2026. | PDF nicht vollständig erneut gelesen; Workbook nicht gekauft. |
-| <a id="mkt-pr-07"></a>MKT-PR-07 | P1 | Pralana, [Terms](https://pralanaretirementcalculator.com/terms/); PR-01/02 zum heutigen Abo | Terms 16.05.2025; Abruf 2026-10-27 | EN/USA | K-17/18: Proprietäre Lizenz; § 7.1 nennt Einmalgebühr, Produktseite ein Abo. | Widerspruch nach Sonderprüfung weiter offen. |
+| <a id="mkt-pr-07"></a>MKT-PR-07 | P1 | Pralana, [Terms](https://pralanaretirementcalculator.com/terms/); PR-01/02 zum heutigen Abo | Terms 16.05.2025; Abruf 2026-11-05 | EN/USA | K-17/18: Proprietäre Lizenz; § 7.1 nennt für das Downloadprodukt eine Einmalgebühr, die Produktseite ein Abo. | Widerspruch nach Sonderprüfung weiter offen. |
 | <a id="mkt-pr-99"></a>MKT-PR-99 | I1 | Prüfpfad: Gold Highlights, Preis, Herstellerankündigung, Gold Changes, Manuals, Terms oben | Recherche 27.10.2026; Abruf 2026-10-27 | EN/USA/Excel | K-15/16: Highlights, Preis, Herstellerbeitrag, Changes, Manuals und Terms geprüft. | Workbook, Oktobererweiterungen und WCAG nicht geprüft. |
 
 | ID | Status und Belege | Befund und Grenze |
@@ -492,7 +492,7 @@ Letzte Prüfung bezeichnet den Quellenabgleich einschließlich offener Abrufe, k
 | --- | --- | --- | --- | --- | --- |
 | MKT-RS | Repository/bei Änderung, spätestens quartalsweise | 2026-10-27 | 2027-01-27 | [Vermögen und Ruhestand](#vermögen-und-ruhestand) | Aussagen und Grenzen abgeglichen |
 | MKT-PL | Stufe/Preis/Methodik, quartalsweise | 2026-10-27 | 2027-01-27 | [ProjectionLab Premium](#projectionlab-premium) | Aussagen und Grenzen abgeglichen |
-| MKT-BD | Stufe/Preis/Methodik, quartalsweise | 2026-10-27 | 2026-11-03 | [Boldin PlannerPlus](#boldin-plannerplus) | Widerspruch erneut nachsehen |
+| MKT-BD | Stufe/Preis/Methodik, quartalsweise | 2026-11-05 | 2027-01-27 | [Boldin PlannerPlus](#boldin-plannerplus) | Preis bestätigt; Widerspruch Preisseite/Release Notes unverändert |
 | MKT-BVI | Stufe/Preis/Methodik, quartalsweise | 2026-10-27 | 2027-01-27 | [BVI Entnahme-Rechner](#bvi-entnahme-rechner) | Aussagen und Grenzen abgeglichen |
 | MKT-FF | Stufe/Preis/Methodik, quartalsweise | 2026-10-27 | 2027-01-27 | [Finanzfluss Entnahmeplan](#finanzfluss-entnahmeplan) | Aussagen und Grenzen abgeglichen |
 | MKT-DR | Stufe/Preis/Methodik, quartalsweise | 2026-10-27 | 2027-01-27 | [Digitale Rentenübersicht](#digitale-rentenübersicht) | Aussagen und Grenzen abgeglichen |
@@ -500,7 +500,7 @@ Letzte Prüfung bezeichnet den Quellenabgleich einschließlich offener Abrufe, k
 | MKT-EM | Stufe/Preis/Methodik, quartalsweise | 2026-10-27 | 2027-01-27 | [eMoney Pro](#emoney-pro) | Aussagen und Grenzen abgeglichen |
 | MKT-FI | Stufe/Preis/Methodik, quartalsweise | 2026-10-27 | 2027-01-27 | [FI Calc](#fi-calc) | Aussagen und Grenzen abgeglichen |
 | MKT-FC | Stufe/Preis/Methodik, quartalsweise | 2026-10-27 | 2027-01-27 | [FIRECalc](#firecalc) | Aussagen und Grenzen abgeglichen |
-| MKT-PR | Stufe/Preis/Methodik, quartalsweise | 2026-10-27 | 2026-11-03 | [Pralana Gold](#pralana-gold) | Widerspruch erneut nachsehen |
+| MKT-PR | Stufe/Preis/Methodik, quartalsweise | 2026-11-05 | 2027-01-27 | [Pralana Gold](#pralana-gold) | Terms unverändert; Vertragswiderspruch weiter offen |
 
 ### Pflege und Änderungsvertrag
 

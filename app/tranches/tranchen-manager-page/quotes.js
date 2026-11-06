@@ -8,6 +8,7 @@ import { processingIsBlocked } from './controls.js';
 import { showPageAlert } from '../../shared/page-dialog.js';
 import { renderPersistenceState } from './persistence-status.js';
 import { runManagerOperation } from './history.js';
+import { notePriceRound } from '../../shared/auto-prices.js';
 
 export function formatQuoteIssue(result) {
     const label = result.name || result.trancheId || 'Unbenannte Tranche';
@@ -142,6 +143,7 @@ export function updatePrices() {
 
     const batchId = state.quoteBatchId + 1;
     state.quoteBatchId = batchId;
+    notePriceRound();
     const batchPromise = runManagerOperation(async navigationOperation => {
         const controller = new AbortController();
         const abort = () => controller.abort();

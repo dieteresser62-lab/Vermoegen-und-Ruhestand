@@ -1,4 +1,5 @@
 import { activateSimulatorTab } from './simulator-main-tabs.js';
+import { installInfoPlacement } from '../shared/designsystem-info-popover.js';
 
 const bindings = new WeakSet();
 const toolLabels = { replay: 'Stresspfad-Replay', sweep: 'Parameter-Sweep', optimize: 'Auto-Optimize' };
@@ -64,6 +65,7 @@ export function openWorkshopReplay({ documentRef = globalThis.document, target =
 export function initWorkshopUI(documentRef = globalThis.document) {
     if (!documentRef || bindings.has(documentRef)) return;
     bindings.add(documentRef);
+    installInfoPlacement(documentRef);
     const closePopups = [];
     /** @type {NodeListOf<HTMLElement>} */ (documentRef.querySelectorAll('#tab-werkstatt .ds-info')).forEach(host => {
         const button = /** @type {HTMLButtonElement} */ (host.querySelector('.ds-info-button'));

@@ -45,7 +45,7 @@ for (let i = 1; i < expensesOrder.length; i++) assert(expenses.indexOf(expensesO
 const data = read('Daten-Sicherung.html');
 const dataOrder = ['data-stats', 'id="daten-sicherung"', 'id="wiederherstellung"', 'id="kursdienst"', 'id="dataStorageTitle"'];
 for (let i = 1; i < dataOrder.length; i++) assert(data.indexOf(dataOrder[i - 1]) < data.indexOf(dataOrder[i]), 'Sicherungsbereiche behalten ihre Reihenfolge: ' + dataOrder[i]);
-assert(/class="data-heading ds-page-head"[\s\S]*?class="ds-page-actions" href="Handbuch.html#daten-sicherung"/.test(data), 'Bestehende Datenhilfe steht als Kopfaktion bereit');
+assert(/class="data-heading ds-page-head"[\s\S]*?class="ds-page-actions"><a href="Handbuch.html#daten-sicherung" data-profile-handoff class="ds-help-link/.test(data), 'Bestehende Datenhilfe steht als Kopfaktion bereit');
 const css = read('css/suite-frame.css');
 assert(css.includes('min-height: 56px') && css.includes('padding: var(--space-2) var(--space-4)'), 'Standardkopf verwendet kompaktes Tokenpadding und darf wachsen');
 assert(css.includes('@container suite-content (width < 65rem)') && css.includes('grid-row: 2; align-self: center'), 'Aktionen stehen auf Titelhöhe und reagieren auf die Inhaltsbreite');
@@ -137,7 +137,7 @@ const hero = balanceTree.elements.find(node => node.attrs.class?.includes('ov-he
 const action = balanceTree.elements.find(node => node.attrs.class?.includes('ov-act'));
 assertEqual(hero.parent, action.parent, 'Budget und vollständige Handlung stehen im gemeinsamen Raster');
 assert(action.children.some(node => node.attrs.id === 'balanceAnnualAction'), 'Jahresbeschluss bleibt in der Handlungskarte');
-assert(balanceTree.elements.some(node => node.attrs.class?.includes('balance-help-link') && node.attrs.href === 'Handbuch.html'
+assert(balanceTree.elements.some(node => node.attrs.class?.includes('balance-help-link') && node.attrs.href === 'Handbuch.html#balance' && !node.attrs.target
     && node.attrs['aria-label'] === 'Hilfe öffnen' && node.attrs['data-profile-handoff'] === ''), 'Hilfe-Symbol behält Ziel und geschützten Handoff');
 const balanceCss = read('css/balance.css');
 assert(balanceCss.includes('@container balance-page (max-width: 1180px)')

@@ -24,7 +24,9 @@ function replacementErrors(html, page) {
     }
     if (page === 'Balance.html' || page === 'Simulator.html') {
         if (/<a\b[^>]*href="index.html"(?![^>]*data-profile-handoff)/.test(content)) errors.push('Altlink');
-        if (!/<a\b[^>]*href="Handbuch.html"[^>]*target="_blank"/.test(content)) errors.push('Hilfe');
+        // Die EXE öffnet keine neuen Fenster: Inhaltshilfe wechselt im selben Fenster über den Handoff.
+        const help = content.match(/<a\b[^>]*class="ds-help-link[^>]*>/g) || [];
+        if (!help.length || help.some(link => !link.includes('data-profile-handoff') || link.includes('target='))) errors.push('Hilfe');
     }
     if (page === 'Balance.html') {
         for (const anchor of ['class="app-header balance-head ds-page-head"', 'id="openDiagnosisBtn"', 'id="print-footer"', 'data-profile-handoff-export="false"']) {
@@ -82,8 +84,8 @@ for (const page of pages) {
     assertEqual(html.includes('href="css/suite-frame.css"'), true, `${page}: lokales Stylesheet angeschlossen`);
     assertEqual(replacementErrors(html, page).join(','), '', `${page}: Endgültige Navigation erhält Hilfe, Fachaktionen und Recovery`);
     if (['Balance.html', 'Simulator.html'].includes(page)) {
-        const withoutHelpTarget = html.replace(/(<a\b[^>]*href="Handbuch.html"[^>]*?)target="_blank"/, '$1');
-        assertEqual(replacementErrors(withoutHelpTarget, page).includes('Hilfe'), true, 'Gegenprobe erkennt verlorene Hilfe im neuen Tab');
+        const helpInNewWindow = html.replace('class="ds-help-link', 'target="_blank" class="ds-help-link');
+        assertEqual(replacementErrors(helpInNewWindow, page).includes('Hilfe'), true, 'Gegenprobe erkennt Hilfe im neuen Fenster');
         assertEqual(replacementErrors(html.replace('<main class="suite-content"', '<main class="suite-content"><a href="index.html">Altlink</a><div'), page).includes('Altlink'), true, 'Gegenprobe erkennt doppelte native Startnavigation');
     }
     if (page === 'Balance.html') {
@@ -305,6 +307,21 @@ for (const page of pages) {
     assert(html.match(/<a class="suite-brand"[^>]*>(.*?)<\/a>/)?.[1].includes('Vermögen &amp; Ruhestand'), page + ': neuer Name im Markenkopf');
     assert(!html.includes('Ruhestand-Suite'), page + ': alter Markenname entfernt');
     assert(!html.match(/<header class="suite-header">([\s\S]*?)<\/header>/)?.[1].includes('Aktives Profil'), page + ': keine Profilangabe im Kopf');
+}
+// Hilfe „?“ steht auf jeder App-Seite im Seitenkopf (im Simulator in jedem Reiter) und führt im selben Fenster zum passenden Kapitel.
+const handbook = fs.readFileSync(new URL('../Handbuch.html', import.meta.url), 'utf8');
+const helpTargets = { 'index.html': [''], 'depot-tranchen-manager.html': ['haushalt-plan'], 'Ausgaben.html': ['ausgaben'], 'Balance.html': ['balance'],
+    'Simulator.html': ['simulator', 'simulator-eingaben', 'simulator-backtest', 'monte-carlo', 'werkstatt'], 'Daten-Sicherung.html': ['daten-sicherung'] };
+for (const [page, targets] of Object.entries(helpTargets)) {
+    const html = fs.readFileSync(new URL(`../${page}`, import.meta.url), 'utf8');
+    const heads = html.match(/<header class="[^"]*ds-page-head[^"]*">[\s\S]*?<\/header>/g) || [];
+    const found = heads.map(head => {
+        const link = head.match(/<a href="Handbuch\.html(?:#([a-z-]+))?" data-profile-handoff class="ds-help-link[^"]*"[^>]*><span aria-hidden="true">\?<\/span><\/a>/);
+        return link ? link[1] || '' : head.includes('ds-help-link') ? 'falsch' : 'fehlt';
+    });
+    assertEqual(found.join(','), targets.join(','), `${page}: Hilfe „?“ in jedem Seitenkopf mit passendem Kapitel`);
+    for (const target of targets.filter(Boolean)) assert(handbook.includes(`id="${target}"`), `${page}: Handbuchkapitel ${target} vorhanden`);
+    assert(!html.includes('Hilfe im Handbuch</a>'), `${page}: kein zweiter Hilfe-Textlink`);
 }
 const desktopConfig = JSON.parse(fs.readFileSync(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
 assert(desktopConfig.app.windows.every(win => win.title === 'Vermögen & Ruhestand'), 'Neuer Fenstertitel in Tauri');

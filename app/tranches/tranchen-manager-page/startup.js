@@ -28,6 +28,11 @@ import { initializeHouseholdPlanPage } from '../../profile/household-plan-dialog
 import { resolveManagerTarget, openManagerOverviewTarget, selectManagerView } from './views.js';
 import { loadProfileRegistry } from '../../profile/profile-registry.js';
 import { renderManagerView } from '../tranchen-manager-renderer.js';
+import { bindAutoPrices } from '../../shared/auto-prices.js';
+import { readStartupPriceReport } from '../tranchen-startup-prices.js';
+import { updatePrices } from './quotes.js';
+
+const autoPriceBindings = new WeakSet();
 
 export function resolveActiveProfileId(explicitProfileId) {
     if (explicitProfileId !== undefined) return explicitProfileId || null;
@@ -221,6 +226,13 @@ export async function startTranchenManagerPage() {
                 if (document === doc && state.boundDocument === doc) void openManagerOverviewTarget(window.location, { ready: state.loadStatus !== 'unavailable' });
             });
             state.managerTargetBindings.add(doc);
+        }
+        // Kurse automatisch: über den Weg von „Kurse aktualisieren“, also für die gezeigte Person.
+        if (ready && !autoPriceBindings.has(document)) {
+            autoPriceBindings.add(document);
+            bindAutoPrices({ doc: document, win: window, run: () => (state.tranchen.length ? updatePrices() : undefined),
+                blocked: () => processingIsBlocked() || managerSelectionIsBlocked() || getPageNavigationGuard(document).reasons().length > 0,
+                lastRun: () => readStartupPriceReport()?.retrievedAt });
         }
         return result;
     }

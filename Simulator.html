@@ -416,7 +416,7 @@
 
             <div class="tab-content">
                 <div id="tab-ergebnis" class="tab-panel active">
-                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Zukunft durchspielen</p><h1 id="simulatorResultQuestion">Hätte dein Plan die Jahre seit 2000 überstanden?</h1><p class="sim-lead">Beim Öffnen wird dein heutiger Plan durch die echten Marktjahre seit 2000 gerechnet. Monte-Carlo zeigt mögliche Zukünfte.</p></header><div class="tab-buttons" aria-label="Simulator-Ansichten"><button class="tab-btn active" data-tab="ergebnis">Ergebnis</button><button class="tab-btn" data-tab="annahmen">Annahmen</button><button class="tab-btn" data-tab="backtesting">Backtest</button><button class="tab-btn" data-tab="montecarlo">Monte-Carlo</button><button class="tab-btn" data-tab="werkstatt">Werkstatt</button></div>
+                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Zukunft durchspielen</p><h1 id="simulatorResultQuestion">Hätte dein Plan die Jahre seit 2000 überstanden?</h1><p class="sim-lead">Beim Öffnen wird dein heutiger Plan durch die echten Marktjahre seit 2000 gerechnet. Monte-Carlo zeigt mögliche Zukünfte.</p><div class="ds-page-actions"><a href="Handbuch.html#simulator" data-profile-handoff class="ds-help-link ds-button ds-button-secondary ds-icon-button" title="Hilfe" aria-label="Hilfe öffnen"><span aria-hidden="true">?</span></a></div></header><div class="tab-buttons" aria-label="Simulator-Ansichten"><button class="tab-btn active" data-tab="ergebnis">Ergebnis</button><button class="tab-btn" data-tab="annahmen">Annahmen</button><button class="tab-btn" data-tab="backtesting">Backtest</button><button class="tab-btn" data-tab="montecarlo">Monte-Carlo</button><button class="tab-btn" data-tab="werkstatt">Werkstatt</button></div>
                     <div class="sim-result-grid">
                         <section id="overviewBacktest" class="ds-plan-card sim-overview-backtest" aria-live="polite"><p>Profil wird geladen</p></section>
                         <section class="ds-plan-card sim-overview-mc" aria-label="Monte-Carlo-Antworten" aria-live="polite"><div id="overviewMonteCarloAnswers" class="sim-mc-answers"></div><div id="overviewMonteCarlo"><h2>Reicht das Vermögen?</h2><p>Noch nicht gerechnet</p></div></section>
@@ -426,7 +426,7 @@
                 </div>
                 <div id="tab-annahmen" class="tab-panel">
 
-                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Annahmen</p><h1>Womit gerechnet wird</h1><p class="sim-lead">Nach einer Änderung rechnet der Backtest neu, sobald du zum Ergebnis zurückkehrst; Monte-Carlo wird als veraltet markiert.</p></header>
+                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Annahmen</p><h1>Womit gerechnet wird</h1><p class="sim-lead">Nach einer Änderung rechnet der Backtest neu, sobald du zum Ergebnis zurückkehrst; Monte-Carlo wird als veraltet markiert.</p><div class="ds-page-actions"><a href="Handbuch.html#simulator-eingaben" data-profile-handoff class="ds-help-link ds-button ds-button-secondary ds-icon-button" title="Hilfe" aria-label="Hilfe öffnen"><span aria-hidden="true">?</span></a></div></header>
 
 
                     <p id="simAssumptionError" class="ds-note ds-note-error" role="alert" tabindex="-1" hidden></p>
@@ -856,7 +856,7 @@
                 </div>
                 <div id="tab-backtesting" class="tab-panel">
                     <p id="simBacktestPlanDeviation" class="ds-source" hidden>mit Abweichung vom Plan</p>
-                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Backtest</p><h1>Dein Plan in den echten Jahren</h1><p class="sim-lead">Ein historischer Einzelpfad mit Jahresprotokoll und allen Details.</p></header>
+                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Backtest</p><h1>Dein Plan in den echten Jahren</h1><p class="sim-lead">Ein historischer Einzelpfad mit Jahresprotokoll und allen Details.</p><div class="ds-page-actions"><a href="Handbuch.html#simulator-backtest" data-profile-handoff class="ds-help-link ds-button ds-button-secondary ds-icon-button" title="Hilfe" aria-label="Hilfe öffnen"><span aria-hidden="true">?</span></a></div></header>
 
                     <div class="sim-euro-control"><div id="backtestWealthMode" class="ds-segment wealth-mode" role="group" aria-label="Euro-Basis der Backtest-Ergebnisse"><button type="button" class="ds-segment-button" data-wealth-mode="nominal" aria-pressed="false">Nominal · Kontowert</button><button type="button" class="ds-segment-button" data-wealth-mode="real" aria-pressed="true">Real · Euro von Laufstart</button></div><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Nominal und Real erklären" aria-expanded="false" aria-controls="backtestEuroInfo">ⓘ</button><span id="backtestEuroInfo" class="ds-info-pop" role="tooltip">Nominal zeigt die Kontobeträge des jeweiligen Jahres. Real zeigt ihre Kaufkraft zum Laufstart; beim Backtest ist das die Kaufkraft des Startjahres. Die Wahl gilt für Geldbeträge in allen Ergebnisansichten, jeder neue Lauf startet mit Real. <a href="Handbuch.html#simulator">Mehr im Handbuch</a></span></span></div>
 
@@ -914,7 +914,7 @@
                 </div>
                 <div id="tab-montecarlo" class="tab-panel">
                     <p id="simMonteCarloPlanDeviation" class="ds-source" hidden>mit Abweichung vom Plan</p>
-                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Monte-Carlo</p><h1>Reicht das Vermögen?</h1><p class="sim-lead">Viele mögliche Markt- und Lebenspfade für deinen Plan.</p></header>
+                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Monte-Carlo</p><h1>Reicht das Vermögen?</h1><p class="sim-lead">Viele mögliche Markt- und Lebenspfade für deinen Plan.</p><div class="ds-page-actions"><a href="Handbuch.html#monte-carlo" data-profile-handoff class="ds-help-link ds-button ds-button-secondary ds-icon-button" title="Hilfe" aria-label="Hilfe öffnen"><span aria-hidden="true">?</span></a></div></header>
 
                     <section class="ds-card mc-settings-card" aria-labelledby="mcSettingsHeading">
                         <div class="mc-settings-actions">
@@ -1141,7 +1141,7 @@
                     <div id="print-footer" class="print-footer"></div>
                 </div>
                 <div id="tab-werkstatt" class="tab-panel">
-                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Werkstatt</p><h1>Varianten und Optimierung</h1><p class="sim-lead">Selten gebrauchte Werkzeuge für Vergleiche und Parametersuche.</p></header>
+                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Werkstatt</p><h1>Varianten und Optimierung</h1><p class="sim-lead">Selten gebrauchte Werkzeuge für Vergleiche und Parametersuche.</p><div class="ds-page-actions"><a href="Handbuch.html#werkstatt" data-profile-handoff class="ds-help-link ds-button ds-button-secondary ds-icon-button" title="Hilfe" aria-label="Hilfe öffnen"><span aria-hidden="true">?</span></a></div></header>
 <div class="ds-note sim-workshop-note"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"></path></svg><p>Selten gebraucht: Werkzeuge, um Varianten zu vergleichen und Parameter zu suchen. Übernommene Werte landen in den Annahmen und machen Ergebnisse veraltet.</p></div>
 <p class="ds-hint sim-price-basis">Geldbeträge nominal, sofern nicht als heutige Euro bezeichnet.</p>
 <div id="workshopToolCards" class="sim-workshop-cards">
@@ -1796,8 +1796,7 @@
             }
         }
     </script>
-    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
-            <a class="sim-help-link" href="Handbuch.html" target="_blank">Hilfe im Handbuch</a></main>
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div></main>
         </div>
     </div>
     <dialog id="navigationGuardDialog" class="navigation-guard-dialog ds-card" aria-labelledby="navigationGuardTitle" aria-describedby="navigationGuardDescription">

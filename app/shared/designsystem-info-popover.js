@@ -43,6 +43,22 @@ export function infoPopoverPosition(anchor, box, width, height, container = { le
     };
 }
 
+const placementDocuments = new WeakSet();
+/** Jede sichtbar geschaltete Erklärung steht am Symbol, auch bei seiteneigenen Schaltern (Simulator-Ergebnis,
+ * Monte Carlo, Werkstatt). Ohne Ausrichtung fiele sie auf die CSS-Vorgabe oben rechts zurück (Nutzer 05.11.2026).
+ * @param {Document} doc */
+export function installInfoPlacement(doc = globalThis.document) {
+    const win = doc?.defaultView;
+    if (!doc?.documentElement || typeof win?.MutationObserver !== 'function' || placementDocuments.has(doc)) return;
+    placementDocuments.add(doc);
+    new win.MutationObserver(records => {
+        for (const { target } of records) {
+            const host = /** @type {HTMLElement} */ (target);
+            if (host.classList?.contains('ds-info') && host.dataset.visible === 'true') placeInfo(host, doc);
+        }
+    }).observe(doc.documentElement, { subtree: true, attributes: true, attributeFilter: ['data-visible'] });
+}
+
 function placeInfo(host, doc) {
     const pop = host.querySelector('.ds-info-pop'), button = /** @type {HTMLButtonElement|null} */ (host.querySelector('.ds-info-button'));
     if (!pop || !button || !doc.documentElement || !button.getBoundingClientRect || !pop.getBoundingClientRect) return;
@@ -63,6 +79,7 @@ function placeInfo(host, doc) {
  */
 export function bindInfoPopovers(doc = globalThis.document, { root = doc, listen = (node, type, callback) => node.addEventListener(type, callback) } = {}) {
     if (!doc?.querySelectorAll || !root?.querySelectorAll) return;
+    installInfoPlacement(doc);
     /** @type {NodeListOf<HTMLElement>} */ (root.querySelectorAll('.ds-info')).forEach(host => {
         if (infoHosts.has(host)) return;
         const button = /** @type {HTMLButtonElement|null} */ (host.querySelector('.ds-info-button'));

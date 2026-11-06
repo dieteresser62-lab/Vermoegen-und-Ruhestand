@@ -1,6 +1,6 @@
 # Technische Architektur
 
-Referenz zu Laufzeiten, Modulbesitz und Ausführungsgrenzen. Stand: 01.11.2026. [Records](DATENVERTRAEGE.md), [Quellen](DATA_SOURCES.md), [Fachthemen](FACHKONZEPT.md), [Engine-API](../../engine/README.md), [Prüfwege](../../tests/README.md).
+Referenz zu Laufzeiten, Modulbesitz und Ausführungsgrenzen. Stand: 05.11.2026. [Records](DATENVERTRAEGE.md), [Quellen](DATA_SOURCES.md), [Fachthemen](FACHKONZEPT.md), [Engine-API](../../engine/README.md), [Prüfwege](../../tests/README.md).
 
 **Lizenz:** MIT; [Datenbedingungen](../../README.md#lizenz).
 
@@ -32,17 +32,31 @@ Eine Zerlegung verschiebt Code ohne Verhaltensänderung. Exportnamen, Signaturen
 
 `profilverbund-balance.js`, `balance-renderer-action.js` und `historical-backtest-contract.js` führen ihre früheren direkten Abhängigkeiten vor den Teilmodulen mit `export {} from …` auf. Die leere Exportliste erhält Ladeebene und Anforderungsreihenfolge, ohne öffentliche Namen oder einen zweiten Modulzustand einzuführen. Diese Fassaden liegen im Importgraphen der Übersicht. Zusätzliche Ladestufen verzögern dort den Kursstart und den anschließenden Abgleich von `profile_wealth_history_lots_v1` im Verlaufsjob; eine frühe Spielbereichswahl kann sonst noch vor diesem echten Startwrite liegen. [facade-loading-order.test.mjs](../../tests/facade-loading-order.test.mjs) sichert die direkten Abhängigkeiten. Die bestehenden Browserfälle prüfen den vollständigen Rückkehrbestand.
 
-Die folgenden zwölf Ordner trennen weitere Speicher-, Rechen- und Oberflächenmodule nach Zuständigkeit. Ihre gleichnamigen Dateien mit Endung `.js` bleiben die öffentlichen Fassaden.
+Diese Ordner trennen Speicher-, Rechen- und Oberflächenmodule nach Zuständigkeit. Ihre gleichnamigen Dateien mit Endung `.js` bleiben die öffentlichen Fassaden. `engine/core.mjs` bündelt auf dieselbe Weise die Engine-Exporte aus `engine/core/`; die [Engine-Module](../../engine/README.md#module) ordnen sie zu.
 
 | Ordner unter `app/` | Zuständigkeit |
 |---|---|
+| `shared/persistence-facade/` | Speicherzugang, Bereiche, Haushalte, Spielbereich, Schreibwarteschlange und Wiederherstellungspunkte |
 | `shared/persistence-backup/` | Sicherungsformate, Domänenprüfung, Export, Wiederherstellung und Rollback |
+| `profile/profile-storage/` | Profilverzeichnis, Auswahl, Bündeltransfer, Startprüfung und Recovery |
+| `profile/profilverbund-action-attribution/` | persönliche Aktionszuordnung, Beträge, Liquidität und Steuer |
+| `tranches/tranchen-manager-page/` | Seitenzustand, Darstellung, Eingaben, Speicherung und Kurse für Personen & Vermögen |
+| `tranches/tranche-reconciliation/` | tatsächliche Verkäufe und Cashbuchungen mit Vorschau, Bestätigung und Verlauf |
+| `balance/balance-binder-imports/` | Import-/Exportzugänge, Eingabeprüfung, Migration, Dateiformate und Markt-CSV |
+| `simulator/simulator-engine-direct/` | Jahresphasen von Vorbereitung über Markt, Aktionen und Steuer bis zum Protokoll |
+| `simulator/monte-carlo-runner/` | Monte-Carlo-Lauf, Jahresphasen, Pfadzustand und Pfadabschluss |
+| `simulator/monte-carlo-chunk-result/` | Chunkverträge, Ergebnisprüfung und Zusammenführung |
+| `simulator/monte-carlo-contracts/` | Request- und Ergebnisverträge, Kennzahlprojektion und Prüfung |
 | `simulator/mc-year-sampling/` | Jahresziehung, Konfiguration, Startjahr und Diagnosen |
 | `simulator/monte-carlo-export/` | Exportformate, Szenariorecords, Protokoll und Dateiaktionen |
 | `simulator/results-metrics/` | Ergebniskennzahlen, Pflege, Mindest-Flex, Stress und Anzeige |
 | `simulator/simulator-monte-carlo/` | Laufzustand, serieller Ablauf, Worker und Ausführung |
 | `simulator/historical-backtest-contract/` | Datenvertrag, Zeiträume, Beobachtungen und Jahresrecords |
 | `simulator/historical-backtest-runner/` | historische Jahresdaten, Portfoliofortschreibung und Ergebnisse |
+| `simulator/sweep-runner/` | Parameterreihen mit Eingaben, Einzelpfaden, Diagnosen und Ausführung |
+| `simulator/stress-replay-contract/` | Stresspfadvertrag, Varianten, Vergleich und Arbeitsstand |
+| `simulator/simulation-data-inventory/` | Inventar der Markt-, Wirtschafts-, Haushalts- und Regeldaten |
+| `simulator/german-gross-wage-growth-chain/` | erzeugte Lohnreihe mit Beobachtungen und Jahreswachstum |
 | `simulator/simulator-profile-inputs/` | Profil-, Haushalts-, Pflege- und Trancheneingaben |
 | `profile/profilverbund-balance/` | Profilzugriff, Haushaltsaggregation, Steuer und Auszahlungsverteilung |
 | `simulator/stress-replay-ui/` | Stresspfadcontroller, Darstellung, Varianten und Dateiaktionen |
@@ -367,6 +381,7 @@ Die Aktion ist ein Vorschlag. Balance attribuiert ihn; Simulator führt ihn auf 
 | `lifecycle.js` | Eingabe-/Entladebeobachtung und Tauri-Schließprotokoll |
 | `maintenance.js` | Status, Metadaten, Browserpräferenzen und Test-Rücksetzung |
 | `play-area.js` | echten Bestand lesen, Spielbereich aktivieren, verwerfen und übernehmen |
+| `households.js` | Haushalte anlegen, wechseln, umbenennen, löschen und lesend vergleichen |
 | `api.js` | öffentliche Objekte mit denselben Funktionsreferenzen zusammensetzen |
 
 Module importieren ihre Abhängigkeiten direkt. `api.js` setzt einmal die Rückverweise für Flush, Lifecyclebindung und das öffentliche Objekt in `state.js`; dadurch bleiben die statischen Importe ohne Kreis. Die Rücksetzung ersetzt den Speicherzustand, erhält aber diese Verdrahtung und die Identität der öffentlichen Objekte.
@@ -384,6 +399,8 @@ Module importieren ihre Abhängigkeiten direkt. `api.js` setzt einmal die Rückv
 | `download.js` | Dateiausgabe und gemeinsame Bestätigung von Sicherungszeit und Vergleichsbasis |
 | `restore.js` | Vorabpunkt bestätigen, Livebestand vergleichen und transaktionalen Import ausführen |
 | `bindings.js` | Sicherungs- und Importknöpfe, Bestätigung, Status und geschützten Reload binden |
+
+Mehrere Haushalte teilen sich eine Installation. `household-registry.js` prüft das Haushaltsverzeichnis, das außerhalb aller Haushaltsbereiche liegt und keine Finanzdaten enthält. `persistence-areas.js` löst daraus den Speicherbereich des geöffneten Haushalts und seines Spielbereichs auf; Haushalt 1 bleibt an den bisherigen Orten. Anlegen und Wechseln schreiben nur das Verzeichnis und erhöhen dessen Generation, danach lädt jede Seite neu. Jeder native Write nennt die erwartete Generation; Rust weist ihn bei Abweichung mit `HOUSEHOLD_CONTEXT_CHANGED` ab. `household-switcher.js` bindet den Umschalter im Kopf, `household-transfer.js` die Übergabedatei, `data/data-households.js` die Verwaltung auf Daten & Sicherung. Schlüssel, Dateinamen und Formate stehen in den [Datenverträgen](DATENVERTRAEGE.md#schlüssel-und-adapterhüllen).
 
 Tauri synchronisiert `.tmp` und ersetzt die Hauptdatei per `rename`. Fehlt sie, gilt eine vollständige Objektdatei aus `.tmp`, sonst `.bak`; unlesbare Rettungsdateien sperren Leerstart/Writes. JavaScript validiert Domänen. IndexedDB öffnet nach dem Altkey-Cursor frische Snapshottransaktionen; Migrationsfehler erreichen den Aufrufer. [Migrationsmarker](DATENVERTRAEGE.md#person-und-restore) und [Fehlerfolgen](SICHERUNG.md#wiederherstellung).
 

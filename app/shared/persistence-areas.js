@@ -235,7 +235,9 @@ export function createPersistenceAreas(options = {}) {
                 await saveControl(control);
                 await play.open();
                 await play.saveBatch({ upserts: Object.entries(records), deletes: [] });
-                for (const snapshot of snapshots) {
+                // DS-2: Windows-App schreibt und bestätigt alle Punkte mit je einem Dateizugriff statt einem je Punkt.
+                if (play.writeSnapshots) { if (snapshots.length) await play.writeSnapshots(snapshots); }
+                else for (const snapshot of snapshots) {
                     if (play.writeSnapshot) await play.writeSnapshot(snapshot);
                     else {
                         const archive = JSON.stringify({ schemaVersion: 1, snapshots, savedAt: startedAt });
@@ -245,9 +247,11 @@ export function createPersistenceAreas(options = {}) {
                 }
                 const confirmed = await play.loadAll();
                 if (Object.entries(records).some(([key, value]) => confirmed[key] !== value)) throw new Error('Spielbereich konnte nicht bestätigt werden.');
+                const stored = play.readPersistedSnapshots && new Map((await play.readPersistedSnapshots()).map(point => [point.id, point]));
                 for (const snapshot of snapshots) {
                     const read = play.readPersistedSnapshot || play.readSnapshot;
-                    if (read && JSON.stringify(await read.call(play, snapshot.id)) !== JSON.stringify(snapshot)) throw new Error('Spiel-Sicherungspunkt konnte nicht bestätigt werden.');
+                    const point = stored ? stored.get(snapshot.id) : read && await read.call(play, snapshot.id);
+                    if ((stored || read) && JSON.stringify(point) !== JSON.stringify(snapshot)) throw new Error('Spiel-Sicherungspunkt konnte nicht bestätigt werden.');
                 }
                 await play.writeMetadata(READY_KEY, { id });
                 let ready = await play.readMetadata(READY_KEY);

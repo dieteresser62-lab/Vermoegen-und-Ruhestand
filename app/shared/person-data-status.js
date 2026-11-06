@@ -107,8 +107,9 @@ function readPersonStatus({ storage = persistenceStorage, win = globalThis.windo
         const raw = storage.getItem(CONFIG.STORAGE.LS_KEY);
         metadata = raw ? JSON.parse(raw).annualPeriodMetadata : null;
     } catch (error) { return { ready: false, status: 'corrupt', error, message: error.message }; }
-    // Die leere Erstinstallation bleibt beim vorhandenen DOM-Demobetrieb.
-    if (!entries.length || entries.length === 1 && entries[0].profileId === 'default'
+    // Die leere Erstinstallation bleibt beim vorhandenen DOM-Demobetrieb. Hat die erste Person den Platzhalter
+    // „Default“ ersetzt (DP-1), gilt für sie die gewöhnliche Prüfung auf fehlende Personendaten.
+    if (!entries.length || entries.length === 1 && entries[0].profileId === 'default' && (profiles.default?.meta?.name ?? 'Default') === 'Default'
         && !Object.keys(entries[0].data).some(key => key.startsWith('profile_') && !['profile_person_schema_version', ...Object.values(INCOME_KEYS)].includes(key))) {
         return { ready: true, status: 'demo', persons: [], message: '', entries };
     }

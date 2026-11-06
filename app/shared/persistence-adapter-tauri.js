@@ -269,6 +269,10 @@ export function createTauriJsonFileAdapter(options = {}) {
             if (!point) throw new Error(`Snapshot ${id} wurde nicht gefunden.`);
             return point;
         },
+        async readPersistedSnapshots() {
+            if (!invoke) invoke = getInvoke(options);
+            return (await loadSnapshotArchive()).snapshots;
+        },
         async saveBatch(batch) {
             if (!opened) await this.open();
             batch.deletes.forEach(key => {
@@ -314,6 +318,15 @@ export function createTauriJsonFileAdapter(options = {}) {
             const snapshots = snapshotArchive.snapshots.filter(entry => String(entry?.id || '') !== snapshotId);
             snapshots.push(snapshot);
             snapshotArchive = { ...snapshotArchive, snapshots };
+            await persistSnapshots();
+            return true;
+        },
+        // DS-2: mehrere Punkte mit einem Schreiben der Punktedatei (Spielbereich-Start mit Kopie).
+        async writeSnapshots(points) {
+            await ensureSnapshotsOpen();
+            const ids = new Set(points.map(point => String(point?.id || '')));
+            if (ids.has('') || ids.size !== points.length) throw new Error('Snapshot-ID fehlt oder ist doppelt.');
+            snapshotArchive = { ...snapshotArchive, snapshots: [...snapshotArchive.snapshots.filter(entry => !ids.has(String(entry?.id || ''))), ...points] };
             await persistSnapshots();
             return true;
         },

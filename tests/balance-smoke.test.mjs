@@ -717,7 +717,8 @@ console.log('Regression R-01/R-02: gültige Formularkorrektur und editierbare De
         const initialInputs = UIReader.readAllInputs();
         const registry = JSON.parse(persistenceStorage.getItem('rs_profiles_v1'));
         const profile = structuredClone(Object.values(registry.profiles)[0]);
-        profile.meta = { ...profile.meta, id: 'default', name: 'Synthetischer Demo-Bestand', belongsToHousehold: false };
+        // Demobetrieb gilt nur für den Platzhalter „Default“ der Erstinstallation (DP-1).
+        profile.meta = { ...profile.meta, id: 'default', name: 'Default', belongsToHousehold: false };
         profile.data = {};
         for (const key of Object.keys(recordsBefore)) persistenceStorage.removeItem(key);
         persistenceStorage.setItem('rs_profiles_v1', JSON.stringify({ ...registry, profiles: { default: profile } }));

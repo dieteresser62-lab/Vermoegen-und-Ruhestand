@@ -1,6 +1,6 @@
 # Einrichtung und Betrieb
 
-Start, Update und Fehlerhilfe für Nutzer der Windows-App und Browserfassung. Stand: 27.10.2026.
+Start, Update und Fehlerhilfe für Nutzer der Windows-App und Browserfassung. Stand: 05.11.2026.
 
 ## Start
 
@@ -8,7 +8,7 @@ Start, Update und Fehlerhilfe für Nutzer der Windows-App und Browserfassung. St
 
 Lege die bereitgestellte `VermoegenUndRuhestand.exe` in einem lokalen Ordner ab und öffne sie per Doppelklick. Windows benötigt WebView2. Node.js und ein getrennter Server sind nicht nötig. Warte, bis Haushalt und Speicher geladen sind. Die erste Übung steht im [QUICKSTART](../../QUICKSTART.md).
 
-Die EXE startet ihren Kursdienst selbst. Warte laufende Speicher- und Abschlussvorgänge ab, bevor du sie schließt. Der Kursdienst endet mit dem App-Prozess.
+Die EXE startet ihren Kursdienst selbst. Warte laufende Speicher- und Abschlussvorgänge ab, bevor du sie schließt. Der Kursdienst endet mit dem App-Prozess. Öffne die EXE nur einmal: Zwei gleichzeitig geöffnete Fenster sperren sich nicht gegenseitig.
 
 <a id="im-browser"></a>
 
@@ -28,7 +28,7 @@ npm run serve
 
 ### Datenbereich
 
-Die Produktiv-EXE speichert im Bereich `de.vermoegen-ruhestand.suite` des Windows-App-Datenordners. Der Ablageort der EXE ändert das nicht. Unter „Daten & Sicherung → Speicher“ zeigen „Speicherort anzeigen“ und „Ordner öffnen“ den tatsächlichen Ordner. Im Browser gibt es keinen Dateipfad.
+Die Produktiv-EXE speichert im Bereich `de.vermoegen-ruhestand.suite` des Windows-App-Datenordners. Der Ablageort der EXE ändert das nicht. Weitere Haushalte liegen im selben Bereich unter `households`; Haushalt 1 bleibt im bisherigen Ordner. Unter „Daten & Sicherung → Speicher“ zeigen „Speicherort anzeigen“ und „Ordner öffnen“ den tatsächlichen Ordner. Im Browser gibt es keinen Dateipfad.
 
 <!-- docs:control {"source":"Daten-Sicherung.html","selector":"#dataStorageOpen","text":"Ordner öffnen"} -->
 
@@ -36,7 +36,7 @@ Entwickler-Builds, Prüfkandidaten, frühere RuhestandSuite und Browser haben ge
 
 ### Bestehende Installation
 
-1. Erstelle eine Vollsicherung und prüfe die Dateiablage.
+1. Erstelle für jeden Haushalt eine Vollsicherung und prüfe die Dateiablage. Eine Vollsicherung enthält nur den geöffneten Haushalt.
 2. Warte laufende Speicherarbeiten ab und beende die App.
 3. Ersetze die EXE durch die neue Produktivfassung.
 4. Starte sie und prüfe Haushalt, Bestände und Plan.
@@ -49,7 +49,7 @@ Die neue Produktiv-EXE verwendet denselben Datenbereich. Beim Wechsel vom Browse
 
 Handbuch und freigegebene Themenseiten sind offline lesbar. Gespeicherte Personen, Bestände, Ausgaben und Pläne bleiben verfügbar. Simulationen verwenden mitgelieferte historische Reihen. Im Browser muss der lokale Server auch offline laufen.
 
-Neue Kurse, Wertpapiersuche und fehlende Tageskurse benötigen Internet und Kursdienst. „Kursdienst prüfen“ testet den Status; „Lücken jetzt nachladen“ ergänzt verfügbare Tageskurse. Im [Jahresabschluss](../../Handbuch.html#jahr-abschliessen) prüfst du Zeitraum und Herkunft der Marktdaten; fehlende gültige Werte ergänzt du in den angebotenen Handfeldern. Inflation kommt von EZB oder Weltbank, CAPE aus der shillerdata-XLS über r.jina.ai. [Datenquellen](../reference/DATA_SOURCES.md#live-daten) erklärt Anbieter und Abrufgrenzen.
+Neue Kurse, Wertpapiersuche und fehlende Tageskurse benötigen Internet und Kursdienst. Aktuelle Kurse holt die App beim Öffnen; in der EXE zusätzlich alle 15 Minuten, solange Übersicht oder Personen & Vermögen offen sind (werktags 8–22 Uhr). „Kursdienst prüfen“ testet den Status; „Lücken jetzt nachladen“ ergänzt verfügbare Tageskurse. Im [Jahresabschluss](../../Handbuch.html#jahr-abschliessen) prüfst du Zeitraum und Herkunft der Marktdaten; fehlende gültige Werte ergänzt du in den angebotenen Handfeldern. Inflation kommt von EZB oder Weltbank, CAPE aus der shillerdata-XLS über r.jina.ai. [Datenquellen](../reference/DATA_SOURCES.md#live-daten) erklärt Anbieter und Abrufgrenzen.
 
 <!-- docs:control {"source":"Daten-Sicherung.html","selector":"#dataPriceCheck","text":"Kursdienst prüfen"} -->
 <!-- docs:control {"source":"Daten-Sicherung.html","selector":"#dataPriceFetch","text":"Lücken jetzt nachladen"} -->
@@ -62,7 +62,7 @@ Neue Kurse, Wertpapiersuche und fehlende Tageskurse benötigen Internet und Kurs
 | Port 8000 belegt | Beende den bisherigen Server oder starte `npm run serve -- --port 8001`. Beachte den getrennten Browserbestand. |
 | Kursdienst antwortet nicht | Prüfe Serverfenster und Port 8787. Beende eine andere Suite-Instanz, starte neu und prüfe den Dienst. |
 | Ein Ticker scheitert | Prüfe Yahoo-Symbol und Meldung; Anbieter können Abrufe begrenzen. |
-| Bestand erscheint leer | Prüfe Laufzeit, Browserprofil und Adresse vor einer Neueinrichtung. |
+| Bestand erscheint leer | Prüfe den geöffneten Haushalt im Umschalter, Laufzeit, Browserprofil und Adresse vor einer Neueinrichtung. |
 | Speicherfehler | Lies Details in Daten & Sicherung; prüfe Zugriffsrechte auf den angezeigten Ordner. |
 
 <a id="selbst-bauen"></a>

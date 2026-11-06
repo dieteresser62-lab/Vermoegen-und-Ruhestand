@@ -219,12 +219,17 @@ for (const [label, raw, expected] of [
         assertEqual(JSON.stringify(UIReader.readAllInputs().healthBucket), JSON.stringify(expected), `${label}: bestehender Bucketvertrag erhalten`);
     });
 }
-await withFixture({ default: { meta: { id: 'default', name: 'Demo', belongsToHousehold: false }, data: {} } }, 'default', () => {
+await withFixture({ default: { meta: { id: 'default', name: 'Default', belongsToHousehold: false }, data: {} } }, 'default', () => {
     assertEqual(readBalancePersonStatus().status, 'demo', 'Leeres Erstprofil bleibt Demo');
     const inputs = UIReader.readAllInputs();
     assertEqual(inputs.aktuellesAlter, 66, 'Demo verwendet weiterhin DOM-Alter');
     assertEqual(inputs.tagesgeld, 999, 'Demo verwendet weiterhin DOM-Vermögen');
     assertEqual(JSON.stringify(inputs.healthBucket), JSON.stringify(DEFAULT_PROFILE_HEALTH_BUCKET), 'Demo behält den Defaultbucket');
+});
+// DP-1: Hat die erste Person den Platzhalter ersetzt, wird sie gewöhnlich geprüft.
+await withFixture({ default: { meta: { id: 'default', name: 'Synthetische Person', belongsToHousehold: false },
+    data: { profile_person_schema_version: '1' } } }, 'default', () => {
+    assertEqual(readBalancePersonStatus().status, 'missing', 'Umbenannte leere Erstperson fragt nach Personendaten');
 });
 const parserError = captureError(() => parseProfileHealthBucketFromData({ [PROFILE_HEALTH_BUCKET_KEY]: damagedRaw }));
 assert(parserError instanceof ProfileStateLoadError && !(parserError instanceof ProfileRecoveryError),

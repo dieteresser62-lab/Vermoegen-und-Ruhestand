@@ -1702,7 +1702,6 @@ fieldset.collapsible legend .legend-text {
 .sim-parameter-body { padding-top: 8px; }
 .sim-step-navigation { display: flex; justify-content: flex-end; gap: 12px; margin-top: 22px; }
 .sim-care-reserve strong { font-weight: 500; }
-.sim-help-link { display: inline-block; margin-top: 24px; color: var(--accent); }
 @container simulator-content (min-width: 2300px) {
  .sim-assumption-step { grid-column: span 4; }
  .sim-assumption-step[data-assumption-step="4"], .sim-assumption-step[data-assumption-step="5"] { grid-column: span 6; }
@@ -2268,6 +2267,8 @@ fieldset.collapsible legend .legend-text {
 .scenario-comparison-table .ds-button { width: auto; min-width: 0; min-height: 30px; margin: 0; padding: 4px 10px; font: var(--text-dense) var(--font-sans); }
 .scenario-comparison-table [aria-pressed="true"], .scenario-comparison-legend [aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-line); }
 .scenario-comparison-value { font: 600 var(--value-md)/1.5 var(--font-serif); }
+/* Aufteilung Geldvermögen/Immobilien als eigene Zeile unter der Summe. */
+.scenario-comparison-value ~ small { display: block; color: var(--text-muted); font: var(--text-dense)/1.5 var(--font-sans); }
 .scenario-comparison-duplicate { display: block; margin-top: 6px; color: var(--text-muted); font: var(--text-dense) var(--font-sans); }
 .scenario-comparison-note { margin-top: 12px; color: var(--text-muted); font: var(--text-dense)/1.5 var(--font-sans); }
 .scenario-comparison-chart-panel .scenario-comparison-note { margin: 0 0 12px; }

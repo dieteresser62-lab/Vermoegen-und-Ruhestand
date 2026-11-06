@@ -7060,8 +7060,8 @@ async function runTranchesSmoke(browser, baseUrl) {
     assert(quotedTranche.currentPrice === 105 && quotedTranche.marketValue === 210,
         'Validierter Kurs-/Wertpfad muss Kurs und abgeleiteten Marktwert gemeinsam persistieren');
     assert(quotedTranche.asOf === quoteAsOf, 'Kurslistener persistiert exakt quote.asOf');
-    const quoteDay = await page.evaluate(seconds => new Intl.DateTimeFormat('de-DE', { month: '2-digit', day: '2-digit' }).format(new Date(seconds * 1000)), quoteAsOf);
-    assert((await row.locator('.pv-quote-date').textContent()) === `Kurs ${quoteDay}`, 'Depotdatum folgt derselben gespeicherten Quotezeit');
+    const quoteDay = await page.evaluate(seconds => new Intl.DateTimeFormat('de-DE', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(seconds * 1000)).replace(', ', ' '), quoteAsOf);
+    assert((await row.locator('.pv-quote-date').textContent()) === `Kurs ${quoteDay}`, 'Depotdatum und Kurszeit folgen derselben gespeicherten Quotezeit');
     const quotedRegistry = JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value);
     assert(JSON.parse(quotedRegistry.profiles[profileA].data.depot_tranchen)[0].asOf === quoteAsOf,
         'Bestätigte Registrykopie erhält dieselbe Kurszeit');
@@ -18446,7 +18446,7 @@ async function runExpensesNavigationSmoke(browser, baseUrl) {
             assert(await page.locator('#expensesPersonSegments button').first().evaluate(node => node === document.activeElement), 'Späterer Refresh erhält zwischenzeitlichen Nutzerfokus');
             // R-05: Klick auf eine nicht fokussierbare Fläche erzeugt nur focusout.
             await page.locator('#expensesTable button[data-action="import"][data-month="1"]').first().focus();
-            await page.locator('#expensesContext').click();
+            await page.locator('#expensesHeading').click();
             await assertExpensesMatrixBlur(page, 'Bewusstes Verlassen der Matrix');
             await page.evaluate(async () => (await (await import('./app/expenses/expenses-main.js')).initExpensesPage()).refresh());
             await assertExpensesMatrixBlur(page, 'Refresh nach Nutzer-Blur');

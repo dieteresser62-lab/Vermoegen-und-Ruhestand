@@ -56,8 +56,10 @@ export function buildFullPersistenceBackup(options = {}) {
     };
 }
 
-export function createFullBackupFilename(date = new Date()) {
-    return `ruhestand-suite-full-backup-${timestampForFilename(date)}.json`;
+/** HV-6: Mit mehreren Haushalten trägt der Dateiname den Haushalt (Gutachten 05.11.2026). @param {Date} [date] @param {string} [household] */
+export function createFullBackupFilename(date = new Date(), household = '') {
+    const slug = String(household || '').normalize('NFC').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+    return `ruhestand-suite-full-backup-${slug ? slug + '-' : ''}${timestampForFilename(date)}.json`;
 }
 
 export function createRecoveryBackupFilename(date = new Date()) {

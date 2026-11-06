@@ -212,6 +212,12 @@ function formatQuoteDate(value, short = false) {
     return new Intl.DateTimeFormat('de-DE', { ...(short ? {} : { year: 'numeric' }), month: '2-digit', day: '2-digit' }).format(value);
 }
 
+// Kurszeit der Börse aus asOf. Spiel- und Beispielkurse tragen nur einen Tag (UTC-Mitternacht) und zeigen keine Uhrzeit.
+function formatQuoteStamp(tranche, value) {
+    const day = formatQuoteDate(value, true);
+    return tranche.asOf % 86400 === 0 ? day : `${day} ${new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(value)}`;
+}
+
 function quoteSummary(tranchen) {
     if (!tranchen.length) return 'Keine Kurse vorhanden';
     const dates = tranchen.map(quoteDate);
@@ -351,7 +357,7 @@ export function buildTranchenTableHtml(tranchen, { context = null, profileId = n
                 <td>${formatDisplayNumber(t.shares, { fractionDigits: 3, minimumFractionDigits: 0 })}</td>
                 <td>${formatDisplayNumber(t.purchasePrice, { unit: 'price', fractionDigits: 2 })}</td>
                 <td>${formatDisplayNumber(t.currentPrice, { unit: 'price', fractionDigits: 2 })}
-                    <small class="pv-quote-date">${date ? `Kurs ${formatQuoteDate(date, true)}` : 'Kursdatum unbekannt'}</small></td>
+                    <small class="pv-quote-date">${date ? `Kurs ${formatQuoteStamp(t, date)}` : 'Kursdatum unbekannt'}</small></td>
                 <td>${formatMoney(t.costBasis)}\u00a0€</td>
                 <td>${formatMoney(t.marketValue)}\u00a0€</td>
                 <td class="${gain === 0 ? '' : gain > 0 ? 'positive' : 'negative'}">${formatSignedMoney(gain)}\u00a0€<small class="pv-gain-percent">${formatSignedPercent(gainPct)}</small></td>

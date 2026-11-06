@@ -55,9 +55,9 @@ const previousManagerZone = process.env.TZ;
 const datedLots = [{ ...seventyFiveLot, asOf: Date.parse('2024-01-01T23:30:00Z') / 1000 }];
 const beforeDatedLots = JSON.stringify(datedLots);
 try {
-    for (const [zone, shortDate, fullDate] of [['UTC', '01.01.', '01.01.2024'], ['Europe/Berlin', '02.01.', '02.01.2024']]) {
+    for (const [zone, shortDate, fullDate, time] of [['UTC', '01.01.', '01.01.2024', '23:30'], ['Europe/Berlin', '02.01.', '02.01.2024', '00:30']]) {
         process.env.TZ = zone;
-        assert(buildTranchenTableHtml(datedLots).includes(`class="pv-quote-date">Kurs ${shortDate}</small>`), 'Managerkurs zeigt das lokale Kurzdatum aus gespeichertem asOf');
+        assert(buildTranchenTableHtml(datedLots).includes(`class="pv-quote-date">Kurs ${shortDate} ${time}</small>`), 'Managerkurs zeigt lokales Kurzdatum und Kurszeit aus gespeichertem asOf');
         const quoteNodes = Object.fromEntries(['suiteContext', 'managerQuoteContext', 'managerDepotQuotes'].map(id => [id, { dataset: {} }]));
         renderManagerQuoteContext({ getElementById: id => quoteNodes[id] }, datedLots);
         assert(quoteNodes.managerDepotQuotes.textContent.includes(fullDate), 'Vermögensunterzeile zeigt den lokalen Kursstand statt ISO-/UTC-Datum');

@@ -80,7 +80,7 @@ export async function readDataModel(persistence, options = {}) {
     let snapshots = [], points = null, archiveError = null;
     try {
         snapshots = await SnapshotArchive.listSnapshots({ storage: persistence });
-        points = /** @type {import("../../typcheck/datenvertraege.js").Snapshot[]} */ (await Promise.all(snapshots.map(point => SnapshotArchive.readSnapshot(point.id, { storage: persistence }))));
+        points = /** @type {import("../../typcheck/datenvertraege.js").Snapshot[]} */ (await SnapshotArchive.readSnapshots(snapshots.map(point => point.id), { storage: persistence }));
     } catch (error) { archiveError = error.message; }
     const { backend, recordCount, migrationWarning } = persistence.getPersistenceStatus();
     const model = await projectDataModel({ ...options, records, snapshots, points, archiveError, backend, recordCount, migrationWarning, trialStateRaw, retentionRecords });

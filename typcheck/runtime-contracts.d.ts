@@ -29,8 +29,10 @@ export interface PersistenceAdapter {
     getSnapshot?(id: string): Promise<import("./datenvertraege.js").Snapshot>; deleteSnapshot?(id: string): Promise<unknown>;
     replaceLiveRecords?(records: Record<string, string>, options: object): Promise<{ok?: boolean, message?: string}>;
     readPersistedSnapshot?(id: string): Promise<import("./datenvertraege.js").Snapshot>;
+    readPersistedSnapshots?(): Promise<import("./datenvertraege.js").Snapshot[]>;
     readSnapshot?(id: string): Promise<import("./datenvertraege.js").Snapshot>;
     writeSnapshot?(snapshot: import("./datenvertraege.js").Snapshot): Promise<boolean>;
+    writeSnapshots?(snapshots: import("./datenvertraege.js").Snapshot[]): Promise<boolean>;
     migrateLegacySnapshotsIfNeeded?(options?: object): Promise<unknown>;
     close?(): void;
 }

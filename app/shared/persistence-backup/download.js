@@ -53,7 +53,9 @@ export async function downloadFullPersistenceBackup(options = {}) {
         const metadata = { [OVERVIEW_BACKUP_KEY]: backup.exportedAt, [DATA_BACKUP_SUMMARY_KEY]: JSON.stringify(summary) };
         Object.assign(backup.records, metadata);
         backup.recordCount = Object.keys(backup.records).length;
-        const filename = options.filename || createFullBackupFilename();
+        // HV-6: Die Herkunft (nur bei mehreren Haushalten gesetzt) benennt auch die Datei.
+        const origin = /** @type {{household?: {name?: string}}} */ (/** @type {unknown} */ (backup)).household;
+        const filename = options.filename || createFullBackupFilename(new Date(), origin?.name || '');
         const delivered = await (options.download || /** @type {NonNullable<I.BackupOptions["download"]>} */ (downloadJsonFile))(backup, filename, options.document || globalThis.document);
         if (delivered === false) throw new Error('Dateiausgabe wurde nicht bestätigt.');
         navigationOperation.check();
