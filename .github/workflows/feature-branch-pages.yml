@@ -1,9 +1,9 @@
-name: Pages – Preview für Feature-Branches
+name: Deploy zu GitHub Pages
+
 on:
   push:
-    branches: ["feature/zwei-personen-haushalt"]
-  pull_request:
-    branches: ["main"]
+    branches: ["main"]          # Baut automatisch bei jedem Push auf main
+  workflow_dispatch:           # Erlaubt auch manuelles Starten per Klick
 
 permissions:
   contents: read
@@ -15,21 +15,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      # Für reine Static Sites reicht das:
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: "."   # ggf. auf "docs" setzen
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
+  build-and-deploy:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
     steps:
-      - id: deployment
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # Wichtig: Volle Historie für sync-dist
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Sauberen dist-Ordner bauen (nur 15 MB)
+        run: node scripts/sync-dist.mjs
+
+      - name: Pages-Artefakt hochladen
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "dist"          # Nur die 15 MB Web-Dateien, KEIN .git
+
+      - name: Auf GitHub Pages ausrollen
+        id: deployment
         uses: actions/deploy-pages@v4
