@@ -149,3 +149,49 @@ try {
         assert(host.innerHTML.includes(text), `${phase}: bestehender Lade-/Recovery-/Fehlertext erhalten`);
     }
 } finally { globalThis.document = previousDocument; }
+
+// SE-2: kürzere Seiten – Risiko, Szenario-Logs und Backtest.
+{
+    const at = marker => { const index = html.indexOf(marker); assert(index >= 0, 'Markup enthält ' + marker); return index; };
+    const risk = html.slice(at('id="mcViewPanelRisk"'), at('id="mcViewPanelCare"'));
+    assert(risk.indexOf('id="riskKeyFigures"') < risk.indexOf('class="sim-risk-pair"')
+        && risk.indexOf('id="wealthDistribution"') < risk.indexOf('id="wealthFanChart"')
+        && risk.indexOf('class="sim-risk-pair"') < risk.indexOf('class="sim-risk-split"')
+        && risk.indexOf('id="advancedKpiDashboard"') < risk.indexOf('id="riskKpiDashboard"'), 'Risiko: Kennzahlleiste, Verteilung neben Fächer, Heatmap neben Weitere Kennzahlen');
+    const logs = html.slice(at('id="mcViewPanelLogs"'), at('id="mcViewPanelDecision"'));
+    assert(logs.indexOf('id="scenarioComparison"') < logs.indexOf('id="scenarioChartView"')
+        && logs.indexOf('id="scenarioChartView"') < logs.indexOf('id="scenarioSelector"')
+        && /id="scenarioSelectedChartPanel" data-scenario-chart-panel="selected" hidden/.test(logs), 'Szenario-Logs: Vergleich oben, ein Diagramm mit Umschalter neben der Auswahl');
+    assert(/<details id="scenarioProtocolDisclosure" class="[^"]*"\s*>/.test(logs) && logs.indexOf('id="scenarioProtocolDisclosure"') < logs.indexOf('id="scenarioLogOutput"'), 'Szenario-Protokoll ist anfangs zugeklappt');
+    assert(logs.indexOf('id="mcShowReplayButton"') < logs.indexOf('id="scenarioLogContainer"') && logs.includes('im Stresspfad-Replay fixieren.</span>'), 'Replay-Knopf bleibt vor einem Lauf erreichbar, Hinweis im ⓘ');
+    const backtest = html.slice(at('id="tab-backtesting"'), at('id="engine-mismatch-footer"'));
+    assert(backtest.indexOf('id="simStartJahr"') < backtest.indexOf('id="backtestWealthMode"')
+        && backtest.indexOf('id="backtestWealthMode"') < backtest.indexOf('id="simulationResults"'), 'Backtest: Zeitraum und Euro-Basis in einer Leiste');
+    assert(backtest.indexOf('id="portfolioCompositionChart"') < backtest.indexOf('id="backtestAnalysis"')
+        && backtest.indexOf('class="sim-backtest-split"') < backtest.indexOf('id="portfolioCompositionChart"'), 'Backtest: Verlauf neben „Was im Lauf auffällt“');
+    assert(/<details id="backtestProtocolDisclosure" class="[^"]*">/.test(backtest)
+        && /<summary[^>]*>[^]*id="exportBacktestJson"[^]*id="exportBacktestCsv"[^]*<\/summary>/.test(backtest), 'Backtest-Protokoll zugeklappt, JSON/CSV im Kopf');
+}
+{
+    const { jumpToLogAnalysisYear } = await import('../app/simulator/log-analysis-view.js');
+    const details = { open: false, parentElement: null };
+    const row = { closest: selector => selector === 'details' ? details : null, scrollIntoView() {}, focus() {}, classList: { add() {}, remove() {} } };
+    const previousTimeout = globalThis.setTimeout;
+    globalThis.setTimeout = () => 0;
+    try {
+        assert(jumpToLogAnalysisYear({ getElementById: id => id === 'year-3' ? row : null }, 3, { yearPrefix: 'year-', logId: 'log' }) && details.open,
+            'SE-2: Sprung ins Protokoll öffnet die zugeklappte Protokollzeile');
+    } finally { globalThis.setTimeout = previousTimeout; }
+}
+{
+    const { renderRiskKeyFigures } = await import('../app/simulator/results-renderers.js');
+    const host = { innerHTML: '', hidden: true };
+    const dashboard = { drawdownKpis: [{ title: 'Max. Drawdown nominal (Median)', value: '27,00 %' }, { title: 'Max. Drawdown real (Median)', value: '34,00 %' }],
+        detailSections: [{ title: 'Risiko-Details', kpis: [{ title: 'Zeitanteil realisierte Entnahmequote > 4,5 %', value: '6,0 %' }] }] };
+    renderRiskKeyFigures(host, { available: true, mode: 'real', p10: 900000, p25: 1600000, p50: 2800000, p75: 5200000 }, dashboard);
+    assert(!host.hidden && host.innerHTML.includes('Gesamtvermögen am Laufende · Median') && host.innerHTML.includes('Schwache Läufe · P10')
+        && host.innerHTML.includes('34,00 %') && host.innerHTML.includes('real · nominal 27,00 %') && host.innerHTML.includes('6,0 %')
+        && host.innerHTML.includes('mittlere Hälfte'), 'SE-2: Kennzahlleiste zeigt Median, P10, Drawdown real/nominal und Zeitanteil über 4,5 %');
+    renderRiskKeyFigures(host, { available: false, reason: 'Endwertverteilung fehlt. Bitte Monte-Carlo neu rechnen.' }, { drawdownKpis: [], detailSections: [] });
+    assert(host.innerHTML.includes('Endwertverteilung fehlt') && !host.innerHTML.includes('NaN'), 'SE-2: Ohne Verteilung erklärt die Leiste den fehlenden Wert');
+}

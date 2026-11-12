@@ -20,7 +20,7 @@ import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 
 import { formatCurrency, quantile } from './simulator-utils.js';
 import { prepareMonteCarloViewModel, buildMonteCarloAnswers } from './results-metrics.js';
-import { renderMonteCarloAnswers, renderSummary, renderKpiDashboard, renderStressSection, renderHeatmap, renderCareSection } from './results-renderers.js';
+import { renderMonteCarloAnswers, renderSummary, renderKpiDashboard, renderStressSection, renderHeatmap, renderCareSection, renderRiskKeyFigures } from './results-renderers.js';
 import { showToast } from './simulator-main-helpers.js';
 import { buildBinaryProportionEstimate } from './monte-carlo-statistics.js';
 import {
@@ -39,6 +39,16 @@ import {
     publishStressReplayMonteCarloContext,
     selectStressReplayScenario
 } from './stress-replay-ui.js';
+
+// SE-2: Kopfzeile des zugeklappten Szenario-Protokolls (Pfad, Jahre, Ruin, Eurobasis).
+function setScenarioProtocolHead(head) {
+    const heading = document.getElementById('scenarioProtocolHeading');
+    const line = document.getElementById('scenarioProtocolLine');
+    if (heading) heading.textContent = head ? `Szenario-Protokoll · ${head.label}` : 'Szenario-Protokoll';
+    if (line) line.textContent = head ? [`${head.years} Jahreszeilen`, head.failed ? 'mit Ruin' : head.failed === false ? 'ohne Ruin' : '',
+        `Geldbeträge · ${euroBasisLabel(head.moneyBasis)}`, 'Jahr für Jahr mit allen Buchungen'].filter(Boolean).join(' · ')
+        : 'Jahr für Jahr mit allen Buchungen';
+}
 
 const scenarioChangeListeners = new WeakMap();
 function replaceScenarioChangeListener(element, handler) {
@@ -168,12 +178,14 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
     let renderActiveScenario = () => {};
     if (distributionHost) distributionHost.innerHTML = '';
     const renderDistribution = mode => {
+        const distribution = buildWealthDistribution(results, scenarioLogs, mode);
         if (distributionHost) {
             const showAllMarks = /** @type {HTMLInputElement} */ (distributionHost.querySelector?.('#wealthShowAllMarks'))?.checked === true;
             const detailsOpen = /** @type {HTMLDetailsElement} */ (distributionHost.querySelector?.('.wealth-statistics-details'))?.open === true;
-            distributionHost.innerHTML = renderWealthDistribution(buildWealthDistribution(results, scenarioLogs, mode), { showAllMarks, detailsOpen });
+            distributionHost.innerHTML = renderWealthDistribution(distribution, { showAllMarks, detailsOpen });
         }
         if (fanHost) fanHost.innerHTML = renderWealthFanChart(results?.wealthFan, { mode, initialWealth: portfolioTotal(initializePortfolio(inputs || {})), initialHomes: (inputs?.home || []).reduce((sum, home) => sum + home.wert, 0), initialHomeSelf: (inputs?.home || []).filter(home => home.nutzung === 'selbst').reduce((sum, home) => sum + home.wert, 0), displayHomeValueFan: results?.displayHomeValueFan, startYear: displayContext.startYear, startAge: inputs?.startAlter });
+        return distribution;
     };
     const scenarioContainer = document.getElementById('scenarioLogContainer');
     // Invalidate the previous UI selection only when this renderer owns the
@@ -202,7 +214,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
 
     const dashboard = document.getElementById('unifiedKpiDashboard');
     const riskDashboard = document.getElementById('riskKpiDashboard');
-    renderHeatmap(document.getElementById('advancedKpiDashboard'), viewModel.heatmapData);
+    renderHeatmap(document.getElementById('advancedKpiDashboard'), viewModel.heatmapData, { tall: true });
 
     const pflegeResultsContainer = document.getElementById('pflegeKpiResults');
     const summaryBox = document.getElementById('pflegeKpiSummary');
@@ -212,14 +224,15 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
         const detailsOpen = /** @type {HTMLDetailsElement} */ (dashboard?.querySelector?.('.mc-more-metrics'))?.open;
         for (const id of ['monteCarloAnswers', 'overviewMonteCarloAnswers']) renderMonteCarloAnswers(document.getElementById(id), buildMonteCarloAnswers({ results, totalRuns: anzahl, failCount, moneyBasis, inputs }));
         renderSummary(document.getElementById('monteCarloSummary'), model.summaryCards);
-        renderKpiDashboard(dashboard, model.kpiDashboard, riskDashboard);
+        renderKpiDashboard(dashboard, model.kpiDashboard, riskDashboard, { stressMetrics: model.stressMetrics });
         const disclosure = /** @type {HTMLDetailsElement} */ (dashboard?.querySelector?.('.mc-more-metrics'));
         if (disclosure) disclosure.open = !!detailsOpen;
-        renderStressSection(riskDashboard || dashboard, model.stressMetrics);
+        // SE-2: Stress-Ergebnis steht in der Aufklappzeile „Stress-Szenario“ der Risikoansicht.
+        renderStressSection(riskDashboard?.querySelector?.('.sim-risk-stress-anchor') || riskDashboard || dashboard, model.stressMetrics);
         renderCareSection(summaryBox, pflegeResultsContainer, model.careMetrics, personDisplayContext);
         const basis = document.getElementById('scenarioProtocolBasis');
         if (basis) basis.textContent = `Geldbeträge · ${euroBasisLabel(mode)}`;
-        renderDistribution(mode);
+        renderRiskKeyFigures(document.getElementById('riskKeyFigures'), renderDistribution(mode), model.kpiDashboard);
         renderActiveScenario();
     };
 
@@ -251,6 +264,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
             output.innerHTML = '';
             const summary = document.getElementById('scenarioProtocolSummary');
             if (summary) summary.innerHTML = '';
+            setScenarioProtocolHead(null);
             projectStressReplayScenario(null);
             selectStressReplayScenario(null);
             try {
@@ -275,6 +289,8 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
                         outcome: scenario.failed ? 'ruin' : scenario.logDataRows.at(-1)?.recordType === 'terminal_death' ? 'all_dead' : scenario.failed === false ? 'no_ruin' : undefined,
                         subtitle: `${scenarioLabel ? `Frühester Pflegeeintritt ${scenarioLabel}` : scenarioDisplayLabel(scenario)} · ${scenario.logDataRows.length} Jahreszeilen`
                     });
+                    setScenarioProtocolHead({ label: scenarioLabel ? `Frühester Pflegeeintritt ${scenarioLabel}` : scenarioDisplayLabel(scenario),
+                        years: scenario.logDataRows.length, failed: scenario.failed, moneyBasis });
                     projectStressReplayScenario(scenario, moneyBasis, results?.wealthView?.realByRun);
                     selectStressReplayScenario(scenario);
                     output.style.display = 'block';

@@ -60,7 +60,7 @@ try {
         const origin = projectBalanceActionOrigin({ comparison, year, scope: plan.scope });
         const { doc } = createDialogFixture();
         const rendered = createAnnualActionResult({ doc, result: origin.confirmed });
-        assert(dialogElements(rendered).some(node => node.textContent.replaceAll('\u00a0', ' ') === 'Sophie: 10.000,00 € netto'), 'Balance-Handlungsanweisung zeigt Sophie und den unveränderten Nettobetrag');
+        assert(dialogElements(rendered).some(node => node.textContent.replaceAll('\u00a0', ' ') === 'Sophie: 9.400,00 € netto'), 'Balance-Handlungsanweisung zeigt Sophie und den Nettobetrag nach dem Ratenkredit im Grundbedarf (GA-2)');
         const [auto] = readPlannedExpenses({ scope: plan.scope, storage: { getItem: key => records[key] ?? null } });
         assertEqual(auto.monat, `${year + 3}-04`, 'Auto wird in drei Jahren geplant');
         assertEqual(auto.betrag, 25000, 'Auto kostet 25.000 Euro in heutigen Preisen');
@@ -74,24 +74,27 @@ try {
     const salary = view.groups.findIndex(group => !group.pension), pension = view.groups.findIndex(group => group.pension);
     assertEqual(view.rows.length, 14, 'Übersicht umfasst Ansparphase, Rentenbeginn und Folgejahr innerhalb von 15 Zeilen');
     assertEqual(view.rows[0].incomes[salary], 40800, 'Simulator übernimmt das volle Jahresgehalt');
-    assertEqual(view.rows[0].result, 10800, 'Erstes Jahr spart 10.800 Euro nach Grundbedarf und Wunsch-Flex');
+    assertEqual(view.rows[0].result, 7200, 'Erstes Jahr spart 7.200 Euro nach Grundbedarf mit Ratenkredit und Wunsch-Flex (GA-2)');
     assertClose(view.rows[3].expenses, 25000 * 1.02 ** 3, 1e-6, 'Übersicht schreibt den Autokauf mit Inflation fort');
     assert(view.rows[3].result < 0, 'Das Auto benötigt im Zahlungsjahr Vermögen');
     assert(view.rows.filter(row => row.year < 2038 && row.year !== 2029).every(row => row.result > 0), 'Alle übrigen Gehaltsjahre sind Ansparjahre');
     assertEqual(view.rows[11].incomes[pension], 0, 'Vor 2038 gibt es keine Rente');
     assertEqual(view.rows[12].incomes[salary], 0, 'Ab 2038 entfällt das Gehalt');
-    assertClose(view.rows[12].incomes[pension], 18000 * (1 + view.wagePct / 100) ** 12, 1e-6, 'Ab 2038 gilt die volle mit dem Lohnmittel fortgeschriebene Jahresrente');
+    // GU-1 (FR-74): Beispielhaushalte passen die Rente „wie Inflation“ an.
+    assertClose(view.rows[12].incomes[pension], 18000 * 1.02 ** 12, 1e-6, 'Ab 2038 gilt die volle mit der Inflation fortgeschriebene Jahresrente');
     assert(view.rows.slice(12).every(row => row.result < 0), 'Rentenjahre zeigen Entnahmen aus dem Vermögen');
 
-    // Derselbe Haushaltsdatensatz läuft ohne Marktbewegung durch die produktive Jahresrechnung.
-    let state = initMcRunState(inputs, 0);
+    // Derselbe Haushaltsdatensatz läuft ohne Marktbewegung und ohne Fondskosten (FR-76) durch die produktive Jahresrechnung.
+    const flowInputs = { ...inputs, equityCostPct: 0 };
+    let state = initMcRunState(flowInputs, 0);
     for (let index = 0; index < 14; index++) {
         const before = portfolioTotal(state.portfolio);
-        const result = simulateOneYear(state, inputs,
+        const result = simulateOneYear(state, flowInputs,
             { jahr: 2000 + index, rendite: 0, gold_eur_perf: 0, zinssatz: 0, inflation: 0, lohn: 0 },
             index, null, 0, null, 1, EngineAPI);
         assertEqual(result.kind, 'success', `Sophie: Finanzjahr ${2026 + index} rechnet ohne Abbruch`);
-        if (index === 0) assertClose(portfolioTotal(result.newState.portfolio) - before, 10800, 1e-6, 'Gehaltüberschuss erreicht das Vermögen genau einmal');
+        if (index === 0) assertClose(portfolioTotal(result.newState.portfolio) - before, 7200, 1e-6, 'Gehaltüberschuss nach Ratenkredit im Grundbedarf erreicht das Vermögen genau einmal (GA-2)');
+        if (index === 0) assertClose(result.logData.floor_brutto, 22000 + 3600, 1e-6, 'Ratenkredit zählt zum Grundbedarf (GA-2)');
         if (index === 3) assertClose(result.logData.geplante_ausgaben, 25000, 1e-6, 'Jahresrechnung bezahlt den Autokauf');
         if (index >= 12) {
             assertEqual(result.logData.sonstige_einkuenfte ?? 0, 0, 'Rentenjahr zählt kein Gehalt mehr');

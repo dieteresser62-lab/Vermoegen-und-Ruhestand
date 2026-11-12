@@ -244,7 +244,7 @@ export function initSimulatorProfileSelection() {
         const profileInputs = selected.map(meta => {
             const data = getProfileData(meta.id);
             try {
-                const inputs = buildSimulatorInputsFromProfileData(data, { referenceYear, planValues });
+                const inputs = buildSimulatorInputsFromProfileData(data, { referenceYear, planValues, profileId: meta.id });
                 const legacyHouseholdNeeds = planValues ? null : Object.fromEntries(
                     HOUSEHOLD_SIMULATOR_NEED_FIELD_IDS.map(fieldId => [
                         fieldId,

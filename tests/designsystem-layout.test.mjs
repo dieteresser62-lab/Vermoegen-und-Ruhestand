@@ -276,8 +276,8 @@ assert(!/\.id\s*=|setAttribute\(\s*['"]id['"]|syncSelectionText|observeSelection
     for (const [before, after] of [
         ['container: simulator-content / inline-size;', 'container: simulator-sidebar / inline-size;'],
         ['@container simulator-content (min-width: 2300px)', '@media (min-width: 2300px)'],
-        ['.sim-overview-backtest { grid-column: span 8; }', '.sim-overview-backtest { grid-column: span 7; }'],
-        ['.sim-overview-mc { grid-column: span 4; }', '.sim-overview-mc { grid-column: span 5; }'],
+        ['.sim-result-main { grid-column: span 8; }', '.sim-result-main { grid-column: span 7; }'],
+        ['.sim-result-side { grid-column: span 4; }', '.sim-result-side { grid-column: span 5; }'],
         ['font-size: var(--balance-h1); text-align: left;', 'font-size: 30px; text-align: left;'],
         ['svg.chart-native-svg.chart-native-svg { display: block; width: auto;', 'svg.chart-native-svg.chart-native-svg { display: block; width: 100%;']
     ]) {

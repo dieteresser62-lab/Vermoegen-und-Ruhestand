@@ -48,6 +48,8 @@ export function calculateAnnualNeeds({
             equityWeightPct,
             goldAktiv: normalizedInput.goldAktiv,
             goldWeightPct,
+            // FR-76: Fehlt der Wert (direkt gebaute Eingaben, Balance ohne Dynamic Flex), gilt 0.
+            equityCostPct: normalizedInput.equityCostPct,
             lastExpectedRealReturn: vpwExpectedRealReturn
         });
         const expectedRealReturn = vpwReturnPolicy.expectedRealReturn;

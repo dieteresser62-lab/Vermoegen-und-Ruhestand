@@ -39,7 +39,9 @@ function resolveCarePerson(meta, alive = true, person = 'p1') {
         alive: alive !== false,
         grade: Number.isFinite(grade) ? grade : null,
         gradeLabel: meta?.gradeLabel || '',
-        additionalFloor: active ? euros(meta?.zusatzFloorZiel) : 0,
+        // FR-72 Punkt 9: Heimkosten zählen wie ein Pflegezusatz, eigene Ausgaben im Heim nicht.
+        additionalFloor: active ? euros(Number(meta?.heimJahr) > 0 && meta?.heimBestand !== true
+            ? (Number(meta?.zusatzFloorZiel) || 0) + (Number(meta?.heimKosten) || 0) : meta?.zusatzFloorZiel) : 0,
         raw: meta || null
     };
 }

@@ -1,3 +1,4 @@
+import { withPreviousRunEvidence } from './le-1b-expectations.mjs';
 import { historicalSurvivorNeeds } from './historical-survivor-inputs.mjs';
 import { createHash } from 'node:crypto';
 import { withoutExampleNeeds } from './ff-3-expectations.mjs';
@@ -24,7 +25,8 @@ export async function careValueControls(root = new URL('../../', import.meta.url
         const backtest = runFixture({ input, collector });
         const mc = await runMonteCarloChunk({ inputs: historicalSurvivorNeeds(input), monteCarloParams: { anzahl: 8, maxDauer: 8, methode: 'block', blockSize: 1, seed: 12345 },
             logIndices: new Set([0, 1, 2, 3, 4, 5, 6, 7]), widowOptions: input.widowOptions, useCapeSampling: false, engine: EngineAPI });
-        results[scenario] = { backtest: digest(backtest), parity: digest(collector.toLog()), mc: digest(mc) };
+        // LE-1b: Laufbeleg der Sterbetafel wie vor LE-1b; alle übrigen MC-Bytes bleiben im Vergleich.
+        results[scenario] = { backtest: digest(backtest), parity: digest(collector.toLog()), mc: digest(withPreviousRunEvidence(mc)) };
     }
     return results;
 }

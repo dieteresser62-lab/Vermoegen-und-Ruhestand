@@ -140,7 +140,7 @@ for (const prefix of ['mc', 'backtest']) {
 }
 assertEqual(infos[0], infos[1], 'Beide Reiter erklären Nominal und Real mit demselben Info-Baustein');
 assert(infos[0].includes('Kaufkraft zum Laufstart') && infos[0].includes('Kontobeträge') && infos[0].includes('Mehr im Handbuch'), 'Kurze Info erklärt beide Eurobasen und verlinkt die ausführliche Hilfe');
-assert(html.indexOf('id="backtestWealthMode"') < html.indexOf('class="sim-backtest-grid"'), 'Backtest-Schalter steht sichtbar oberhalb der Ergebnisse');
+assert(html.indexOf('id="backtestWealthMode"') < html.indexOf('id="simulationResults"'), 'Backtest-Schalter steht in der Zeitraumleiste oberhalb der Ergebnisse (SE-2)');
 assert(!html.includes('id="backtestEuroHint"'), 'Langer Hinweis neben dem Schalter entfällt');
 
 assert(infos[1].includes('beim Backtest ist das die Kaufkraft des Startjahres'), 'Backtest-Info unterscheidet historische und heutige Kaufkraft');

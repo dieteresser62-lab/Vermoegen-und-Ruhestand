@@ -11,13 +11,15 @@ Vermögen & Ruhestand plant Entnahmen für Einzelpersonen und Paare. Du erfasst 
 | [Übersicht](index.html) | Monatsbudget, Vermögen und nächste Abschlüsse sehen. |
 | [Personen & Vermögen](depot-tranchen-manager.html) | Personen, Einkünfte, Depot, Immobilien und Haushaltsplan pflegen. |
 | [Ausgaben](Ausgaben.html) | Monatsausgaben je Person importieren, nach Floor und Flex lesen und mit dem Budget vergleichen. |
-| [Balance](Balance.html) | Monatsbudget, Handlungsanweisung, Reserven und die Budgetprüfung für das Folgejahr lesen. |
-| [Simulator](Simulator.html) | Historische Pfade, Monte Carlo und Varianten rechnen. |
+| [Balance](Balance.html) | Monatsbudget, „Was zu tun ist“ mit dem Stand des Jahresplans, Reserven und Diagnose lesen. |
+| [Simulator](Simulator.html) | Historische Pfade, Monte Carlo und Varianten rechnen; heutige Pflegekosten automatisch aus Staffel und Heimjahr ergänzen. |
 | [Daten & Sicherung](Daten-Sicherung.html) | Haushalte, Vollsicherungen, Wiederherstellungspunkte und Datenstatus verwalten. |
+
+„Erst ausprobieren – mit Max und Erika“ auf der leeren Übersicht startet mit Spielkursen am 23.10.2026 und 790.000 € Gesamtvermögen, auch ohne Kursdienst. Im Startdialog bieten Beispielhaushalte ausschließlich Spielkurse; bei „Kopie meiner Daten“ kannst du auch echte Kurse von heute wählen.
 
 Eine Installation kann mehrere getrennte Haushalte führen, etwa den eigenen und den eines erwachsenen Kindes. Den geöffneten Haushalt zeigt und wechselt der Umschalter oben links; jeder Haushalt hat eigene Daten, Sicherungen und einen eigenen Spielbereich.
 
-Ein Haushalt besteht aus einer oder zwei Personen. Balance empfiehlt Entnahmen und Umschichtungen; du entscheidest über die Umsetzung, führst Geschäfte selbst aus und pflegst tatsächliche Bestände nach. Monats- und Jahresabschluss halten Tagesgeld, Marktdaten und Plan fest. Die Budgetprüfung bereitet das Folgejahr vor und zeigt den Abstand zum Jahreshoch. Führen Jahresendregel und Jahreshoch zu verschiedenen Folgen, wählst du im Jahresabschluss; [Jahresbudget](docs/reference/JAHRESBUDGET.md) erklärt beide Lesarten. Simulationen rechnen mit Jahresendständen und vereinfachten Steuer-, Pflege- und Erbannahmen. Sie garantieren keine künftige Finanzierung.
+Ein Haushalt besteht aus einer oder zwei Personen. Balance empfiehlt Entnahmen und Umschichtungen; du entscheidest über die Umsetzung, führst Geschäfte selbst aus und pflegst tatsächliche Bestände nach. Monats- und Jahresabschluss halten Tagesgeld, Marktdaten und Plan fest. In Balance zeigt die Karte „Was zu tun ist“ den Plan aus dem Jahresabschluss, wie weit du ihn umgesetzt hast, und eine Vorschau auf den nächsten Plan; daneben stehen deine Reserven. Das Jahreshoch erscheint nur bei einem verdeckten Bärenmarkt. Dann wählst du im Jahresabschluss die Lesart; [Jahresbudget](docs/reference/JAHRESBUDGET.md) erklärt beide. Simulationen rechnen mit Jahresendständen, Fondskosten auf Aktien, der Kohortensterbetafel des Geburtsjahrgangs und vereinfachten Steuer-, Pflege- und Erbannahmen. Sie garantieren keine künftige Finanzierung.
 
 ### Keine Beratung
 

@@ -59,9 +59,9 @@ export interface CloseBinding { pending: CloseRequest | null; lastId: bigint; di
 
 export interface AnnualDraft { status: string; yearHigh?: D.YearHighChoice; records: D.StringRecords; baseRecords: D.StringRecords; periodId: string;
     targetYear: number; planningYear: number; scope: D.PlanScope; profileId: string; values: D.PlanValues;
-    ageByPerson: Record<string, number>; results?: Record<string, unknown>; }
+    ageByPerson: Record<string, number>; results?: Record<string, unknown>; inflation?: import("./balance-ui.js").InflationResult; }
 export interface AnnualOptions { yearHigh?: D.YearHighChoice; engineApi?: typeof import('../engine/index.mjs').EngineAPI; adoptedPlanPatch?: import("./profile-ui.js").PlanPatch;
-    careValues?: unknown; cash?: Cash; now?: () => Date; }
+    careValues?: unknown; careToday?: Record<string, number>; cash?: Cash; now?: () => Date; }
 export interface AnnualCommitOptions extends AnnualOptions { draft?: AnnualDraft; targetYear?: number; marketData?: import("./balance-ui.js").ComputeAnnualOptions["marketData"]; scope?: D.PlanScope;
     storage?: D.RecordStorage; persistence?: Facade; navigationOperation?: Operation; isCurrent?: () => boolean; }
 export type StoredCalculation = Omit<ReturnType<typeof import('../app/balance/balance-input-storage.js').buildBalanceEngineInputFromStorage>, 'householdPlan'> & {householdPlan: import('./profile-ui.js').PlanRead & {status: 'valid'; entry: import('./profile-ui.js').PlanEntry} & {scope: D.PlanScope}};

@@ -310,7 +310,7 @@ try {
         const firstValues = JSON.stringify(firstHead.values);
         assertEqual(firstHead.values.settings.anzahl, 2, 'Ergebnisstart liest echte gemeinsame Reitereinstellungen');
         assertEqual(doc.getElementById('mcButton').textContent, 'Monte-Carlo neu rechnen', 'Erfolgreicher Ergebnisstand ändert die Startbeschriftung');
-        assertEqual(doc.getElementById('overviewRunMonteCarlo').textContent, 'Monte-Carlo neu rechnen', 'Ergebnisstart trägt dieselbe Beschriftung');
+        assertEqual(doc.getElementById('overviewRunMonteCarlo').textContent, 'Neu rechnen', 'Ergebnisstart heißt im Monte-Carlo-Kartenkopf kurz Neu rechnen');
         click('mcButton'); await pending;
         assertEqual(outputs[1], outputs[0], 'Reiterstart veröffentlicht mit gleichem Seed denselben echten Ergebnisstand');
         assertEqual(JSON.stringify(simulatorRunAssumptions.read('montecarlo').last.values), firstValues, 'Beide Startwege frieren identische Eingaben und Einstellungen ein');

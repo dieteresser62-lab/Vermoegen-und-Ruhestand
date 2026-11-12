@@ -1,28 +1,20 @@
 /** @import {SimulatorControl} from '../../typcheck/simulator-ui.js' */
 import { persistenceStorage } from '../shared/persistence-facade.js';
-import { readCareValues, officialCareCosts } from '../shared/household-care-values.js';
+import { readCareValues } from '../shared/household-care-values.js';
+import { PFLEGE_COST_PRESETS, PFLEGE_CUSTOM_COSTS_KEY, carePresetValues, normalizePflegeKostenPreset, rememberCareCostValues } from '../shared/care-price-fields.js';
 "use strict";
 
 import { SUPPORTED_PFLEGE_GRADES, PFLEGE_GRADE_LABELS } from './simulator-data.js';
 import { readNumber } from './simulator-input-dom.js';
 import { formatWholeEuro } from './results-formatting.js';
 import { setFieldState } from '../shared/field-state.js';
-import { careSettingsStorage } from '../shared/care-profile-settings.js';
 
-export const PFLEGE_CUSTOM_COSTS_KEY = 'sim_pflegeCustomCosts';
-
-function rememberedCareCosts() {
-    try {
-        const values = JSON.parse(careSettingsStorage(persistenceStorage).getItem(PFLEGE_CUSTOM_COSTS_KEY));
-        return SUPPORTED_PFLEGE_GRADES.every(grade => typeof values?.[grade] === 'string' && values[grade].trim() !== ''
-            && Number.isFinite(Number(values[grade])) && Number(values[grade]) >= 0) ? values : null;
-    } catch { return null; }
-}
+// PFA-10: Vorgaben und gemerkte eigene Beträge teilt der Simulator mit Personen & Vermögen › Pflege.
+export { PFLEGE_COST_PRESETS, PFLEGE_CUSTOM_COSTS_KEY, normalizePflegeKostenPreset };
 
 function rememberCareCosts() {
-    const values = Object.fromEntries(SUPPORTED_PFLEGE_GRADES.map(grade =>
-        [grade, String(/** @type {HTMLInputElement} */ (document.getElementById(`pflegeStufe${grade}Zusatz`))?.value ?? '')]));
-    careSettingsStorage(persistenceStorage).setItem(PFLEGE_CUSTOM_COSTS_KEY, JSON.stringify(values));
+    rememberCareCostValues(Object.fromEntries(SUPPORTED_PFLEGE_GRADES.map(grade =>
+        [grade, String(/** @type {HTMLInputElement} */ (document.getElementById(`pflegeStufe${grade}Zusatz`))?.value ?? '')])));
 }
 
 function refreshPflegePresentation() {
@@ -55,48 +47,42 @@ function refreshPflegeAvailability() {
     refreshCareForms();
 }
 
+/** FR-72 Punkt 6: Zeilen „im Heim“ rechnen mit den Heimkosten aus den Pflegewerten; ihr Betragsfeld ruht.
+ *
+ * @param {number} grade Pflegegrad der Zeile.
+ * @returns {boolean} Ergebnis der Prüfung.
+ */
+export function careRowUsesResidentialCosts(grade) {
+    const homeGrades = document.getElementById('simCareTodaySummary')?.dataset?.homeCareGrades?.split(',') || [];
+    if (homeGrades.includes(String(grade))) return false;
+    const official = /** @type {HTMLSelectElement} */ (document.getElementById('pflegeKostenStaffelPreset'))?.value === 'amtlich';
+    return !official && /** @type {HTMLSelectElement} */ (document.getElementById(`pflegeStufe${grade}Form`))?.value === 'residential';
+}
+
 function refreshCareForms() {
     const official = /** @type {HTMLSelectElement} */ (document.getElementById('pflegeKostenStaffelPreset'))?.value === 'amtlich';
     document.querySelectorAll?.('[data-care-form]').forEach(/** @param {HTMLElement} cell */ cell => { cell.hidden = official; });
     const hint = document.getElementById('pflegeFormHint');
     if (hint) hint.hidden = official;
-}
-
-/**
- * Vordefinierte Kosten-Staffeln für Pflegegrade.
- * Jede Voreinstellung enthält eine Benutzerbeschreibung und optionale Werte pro Pflegegrad.
- */
-export const PFLEGE_COST_PRESETS = Object.freeze({
-    custom: {
-        label: 'Individuelle Werte',
-        description: 'Deine fünf eigenen Beträge werden beim Wechsel zu einer Voreinstellung gemerkt und hier wiederhergestellt, auch nach einem Neustart. Sicherung und Wiederherstellung nehmen sie mit.'
-    },
-    ambulant: {
-        label: 'Ambulant (ab 36 Tsd. €)',
-        description: 'Ambulante Leistungen inkl. Haushaltshilfen (PG1 36k → PG5 78k).',
-        values: { 1: 36000, 2: 42000, 3: 54000, 4: 66000, 5: 78000 }
-    },
-    stationaer: {
-        label: 'Stationär (Premium)',
-        description: 'Pflegeheim mit Unterbringung (PG1 45k → PG5 105k).',
-        values: { 1: 45000, 2: 60000, 3: 75000, 4: 90000, 5: 105000 }
-    },
-    amtlich: {
-        label: 'Amtlicher Durchschnitt (Destatis/vdek)',
-        description: 'Mittel aller Pflegebedürftigen: Heimanteil je Grad (Destatis 2023) × Heim-Eigenanteil (vdek 7/2026). Pflege zu Hause ohne Zuzahlung angenommen. Ein Heimplatz allein: rund 40.400 € im Jahr. Pflegegeld ist hier schon verrechnet.',
-        // Destatis 22421-01, I34:I38 / C34:C38 × (3.364 € × 12), auf 100 € gerundet.
-        values: { 1: 200, 2: 2300, 3: 7100, 4: 15000, 5: 18900 }
+    const toggle = /** @type {HTMLInputElement} */ (document.getElementById('pflegefallLogikAktivieren'));
+    const applicable = toggle?.checked !== false || document.getElementById('simCareTodaySummary')?.hidden === false;
+    for (const grade of SUPPORTED_PFLEGE_GRADES) {
+        const field = /** @type {HTMLInputElement} */ (document.getElementById(`pflegeStufe${grade}Zusatz`));
+        if (!field?.ownerDocument || !field.parentNode || !applicable) continue;
+        const residential = careRowUsesResidentialCosts(grade);
+        field.disabled = residential;
+        setFieldState(field, residential ? 'inactive' : 'editable', residential ? 'aus den Pflegewerten' : '');
     }
-});
+}
 
 /**
  * Überträgt eine Kosten-Voreinstellung in die UI und triggert Updates.
  * @param {string} presetKey - Schlüssel der gewünschten Voreinstellung aus PFLEGE_COST_PRESETS.
+ * @param {{asInput?: boolean}} [options] Ohne Eingabeereignisse nur anzeigen (Start: Lesen schreibt nie, PFA-12).
  * @returns {void}
  */
-export function applyPflegeKostenPreset(presetKey) {
-    const preset = presetKey === 'custom' ? { values: rememberedCareCosts() }
-        : presetKey === 'amtlich' ? { ...PFLEGE_COST_PRESETS.amtlich, values: officialCareCosts(readCareValues(persistenceStorage)) } : PFLEGE_COST_PRESETS[presetKey];
+export function applyPflegeKostenPreset(presetKey, { asInput = true } = {}) {
+    const preset = { values: carePresetValues(presetKey) };
     // Defensive exit: Ohne gültige Werte keine Änderungen durchführen.
     if (!preset || !preset.values) return;
 
@@ -107,7 +93,7 @@ export function applyPflegeKostenPreset(presetKey) {
         const field = /** @type {HTMLInputElement} */ (document.getElementById(`pflegeStufe${grade}Zusatz`));
         if (field) {
             field.value = /** @type {string} */ (value);
-            field.dispatchEvent(new Event('input', { bubbles: true }));
+            if (asInput) field.dispatchEvent(new Event('input', { bubbles: true }));
             didChange = true;
         }
     });
@@ -124,11 +110,12 @@ export function applyPflegeKostenPreset(presetKey) {
  * @returns {void}
  */
 export function updatePflegePresetHint(selectEl, hintEl) {
+    refreshCareForms();
     // Defensive Checks: Verhindere Fehler bei fehlenden DOM-Knoten.
     if (!selectEl || !hintEl) return;
     const preset = PFLEGE_COST_PRESETS[selectEl.value] || PFLEGE_COST_PRESETS.custom;
-    hintEl.textContent = selectEl.value === 'amtlich' ? `Mittel aller Pflegebedürftigen: Heimanteil je Grad (Destatis 2023) × gespeicherter Heim-Eigenanteil (${readCareValues(persistenceStorage).residential.monthly.toLocaleString('de-DE')} €/Monat). Pflege zu Hause ohne Zuzahlung angenommen. Ein Heimplatz allein: rund ${(Math.round(readCareValues(persistenceStorage).residential.monthly * 12 / 100) * 100).toLocaleString('de-DE')} € im Jahr. Pflegegeld ist hier schon verrechnet.` : preset.description;
-    refreshCareForms();
+    const monthly = selectEl.value === 'amtlich' ? readCareValues(persistenceStorage).residential.monthly : 0;
+    hintEl.textContent = selectEl.value === 'amtlich' ? `${preset.description} Erstes Heimjahr aus den Pflegewerten: ${monthly.toLocaleString('de-DE')} €/Monat.` : preset.description;
 }
 
 /**
@@ -162,8 +149,8 @@ export function updatePflegeUIInfo() {
     const capHeute = Math.max(0, maxFloor - startFloor);
     const regionalMultiplier = 1 + (Math.max(0, parseFloat(/** @type {HTMLInputElement} */ (document.getElementById('pflegeRegionalZuschlag'))?.value) || 0) / 100);
 
-    // Ermittle den höchsten Bedarf inkl. Zuschlag über alle Pflegegrade hinweg.
-    const gradeNeeds = SUPPORTED_PFLEGE_GRADES.map(grade => {
+    // Höchster Zusatz zu Hause inkl. Zuschlag; Zeilen „im Heim“ rechnen mit den Pflegewerten.
+    const gradeNeeds = SUPPORTED_PFLEGE_GRADES.filter(grade => !careRowUsesResidentialCosts(grade)).map(grade => {
         const value = (parseFloat(/** @type {HTMLInputElement} */ (document.getElementById(`pflegeStufe${grade}Zusatz`))?.value) || 0) * regionalMultiplier;
         return { grade, value };
     });
@@ -171,8 +158,8 @@ export function updatePflegeUIInfo() {
     const gradeLabel = maxEntry.grade ? (PFLEGE_GRADE_LABELS[maxEntry.grade] || `Pflegegrad ${maxEntry.grade}`) : 'Pflegegrad n/a';
 
     if (infoBadge) {
-        infoBadge.innerHTML = `Heutiger Cap für Zusatzkosten: <strong>${formatWholeEuro(capHeute)}</strong><br>` +
-            `Höchster Bedarf (inkl. Zuschlag): <strong>${formatWholeEuro(maxEntry.value)}</strong> (${gradeLabel})`;
+        infoBadge.innerHTML = `Heutiger Deckel für den Zusatz zu Hause, je Person: <strong>${formatWholeEuro(capHeute)}</strong><br>` +
+            `Höchster Zusatz zu Hause (inkl. Zuschlag): <strong>${formatWholeEuro(maxEntry.value)}</strong> (${gradeLabel})`;
     }
 }
 
@@ -181,6 +168,7 @@ export function updatePflegeUIInfo() {
  * @returns {void}
  */
 export function initializePflegeUIControls() {
+    document.getElementById('simCareTodaySummary')?.addEventListener('care-today-change', refreshPflegeAvailability);
     const CARE_GRADE_FIELD_IDS = SUPPORTED_PFLEGE_GRADES.flatMap(grade => [
         `pflegeStufe${grade}Zusatz`,
         `pflegeStufe${grade}FlexCut`,
@@ -198,7 +186,7 @@ export function initializePflegeUIControls() {
     // Kontext-Hinweis für Cap-Feld (maximaler Floor inkl. Pflegekosten).
     const pflegeMaxFloorInput = /** @type {HTMLInputElement} */ (document.getElementById('pflegeMaxFloor'));
     if (pflegeMaxFloorInput) {
-        pflegeMaxFloorInput.title = 'Gesamt-Floor inkl. Pflege. Der maximal mögliche Zusatzbedarf ergibt sich aus diesem Wert abzüglich des Basis-Floor-Bedarfs zum Zeitpunkt des Pflegeeintritts.';
+        pflegeMaxFloorInput.title = 'Gilt nur für Pflege zu Hause und je Person: Grundbedarf plus Zusatz zu Hause höchstens bis zu diesem Wert. Heimkosten und eigene Ausgaben im Heim sind nicht gedeckelt.';
     }
     updatePflegeUIInfo();
 
@@ -213,8 +201,13 @@ export function initializePflegeUIControls() {
             applyPflegeKostenPreset(/** @type {HTMLSelectElement} */ (event.target).value);
         });
         updatePflegePresetHint(pflegeStaffelSelect, pflegePresetHint);
-        if (pflegeStaffelSelect.value === 'amtlich') applyPflegeKostenPreset('amtlich');
+        if (pflegeStaffelSelect.value === 'amtlich') applyPflegeKostenPreset('amtlich', { asInput: false });
     }
+    SUPPORTED_PFLEGE_GRADES.forEach(grade => document.getElementById(`pflegeStufe${grade}Form`)?.addEventListener('change', () => {
+        refreshCareForms();
+        updatePflegeUIInfo();
+    }));
+    refreshCareForms();
 
     const pflegeCheckbox = /** @type {HTMLInputElement} */ (document.getElementById('pflegefallLogikAktivieren'));
     if (pflegeCheckbox) {

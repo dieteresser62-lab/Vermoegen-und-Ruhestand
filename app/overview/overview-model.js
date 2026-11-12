@@ -4,6 +4,7 @@ import { WEALTH_CAPTURES_KEY } from '../../types/wealth-capture-contract.js';
 import { personDisplayAge } from '../profile/profile-person-data.js';
 import { annualCloseArchiveReader, deriveAnnualCloseEvidence } from '../shared/annual-close-evidence.js';
 import { readExpensesBudget } from '../expenses/expenses-model.js';
+import { monthlyBudgetsWithFixedExpenses } from '../balance/balance-planned-posts.js';
 import { HOUSEHOLD_OWNED_BALANCE_STATE_KEYS } from '../profile/profile-storage.js';
 import { readAnnualPlanRecord } from '../profile/annual-plan-record.js';
 import { memberPlanScope, readHouseholdPlan } from '../profile/household-plan.js';
@@ -196,7 +197,9 @@ export function projectOverview({ registry, activeId, liveData = {}, now = appNo
     const expenseBudgetSources = { [occasion.closingYear]: overviewExpenseBudget(budgetContext, occasion.closingYear, occasion.closingYear < planning.firstPlanningYear),
         [expenseYear]: expenseBudgetSource,
         [occasion.previousYear]: overviewExpenseBudget(budgetContext, occasion.previousYear, occasion.previousYear < planning.firstPlanningYear) };
-    const expenseBudget = expenseBudgetSource.monthly;
+    // FR-43: Karte und Dialog vergleichen den Monat (im Jahresanlass Dezember) mit dem Monatswert wie die Ausgaben-Seite;
+    // Jahresvergleiche nehmen das Mittel aus der Budgetquelle.
+    const expenseBudget = monthBudget(expenseBudgetSource, expenseMonth);
     if (occasion.kind === 'annual') {
         expenses.missingMonths = Array.from({ length: 12 }, (_, index) => projectFocusExpenses(expenseResult.store, scope, expenseYear, index + 1))
             .flatMap(month => month.rows.filter(row => !row.present).map(row => ({ id: row.id, month: month.month })));
@@ -227,8 +230,9 @@ export function projectOverview({ registry, activeId, liveData = {}, now = appNo
     const bandComparison = bandYear === year ? planComparison : projectHouseholdPlanComparison({ year: bandYear,
         scope: planArea, storage: comparisonStorage, preview: bandSummary, sourceFingerprint: source, planUpdatedAt: planEntry?.updatedAt, now });
     const fixedBand = bandReceipt && bandReceipt.status !== 'invalid';
+    const bandMonths = fixedBand ? monthlyBudgetsWithFixedExpenses(bandReceipt.adopted.monthlyBudget, bandReceipt.adopted.plannedPosts, bandYear) : null;
     const bandBudgetSummary = fixedBand ? { year: bandYear, scope, monthlyBudget: bandReceipt.adopted.monthlyBudget,
-        createdAt: bandReceipt.committedAt } : bandReceipt?.status === 'invalid' ? null : bandSummary;
+        createdAt: bandReceipt.committedAt, ...(bandMonths ? { months: bandMonths } : {}) } : bandReceipt?.status === 'invalid' ? null : bandSummary;
     const annual = projectOverviewYear({ store: expenseResult.store, scope, now, retrospective, year: bandYear, budgetSummary: bandBudgetSummary,
         budgetStatus: fixedBand ? 'adopted' : 'provisional', budgetPreviewStatus: bandComparison.previewStatus });
     annual.comparison = comparison;
@@ -273,12 +277,13 @@ export function projectAnnualClosePreparation(model, { store, annualBudgetSummar
     const { previousYear, previousMonth, closingYear } = model.occasion;
     const annualSource = model.expenseBudgetSources?.[closingYear];
     const budgetSummary = annualSource ? { year: closingYear, scope: model.scope, monthlyBudget: annualSource.monthly,
-        createdAt: model.annual?.year === closingYear ? model.annual.budgetCreatedAt : undefined } : annualBudgetSummary;
+        createdAt: model.annual?.year === closingYear ? model.annual.budgetCreatedAt : undefined,
+        ...(annualSource.months ? { months: annualSource.months } : {}) } : annualBudgetSummary;
     const expenses = previousYear < model.planning?.firstPlanningYear
         ? { year: previousYear, month: previousMonth, rows: [], complete: false, spent: null, beforePlanning: true }
         : projectFocusExpenses(store, model.scope, previousYear, previousMonth);
     return { ...model, expenses,
-        expenseBudget: model.expenseBudgetSources?.[previousYear] ? model.expenseBudgetSources[previousYear].monthly
+        expenseBudget: model.expenseBudgetSources?.[previousYear] ? monthBudget(model.expenseBudgetSources[previousYear], previousMonth)
             : previousYear === closingYear ? model.expenseBudget : model.summary?.year === previousYear ? model.summary.monthlyBudget : null,
         expenseBudgetSource: model.expenseBudgetSources?.[previousYear] || model.expenseBudgetSource,
         annual: projectOverviewYear({ store, scope: model.scope, now: model.now, retrospective: true, year: closingYear,
@@ -316,6 +321,9 @@ export function projectOverviewYear({ store, scope, now, retrospective = false, 
     const lastMonth = retrospective ? 12 : now.getMonth();
     const budget = budgetSummary?.year === year && budgetSummary.scope?.key === scope?.key
         && Number.isFinite(budgetSummary.monthlyBudget) && budgetSummary.monthlyBudget >= 0 ? budgetSummary.monthlyBudget : null;
+    // FR-43: Mit festen Ausgaben im Beschluss hat jeder Monat sein eigenes Budget; ohne sie gilt das Mittel.
+    const budgetMonths = budget !== null && Array.isArray(budgetSummary.months) ? budgetSummary.months : null;
+    const budgetFor = month => budgetMonths ? budgetMonths[month - 1] : budget;
     const months = Array.from({ length: 12 }, (_, index) => {
         const month = index + 1, source = projectFocusExpenses(store, scope, year, month);
         const presentRows = source.rows.filter(row => row.present);
@@ -324,7 +332,7 @@ export function projectOverviewYear({ store, scope, now, retrospective = false, 
         return { month, spent: closed ? spent : null, complete: source.complete && closed,
             missingPersonIds: closed ? source.rows.filter(row => !row.present).map(row => row.id) : [],
             state: !closed ? 'open' : source.complete ? 'complete' : presentRows.length ? 'partial' : 'missing',
-            overBudget: closed && spent !== null && budget !== null ? spent > budget : null };
+            overBudget: closed && spent !== null && budget !== null ? spent > budgetFor(month) : null, ...(budgetMonths ? { budget: budgetFor(month) } : {}) };
     });
     const recorded = months.filter(month => month.spent !== null);
     const complete = lastMonth > 0 && months.slice(0, lastMonth).every(month => month.complete);
@@ -339,7 +347,8 @@ export function projectOverviewYear({ store, scope, now, retrospective = false, 
         forecast: reliable && (stats.annualForecast > 0 || complete) ? stats.annualForecast : null, forecastIncomplete: !complete,
         highest: recorded.reduce((best, month) => !best || month.spent > best.spent ? month : best, null),
         overBudgetCount: budget === null || !recorded.length ? null : recorded.filter(month => month.overBudget).length,
-        budgetPercent: budget > 0 && total !== null ? total / (budget * (retrospective ? 12 : lastMonth)) * 100 : null,
+        budgetPercent: budget > 0 && total !== null ? total / (budgetMonths ? budgetMonths.slice(0, retrospective ? 12 : lastMonth).reduce((sum, value) => sum + value, 0)
+            : budget * (retrospective ? 12 : lastMonth)) * 100 : null,
         weeksToJanuary: Math.ceil((/** @type {number} */ (/** @type {unknown} */ (new Date(now.getFullYear() + 1, 0, 1))) - /** @type {number} */ (/** @type {unknown} */ (now))) / (7 * 86400000)) };
 }
 
@@ -442,6 +451,9 @@ export function overviewPricesDone(model) {
         && day(end) < day(now) && day(oldest) >= day(end);
 }
 
+/** FR-43: Monatswert aus der Budgetquelle; ohne feste Ausgaben im Beschluss das einheitliche Monatsbudget. */
+const monthBudget = (source, month) => source.months?.[month - 1] ?? source.monthly;
+
 /** Budgetvertrag der Ausgabenseite; beschädigte/abweichende Summaryquellen bleiben erkennbar. */
 function overviewExpenseBudget(context, year, beforePlanning = false) {
     if (beforePlanning) return { monthly: null, status: 'missing' };
@@ -483,6 +495,7 @@ export function overviewQuoteLabel(model) {
  */
 export function overviewPriceLabel(model) {
     if (getAppTestDate() !== null) return PROBELAUF_PRICE_LABEL;
+    if (model.firstStart || model.priceTranches?.length === 0) return 'Kein Depot erfasst';
     const report = model.priceReport;
     const results = report?.results?.filter(result => !model.scope?.ids || !result.profileId || model.scope.ids.includes(result.profileId));
     if (['waiting', 'started', 'loading', 'running'].includes(report?.status)) return 'Kurse werden aktualisiert …';

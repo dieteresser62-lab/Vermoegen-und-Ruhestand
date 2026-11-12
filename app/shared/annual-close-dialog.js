@@ -1,7 +1,8 @@
 import { projectAnnualMarketReadings } from '../balance/balance-annual-market-preview.js';
 import { renderAnnualMarketReadings } from '../balance/balance-market-preview-renderer.js';
-import { classifyMarketPreview, unavailableBudgetComparison } from '../balance/balance-market-preview.js';
-import { createAnnualMarketChoice, createAnnualMarketPlanNote, annualMarketChoiceLabel } from './annual-market-choice.js';
+import { isHiddenBearMarket, unavailableBudgetComparison, planMainAction } from '../balance/balance-market-preview.js';
+import { createAnnualMarketChoice, annualMarketChoiceLabel } from './annual-market-choice.js';
+import { createHiddenBearBlock, createPlanProgressNote } from './annual-todo-view.js';
 import { readCloseExpenseNeeds } from '../expenses/expenses-needs.js';
 import { createAnnualCareEditor } from './annual-care-editor.js';
 import { createManualAnnualValue, validateAnnualPreparationValue } from './annual-marketdata.js';
@@ -12,7 +13,8 @@ import { createInfoPopover, bindInfoPopovers } from './designsystem-info-popover
 import { createTagesgeldFields, parseMonthlyCashInput } from '../shared/tagesgeld-fields.js';
 import { projectOverviewMonthSteps, createOverviewStepContent, projectConfirmedMonthResult, preserveCloseDetails, nextCloseText } from '../overview/overview-month-confirmation.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
-import { createAnnualActionResult, createAnnualPlanResult, createAnnualExpenseStatus, createAnnualCombinedResult, createAnnualReceiptCard, projectAnnualCloseResult } from './annual-close-result.js';
+import { createAnnualPlanResult, createAnnualExpenseStatus, createAnnualCombinedResult, createAnnualReceiptCard, projectAnnualCloseResult, createAnnualTodoResult, readAnnualClosePlanProgress } from './annual-close-result.js';
+export { readAnnualClosePlanProgress } from './annual-close-result.js';
 import { projectAnnualPreview, formatAnnualNeed } from '../balance/balance-annual-preview.js';
 import { createAnnualPlanEditor } from './annual-plan-editor.js';
 import { getPageNavigationGuard } from '../shared/navigation-guard-dialog.js';
@@ -31,6 +33,7 @@ const annualErrorText = error => {
 };
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 2 }) : '—';
+
 const monthName = model => new Date(model?.occasion?.previousYear, (model?.occasion?.previousMonth || 1) - 1, 1).toLocaleDateString('de-DE', { month: 'long' });
 const monthFailureText = (results, model) => {
     const month = results.monthSession?.request?.month || model?.occasion?.month;
@@ -47,6 +50,7 @@ const monthFailureText = (results, model) => {
  */
 export function createAnnualCloseDialog({ getLastUpdateResults = () => null, getModel = () => ({}), document: injectedDocument,
     priceActions, projectMarketReadings = projectAnnualMarketReadings, projectPreview = options => projectAnnualPreview(options), evaluatePlan, onError = () => {}, onClearError = () => {}, onNotice = () => {},
+    readPlanProgress = readAnnualClosePlanProgress,
     isCommitActive = () => getPageNavigationGuard().reasons().some(reason => reason.phase === 'commit') } = {}) {
     let dialogState = null;
     let handle = null, accepted = false, endPreparation = null, retryPending = false;
@@ -166,7 +170,10 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
         accepted = false;
         let values = {}, errors = {}, loading = true, planLoading = Boolean(evaluatePlan), planRevision = 0, planEditor = null, planMarket = null, importActive = false;
         let marketView = null, readingPending = false, readingSelection = null, choiceSource = null, choiceBodySignature = null;
-        const choiceRequired = () => marketView && classifyMarketPreview(marketView).stage === 'warning';
+        let choiceAmounts = null, choiceAmountsKey = null, choiceAmountsRevision = 0, planHighSignature = null;
+        // FR-77 Punkt 5: Wahl nur bei verdecktem Bärenmarkt, im Schritt „Plan“.
+        const choiceRequired = () => Boolean(marketView) && isHiddenBearMarket(marketView);
+        const oldPlanProgress = readPlanProgress({ model, year: targetYear });
         const choiceOpen = () => choiceRequired() && !readingSelection;
         const selectedHigh = () => choiceRequired() && readingSelection === 'year_high'
             ? { value: marketView.high.high.value, asOf: marketView.high.high.asOf } : undefined;
@@ -235,52 +242,83 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
                 errorNode.textContent = canEdit && (input.value.trim() || input.validity?.badInput) ? error : ''; input.setAttribute('aria-invalid', String(Boolean(errorNode.textContent)));
             }
             if (loading) missing ||= { id: 'market', text: 'Marktdaten werden noch vorbereitet.' };
+            // FR-73 Punkt 9: Die validierte Abschlussinflation schreibt die Pflegewerte einmal fort; eine geänderte Inflation hebt die Bestätigung auf.
+            careEditor.setInflation(effectiveMarket.inflation ? effectiveMarket.inflation.rate : null);
             if (!careEditor.read().confirmed) missing ||= { id: 'care', text: 'Pflegewerte bestätigen oder ändern' };
             if (planLoading) missing ||= { id: 'preview', text: 'Planprüfung wird noch berechnet oder konnte nicht abgeschlossen werden.' };
             if (planEditor && !planEditor.read().valid) missing ||= { id: 'preview', text: 'Bitte die markierten Planwerte prüfen.' };
             const unseen = current.firstUnvisited();
             if (unseen) missing = { id: unseen.id, text: unseen.title };
-            if (readingPending) missing ||= { id: 'market', text: 'Vergleich mit dem Jahreshoch wird berechnet.' };
-            if (choiceOpen()) missing = { id: 'market', text: `Bitte wähle, welcher Plan für ${targetYear + 1} gilt.` };
+            if (readingPending) missing ||= { id: 'preview', text: 'Vergleich mit dem Jahreshoch wird berechnet.' };
+            if (choiceOpen()) missing = { id: 'preview', text: `Bitte wähle, welcher Plan für ${targetYear + 1} gilt.` };
             if (latestModel.recovery) missing = { id: 'market', text: 'Wiederherstellung erforderlich.' };
             if (importActive || current.busy || isCommitActive()) missing = { id: 'expenses', text: importActive ? 'Ausgabenimport läuft – bitte warten.' : 'Speichervorgang läuft – bitte warten.' };
         };
         let marketReadingRevision = 0, evaluatedReadingSignature = null;
         const marketReadings = node('div');
         const readingBody = node('div'), choiceBody = node('div'), planNote = node('div');
-        marketReadings.append(readingBody, choiceBody);
+        marketReadings.append(readingBody);
+        // Schritt „Plan“, rechts oben: Stand des alten Plans, darunter bei verdecktem Bärenmarkt Block und Wahl (Entwurf 5).
+        planNote.dataset.annualMarketPlanNote = '';
+        planNote.append(...(oldPlanProgress ? [createPlanProgressNote(doc(), oldPlanProgress)] : []), choiceBody);
         const renderChoice = () => {
-            marketReadings.className = choiceRequired() ? 'annual-market-choice-layout' : '';
-            const signature = JSON.stringify([marketView, readingSelection]);
+            const signature = JSON.stringify([marketView, readingSelection, choiceAmounts]);
             if (signature !== choiceBodySignature) {
                 choiceBody.replaceChildren();
-                if (choiceRequired()) choiceBody.append(createAnnualMarketChoice(doc(), marketView, readingSelection, selection => {
-                    if (accepted || current.busy || readingPending) return;
-                    readingSelection = selection; onDirty(dirty()); renderChoice(); sync(); void recalculatePlan();
-                }));
+                if (choiceRequired()) choiceBody.append(createHiddenBearBlock(doc(), marketView, { annual: true,
+                    choice: createAnnualMarketChoice(doc(), marketView, readingSelection, selection => {
+                        if (accepted || current.busy || readingPending) return;
+                        readingSelection = selection; onDirty(dirty()); renderChoice(); sync(); void recalculatePlan();
+                    }, choiceAmounts) }));
                 choiceBodySignature = signature;
             }
-            planNote.replaceChildren(createAnnualMarketPlanNote(doc(), marketView, readingSelection, () => current.activate('market')));
+            planEditor?.refreshSummary();
             const summary = planEditor?.root.querySelector('[data-annual-plan-summary]');
             if (summary) planEditor.root.insertBefore(planNote, summary);
             else if (!evaluatePlan && !planNote.parentNode) previewBody.append(planNote);
+        };
+        // WT-1b (Soll 8): Ändern sich die Planwerte im Schritt, rechnen die Beträge der Wahl mit denselben Planwerten neu.
+        const refreshChoiceAmounts = async () => {
+            if (!evaluatePlan || !planEditor || !choiceRequired() || accepted || !current.root.open) return;
+            const state = planEditor.read();
+            if (!state.valid) return;
+            const patch = state.dirty ? planEditor.accept() : undefined;
+            const high = { value: marketView.high.high.value, asOf: marketView.high.high.asOf };
+            // WT-1c (Gutachten WT1B-FABLE Befund 3): Auch Tagesgeld und Pflegewerte gehören zum Schlüssel der Neurechnung.
+            let cashKey = null;
+            try { cashKey = cash?.read(); } catch { /* Pflichtfeld meldet ungültiges Tagesgeld. */ }
+            const key = JSON.stringify([patch, high, marketView.quote, planMarket, cashKey, careEditor.read().values, careEditor.read().careToday]);
+            if (key === choiceAmountsKey) return;
+            choiceAmountsKey = key;
+            const revision = ++choiceAmountsRevision;
+            let next = null;
+            if (patch !== undefined) try {
+                const common = { targetYear, marketData: planMarket, adoptedPlanPatch: patch, cash: /** @type {import("../../typcheck/speicher-integration.js").Cash} */ (cash.read()),
+                    careValues: careEditor.read().values, careToday: careEditor.read().careToday, signal };
+                const [end, top] = await Promise.all([evaluatePlan({ ...common, yearHigh: undefined, choiceVariant: 'year_end' }),
+                    evaluatePlan({ ...common, yearHigh: high, choiceVariant: 'year_high' })]);
+                const variant = outcome => ({ monthlyBudget: Number.isFinite(outcome.monthlyBudget) ? Math.round(outcome.monthlyBudget) : null, mainAction: planMainAction(outcome.action) });
+                next = { year_end: variant(end.adopted), year_high: variant(top.adopted) };
+            } catch { next = null; }
+            if (revision !== choiceAmountsRevision || accepted || !current.root.open) return;
+            if (JSON.stringify(next) !== JSON.stringify(choiceAmounts)) { choiceAmounts = next; renderChoice(); }
         };
         const updateMarketReadings = async () => {
             const revision = ++marketReadingRevision;
             let cashValue;
             try { cashValue = /** @type {import('../../typcheck/speicher-integration.js').Cash} */ (cash?.read()); } catch { /* Pflichtfeld meldet ungültiges Tagesgeld. */ }
-            const signature = JSON.stringify([effectiveMarket, cashValue, careEditor.read().values, latestModel.priceReport, latestModel.quoteDate, latestModel.priceTranches]);
+            const signature = JSON.stringify([effectiveMarket, cashValue, careEditor.read().values, careEditor.read().careToday, latestModel.priceReport, latestModel.quoteDate, latestModel.priceTranches]);
             const previousHigh = JSON.stringify(selectedHigh());
             readingPending = Boolean(effectiveMarket.etf) && signature !== evaluatedReadingSignature; sync();
             // Während der Neuberechnung zählt kein Klick; gesperrte Knöpfe zeigen das ehrlich.
             for (const radio of choiceBody.querySelectorAll?.('input[type="radio"]') || []) radio.disabled = readingPending;
             try {
-                const view = await projectMarketReadings({ targetYear, quote: effectiveMarket.etf, marketData: effectiveMarket, cash: cashValue, careValues: careEditor.read().values });
+                const view = await projectMarketReadings({ targetYear, quote: effectiveMarket.etf, marketData: effectiveMarket, cash: cashValue, careValues: careEditor.read().values, careToday: careEditor.read().careToday });
                 if (revision !== marketReadingRevision || !current.root.open || accepted) return;
                 const source = JSON.stringify(view && 'high' in view ? [view.quote, view.high.high] : null);
                 if (choiceSource !== source) readingSelection = null;
-                // Ohne Warnfall gibt es keine Wahl; kehrt er zurück, wählt die App nichts vor (FR-71).
-                if (!view || classifyMarketPreview(view).stage !== 'warning') readingSelection = null;
+                // Ohne verdeckten Bärenmarkt gibt es keine Wahl; kehrt er zurück, wählt die App nichts vor (FR-71, FR-77).
+                if (!view || !isHiddenBearMarket(view)) readingSelection = null;
                 choiceSource = source; marketView = view;
             } catch {
                 if (revision !== marketReadingRevision || !current.root.open || accepted) return;
@@ -292,6 +330,8 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
                     evaluatedReadingSignature = signature; readingPending = false; choiceBodySignature = null;
                     renderAnnualMarketReadings(doc(), readingBody, marketView); renderChoice(); sync();
                     if (previousHigh !== JSON.stringify(selectedHigh())) void recalculatePlan();
+                    // WT-1c (Befund 3): Nach Tagesgeld- oder Pflegeänderungen rechnen die Beträge der Wahl mit neu.
+                    void refreshChoiceAmounts();
                 }
             }
         };
@@ -308,10 +348,11 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
             if (!next.annual?.complete) budget.result += ` · Jahr ${targetYear} noch unvollständig`;
             return [...steps, { id: 'cash', chip: 'Tagesgeld 31.12.', title: `Tagesgeld am 31.12.${targetYear}`, continueLabel: 'Weiter zum Tagesgeld', content: cashBody, contentOwnResult: true, state: cash?.ready && handle?.hasVisited('cash') ? 'done' : 'open', done: Boolean(cash?.ready && handle?.hasVisited('cash')), statusLabel: cash?.ready ? handle?.hasVisited('cash') ? 'erledigt' : 'offen' : `${cash?.openPeople.length ?? people.length} offen`, result: cash?.ready ? 'Gültiger Tagesgeld-Stand je Person' : `Tagesgeld fehlt oder ist ungültig: ${(cash?.openPeople || people.map(person => person.name)).join(', ')}` },
                 { id: 'care', chip: 'Pflegewerte', title: 'Pflegewerte prüfen', continueLabel: 'Weiter zu den Pflegewerten', content: careEditor.root, contentOwnResult: true, state: careEditor.read().confirmed ? 'done' : 'open', done: careEditor.read().confirmed, statusLabel: careEditor.read().confirmed ? 'erledigt' : 'offen', result: careEditor.read().confirmed ? 'Für das neue Planjahr bestätigt · noch nicht gespeichert' : 'Unverändert bestätigen oder Werte ändern.' },
-                { id: 'market', chip: 'Marktdaten', title: `Marktdaten und Marktlage ${targetYear}`, continueLabel: 'Weiter zu den Marktdaten', content: marketBody, contentOwnResult: true, progressByVisit: !choiceRequired(), prepared: true, preparing: loading,
-                    nextDisabled: Boolean(choiceOpen() || readingPending), statusLabel: choiceRequired() ? readingSelection === 'year_high' ? 'Jahreshoch' : readingSelection === 'year_end' ? 'Jahresendregel' : 'Wahl offen' : undefined,
-                    done: !loading && !readingPending && !choiceOpen() && Object.keys(effectiveMarket).length === 3, result: !loading && Object.keys(effectiveMarket).length === 3 ? 'Vollständig vorbereitet · noch nicht gespeichert' : 'Pflichtwerte ergänzen' },
-                { id: 'preview', chip: `Plan ${targetYear + 1}`, title: `Bedarf und Plan ${targetYear + 1} prüfen`, continueLabel: `Weiter zum Plan ${targetYear + 1}`, content: previewBody, contentOwnResult: true, progressByVisit: true, prepared: true, preparing: loading || planLoading, done: !loading && Object.keys(effectiveMarket).length === 3 && !planLoading && (!planEditor || planEditor.read().valid), result: 'Planwerte ansehen und bei Bedarf bewusst anpassen.' }];
+                { id: 'market', chip: 'Marktdaten', title: `Marktdaten und Marktlage ${targetYear}`, continueLabel: 'Weiter zu den Marktdaten', content: marketBody, contentOwnResult: true, progressByVisit: true, prepared: true, preparing: loading,
+                    done: !loading && Object.keys(effectiveMarket).length === 3, result: !loading && Object.keys(effectiveMarket).length === 3 ? 'Vollständig vorbereitet · noch nicht gespeichert' : 'Pflichtwerte ergänzen' },
+                { id: 'preview', chip: `Plan ${targetYear + 1}`, title: `Bedarf und Plan ${targetYear + 1} prüfen`, continueLabel: `Weiter zum Plan ${targetYear + 1}`, content: previewBody, contentOwnResult: true, progressByVisit: !choiceRequired(), prepared: true, preparing: loading || planLoading,
+                    statusLabel: choiceRequired() ? readingSelection === 'year_high' ? 'Jahreshoch' : readingSelection === 'year_end' ? 'Jahresendregel' : 'Wahl offen' : undefined,
+                    done: !loading && !readingPending && !choiceOpen() && Object.keys(effectiveMarket).length === 3 && !planLoading && (!planEditor || planEditor.read().valid), result: choiceOpen() ? `Bitte wähle, welcher Plan für ${targetYear + 1} gilt.` : 'Planwerte ansehen und bei Bedarf bewusst anpassen.' }];
         };
         const pending = /** @type {Promise<import("../../typcheck/balance-ui.js").PreparedAnnual & {preparedMarketData?: Record<string,unknown>}>} */ (new Promise(resolve => { endPreparation = resolve; }));
         const current = open({ title: `${monthName(model)} und Jahr ${targetYear} abschließen`, opener, steps: project(model), model,
@@ -374,19 +415,22 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
                 if (loading || !cashValid || Object.keys(effectiveMarket).length !== 3) return;
                 planMarket = { ...effectiveMarket };
                 const marketData = planMarket;
-                const initial = await evaluatePlan({ targetYear, marketData, yearHigh: selectedHigh(), cash: /** @type {import("../../typcheck/speicher-integration.js").Cash} */ (cash.read()), careValues: careEditor.read().values, signal });
+                const yearHigh = selectedHigh();
+                const initial = await evaluatePlan({ targetYear, marketData, yearHigh, cash: /** @type {import("../../typcheck/speicher-integration.js").Cash} */ (cash.read()), careValues: careEditor.read().values, careToday: careEditor.read().careToday, signal });
                 if (revision !== planRevision || signal?.aborted || !current.root.open) return;
                 if (!planEditor) {
                     planEditor = createAnnualPlanEditor({ doc: doc(), listen: current.listen,
                         getPreview: () => projectPreview({ targetYear, inflation: effectiveMarket.inflation, careValues: careEditor.read().values }),
                         getAnnualExpenses: () => ({ ...latestModel.annual, needsReview: readCloseExpenseNeeds(latestModel, targetYear, latestModel.expenseBudgetSources?.[targetYear]?.monthly ?? latestModel.annual?.budget ?? latestModel.expenseBudget) }),
-                        evaluate: adoptedPlanPatch => evaluatePlan({ targetYear, marketData: planMarket, yearHigh: selectedHigh(), adoptedPlanPatch, cash: /** @type {import("../../typcheck/speicher-integration.js").Cash} */ (cash.read()), careValues: careEditor.read().values, signal }),
-                        onState: () => { onDirty(dirty()); sync(); } });
+                        evaluate: adoptedPlanPatch => evaluatePlan({ targetYear, marketData: planMarket, yearHigh: selectedHigh(), adoptedPlanPatch, cash: /** @type {import("../../typcheck/speicher-integration.js").Cash} */ (cash.read()), careValues: careEditor.read().values, careToday: careEditor.read().careToday, signal }),
+                        onState: () => { onDirty(dirty()); sync(); void refreshChoiceAmounts(); },
+                        budgetNote: () => choiceOpen() ? 'nach deiner Wahl' : planHighSignature !== JSON.stringify(selectedHigh() ?? null) ? 'wird berechnet …' : null });
                     replace(previewBody.querySelector('[data-annual-plan-outcome-host]'), planEditor.root);
                     for (const details of previewBody.querySelectorAll('[data-annual-calculations], [data-annual-pension-months]')) planEditor.root.append(details);
                     current.closed.then(() => planEditor.dispose());
                 }
                 await planEditor.setBase(initial.values);
+                planHighSignature = JSON.stringify(yearHigh ?? null);
                 renderChoice();
                 succeeded = true;
             } catch (error) {
@@ -479,6 +523,7 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
                 const options = manualAllowed.has('etf') && handPrice.value.trim() ? validatePrice(handPrice.value.trim()) : {};
                 if (cash) options.cash = /** @type {import("../../typcheck/speicher-integration.js").Cash} */ (cash.read());
                 options.careValues = careEditor.accept();
+                options.careToday = careEditor.read().careToday;
                 options.preparedMarketData = { ...effectiveMarket };
                 if (selectedHigh()) options.yearHigh = selectedHigh();
                 options.displayPreview = structuredClone(projectPreview({ targetYear, inflation: effectiveMarket.inflation, careValues: careEditor.read().values }));
@@ -509,16 +554,19 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
             if (value) annual.append(node('p', `${label}${key === 'inflation' ? ` ${value.year ?? results.targetYear}` : ''}: ${key === 'etf' ? money(value.price) : formatDisplayNumber(value.rate ?? value.capeRatio, { fractionDigits: 2 })}${key === 'inflation' ? ' %' : ''} · ${value.source || value.sourceLabel || value.capeSource || 'Quelle fehlt'}`));
         }
     };
-    const actionContent = results => results.actionResult ? createAnnualActionResult({ doc: doc(), result: results.actionResult, compact: true }) : null;
+    const actionContent = results => results.actionResult ? createAnnualTodoResult(doc(), results.actionResult) : null;
     const showMonthPhase = results => {
         const current = handle, session = results.monthSession, model = session.model;
         monthResults = results; monthReceipt = session.result || monthReceipt;
         const data = projectConfirmedMonthResult(model, session.request.cash);
         hidePreparationBackup(); current.setBusy(false); current.setMessage('');
         const actionResult = results.actionResult || projectAnnualCloseResult({ ...results, model });
-        const action = createAnnualActionResult({ doc: doc(), result: actionResult, compact: true });
+        const action = createAnnualTodoResult(doc(), actionResult);
         const peoplePreview = projectPreview({ targetYear: results.targetYear, confirmed: true });
         const annual = createAnnualPlanResult({ doc: doc(), result: actionResult, model, peoplePreview }); annual.id = 'annualResults';
+        // Rechts: wie viel vom alten Plan umgesetzt wurde, in denselben Wörtern wie im Schritt „Plan“ (Entwurf 6).
+        const oldProgress = readPlanProgress({ model, year: results.targetYear });
+        if (oldProgress) annual.insertBefore(createPlanProgressNote(doc(), oldProgress, true), annual.querySelector('[data-annual-plan-derivation]'));
         const receiptDetails = createAnnualReceiptCard({ doc: doc(), logButton,
             text: `${annualMarketChoiceLabel(actionResult.marketReading)}. ${monthReceipt ? 'Wiederherstellungspunkte für Jahr und Monat angelegt. ' : ''}Jahr und Monat haben getrennte Wiederherstellungspunkte. ${data.withdrawalDetail}. Die Anzeige bestätigt keine ausgeführte Überweisung.` });
         if (results.showProtocol) {

@@ -7,6 +7,7 @@ import { WEALTH_HISTORY_START_KEY, assertHistoryStart, requireHistoryRecord, rea
 import { evaluateHistoryCourse, reconstructHistoryShares, historyRange } from './tranchen-history-model.js';
 import { renderHistorySparkline, renderHistoryCourseSvg, bindHistoryChartSize, bindHistoryDayInteraction } from './tranchen-history-svg.js';
 import { readReconciliationHistory } from './tranche-reconciliation.js';
+import { reloadPricesButtonHtml } from './tranche-split-hint.js';
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 }) : '—';
 const date = value => value?.split('-').reverse().join('.') || '—';
@@ -196,7 +197,7 @@ export function buildTrancheHistoryDetail(tranche, history) {
     return `<section class="pv-history-detail" aria-label="Kursverlauf ${escapeHtml(tranche.name)}">
         <div class="pv-history-facts"><strong>${escapeHtml(tranche.name)}${tranche.source === 'spielwert' ? ' · Spielwert' : ''}</strong><span>Stück heute <b>${formatDisplayNumber(tranche.shares, { fractionDigits: 3, minimumFractionDigits: 0 })}</b></span>
         <span>Kurs ${last?.priceDay != null ? date(historyDate(last.priceDay)) : 'nicht verfügbar'} <b>${escapeHtml(Number.isFinite(last?.value) ? formatDisplayNumber(last.value, { unit: 'price', fractionDigits: 2 }) : '—')}</b></span>
-        <span>Wert des heutigen Bestands <b>${escapeHtml(money(tranche.marketValue))}</b></span><span>Tageskurse gespeichert <b>${record?.days.length || 0}</b></span></div>
+        <span>Wert des heutigen Bestands <b>${escapeHtml(money(tranche.marketValue))}</b></span><span>Tageskurse gespeichert <b>${record?.days.length || 0}</b></span>${course.symbol ? reloadPricesButtonHtml(tranche) : ''}</div>
         <div class="history-coverage"><span>Kursabdeckung · ${date(course.range.startDate)} bis ${date(course.range.endDate)}</span>
         ${buildHistoryMeasurementHtml(course.measurementStart, course.status, course.range.start)}
         <div class="history-coverage-bar" role="img" aria-label="${escapeHtml(history.message)}">${course.symbol ? coverage : ''}</div><p class="history-note">${escapeHtml(message)}</p></div>

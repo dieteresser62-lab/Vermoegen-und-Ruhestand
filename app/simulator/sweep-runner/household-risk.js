@@ -79,7 +79,7 @@ export function beginSweepHouseholdRiskTrace(diagnostics, runIndex, tailRiskPlan
 
 /** @param {SweepRiskDiagnostics} diagnostics
  * @param {SweepRiskTrace|null} trace
- * @param {{runIndex:number;simulationsJahr:number;yearData:HistoricalYear;lifeYear:LifeYear;previousLife:{p1Alive:boolean;p2Alive:boolean;p1CareActive?:boolean;p2CareActive?:boolean;widowP1Active:boolean;widowP2Active:boolean;horizonYears?:number|null};horizonResolution?:ReturnType<typeof resolveDynamicFlexRunnerHorizon>|null;tailRiskOverlay?:TailRiskOverlay|null;result?:YearOutcome|null;runEndedBecauseAllDied?:boolean}} options */
+ * @param {{runIndex:number;simulationsJahr:number;yearData:HistoricalYear;lifeYear:LifeYear;previousLife:{p1Alive:boolean;p2Alive:boolean;p1CareActive?:boolean;p2CareActive?:boolean;widowP1Active:boolean;widowP2Active:boolean;horizonYears?:number|null};horizonResolution?:ReturnType<typeof resolveDynamicFlexRunnerHorizon>|null;tailRiskOverlay?:TailRiskOverlay|null;result?:YearOutcome|null;runEndedBecauseAllDied?:boolean;savedHomeFloor?:[number,number]}} options */
 export function recordSweepHouseholdRiskYear(
     diagnostics,
     trace,
@@ -92,7 +92,8 @@ export function recordSweepHouseholdRiskYear(
         horizonResolution = null,
         tailRiskOverlay = null,
         result = null,
-        runEndedBecauseAllDied = false
+        runEndedBecauseAllDied = false,
+        savedHomeFloor = [0, 0]
     }
 ) {
     const engineStepExecuted = result !== null;
@@ -120,7 +121,15 @@ export function recordSweepHouseholdRiskYear(
         if (widowP2Active) household.widowP2ActiveYears += 1;
     }
 
-    const careFloor = Number(result?.logData?.pflege_zusatz_floor ?? annualCare.pflege_zusatz_floor);
+    // FR-72 Punkt 18: netto wie die Kennzahl „Pflege-Mehrbedarf“, also Zusatz zu Hause plus Heimkosten und
+    // eigene Ausgaben minus eingesparter Grundbedarf; negative Werte zählen je Person und Jahr als 0.
+    const residential = Number(result?.logData?.pflege_heimkosten ?? annualCare.pflege_heimkosten ?? 0)
+        + Number(result?.logData?.pflege_heim_eigene_ausgaben ?? annualCare.pflege_heim_eigene_ausgaben ?? 0);
+    const homeCareFloor = Number(result?.logData?.pflege_zusatz_floor ?? annualCare.pflege_zusatz_floor);
+    const careFloor = residential || savedHomeFloor.some(value => value !== 0)
+        ? Math.max(0, Number(result?.logData?.CareP1_Cost ?? annualCare.CareP1_Cost) - savedHomeFloor[0])
+            + Math.max(0, Number(result?.logData?.CareP2_Cost ?? annualCare.CareP2_Cost) - savedHomeFloor[1])
+        : homeCareFloor;
     if (engineStepExecuted && Number.isFinite(careFloor)) {
         household.totalCareFloorNominalEur += careFloor;
     }

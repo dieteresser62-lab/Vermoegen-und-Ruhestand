@@ -141,4 +141,4 @@ for (const [label, data, limit] of [
     if (model.p10 > 0) assert(html.includes('Mit 90 % Wahrscheinlichkeit bleiben mindestens'), `${label}: positive Mindestbetragsaussage erhalten`);
 }
 
-assert(renderWealthDistribution(buildWealthDistribution(results)).includes('width="1400" height="355" viewBox="0 0 1400 355"'), 'Histogramm: SVG-Maße entsprechen nativen Pixelkoordinaten');
+assert(renderWealthDistribution(buildWealthDistribution(results)).includes('width="720" height="262" viewBox="0 0 720 262"'), 'Histogramm: SVG-Maße entsprechen nativen Pixelkoordinaten');

@@ -20,8 +20,10 @@ export function readPensionInputs(doc = globalThis.document) {
     const adopted = readDocumentPersonInputs(doc);
     if (adopted) {
         const { combined } = adopted;
-        return Object.fromEntries(['startAlter', 'geschlecht', 'startSPB', 'kirchensteuerSatz', 'renteMonatlich',
-            'renteStartOffsetJahre', 'renteStartMonate', 'renteKalenderbeginn', 'rentAdjMode', 'rentAdjPct', 'renteIndexierungsart', 'renteFesterSatz'].map(key => [key, combined[key]]));
+        return { ...Object.fromEntries(['startAlter', 'geschlecht', 'startSPB', 'kirchensteuerSatz', 'renteMonatlich',
+            'renteStartOffsetJahre', 'renteStartMonate', 'renteKalenderbeginn', 'rentAdjMode', 'rentAdjPct', 'renteIndexierungsart', 'renteFesterSatz'].map(key => [key, combined[key]])),
+        // FR-75: Geburtsjahr aus dem Profil für die Kohortensterbetafel.
+        ...(Number.isSafeInteger(combined.geburtsjahr) ? { geburtsjahr: combined.geburtsjahr } : {}) };
     }
     const startAlter = readInt('p1StartAlter', readInt('startAlter', NaN, doc), doc);
     if (!Number.isSafeInteger(startAlter) || startAlter < 0) return { startAlter: null, personDataStatus: { ready: false, status: 'missing', message: 'Personenalter fehlt. Bitte Geburtsdatum zentral ergänzen.' } };

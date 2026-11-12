@@ -122,6 +122,18 @@ export function plannedExpensesForYear(items, year, inflationFactor = 1) {
     }, 0);
 }
 
+/** FR-43 (11.11.2026): Feste Ausgaben zählen in ihren Monaten zum Grundbedarf, einmalige bleiben außerhalb.
+ * @param {D.PlannedExpense[]} items
+ * @param {number} year
+ * @param {number} [inflationFactor]
+ * @returns {{fixed: number, once: number}}
+ */
+export function plannedExpenseSplitForYear(items, year, inflationFactor = 1) {
+    const list = items || [];
+    return { fixed: plannedExpensesForYear(list.filter(isFixedExpense), year, inflationFactor),
+        once: plannedExpensesForYear(list.filter(entry => !isFixedExpense(entry)), year, inflationFactor) };
+}
+
 /**
  * @param {{storage?: D.RecordReader, scope?: D.PlanScope | null}} options
  * @param {number} referenceYear
@@ -129,6 +141,19 @@ export function plannedExpensesForYear(items, year, inflationFactor = 1) {
 export function simulatorPlannedExpenses(options = {}, referenceYear) {
     const items = readPlannedExpenses(options);
     return items.length ? { plannedExpenses: items, plannedExpensesReferenceYear: referenceYear } : {};
+}
+
+/** Simulatorjahr: feste Ausgaben für den Grundbedarf, einmalige als eigene Zahlung (je nicht negativ).
+ * @param {{plannedExpenses?: D.PlannedExpense[], plannedExpensesReferenceYear?: number}} inputs
+ * @param {number} yearIndex
+ * @param {number} inflationFactor
+ * @returns {{fixed: number, once: number}}
+ */
+export function simulatorPlannedExpenseYear(inputs, yearIndex, inflationFactor) {
+    if (!inputs?.plannedExpenses?.length) return { fixed: 0, once: 0 };
+    const split = plannedExpenseSplitForYear(inputs.plannedExpenses,
+        /** @type {number} */ (inputs.plannedExpensesReferenceYear) + yearIndex, inflationFactor);
+    return { fixed: Math.max(0, Number(split.fixed) || 0), once: Math.max(0, Number(split.once) || 0) };
 }
 
 /** Einzelne Zahlungstermine; gleicher Jahresbetrag wie im Simulator. */

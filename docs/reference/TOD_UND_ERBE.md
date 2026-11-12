@@ -1,6 +1,6 @@
 # Tod und Erbe
 
-Wie Tod, Hinterbliebenenbedarf und Nachlass den simulierten Haushalt verändern. Für Nutzer und fachlich Interessierte. Codeprüfung: 29.10.2026; Quellenprüfung: 27.10.2026.
+Wie Tod, Hinterbliebenenbedarf und Nachlass den simulierten Haushalt verändern. Für Nutzer und fachlich Interessierte. Codeprüfung: 07.11.2026; Quellenprüfung: 27.10.2026.
 
 ## Auf einen Blick
 
@@ -15,7 +15,7 @@ Wie Tod, Hinterbliebenenbedarf und Nachlass den simulierten Haushalt verändern.
 
 Monte Carlo zieht Todesfälle aus alters- und geschlechtsspezifischen Jahreswahrscheinlichkeiten. Das ist keine Vorhersage des persönlichen Todeszeitpunkts. Der historische Backtest zieht keine Todesfälle; Balance berechnet den eingetragenen heutigen Haushalt.
 
-Stirbt eine Person, zählt ihre eigene Rente im Modell für sechs Monate. Besteht ein eingestellter Hinterbliebenenanspruch, folgen drei Monate volle Rente als Sterbevierteljahr und drei Monate gekürzte Hinterbliebenenrente. Ohne Anspruch bleibt es bei der halben eigenen Jahresrente. Feste sonstige Einkünfte, Pflegegeld und Pflegekosten der verstorbenen Person zählen im Sterbejahr halb und enden danach. Für geerbte Mieten gilt die [Immobilienregel](IMMOBILIEN.md#erlöszuordnung-und-erbe).
+Stirbt eine Person, zählt ihre eigene Rente im Modell für sechs Monate. Besteht ein eingestellter Hinterbliebenenanspruch, folgen drei Monate volle Rente als Sterbevierteljahr und drei Monate gekürzte Hinterbliebenenrente. Ohne Anspruch bleibt es bei der halben eigenen Jahresrente. Feste sonstige Einkünfte, Pflegegeld und Pflegekosten der verstorbenen Person zählen im Sterbejahr halb und enden danach. Das gilt auch für Heimkosten und eigene Ausgaben im Heim. Für geerbte Mieten gilt die [Immobilienregel](IMMOBILIEN.md#erlöszuordnung-und-erbe). Verlässt ein Teil des Nachlasses den Haushalt, entscheidet die App Kauf und Auffüllen im Sterbejahr mit dem, was der lebenden Person bleibt: ihre eigene Liquidität plus der geerbte Anteil an der Liquidität der verstorbenen Person nach deren Jahresbuchungen, dazu nur ihre eigenen Wertpapiere. Gekauft wird nur aus ihrer freien Liquidität. Liegt sie unter dem Ziel, füllen die üblichen Auffüllregeln samt Sperren im Bärenmarkt aus ihren Aktien auf, bei Drei Töpfen auch die Anleihen, bei Ehe wie ohne Ehe.
 
 ### Einkommen und Bedarf
 
@@ -33,7 +33,7 @@ Grundbedarf, Wunsch-Flex und Mindest-Flex nach dem Tod beziehen sich getrennt au
 | Wunsch-Flex | 50 % | 0–100 % | 75 % |
 | Mindest-Flex | 50 % | 0–100 % | 75 % |
 
-Im Todesjahr wird je zur Hälfte mit Paar- und Hinterbliebenenbedarf gerechnet. [Pflegekosten und Pflege-Flex](PFLEGE.md#reserve-und-flex) wirken zusätzlich. Mindest-Flex darf den Wunsch-Flex nicht übersteigen. Die nachgelagerte [Wohnmiete](IMMOBILIEN.md#wohnmiete) wird nicht mit dem Hinterbliebenenprozentsatz gekürzt.
+Im Todesjahr wird je zur Hälfte mit Paar- und Hinterbliebenenbedarf gerechnet. [Pflegekosten und Pflege-Flex](PFLEGE.md#reserve-und-flex) wirken zusätzlich. Lebt jemand im Heim, zählt der Grundbedarf zu Hause je ein halbes Jahr im Zustand vor und nach dem Tod. Stirbt die Person im Heim und der Partner lebt zu Hause, bleibt es in beiden Hälften beim Hinterbliebenenanteil. Stirbt der Partner zu Hause und bleibt nur die Person im Heim, zählt sein Grundbedarf nur im ersten Halbjahr. Einzelheiten unter [Heim](PFLEGE.md#heim). Mindest-Flex darf den Wunsch-Flex nicht übersteigen. Die nachgelagerte [Wohnmiete](IMMOBILIEN.md#wohnmiete) wird nicht mit dem Hinterbliebenenprozentsatz gekürzt.
 
 ### Zeitachse des Sterbejahrs
 
@@ -108,6 +108,6 @@ Synthetische Rechenvariante, geprüft am 27.10.2026: Max hinterlässt nach den J
 - Kein Testament wird rechtlich erstellt oder geprüft; Pflichtteile, Scheidung, Nachlass- und Vollstreckerkosten fehlen.
 - Die Vorschau verwendet heutige Bestände; ein späterer Nachlass hängt vom gerechneten Pfad ab.
 - Tod beider Personen beendet den Lauf; der Nachlass an Außenstehende wird danach nicht geplant.
-- Sterbetafel und Hinterbliebenenrente sind Modellannahmen mit [belegten Daten- und Anspruchsgrenzen](DATA_SOURCES.md#lebensereignisse).
+- Sterbetafel und Hinterbliebenenrente sind Modellannahmen mit [belegten Daten- und Anspruchsgrenzen](DATA_SOURCES.md#lebensereignisse). Seit FR-75 gilt die Kohortentafel V2 des Geburtsjahrs; wer ohne Pflegegrad startet, lebt im Mittel wie die Tafel.
 
 Die [technischen Belege](TECHNICAL.md#lebensereignisse-und-steuer-belegen) ordnen Grenzbedingungen dem Code und bestehenden Prüfungen zu.

@@ -37,7 +37,19 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
         };
     });
 
-    let remainingCents = totalNeedCents;
+    // Persönliche Pflegekosten (unverheiratet, FR-72 Punkt 10) trägt zuerst die Person; nur der gemeinsame
+    // Rest folgt dem gewählten Modus. Gutachten PFA-2, Befund 3: Dazu wird erst der Bruttobedarf zugeordnet
+    // (gemeinsamer Anteil nach Modus plus eigene Pflegekosten), danach zählen die eigenen Einkünfte der Person.
+    // Reicht die Auszahlung nicht einmal für die Pflegekosten, werden diese anteilig gekürzt.
+    const personal = aggregated?.personalNeeds || {};
+    const personalRaw = entries.map(entry => Math.max(0, Math.round((Number(personal[entry.profileId]) || 0) * 100)));
+    const personalSum = personalRaw.reduce((sum, value) => sum + value, 0);
+    const incomeCents = entries.map(entry => personalSum > 0 ? Math.max(0, Math.round((entry.rentAnnual || 0) * 100)) : 0);
+    const grossCents = totalNeedCents + incomeCents.reduce((sum, value) => sum + value, 0);
+    const personalCents = personalSum > grossCents && personalSum > 0
+        ? personalRaw.map(value => Math.floor(value * grossCents / personalSum)) : personalRaw;
+    const commonCents = Math.max(0, grossCents - personalCents.reduce((sum, value) => sum + value, 0));
+    let remainingCents = commonCents;
     let allocations = [];
 
     if (mode === 'tax_optimized') {
@@ -59,11 +71,11 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
         const totalWeight = weights.reduce((sum, val) => sum + val, 0);
         if (totalWeight > 0) {
             const raw = entries.map((entry, idx) => {
-                const exactCents = totalNeedCents * (weights[idx] / totalWeight);
+                const exactCents = commonCents * (weights[idx] / totalWeight);
                 const amountCents = Math.floor(exactCents);
                 return { entry, amountCents, fraction: exactCents - amountCents, index: idx };
             });
-            let roundingRest = totalNeedCents - raw.reduce((sum, item) => sum + item.amountCents, 0);
+            let roundingRest = commonCents - raw.reduce((sum, item) => sum + item.amountCents, 0);
             raw.slice()
                 .sort((a, b) => (b.fraction - a.fraction) || (a.index - b.index))
                 .forEach(item => {
@@ -78,6 +90,8 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
         }
     }
 
+    allocations.forEach((item, index) => { item.amountCents += personalCents[entries.indexOf(item.entry)] ?? personalCents[index] ?? 0; });
+    creditPersonalIncome(allocations, entries, incomeCents, totalNeedCents);
     // Erst Liquidität für den Plan, dann übrige Haushaltsliquidität, zuletzt Verkäufe.
     const originalAmounts = allocations.map(item => item.amountCents);
     for (const item of allocations) item.amountCents = Math.min(item.amountCents,
@@ -156,6 +170,22 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
     });
 
     return { items, totalNeed, remaining: remainingCents / 100, totalTaxEstimate, mode };
+}
+
+/** Eigene Einkünfte mindern den Bruttoanteil der jeweiligen Person. Übersteigen sie ihn, hilft der Überschuss
+ * den anderen im Verhältnis ihrer Restbeträge; die Summe bleibt die beschlossene Nettoentnahme. */
+function creditPersonalIncome(allocations, entries, incomeCents, totalNeedCents) {
+    if (!incomeCents.some(value => value > 0)) return;
+    for (const item of allocations) item.amountCents = Math.max(0, item.amountCents - (incomeCents[entries.indexOf(item.entry)] || 0));
+    let excess = allocations.reduce((sum, item) => sum + item.amountCents, 0) - totalNeedCents;
+    while (excess > 0) {
+        const open = allocations.filter(item => item.amountCents > 0), base = open.reduce((sum, item) => sum + item.amountCents, 0);
+        if (!open.length || base <= 0) break;
+        let taken = 0;
+        for (const item of open) { const cut = Math.min(item.amountCents, Math.floor(excess * item.amountCents / base)); item.amountCents -= cut; taken += cut; }
+        if (taken === 0) { const largest = open.sort((a, b) => b.amountCents - a.amountCents)[0]; largest.amountCents -= Math.min(largest.amountCents, excess); break; }
+        excess -= taken;
+    }
 }
 
 /** Nach Umschichtungen bleibt die Haushaltsauszahlung aus verfügbarer Liquidität

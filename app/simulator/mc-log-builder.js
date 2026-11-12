@@ -1,6 +1,7 @@
 /** @import {SimulatorInputs,SimulationState,SimulationPortfolio,SimulationLog,HistoricalYear,Random,CareMeta,HouseholdContext,LifeLogContext,MonteCarloLifeState,WidowOptions,DeathLogContext,TailRiskOverlay,ReplayAnnualRecord,ReplayHouseholdEvent,YearOutcome,YearSuccess,YearRuin,TechnicalInventory,NumericBuffers,SamplingDiagnostics} from '../../typcheck/rechenkern' */
 import { sumDepot } from './simulator-portfolio.js';
 import { buildCareLogFields } from './simulator-care-log.js';
+import { endCareForDeceased } from './simulator-engine-helpers.js';
 
 /** @param {TailRiskOverlay|null} tailRiskOverlay */
 function buildTailRiskLogFields(tailRiskOverlay = null) {
@@ -213,12 +214,19 @@ export function buildStressReplayLifeLogContext(record, logData = {}) {
         : null;
     if (!event) return null;
     const hasPartner = event.p2Alive !== null && event.p2Alive !== undefined;
+    const careMetaP1 = cloneReplayLogValue(event.careMetaP1);
+    const careMetaP2 = cloneReplayLogValue(event.careMetaP2);
+    // Letzter Tod: wie im Hauptlauf vor der Jahresrechnung beenden, ohne halbe Pflegekosten.
+    if (record.recordType === 'terminal_death') {
+        endCareForDeceased(careMetaP1, false);
+        endCareForDeceased(careMetaP2, false);
+    }
     return {
         hasPartner,
         p1Alive: event.p1Alive === 1 || event.p1Alive === true,
         p2Alive: hasPartner && (event.p2Alive === 1 || event.p2Alive === true),
-        careMetaP1: cloneReplayLogValue(event.careMetaP1),
-        careMetaP2: cloneReplayLogValue(event.careMetaP2),
+        careMetaP1,
+        careMetaP2,
         deathThisYear: logData.SurvivorDeathYear === true
             || (!event.p1Alive && event.careMetaP1?.active === true)
             || (hasPartner && !event.p2Alive && event.careMetaP2?.active === true),

@@ -1,0 +1,35 @@
+{
+  "basis": "36067b92",
+  "before": {
+    "max-erika": {
+      "balance": "9dc6402524b5858e812d34ecac99e289ba67e6e9f89259fde5f3fee28d584eaa",
+      "backtest": "cb55c4cfa1a414086ed5caa7973315f80da6f33466d2c081b55c55d7d9c91a9a",
+      "monteCarlo": "8ded79e9f82645b2697ab3c07ac0acd11b8cce887842cd7d62533af4c49fd140",
+      "overview": "93531860858b7734b6b8efe9f64adfe89cb27c01d9af22fd0a820a90ecada26b"
+    },
+    "renate": {
+      "balance": "5c150cb7fea0c00527b37cbc6ff2efe257ed006b9660ba8a223127aa7014dc16",
+      "backtest": "87eacc461c908aaa5794f95ec0421e54358ff84a5f02b9e893274dc78f3f309f",
+      "monteCarlo": "66f3938a9ae095c5ed269e9a929d8799e0d1f8da317fa9fbbc796d9f7cab1047",
+      "overview": "ec60dc03d3ee4de8381e1cca083724d20f84f65c6954a67fc3bcadab2188e056"
+    }
+  },
+  "after": {
+    "max-erika": {
+      "balance": "9dc6402524b5858e812d34ecac99e289ba67e6e9f89259fde5f3fee28d584eaa",
+      "backtest": "cb55c4cfa1a414086ed5caa7973315f80da6f33466d2c081b55c55d7d9c91a9a",
+      "monteCarlo": "8ded79e9f82645b2697ab3c07ac0acd11b8cce887842cd7d62533af4c49fd140",
+      "overview": "93531860858b7734b6b8efe9f64adfe89cb27c01d9af22fd0a820a90ecada26b"
+    },
+    "renate": {
+      "balance": "5c150cb7fea0c00527b37cbc6ff2efe257ed006b9660ba8a223127aa7014dc16",
+      "backtest": "87eacc461c908aaa5794f95ec0421e54358ff84a5f02b9e893274dc78f3f309f",
+      "monteCarlo": "66f3938a9ae095c5ed269e9a929d8799e0d1f8da317fa9fbbc796d9f7cab1047",
+      "overview": "ec60dc03d3ee4de8381e1cca083724d20f84f65c6954a67fc3bcadab2188e056"
+    }
+  },
+  "reasons": {
+    "max-erika": "ohne Pflegegrad heute: Balance, Backtest, Monte Carlo und Übersicht bytegleich (PFA-4 ändert nur Pfade mit heutiger Pflege, Preismarkierung und Protokollanzeige)",
+    "renate": "ohne Pflegegrad heute: Balance, Backtest, Monte Carlo und Übersicht bytegleich"
+  }
+}

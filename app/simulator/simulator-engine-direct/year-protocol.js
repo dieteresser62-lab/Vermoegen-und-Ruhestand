@@ -24,7 +24,7 @@ export function completeYear(context) {
         careP2, survivorYear, temporaryFlexFactor, inputs, widowBenefits, widowPensionP1, widowPensionP2,
         p1Alive, p2Alive, guardReason, isBadYear, equityPreserved, unmetLiquidity, healthBucketCoverage,
         healthBucketInterest, healthBucketDiagnostics, stressReplayTransactionCapture, regularSaleDiagnostic,
-        payoutFallback, balanceTrace, fixedIncome, executedPurchases
+        payoutFallback, balanceTrace, fixedIncome, executedPurchases, yearNeed
     } = context;
 
     // Verkäufe erst nach der finalen Jahressteuer zusammenfassen.
@@ -144,6 +144,7 @@ export function completeYear(context) {
         householdContext: householdCtx,
         careLogContext: { careMetaP1: careP1, careMetaP2: careP2,
             deathThisYear: survivorYear?.deathThisYear === true, effectiveFlexFactor: temporaryFlexFactor },
+        yearNeed,
         hasPartner: inputs.partner?.aktiv === true,
         widowBenefits,
         widowPensionP1,

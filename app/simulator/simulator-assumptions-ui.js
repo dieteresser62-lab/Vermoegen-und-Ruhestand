@@ -4,6 +4,7 @@ import { refreshDynamicFlexControls } from './simulator-main-dynamic-flex.js';
 import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 import { readPartnerInputs } from './simulator-input-pension.js';
 import { bindSimulatorInputFeedback } from './simulator-input-feedback.js';
+import { careValuesSummaryText } from '../shared/care-price-fields.js';
 
 const bindings = new WeakSet();
 const segmentGroups = new WeakMap();
@@ -150,7 +151,7 @@ export function refreshAssumptionFillStatus(doc = globalThis.document) {
         const amount = Number(/** @type {HTMLInputElement} */ (doc.getElementById('pflegeMaxFloor'))?.value);
         const drift = Number(/** @type {HTMLInputElement} */ (doc.getElementById('pflegeKostenDrift'))?.value);
         const number = value => Number.isFinite(value) ? value.toLocaleString('de-DE') : '—';
-        const text = active ? `${model} · bis ${number(amount)} € pro Jahr · Kostenanstieg Inflation + ${number(drift)} %`
+        const text = active ? `${model} · Deckel zu Hause ${number(amount)} € pro Jahr je Person · Kostenanstieg Inflation + ${number(drift)} %`
             : doc.getElementById('simCareTodaySummary')?.hidden === false
                 ? 'Zufällige Pflegeeintritte ausgeschaltet. Pflegegrad heute wird weiter gerechnet.'
                 : 'Pflegefälle werden nicht gerechnet.';
@@ -158,15 +159,17 @@ export function refreshAssumptionFillStatus(doc = globalThis.document) {
     }
     const careDetailsSummary = doc?.getElementById?.('simCareDetailsSummary');
     if (careDetailsSummary) {
+        // PFA-10/PFA-11: Die Pflegewerte (auch Zuschlag und Flex-Level) stehen in Personen & Vermögen › Pflege; hier bleiben Verlauf und Sterblichkeit.
         const value = id => /** @type {SimulatorControl} */ (doc.getElementById(id))?.value;
         const number = raw => raw?.trim() && Number.isFinite(Number(raw)) ? Number(raw).toLocaleString('de-DE') : '—';
-        const grades = [1, 2, 3, 4, 5].map(grade => `${number(value(`pflegeStufe${grade}Zusatz`))} €`);
-        const forms = [1, 2, 3, 4, 5].map(grade => value(`pflegeStufe${grade}Form`));
-        const form = forms.every(item => item === 'family') ? 'Angehörige'
-            : forms.every(item => item === 'residential') ? 'Heim'
-                : forms.map((item, index) => `${index + 1} ${item === 'family' ? 'Angehörige' : item === 'home-support' ? 'externe Unterstützung' : item === 'residential' ? 'Heim' : '—'}`).join(', ');
-        const text = `Kosten Grad 1–5: ${grades.join(' / ')} pro Jahr${value('pflegeKostenStaffelPreset') === 'amtlich' ? '' : ` · Pflegeform ${form}`} · Drift ${number(value('pflegeKostenDrift'))} %`;
+        const text = `Verlauf ${value('pflegeModellTyp') === 'akut' ? 'akut' : 'chronisch'} · Anstiegsdauer ${number(value('pflegeRampUp'))} Jahre · Sterblichkeit je Grad`;
         if (careDetailsSummary.textContent !== text) careDetailsSummary.textContent = text;
+    }
+    const careValuesText = doc?.getElementById?.('simCareValuesText');
+    if (careValuesText) {
+        let text = 'aus Personen & Vermögen';
+        try { text = careValuesSummaryText(); } catch { /* ungültige Pflegewerte meldet der Speicherpfad */ }
+        if (careValuesText.textContent !== text) careValuesText.textContent = text;
     }
     // Detail-Partnerfelder vor der Zählung an den bestehenden Host angleichen.
     const partnerHost = doc?.getElementById?.('sectionRente2');

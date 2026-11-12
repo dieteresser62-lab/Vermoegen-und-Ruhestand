@@ -1,8 +1,13 @@
+import { installRealClock } from './helpers/fixed-real-clock.mjs';
+import { runStartupPriceRefresh } from '../app/tranches/tranchen-startup-prices.js';
+import { projectOverviewFromRecords } from '../app/overview/overview-model.js';
+import { fetchHistoryChart } from '../app/tranches/tranchen-history-fetch.js';
+import { syntheticDay } from '../app/shared/probelauf-prices.js';
 import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import fs from 'node:fs';
 import { bindOverviewBackupTargets } from '../app/overview/overview-renderer.js';
 import { bindProbelaufUI, renderProbelaufUI, requestProbelaufDate, requestProbelaufEnd } from '../app/shared/probelauf-ui.js';
-import { createNavigationGuard } from '../app/shared/navigation-guard.js';
+import { createNavigationOperationLifecycle, createNavigationGuard } from '../app/shared/navigation-guard.js';
 import { createProbelaufController, PROBELAUF_SESSION_KEYS } from '../app/shared/probelauf-state.js';
 import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { setAppTestDate, getAppTestDate, localCalendarDate } from '../app/shared/app-clock.js';
@@ -303,13 +308,14 @@ for (const earlyClose of [false, true]) {
     assert(text.includes('Rückkehr zum Ausgangsbestand erforderlich') && !text.includes('echte Daten unverändert'), 'Alte Recovery ist vom getrennten Spielbereich unterscheidbar');
 }
 
-// Erststart bedient den produktiven Bereichswechsel ohne Testdatum.
-{
+// Erststart bleibt unabhängig vom Besuchstag beim vollständigen Handbuchbeispiel.
+for (const day of ['2026-11-07', '2027-01-01', '2028-06-15']) {
+    const restoreClock = installRealClock(day);
     const f = await playFixture('tauri');
     const env = documentDouble(); let loaded = 0, reloads = 0, dialogs = 0, finish;
-    const done = new Promise(resolve => finish = resolve), today = localCalendarDate();
+    const done = new Promise(resolve => finish = resolve);
     const c = await f.boot({ reload() { reloads++; }, demoLoader: async testDate => {
-        loaded++; assertEqual(testDate, today, 'Muster wird für den heutigen Stand angelegt');
+        loaded++; assertEqual(testDate, HANDBOOK_MUSTER_DATE, day + ': Muster wird am Handbuchdatum angelegt');
         return createMusterHaushaltRecords(testDate);
     }, notify(controller, error) {
         renderProbelaufUI(env.doc, controller, error);
@@ -324,13 +330,55 @@ for (const earlyClose of [false, true]) {
     assertEqual(reloads, 1, 'Erststart lädt einmal neu');
     assert(f.realBytes() === before, 'Leere echte Begrüßung bleibt bytegleich');
     const active = await f.boot();
-    assertEqual(getAppTestDate(), null, 'Erststart behält echte Uhr und Kursabrufe');
-    assertEqual(active.state.hasDateJump, false, 'Erststart ohne Datumssprung');
+    assertEqual(getAppTestDate(), HANDBOOK_MUSTER_DATE, day + ': Erststart verwendet die feste Fachuhr');
+    assertEqual(active.state.hasDateJump, true, 'Erststart mit Spielkursen');
+    renderProbelaufUI(env.doc, active);
+    assert(env.doc.getElementById('probelaufBandText').textContent.includes('Testdatum 23.10.2026 · Spielkurse'), day + ': Band zeigt Testdatum');
+    const fetchBefore = globalThis.fetch; let requests = 0;
+    globalThis.fetch = () => { requests++; throw new Error('Kein Kursdienst im Test'); };
+    try {
+        const guard = createNavigationGuard();
+        const report = await createNavigationOperationLifecycle({ guard }).run({}, operation => runStartupPriceRefresh({ operation }));
+        assertEqual(report.status, 'complete', day + ': Spielkurse ohne Kursdienst');
+        const records = P.exportAllSync().records;
+        const view = projectOverviewFromRecords({ registry: JSON.parse(records.rs_profiles_v1),
+            activeId: records.rs_current_profile, liveData: records });
+        assertEqual(view.household.assets, 790000, day + ': Gesamtvermögen 790.000 € am Testdatum');
+        const chart = await fetchHistoryChart('VWRL.DE', [syntheticDay('2026-01-01'), syntheticDay(HANDBOOK_MUSTER_DATE)]);
+        assert(chart.closes.length > 0 && view.history.points.length > 0, day + ': Kurs- und Vermögensverlauf gefüllt');
+        assertEqual(requests, 0, day + ': keine Kursnetzanfrage');
+    } finally { globalThis.fetch = fetchBefore; }
+
     assertEqual(active.state.source, 'demo', 'Erststart verwendet Max und Erika');
     assertEqual(JSON.parse(P.getItemSync('rs_profiles_v1')).profiles.muster_a.meta.name, 'Max', 'Musterhaushalt im Spielbereich');
     await active.end(() => true); await f.boot();
     assertEqual(P.getItemSync('rs_profiles_v1'), null, 'Beenden führt zur leeren Begrüßung zurück');
-    P.resetPersistenceForTests(); setAppTestDate(null);
+    P.resetPersistenceForTests(); setAppTestDate(null); restoreClock();
+}
+
+// Alte Beispielbereiche mit echten Kursen bleiben gültig, einschließlich Neustart und Variante.
+{
+    const restoreClock = installRealClock('2026-11-07');
+    const f = await playFixture('tauri');
+    let c = await f.boot();
+    const before = f.realBytes();
+    await c.start(() => ({ source: 'demo', testDate: null }));
+    c = await f.boot();
+    const env = documentDouble();
+    renderProbelaufUI(env.doc, c);
+    assert(env.doc.getElementById('probelaufBandText').textContent.includes('echte Kurse von heute'), 'Altes Beispiel mit null öffnet im bisherigen Kursmodus');
+    await c.restart(() => true, { variantId: 'immobilien' });
+    c = await f.boot();
+    assertEqual(c.state.variantId, 'immobilien', 'Altes Beispiel erlaubt Variantenwechsel');
+    assertEqual(c.state.testDate, null, 'Variantenwechsel erhält alten Kursmodus');
+    await c.restart(() => true);
+    c = await f.boot();
+    assertEqual(c.state.testDate, null, 'Neustart erhält alten Kursmodus');
+    const review = await c.readEndReview();
+    assertEqual(review.transfer.eligible, false, 'Beispiele bleiben unabhängig vom Kursmodus von Übernahme ausgeschlossen');
+    await c.end(() => true); await f.boot();
+    assertEqual(f.realBytes(), before, 'Altes Beispiel beendet sich ohne Änderung echter Bytes');
+    P.resetPersistenceForTests(); setAppTestDate(null); restoreClock();
 }
 
 // Befund 1: identische Renderingmatrix vor und nach der Produktkorrektur.
@@ -427,7 +475,9 @@ for (const source of ['copy', 'max-erika']) for (const startDate of ['2026-10-23
     accept.fire('click'); await Promise.resolve();
     assert(f.dialog().open && !settled, `${source}: kein Start mit Spielkursen und heute`);
     const error = f.nodes.find(n => n.attributes.role === 'alert');
-    assert(!error.hidden && error.textContent === 'Heute gibt es nur echte Kurse. Für Spielkurse bitte ein anderes Testdatum wählen, sonst ‚Echte Kurse von heute‘.', 'Fehler erklärt Spielkurse und echte Kurse');
+    assert(!error.hidden && error.textContent === (source === 'copy'
+        ? 'Heute gibt es nur echte Kurse. Für Spielkurse bitte ein anderes Testdatum wählen, sonst ‚Echte Kurse von heute‘.'
+        : 'Für Spielkurse bitte ein anderes Testdatum als heute wählen.'), 'Fehler nennt eine für die Datenquelle verfügbare Kurswahl');
     input.value = startDate; input.fire('change');
     await drainUntil(() => !accept.disabled, 'Vorschau für gewähltes Testdatum geladen');
     accept.fire('click');
@@ -454,8 +504,8 @@ for (const source of ['copy', 'max-erika']) for (const startDate of ['2026-10-23
     assert(!hint.hidden, 'Nur am Handbuchdatum erscheint gleiche Zahlen wie im Handbuch');
     input.value = '2026-10-22'; input.fire('input'); assert(hint.hidden, 'Manuelle Datumseingabe entfernt Gleichheitsversprechen sofort');
     input.value = HANDBOOK_MUSTER_DATE; input.fire('change'); assert(!hint.hidden, 'Auch manuelle Wahl des Handbuchdatums zeigt den Satz');
-    f.nodes.find(n => n.attributes['aria-label'] === 'Echte Kurse von heute').fire('change');
-    assert(!button.hidden && hint.hidden && button.disabled, 'Echte Kurse verbergen den Satz auch bei gespeichertem Handbuchdatum');
+    const today = f.nodes.find(n => n.attributes['aria-label'] === 'Echte Kurse von heute');
+    assert(today.disabled && today.parentNode.hidden && !button.disabled && !hint.hidden, 'Beispiel behält Spielkurse und Handbuchhinweis; echte Kurse sind verborgen');
     f.nodes.find(n => n.dataset.probelaufSource === 'copy').fire('click');
     assert(button.hidden && hint.hidden, 'Kartenwechsel zurück zur Kopie verbirgt Handbuchknopf und Hinweis');
     f.nodes.find(n => n.attributes['aria-label'] === 'Spielkurse').fire('change');
@@ -487,9 +537,7 @@ for (const household of MUSTER_HAUSHALTE) {
     const brief = f.nodes.find(n => n.className === 'household-plan-group probelauf-steckbrief').innerHTML;
     assert(brief.includes(household.title) && brief.includes('Beobachte:') && brief.includes('Unverändert neu starten:'), `${household.id}: gewählter Steckbrief sichtbar`);
     assert(game.checked && !input.disabled && input.value === '2026-10-23', 'Beispiel wählt gestern und Spielkurse vor');
-    today.fire('change'); assert(input.disabled, 'Echte Kurse bleiben für Beispiele wählbar');
-    await drainUntil(() => !accept.disabled, 'Steckbrief für echte Kurse geladen');
-    game.fire('change'); await drainUntil(() => !accept.disabled, 'Spielkurse wieder wählbar');
+    assert(today.disabled && today.parentNode.hidden && !today.checked, 'Beispiel bietet ausschließlich Spielkurse');
     accept.fire('click');
     assertEqual(JSON.stringify(await pending), JSON.stringify({ source: 'demo', householdId: household.id, variantId: 'grund', testDate: '2026-10-23' }), 'Kartenwahl liefert kompatible Quelle, Haushalt und Testdatum');
 }
@@ -596,6 +644,20 @@ for (const page of ['Ausgaben.html', 'index.html', 'Balance.html', 'Simulator.ht
     assert(/\.probelauf-start-dialog\s*\{[^}]*max-height: calc\(100dvh - 2rem\)/.test(css), 'Dialoghöhe folgt dem Fenster');
     f.nodes.find(n => n.textContent === 'Abbrechen').fire('click'); await pending;
 }
+// Die Kurswahl gehört zur Kopie; Beispielhaushalte bieten ausschließlich Spielkurse.
+{
+    const f = documentDouble();
+    const pending = requestProbelaufDate({ doc: f.doc, testDate: '2026-11-07', starting: true, demoAvailable: true });
+    const today = f.nodes.find(n => n.attributes['aria-label'] === 'Echte Kurse von heute');
+    assert(!today.disabled && !today.parentNode.hidden, 'Kopie bietet echte Kurse');
+    for (const household of MUSTER_HAUSHALTE) {
+        f.nodes.find(n => n.dataset.probelaufSource === household.id).fire('click');
+        assert(today.disabled && today.parentNode.hidden, household.id + ': echte Kurse weder angeboten noch fokussierbar');
+    }
+    f.nodes.find(n => n.dataset.probelaufSource === 'copy').fire('click');
+    assert(!today.disabled && !today.parentNode.hidden && today.checked, 'Rückkehr zur Kopie stellt echte Kurse bereit');
+    f.nodes.find(n => n.textContent === 'Abbrechen').fire('click'); await pending;
+}
 // Varianten sind mit Knöpfen wählbar und werden an den Controller weitergegeben.
 {
     const f = documentDouble();
@@ -606,7 +668,7 @@ for (const page of ['Ausgaben.html', 'index.html', 'Balance.html', 'Simulator.ht
     f.nodes.findLast(n => n.dataset.musterVariant === 'haus-pg3').fire('click');
     await drainUntil(() => !accept.disabled, 'Pflegevariante geladen');
     const html = f.nodes.find(n => n.className === 'household-plan-group probelauf-steckbrief').innerHTML;
-    assert(html.includes('54.000 €') && html.includes('18.000 €') && html.includes('Anders als im Grundfall:'), 'Variantensteckbrief folgt den geladenen Werten');
+    assert(html.includes('36.000 € ohne Pflege') && html.includes('18.000 €') && html.includes('Anders als im Grundfall:'), 'Variantensteckbrief folgt den geladenen Werten');
     accept.fire('click');
     assertEqual((await pending).variantId, 'haus-pg3', 'Dialog übergibt gewählte Variante');
     const c = { runtime: { canStart: true, canContinue: true }, state: { version: 2, phase: 'active', source: 'demo', householdId: 'helga-werner', variantId: 'haus-pg3', testDate: '2026-10-23' } };

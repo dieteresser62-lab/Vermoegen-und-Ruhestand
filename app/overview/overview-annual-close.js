@@ -131,7 +131,7 @@ export function bindOverviewAnnualClose({ doc, win, getModel, refresh, getImport
                         // Eine im Dialog gewählte Lesart des Hochs gilt auch für die Wiederaufnahme (FR-71);
                         // passt sie nicht zum Kurs, bricht computeAnnualPlanUpdate ab statt still umzuschalten.
                         confirmedPreparation = { manualPrice: options.resume.price, preparedMarketData: { inflation, cape },
-                            adoptedPlanPatch: options.resume.adoptedPlanPatch, careValues: options.resume.careValues,
+                            adoptedPlanPatch: options.resume.adoptedPlanPatch, careValues: options.resume.careValues, careToday: options.resume.careToday,
                             yearHigh: options.resume.yearHigh,
                             cash: options.resume.cash ?? { people, values: Object.fromEntries(people.map(person => [person.id, person.value])) } };
                     } finally { lease.unregister(); }

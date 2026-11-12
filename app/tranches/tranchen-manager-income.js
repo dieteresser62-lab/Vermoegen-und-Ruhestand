@@ -150,7 +150,7 @@ export function applyPersonIncomeToDom(entries, doc, force = false, newEntryId =
         if (entry.art) {
             add('art', 'Art', [['sonstige', 'Sonstige Einkünfte'], ['rente', 'Gesetzliche Rente']]);
             add('bezeichnung', 'Bezeichnung'); add('betragMonat', 'Betrag pro Monat'); add('ab', 'ab'); add('bis', 'bis');
-            add('anpassung', 'Anpassung', [['keine', 'keine'], ['inflation', 'Inflation'], ['lohn', 'wie Löhne']]);
+            add('anpassung', 'Anpassung', [['keine', 'keine'], ['inflation', 'wie Inflation'], ['lohn', 'wie Löhne']]);
         } else { add('monat', 'Monat/Jahr'); add('betrag', 'Betrag'); add('bezeichnung', 'Bezeichnung'); }
         const remove = doc.createElement('button'); remove.type = 'button'; remove.className = 'ds-button ds-button-secondary';
         remove.textContent = '×'; remove.setAttribute('aria-label', `Einkünfte ${index + 1} entfernen`);

@@ -4,7 +4,7 @@ import { EngineAPI } from '../../engine/index.mjs';
 import { STRATEGY_OPTIONS } from '../../types/strategy-options.js';
 import { formatDisplayNumber, formatDisplayFixed } from '../shared/designsystem-number-format.js';
 import { formatDisplayPercentValue, formatDisplayPercentRatio } from '../shared/shared-formatting.js';
-import { protocolAnnualTotals } from './protocol-cashflows.js';
+import { protocolAnnualTotals, CARE_COLUMN_EXPLANATIONS } from './protocol-cashflows.js';
 import { translateBufferActionText } from '../shared/transaction-display-text.js';
 
 export const PROTOCOL_GROUPS = Object.freeze({ year: 'Jahr / Alter', persons: 'Personen',
@@ -165,13 +165,13 @@ const DEFINITIONS = [
 const UNIT = Object.freeze({ money: 'EUR', percent: 'Prozentpunkte', percent0: 'Prozentpunkte',
     ratio: 'Ratio', years: 'Monate → Jahre', months: 'Monate', integer: 'Anzahl', decimal: 'Verhältnis',
     text: 'Text', boolean: 'Wahrheitswert', alive: 'Lebensstatus', grade: 'Pflegegrad' });
-const EXPLANATIONS = Object.freeze({
+const EXPLANATIONS = Object.freeze({ ...CARE_COLUMN_EXPLANATIONS,
     year: 'Kalenderjahr und Alter aus dem gerechneten Lauf; beim Monte Carlo zusätzlich das Simulationsjahr.',
     market: 'Marktregime dieses Jahres; das historische Samplingjahr ist kein Kalenderjahr.',
-    withdrawal: 'Entnahme aus dem Vermögen für Grundbedarf und Flex; geplante Ausgaben stehen in eigener Spalte',
-    'jahresentnahme-real': 'Entnahme aus dem Vermögen für Grundbedarf und Flex; geplante Ausgaben stehen in eigener Spalte',
+    withdrawal: 'Entnahme aus dem Vermögen für Grundbedarf und Flex; feste geplante Ausgaben zählen zum Grundbedarf, einmalige stehen in eigener Spalte',
+    'jahresentnahme-real': 'Entnahme aus dem Vermögen für Grundbedarf und Flex; feste geplante Ausgaben zählen zum Grundbedarf, einmalige stehen in eigener Spalte',
     'income-total': 'Renten nach Hinterbliebenen-Anrechnung plus sonstige und einmalige Einkünfte in nominalen Euro. Das ⓘ zeigt die Jahresposten; davon angelegt zählt nicht zusätzlich zur Summe.',
-    'expense-total': 'Effektiver Grundbedarf einschließlich Pflege-Zusatz plus tatsächlich erfüllter Haushalts-Flex und geplante Ausgaben in nominalen Euro. Das ⓘ zeigt die Posten und darunter getrennt, wie viel davon aus dem Vermögen bezahlt wurde: laufende Entnahme plus geplante Ausgaben.',
+    'expense-total': 'Jahresbedarf mit Pflege (zu Hause Zusatz, im Heim Heimkosten und eigene Ausgaben statt des Grundbedarfsanteils) plus tatsächlich erfüllter Haushalts-Flex und einmalige geplante Ausgaben in nominalen Euro; feste geplante Ausgaben stecken im Grundbedarf. Das ⓘ zeigt die Posten und darunter getrennt, wie viel davon aus dem Vermögen bezahlt wurde: laufende Entnahme plus einmalige geplante Ausgaben.',
     'quoteendpct': 'Vorläufige Entnahme auf Basis der Vorjahres-Flexrate vor Transaktion und Auszahlung; Depot ohne Liquidität und Pflegebucket als Nenner. Prozentpunkte, keine Aktienquote.',
     runway: 'Liquiditätsreichweite nach Transaktion und vor Entnahme: vorhandene Monate geteilt durch zwölf.',
     flexratepct: 'Anteil des gewünschten Flex-Betrags, der ausgezahlt wurde. Prozentpunkte; unter 100 % bedeutet Kürzung.',
@@ -422,7 +422,7 @@ export function readProtocolValue(column, entry, options = {}) {
     if (column.incomeProfileId !== undefined) return row.sonstige_einkuenfte_personen?.find(person => person.profileId === column.incomeProfileId)?.amount ?? 0;
     const flags = protocolRowFlags(entry, source);
     if (column.id === 'year-status') return flags.ruin ? 'Ruin' : flags.cut ? 'Kürzung' : 'Ohne Kürzung';
-    if (column.id === 'household-care') return [1, 2].filter(p => row[`CareP${p}_Active`]).map(p => `Person ${p}${row[`CareP${p}_Grade`] != null ? ` · Pflegegrad ${row[`CareP${p}_Grade`]}` : ''}`).join(' / ') || (flags.care ? 'Pflege aktiv' : '—');
+    if (column.id === 'household-care') return [1, 2].filter(p => row[`CareP${p}_Active`]).map(p => `Person ${p}${row[`CareP${p}_Grade`] != null ? ` · Pflegegrad ${row[`CareP${p}_Grade`]}` : ''}${row[`CareP${p}_Form`] === 'residential' ? ' · im Heim' : ''}`).join(' / ') || (flags.care ? 'Pflege aktiv' : '—');
     if (column.id === 'runway') return source === 'backtest' && Object.hasOwn(row, 'runway_after_transaction_before_payout_months')
         ? row.runway_after_transaction_before_payout_months : row.runway_after_transaction_before_payout_months ?? entry?.runway_after_transaction_before_payout_months;
     if (h in tracePhases) return row.balance_trace?.find(item => item?.phase === tracePhases[h])?.total;

@@ -37,9 +37,12 @@ for (const id of ['overviewPlanComparison', 'overviewPlanStatus', 'overviewTitle
 const renderer = new SummaryRenderer({ outputs: { balanceAnnualAction: host } });
 const texts = () => dialogElements(host).map(node => node.textContent).join(' ').replaceAll('\u00a0', ' ');
 renderer.renderAnnualAction(origin);
-assert(texts().includes('1.234,00 € brutto · 234,00 € Steuer') && texts().includes('1.000,00 €') && texts().includes('Gold: 600,00 €') && texts().includes('Liquidität (Tagesgeld bis zum Ziel, Rest Geldmarkt): 400,00 €'), 'Jahresblock zeigt unveränderte Quellen, Verwendungen und Steuer');
-assert(!host.querySelector('[data-annual-action-details]').open && host.querySelector('[data-annual-action-sales]'), 'Balance-Jahresblock zeigt ganze Euro offen und centgenaue Verkaufsangaben in Details');
-assert(!texts().includes('Heutige materielle Vorschau') && texts().includes('Beschlossener Verkauf'), 'Jahresblock ersetzt den Beschluss nicht durch Vorschau oder recommended');
+// WT-1 (FR-77): Die Karte „Was zu tun ist“ zeigt den Beleg mit Verb, Netto, Tabelle und Verwendung; Brutto und Steuer stehen im Dialog.
+assert(texts().includes('Beschlossen im Jahresabschluss am 02.01.2026.') && texts().includes('Aktien verkaufen') && texts().includes('1.000 €')
+    && texts().includes('In Gold') && texts().includes('600 €') && texts().includes('Aufs Tagesgeld bis zum Tagesgeldziel, der Rest in den Geldmarkt') && texts().includes('400 €'),
+    'Plan zeigt Verb, Netto-Betrag und unveränderte Verwendungen aus dem Beleg');
+assert(renderer.planDetails.text.includes('Summe | 1.234,00 € | 234,00 € | 1.000,00 €'), 'Details & Drucken zeigt Brutto, Steuer und Netto des Belegs centgenau');
+assert(!texts().includes('festgeschrieben') && !texts().includes('Heutige materielle Vorschau'), 'Karte ohne Fachwort, Beschluss nicht durch Vorschau ersetzt');
 // BA-1b: Die kompakte Karte und die exakten Bankangaben stammen aus demselben Beleg.
 const detailed = structuredClone(origin);
 detailed.confirmed.action.title += ' · Beispieldaten (Spielbereich)';
@@ -47,18 +50,15 @@ detailed.confirmed.action.quellen[0] = { ...detailed.confirmed.action.quellen[0]
     name: 'Muster Aktien-ETF', isin: 'DE000TEST123', netto: 1000.49 };
 const detailedBytes = JSON.stringify(detailed);
 renderer.renderAnnualAction(detailed);
-const exact = host.querySelector('[data-annual-action-details]');
-const visible = dialogElements(host).filter(node => !exact.contains(node)).map(node => node.textContent).join(' ').replaceAll('\u00a0', ' ');
-const exactText = dialogElements(exact).map(node => node.textContent).join(' ').replaceAll('\u00a0', ' ');
-assert(visible.includes('Max · Muster Aktien-ETF verkaufen') && visible.includes('1.000 €'), 'Kompakte Verkaufszeile nennt Person, Wertpapier und ganze Euro');
-assert(!visible.includes('DE000TEST123') && !visible.includes('1.000,49') && !visible.includes('Käufe / Verwendung'), 'ISIN, Cent und Verwendungsliste sind geschlossen verborgen');
-assert(exactText.includes('DE000TEST123') && exactText.includes('1.000,49 €') && exactText.includes('Käufe / Verwendung'), 'Details erhalten ISIN, Cent-Netto und sämtliche Verwendungen');
-assertEqual(exact.querySelector('summary').textContent, 'Details', 'Vorhandene Details-Klappe trägt die freigegebene Beschriftung');
-assert(visible.includes('Spielbereich · Beispieldaten') && visible.includes('Die Umsetzung entscheidest du.'), 'Beispielhinweis und Entscheidung bleiben sichtbar');
-assertEqual(host.querySelector('[data-annual-action-result]').children.filter(node => node.tag === 'h3').length, 1, 'Karte hat eine Belegüberschrift');
+assert(texts().includes('Max') && texts().includes('Muster Aktien-ETF') && texts().includes('1.000 €'), 'Planzeile nennt Person, Wertpapier und ganze Euro');
+assert(!texts().includes('DE000TEST123') && !texts().includes('1.000,49'), 'ISIN und Cent stehen nicht auf der Karte');
+assert(renderer.planDetails.text.includes('Max | Muster Aktien-ETF · DE000TEST123'), 'Details & Drucken nennt Person, Wertpapier und ISIN');
+// WT-1b (Gutachten WT1-FABLE Befund 4): die in WT-1 gestrichene Prüfung wieder aufgenommen.
+assert(renderer.planDetails.text.includes('DE000TEST123') && renderer.planDetails.text.includes('1.000,49 €'), 'Details erhalten ISIN und Cent-Netto');
+assert(texts().includes('Spielbereich · Beispieldaten') && texts().includes('Die App bucht nichts'), 'Beispielhinweis und Entscheidung bleiben sichtbar');
 assertEqual(JSON.stringify(detailed), detailedBytes, 'Kompaktansicht und Details verändern den Beleg nicht');
 renderer.renderAnnualAction(origin);
-assertEqual(host.querySelectorAll('[data-annual-action-result]').length, 1, 'Wiederholtes Rendern erzeugt genau einen Jahresblock');
+assertEqual(host.querySelectorAll('[data-todo-plan]').length, 1, 'Wiederholtes Rendern erzeugt genau einen Plan');
 origin.confirmed.action.steuer = 9999;
 assertEqual(adopted.action.steuer, 234, 'Herkunftsprojektion liefert eine unabhängige Ansichtskopie');
 assertEqual(view.confirmedAction.action.steuer, 234, 'Auch der Vergleich bleibt unverändert');
@@ -76,7 +76,7 @@ for (const change of [{ year: 2027 }, { scope: planScope('single', ['out']) },
     { comparison: { ...view, recordStatus: 'missing' } }, { comparison: { ...view, recordStatus: 'invalid', notice: 'Jahresbeleg beschädigt' } }]) {
     const missing = projectBalanceActionOrigin({ ...options, ...change });
     renderer.renderAnnualAction(missing);
-    assert(!missing.confirmed && !host.querySelector('[data-annual-action-result]'), 'Falsches Jahr, Fremdprofil und fehlender/ungültiger Beleg leeren den Jahresblock');
+    assert(!missing.confirmed && !host.querySelector('[data-todo-plan]') && texts().includes('Noch keine Handlungsanweisung aus dem Jahresabschluss.'), 'Falsches Jahr, Fremdprofil und fehlender/ungültiger Beleg leeren den Jahresblock');
     assert(!texts().includes('1.234') && !texts().includes('festgeschrieben im'), 'Kein Fremdbeschluss und keine falsche Verbindlichkeit bleiben stehen');
     if (change.comparison?.recordStatus === 'invalid') assert(host.querySelector('[role="alert"]'), 'Beschädigter Beleg bleibt als Datenproblem sichtbar');
 }
@@ -86,7 +86,7 @@ assert(alias.confirmed, 'Der bestehende Einpersonenhaushaltsalias bleibt lesbar'
 assert(!projectBalanceActionOrigin({ ...options, scope: planScope('single', ['out']) }).confirmed, 'Eine Außenperson erhält keinen Haushaltsbeschluss');
 const noneView = structuredClone(view); noneView.confirmedAction.action = { type: 'NONE', title: 'Keine Transaktion', steuer: 0 };
 renderer.renderAnnualAction(projectBalanceActionOrigin({ ...options, comparison: noneView }));
-assert(texts().includes('Nichts tun – kein Handlungsbedarf') && texts().includes('Steuer gesamt: 0,00 €'), 'Beschlossenes Nichtstun bleibt eine vollständige Jahresanzeige');
+assert(texts().includes('Nichts tun') && texts().includes('kein Handlungsbedarf'), 'Beschlossenes Nichtstun bleibt eine vollständige Jahresanzeige');
 
 // Normaler Einzelumfang, nachdem die Haushaltsauswahl aufgehoben wurde.
 const outsideRegistry = structuredClone(f.registry);
@@ -94,10 +94,10 @@ for (const profile of Object.values(outsideRegistry.profiles)) profile.meta.belo
 const outside = projectOverview({ registry: outsideRegistry, activeId: 'out', liveData: f.records, now: f.now, balanceSingleFallback: true });
 renderer.renderAnnualAction(outside.actionOrigin);
 assertEqual(outside.scope.key, planScope('single', ['out']).key, 'Profilwechsel lädt den tatsächlichen Einzelumfang');
-assert(!outside.actionOrigin.confirmed && !texts().includes('Beschlossener Verkauf'), 'Außenperson ohne eigenen Beleg zeigt keine fremde Jahresaktion');
+assert(!outside.actionOrigin.confirmed && !texts().includes('Aktien verkaufen'), 'Außenperson ohne eigenen Beleg zeigt keine fremde Jahresaktion');
 const reloaded = projectOverview({ registry: structuredClone(f.registry), activeId: 'a', liveData: structuredClone(f.records), now: f.now });
 renderer.renderAnnualAction(reloaded.actionOrigin);
-assert(texts().includes('Beschlossener Verkauf') && host.querySelectorAll('[data-annual-action-result]').length === 1, 'Reload und Rückkehr zum Haushalt zeigen genau den passenden Jahresbeschluss');
+assert(texts().includes('Aktien verkaufen') && host.querySelectorAll('[data-todo-plan]').length === 1, 'Reload und Rückkehr zum Haushalt zeigen genau den passenden Jahresbeschluss');
 
 for (const preview of [null, '{broken', JSON.stringify({ version: 1, entries: {} })]) {
     const liveData = { ...f.records, [OVERVIEW_SUMMARY_KEY]: preview };

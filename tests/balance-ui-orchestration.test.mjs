@@ -683,14 +683,20 @@ async function runBalanceUiOrchestrationTests() {
             });
         }
         assertEqual(updates, 0, 'Reiterbedienung ohne Berechnungs- oder Speicherauftrag');
-        assertEqual(popupControls.openActionDetails.listeners.click.length, 1, 'Detailsauslöser einmal gebunden');
-        popupControls.openActionDetails.listeners.click[0]({ currentTarget: popupControls.openActionDetails });
+        // WT-1: Der Planknopf entsteht mit der Karte neu; der Binder hört deshalb einmal am Dokument auf [data-action-details].
+        popupControls.openActionDetails.dataset.actionDetails = 'preview';
+        popupControls.openActionDetails.closest = selector => selector === '[data-action-details]' ? popupControls.openActionDetails : null;
+        const detailsClicks = (documentRef.listeners.click || []);
+        const openDetails = () => detailsClicks.forEach(handler => handler({ target: popupControls.openActionDetails }));
+        openDetails(); const openCount = actionDialog.open ? 1 : 0; actionDialog.open = false;
+        assertEqual(openCount, 1, 'Detailsauslöser einmal gebunden');
+        openDetails();
         assert(actionDialog.open && documentRef.activeElement === popupControls.closeActionDetails, 'Dialog öffnet modal und fokussiert Schließen');
         popupControls.printAction.click();
         assertEqual(printed, 1, 'Popupdruck nutzt denselben vollständigen Plan');
         popupControls.closeActionDetails.click();
         assert(!actionDialog.open && documentRef.activeElement === popupControls.openActionDetails, 'Schließen führt zum Detailsauslöser zurück');
-        popupControls.openActionDetails.listeners.click[0]({ currentTarget: popupControls.openActionDetails });
+        openDetails();
         assert(actionDialog.open, 'Details lassen sich erneut öffnen');
         actionDialog.listeners.click[0]({ target: actionDialog, clientX: 10, clientY: 10 });
         assert(!actionDialog.open && documentRef.activeElement === popupControls.openActionDetails, 'Außenklick führt zum Detailsauslöser zurück');

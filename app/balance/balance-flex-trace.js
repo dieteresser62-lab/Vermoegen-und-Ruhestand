@@ -9,6 +9,15 @@ const labels = {
 };
 const near = (a, b) => Math.abs(a - b) < 1e-7;
 
+/** S7/GU-1b: Monatsbetrag, um den die Rundung der Auszahlung (`quantization`) die Entnahme gesenkt hat, wenn im Engine-Trace
+ * sonst kein Schritt gegriffen hat; sonst null. Die Aufrundung der Planwerte steckt schon im Startwert des Trace.
+ * @param {any} trace @returns {number|null} */
+function roundingOnlyCut(trace) {
+    const applied = Array.isArray(trace) ? trace.filter(entry => entry?.gegriffen) : [];
+    if (!applied.length || applied.some(entry => entry.schritt !== 'quantization' || !Number.isFinite(entry.monatswirkungEur))) return null;
+    return Math.max(0, -applied.reduce((sum, entry) => sum + entry.monatswirkungEur, 0));
+}
+
 /** @param {import('../../typcheck/balance-ui.js').Ui} [ui] @returns {import('../../typcheck/balance-ui.js').FlexTrace} */
 export function projectBalanceFlexTrace(ui = {}) {
     const input = ui.input || {}, spending = ui.spending || {};
@@ -17,7 +26,12 @@ export function projectBalanceFlexTrace(ui = {}) {
     const grossNeed = finite(input.floorBedarf) && finite(input.flexBedarf)
         ? (input.floorBedarf + input.flexBedarf) / 12 : null;
     const valid = budget !== null && grossNeed !== null && income >= 0 && withdrawal >= 0 && grossNeed >= 0;
-    const cut = valid ? near(grossNeed, budget) ? 0 : Math.max(0, grossNeed - budget) : null;
+    const gap = valid ? near(grossNeed, budget) ? 0 : Math.max(0, grossNeed - budget) : null;
+    // S7/GU-1b: Rundung ist nie eine Kürzung. Entsteht der ganze Abstand zum Plan nur durch Rundungsschritte, gibt es keine
+    // Warnung, in jedem Jahr und ohne Projektion. Greift ein anderer Schritt, gilt der volle Abstand zum Plan.
+    const rounding = gap > 0 ? roundingOnlyCut(spending.flexTrace) : null;
+    const roundingOnly = rounding !== null && gap <= rounding + 0.005;
+    const cut = roundingOnly ? 0 : gap;
     // Haushalts-Flex umfasst auch den Rentenüberschuss über den Grundbedarf.
     // Der Engine-Trace enthält dagegen nur den aus Vermögen finanzierten Flex.
     const householdFlex = grossNeed !== null && finite(input.floorBedarf)
@@ -25,7 +39,7 @@ export function projectBalanceFlexTrace(ui = {}) {
     const financedHouseholdFlex = valid && finite(input.floorBedarf)
         ? Math.max(0, budget - input.floorBedarf / 12) : null;
     const householdFlexRate = householdFlex > 0 && financedHouseholdFlex !== null
-        ? financedHouseholdFlex / householdFlex * 100 : null;
+        ? roundingOnly ? 100 : financedHouseholdFlex / householdFlex * 100 : null;
     const netFloor = finite(input.floorBedarf) && finite(income)
         ? Math.max(0, input.floorBedarf / 12 - income) : null;
     const result = /** @type {import('../../typcheck/balance-ui.js').FlexTrace} */ ({ income, withdrawal, budget, grossNeed, cut, householdFlex,

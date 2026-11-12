@@ -22,6 +22,9 @@ export function helgaWernerBacktest({ onEngineResult } = {}) {
             depot_tranchen: JSON.stringify(normalizeTrancheCollection(JSON.parse(profile.data.depot_tranchen), { mode: 'persisted' }))
         }, { referenceYear: 2026, planValues: plan }) }));
     const inputs = historicalSurvivorInput(validateSimulatorInputs(combineSimulatorProfiles(profiles, profiles[0].profileId, { planValues: plan }).combined));
+    // GU-1 (FR-74): Beispiele passen die Rente seit GU-1 „wie Inflation“ an. Die historische Hashprobe behält die
+    // damalige Beispielwahl „wie Löhne“ als explizite Eingabe; die neue Vorgabe prüft gu-1-sollfaelle.
+    Object.assign(inputs, { rentAdjMode: 'wage', renteIndexierungsart: 'wage' });
     // Historische Hashprobe ohne Pflege: die damaligen Reader-Vorgaben als
     // explizite Eingaben bewahren. FR-39 ändert diese Metadaten, keine Jahreszeile.
     for (const config of Object.values(inputs.pflegeGradeConfigs)) {

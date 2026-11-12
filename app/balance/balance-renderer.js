@@ -20,6 +20,8 @@ import { ActionRenderer } from './balance-renderer-action.js';
 import { DiagnosisRenderer } from './balance-renderer-diagnosis.js';
 import { displayDiagnosisText } from './balance-diagnosis-transaction.js';
 import { summarizeBalanceAction, summarizeThreeBucketAction, threeBucketActionTrades } from './balance-action-summary.js';
+import { currentYearActionSource, recalculatedActionSource } from './balance-reserves.js';
+import { registeredPlanTrial } from '../shared/plan-trial.js';
 
 // Module-level references
 let dom = null;
@@ -114,7 +116,11 @@ export function initUIRenderer(domRefs, storageManager) {
  */
 export const UIRenderer = {
     getActionSummary() { return currentActionSummary; },
-    getActionCopyText() { return actionRenderer?.getActionCopyText() || ''; },
+    /** Kopiertext des offenen Dialogs: im Planmodus der Beleg (FR-77), sonst die Vorschau. */
+    getActionCopyText() {
+        const mode = globalThis.document?.getElementById?.('actionDetailsDialog')?.dataset?.actionDetailsMode;
+        return mode === 'plan' ? summaryRenderer?.planDetails?.text || '' : actionRenderer?.getActionCopyText() || '';
+    },
     renderContext(input) {
         summaryRenderer?.renderContext(input);
     },
@@ -142,16 +148,34 @@ export const UIRenderer = {
         let entries = actionRenderer.executionEntries?.length ? actionRenderer.executionEntries
             : actionRenderer.profileActionResults || (actionRenderer.singleExecutionEntry ? [actionRenderer.singleExecutionEntry] : []);
         diagnosisActionSummary = currentActionSummary;
-        if (ui.currentYear) {
+        // S6: Steht eine festgeschriebene Handlungsanweisung des Jahres auf der Seite, rechnen Reserven „nach
+        // Umsetzung“ und Diagnose mit ihrem offenen Rest, nicht mit einer Neuberechnung zu heutigen Kursen.
+        // Im Planversuch rechnet die Karte wie vor GU-1 mit der Neuberechnung des Versuchs.
+        const trial = registeredPlanTrial(globalThis.document)?.read?.().active === true;
+        const confirmed = !trial && summaryRenderer.actionOrigin?.confirmed?.action ? summaryRenderer.actionOrigin.confirmed : null;
+        let reserveOptions = {};
+        if (ui.currentYear || confirmed) {
             // Dieselbe Aktionsaufbereitung ohne DOM-Schreibzugriff für Diagnose und laufende Reserven.
-            const planRenderer = new ActionRenderer({});
-            entries = planRenderer.prepareExecutionEntries(currentYear.profileActionResults || [{ action: currentYear.action,
-                input: currentYear.input, spending: currentYear.spending, targetLiquidity: currentYear.zielLiquiditaet }], currentYear.zielLiquiditaet);
-            const base = summarizeBalanceAction(currentYear.action, currentYear.action, entries);
+            const prepare = source => {
+                const prepared = new ActionRenderer({}).prepareExecutionEntries(source.entries, currentYear.zielLiquiditaet);
+                return { source, prepared, base: summarizeBalanceAction(source.action, source.action, prepared) };
+            };
+            let result;
+            // WT-1: Wirft die Aufbereitung des Belegs (etwa weil die Liquidität nach einem Kauf nicht mehr reicht),
+            // rechnen Karte und Diagnose mit der Neuberechnung weiter. Die Seite bricht nie ab.
+            try { result = prepare(currentYearActionSource(currentYear, confirmed)); }
+            catch (error) {
+                if (!confirmed) throw error;
+                console.warn('Jahresbeleg nicht auf heutige Bestände anwendbar; Reserven rechnen neu:', error);
+                result = prepare(recalculatedActionSource(currentYear));
+            }
+            entries = result.prepared;
+            reserveOptions = { targetEntries: result.source.targetEntries, settled: result.source.settled, creditPendingNet: result.source.creditPendingNet };
             diagnosisActionSummary = currentYear.input?.decumulation?.mode === '3_bucket_jilge'
-                ? summarizeThreeBucketAction(threeBucketActionTrades(entries), base) : base;
+                ? summarizeThreeBucketAction(threeBucketActionTrades(entries), result.base) : result.base;
         }
-        summaryRenderer.renderReserves(currentYear, entries);
+        summaryRenderer.renderReserves(currentYear, entries, reserveOptions);
+        summaryRenderer.renderCashRefill(currentYear, { trial });
     },
 
     /**

@@ -1,11 +1,20 @@
-import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
+import { readLE1References } from './helpers/le-1-expectations.mjs';
+import { withPreviousRunEvidence } from './helpers/le-1b-expectations.mjs';
+const readQSCReferences = value => readPFA1References(beforePFA1QSCReferences(value));
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
+import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readHE4References = value => readPFA1References(beforePFA1References(value));
+import { readEV1bReferences as readBeforeHE2References } from './helpers/ev-1b-expectations.mjs';
+import { readHE2References } from './helpers/he-2-expectations.mjs';
+import { readHE4References as beforePFA1References } from './helpers/he-4-expectations.mjs';
+const readEV1bReferences = value => readHE4References(readHE2References(readBeforeHE2References(value)));
 const readMD2References = value => readEV1bReferences(readBeforeEV1bReferences(value));
 import { readMD2References as readBeforeEV1bReferences } from './helpers/md-2-expectations.mjs';
 import { readZG1References as readBeforeMD2References } from './helpers/zg-1-expectations.mjs';
 const readZG1References = value => readMD2References(readBeforeMD2References(value));
 import { readEV1References as readBeforeZG1References } from './helpers/ev-1-expectations.mjs';
 const readEV1References = value => readZG1References(readBeforeZG1References(value));
-import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
+import { readQSCReferences as beforePFA1QSCReferences } from './helpers/qs-c-expectations.mjs';
 import { readVF2BReferences as readBeforePA1References } from './helpers/vf-2b-expectations.mjs';
 import { readPA1References } from './helpers/pa-1-expectations.mjs';
 const readVF2BReferences = value => readQSCReferences(readPA1References(readBeforePA1References(value)));
@@ -45,7 +54,7 @@ const noDraw = () => { throw new Error('Kein Eintritt und kein Fortschritt in Ja
     assertEqual(care.startAge, 60, 'Startalter ist das heutige Alter, auch unter 65');
     updateCareMeta(care, inputs, 60, year, noDraw, initMcRunState(inputs), 0);
     assertEqual(care.grade, 2, 'Jahr 1 bleibt im heutigen Grad');
-    assertClose(care.zusatzFloorZiel, 0, 1e-8, 'Heutiger Grad: keine Zusatzkosten, auch bei Regionalfaktor');
+    assertClose(care.zusatzFloorZiel, 13200, 1e-8, 'FR-73 heutiger Grad: voller Staffelwert mit Regionalfaktor');
     assertEqual(care.flexFactor, 1, 'PG2 erhält nach FR-39 den vollen Flex');
     assertEqual(computeCareMortalityMultiplier(care), 2, 'Sterblichkeitsfaktor gilt ab Jahr 1');
     const trigger = evaluateHealthBucketTrigger({ inputs: { ...inputs,
@@ -54,12 +63,12 @@ const noDraw = () => { throw new Error('Kein Eintritt und kein Fortschritt in Ja
     assertEqual(trigger.triggered, true, 'Heutiger Grad löst die Pflegereserve ab Jahr 1 wie ein gezogener Eintritt aus');
     updateCareMeta(care, inputs, 61, year, () => .999, { cumulativeInflationFactor: 1.02, baseFloor: 24000, baseFlex: 12000 }, 1);
     assert(care.active, 'Heutige Pflege bleibt trotz akutem Einjahresmodell dauerhaft');
-    assertClose(care.zusatzFloorZiel, 0, 1e-8, 'Heutiger Grad bleibt auch mit Inflation ohne Zusatzkosten');
+    assertClose(care.zusatzFloorZiel, 12000 * 1.02 * 1.035 * 1.1, 1e-8, 'FR-73 heutiger Grad folgt den Preisen');
 }
 {
     const inputs = { ...base(), careToday: today({ additionalMonthly: 0 }) }, care = create(inputs);
     updateCareMeta(care, inputs, 60, year, noDraw, {}, 0);
-    assertEqual(care.zusatzFloorZiel, 0, 'Explizite Mehrkosten 0 bleiben 0');
+    assertClose(care.zusatzFloorZiel, 13200, 1e-8, 'Stillgelegtes Alt-Zusatzfeld beeinflusst die Staffel nicht');
     updateCareMeta(care, inputs, 61, year, () => 0, { cumulativeInflationFactor: 1.02 }, 1);
     assertEqual(care.grade, 3, 'Fortschritt frühestens ab Jahr 2');
     assertClose(care.zusatzFloorZiel, 18000 * 1.02 * 1.035 * 1.1, 1e-8, 'Nach Fortschritt gilt die volle neue Staffel');
@@ -108,10 +117,10 @@ for (const [progression, factor] of [['usual', 1], ['slower', .5], ['much_slower
                 monteCarloParams: { anzahl: 4, maxDauer: 35, methode: 'regime_markov', blockSize: 3,
                     seed: 12345, rngMode: 'per-run-seed', startYearMode: 'UNIFORM' },
                 logIndices: [0, 1, 2, 3], widowOptions: input.widowOptions, useCapeSampling: false, engine: EngineAPI });
-            assertEqual(hash(chunk), readEV1References(readQSCReferences(readVF2BReferences(mcSha256))), `${variant}, Paar ${couple}: vollständiges MC-Ergebnis mit belegten PA-1-Folgen`);
+            assertEqual(hash(withPreviousRunEvidence(chunk)), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(mcSha256))))), `${variant}, Paar ${couple}: vollständiges MC-Ergebnis mit belegten PA-1-Folgen (Laufbeleg wie vor LE-1b)`);
         }
         const historical = runFixture({ input, selectedPeriod: { startYear: 2000, endYear: 2011 } });
-        assertEqual(hash(historical), readQSCReferences(readVF2BReferences(backtestSha256)), `${variant}, Paar ${couple}: vollständiger Backtest bytegleich zu vor LV-1`);
+        assertEqual(hash(historical), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(backtestSha256)))), `${variant}, Paar ${couple}: vollständiger Backtest bytegleich zu vor LV-1`);
     }
 }
 {
@@ -149,7 +158,7 @@ for (const [progression, factor] of [['usual', 1], ['slower', .5], ['much_slower
     const inputs = { ...base(), pflegefallLogikAktivieren: false, careToday: today({ additionalMonthly: 0, allowanceAsIncome: true }) };
     const fixed = fixedCareTodayForYear(inputs, initMcRunState(inputs), 20);
     assertEqual(fixed.pflegeMeta.grade, 2, 'Backtest behält den heutigen Grad auch in Jahr 21');
-    assertEqual(fixed.pflegeMeta.zusatzFloorZiel, 0, 'Backtest ergänzt keine heutigen Kosten');
+    assertClose(fixed.pflegeMeta.zusatzFloorZiel, 12000 * 1.035 ** 20 * 1.1, 1e-7, 'Backtest rechnet heutige Pflege mit laufenden Preisen');
     assertEqual(fixed.pflegeMeta.floorAtTrigger, inputs.startFloorBedarf, 'Backtest behält den Grundbedarfsanker auch ab Jahr 2');
     let result;
     const backtest = runFixture({ input: inputs, selectedPeriod: { startYear: 2000, endYear: 2011 },
@@ -164,7 +173,7 @@ for (const [progression, factor] of [['usual', 1], ['slower', .5], ['much_slower
     const surplusInputs = { ...inputs, startFloorBedarf: 0, startFlexBedarf: 0, minimumFlexAnnual: 0,
         renteMonatlich: 0, partner: { aktiv: false }, fixedIncome: [], dynamicFlex: false };
     const single = simulateOneYear(initMcRunState(surplusInputs), surplusInputs, year, 0, null, 0, null, 1, EngineAPI);
-    assertEqual(single.logData.einkuenfte_gespart, 347 * 12, 'Nicht verbrauchtes Pflegegeld wird nach FR-42 gespart');
+    assertEqual(single.logData.einkuenfte_gespart, 0, 'FR-73: Pflegegeld deckt zuerst die automatisch angesetzten Pflegekosten');
 }
 {
     const inputs = base(), params = { anzahl: 4, maxDauer: 8, methode: 'block', blockSize: 1, seed: 12345 };
@@ -174,11 +183,11 @@ for (const [progression, factor] of [['usual', 1], ['slower', .5], ['much_slower
     for (const meta of chunk.runMeta) {
         const first = meta.logDataRows.find(row => row.recordType === 'financial_year');
         assertEqual(first.CareP1_Grade, 2, 'MC startet jede Person mit dem heutigen Grad');
-        assertClose(first.CareP1_Cost, 0, 1e-8, 'MC-Jahr 1 ergänzt keine heutigen Kosten');
+        assertClose(first.CareP1_Cost, 13200, 1e-8, 'FR-73: MC-Jahr 1 mit vollem heutigen Staffelwert');
     }
     let observed = 0;
     const engine = { ...EngineAPI, simulateSingleYear(input, ...rest) {
-        if (input.aktuellesAlter === 60) { observed++; assertClose(input.floorBedarf, inputs.startFloorBedarf, 1e-7, 'Sweep verrechnet Pflegegeld ohne heutige Zusatzkosten'); }
+        if (input.aktuellesAlter === 60) { observed++; assertClose(input.floorBedarf, inputs.startFloorBedarf + 13200, 1e-7, 'FR-73: Sweep rechnet heutige Pflege wie MC'); }
         return EngineAPI.simulateSingleYear(input, ...rest);
     } };
     const sweep = runSweepChunk({ baseInputs: inputs,

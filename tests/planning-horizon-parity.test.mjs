@@ -4,6 +4,10 @@ import { resolveDynamicFlexRunnerHorizon } from '../app/simulator/dynamic-flex-r
 import { createBalanceExportDocument, normalizeBalanceImportDocument } from '../app/balance/balance-binder-imports.js';
 import { HOUSEHOLD_PLAN_KEY, buildPlanRecord, planScope, stripBalancePlanInputs } from '../app/profile/household-plan.js';
 import { CONFIG } from '../app/balance/balance-config.js';
+import { setAppTestDate } from '../app/shared/app-clock.js';
+
+// LE-1b (P3-5): Das Ersatz-Geburtsjahr folgt der App-Uhr. Ein fester Stichtag (Messtag) hält die Belege über den Jahreswechsel.
+setAppTestDate('2026-11-12');
 
 const fixture = JSON.parse(readFileSync(new URL('./extended/fixtures/parity-d23/3-horizont.json', import.meta.url)));
 const json = JSON.stringify;
@@ -20,7 +24,8 @@ const withSettings = (variant, settings) => {
 // Historische Messwerte sind ein unabhängiger Anker; keine Neubasierung der Belege.
 for (const [index, variant] of fixture.variants.entries()) {
     const calc = buildBalanceEngineInputFromStorage({ storage: storage(variant.records), referenceYear: 2026 });
-    assertEqual(calc.engineInput.horizonYears, [33, 31, 25][index], variant.preset + ': beschlossene Restdauer');
+    // LE-1 (FR-75): Kohortentafel des Geburtsjahrs statt Periodentafel; vorher 33/31/25 Jahre.
+    assertEqual(calc.engineInput.horizonYears, [35, 33, 26][index], variant.preset + ': beschlossene Restdauer');
     assertEqual(calc.householdPlan.entry.values.horizonYears, [35, 30, 25][index], 'Gespeicherte Jahresvorgabe bleibt erhalten');
 }
 
@@ -85,7 +90,7 @@ for (const variant of fixture.variants) for (const yearIndex of [0, 1, 10]) {
     const bytes = json(records);
     for (const year of [2026, 2036]) {
         const calc = buildBalanceEngineInputFromStorage({ storage: storage(records), referenceYear: year });
-        assertEqual(calc.engineInput.horizonYears, 33, 'Altbestand mit festgehaltenem Altalter bleibt lesbar');
+        assertEqual(calc.engineInput.horizonYears, 35, 'Altbestand mit festgehaltenem Altalter bleibt lesbar (LE-1: Kohortentafel, vorher 33)');
         assertEqual(calc.engineLastState.marker, 'Historie', 'Altersableitung setzt die Leitplanken nicht zurück');
         assertEqual(calc.engineLastState.taxState.lossCarry, 1234, 'Steuerstand bleibt erhalten');
     }
@@ -95,3 +100,4 @@ for (const variant of fixture.variants) for (const yearIndex of [0, 1, 10]) {
     assertEqual(calc.engineLastState.marker, undefined, 'Bewusste Quantiländerung setzt die Historie weiter zurück');
     assertEqual(calc.engineLastState.taxState.lossCarry, 1234, 'Planwechsel erhält Verlustvortrag');
 }
+setAppTestDate(null);

@@ -1,3 +1,4 @@
+import { localCalendarDate } from '../shared/app-clock.js';
 /** @import {SimulatorInputs} from '../../typcheck/rechenkern.js' */
 /** @import {PensionFields, SimulatorControl} from '../../typcheck/simulator-ui.js' */
 import { PARTNERSHIP_KEY, readPartnership, hasTestament, testamentRule, hasInheritanceHomes } from '../profile/household-partnership.js';
@@ -5,6 +6,7 @@ import { persistenceStorage } from '../shared/persistence-facade.js';
 import { simulatorPlannedExpenses } from '../profile/household-planned-expenses.js';
 import { withPlannedExpensePrices } from '../balance/balance-inflation-source.js';
 import { personReferenceYear } from '../profile/profile-person-data.js';
+import { careReference } from '../shared/care-needs.js';
 import { readDocumentPlannedInflows } from './planned-inflows-ui.js';
 import { readSimulatorTrialInputs, bindPlanTrialContext, getSimulatorPlanTrial } from './simulator-plan-trial.js';
 import { readSimulatorHouseholdPlan } from '../profile/household-plan.js';
@@ -20,6 +22,7 @@ import { readDocumentPersonInputs, bindPersonDataContext } from './simulator-per
 
 import { readCareInputs } from './simulator-input-care.js';
 import { readPartnerInputs, readPensionInputs, readWidowOptions } from './simulator-input-pension.js';
+import { resolveMonteCarloDefaultDurationV1 } from './monte-carlo-parameters.js';
 import {
     readAccumulationInputs,
     readBasePortfolioInputs,
@@ -140,9 +143,16 @@ export function getCommonInputs() {
             result.fixedIncomeReferenceYear = personInputs.combined.fixedIncomeReferenceYear;
         }
     }
+    if (result.careToday?.grade || result.partner?.careToday?.grade) {
+        Object.assign(result, careReference(localCalendarDate(), personInputs?.context.referenceYear ?? personReferenceYear(null)));
+    }
     Object.assign(result, readDocumentPlannedInflows(personInputs?.context.referenceYear));
     Object.assign(result, simulatorPlannedExpenses({ scope: plan.scope }, personInputs?.context.referenceYear ?? personReferenceYear(null)));
     if (result.plannedExpenses?.length) result.plannedExpenses = withPlannedExpensePrices(result.plannedExpenses,
         { scope: plan.scope, referenceYear: result.plannedExpensesReferenceYear });
+    // FR-75: Ohne eigene Dauer gilt die automatische Dauer der Personen auch für den Tail-Risk-Horizont.
+    if (!Number.isFinite(result.tailRiskHorizonYears)) {
+        try { result.tailRiskHorizonYears = resolveMonteCarloDefaultDurationV1(result); } catch { /* Alter ungültig: Validierung meldet es. */ }
+    }
     return result;
 }

@@ -9,7 +9,7 @@ import { renderPersistenceState, setPersistenceStatus } from './persistence-stat
 import { persistenceStorage } from '../../shared/persistence-facade.js';
 import { refreshManagerProfiles, syncManagerProfileControls } from '../tranchen-manager-profiles.js';
 import { bindManagerPersonCards } from '../tranchen-manager-person-cards.js';
-import { renderPersonWealth, renderDepotHistory, cashMetric } from './rendering.js';
+import { renderPersonWealth, renderDepotHistory, renderPersonAssets, cashMetric } from './rendering.js';
 import { processingIsBlocked } from './controls.js';
 import { validateIsoDate, personDateInputToIso, personReferenceYear, personAge } from '../../profile/profile-person-data.js';
 import { loadProfileRegistry } from '../../profile/profile-registry.js';
@@ -212,7 +212,7 @@ export async function applyManagerBirthDate() {
 
 export function bindProfileValueInputs() {
     bindPersonIncome(document);
-    state.immobilien = bindPersonImmobilien(document, { blocked: processingIsBlocked, notify: () => state.navigationRegistration?.notify() });
+    state.immobilien = bindPersonImmobilien(document, { blocked: processingIsBlocked, notify: () => state.navigationRegistration?.notify(), refresh: renderPersonAssets });
     state.partnership = bindManagerPartnership(document, { blocked: processingIsBlocked, notify: () => state.navigationRegistration?.notify(), runOperation: async execute => {
         try { return await state.navigationLifecycle.run({}, execute); } finally { renderPersistenceState(); }
     } });

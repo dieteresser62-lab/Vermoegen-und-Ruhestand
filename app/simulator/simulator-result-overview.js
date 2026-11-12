@@ -1,6 +1,5 @@
 /** @import {BuildSummaryData} from '../../typcheck/simulator-ui.js' */
 import { lastWealthRow, rowWealthParts, rowWealthInfo } from './wealth-display.js';
-import { percentileWealthNotice } from '../shared/wealth-display.js';
 import { plannedInflowsSummary } from './planned-inflows.js';
 import { planTrialContextFor } from './simulator-plan-trial.js';
 import { renderPersonDataNotice } from './protocol-renderer.js';
@@ -14,12 +13,13 @@ import { buildSummaryData, buildMonteCarloAnswers, projectMinimumFlexDisplay } f
 import { info, renderMonteCarloAnswers } from './results-renderers.js';
 import { revealAssumptionControl } from './simulator-assumptions-ui.js';
 import { invalidateBacktestForHousehold, renderInvalidatedBacktestStatus } from './simulator-backtest.js';
-import { getEuroMode, bindEuroMode, subscribeEuroMode, euroBasisLabel } from './euro-display.js';
+import { getEuroMode, bindEuroMode, subscribeEuroMode } from './euro-display.js';
 import { projectBacktestEuroMetrics, backtestEuroBasis } from './backtest-euro-display.js';
 import { installInfoPlacement } from '../shared/designsystem-info-popover.js';
 
 const money = value => typeof value === 'number' && Number.isFinite(value)
     ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value) : '—';
+const integer = value => new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(value);
 const percent = value => typeof value === 'number' && Number.isFinite(value)
     ? `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(value)} %` : '—';
 const field = (label, value, help = '', detail = '') => `<div class="ds-row${help ? ' sim-cut-metric' : ''}"${help ? ` title="${escape(help)}"` : ''}><span>${escape(label)}</span><strong>${escape(value)}</strong>${detail ? `<small class="sim-money-detail">${escape(detail)}</small>` : ''}</div>`;
@@ -150,16 +150,11 @@ export function projectMonteCarloOverview(results, totalRuns, failCount, inputs 
     const valid = inventory?.schemaVersion === 'MonteCarloOutcomeInventoryV1'
         && Number.isFinite(inventory.floorCoveragePct) && !inventory.technical_error;
     return { valid, answers: buildMonteCarloAnswers({ results, totalRuns, failCount, inputs }), floorPct: valid ? inventory.floorCoveragePct : null,
-        moneyViews: Object.fromEntries(['nominal', 'real'].map(moneyBasis => {
-            const cards = /** @type {BuildSummaryData} */ (buildSummaryData)({ results, totalRuns, failCount, moneyBasis });
-            return [moneyBasis, { answers: buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBasis, inputs }),
-                medianDisplay: cards[2].displayValue, p10P90Display: cards[4].displayValue,
-                moneyMedian: cards[2].moneyDetail, moneyRange: cards[4].moneyDetail, hasHomes: !!results.displayWealth,
-                otherBasisLine: cards[2].otherBasisLine }];
-        })),
+        // Die Ergebniskarte zeigt je Euro-Basis dieselben Antworten wie der Monte-Carlo-Reiter (SE-1).
+        moneyViews: Object.fromEntries(['nominal', 'real'].map(moneyBasis => [moneyBasis,
+            { answers: buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBasis, inputs }) }])),
         floorDisplay: valid ? summary[0].displayValue : '—',
         countText: valid ? summary[0].countText : '',
-        dots: valid ? Math.min(inventory.ruin > 0 ? 99 : 100, Math.round(inventory.floorCoveragePct)) : null,
         covered: valid ? inventory.all_dead + inventory.horizon_exhausted : null,
         denominator: inventory?.requestedRuns ?? totalRuns,
         interval: valid ? inventory.floorCoverageEstimate?.confidenceInterval95 ?? null : null,
@@ -292,6 +287,8 @@ function renderRunHead(kind, state) {
         ?? (kind === 'backtest' ? state.last.result?.rows?.[0]?.row?.health_bucket_start : null);
     const personIds = (state.last.values.personDataContext?.persons || []).map(person => person.profileId).join(',');
     const inflows = plannedInflowsSummary(inputs.plannedInflows);
+    const care = typeof inputs.pflegefallLogikAktivieren === 'boolean' ? inputs.pflegefallLogikAktivieren
+        ? `${inputs.pflegeModellTyp ?? 'aktiv'} · ${inputs.pflegeMinDauer ?? '—'}–${inputs.pflegeMaxDauer ?? '—'} Jahre` : 'aus' : '';
     const monthlyPension = inputs.partner?.aktiv
         ? `${money((inputs.renteMonatlich ?? 0) + (inputs.partner.monatsrente ?? 0))} (Haushalt)`
         : money(inputs.renteMonatlich);
@@ -299,16 +296,32 @@ function renderRunHead(kind, state) {
         + (state.last.values.planDataContext?.deviationApplied ? '<p class="ds-source">mit Abweichung vom Plan</p>' : '')
         + renderPersonDataNotice(state.last.values.personDataContext)
         + (meta.household ? field('Gerechnet für', meta.household) : '')
-        + field('Zeitraum / Läufe', kind === 'backtest' ? `${settings.startYear}–${settings.endYear}` : `${settings.anzahl} Läufe · ${settings.maxDauer} Jahre · ${settings.methode}`)
-        + field('Startvermögen', money(inputs.startVermoegen)) + field('Bedarf pro Jahr · Floor / Flex', `${money(inputs.startFloorBedarf)} / ${money(inputs.startFlexBedarf)}`)
+        + (kind === 'backtest' ? field('Zeitraum', `${settings.startYear}–${settings.endYear}`) : field('Läufe', `${Number.isFinite(Number(settings.anzahl)) ? integer(Number(settings.anzahl)) : settings.anzahl} · ${settings.maxDauer} Jahre · ${settings.methode}`))
+        + field('Startvermögen', money(inputs.startVermoegen)) + field('Floor / Flex pro Jahr', `${money(inputs.startFloorBedarf)} / ${money(inputs.startFlexBedarf)}`)
         + (inflows ? field('Einmalige Einkünfte', `${money(inflows.amount)} (${inflows.from === inflows.to ? inflows.from : `${inflows.from}–${inflows.to}`})`) : '')
         + field('Mindest-Flex', money(inputs.minimumFlexAnnual)) + field('Rente monatlich', monthlyPension)
-        + field('Strategie', inputs.decumulation?.mode ?? 'Standard') + field('Liquiditäts-Runway', `${inputs.liquidityRunwayYears ?? '—'} Jahre`)
-        + (Number.isFinite(reserve) ? field('Pflegereserve', money(reserve)) : '')
-        + (typeof inputs.pflegefallLogikAktivieren === 'boolean' ? field('Pflege', inputs.pflegefallLogikAktivieren
-            ? `${inputs.pflegeModellTyp ?? 'aktiv'} · ${inputs.pflegeMinDauer ?? '—'}–${inputs.pflegeMaxDauer ?? '—'} Jahre` : 'aus') : '')
+        + field('Strategie · Runway', `${inputs.decumulation?.mode ?? 'Standard'} · ${inputs.liquidityRunwayYears ?? '—'} Jahre`)
+        + (care || Number.isFinite(reserve) ? field(Number.isFinite(reserve) ? care ? 'Pflegereserve · Pflege' : 'Pflegereserve' : 'Pflege',
+            [Number.isFinite(reserve) ? money(reserve) : '', care].filter(Boolean).join(' · ')) : '')
         + (kind === 'montecarlo' ? field('Stress / Tail-Risk', `${inputs.stressPreset ?? 'NONE'} / ${inputs.tailRiskEnabled ? 'aktiv' : 'aus'}`) : '')
         + (meta.startedAt ? field('Lauf gestartet', new Date(meta.startedAt).toLocaleTimeString('de-DE')) : '') + '</section>';
+}
+
+// SE-1: Kopf der Monte-Carlo-Karte; ohne Ergebnis die beiden Fragen als Vorschau (Entwurf McLeer).
+function renderMonteCarloHead(mc) {
+    const settings = mc.last?.values.settings;
+    const runs = Number(settings?.anzahl ?? mc.last?.result?.denominator);
+    const state = mc.phase === 'idle' ? mc.last ? householdContextChanged(mc) ? 'Veralteter Lauf' : 'abgeschlossen' : 'noch nicht gerechnet' : mc.phase === 'preparing'
+        ? 'Monte-Carlo wird vorbereitet' : phaseLabels[mc.phase] ?? mc.phase;
+    const started = mc.last?.metadata.startedAt ? new Date(mc.last.metadata.startedAt) : null;
+    const seed = Number(settings?.seed);
+    const heading = `<div class="sim-card-heading"><p class="sim-eyebrow">Monte-Carlo${mc.last && Number.isFinite(runs) ? ` · ${integer(runs)} Läufe` : ''}</p><div class="sim-card-status"><span class="sim-status-chip" role="status">${escape(state)}${mc.stale ? ' · Annahmen seitdem geändert' : ''}</span>`
+        + info('overviewMonteCarloInfo', 'Erläuterung zu Monte-Carlo', 'Monte-Carlo verwendet viele simulierte Lebens- und Marktpfade. Zahl der Läufe, Laufdauer und Seed legst du unter „Einstellungen ändern“ fest.') + '</div></div>';
+    if (!mc.last) return heading + '<p>Monte-Carlo rechnet deinen Plan durch viele simulierte Markt- und Lebenspfade und beantwortet zwei Fragen:</p>'
+        + '<div class="sim-mc-preview"><h3>Reicht das Vermögen?</h3><p class="ds-help">Anteil der Läufe, in denen dein Grundbedarf bis zum Laufende gedeckt ist, und was am Ende bleibt.</p></div>'
+        + '<div class="sim-mc-preview"><h3>Muss ich mich einschränken?</h3><p class="ds-help">Wie oft der bezahlte Flex unter deinen Mindest-Flex fällt.</p></div>'
+        + `<div class="sim-mc-run-row">${renderMonteCarloRunControls()}${['preparing', 'running'].includes(mc.phase) ? '' : '<p class="ds-help">Läufe laut Einstellungen</p>'}</div>`;
+    return heading + `<div class="sim-mc-run-row"><p class="ds-help">${started ? `Gerechnet am ${escape(started.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}` : 'Gerechnet'}${Number.isFinite(seed) ? ` · Seed ${seed}` : ''}</p>${renderMonteCarloRunControls()}</div>`;
 }
 
 /**
@@ -368,8 +381,8 @@ function renderSimulatorOverviewContent() {
         + '</div>'
         + (projection ? `<div class="ds-kpi-strip sim-outcome-metrics">${field('Entnommen, gesamt', money(projection.withdrawals))}${renderBacktestCutMetric(projection)}${field('Gezahlte Steuern', money(projection.taxes))}</div>` : '')
         + '</div>'
-        + (bt.last ? `<p class="sim-backtest-foot">${bt.last.metadata.automatic ? bt.last.metadata.opening ? 'Automatisch gerechnet beim Öffnen' : 'Automatisch neu gerechnet nach Annahmenänderung' : 'Manuell gerechnet'}${bt.last.metadata.startedAt ? ` · Annahmen vom ${escape(new Date(bt.last.metadata.startedAt).toLocaleString('de-DE'))}` : ''}</p>` : '')
-        + '<div class="sim-detail-links"><button type="button" class="ds-text-link" data-simulator-tab="backtesting" data-overview-focus="simStartJahr">Zeitraum ändern</button><button type="button" class="ds-text-link" data-simulator-tab="backtesting" data-overview-focus="simulationLog">Jahresprotokoll</button></div>';
+        + '<div class="sim-backtest-footer">' + (bt.last ? `<p class="sim-backtest-foot">${bt.last.metadata.automatic ? bt.last.metadata.opening ? 'Automatisch gerechnet beim Öffnen' : 'Automatisch neu gerechnet nach Annahmenänderung' : 'Manuell gerechnet'}${bt.last.metadata.startedAt ? ` · Annahmen vom ${escape(new Date(bt.last.metadata.startedAt).toLocaleString('de-DE'))}` : ''}</p>` : '')
+        + '<div class="sim-detail-links"><button type="button" class="ds-text-link" data-simulator-tab="backtesting" data-overview-focus="simStartJahr">Zeitraum ändern</button><button type="button" class="ds-text-link" data-simulator-tab="backtesting" data-overview-focus="simulationLog">Jahresprotokoll</button></div></div>';
     const chartHost = doc.createElement('div');
     overviewChartHosts.set(doc, chartHost);
     chartHost.id = 'overviewPortfolioChart';
@@ -377,7 +390,7 @@ function renderSimulatorOverviewContent() {
     chartHost.setAttribute('role', 'region');
     chartHost.setAttribute('aria-label', `${householdChanged ? 'Veralteter Lauf · ' : ''}Gesamtvermögensverlauf, Kalenderjahre`);
     chartHost.setAttribute('tabindex', '0');
-    btHost.insertBefore(chartHost, /** @type {HTMLElement} */ (btHost.querySelector('.sim-backtest-foot')) || /** @type {HTMLElement} */ (btHost.querySelector('.sim-detail-links')));
+    btHost.insertBefore(chartHost, /** @type {HTMLElement} */ (btHost.querySelector('.sim-backtest-footer')));
     if (projection) renderThreeBucketPortfolioChart(chartHost, projection.result.rows, { result: projection.result, calendar: true, moneyBasis });
     if (projection && householdChanged) {
         const notice = doc.createElement('p');
@@ -385,10 +398,12 @@ function renderSimulatorOverviewContent() {
         chartHost.insertBefore(notice, chartHost.firstChild);
     }
     const crisisHost = doc.getElementById('overviewCrises');
-    if (crisisHost) crisisHost.innerHTML = projection ? (householdChanged ? '<p>Veraltete Krisenbelege · bisheriger Lauf</p>' : '') + projection.crises.map(crisis => `<article class="sim-crisis"><div class="sim-card-heading"><h3>${escape(crisis.label)}</h3><p>${crisis.from === crisis.to ? crisis.from : `${crisis.from}–${crisis.to}`}${crisis.status === 'partial' ? ' · Teilfenster' : ''}</p></div><p class="ds-hint sim-price-basis">${escape(backtestEuroBasis(projection.result, moneyBasis))}</p>`
+    // Euro-Basis einmal über allen Krisen; Vergleichsbasis wie in deriveHistoricalCrises (erstes Krisenjahr = Laufstart → Start).
+    const crisisStart = projection?.result?.request?.period?.startYear ?? projection?.result?.request?.startYear;
+    if (crisisHost) crisisHost.innerHTML = projection ? (householdChanged ? '<p>Veraltete Krisenbelege · bisheriger Lauf</p>' : '') + `<p class="ds-help sim-price-basis">${escape(backtestEuroBasis(projection.result, moneyBasis))}</p>` + projection.crises.map(crisis => `<article class="sim-crisis"><div class="sim-card-heading"><h3>${escape(crisis.label)}</h3><p>${crisis.from === crisis.to ? crisis.from : `${crisis.from}–${crisis.to}`}${crisis.status === 'partial' ? ' · Teilfenster' : ''}</p></div>`
         + (crisis.status === 'not_reached' ? '<p>nicht erreicht</p>' : crisis.status === 'missing' ? '<p>Daten fehlen</p>'
-            : field(`Tiefster Jahresendstand · ${crisis.minimum.year}`, money(crisis.minimum.total), 'Gesamtvermögen mit Immobilien, einschließlich Pflegereserve.', `davon Geldvermögen ${money(crisis.minimum.money)}`) + field('Veränderung gegen Start / Vorjahr', crisisPercent(crisis.changePct))
-                + field('Flex-Kürzung', crisis.cuts === null ? 'Angaben fehlen' : crisis.cuts === 0 ? 'keine Kürzung von 10 % oder mehr' : `${crisis.cuts} Jahre mit Kürzung von 10 % oder mehr · niedrigste Rate ${percent(crisis.lowestFlexRate)}`)
+            : field(`Tiefster Jahresendstand · ${crisis.minimum.year}`, money(crisis.minimum.total), 'Gesamtvermögen mit Immobilien, einschließlich Pflegereserve.', `davon Geldvermögen ${money(crisis.minimum.money)}`) + field(`Veränderung gegen ${crisis.from === crisisStart ? 'Start' : 'Vorjahr'}`, crisisPercent(crisis.changePct))
+                + field('Flex-Kürzung', crisis.cuts === null ? 'Angaben fehlen' : crisis.cuts === 0 ? 'keine ab 10 %' : `${crisis.cuts} ${crisis.cuts === 1 ? 'Jahr' : 'Jahre'} ab 10 % · niedrigste Rate ${percent(crisis.lowestFlexRate)}`)
                 + field('Liquidität am Tiefpunkt', money(crisis.minimum.liq))) + '</article>').join('') : '<p>Nach dem Backtest werden die enthaltenen Krisen gezeigt.</p>';
     const mcHost = doc.getElementById('overviewMonteCarlo');
     if (mc.last?.result?.answers) {
@@ -397,18 +412,7 @@ function renderSimulatorOverviewContent() {
         }
     }
     if (mcHost) {
-        const base = mc.last?.result;
-        const p = base ? { ...base, ...base.moneyViews?.[getEuroMode(doc)] } : null;
-        const state = mc.phase === 'idle' ? 'noch nicht gerechnet' : mc.phase === 'preparing'
-            ? 'Monte-Carlo wird vorbereitet' : phaseLabels[mc.phase] ?? mc.phase;
-        mcHost.innerHTML = `<div class="sim-card-heading"><h2>Reicht das Vermögen?</h2>${info('overviewFloorInfo', 'Erläuterung zur Floor-Deckung', p?.explanation ?? 'Monte-Carlo verwendet viele simulierte Lebens- und Marktpfade. Noch kein Lauf vorhanden.')}</div>`
-            + `<p role="status">${escape(state)}${mc.stale ? ' · Annahmen seitdem geändert' : ''}</p>`
-            + (p ? `<p class="sim-hero-amount">${escape(p.floorDisplay)}</p>${p.countText ? `<p class="sim-answer-count">${escape(p.countText)}</p>` : ''}<p>Floor-Deckung bis Lebensende oder Horizont</p>`
-                + (p.valid ? `<div class="sim-floor-dots" aria-hidden="true">${Array.from({ length: 100 }, (_, i) => `<i${i < p.dots ? ' class="covered"' : ''}></i>`).join('')}</div><p>Ein Punkt ≈ 1 % der Läufe${p.covered < p.denominator && p.floorPct > 99 ? ' · mindestens ein Punkt bleibt ungedeckt' : ''}</p>` : `<p>Finanziell nicht auswertbar · technische Läufe: ${p.technicalRuns ?? '—'}</p>`)
-                + `<p>Wilson-95-%-Intervall: ${p.interval ? `${percent(p.interval.lowerPct)}–${percent(p.interval.upperPct)}` : 'nicht verfügbar'}</p>`
-                + `<p class="ds-hint sim-price-basis">Gesamtvermögen · ${euroBasisLabel(getEuroMode(doc))}</p>` + field('Gesamtvermögen P10 / P90', p.p10P90Display, '', p.moneyRange) + field('Gesamtvermögen Median', p.medianDisplay, '', p.moneyMedian)
-                + (p.hasHomes ? `${info('overviewWealthParts', 'Aufteilung der Perzentile', percentileWealthNotice)}` : '') + '<p>Am Laufende, einschließlich Pflegereserve</p>' : ['preparing', 'running'].includes(mc.phase) ? '' : '<p>Monte-Carlo wird erst auf deinen Wunsch gestartet.</p>')
-            + renderMonteCarloRunControls();
+        mcHost.innerHTML = renderMonteCarloHead(mc);
         syncMonteCarloRunControls(doc, !!mc.last);
     }
     for (const [id, state] of /** @type {[string, ReturnType<typeof heads.read>][]} */ ([['simBacktestPlanDeviation', bt], ['simMonteCarloPlanDeviation', mc]])) {
@@ -513,6 +517,8 @@ export function initializeResultOverview({ rerunBacktest, activateTab, runMonteC
         if (target.dataset.simulatorTab) {
             activateTab(target.dataset.simulatorTab);
             const focus = doc.getElementById(target.dataset.overviewFocus);
+            // SE-2: Das Jahresprotokoll steht zugeklappt; der Sprung öffnet es.
+            for (let node = focus?.closest?.('details'); node; node = node.parentElement?.closest?.('details')) node.open = true;
             if (focus) { if (!focus.hasAttribute('tabindex') && !focus.matches('input, select, button')) focus.setAttribute('tabindex', '-1'); focus.focus(); }
         }
         else {

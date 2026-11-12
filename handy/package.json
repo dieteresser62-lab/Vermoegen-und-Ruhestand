@@ -1,0 +1,18 @@
+{
+  "name": "depot-handy",
+  "private": true,
+  "type": "module",
+  "description": "Depotwert aufs Handy: Kursvermittler und Handy-Seite bei Cloudflare, Positionen per QR-Code",
+  "scripts": {
+    "qr": "node pc/qr-ausgabe.mjs",
+    "deploy": "npx --yes wrangler@4.160.0 deploy",
+    "test": "node pc/test.mjs && node pc/worker-test.mjs && node pc/ui-test.mjs",
+    "vorschau": "node pc/vorschau.mjs"
+  },
+  "dependencies": {
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "jsqr": "1.4.0"
+  }
+}

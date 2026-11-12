@@ -82,7 +82,7 @@ Quelle: `Balance.html`
 | B22 | Balance.html | Zentrale Sicherungseinstiege | Wiederherstellung über Jahres-Recovery und alten Deeplink | bedingt sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 6.2, 3.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
 | B23 | Balance.html | Sicherung | Bisherige Ordnerverbindung unter Daten & Sicherung | sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 6.2 | [Kapitel](../../Handbuch.html#daten-sicherung) |
 | B31 | Balance.html | Überblick | Budget, Bedarf, Markt und Entnahme | bedingt sichtbar, sichtbar, technisch verborgen | keine | Node 12; Browser 3; Risiko 1; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
-| B32 | Balance.html | Überblick | Reserven heute und nach Umsetzung | bedingt sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
+| B32 | Balance.html | Überblick | Reserven heute und nach Umsetzung | bedingt sichtbar | keine | Node 2; Browser 1; Risiko 1; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
 | B33 | Balance.html | Ergebnisse | Pflegebucket als gesperrte Reserve im Überblick | bedingt sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
 | B34 | Balance.html | Ergebnisse | Entnahmeklappe im Überblick; Kapitalfluss im Handlungsdialog | bedingt sichtbar | keine | Node 2; Browser 0; Risiko 1; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
 | B35 | Balance.html | Ergebnisse | Handlung als Text kopieren | bedingt sichtbar | keine | Node 2; Browser 0; Risiko 1; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
@@ -98,6 +98,7 @@ Quelle: `Balance.html`
 | B47 | Balance.html | Navigation zur Übersicht | Offene Cashbuchungen auf der Übersicht | sichtbar | keine | Node 1; Browser 1; Risiko 1; Schuld 0 | 3.2 | [Kapitel](../../Handbuch.html#balance) |
 | B48 | Balance.html | Spielbereich | Spielbereich: Kopie oder sechs Beispielhaushalte mit Variantenwechsel und Neustart | bedingt sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1, depot\_tranchen, profile\_wealth\_history\_lots\_v1, …; persistent: rs\_probelauf\_state… | Node 12; Browser 2; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#probelauf) |
 | B51 | Balance.html | Überblick → Geplante Posten | Geplante Posten des Planjahres und zusätzliche Liquiditätsreserve | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 0; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
+| B52 | Balance.html | Überblick → Dein Bedarf | Hinweis bei Pflegegrad heute | bedingt sichtbar | persistent: household\_care\_hint\_v1 | Node 1; Browser 0; Risiko 0; Schuld 0 | 3.1 | [Kapitel](../../Handbuch.html#balance) |
 
 #### Seitenzusätze
 
@@ -150,7 +151,7 @@ Quelle: `Simulator.html`
 | S09 | Simulator.html | Annahmen | Horizontmethode und Anwendbarkeit | bewusst gesperrt, bedingt sichtbar | persistent: household\_plan\_v1 | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
 | S10 | Simulator.html | Annahmen | Go-Go und Langlebigkeit | bewusst gesperrt | persistent: household\_plan\_v1 | Node 1; Browser 1; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
 | S11 | Simulator.html | Annahmen | Standard-/Drei-Topf-Strategie | bedingt sichtbar | persistent: household\_plan\_v1 | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
-| S12 | Simulator.html | Annahmen | Liquiditäts-Reichweite, Mindest-Liquidität, Goldband und Verkaufsgrenzen | bedingt sichtbar | persistent: household\_plan\_v1; nur Sitzung | Node 1; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S12 | Simulator.html | Annahmen | Liquiditäts-Reichweite, Mindest-Liquidität, Goldband, Fondskosten und Verkaufsgrenzen | bedingt sichtbar | persistent: household\_plan\_v1; nur Sitzung | Node 3; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
 | S13 | Simulator.html | Annahmen | Hauptprofil: zentrale Personenwerte und flüchtige Rechenalternativen | bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 7; Browser 3; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
 | S14 | Simulator.html | Annahmen | Gemeinsame und ältere Rentenanpassungsfelder | bewusst gesperrt, technisch verborgen, bedingt sichtbar | nur Sitzung | Node 5; Browser 4; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
 | S15 | Simulator.html | Annahmen | Versteckte Rentenbrücke | technisch verborgen | nur Sitzung | Node 5; Browser 3; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
@@ -158,8 +159,8 @@ Quelle: `Simulator.html`
 | S17 | Simulator.html | Annahmen | Hinterbliebenenrente | bedingt sichtbar | nur Sitzung; persistent: sim\_survivorFloorPercent, sim\_survivorFlexPercent, sim\_survivorM… | Node 2; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
 | S77 | Simulator.html | Annahmen | Einkünfte, Ausgaben und Bedarf | sichtbar, bedingt sichtbar | persistent: profile\_einkuenfte\_v1; persistent: household\_planned\_expenses\_v1 | Node 6; Browser 0; Risiko 1; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#ausgaben) |
 | S19 | Simulator.html | Annahmen | Pflege aktivieren, Modell, Ramp-up und Dauer | bedingt sichtbar | persistent: sim\_pflegefallLogikAktivieren, sim\_pflegeModellTyp, sim\_pflegeRa… | Node 3; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
-| S20 | Simulator.html | Annahmen | Pflegekostenmodell und Hinweise | bedingt sichtbar | persistent: sim\_careFlexDefaultsVersion, sim\_careMortalityDefaultsVersion, s… | Node 4; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
-| S21 | Simulator.html | Annahmen | Pflegegrade 1–5: Pflegeform, Zusatzbedarf, Flex-Level und Sterblichkeitsfaktor | bedingt sichtbar | persistent: sim\_pflegeStufe1Form, sim\_pflegeStufe1Zusatz, sim\_pflegeStufe1Fl… | Node 3; Browser 0; Risiko 3; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S20 | Simulator.html | Annahmen | Pflegezeile, Simulationsannahmen und Träger der Pflegewerte | bedingt sichtbar, technisch verborgen, sichtbar | persistent: sim\_careFlexDefaultsVersion, sim\_careMortalityDefaultsVersion, s… | Node 4; Browser 0; Risiko 2; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
+| S21 | Simulator.html | Annahmen | Pflegegrade 1–5: Pflegeform, Zusatzbedarf, Flex-Level und Sterblichkeitsfaktor | bedingt sichtbar, technisch verborgen | persistent: sim\_pflegeStufe1Form, sim\_pflegeStufe1Zusatz, sim\_pflegeStufe1Fl… | Node 3; Browser 0; Risiko 3; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#simulator) |
 | S23 | Simulator.html | Monte-Carlo | Monte-Carlo-Einstellungen öffnen und Zusammenfassung lesen | sichtbar, bedingt sichtbar | nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
 | S24 | Simulator.html | Monte-Carlo | MC-Anzahl, Dauer, Methode, Blockgröße, Seed, RNG | sichtbar, bewusst gesperrt | persistent: sim\_mcAnzahl, sim\_mcDauer, sim\_mcMethode, sim\_mcBlockSize, sim\_m… | Node 2; Browser 2; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
 | S25 | Simulator.html | Monte-Carlo | Workersteuerung und Ressourcenbestätigung | sichtbar, bedingt sichtbar | persistent: sim\_mcWorkerCount, sim\_mcWorkerBudget; nur Sitzung | Node 2; Browser 1; Risiko 2; Schuld 0 | 4.2 | [Kapitel](../../Handbuch.html#monte-carlo) |
@@ -232,7 +233,7 @@ Quelle: `depot-tranchen-manager.html`
 | V27 | depot-tranchen-manager.html | Personenumstellung | Aufschub und sichere Wiederholung der Personenübernahme | bedingt sichtbar | nur Sitzung; persistent: profile\_person\_schema\_version, profile\_person\_migration\_v1, rs\_p… | Node 5; Browser 2; Risiko 0; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V02 | depot-tranchen-manager.html | Personen & Vermögen | Tagesgeld in der Vermögenskarte bearbeiten | bedingt sichtbar, bewusst gesperrt | persistent: profile\_tagesgeld, rs\_profiles\_v1.profiles\[profileId\].data.profi…; persistent: profile\_cash\_histo… | Node 10; Browser 0; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V03 | depot-tranchen-manager.html | Personen & Vermögen | Personendaten: heutiges Alter, Januarplanung und Herkunft | bedingt sichtbar, bewusst gesperrt, sichtbar, technisch verborgen | persistent: profile\_rente\_aktiv, profile\_rente\_monatlich, profile\_sonstige\_e…; keine | Node 16; Browser 6; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
-| V32 | depot-tranchen-manager.html | Personen & Vermögen | Immobilien je Person, eigener Wert auf Übersicht und Haushalt & Plan und Nettomiete | bedingt sichtbar | persistent: profile\_immobilien\_v1 | Node 1; Browser 0; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#immobilien) |
+| V32 | depot-tranchen-manager.html | Personen & Vermögen | Immobilien je Person, eigener Wert auf Übersicht und Haushalt & Plan und Nettomiete | bedingt sichtbar | persistent: profile\_immobilien\_v1 | Node 2; Browser 0; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#immobilien) |
 | V33 | depot-tranchen-manager.html | Haushalt & Plan | Partnerschaft und heutige Erbschaftsteuervorschau | bedingt sichtbar | persistent: household\_partnership\_v1 | Node 7; Browser 1; Risiko 0; Schuld 1 | 6.3 | [Kapitel](../../Handbuch.html#tod-und-erbe) |
 | V28 | depot-tranchen-manager.html | Personen & Vermögen | Einkünfte als Personendaten pflegen | bedingt sichtbar, technisch verborgen | persistent: profile\_einkuenfte\_v1, profile\_einkuenfte\_migration\_v1 | Node 3; Browser 0; Risiko 1; Schuld 0 | 4.1 | [Kapitel](../../Handbuch.html#pflege) |
 | V04 | depot-tranchen-manager.html | Personen & Vermögen | Goldstrategie: Aktivierung, Ziel, Floor, Band und Steuerfreiheit | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: profile\_gold\_aktiv, profile\_gold\_ziel\_pct, profile\_gold\_floor\_pc… | Node 3; Browser 0; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
@@ -241,7 +242,7 @@ Quelle: `depot-tranchen-manager.html`
 | V07 | depot-tranchen-manager.html | Personen & Vermögen | Profil, Plan und Geplante Ausgaben validieren und automatisch speichern | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: profile\_tagesgeld, profile\_rente\_aktiv, profile\_rente\_monatlich,…; persistent: household\_plan\_v1;… | Node 9; Browser 1; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#ausgaben) |
 | V07.1 | depot-tranchen-manager.html | Haushalt & Plan | Gemeinsame Dynamic-Flex-Voreinstellungen im Manager | bedingt sichtbar | persistent: household\_plan\_v1 | Node 2; Browser 1; Risiko 0; Schuld 0 | 1 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V08 | depot-tranchen-manager.html | Tranchen und Kurse | Kauf eintragen: neue Tranche öffnen | sichtbar, bewusst gesperrt | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
-| V09 | depot-tranchen-manager.html | Tranchen und Kurse | Zeilenaktionen bearbeiten und löschen | sichtbar, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 4; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V09 | depot-tranchen-manager.html | Tranchen und Kurse | Zeilenaktionen bearbeiten und löschen | sichtbar, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr…; persistent: rs\_daily\_prices\_v1 | Node 4; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
 | V10 | depot-tranchen-manager.html | Tranchen und Kurse | EUR-Kursbatch, Proxycheck, Teilfehler und Preisprovenienz | sichtbar, bewusst gesperrt, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 6; Browser 3; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#kauf) |
 | V11 | depot-tranchen-manager.html | Tranchen und Kurse | Depotbewertung, Tranchensumme, Kursstand und leerer Bestand | sichtbar, bedingt sichtbar | keine | Node 5; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
 | V12 | depot-tranchen-manager.html | Tranchen und Kurse | Gruppiertes Depot: Anlageformen, Gruppensummen und Kaufdatumssortierung sowie Kursverlauf mit Tagesfeld, fünf Zeiträumen und aufklappbaren Details | sichtbar, bedingt sichtbar | keine | Node 10; Browser 2; Risiko 4; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
@@ -264,6 +265,8 @@ Quelle: `depot-tranchen-manager.html`
 | V29 | depot-tranchen-manager.html | Vermögensverlauf → Depot-Kennzahlen | Rendite und Risiko | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
 | V30 | depot-tranchen-manager.html | Vermögensverlauf → Depot-Kennzahlen | Monatsrenditen | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
 | V31 | depot-tranchen-manager.html | Vermögensverlauf → Depot-Kennzahlen | Jahresübersicht | bedingt sichtbar | keine | Node 1; Browser 0; Risiko 0; Schuld 0 | 3.3 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
+| V34 | depot-tranchen-manager.html | Personen & Vermögen → Pflege | Hinweis bei Pflegegrad heute in Personenkarte und Haushalt & Plan | bedingt sichtbar | persistent: household\_care\_hint\_v1 | Node 1; Browser 0; Risiko 0; Schuld 0 | 1 | [Kapitel](../../Handbuch.html#pflege) |
+| V35 | depot-tranchen-manager.html | Personen & Vermögen → Pflege | Bereich Pflege: heutiger Pflegezustand und Pflegewerte des Haushalts | bedingt sichtbar | persistent: household\_care\_values\_v1, sim\_pflegePreise, sim\_pflegeKostenStaf… | Node 3; Browser 1; Risiko 0; Schuld 0 | 1 | [Kapitel](../../Handbuch.html#pflege) |
 
 #### Seitenzusätze
 
@@ -348,9 +351,9 @@ Quelle: `Daten-Sicherung.html`
 
 ### Dynamische Schutzstatistik
 
-204 Funktionseinträge; 425 dynamische Belege:
+207 Funktionseinträge; 429 dynamische Belege:
 
-- geschützt: **399**
+- geschützt: **403**
 - ungeschützt (Anker fehlt): **6**
 - ungeschützt (Erzeugungsform vom Prüfer nicht unterstützt): **20**
 

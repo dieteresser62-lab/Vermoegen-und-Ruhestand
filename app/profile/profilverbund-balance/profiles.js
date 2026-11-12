@@ -57,7 +57,7 @@ export function loadProfilverbundProfiles({ storage = persistenceStorage, status
             profileError.cause = error;
             throw profileError;
         }
-        const person = projectPerson(data, referenceYear, balanceCareSettings(status));
+        const person = projectPerson(data, referenceYear, balanceCareSettings(status, meta.id));
         const overrides = { ...parseProfileOverridesFromData(data), profileAlter: person.startAlter,
             profileRenteMonatlich: person.monateImJahr === 12 ? person.renteMonatlich : person.renteImJahr / 12,
             profileSonstigeEinkuenfte: person.sonstigeEinkuenfte,

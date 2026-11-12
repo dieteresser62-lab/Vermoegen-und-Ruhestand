@@ -1222,3 +1222,12 @@ for (const membership of ['household', 'excluded', 'deleted']) for (const retros
         assertEqual(projected.annual.year, 2028, 'Gegenprobe reproduziert das abweichende Kalenderjahr unabhängig vom Browser');
     } finally { resetPersistenceForTests(); }
 }
+
+// SPK-1: Leerer Depotumfang wertet auch alte Fehlerberichte nicht als Abruffehler.
+for (const day of ['2026-11-07', '2027-01-01', '2028-06-15']) {
+    for (const priceReport of [{ status: 'offline', updated: 0 }, { status: 'timeout', updated: 0 },
+        { status: 'complete', updated: 0, results: [{ status: 'failed', profileId: 'a' }] }]) {
+        assertEqual(overviewPriceLabel({ now: new Date(day + 'T12:00:00'), priceTranches: [], quoteDate: null, priceReport }),
+            'Kein Depot erfasst', day + ': ohne Depot keine Fehlerbeschriftung');
+    }
+}

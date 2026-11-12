@@ -19,7 +19,10 @@ export const MONTE_CARLO_PARAMETER_LIMITS = Object.freeze({
     }),
     durationYears: Object.freeze({
         minimum: 1,
+        // Nur ohne Personen; mit Personen gilt 110 − Alter der jüngsten Person (FR-75).
         default: 35,
+        // Alte Vorgabe: ein gespeicherter Wert 35 gilt beim Lesen als „automatisch“.
+        legacyStoredDefault: 35,
         mortalityTableMaximumAge: 110,
         storageMaximum: 0xFFFFFFFF
     }),
@@ -149,6 +152,16 @@ export function resolveMonteCarloDurationMaximumV1(inputs = null) {
     );
 }
 
+/** FR-75: Vorgabe der Simulationsdauer = 110 − Alter der jüngsten Person, mindestens 1 Jahr.
+ * Ohne Personen bleibt die feste Vorgabe.
+ * @param {MonteCarloAgeInput|null} inputs */
+export function resolveMonteCarloDefaultDurationV1(inputs = null) {
+    const youngestStartAge = resolveYoungestHouseholdStartAge(inputs);
+    if (youngestStartAge === null) return MONTE_CARLO_PARAMETER_LIMITS.durationYears.default;
+    return Math.max(MONTE_CARLO_PARAMETER_LIMITS.durationYears.minimum,
+        MONTE_CARLO_PARAMETER_LIMITS.durationYears.mortalityTableMaximumAge - youngestStartAge);
+}
+
 /** @param {MonteCarloParametersInput} rawParameters
  * @param {MonteCarloParameterContext} options
  * @returns {Readonly<MonteCarloParameters>} */
@@ -184,7 +197,7 @@ export function normalizeMonteCarloParametersV1(rawParameters = {}, {
         maxDauer: readStrictInteger(rawParameters.maxDauer, 'Simulationsdauer in Jahren', {
             minimum: limits.durationYears.minimum,
             maximum: durationMaximum,
-            defaultValue: Math.min(limits.durationYears.default, durationMaximum)
+            defaultValue: Math.min(resolveMonteCarloDefaultDurationV1(inputs), durationMaximum)
         }),
         blockSize: readStrictInteger(rawParameters.blockSize, methode === 'stationary'
             ? 'Erwartete Blocklaenge in Jahren'

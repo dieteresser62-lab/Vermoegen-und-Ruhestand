@@ -1,13 +1,9 @@
 name: CI - Tests
 
 on:
-  push:
-    branches:
-      - main
-      - "feature/**"
-  pull_request:
-    branches:
-      - main
+  # Nur von Hand: Die Tests laufen lokal in jeder Prüfkette; die GitHub-Stände
+  # enthalten docs/internal nicht und wären hier immer rot.
+  workflow_dispatch:
 
 permissions:
   contents: read

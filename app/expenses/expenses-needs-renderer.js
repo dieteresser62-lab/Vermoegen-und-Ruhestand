@@ -59,13 +59,13 @@ export function renderExpenseNeeds(doc, view, available) {
     const floorPlan = needs.plans.floor === null ? null : needs.plans.floor / 12;
     const flexPlan = needs.plans.flex === null ? null : needs.plans.flex / 12;
     const delta = (value, plan) => Number.isFinite(value) && Number.isFinite(plan) ? signed(value - plan) : '—';
-    const append = (label, floor, flex, className = '', plan = false) => {
+    const append = (label, floor, flex, className = '', plan = false, monthFloorPlan = floorPlan) => {
         const row = node('tr', '', className), name = node('th', label); name.scope = 'row'; row.append(name);
-        for (const value of [money(floor), plan ? '' : delta(floor, floorPlan), money(flex), plan ? '' : delta(flex, flexPlan)]) row.append(node('td', value));
+        for (const value of [money(floor), plan ? '' : delta(floor, monthFloorPlan), money(flex), plan ? '' : delta(flex, flexPlan)]) row.append(node('td', value));
         body.append(row);
     };
     for (const month of needs.months) {
-        if (month.withBreakdown) append(EXPENSE_MONTHS[month.month - 1], month.floor, month.flex);
+        if (month.withBreakdown) append(EXPENSE_MONTHS[month.month - 1], month.floor, month.flex, '', false, needs.plans.floorMonths?.[month.month - 1]);
         else {
             const row = node('tr', ''), name = node('th', EXPENSE_MONTHS[month.month - 1]); name.scope = 'row';
             const hint = node('td', 'ohne Aufteilung importiert – zählt nur im Gesamt', 'expenses-note'); hint.colSpan = 4;

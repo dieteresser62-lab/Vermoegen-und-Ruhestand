@@ -1,5 +1,6 @@
 /** FR-48: persönliche Jahreszahlungen; nur der Simulator verwendet diesen Pfad. */
 import { debitAccount, syncPersonalLiquidity } from './simulator-personal-accounts.js';
+import { residentialSpending } from './simulator-residential-care.js';
 
 /**
  * @param inputs Wirksame Simulationseingaben.
@@ -34,8 +35,12 @@ export function personalAssetValues(portfolio, { includeReserve = true } = {}) {
  */
 export function unmarriedYearShares(portfolio, inputs, care, deathThisYear, household, careTotal) {
     const values = personalAssetValues(portfolio), total = values.reduce((sum, row) => sum + row.value, 0);
+    // FR-72 Punkt 10: Heimkosten und eigene Ausgaben gehören zur Person im Heim; die Ersparnis
+    // beim gemeinsamen Grundbedarf bleibt im gemeinsamen Anteil.
+    const personal = meta => residentialSpending(meta) ? Math.max(0, meta.zusatzFloorZiel || 0) + residentialSpending(meta)
+        : Math.max(0, meta.zusatzFloorZiel || 0);
     const costs = [care.p1, care.p2].map((meta, i) => meta?.active
-        ? Math.max(0, meta.zusatzFloorZiel || 0) * (household[`p${i + 1}Alive`] ? 1 : deathThisYear ? .5 : 0) : 0);
+        ? personal(meta) * (household[`p${i + 1}Alive`] ? 1 : deathThisYear ? .5 : 0) : 0);
     const sumCare = costs.reduce((sum, value) => sum + value, 0);
     return values.map((row, i) => ({ profileId: row.profileId, share: total > 0 ? row.value / total : 1 / values.length,
         care: sumCare > 0 ? careTotal * (costs[inputs.simulationPeople?.findIndex(p => p.profileId === row.profileId) ?? i] || 0) / sumCare

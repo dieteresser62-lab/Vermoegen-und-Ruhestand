@@ -291,6 +291,9 @@ export function loadProfileAssetValues(storage = persistenceStorage) {
         immobilien: readImmobilien(storage.getItem(IMMOBILIEN_KEY)),
         careToday: careTodayFromStorage(storage),
         ...Object.fromEntries(Object.entries(PERSON_VALUE_KEYS).map(([field, key]) => [field, personData[key]])),
+        // FR-74: Neue Person (ohne gespeicherte Wahl, ohne Alter, rechnet noch nicht) startet mit „wie Inflation“;
+        // mit Geburtsdatum oder Altalter gilt ohne gespeicherten Wert weiter „wie Löhne“. Nur Vorbelegung, kein Schreiben.
+        rentenanpassungArt: personData[PERSON_VALUE_KEYS.rentenanpassungArt] ?? (age.status === 'missing' ? 'cpi' : undefined),
         tagesgeld: tagesgeldRaw !== null ? tagesgeldRaw : storedInputs.tagesgeld,
         renteMonatlich: renteMonatlichRaw ?? 0,
 
@@ -339,7 +342,8 @@ export function applyProfileAssetValuesToDom(values, doc = document, { preserveA
 
 
     assign('profileTagesgeld', normalized.tagesgeld);
-    for (const field of ['grade', 'form', 'progression']) {
+    // Argon FR73A B1: „Im Heim seit“ gehört dazu, sonst löscht das nächste Speichern das Datum oder verschleppt es beim Personenwechsel.
+    for (const field of ['grade', 'form', 'residentialSince', 'homeCostsMonthly', 'progression']) {
         const id = CARE_FORM_IDS[field];
         assign(id, normalized.careToday[field] ?? '');
     }
@@ -369,7 +373,7 @@ export function applyProfileAssetValuesToDom(values, doc = document, { preserveA
 }
 
 export function readProfileAssetValuesFromDom(doc = document) {
-    const decimalFields = new Set(['profileTagesgeld', 'profileRenteMonatlich', 'profileGoldZiel', 'profileGoldFloor', 'profileGoldBand', 'profileHealthBucketInitialAmount', 'profileRentenanpassungPct', 'profileKirchensteuerPct', 'profileSparerPauschbetrag', 'profileRenteSteuerquotePct']);
+    const decimalFields = new Set(['profileTagesgeld', 'profileRenteMonatlich', 'profileGoldZiel', 'profileGoldFloor', 'profileGoldBand', 'profileHealthBucketInitialAmount', 'profileRentenanpassungPct', 'profileKirchensteuerPct', 'profileSparerPauschbetrag', 'profileRenteSteuerquotePct', CARE_FORM_IDS.homeCostsMonthly]);
     const read = id => {
         const raw = /** @type {HTMLInputElement | HTMLSelectElement} */ (doc.getElementById(id))?.value ?? '';
         if (id === 'profileRentenbeginn') {
@@ -383,8 +387,8 @@ export function readProfileAssetValuesFromDom(doc = document) {
     const errors = incomeErrors(einkuenfte);
     if (errors.length) throw new ProfileAssetValuesValidationError(errors);
     return validateProfileAssetValues({
-        careToday: { grade: read(CARE_FORM_IDS.grade) || 0, form: read(CARE_FORM_IDS.form),
-            progression: read(CARE_FORM_IDS.progression) || 'usual' },
+        careToday: { grade: read(CARE_FORM_IDS.grade) || 0, form: read(CARE_FORM_IDS.form), residentialSince: read(CARE_FORM_IDS.residentialSince),
+            homeCostsMonthly: read(CARE_FORM_IDS.homeCostsMonthly), progression: read(CARE_FORM_IDS.progression) || 'usual' },
         genderConfirmed: doc.getElementById('profileGeschlecht')?.dataset?.genderConfirmed === 'true',
         ...Object.fromEntries(PERSON_FORM_FIELDS.map(field => [field, read(PERSON_FORM_IDS[field])])),
         einkuenfte,
@@ -427,7 +431,11 @@ export function saveProfileAssetValues(values, storage = persistenceStorage, { r
             referenceYear: personReferenceYear(balanceRaw ? JSON.parse(balanceRaw).annualPeriodMetadata : null)
         };
     }
-    for (const field of ['grade', 'form', 'progression']) storage.setItem(CARE_VALUE_KEYS[field], String(normalized.careToday[field] ?? ''));
+    for (const field of ['grade', 'form', 'residentialSince', 'homeCostsMonthly', 'progression']) storage.setItem(CARE_VALUE_KEYS[field], String(normalized.careToday[field] ?? ''));
+    // Der Heimjahr-Anker des Jahresabschlusses bleibt, solange die Person heute im Heim lebt; sonst endet er (FR-73, PFA-2 B1).
+    const residentialToday = normalized.careToday.grade > 0 && normalized.careToday.form === 'residential';
+    const anchor = residentialToday ? normalized.careToday.residentialFirstYear ?? storage.getItem(CARE_VALUE_KEYS.residentialFirstYear) ?? '' : '';
+    if (anchor !== (storage.getItem(CARE_VALUE_KEYS.residentialFirstYear) ?? '')) storage.setItem(CARE_VALUE_KEYS.residentialFirstYear, String(anchor));
     if (normalized.immobilien.length || storage.getItem(IMMOBILIEN_KEY) !== null) storage.setItem(IMMOBILIEN_KEY, writeImmobilien(normalized.immobilien));
     storage.setItem(INCOME_KEY, writeIncome(normalized.einkuenfte));
     storage.setItem(INCOME_MIGRATION_KEY, '1');

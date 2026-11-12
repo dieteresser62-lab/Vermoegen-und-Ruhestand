@@ -7,7 +7,7 @@ import { recordWealthFanYear } from '../wealth-fan-aggregation.js';
 import { recordMonteCarloStressZeroWithdrawal } from '../mc-stress-tracker.js';
 import { buildMonteCarloRuinLogRow } from '../mc-log-builder.js';
 import { createReplayAnnualRecord } from './replay-records.js';
-import { buildNextMarketDataHist } from '../simulator-year-portfolio.js';
+import { buildNextMarketDataHist, readYearReturnRates } from '../simulator-year-portfolio.js';
 import { BREAK_ON_RUIN } from '../simulator-data.js';
 import { recordSuccessfulYear } from './annual-success.js';
 import { normalizeTechnicalPathError } from './batch.js';
@@ -71,7 +71,7 @@ export function recordAnnualResult(context) {
             context.simState.marketDataHist = buildNextMarketDataHist({
                 marketDataHist: context.simState.marketDataHist,
                 yearData: context.yearData,
-                rA: Number(context.yearData.rendite),
+                rA: readYearReturnRates(context.yearData, context.inputs.equityCostPct).rA,
                 resolvedCapeRatio: context.resolvedCapeRatio
             });
         }

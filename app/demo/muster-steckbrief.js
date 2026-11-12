@@ -5,7 +5,9 @@ import { parseCalendarDate } from '../shared/app-clock.js';
 import { incomeFromRecord, fixedMonthlyIncome } from '../profile/profile-income.js';
 import { readPartnership, inheritancePercent, inheritancePreview } from '../profile/household-partnership.js';
 import { readImmobilien, IMMOBILIEN_KEY } from '../profile/profile-immobilien.js';
-import { PLANNED_EXPENSES_KEY } from '../profile/household-planned-expenses.js';
+import { PLANNED_EXPENSES_KEY, isFixedExpense, plannedExpensesForYear } from '../profile/household-planned-expenses.js';
+import { readBalancePersonStatus } from '../shared/person-data-status.js';
+import { projectBalanceCareNeeds } from '../balance/balance-care.js';
 
 const euro = value => `${Math.round(value).toLocaleString('de-DE')} €`;
 const month = value => `${value.slice(5, 7)}/${value.slice(0, 4)}`;
@@ -25,7 +27,9 @@ const lessons = {
     },
     renate: {
         question: 'Welche Ausgaben kann ich mir dauerhaft leisten, und wo wird mein Plan empfindlich?',
-        exercises: ['Personen & Vermögen → Haushalt & Plan → Bedarf pro Jahr: Wunschbedarf in Schritten von 100 € im Monat ändern.', variantExercise('renate', ['grund', 'klein'])],
+        exercises: ['Personen & Vermögen → Haushalt & Plan → Bedarf pro Jahr: Wunschbedarf in Schritten von 100 € im Monat ändern.', variantExercise('renate', ['grund', 'klein']),
+            'Personen & Vermögen → Renate → Einkünfte: Rentenanpassung der Rente von „wie Inflation“ auf „wie Löhne“ stellen und die Deckung vergleichen.',
+            'Simulator → Annahmen → Alle Parameter: „Nur hier ausprobieren“, dann unter Fondskosten „Laufende Kosten Aktien-ETF“ auf 0 % setzen und vergleichen. Dauerhaft änderst du den Wert in Personen & Vermögen → Haushalt & Plan → Weitere Planwerte.'],
         observe: 'Nach jeder Änderung Monte Carlo neu rechnen → „Grundbedarf gedeckt“.'
     },
     'jan-lena': {
@@ -36,8 +40,8 @@ const lessons = {
     },
     'helga-werner': {
         question: 'Was finanziert eine spätere Pflege, und wie hilft die Pflegereserve?',
-        exercises: [`Personen & Vermögen → Werner → Person & Steuern: Pflegegrad heute 3 eintragen. Unter Haushalt & Plan → Bedarf den Grundbedarf auf ${euro(musterVariante('helga-werner', 'haus-pg3').floorBedarf)} im Jahr erhöhen. Die App zählt heutige Pflegekosten nicht von selbst dazu.`, 'Personen & Vermögen → Werner → Person & Steuern: Pflegeform heute auf „zu Hause durch Angehörige“ stellen. Vergleiche Balance → Dein Monatsbudget → Einkünfte: Pflegegeld 599 €/Monat kommt dazu. Öffne danach ein Szenario, in dem Helga stirbt oder selbst Grad 3 erreicht: Werners Angehörigenpflege wechselt im selben Jahr zu externer Unterstützung; das Protokoll-ⓘ erklärt den Grund.'],
-        observe: 'Übung 1: Simulator neu rechnen → Szenario-Protokoll, Pflege. Übung 2: Balance → Dein Monatsbudget → Einkünfte.'
+        exercises: [`Personen & Vermögen → Werner → Person & Steuern: Pflegegrad heute 3 eintragen. Der Grundbedarf bleibt bei ${euro(musterVariante('helga-werner', 'haus-pg3').floorBedarf)} im Jahr: Die App rechnet die Pflege selbst und zeigt den Hinweis dazu. Balance → Dein Bedarf zeigt die Zeile „Pflege Werner“ mit 1.500 €/Monat.`, 'Personen & Vermögen → Werner → Person & Steuern: Pflegeform heute auf „zu Hause durch Angehörige“ stellen. Vergleiche Balance → Dein Monatsbudget → Einkünfte: Pflegegeld 599 €/Monat kommt dazu. Öffne danach ein Szenario, in dem Helga stirbt oder selbst Grad 3 erreicht: Werners Angehörigenpflege wechselt im selben Jahr zu externer Unterstützung; das Protokoll-ⓘ erklärt den Grund.', 'Personen & Vermögen → Werner → Person & Steuern: Pflegegrad heute 4, Pflegeform heute „im Heim“, im Heim seit 01/2023. Balance → Dein Bedarf zeigt die Zeile „Heim Werner“ mit 2.611 €/Monat (Heimjahr 4) und den Grundbedarf zu Hause mit 2.250 €/Monat für Helga; im Simulator-Protokoll steht Werner im Heimjahr 4.', 'Beide Grad 4 im Heim: Personen & Vermögen → Helga und danach Werner → Person & Steuern: jeweils Pflegegrad heute 4 und Pflegeform „im Heim“, „Im Heim seit“ leer. Balance → Dein Bedarf zeigt zwei Zeilen „Heim …“ mit je 3.864 €/Monat und keinen Grundbedarf zu Hause: zusammen 92.736 € im Jahr. Rechne Monte Carlo und öffne ein Szenario: Das ⓘ bei „Ausgaben“ zeigt ab dem ersten Jahr keinen Grundbedarf zu Hause; die Heimkosten je Person sinken von Heimjahr 1 bis 4 mit dem Zuschuss der Kasse, die eigenen Ausgaben im Heim kommen dazu.'],
+        observe: 'Übung 1: Balance → Dein Bedarf und Simulator → Szenario-Protokoll, Pflege. Übung 2: Balance → Dein Monatsbudget → Einkünfte. Übung 3: Balance → Dein Bedarf, ⓘ der Heimzeile. Übung 4: Szenario-Protokoll, ⓘ bei „Ausgaben“.'
     },
     'martin-petra': {
         question: 'Ist der überlebende Partner abgesichert, und steht dafür genug verfügbares Geld bereit?',
@@ -47,7 +51,8 @@ const lessons = {
     },
     sophie: {
         question: 'Kann ich mir Teilzeit vor der Rente leisten?',
-        exercises: ['Personen & Vermögen → Sophie → Einkünfte: Gehalt ändern. Vergleiche Balance → Dein Monatsbudget, Zeile „angelegt“.', variantExercise('sophie', ['grund', 'teilzeit'])],
+        exercises: ['Personen & Vermögen → Sophie → Einkünfte: Gehalt ändern. Vergleiche Balance → Dein Monatsbudget, Zeile „angelegt“.', variantExercise('sophie', ['grund', 'teilzeit']),
+            'Personen & Vermögen → Haushalt & Plan → Geplante Ausgaben: Ratenkredit ändern oder löschen. Vergleiche Simulator → Planübersicht, Spalte „Bedarf (Grund + Flex)“, und Balance → Dein Monatsbudget.'],
         observe: 'Nach jeder Änderung Balance → Dein Monatsbudget, Zeile „angelegt“.',
         note: 'Weniger Arbeit senkt meist auch die Rente. Passe sie selbst an.'
     }
@@ -61,16 +66,24 @@ const variantLessons = {
     klein: { note: 'Diese Variante darf schlecht ausgehen: Hier siehst du, wann ein Plan kippt.' },
     kurssturz: {
         question: 'Was zeigt die App, wenn der Markt im Jahr erst stark steigt und dann wieder fällt?',
-        exercises: ['Spielbereichsband → „Datum wählen …“: 02.01.2027 und den Jahresabschluss 2026 öffnen. Im Reiter Marktdaten zeigt die App, dass der Markt im Jahr schon viel heißer war, und lässt dich zwischen Jahresendregel und Jahreshoch wählen. Vergleiche danach Monatsbudget und Handlungsanweisung.',
-            'Vorher Balance → Budgetprüfung: Ab Juli 2026 wächst der Abstand zum Jahreshoch vom 15.06.; unter 10 % bleibt es beim Hinweis.'],
-        observe: 'Übung 1: Jahresabschluss → Reiter Marktdaten und Plan 2027. Übung 2: Balance → Budgetprüfung → Jahresverlauf.',
+        exercises: ['Spielbereichsband → „Datum wählen …“: 02.01.2027 und den Jahresabschluss 2026 öffnen. Im Reiter „Plan 2027“ steht „Bärenmarkt, den die Jahresregel nicht sieht“: Nach Kursen zum Jahresende wäre es kein Bärenmarkt, gemessen am Jahreshoch vom 15.06. schon. Wähle, welcher Plan gilt, und vergleiche danach Monatsbudget und „Was zu tun ist“.',
+            'Vorher Balance → Was zu tun ist: Denselben Block zeigt die Karte nur, solange der Kurs gemessen am Jahreshoch einen Bärenmarkt ergibt. Ein kleiner Abstand zum Hoch bleibt unsichtbar.'],
+        observe: 'Übung 1: Jahresabschluss → Reiter Plan 2027. Übung 2: Balance → Was zu tun ist → Kursverlauf.',
         note: 'Die Aktienkurse dieser Variante steigen 2026 bis zum 15.06. auf das Doppelte des Vorjahresendes und fallen bis Ende 2026 auf das 1,25-Fache. Geldmarkt, Anleihen und Gold verlaufen wie im Grundfall.'
+    },
+    teilweise: {
+        question: 'Wie zeigt die App, was vom Jahresplan schon umgesetzt ist?',
+        exercises: ['Balance → Überblick → „Was zu tun ist“: Max hat seine Planzeile verkauft, Erika erst einen Teil. Lies „… von … verkauft“, den Stand je Zeile und den Hinweis „Gutschrift nachtragen“.',
+            'Hinweis „Gutschrift nachtragen“ → „Tagesgeld nachtragen“: In Personen & Vermögen die offene Cashbuchung von Erika bestätigen. Zurück in der Balance ist der Hinweis weg, und „Deine Reserven“ zeigt den Erlös im Tagesgeld.',
+            'Balance → „Verkauf eintragen“: Der Verkaufsdialog öffnet sich für Erikas Aktien-ETF. Trag den offenen Rest ein; die Karte zeigt danach „Erledigt“.'],
+        observe: 'Balance → Was zu tun ist und Deine Reserven.',
+        note: 'Die Verkäufe dieser Variante sind Beispieldaten. Die App bucht nichts selbst; sie liest nur die eingetragenen Verkäufe.'
     },
     halten: { question: 'Was kostet es, den Lebensstandard fast nie zu senken?' },
     'haus-pg3': {
         question: 'Was finanziert die Pflege heute, und wann hilft das Haus?',
-        exercises: ['Personen & Vermögen → Werner → Person & Steuern: Pflegeform heute auf „zu Hause mit externer Unterstützung“ stellen. Vergleiche Balance: Pflegegeld fällt weg. Mit Werners ursprünglicher Angehörigenpflege zeigt ein Szenario mit Helgas Tod oder Grad 3 den automatischen Wechsel zu externer Unterstützung im selben Jahr.', 'Personen & Vermögen → Helga und danach Werner → Person & Steuern: jeweils Pflegegrad heute 4 und Pflegeform „im Heim“ wählen. Danach Simulator neu rechnen und im Szenario-Protokoll das Verkaufsjahr suchen.'],
-        observe: 'Übung 1: Balance → Dein Monatsbudget → Einkünfte. Übung 2: Simulator → Szenario-Protokoll, Spalte „Immobilienverkauf“.',
+        exercises: ['Personen & Vermögen → Werner → Person & Steuern: Pflegeform heute auf „zu Hause mit externer Unterstützung“ stellen. Vergleiche Balance: Pflegegeld fällt weg, die Zeile „Pflege Werner“ mit 1.500 €/Monat bleibt. Mit Werners ursprünglicher Angehörigenpflege zeigt ein Szenario mit Helgas Tod oder Grad 3 den automatischen Wechsel zu externer Unterstützung im selben Jahr.', 'Personen & Vermögen → Helga und danach Werner → Person & Steuern: jeweils Pflegegrad heute 4 und Pflegeform „im Heim“ wählen. Die App rechnet Heimkosten und eigene Ausgaben selbst, der Grundbedarf zu Hause entfällt. Danach Simulator neu rechnen: Weil alle im Heim leben, verkauft das Modell das Haus schon im ersten Jahr; das Szenario-Protokoll zeigt den Erlös von 405.000 €.'],
+        observe: 'Übung 1: Balance → Dein Monatsbudget → Einkünfte und Dein Bedarf. Übung 2: Simulator → Szenario-Protokoll, Spalte „Immobilienverkauf“.',
         note: 'Der Gesamtbedarf ist dein gewünschter Bedarf. Das finanzierte Monatsbudget liegt darunter, weil Balance den Wunsch-Flex nach den Entnahmeregeln kürzt. Den Grund zeigt Balance → Dein Monatsbudget → „Warum?“. Der Verkauf folgt einer Modellregel der App, keiner Pflicht zum Hausverkauf.'
     }
 };
@@ -87,6 +100,16 @@ export function musterLesson(householdId, variantId = 'grund', pensionStart = nu
     const exercises = typeof lesson.exercises === 'function' ? lesson.exercises(pensionStart, firstPensionStart) : lesson.exercises;
     return { ...lesson, exercises: householdId === 'max-erika' ? [...exercises,
         'Floor über Plan erkennen: Öffne Ausgaben → Haushalt und lies die Karte „Floor und Flex“. Der Grundbedarf liegt im Jahresmittel leicht über Plan, der Flex darunter. Wähle im Spielbereich das Testdatum 02.01.2027. Öffne auf der Übersicht den Jahresabschluss → „Bedarf und Plan“. Wähle beim Grundbedarf „Ist 2026 + Inflation“. Schließe das Jahr ab und sieh dir das neue Monatsbudget an.'] : exercises };
+}
+
+/** Heutige Pflegekosten des Haushalts (€/Jahr, erstes Jahr ohne Flex) aus derselben Bedarfsfunktion wie Balance und
+ * Simulator; 0 ohne Pflegegrad heute. Die Records werden nur gelesen. */
+function careTodayAnnual(records, values, year, now) {
+    const storage = { getItem: key => records[key] ?? null };
+    const status = readBalancePersonStatus({ storage, win: null, referenceYear: year });
+    if (!status.ready || status.status === 'demo') return 0;
+    const needs = projectBalanceCareNeeds({ status, storage, values, referenceYear: year, now });
+    return needs ? needs.current.homeCareAddition + needs.current.residentialCosts + needs.current.residentialOwnExpenses : 0;
 }
 
 /** Alle Bestands-, Bedarfs- und Einkunftszahlen stammen aus den geladenen Records.
@@ -119,10 +142,13 @@ export function musterSteckbrief(records, householdId, testDate, variantId = 'gr
     const salary = people.reduce((sum, p) => sum + fixedMonthlyIncome(incomeFromRecord(p.data), testDate.slice(0, 7)), 0);
     const partTime = householdId === 'sophie' && variantId === 'teilzeit' ? incomeFromRecord(people[0].data).find(e => e.id === 'muster-teilzeit') : null;
     const displaySalary = partTime?.betragMonat ?? salary;
-    const displaySurplus = displaySalary * 12 + pension - totalNeed;
+    const plannedItems = records[PLANNED_EXPENSES_KEY] ? Object.values(JSON.parse(records[PLANNED_EXPENSES_KEY]).entries)[0]?.items || [] : [];
+    // FR-43: Feste geplante Ausgaben zählen zum Grundbedarf ihres Jahres.
+    const fixedExpense = plannedExpensesForYear(plannedItems.filter(isFixedExpense), partTime ? Number(partTime.ab.slice(0, 4)) : year);
+    const displaySurplus = displaySalary * 12 + pension - totalNeed - fixedExpense;
     const base = baseRecords ? musterSteckbrief(baseRecords, householdId, testDate) : null;
-    const careIncluded = variantId === 'haus-pg3' && base ? plan.floorBedarf - base.numbers.floor : 0;
-    const gap = totalNeed - pension, surplus = salary * 12 + pension - totalNeed;
+    const careToday = careTodayAnnual(records, plan, year, date);
+    const gap = totalNeed - pension, surplus = salary * 12 + pension - totalNeed - plannedExpensesForYear(plannedItems.filter(isFixedExpense), year);
     const rentText = people.map(p => euro(Number(p.data.profile_rente_monatlich))).join(' + ');
     const ages = people.map(p => p.displayAge).join(' und ');
     const [first, second] = people;
@@ -150,17 +176,18 @@ export function musterSteckbrief(records, householdId, testDate, variantId = 'gr
     if (householdId === 'martin-petra') metrics[1] = { label: 'Immobilien', value: euro(propertyValue) };
     if (variantId === 'haus-pg3') {
         metrics[1] = { label: 'Haus', value: euro(propertyValue) };
-        metrics[2] = { label: 'Heutige Pflegekosten', value: `${euro(careIncluded)} / Jahr`, sub: 'im Grundbedarf enthalten' };
+        metrics[2] = { label: 'Heutige Pflegekosten', value: `${euro(careToday)} / Jahr`, sub: 'rechnet die App selbst dazu' };
     }
     const details = [Object.entries(assets).filter(([, v]) => v > 0).map(([key, value]) =>
         `${{ cash: 'Tagesgeld', depot: 'Depot', bonds: 'Anleihen', gold: 'Gold' }[key]} ${euro(value)}`).join(', '),
-    `Grundbedarf ${euro(plan.floorBedarf)}${careIncluded ? ' einschließlich heutiger Pflegekosten' : ''} · Wunschbedarf ${euro(plan.flexBedarf)} · Gesamtbedarf ${euro(totalNeed)}`,
+    `Grundbedarf ${euro(plan.floorBedarf)}${careToday ? ' ohne Pflege' : ''} · Wunschbedarf ${euro(plan.flexBedarf)} · Gesamtbedarf ${euro(totalNeed)}`,
     `Mindest-Flex ${euro(plan.minimumFlexAnnual)}`];
     if (householdId === 'renate') details.push(`${euro(totalNeed)} Bedarf − 12 × ${rentText} Rente = ${euro(gap)} aus dem Vermögen, vor Erträgen und Steuern`);
     if (householdId === 'sophie') {
-        details.push(`12 × ${euro(displaySalary)} − ${euro(totalNeed)} = ${euro(displaySurplus)} zum Anlegen${partTime ? ' ab ' + partTime.ab.slice(0, 4) : ''}, vor der Autoausgabe`);
-        const expense = Object.values(JSON.parse(records[PLANNED_EXPENSES_KEY]).entries)[0].items[0];
-        details.push(`${expense.bezeichnung} ${euro(expense.betrag)} im ${month(expense.monat)}`);
+        details.push(`12 × ${euro(displaySalary)} − ${euro(totalNeed)}${fixedExpense ? ` − ${euro(fixedExpense)} feste Ausgaben` : ''} = ${euro(displaySurplus)} zum Anlegen${partTime ? ' ab ' + partTime.ab.slice(0, 4) : ''}, vor der Autoausgabe`);
+        for (const expense of plannedItems) details.push(isFixedExpense(expense)
+            ? `${expense.bezeichnung} ${euro(expense.betragMonat)} im Monat${expense.bis ? ` bis ${month(expense.bis)}` : ''}, zählt zum Grundbedarf`
+            : `${expense.bezeichnung} ${euro(expense.betrag)} im ${month(expense.monat)}`);
     }
     if (householdId === 'jan-lena') details.push(people.flatMap(p => incomeFromRecord(p.data).filter(e => !e.art))
         .map(e => `${e.bezeichnung} ${euro(e.betrag)} (${e.monat.slice(0, 4)})`).join(', '));
@@ -178,8 +205,9 @@ export function musterSteckbrief(records, householdId, testDate, variantId = 'gr
         if (variantId === 'immobilien') changes = `Zusätzlich Haus 450.000 € bei Max und vermietete Wohnung 210.000 € bei Erika, mit 650 € Nettomiete im Monat. Gesamtvermögen ${euro(wealth + propertyValue)}, davon Geldvermögen ${euro(wealth)}.`;
         if (variantId === 'klein') changes = `Geldvermögen ${euro(wealth)} statt ${euro(base.numbers.wealth)}: Tagesgeld ${euro(assets.cash)}, Depot ${euro(assets.depot)}, keine Anleihen. Strategie Standard.`;
         if (variantId === 'kurssturz') changes = 'Planwerte wie im Grundfall. Die Spielkurse der Aktien steigen 2026 bis zum 15.06. auf das Doppelte des Vorjahresendes und fallen bis Ende 2026 auf das 1,25-Fache; Geldmarkt, Anleihen und Gold wie im Grundfall.';
+        if (variantId === 'teilweise') changes = 'Planwerte und Jahresplan wie im Grundfall. Max hat seine Planzeile am 12.03. verkauft und gutgeschrieben; Erika hat am 02.09. ein gutes Drittel ihrer Zeile verkauft, die Gutschrift aufs Tagesgeld ist noch offen.';
         if (variantId === 'halten') changes = `Mindest-Flex ${euro(plan.minimumFlexAnnual)} statt ${euro(base.numbers.minimumFlexAnnual)}: Der Flex darf in schlechten Jahren kaum sinken.`;
-        if (variantId === 'haus-pg3') changes = `Selbst genutztes Haus ${euro(propertyValue)}, je zur Hälfte. ${second.name} hat heute Pflegegrad ${second.data.profile_care_grade_today} und wird zu Hause durch Angehörige gepflegt. Grundbedarf ${euro(plan.floorBedarf)} statt ${euro(base.numbers.floor)}: Die heutigen Pflegekosten von ${euro(careIncluded)} stecken darin und werden nicht doppelt gezählt.`;
+        if (variantId === 'haus-pg3') changes = `Selbst genutztes Haus ${euro(propertyValue)}, je zur Hälfte. ${second.name} hat heute Pflegegrad ${second.data.profile_care_grade_today} und wird zu Hause durch Angehörige gepflegt. Der Grundbedarf bleibt ${euro(plan.floorBedarf)} ohne Pflege: Die App rechnet ${euro(careToday)} heutige Pflegekosten im Jahr selbst dazu und zeigt sie in Balance als Zeile „Pflege ${second.name}“.`;
         if (partTime) changes = `Gehalt ${euro(partTime.betragMonat)} statt ${euro(incomeFromRecord(first.data)[0].betragMonat)} in den letzten ${Number(partTime.bis.slice(0, 4)) - Number(partTime.ab.slice(0, 4)) + 1} Jahren (${partTime.ab.slice(0, 4)}–${partTime.bis.slice(0, 4)}).`;
         if (variantId === 'hundert') changes = `Wer stirbt, vererbt dem Partner alles: Immobilien und Geld (${inheritancePercent(readPartnership(records.household_partnership_v1), profiles[0].meta.id)} %).`;
         if (variantId === 'ehe') changes = `Verheiratet, gegenseitig ${inheritancePercent(readPartnership(records.household_partnership_v1), profiles[0].meta.id)} %: Steuerklasse I mit ${euro(wealth - inheritancePreview(wealth, 0, 100, { status: 'married' }).taxable)} Freibetrag, Witwenrente nach Modellannahme.`;
@@ -188,7 +216,7 @@ export function musterSteckbrief(records, householdId, testDate, variantId = 'gr
     const lesson = musterLesson(householdId, variantId, second?.data.profile_rentenbeginn, first?.data.profile_rentenbeginn);
     const note = partTime ? `Weniger Arbeit senkt meist auch die Rente. Sie bleibt hier ${rentText}: Passe sie selbst an.` : lesson.note;
     return { ...household, ...lesson, note, variant, changes, situation, metrics, details, restart: MUSTER_RESTART, discard: MUSTER_DISCARD,
-        numbers: { ...assets, wealth, propertyValue, careIncluded, displaySalary, displaySurplus, floor: plan.floorBedarf, flex: plan.flexBedarf, totalNeed, minimumFlexAnnual: plan.minimumFlexAnnual, pension, salary, gap, surplus, reserve } };
+        numbers: { ...assets, wealth, propertyValue, careToday, displaySalary, displaySurplus, floor: plan.floorBedarf, flex: plan.flexBedarf, totalNeed, minimumFlexAnnual: plan.minimumFlexAnnual, pension, salary, gap, surplus, reserve } };
 }
 
 const escape = text => String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');

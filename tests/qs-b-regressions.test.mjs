@@ -70,21 +70,21 @@ if (selected(2)) {
         const care = makeDefaultCareMeta(false, 'm', input.careToday, input.startAlter, input);
         A.equal(care.flexFactor, 1);
         priceCareMeta(care, input, initMcRunState(input), 0);
-        A.equal(care.flexFactor, 1);
+        A.equal(care.flexFactor, grade === 3 ? .5 : 0);
         const result = annual(input);
-        A.equal(result.kind, 'success'); close(result.logData.entscheidung.jahresEntnahme, 12000);
+        A.equal(result.kind, 'success'); close(result.logData.entscheidung.jahresEntnahme, grade === 3 ? 24000 : 32000);
         const mc = await chunk(input);
         A.equal(mc.technicalInventory.technicalError, 0);
-        close(mc.runMeta[0].logDataRows[0].pflege_flex_faktor, 1);
+        close(mc.runMeta[0].logDataRows[0].pflege_flex_faktor, grade === 3 ? .5 : 0);
     }
     const input = cashInputs(); input.careToday = { grade: 3, progression: 'usual' };
     input.pflegeGradeConfigs[3].flexCut = .5; input.pflegeGradeConfigs[4].flexCut = .25;
     const care = makeDefaultCareMeta(true, 'm', input.careToday, input.startAlter, input);
     updateCareMeta(care, input, input.startAlter, year, () => 1, initMcRunState(input), 0);
     updateCareMeta(care, input, input.startAlter + 1, year, () => 0, initMcRunState(input), 1);
-    A.equal(care.grade, 4); close(care.flexFactor, .5);
+    A.equal(care.grade, 4); close(care.flexFactor, .25);
     input.pflegeGradeConfigs[3].flexCut = 0;
-    priceCareMeta(care, input, initMcRunState(input), 1); A.equal(care.flexFactor, 1);
+    priceCareMeta(care, input, initMcRunState(input), 1); A.equal(care.flexFactor, .25);
 }
 if (selected(3)) {
     for (const survivor of [1, 2]) for (const months of [1, 3, 6, 12]) for (const deathThisYear of [false, true]) {

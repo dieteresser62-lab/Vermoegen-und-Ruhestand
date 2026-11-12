@@ -1,6 +1,6 @@
 # Rechenweg der Handlungsanweisung
 
-Wie die App eine geplante Entnahme finanziert und freie Mittel anlegt. Für fachlich Interessierte. Codeprüfung: 01.11.2026.
+Wie die App eine geplante Entnahme finanziert und freie Mittel anlegt. Für fachlich Interessierte. Codeprüfung: 12.11.2026.
 
 ## Auf einen Blick
 
@@ -8,7 +8,7 @@ Wie die App eine geplante Entnahme finanziert und freie Mittel anlegt. Für fach
 - Liquiditätsziel, harte Mindestreserve und sofort verfügbares Tagesgeld erfüllen verschiedene Aufgaben.
 - Bruttoverkauf minus Steuer ergibt Netto für Auffüllung und Käufe. Ein Kauf ist keine zusätzliche Entnahme.
 - Der Haushalt plant gemeinsam; Tranchen, Gewinne und Steuern behalten ihre Eigentümer.
-- Erst der passende Jahresbeleg hält die Empfehlung fest. Reale Geschäfte erfasst du getrennt.
+- Erst der passende Jahresbeleg hält die Empfehlung fest. Die Karte „Was zu tun ist“ verfolgt ihn über deine eingetragenen Verkäufe; reale Geschäfte erfasst du getrennt.
 
 ## Geld bereitstellen
 
@@ -24,7 +24,7 @@ Basisziel = größerer Betrag, auf 100 € aufgerundet
 Liquiditätsziel = Basisziel + ungerundete fällige Ausgabenreserve
 ```
 
-Zusätzlich werden die offenen geplanten Ausgaben des Planjahres einmal bereitgehalten, ohne Multiplikation mit Zieljahren. Feste Posten zählen für jeden gültigen Monat, bei gewählter Anpassung mit Inflation. Einmalige Posten werden ab ihrem Preisbezugsjahr inflationiert; eine Betragsänderung setzt diesen Bezug neu. Bis zum Simulationsstart zählen bestätigte Jahresinflationen, danach die Raten des jeweiligen Pfads. Bestätigte Zahlungsnachweise geben die Reserve in Balance frei. Einmalige Einkünfte zählen dort erst im bestätigten Tagesgeldstand. Der Simulator bucht sie am Jahresanfang und bezahlt geplante Ausgaben im Jahreslauf.
+Zusätzlich werden die offenen einmaligen geplanten Ausgaben des Planjahres einmal bereitgehalten, ohne Multiplikation mit Zieljahren. Feste Posten bekommen keine eigene Reserve: Sie zählen für jeden gültigen Monat zum Grundbedarf, bei gewählter Anpassung mit Inflation, und erhöhen das Ziel nur über den Grundbedarf. Einmalige Posten werden ab ihrem Preisbezugsjahr inflationiert; eine Betragsänderung setzt diesen Bezug neu. Bis zum Simulationsstart zählen bestätigte Jahresinflationen, danach die Raten des jeweiligen Pfads. Bestätigte Zahlungsnachweise geben die Reserve in Balance frei. Einmalige Einkünfte zählen dort erst im bestätigten Tagesgeldstand. Der Simulator bucht sie am Jahresanfang und bezahlt einmalige geplante Ausgaben im Jahreslauf.
 
 Eine Flex-Kürzung senkt das Ziel nicht; eine höhere dynamische Entnahme kann es erhöhen. Zieldeckung ist freie Liquidität / Euroziel. Operative Reichweite ist freie Liquidität / geplante Monatsentnahme; ohne Entnahme ist sie unbegrenzt. „Danach“ gilt vor Jahresauszahlung.
 
@@ -108,20 +108,24 @@ Eine vorläufige Plansteuer reserviert Geld. Die persönliche Jahresrechnung ber
 | Stand | Bedeutung |
 |---|---|
 | Folgejahresprojektion | Aktuelle Bestände und letzter VWCE.DE-Tagesschluss mit Jahresfortschreibung von Bedarf, Alter und Einkünften. Die Annahmenzeile nennt Quellen und Datenstände; Restentnahmen sind nicht abgezogen. Bei Projektionsfehler bleibt die bisherige Vorschau verfügbar. |
-| Budgetprüfung · Mit Hoch vom … | Anzeigevergleich mit identischem Vermögen und sonst gleichen Eingaben: bisherige Jahresendregel gegenüber höchstem gespeicherten Schlusskurs über Jahreswechsel. Nur ein höheres Hoch ändert die Variante. Zuerst steht das Budgetergebnis; die Budgettabelle öffnet sich bei geändertem Budget. Markt, Hauptaktion, Steuer und Reserve stehen in „Markt und Umschichtung“. Eine andere Marktphase allein ist keine Budgetwarnung. Fehlende Belastbarkeit nennt den Grund. Im Jahresabschluss unter „Kurse prüfen“ steht derselbe Vergleich. Übernommen wird die Regel. |
-| Übersicht | Budget, Marktphase und Handlung aus der Basisrechnung mit gespeicherten Jahresmarktdaten. |
+| Verdeckter Bärenmarkt · Mit dem Jahreshoch | Anzeigevergleich mit identischem Vermögen und sonst gleichen Eingaben: Jahresendregel gegenüber höchstem gespeicherten Schlusskurs. Sichtbar nur, wenn die Engine gemessen am Jahreshoch den Flex kürzt (`FLEX_BUDGET.ACTIVE_REGIMES`: tiefer Bär, Erholung im Bärenmarkt), nach der Jahresendregel nicht. Dann zeigen Balance und Jahresabschluss Abstand, drei Kurse und die Folgen; im Schritt „Plan“ wählst du ohne Vorauswahl. Übernommen wird ohne Wahl die Regel. |
+| Seite Übersicht | Budget, Marktphase und Handlung aus der Basisrechnung mit gespeicherten Jahresmarktdaten. In Balance steht die Marktphase unter „Diagnose“. |
 | Festgeschriebene Handlungsanweisung | Empfehlung und Beschluss für passendes Planjahr und denselben Personenbereich. |
 | Tatsächliches Geschäft | Bestätigte Änderung der Tranchen und getrennt gepflegter Tagesgeldstand. |
 | Spielbereich | Ausführung ausschließlich auf getrennten Spielbeständen. |
 | Simulator | Modellbuchung auf kopierten Beständen mit zusätzlichen Deckungs- und Steuerprüfungen. |
 
-Die Anzeige unterscheidet den damaligen Beleg von einer mit heutigen Beständen gerechneten Vorschau. Heutige Bestände dürfen die festgeschriebene Erlösverwendung nicht nachträglich ändern. Bedienung: [Quellen und Verwendung lesen](../../Handbuch.html#handlungsanweisung).
+Die Karte „Was zu tun ist“ (FR-77) steht in Balance rechts oben, darunter „Deine Reserven“. Liegt ein passender Jahresbeleg vor, zeigt sie oben diesen Plan mit dem Chip „Plan ‹Jahr›“, dem Beschlussdatum und einem Stand je Planzeile (Person × Anlageklasse): gezählt werden bestätigte Verkäufe derselben Person und Anlageklasse ab dem Beschlusstag im Planjahr, netto gegen Plan netto. Der Stand heißt „Offen“, „Teilweise erledigt“ oder ab 98 % „Erledigt“. Ein Verkauf ohne Gutschrift aufs Tagesgeld zählt als verkauft; die Karte zeigt „Gutschrift nachtragen“, die Reservekarte nennt den fehlenden Betrag. Käufe tragen im Beleg keine Person und haben keinen Stand. Ein Beleg ohne Verkaufszeile rechnet Reserven und Diagnose mit der Neuberechnung zu heutigen Beständen. Das Verb der Hauptzeile nennt bei reinen Anleiheverkäufen „Anleihen verkaufen“. „Verkauf eintragen“ wählt die Tranche der Planzeile vor; der Beleg trägt sie mit Personenpräfix, der Link ohne. Bedienung: [Quellen und Verwendung lesen](../../Handbuch.html#handlungsanweisung).
+
+Planbeleg und Vorschau bleiben getrennt. Der Beleg oben ist der Stand vom Beschlusstag; heutige Bestände ändern weder seine Beträge noch die festgeschriebene Erlösverwendung. Ohne passenden Beleg steht dort ein Satz, dass der Plan im nächsten Jahresabschluss entsteht. Unten in der Karte steht zugeklappt „Vorschau auf den Plan ‹J+1›“ mit Hauptaktion und Betrag: der Plan, den „Jahr ‹J› abschließen“ beschließen würde. Sie rechnet mit heutigen Beständen, als wäre heute der 31.12., und „Details der Vorschau“ führt zu Quellen, Steuer und Verwendung. Verbindlich wird sie erst im Jahresabschluss.
+
+„Tagesgeld auffüllen“ erscheint, wenn das Tagesgeld weniger als sechs Monate Entnahme deckt und kein Planverkauf offen ist: je Person bis zum Tagesgeldziel des Routings, höchstens aus ihrem Geldmarkt. Ein Monat Entnahme ist dabei derselbe Betrag wie in der Reservekarte: Liquiditätsziel geteilt durch die Reichweite in Monaten (162.000 € ÷ 60 = 2.700 €). Die Schwelle ist 6 solcher Monate, das Ziel die Tagesgeldmonate. Liegt die eiserne Reserve des Haushalts (Bruttobedarf je Monat × Mindest-Liquidität) darüber, gilt sie wie in der Reservekarte als Ziel und als Schwelle; der Satz nennt dann die Reserve statt der Monate. Die Summe aller Personen reicht höchstens bis zum Ziel des Haushalts; sonst sinkt jeder Personenbetrag im selben Verhältnis. Im Haushalt hat jede Person mit Umschichtung eine eigene Zeile mit Namen und Knopf, auch wenn es nur eine ist.
 
 Der Projektionsentwurf rückt die vier Jahresstände einmal nach und vergleicht den Schlusskurs mit dem gespeicherten Hoch. Ein offener Vorjahresabschluss begrenzt Kurs und Altersprüfung auf Ende des Abschlussjahrs. Kurse am Bezugsjahresende oder davor sind bereits in der Jahresbasis enthalten und rücken nicht nochmals nach. Bei Vorschaufehlern bleibt die Basisrechnung verfügbar. Der Jahresabschluss verwendet weiterhin seinen bestätigten Jahresendkurs. Die reine Marktprojektion vergleicht zusätzlich den höchsten gespeicherten Schlusskurs der gesamten Historie. Nur bei einem echt höheren Hoch zählt dessen Datum als Bruchteilalter; bei gleichem Wert verwenden beide Varianten das Regelalter. Die zweite Rechnung ändert weder Plan noch Jahresbeleg oder Handlungsanweisung.
 
-„Budgetprüfung für ‹Zieljahr›“ zeigt zuerst die Budgetauswirkung. Jahresbudget und Differenz entsprechen dem gerundeten Monatsbetrag mal zwölf. Weniger Budget nennt Jahres-/Monatsdifferenz und betroffenen Bedarf. Gleiches Budget mit anderer Umschichtung bleibt neutral. Die Budgettabelle öffnet sich nur bei geändertem Budget; Marktwerte, Umschichtungen und Grenzbalken stehen in der geschlossenen Klappe. „Tiefer Bärenmarkt“ beginnt erst mehr als 20 % unter dem Hoch. Die Balken zeigen Abstand zum Hoch / 20 %; Texte nennen den Restabstand. Zusatzzeilen „Mit Hoch vom …“ erscheinen links bei anderem Budget, rechts bei anderer Hauptaktion oder anderem Betrag. Ohne Jahresbeleg heißt die Regelspalte „Bisherige Regel (Jahresmarktdaten Ende VJ)“. Fehlende Belastbarkeit blendet die Varianten aus und nennt den Grund. Die gespeicherte Herkunft steht getrennt bei den Jahresmarktdaten.
+Der Block „Bärenmarkt, den die Jahresregel nicht sieht“ nennt den Abstand zum Jahreshoch, Ende Vorjahr, Jahreshoch und heutigen Kurs und vergleicht Marktlage, Monatsbudget und Verkauf beider Lesarten. Eine Zusatzzeile „Mit Hoch vom …“ beim Monatsbudget erscheint nur in diesem Fall. Kleinere Abstände, andere Umschichtungen ohne Bär und das Grundrauschen zeigt die App nicht; die interne Einstufung bleibt. Fehlen im Jahresabschluss die Kurse für die Prüfung und sieht die Jahresendregel keinen Bären, nennt der Schritt „Marktdaten“ den Grund. In der Balance steht dann genau eine Zeile „Kurse älter als 10 Tage – verdeckter Bärenmarkt nicht prüfbar · Kurse holen →“, bei fehlenden oder lückenhaften Kursen „Kurse fehlen oder sind lückenhaft – …“; andere Gründe einer fehlenden Vorschau zeigen sie nicht. Liegt seit dem Jahresende noch kein Kurs vor und ist es höchstens 10 Tage her, gibt es noch kein Jahreshoch und keine Zeile.
 
-Die Folgejahresanzeige nutzt einen privaten Jahresentwurf mit Inflation, Rentenbeginn und geplanten Folgejahresposten. Bestände bleiben auf heutigem Stand; Restentnahmen bis Dezember sind nicht abgezogen. Monatsbudget, Budgetprüfung und vorläufige Empfehlung verwenden denselben Entwurf. Bedarfskarten, Strategie, Reserven und Diagnose beziehen sich auf das laufende Planjahr; auch Eingaben und Speicherung bleiben bei dessen Planwerten. Die Gründe nennen Bedarf, Einkünfte, geplante Zahlungen oder Budget ohne Gesamtsumme; Inflation und Rundung bleiben getrennt. Scheitert der Entwurf, nennt die Budgetprüfung den Grund und die bisherige Vorschau bleibt verfügbar. Im Jahresabschluss heißt der Vergleich „Abschließende Berechnung mit bestätigten Jahresdaten“; übernommen wird die Regel. [Technischer Vertrag](TECHNICAL.md#balance-und-abschluss).
+Die Folgejahresanzeige nutzt einen privaten Jahresentwurf mit Inflation, Rentenbeginn und geplanten Folgejahresposten. Bestände bleiben auf heutigem Stand; Restentnahmen bis Dezember sind nicht abgezogen. Monatsbudget, Jahreshochvergleich und Vorschau verwenden denselben Entwurf. Bedarfskarten, Strategie, Reserven und Diagnose beziehen sich auf das laufende Planjahr; auch Eingaben und Speicherung bleiben bei dessen Planwerten. Die Gründe nennen Bedarf, Einkünfte, geplante Zahlungen oder Budget ohne Gesamtsumme; Inflation und Rundung bleiben getrennt. Scheitert der Entwurf, bleibt die bisherige Vorschau verfügbar. Im Jahresabschluss steht der Vergleich nur bei verdecktem Bärenmarkt im Schritt „Plan“; ohne Wahl wird die Regel übernommen. Solange die Wahl offen ist, zeigt der Schritt „Monatsbudget ‹J+1› · nach deiner Wahl“. Ändern sich dort die Planwerte, rechnen auch die Beträge an der Wahl mit ihnen neu, ebenso nach späteren Änderungen von Tagesgeld oder Pflegewerten. [Technischer Vertrag](TECHNICAL.md#balance-und-abschluss).
 
 ### Reale Ausführung
 
@@ -222,7 +226,7 @@ Ein Jahresabschluss verkauft nichts beim Broker. Reale Bestandsänderungen folge
 
 - Zweck: Freie Mittel investieren.
 - Wann sie greift: Ohne positiven Verkaufsauftrag.
-- Rechnung: Liquide bleibt mindestens das höhere Ziel aus C1 und Jahresauszahlung beziehungsweise Grundbedarf plus zusätzlichem Grundbedarfsmonat und fälligen Ausgaben. Ansparjahre investieren ab 500 €, ohne Marktsperre, centweise abgerundet. Sonstige Jahre verlangen Überschuss streng über Mindesthandel und erlaubte Marktlage; bei ausgeschalteter Handelsrundung gilt 500 €. Gold bis zum Ziel, dann Aktien; Goldrundungsrest bleibt liquide. Drei Töpfe ergänzt zuerst Anleihen. Abschöpflimit null sperrt Käufe nicht. Im Simulator bleibt bei nicht verheirateten Paaren je Person der eigene Ausgabenanteil nach Anrechnung ihrer Einkünfte liquide. Nur ihr persönlicher Rest steht für Käufe bereit.
+- Rechnung: Liquide bleibt mindestens das höhere Ziel aus C1 und Jahresauszahlung beziehungsweise Grundbedarf plus zusätzlichem Grundbedarfsmonat und fälligen Ausgaben. Ansparjahre investieren ab 500 €, ohne Marktsperre, centweise abgerundet. Sonstige Jahre verlangen Überschuss streng über Mindesthandel und erlaubte Marktlage; bei ausgeschalteter Handelsrundung gilt 500 €. Gold bis zum Ziel, dann Aktien; Goldrundungsrest bleibt liquide. Drei Töpfe ergänzt zuerst Anleihen. Abschöpflimit null sperrt Käufe nicht. Im Simulator bleibt bei nicht verheirateten Paaren je Person der eigene Ausgabenanteil nach Anrechnung ihrer Einkünfte liquide. Nur ihr persönlicher Rest steht für Käufe bereit. Im Sterbejahr kauft bei einem Erbanteil unter 100 % nur die lebende Person, mit dem, was ihr nach dem [Nachlass](TOD_UND_ERBE.md#sterbejahr) bleibt; danach gelten Mindesthandel und Rundung erneut.
 - Parameter: Überschuss, Goldziel und Handelsstufen.
 - Beispiel: [Überschussgegenprobe](TECHNICAL.md#jan-und-lena-legen-überschuss-an).
 - Gedächtnis: Keine feste Aktienzielquote.
@@ -383,7 +387,7 @@ Ein Jahresabschluss verkauft nichts beim Broker. Reale Bestandsänderungen folge
 
 - Zweck: Jahresanfang herstellen.
 - Wann sie greift: Vor der Entscheidung.
-- Rechnung: Renditen, einmalige Einkünfte und [Lebensereignisse](TOD_UND_ERBE.md) anwenden; [Immobilienverkauf](IMMOBILIEN.md#verkauf) kann Geld bereitstellen.
+- Rechnung: Renditen, einmalige Einkünfte und [Lebensereignisse](TOD_UND_ERBE.md) anwenden; [Immobilienverkauf](IMMOBILIEN.md#verkauf) kann Geld bereitstellen. Im Sterbejahr mit Erbanteil unter 100 % entscheiden C1–C15 Kauf und Auffüllung mit Liquidität und Wertpapieren, die der lebenden Person [bleiben](TOD_UND_ERBE.md#sterbejahr); die Ausgabenentscheidung bleibt beim Haushalt.
 - Parameter: Jahreswerte und Personenereignisse.
 - Beispiel: [Bärenjahr](#max-und-erika-im-bärenjahr).
 - Gedächtnis: Kopiertes Vorjahresportfolio.
@@ -507,15 +511,15 @@ Die getrennte Auszahlung nutzt Max Mustermann: 24.000,00 €. Die Tabellen gelte
 
 ### Max und Erika im Bärenjahr
 
-Musterbestände vom 17.10.2026 im historischen Lauf, Beschluss nach der Rendite 2002. Die Rente deckt den Grundbedarf. Der Bärenpfad wartet bei ausreichender Liquidität; eine Kürzung erzwingt keinen Verkauf.
+Musterbestände vom 17.10.2026 im historischen Lauf mit 0,5 % Fondskosten auf Aktien, Beschluss nach der Rendite 2002. Die Rente deckt den Grundbedarf. Der Bärenpfad wartet bei ausreichender Liquidität; eine Kürzung erzwingt keinen Verkauf.
 
 | Wert | Ergebnis |
 | --- | ---: |
-| Jahresentnahme | 11.400,00 € |
-| Liquiditätsziel | 64.900,00 € |
-| Freie Liquidität vorher | 97.510,04 € |
-| Deckung vorher / nachher | 150,25 % / 150,25 % |
-| Reichweite vorher / nachher, vor Auszahlung | 102,64 / 102,64 Monate |
+| Jahresentnahme | 12.000,00 € |
+| Liquiditätsziel | 68.200,00 € |
+| Freie Liquidität vorher | 96.971,30 € |
+| Deckung vorher / nachher | 142,19 % / 142,19 % |
+| Reichweite vorher / nachher, vor Auszahlung | 96,97 / 96,97 Monate |
 | Bruttoquellen / Steuer / Netto | 0,00 € / 0,00 € / 0,00 € |
 
 Anweisung: „Tiefer Bär (Kein Handlungsbedarf)“. Gold, Überschussanlage, Pflege-Rücklage und isolierte Steuergegenproben stehen in den [vollständigen technischen Beispielen](TECHNICAL.md#vollständige-handelsbeispiele).
@@ -523,7 +527,7 @@ Anweisung: „Tiefer Bär (Kein Handlungsbedarf)“. Gold, Überschussanlage, Pf
 
 ## Wo du es in der App siehst
 
-Balance zeigt „Handlungsanweisung & Vorschau“ mit Quellen brutto, Steuer, Netto und „Wohin es fließt“. „Deine Reserven“ vergleicht Liquidität, Tagesgeld und Geldmarkt heute und nach Umsetzung derselben Empfehlung; ohne Vorschlag zeigt sie nur heute. Zieldeckung und Reichweite gelten vor Auszahlung. Der Jahresabschluss zeigt die festgeschriebene Empfehlung; Simulatorprotokolle zeigen ausgeführte Modellbuchungen. Bedienung: [Handlung lesen](../../Handbuch.html#handlungsanweisung), [Verkauf erfassen](../../Handbuch.html#verkauf-schritte).
+Balance zeigt rechts „Was zu tun ist“ mit dem Plan aus dem Jahresabschluss und seinem Stand. „Details & Drucken“ öffnet den Beleg mit Wertpapier, Brutto, Steuer, Netto und Tranche. „Details der Vorschau“ zeigt Quellen brutto, Steuer, Netto und „Wohin es fließt“ für die Vorschau. „Deine Reserven“ darunter vergleicht Liquidität, Tagesgeld und Geldmarkt heute und nach Umsetzung derselben Empfehlung; ohne Vorschlag zeigt sie nur heute. Bei festgeschriebener Anweisung zählt nur ihr offener Rest: Bestätigte Verkäufe derselben Person und Anlageklasse seit dem Beschluss im Planjahr gehen netto ab, ab 98 % gilt eine Zeile als erledigt. Ist alles erledigt, entspricht „nach Umsetzung“ dem heutigen Stand. Im Planversuch rechnet die Karte mit dem Versuch. Zieldeckung und Reichweite gelten vor Auszahlung. Die Marktphase steht unter „Diagnose“, das Jahreshoch nur bei verdecktem Bärenmarkt in „Was zu tun ist“. Der Jahresabschluss zeigt im Schritt „Plan“ den Stand des alten Plans und den neuen Plan als Karte „Was zu tun ist“; Simulatorprotokolle zeigen ausgeführte Modellbuchungen. Bedienung: [Handlung lesen](../../Handbuch.html#handlungsanweisung), [Verkauf erfassen](../../Handbuch.html#verkauf-schritte).
 
 ## Modellgrenzen
 

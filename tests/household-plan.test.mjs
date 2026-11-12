@@ -3,7 +3,7 @@ import { PLAN_FIELDS, PLAN_FIELD_PATHS, PLAN_DEFAULTS, HOUSEHOLD_PLAN_KEY, planS
 import { PersistenceFacade as P, persistenceStorage } from '../app/shared/persistence-facade.js';
 import { createLocalStorageAdapter } from '../app/shared/persistence-adapter-localstorage.js';
 
-const expected = 'floorBedarf flexBedarf minimumFlexAnnual flexBudgetAnnual flexBudgetYears flexBudgetRecharge liquidityRunwayYears liquidityCashMonths minCashBufferMonths maxSkimPctOfEq maxBearRefillPctOfEq decumulation dynamicFlex horizonMethod horizonYears survivalQuantile goGoActive goGoMultiplier longevityMode longevityQuantileShift jointAssessment longevityRelativePct longevityBufferYears householdWithdrawalMode cape';
+const expected = 'floorBedarf flexBedarf minimumFlexAnnual flexBudgetAnnual flexBudgetYears flexBudgetRecharge liquidityRunwayYears liquidityCashMonths minCashBufferMonths maxSkimPctOfEq maxBearRefillPctOfEq decumulation dynamicFlex horizonMethod horizonYears survivalQuantile goGoActive goGoMultiplier longevityMode longevityQuantileShift jointAssessment longevityRelativePct longevityBufferYears householdWithdrawalMode cape equityCostPct';
 assertEqual(PLAN_FIELDS.join(' '), expected, 'Vollständige abgegrenzte Feldliste ohne Personen-/Vermögenswerte');
 const scope = planScope('household', ['z', 'a']), outsider = planScope('single', ['outside']);
 assertEqual(scope.key, '["household",["a","z"]]', 'Bereich sortiert und dedupliziert');

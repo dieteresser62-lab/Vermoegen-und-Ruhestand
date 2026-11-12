@@ -27,7 +27,8 @@ const records = createMusterHaushaltRecords('2026-10-15');
 const registry = JSON.parse(records.rs_profiles_v1);
 const plan = { ...Object.values(JSON.parse(records.household_plan_v1).entries)[0].values, ...dynamicFlexPresetPatch('ausgewogen') };
 const profiles = Object.entries(registry.profiles).map(([profileId, profile]) => {
-    const data = { ...profile.data, depot_tranchen: JSON.stringify(normalizeTrancheCollection(JSON.parse(profile.data.depot_tranchen), { mode: 'persisted' })) };
+    // GU-1 (FR-74): Der belegte Musterfall bleibt bei der damaligen Beispielwahl „wie Löhne“; die neue Vorgabe prüft gu-1-sollfaelle.
+    const data = { ...profile.data, profile_rentenanpassung_art: 'wage', depot_tranchen: JSON.stringify(normalizeTrancheCollection(JSON.parse(profile.data.depot_tranchen), { mode: 'persisted' })) };
     return { profileId, name: profile.meta.name, inputs: buildSimulatorInputsFromProfileData(data, { referenceYear: 2026, planValues: plan }) };
 });
 const merged = combineSimulatorProfiles(profiles, 'muster_a', { planValues: plan });
@@ -57,7 +58,8 @@ const low = model.events.find(event => event.type === 'minimum_real_year_end_wea
 assertEqual(low.year, 2008, 'Reales Jahrestief 2008');
 assertClose(low.evidence.amountRealEur, 385000, 1000, 'FR-46: reales Tief rund 385.000 Euro, ohne plattformgebundene Bytes');
 assertClose(model.realEndWealth, result.metrics.values.wealth_end_real_eur, 1e-6, 'Jahresend-Realbasis stimmt mit kanonischen Backtestmetriken überein');
-assertClose(model.realEndWealth, 760000, 1000, 'QS-C: Endstand mit Teilfreistellung der eigenen Aktiennachkäufe');
+// LE-1 (FR-75): Dynamic-Flex-Horizont aus der Kohortentafel (länger) senkt die Entnahme; Endstand vorher rund 760.000 Euro.
+assertClose(model.realEndWealth, 768000, 1000, 'QS-C: Endstand mit Teilfreistellung der eigenen Aktiennachkäufe');
 assertEqual(model.events.filter(event => event.type === 'liquidity_below_target').length, 11, 'FR-46: elf Unterschreitungen des bedarfsbezogenen Liquiditätsziels');
 assert(result.rows.every(({ row }) => row.RunwayMeasurementPhase === 'after_transaction_before_payout'
     && Number.isFinite(row.RunwayCoveragePct) && row.RunwayCoveragePct > 0), 'Alle 26 Liquiditätsmessungen bleiben belegt');
@@ -65,8 +67,9 @@ const coverage = model.events.filter(event => event.type === 'forced_liquidity_c
 assertEqual(coverage.length, 0, 'FR-32: keine zusätzlichen Liquiditätsdeckungen');
 assertEqual(coverage.map(event => event.year).join(), '', 'FR-32: keine zusätzlichen persönlichen Deckungsjahre');
 const tax = model.prioritizedEvents.find(event => event.type === 'tax_peak');
-assertEqual(tax.year, 2024, 'FR-46: stärkste Steuerspitze 2024 zuerst');
-assertClose(tax.evidence.amount.nominalEur, 21400, 100, 'B9: Steuerspitze nach geänderter persönlicher Auszahlungsverteilung');
+// LE-1 (FR-75): Mit dem längeren Dynamic-Flex-Horizont verschiebt sich die stärkste Steuerspitze von 2024 (21.400 €) nach 2025.
+assertEqual(tax.year, 2025, 'FR-46: stärkste Steuerspitze 2025 zuerst');
+assertClose(tax.evidence.amount.nominalEur, 24400, 100, 'B9: Steuerspitze nach geänderter persönlicher Auszahlungsverteilung');
 assertEqual(model.events.find(event => event.type === 'real_wealth_recovery').year, 2021, 'FR-46: reales Wiedererreichen des Startvermögens 2021');
 assert(model.summarySentences.length >= 3 && model.summarySentences.length <= 6, 'Feste Gesamtzusammenfassung mit drei bis sechs Sätzen');
 assert(model.summary.includes('26') && model.summary.includes('Mindest-Flex'), 'Zusammenfassung erklärt Grundbedarf und Mindest-Flex');
@@ -76,7 +79,7 @@ assertEqual(view.cards[1].valueText, '1 Jahr · 2009', 'Musterkarte nennt die be
 assertEqual(view.cards[2].year, 2008, 'Musterkarte verlinkt das reale Tiefjahr');
 assert(view.more.some(point => point.type === 'liquidity_below_target'), 'FF-B: Weitere zeigt belegte Zielunterschreitungen');
 assert(!view.more.some(point => point.type === 'forced_liquidity_coverage'), 'FR-32: keine unbelegten zusätzlichen Liquiditätsdeckungen anzeigen');
-assertEqual(view.more.find(point => point.type === 'tax_peak').year, 2024, 'Weitere Punkte verlinken stärkstes Steuerjahr');
+assertEqual(view.more.find(point => point.type === 'tax_peak').year, 2025, 'Weitere Punkte verlinken stärkstes Steuerjahr');
 const chart = buildBacktestChartAnnotations(result);
 assertEqual(chart.bands.map(band => band.label).join('|'), 'Flex gekürzt 2009–2009', 'Chartband zeigt nur die belegte Kürzungsphase');
 assert(chart.markers.length <= 5 && chart.markers.some(marker => marker.type === 'minimum_real_year_end_wealth' && marker.year === 2008), 'Chart enthält das reale Muster-Tief 2008 unter höchstens fünf Marken');

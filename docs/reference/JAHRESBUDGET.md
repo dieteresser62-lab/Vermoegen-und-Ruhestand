@@ -24,7 +24,7 @@ Offener Wunsch-Flex = max(0, Wunsch-Flex − max(0, R − Grundbedarf))
 Jahresentnahme = F + X × Flex-Rate / 100
 ```
 
-R umfasst Rente und feste persönliche Einkünfte mit ihren gültigen Monaten. Nettomieten sind [Immobilieneinkünfte](IMMOBILIEN.md#miete). [Pflege](PFLEGE.md#kosten-im-bedarf) und [Tod](TOD_UND_ERBE.md#einkommen-und-bedarf) verändern die Eingangsbedarfe und Einkommen vor dieser Rechnung. Ihre Regeln stehen im jeweiligen Thema. Die [Erbschaftsteuerzahlung](TOD_UND_ERBE.md#zahlung) folgt nach dem Budget und ändert dessen Beschluss nicht.
+R umfasst Rente und feste persönliche Einkünfte mit ihren gültigen Monaten. Nettomieten sind [Immobilieneinkünfte](IMMOBILIEN.md#miete). [Pflege](PFLEGE.md#kosten-im-bedarf), auch der [Heimaufenthalt](PFLEGE.md#heim), und [Tod](TOD_UND_ERBE.md#einkommen-und-bedarf) verändern die Eingangsbedarfe und Einkommen vor dieser Rechnung. Ihre Regeln stehen im jeweiligen Thema. Die [Erbschaftsteuerzahlung](TOD_UND_ERBE.md#zahlung) folgt nach dem Budget und ändert dessen Beschluss nicht.
 
 ### Dynamik
 
@@ -46,7 +46,7 @@ flowchart TD
 
 Einkommen über dem beschlossenen Bedarf wird gespart. Mit Dynamik kann daneben eine Depotentnahme anfallen; der gesamte Haushalts-Flex bleibt begrenzt. Der beschlossene Einkommens-Flex entscheidet über den Überschuss. Ohne wirksame Dynamik entspricht er dem Wunsch-Flex. Mit wirksamer Dynamik ist er höchstens der dynamische Bedarf vor Einkommensverrechnung und höchstens doppelter Wunsch-Flex minus Depot-Flex, mindestens null. Gespart wird max(0, R − Grundbedarf − beschlossener Einkommens-Flex). Der Simulator schreibt den Rest dem persönlichen Tagesgeld gut. Balance zählt tatsächliche Eingänge im erfassten Tagesgeld. Die anschließende [Anlage](HANDLUNGSANWEISUNG.md#c9) folgt eigenen Regeln.
 
-Geplante Ausgaben stehen außerhalb von Grundbedarf und Flex. Ihre Jahresreserve erhöht erst nach dem Budgetbeschluss das [Liquiditätsziel](HANDLUNGSANWEISUNG.md#c1). Einmalige Einkünfte verändern dieses Monatsbudget nicht.
+Feste geplante Ausgaben zählen in ihren Monaten zum Grundbedarf und werden nie gekürzt. Das Monatsbudget eines Monats ist (Jahresbudget − feste Ausgaben des Jahres) / 12 plus die festen Ausgaben dieses Monats. Einmalige geplante Ausgaben stehen außerhalb von Grundbedarf und Flex. Ihre Jahresreserve erhöht erst nach dem Budgetbeschluss das [Liquiditätsziel](HANDLUNGSANWEISUNG.md#c1). Einmalige Einkünfte verändern dieses Monatsbudget nicht.
 
 ## Flex-Rate
 
@@ -65,7 +65,7 @@ w = t² × (3 − 2t)
 
 ### Marktphasen
 
-Der Hochabstand ist der nominale Rückgang vom verwendeten Hoch. Im Jahresabschluss stehen bei verschiedenen Budget- oder Verkaufsfolgen und mindestens 10 % Abstand zum Jahreshoch Jahresendregel und Jahreshoch ohne Vorauswahl zur Wahl (FR-71). Unter 10 % gilt der Unterschied als Grundrauschen, es bleibt bei der Jahresendregel. Das Jahreshoch ist der höchste gespeicherte Schluss des Referenz-ETF seit Ende des Vorjahrs. Nur die ausdrückliche Jahreshochwahl speichert Wert, Datum und Bruchteilsalter für die Folgejahre. Ohne Wahlmöglichkeit oder belastbaren Vergleich gilt die Jahresendregel. Die Grenzen 5 % und 10 % staffeln nur Anzeige und Wahl; Simulator, Backtest und Monte Carlo behalten Jahresendstände. Die App prüft diese Marktphasen in Tabellenfolge:
+Der Hochabstand ist der nominale Rückgang vom verwendeten Hoch. Im Jahresabschluss stehen Jahresendregel und Jahreshoch nur bei einem verdeckten Bärenmarkt ohne Vorauswahl zur Wahl: Gemessen am Jahreshoch kürzt die Engine den Flex (tiefer Bär, Erholung im Bärenmarkt), nach der Jahresendregel nicht (FR-71, geändert durch FR-77). Das Jahreshoch ist der höchste gespeicherte Schluss des Referenz-ETF seit Ende des Vorjahrs. Nur die ausdrückliche Jahreshochwahl speichert Wert, Datum und Bruchteilsalter für die Folgejahre. Ohne Wahlmöglichkeit oder belastbaren Vergleich gilt die Jahresendregel. Simulator, Backtest und Monte Carlo behalten Jahresendstände. Die App prüft diese Marktphasen in Tabellenfolge:
 
 | Phase | Bedingung |
 |---|---|
@@ -108,7 +108,7 @@ Eine bewusste Planänderung setzt das Budgetgedächtnis zurück: etwa Bedarf, Mi
 
 ### Beschluss
 
-Der Abschluss von J beschließt den Plan für J+1. Offene Jahre werden nacheinander verarbeitet; jeder Beschluss verwendet die zugehörigen Jahresdaten und persönlichen Tagesgeldstände. Empfehlung und eigener Beschluss bleiben getrennt belegt. „Monatsbudget“ umfasst Einkommen plus Vermögensentnahme abzüglich gesparten Einkommens; die Vermögensentnahme allein ist ein anderer Betrag. Der [Jahresbeleg](HANDLUNGSANWEISUNG.md#beleg) hält die Empfehlung fest. Bedienung: [Jahr abschließen](../../Handbuch.html#jahr-abschliessen).
+Der Abschluss von J beschließt den Plan für J+1. Offene Jahre werden nacheinander verarbeitet; jeder Beschluss verwendet die zugehörigen Jahresdaten und persönlichen Tagesgeldstände. Empfehlung und eigener Beschluss bleiben getrennt belegt. „Monatsbudget“ umfasst Einkommen plus Vermögensentnahme abzüglich gesparten Einkommens; die Vermögensentnahme allein ist ein anderer Betrag. Der [Jahresbeleg](HANDLUNGSANWEISUNG.md#beleg) hält die Empfehlung fest. Der Schritt „Pflegewerte“ zeigt die [fortgeschriebenen Pflegepreise](PFLEGE.md#heim) für J+1, sobald die Inflation des Jahres vorliegt; „Unverändert bestätigen“ übernimmt sie, eigene Werte bleiben ohne weitere Erhöhung. Bedienung: [Jahr abschließen](../../Handbuch.html#jahr-abschliessen).
 
 ## Nachschlagen
 
@@ -121,8 +121,8 @@ Die tatsächliche Bedarfsfolge ist A4-Schalter → A1 → A2 → A3 → A4-Boden
 
 - Zweck: Nur ungedeckten Bedarf aus Geldvermögen finanzieren.
 - Wann sie greift: Vor jeder Budgetrechnung.
-- Rechnung: R deckt zuerst Grundbedarf, danach Wunsch-Flex; negative Bedarfe werden null. Die Eingangsprojektion berücksichtigt [Pflege](PFLEGE.md#reserve-und-flex) und [Hinterbliebene](TOD_UND_ERBE.md#einkommen-und-bedarf). Die [Erbschaftsteuerzahlung](TOD_UND_ERBE.md#zahlung) bleibt außerhalb des Budgets.
-- Parameter: Grundbedarf, Wunsch-Flex und gültige Einkünfte der einen oder zwei Haushaltspersonen.
+- Rechnung: R deckt zuerst Grundbedarf, danach Wunsch-Flex; negative Bedarfe werden null. Die Eingangsprojektion berücksichtigt [Pflege](PFLEGE.md#reserve-und-flex) und [Hinterbliebene](TOD_UND_ERBE.md#einkommen-und-bedarf). Im Heim ersetzen in Monte Carlo [Heimkosten und eigene Ausgaben](PFLEGE.md#heim) den Grundbedarfsanteil der Person. Endet akute Heimpflege, gilt wieder der Grundbedarf zu Hause, auch in der Folgejahresvorschau für das Liquiditätsziel. Die [Erbschaftsteuerzahlung](TOD_UND_ERBE.md#zahlung) bleibt außerhalb des Budgets.
+- Parameter: Grundbedarf, Wunsch-Flex und gültige Einkünfte der einen oder zwei Haushaltspersonen. Im Simulator ergänzt die gemeinsame [Pflegerechnung](PFLEGE.md#kosten-im-bedarf) heutige und künftige Pflege automatisch; der Grundbedarf beschreibt alle Personen zu Hause ohne Pflege. Heimpflege ersetzt ihren Anteil, Flex und Mindest-Flex folgen dem absoluten Pflege-Level. Das Liquiditätsziel nutzt bei Pflege den vollen Folgejahresbedarf. Balance rechnet seit FR-73 mit derselben Funktion wie der Simulator im ersten Jahr: Grundbedarf zu Hause, Pflege zu Hause, Heimkosten und eigene Ausgaben im Heim aus dem bestätigten Plan (Grundbedarf und Flex ohne Pflege), dem heutigen Pflegezustand der Personen und den Pflegepreisen des Haushalts; Wunsch- und Mindest-Flex folgen dem absoluten Pflege-Level, das Pflegegeld zählt nach dem Angehörigenausfall als Einkunft. Das Liquiditätsziel und die Vorschau des Folgejahres nutzen Heimjahr + 1, Folgejahrespreise und die Einkünfte des Folgejahrs mit Kalendergrenzen und Fortschreibung (Rentenanpassung des Hauptprofils für beide Renten wie im Simulator, Anpassung fester Einkünfte, Pflegegeld mit Inflation). Ohne bestätigten Plan bleibt die gespeicherte Bedarfsbasis.
 - Beispiel: [Max und Erika](#max-und-erika-im-jahresvergleich).
 - Gedächtnis: Einkommen und Bedarf werden fürs Folgejahr fortgeschrieben.
 - Name: Offener Grundbedarf und Wunsch-Flex.
@@ -133,8 +133,8 @@ Die tatsächliche Bedarfsfolge ist A4-Schalter → A1 → A2 → A3 → A4-Boden
 
 - Zweck: Vermögen über die verbleibenden Jahre verteilen.
 - Wann sie greift: Angefordert, zugelassen, mit positivem Horizont.
-- Rechnung: Annuitätenfaktor bei Realrendite r und h Jahren: r / (1 − (1 + r)^(−h)); bei |r| < 0,001 gilt 1/h. Aktienrendite folgt linear den CAPE-Stützpunkten, abzüglich langfristiger Inflation. Tatsächliche Anlageanteile gewichten Aktien, Gold und sichere Anlagen einschließlich Anleihen. Grenzen und Vorjahresglättung folgen vor der Annuität. Der alternative stetige CAPE-Pfad verwendet eigene Grenzen.
-- Parameter: Renditeannahmen, Zusammensetzung und Horizont. Sterbetafel, Überlebensquantil oder direkte Eingabe bestimmen h; optionale Langlebigkeitsaufschläge gelten einmal im Haushalt. Bei Tod kann der Simulator den Horizontübergang glätten.
+- Rechnung: Annuitätenfaktor bei Realrendite r und h Jahren: r / (1 − (1 + r)^(−h)); bei |r| < 0,001 gilt 1/h. Die Aktienrendite e folgt linear den CAPE-Stützpunkten. Davon gehen die Fondskosten k ab, (1 + e) × (1 − k) − 1, danach die langfristige Inflation. Tatsächliche Anlageanteile gewichten Aktien, Gold und sichere Anlagen einschließlich Anleihen. Grenzen und Vorjahresglättung folgen vor der Annuität. Der alternative stetige CAPE-Pfad verwendet eigene Grenzen und zieht k ebenso ab.
+- Parameter: Renditeannahmen, Fondskosten aus Haushalt & Plan (Vorgabe 0,5 % pro Jahr), Zusammensetzung und Horizont. Sterbetafel (seit FR-75 die Kohortentafel V2 des Geburtsjahrs), Überlebensquantil oder direkte Eingabe bestimmen h; optionale Langlebigkeitsaufschläge gelten einmal im Haushalt. Bei Tod kann der Simulator den Horizontübergang glätten.
 - Beispiel: [Dynamischer Haushalt](#dynamic-flex-mit-greifender-haushaltsobergrenze).
 - Gedächtnis: Geglättete Rendite und letzter dynamischer Bedarf.
 - Name: „Dynamic Flex“.
@@ -368,7 +368,7 @@ Vier Quoten haben unterschiedliche Nenner. Die reale Vorjahresquote steuert w; d
 
 - Zweck: Auszahlbaren Monatsbetrag bilden.
 - Wann sie greift: Nach der Rate.
-- Rechnung: Monatlich abrunden, auf zwölf Monate hochrechnen, mindestens F. Genau auf einer Stufengrenze gilt die nächste Rundungsstufe. Balance teilt die Liquiditätsreserve nach dem Planwert „davon im Tagesgeld“ auf; das ändert weder Monatsbudget noch Auszahlung, die weiter je Person zuerst Tagesgeld und dann Geldmarkt nutzt. Die eiserne Reserve bleibt vollständig Tagesgeld. Persönliche Tagesgeldziele folgen dem Bedarf aus Ausgaben abzüglich Rente und Einkünften der kommenden zwölf Monate, mindestens dem eigenen Anteil an der eisernen Reserve; ihre Summe bleibt das Haushaltsziel. Ausgabenquelle sind zwölf vollständige Importmonate je Person, ersatzweise der gleiche Anteil am Haushaltsbudget nach Plan. Rente und feste Einkünfte zählen monatsgenau nach Beginn und Ende; ohne Bedarf oder bei beschädigtem Ausgabenbereich werden die Ziele gleich verteilt. Abschöpfen wahrt das Haushaltsziel nach Steuern und ungedeckten Partnerfehlbeträgen. Umschichtungen folgen persönlichen Zielabständen; Transfer und Kaufdeckung werden getrennt besteuert, bei Zusammenveranlagung über beide Personen. Spiel-Eintragung und Zeitraffer nutzen dieselbe Aufteilung. Ausführlich unter [Handlungsanweisung](HANDLUNGSANWEISUNG.md#e2).
+- Rechnung: Monatlich abrunden, auf zwölf Monate hochrechnen, mindestens F. Genau auf einer Stufengrenze gilt die nächste Rundungsstufe. Fehlt dem Budget nur dieser Rundungsbetrag zum Plan, zeigt Balance keine Kürzung; greift eine andere Stufe, nennt sie den ganzen Abstand zum Plan. Balance teilt die Liquiditätsreserve nach dem Planwert „davon im Tagesgeld“ auf; das ändert weder Monatsbudget noch Auszahlung, die weiter je Person zuerst Tagesgeld und dann Geldmarkt nutzt. Die eiserne Reserve bleibt vollständig Tagesgeld. Persönliche Tagesgeldziele folgen dem Bedarf aus Ausgaben abzüglich Rente und Einkünften der kommenden zwölf Monate, mindestens dem eigenen Anteil an der eisernen Reserve; ihre Summe bleibt das Haushaltsziel. Ausgabenquelle sind zwölf vollständige Importmonate je Person, ersatzweise der gleiche Anteil am Haushaltsbudget nach Plan. Rente und feste Einkünfte zählen monatsgenau nach Beginn und Ende; ohne Bedarf oder bei beschädigtem Ausgabenbereich werden die Ziele gleich verteilt. Abschöpfen wahrt das Haushaltsziel nach Steuern und ungedeckten Partnerfehlbeträgen. Umschichtungen folgen persönlichen Zielabständen; Transfer und Kaufdeckung werden getrennt besteuert, bei Zusammenveranlagung über beide Personen. Spiel-Eintragung und Zeitraffer nutzen dieselbe Aufteilung. Ausführlich unter [Handlungsanweisung](HANDLUNGSANWEISUNG.md#e2).
 - Parameter: Monatsstufen und Rundungsschalter; der Tagesgeldanteil umfasst als Vorgabe zwölf Monate, höchstens die eingestellte Liquiditätsreichweite.
 - Beispiel: [2002](#max-und-erika-im-jahresvergleich).
 - Gedächtnis: Auszahlungsrate und Anker vor Rundung getrennt.
@@ -463,32 +463,32 @@ Erzeugte Werte mit verständlichen Namen; Prozentpunkte sind Ratenabstände. Rei
 <a id="max-und-erika-2002"></a>
 ### Max und Erika im Jahresvergleich
 
-Synthetische Musterbestände vom 17.10.2026, historischer Lauf 2000–2025. Die Jahreszeile zeigt den Beschluss nach der Rendite, keine damalige Lebensgeschichte. Dynamic Flex ist aus. Alle Bedarfe und Renten gelten pro Jahr.
+Synthetische Musterbestände vom 17.10.2026, historischer Lauf 2000–2025. Die Jahreszeile zeigt den Beschluss nach der Rendite, keine damalige Lebensgeschichte. Dynamic Flex ist aus. Aktien rechnen wie im Simulator mit 0,5 % Fondskosten pro Jahr. Alle Bedarfe und Renten gelten pro Jahr.
 
 | Größe | Normaljahr 2000 | Bärenjahr 2002 |
 | --- | ---: | ---: |
 | Grundbedarf | 30.000,00 € | 30.997,80 € |
 | Wunsch-Flex | 30.000,00 € | 30.997,80 € |
 | Mindest-Flex | 7.500,00 € | 7.749,45 € |
-| Rente | 27.600,00 € | 49.025,34 € |
+| Rente | 27.600,00 € | 48.356,57 € |
 | Offener Grundbedarf | 2.400,00 € | 0,00 € |
-| Offener Wunsch-Flex | 30.000,00 € | 12.970,26 € |
-| Depot | 705.281,19 € | 399.925,13 € |
-| Freie Liquidität | 90.000,00 € | 97.510,04 € |
-| Vermögensentnahme pro Monat | 2.700,00 € | 950,00 € |
-| Haushaltsbudget pro Monat mit Rente | 5.000,00 € | 5.035,45 € |
+| Offener Wunsch-Flex | 30.000,00 € | 13.639,03 € |
+| Depot | 701.754,79 € | 393.927,22 € |
+| Freie Liquidität | 90.000,00 € | 96.971,30 € |
+| Vermögensentnahme pro Monat | 2.700,00 € | 1.000,00 € |
+| Haushaltsbudget pro Monat mit Rente | 5.000,00 € | 5.029,71 € |
 
-2002 beginnt die Rate bei 100,00 %. Alarm senkt auf 90,00 %; Rundung ergibt 87,89 % und 950,00 € monatliche Entnahme. Der nächste Anker bleibt 90,00 %. Die Rente deckt das Minimum schon vollständig; die niedrige Depotrate bedeutet hier kein Unterschreiten des Mindest-Flex.
+2002 beginnt die Rate bei 100,00 %. Alarm senkt auf 90,00 %; Rundung ergibt 87,98 % und 1.000,00 € monatliche Entnahme. Der nächste Anker bleibt 90,00 %. Die Rente deckt das Minimum schon vollständig; die niedrige Depotrate bedeutet hier kein Unterschreiten des Mindest-Flex.
 
 ### Dynamic Flex mit greifender Haushaltsobergrenze
 
-Synthetischer Jahresbeschluss, geprüft am 27.10.2026: 1.000.000,00 € Depot, 200.000,00 € Liquidität, 24.000,00 € Grundbedarf, 30.000,00 € Wunsch- und Mindest-Flex, 30.000,00 € Jahresrente. Alter 65/63, Horizont 20 Jahre, CAPE 25, Inflation null, Markt am Hoch. Go-Go-Faktor 1,20.
+Synthetischer Jahresbeschluss, geprüft am 27.10.2026: 1.000.000,00 € Depot, 200.000,00 € Liquidität, 24.000,00 € Grundbedarf, 30.000,00 € Wunsch- und Mindest-Flex, 30.000,00 € Jahresrente. Alter 65/63, Horizont 20 Jahre, CAPE 25, Inflation null, Markt am Hoch. Go-Go-Faktor 1,20, Fondskosten 0,5 % pro Jahr.
 
 | Schritt | Ergebnis |
 | --- | ---: |
-| Portfoliorealrendite | 3,83 % |
-| Annuität vor Go-Go | 86.999,91 € |
-| Dynamischer Depot-Flex vor / nach Haushaltsdeckel | 104.399,89 / 54.000,00 € |
+| Portfoliorealrendite | 3,39 % |
+| Annuität vor Go-Go | 83.591,93 € |
+| Dynamischer Depot-Flex vor / nach Haushaltsdeckel | 100.310,32 / 54.000,00 € |
 | Geschützte Geldvermögensquote | 2,00 % |
 | B5 S-Kurve · Rate danach | 44,44 % |
 | B8 Leitplanken · Rate danach | 83,33 % |

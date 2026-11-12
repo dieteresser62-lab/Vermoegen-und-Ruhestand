@@ -350,24 +350,26 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
                 resetPersistenceForTests({ getItemSync: key => source.get(key) ?? null, setItemSync: (key, value) => source.set(key, value), keysSync: () => [...source.keys()] });
             };
             outputs.balanceActionPeriod = doc.createElement('span');
+            outputs.balanceActionPreviewTitle = doc.createElement('span');
             const checkPreview = expectedYear => {
                 const detailOutputs = { handlungsanweisung: doc.createElement('div'), actionDetailsTitle: doc.createElement('h2') };
                 // Echte Fassade, auch wenn die Detailansicht keine Budgetkarte besitzt.
                 initUIRenderer({ outputs: { ...detailOutputs, balanceActionPeriod: outputs.balanceActionPeriod,
-                    balanceActionFootnote: outputs.balanceActionFootnote, balanceActionDisclaimer: outputs.balanceActionDisclaimer } }, { loadState: () => ({ annualPeriodMetadata: metadata }) });
+                    balanceActionPreviewTitle: outputs.balanceActionPreviewTitle, balanceActionDisclaimer: outputs.balanceActionDisclaimer } }, { loadState: () => ({ annualPeriodMetadata: metadata }) });
                 UIRenderer.render({ ...ui, input, action: { type: 'NONE', title: 'Kein Handel nötig' } });
                 const label = `Vorläufige Vorschau · Jahresabschluss ${expectedYear}`;
-                assertEqual(outputs.balanceActionPeriod.textContent, label, 'Periodenchip nennt das nächste Abschlussjahr');
-                assert(outputs.balanceActionFootnote.textContent === `Festgeschrieben erst im Jahresabschluss ${expectedYear}`, 'Fußtext verwendet dasselbe Abschlussjahr');
-                assert(detailOutputs.actionDetailsTitle.textContent.startsWith(label), 'Dialogtitel übernimmt das Abschlussjahr der Karte');
+                // WT-1 (FR-77 Punkt 4), WT-1b: Die Vorschau ist eine zugeklappte Zeile „Vorschau auf den Plan {J+1}“.
+                assertEqual(outputs.balanceActionPreviewTitle.textContent, `Vorschau auf den Plan ${expectedYear + 1}`, 'Vorschauzeile nennt den Plan des nächsten Abschlusses');
+                assert(outputs.balanceActionDisclaimer.textContent.startsWith('So sähe der Plan aus, wenn heute der 31.12. wäre.'), 'Aufgeklappt steht ein Satz zur Vorschau');
+                assert(detailOutputs.actionDetailsTitle.textContent.startsWith(label), 'Dialogtitel nennt das Abschlussjahr der Herkunftsprojektion');
                 const copy = UIRenderer.getActionCopyText();
-                assert(copy.startsWith(label) && copy.includes(outputs.balanceActionDisclaimer.textContent), 'Kopie übernimmt Label und Hinweis derselben Herkunftsprojektion');
+                assert(copy.startsWith(label), 'Kopie übernimmt das Label derselben Herkunftsprojektion');
             };
             metadata = { schemaVersion: 1, lastCommittedPeriod: null, pendingCommit: null };
             seedPeriod(); plan.renderContext(input);
             metadata = { schemaVersion: 1, lastCommittedPeriod: null, pendingCommit: null };
             seedPeriod(); plan.renderContext(input);
-            assert(outputs.balanceActionFootnote.textContent.includes(`Jahresabschluss ${targetYear}`), 'Offenes Vorjahr ist der nächste Jahresabschluss');
+            assert(outputs.balanceActionPreviewTitle.textContent.includes(`Plan ${targetYear + 1}`), 'Offenes Vorjahr: Vorschau auf den Plan, den der nächste Jahresabschluss beschließt');
             checkPreview(targetYear);
             metadata = { schemaVersion: 99, lastCommittedPeriod: null, pendingCommit: null }; seedPeriod(); plan.renderContext(input);
             metadata = { schemaVersion: 1, lastCommittedPeriod: `calendar-year:${targetYear}`, pendingCommit: null };
@@ -387,8 +389,8 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
                 outputs.balanceBudgetChips.replaceChildren(); // Eigener Erstjahrfall, ohne die vorigen Zustandsfixtures.
                 outputs.balanceActionPeriod = doc.createElement('span');
                 plan.renderContext(input);
-                assert(outputs.balanceActionFootnote.textContent.includes('Jahresabschluss 2026') && outputs.balanceActionDisclaimer.textContent.includes('Anfang 2027'), 'Erstjahrvorschau nennt Abschlussjahr und ersten Termin getrennt');
-                assertEqual(outputs.balanceActionPeriod.textContent, 'Vorläufige Vorschau · Jahresabschluss 2026', 'Handlung bleibt auch im Erstjahr vorläufig');
+                assert(outputs.balanceActionPreviewTitle.textContent === 'Vorschau auf den Plan 2027' && outputs.balanceActionDisclaimer.textContent.includes('erster Jahresabschluss Anfang 2027'), 'Erstjahrvorschau nennt den ersten Termin');
+                assert(outputs.balanceActionPeriod.hidden !== false || outputs.balanceActionPeriod.textContent === '', 'Ohne Beleg kein Planchip, die Handlung bleibt vorläufig');
                 checkPreview(2026);
                 assert(!outputs.balanceBudgetChips.children.some(node => /ungeklärt/.test(node.textContent)), 'Kein ungeklärter Erstjahrchip');
                 assertEqual(JSON.stringify([...source]), before, 'Erstjahrdarstellung ist schreibfrei');

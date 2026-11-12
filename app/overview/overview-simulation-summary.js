@@ -1,5 +1,5 @@
 /** @import * as O from "../../typcheck/overview-ui.js" */
-import { HOUSEHOLD_PLAN_KEY, PLAN_FIELDS, assertHouseholdPlanRecord, projectPlanToBalance, memberPlanScope, SIMULATOR_LEGACY_PLAN_FIELDS } from '../profile/household-plan.js';
+import { HOUSEHOLD_PLAN_KEY, PLAN_FIELDS, assertHouseholdPlanRecord, projectPlanToBalance, memberPlanScope, SIMULATOR_LEGACY_PLAN_FIELDS, planEquityCostPct } from '../profile/household-plan.js';
 import { readHouseholdSimulatorNeedsState } from '../simulator/simulator-household-needs-persistence.js';
 import { canonicalizeHistoricalContractValue as canonical, sha256Hex } from '../simulator/historical-backtest-contract.js';
 import { CONFIG } from '../balance/balance-config.js';
@@ -8,12 +8,19 @@ import { readPlannedExpenses } from '../profile/household-planned-expenses.js';
 import { readBalancePlannedPosts } from '../balance/balance-planned-posts.js';
 import { readBalancePlanContext } from '../balance/balance-plan-context.js';
 import { readCareValues, careValuesInputPatch } from '../shared/household-care-values.js';
+import { GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT } from '../simulator/german-demography-care-survivor-contract.js';
 
 export const OVERVIEW_SIMULATION_KEY = 'overview_simulation_summary_v1';
 export const FINGERPRINT_VERSION = 2;
 export const SIMULATION_KINDS = ['backtest', 'montecarlo', 'workshop'];
 export const simulationEntryKey = (scope, kind) => JSON.stringify([scope.key, kind]);
 export const fingerprint = value => sha256Hex(canonical(value));
+/** Modellstand von Sterbetafel und Pflege (LE-1b nach FR-75). Er zählt für Monte Carlo und Werkstatt und für
+ * Backtests mit Dynamic Flex, deren Horizont aus der Zieltafel kommt. Ändert sich die Revision des Demografievertrags,
+ * gelten gespeicherte Ergebnisse als veraltet; Ergebnisse von vor LE-1 haben keinen Modellstand und sind damit einmal
+ * veraltet. Ein Backtest ohne Dynamic Flex kennt keinen Tod und bleibt gültig. Es wird nichts geschrieben. */
+export const LIFE_MODEL_STATE = Object.freeze({ demographyCareSurvivor: GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT.revision });
+const LIFE_MODEL_KINDS = new Set(['montecarlo', 'workshop']);
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
 const finite = value => value === null || (typeof value === 'number' && Number.isFinite(value));
 const text = value => typeof value === 'string' && value.trim().length > 0 && value.length <= 180 && !/[\x00-\x1f]/.test(value);
@@ -90,7 +97,7 @@ const mcFields = /^(?:mc|rngMode$|useCapeSampling$|stressPreset$|tailRisk|market
 const simFields = new Set(('startFloorBedarf startFlexBedarf minimumFlexAnnual flexBudgetAnnual flexBudgetYears flexBudgetRecharge '
     + 'marketCapeRatio dynamicFlex horizonMethod horizonYears survivalQuantile goGoActive goGoMultiplier '
     + 'longevityMode longevityQuantileShift longevityRelativePct longevityBufferYears pflegefallLogikAktivieren pflegeModellTyp '
-    + 'pflegeMaxFloor pflegeRampUp pflegeMinDauer pflegeMaxDauer pflegeKostenDrift pflegeRegionalZuschlag '
+    + 'pflegeMaxFloor pflegeRampUp pflegeMinDauer pflegeMaxDauer pflegeKostenDrift pflegeRegionalZuschlag pflegeHeimEigeneAusgaben '
     + 'entnahmeStrategie bondTargetFactor drawdownTrigger bondRefillThreshold mcAnzahl mcDauer mcBlockSize mcSeed mcMethode rngMode '
     + 'useCapeSampling mcStartYearMode mcStartYearFilter mcStartYearHalfLife mcExcludeEstimatedHistory '
     + 'widowPensionMode widowPensionPct widowMarriageOffsetYears widowMinMarriageYears survivorFloorPercent survivorFlexPercent survivorMinimumFlexPercent stressPreset tailRiskMode tailRiskProbability tailRiskSeverity tailRiskHorizonYears goldAllokationAktiv goldAllokationProzent goldFloorProzent goldSteuerfrei rebalancingBand tagesgeld simStartVermoegen depotwertAlt geldmarktEtf einstandAlt liquidityRunwayYears runwayTargetMonths runwayMinMonths maxSkimPctOfEq maxBearRefillPctOfEq risikoprofil rentAdjPct').split(' '));
@@ -165,6 +172,9 @@ export function sourceFingerprint({ registry, activeId, liveData = {}, scope, ki
             const inputs = { ...(state.inputs || {}) };
             if (plan) for (const key of [...PLAN_FIELDS, 'marketCapeRatio', 'capeRatio', 'entnahmeStrategie', 'bondTargetFactor', 'drawdownTrigger', 'bondRefillThreshold',
                 'startFloorBedarf', 'startFlexBedarf', 'runwayTargetMonths', 'runwayMinMonths', 'runwayTargetM', 'runwayMinM']) { delete inputs[key]; delete assumptions[key]; }
+            // KO-2 (FR-76): Fondskosten sind ein Planwert, fehlend gilt die Vorgabe; der frühere Simulator-Schlüssel zählt nicht.
+            // Ohne Plan rechnet der Simulator mit der Vorgabe. Gleiche Stelle wie in GU-1b, damit Ergebnisse mit 0,5 % gültig bleiben.
+            assumptions.equityCostPct = planEquityCostPct(plan);
             return { id, belongs: profile.meta.belongsToHousehold !== false, person, inputs: effective(inputs, kind), assumptions: kind === 'balance' ? {} : effective(assumptions, kind),
                 health: health?.enabled === false ? { enabled: false } : health,
                 tranches: tranches.map(lot => normalize(lot)).sort((a, b) => canonical(a).localeCompare(canonical(b))) };
@@ -173,14 +183,18 @@ export function sourceFingerprint({ registry, activeId, liveData = {}, scope, ki
         if (['invalid', 'unsupported'].includes(needs?.status)) return null;
         const projectedPlan = plan ? projectPlanToBalance(plan) : null;
         if (projectedPlan) projectedPlan.dynamicFlex = plan.dynamicFlex && plan.cape.value > 0;
+        const usesDynamicFlex = projectedPlan ? projectedPlan.dynamicFlex === true
+            : members.some(member => member.inputs.dynamicFlex === true || member.assumptions.dynamicFlex === true);
         const plannedExpenses = readPlannedExpenses({ scope: kind === 'balance' ? membersScope : scope, storage });
         const balancePosts = kind === 'balance' && plannedExpenses.length
             ? readBalancePlannedPosts({ storage, scope: membersScope, year: balanceContext.referenceYear, people: [] }) : null;
         const care = readCareValues({ getItem: key => liveData[key] ?? null });
         const careChanged = Object.hasOwn(careValuesInputPatch(care), 'careValues');
         return fingerprint({ version: FINGERPRINT_VERSION, kind, scope, members, plan: projectedPlan ? effective(projectedPlan, 'balance') : null,
+            ...(LIFE_MODEL_KINDS.has(kind) || (kind === 'backtest' && usesDynamicFlex) ? { lifeModel: LIFE_MODEL_STATE } : {}),
             needs: normalize(needs?.values || null), mode: plan ? null : liveData.household_withdrawal_mode ?? null,
-            ...(careChanged ? { careValues: { allowance: care.allowance.values, residentialMonthly: care.residential.monthly } } : {}),
+            ...(careChanged ? { careValues: { allowance: care.allowance.values, residentialMonthly: care.residential.monthly,
+                ...(care.residential.components ? { residentialComponents: care.residential.components } : {}) } } : {}),
             ...(plannedExpenses.length ? { plannedExpenses: normalize(plannedExpenses) } : {}),
             ...(balancePosts ? { plannedPayments: normalize(balancePosts) } : {}) });
     } catch { return null; }

@@ -52,9 +52,11 @@ for (const bondValue of [200000, 2000, 0]) for (const amount of [100,35000]) {
     const storage={getItem:key=>key===CONFIG.STORAGE.LS_KEY?JSON.stringify({inputs:{inflation:2}}):null};
     const priced=withPlannedExpensePrices(items,{storage,scope,referenceYear:2027});
     const posts=projectPlannedPosts({items:priced,year:2027,scope});
-    close(posts.reserve,26350*1.02,'Balance im zweiten Planjahr verwendet die gespeicherte Inflation');
+    // FR-43 (11.11.2026): Reserve nur für die einmalige Ausgabe; der Kredit steht im Grundbedarf.
+    close(posts.reserve,25000*1.02,'Balance im zweiten Planjahr verwendet die gespeicherte Inflation');
+    close(posts.items.filter(item=>item.fixed).reduce((s,item)=>s+item.amount,0),1350*1.02,'Feste Monatsposten mit derselben Inflation');
     const simItems=withPlannedExpensePrices(items,{storage,scope,referenceYear:2026});
-    close(plannedExpensesForYear(simItems,2027,1.02),posts.reserve,'Simulator und Balance haben dieselbe Preisbasis im zweiten Jahr');
+    close(plannedExpensesForYear(simItems,2027,1.02),posts.reserve+1350*1.02,'Simulator und Balance haben dieselbe Preisbasis im zweiten Jahr');
     const current=[{...items[0],priceYear:2027}];
     close(plannedExpensesForYear(withPlannedExpensePrices(current,{storage,scope,referenceYear:2027}),2027),25000,'Im Preisbezugsjahr bleibt der eingegebene Betrag unverändert');
     const doc={createElement:tag=>({tag,dataset:{},children:[],appendChild(child){this.children.push(child);},append(...children){this.children.push(...children);}})};
@@ -62,7 +64,7 @@ for (const bondValue of [200000, 2000, 0]) for (const amount of [100,35000]) {
     assertEqual(rows.length,2,'Feste Monatsausgaben erscheinen als eine Jahreszeile neben dem Auto');
     assert(rows[1].children[0].textContent.includes('10.–12.2027'),'Zeitraum nennt alle drei Kreditmonate');
     assert(rows[1].children[2].children[0].textContent.includes('3 ×'),'Monatszahl steht unter dem Jahresbetrag');
-    close(posts.items.reduce((s,item)=>s+item.amount,0),posts.expenseTotal,'Monatsnachweis addiert sich zur angezeigten Jahressumme');
+    close(posts.items.filter(item=>!item.fixed).reduce((s,item)=>s+item.amount,0),posts.expenseTotal,'Einmalige Posten addieren sich zur angezeigten Jahressumme');
 }
 {
     const inputs={...base,startVermoegen:20000,tagesgeld:20000,simulationPeople:[{...base.simulationPeople[0],tagesgeld:20000}],detailledTranches:[],

@@ -27,7 +27,9 @@ function cashInputs(cash = 10000, couple = false) {
     return input;
 }
 function reserveInputs(cash = 10000, floor = 20000) {
-    return { ...cashInputs(cash), startFloorBedarf: floor, careToday: { grade: 4, form: 'residential' },
+    return { ...cashInputs(cash), startFloorBedarf: floor, careToday: { grade: 4, form: 'home-support' },
+        // Rücklagenbuchung isolieren; Pflegepreise selbst sichern die FR-73-Solltests.
+        pflegeGradeConfigs: { ...fixture.pflegeGradeConfigs, 4: { ...fixture.pflegeGradeConfigs[4], zusatz: 0 } },
         healthBucket: { enabled: true, initialAmount: 10000, assetSource: 'cash', triggerMinGrade: 4,
             coverageMode: 'floor_when_care_active' } };
 }
@@ -96,7 +98,7 @@ if (selected(2)) {
 
 if (selected(3)) {
     for (const caredPerson of [0, 1]) for (const caregiverGrade of [2, 3, 4]) {
-        const input = cashInputs(100000, true);
+        const input = cashInputs(500000, true);
         input.pflegeKostenStaffelPreset = 'custom';
         const people = [input, input.partner];
         people[caredPerson].careToday = { grade: 2, form: 'family' };

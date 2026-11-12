@@ -5,6 +5,7 @@ import { readHouseholdPlan, memberPlanScope } from '../profile/household-plan.js
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { CONFIG } from '../balance/balance-config.js';
 import { appNow } from '../shared/app-clock.js';
+import { fixedExpensesInBudget, isLegacyReceipt, readBalancePlannedPosts } from '../balance/balance-planned-posts.js';
 
 /** Nur Anzeige: Jahresbeleg vor aktuellem Plan; niemals ein fremdes Jahresbudget ableiten. */
 /**
@@ -15,7 +16,11 @@ export function readExpenseNeedsPlan({ year, scope, storage = persistenceStorage
     if (!scope) return null;
     const record = /** @type {import("../../typcheck/profile-ui.js").ReadAnnualPlan} */ (readAnnualPlanRecord)({ year, scope, storage });
     if (record?.status === 'invalid') return null;
-    if (record) return record.adopted.snapshot?.plan ?? null;
+    if (record) {
+        const plan = record.adopted.snapshot?.plan ?? null, fixed = plan && fixedExpensesInBudget(record.adopted.plannedPosts, year);
+        // FR-43: Der Plan-Grundbedarf im Vergleich enthält die festen Ausgaben des Belegs wie dessen Budget.
+        return fixed ? { ...plan, floorBedarf: plan.floorBedarf + fixed.total, fixedExpenseTotal: fixed.total, fixedExpenseMonths: fixed.months } : plan;
+    }
     const current = readHouseholdPlan({ scope, storage }).entry;
     // Der aktuelle Plan ist kein historischer Beleg. Sein Jahr folgt dem letzten
     // Abschluss, ersatzweise dem aktuellen Kalenderjahr wie die Plananzeige.
@@ -28,15 +33,38 @@ export function readExpenseNeedsPlan({ year, scope, storage = persistenceStorage
             const period = state?.annualPeriodMetadata?.lastCommittedPeriod ?? state?.balanceStateLifecycle?.lastCommittedPeriod;
             return period ? Number(period.slice(-4)) + 1 : appNow().getFullYear();
         });
-        return years.every(value => value === year) ? current?.values ?? null : null;
+        if (!years.every(value => value === year) || !current?.values) return null;
+        // FR-43 (N1): Ohne Beleg rechnet das vorläufige Budget mit den heutigen festen Posten; der Vergleich ebenso.
+        const fixed = fixedExpensesInBudget(readPostsSafely({ storage, scope, year }), year);
+        return fixed ? { ...current.values, floorBedarf: current.values.floorBedarf + fixed.total, fixedExpenseTotal: fixed.total, fixedExpenseMonths: fixed.months } : current.values;
     } catch { return null; }
+}
+
+/** Beschädigte geplante Ausgaben zeigen ihre Fehler an anderer Stelle; der Vergleich rechnet dann ohne feste Posten. */
+const readPostsSafely = ({ storage, scope, year }) => { try { return readBalancePlannedPosts({ storage, scope, year, people: [] }); } catch { return null; } };
+
+/** FR-43 (N2): Feste Ausgaben, die im Ist eines Jahres als normale Ausgaben liegen: heutige feste Posten plus solche nur
+ * im Beleg. Null ohne feste Posten und im Jahr eines Altbelegs (dort liefen sie über die Zuordnung außerhalb).
+ * @param {{year: number, scope: import('../../typcheck/datenvertraege.js').PlanScope|null, storage: import('../../typcheck/datenvertraege.js').RecordReader}} options
+ * @returns {number[]|null} Zwölf Monatsbeträge. */
+export function readActualFixedExpenseMonths({ year, scope, storage }) {
+    if (!scope) return null;
+    const record = /** @type {any} */ (readAnnualPlanRecord({ year, scope, storage }));
+    if (record?.status === 'invalid' || isLegacyReceipt(record)) return null;
+    const current = (readPostsSafely({ storage, scope, year })?.items || []).filter(item => item.kind === 'expense' && item.fixed);
+    const ids = new Set(current.map(item => item.id));
+    const receipt = record?.adopted?.plannedPosts?.year === year ? record.adopted.plannedPosts.items.filter(item => item.kind === 'expense' && item.fixed && !ids.has(item.id)) : [];
+    const items = [...current, ...receipt];
+    if (!items.length) return null;
+    return Array.from({ length: 12 }, (_, index) => items.filter(item => item.month === `${year}-${String(index + 1).padStart(2, '0')}`)
+        .reduce((sum, item) => sum + item.amount, 0));
 }
 
 /**
  * @param options Optionen und Abhängigkeiten des bestehenden Aufrufers.
  * @returns Bedarfsstatistik mit Planvergleich und unlesbaren Aufteilungen.
  */
-export function projectExpenseNeeds({ yearData, profileIds, forecastMonths = null, floorPlan = null, annualBudget = null }) {
+export function projectExpenseNeeds({ yearData, profileIds, forecastMonths = null, floorPlan = null, annualBudget = null, fixedMonths = null, actualFixedMonths = null }) {
     const stats = computeHouseholdNeedsStats({ yearData, profileIds, forecastMonths });
     const invalidBreakdowns = Object.entries(yearData?.months || {}).flatMap(([month, data]) => Object.entries(data.profiles || {})
         .filter(([id, entry]) => profileIds.includes(id) && entry && Object.hasOwn(entry, 'categoryNeeds') && !hasCategoryNeeds(entry))
@@ -44,10 +72,19 @@ export function projectExpenseNeeds({ yearData, profileIds, forecastMonths = nul
     const floor = Number.isFinite(floorPlan) ? floorPlan : null;
     const flex = floor !== null && Number.isFinite(annualBudget) ? annualBudget - floor : null;
     const plans = { floor, flex, total: annualBudget };
+    // FR-43: Floor-Plan je Monat = (Grundbedarf ohne feste) / 12 + feste Ausgaben des Monats; Summe ist der Jahreswert.
+    if (floor !== null && Array.isArray(fixedMonths)) {
+        const fixedTotal = fixedMonths.reduce((sum, amount) => sum + amount, 0);
+        Object.assign(plans, { fixedTotal, floorMonths: fixedMonths.map(amount => (floor - fixedTotal) / 12 + amount) });
+    }
     const compare = (actual, plan) => ({ actual, plan,
         difference: actual !== null && plan !== null ? actual - plan : null,
         percent: actual !== null && plan > 0 ? (actual - plan) / plan * 100 : null });
-    return { ...stats, plans, invalidBreakdowns,
+    // FR-43 (N2): Feste Ausgaben im Ist-Floor, anteilig für dieselben Monate mit Aufteilung wie die Hochrechnung.
+    const splitMonths = stats.months.filter(month => month.withBreakdown && month.total > 0 && (forecastMonths === null || forecastMonths.includes(month.month)));
+    const fixedInActual = Array.isArray(actualFixedMonths) && splitMonths.length
+        ? splitMonths.reduce((sum, month) => sum + actualFixedMonths[month.month - 1], 0) / splitMonths.length * 12 : null;
+    return { ...stats, plans, invalidBreakdowns, ...(fixedInActual === null ? {} : { fixedInActual }),
         comparisons: Object.fromEntries(['floor', 'flex', 'total'].map(key => [key, compare(stats.annualForecast[key], plans[key])])) };
 }
 
@@ -93,7 +130,8 @@ export function readCloseExpenseNeeds(model, year, monthlyBudget, storage = pers
     const lastMonth = year < now.getFullYear() ? 12 : year > now.getFullYear() ? 0 : now.getMonth();
     return { ...projectExpenseNeeds({ yearData: loaded.store.years?.[year], profileIds: model.scope.ids,
         forecastMonths: Array.from({ length: lastMonth }, (_, index) => index + 1),
-        floorPlan: plan?.floorBedarf, annualBudget: Number.isFinite(monthlyBudget) ? monthlyBudget * 12 : null }),
+        floorPlan: plan?.floorBedarf, annualBudget: Number.isFinite(monthlyBudget) ? monthlyBudget * 12 : null, fixedMonths: /** @type {{fixedExpenseMonths?: number[]}} */ (plan ?? {}).fixedExpenseMonths,
+        actualFixedMonths: readActualFixedExpenseMonths({ year, scope, storage }) }),
         wish: plan?.flexBedarf ?? null };
 }
 

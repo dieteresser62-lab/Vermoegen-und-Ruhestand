@@ -2,6 +2,7 @@ import { balanceCareSettings } from '../shared/person-data-status.js';
 import { readBalanceHouseholdPlan } from '../profile/household-plan.js';
 import { prepareAnnualNeeds } from './balance-annual-inflation.js';
 import { UIUtils } from './balance-utils.js';
+import { roundAnnualSuggestion } from '../shared/annual-needs-review.js';
 import { projectPerson, projectPersonPension } from '../profile/profile-person-data.js';
 import { readBalancePersonStatus } from '../shared/person-data-status.js';
 import { readProfilePersonFromStorage } from '../profile/profile-state.js';
@@ -18,9 +19,9 @@ export function projectAnnualPreview({ targetYear, inputs, inflation, entries, c
     const planningYear = targetYear + 1;
     const status = entries ? { entries, calculationProfileId: storage.getItem('rs_current_profile') }
         : readBalancePersonStatus({ storage, referenceYear: planningYear });
-    const careSettings = { ...balanceCareSettings(status), ...(careValues ? { careValues } : {}) };
     const people = (status.entries || []).map(entry => {
         try {
+            const careSettings = { ...balanceCareSettings(status, entry.profileId), ...(careValues ? { careValues } : {}) };
             const person = projectPerson(entry.data, planningYear, careSettings);
             const pension = projectPersonPension(entry.data, planningYear, careSettings);
             return { id: entry.profileId, name: entry.name, ...person,
@@ -51,6 +52,15 @@ export function projectAnnualPreview({ targetYear, inputs, inflation, entries, c
  * @param options2 Optionen und Abhängigkeiten.
  * @returns Ergebnis der bestehenden Operation.
  */
+/** S7: Der neue Bedarf ist die auf volle 1.000 € aufgerundete Inflationsfortschreibung des alten.
+ * @param {number} before Bedarf vorher. @param {number} after Bedarf nachher. @param {number} [rate] Inflation in %.
+ * @returns {boolean} */
+export function annualNeedRoundedUp(before, after, rate) {
+    if (![before, after, rate].every(Number.isFinite)) return false;
+    const projected = before * (1 + rate / 100);
+    return after > projected + 0.005 && after === roundAnnualSuggestion(projected);
+}
+
 /** @param {{id: string, before: number, after: number}} need @param {{inflation?: Partial<import('../../typcheck/balance-ui.js').InflationResult>, targetYear?: number, adjustedFields?: string[]}} [options] @returns {string} */
 export function formatAnnualNeed(need, { inflation, targetYear, adjustedFields = [] } = {}) {
     const money = value => Number.isFinite(value) ? UIUtils.formatCurrency(value) : '—';
@@ -58,6 +68,7 @@ export function formatAnnualNeed(need, { inflation, targetYear, adjustedFields =
     if (!Number.isFinite(need.before) || need.before === need.after) return money(need.after) + (adjusted ? ' (von dir angepasst)' : '');
     const rate = inflation?.rate;
     const detail = adjusted ? 'von dir angepasst' : Number.isFinite(rate)
-        ? `${rate > 0 ? '+' : ''}${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(rate)} % Inflation ${targetYear}` : '';
+        ? `${rate > 0 ? '+' : ''}${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(rate)} % Inflation ${targetYear}`
+            + (annualNeedRoundedUp(need.before, need.after, rate) ? ', aufgerundet auf volle 1.000 €' : '') : '';
     return `${money(need.before)} → ${money(need.after)}${detail ? ` (${detail})` : ''}`;
 }

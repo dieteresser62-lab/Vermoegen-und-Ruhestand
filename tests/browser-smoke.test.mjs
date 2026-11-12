@@ -16,6 +16,7 @@ import { formatDisplayNumber } from '../app/shared/designsystem-number-format.js
 import { LEGACY_PERSON_KEYS } from '../app/profile/profile-person-migration.js';
 import { serializeScenarioLogCsvV2 } from '../app/simulator/monte-carlo-export.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
+import { HANDBOOK_MUSTER_DATE } from '../app/demo/muster-haushalte.js';
 import { PLAN_DEFAULTS, HOUSEHOLD_PLAN_KEY, planScope, buildPlanRecord } from '../app/profile/household-plan.js';
 import { HOUSEHOLD_PLAN_FIELDS } from '../app/shared/household-plan-fields.js';
 import { addDirectHouseholdPlans } from '../app/profile/household-plan-migration.js';
@@ -2485,17 +2486,14 @@ async function runBalanceSmoke(browser, baseUrl) {
         const size = selector => parseFloat(getComputedStyle(document.querySelector(selector)).fontSize);
         const wide = document.querySelector('.balance-page').clientWidth >= 2300;
         return { h1: size('.balance-head h1'), budget: size('#balanceMonthlyBudget'),
-            verb: size('#balanceActionTitle'), amount: size('#balanceActionAmount'), wide,
+            todo: size('#h-ov-act'), wide,
             provenance: document.querySelector('#marketDataProvenance').classList.contains('ds-note') };
     });
-    assert(scale.h1 === 22 && scale.budget === 44
-        && scale.verb === 30 && scale.amount === 17,
+    // WT-1: Die Karte „Was zu tun ist“ trägt eine Serifenüberschrift (22 px); die Vorschau ist eine zugeklappte Zeile.
+    assert(scale.h1 === 22 && scale.budget === 44 && scale.todo === 22,
         `Balance-Grundbedienung verwendet die freigegebene Inhaltsbreitenskala: ${JSON.stringify(scale)}`);
     assert(!scale.provenance, 'Provenienz ist eine kleine Kartenzeile ohne Hinweisband');
-    for (const id of ['openActionDetails']) {
-        assert(await page.locator(`#${id} svg[aria-hidden="true"][focusable="false"]`).count() === 1,
-            `${id}: Schmuck-SVG erhält die vorhandene benannte Aktion`);
-    }
+    assert(await page.locator('#balanceActionPreview:not([open]) #openPreviewDetails').count() === 1, 'Vorschau zugeklappt mit Weg zu den Details');
 
     await page.locator('#balanceTabStrategy').click();
     await page.locator('#tab-strategy').waitFor({ state: 'visible' });
@@ -2830,7 +2828,8 @@ async function runBalanceSmoke(browser, baseUrl) {
             assert(!probe.text.includes('probe-1') && !probe.copy.includes('probe-1')
                 && !probe.text.includes('probe-owner') && !probe.copy.includes('probe-owner'), `${probe.name}: keine technischen IDs`);
         }
-        await page.locator('#openActionDetails').focus();
+        await page.locator('#balanceActionPreview > summary').click();
+        await page.locator('#openPreviewDetails').focus();
         await page.keyboard.press('Enter');
         await page.locator('#actionDetailsDialog[open]').waitFor({ state: 'visible' });
         assert(actionProbe.title.includes('Liquidität auffüllen') && /Vorläufige Vorschau · Jahresabschluss \d{4}/.test(actionProbe.title), 'Dialogkopf kennzeichnet die vorläufige Vorschau mit Abschlussjahr und Zweck');
@@ -2859,7 +2858,7 @@ async function runBalanceSmoke(browser, baseUrl) {
             && section.heads === 1 && section.clipped === 'inset(50%)' && section.assistive), 'Dialog hat je Tabellenkasten einen sichtbaren Kopf und einen assistiven Tabellennamen');
         assert(!dialogPresentation.footer.includes('UI:') && dialogPresentation.footer.includes(`Planungsjahr ${dialogPresentation.year}`), 'Dialogfuß zeigt aktuellen fachlichen Kontext statt UI-Version');
         await page.keyboard.press('Escape');
-        assert(await page.locator('#openActionDetails').evaluate(node => node === document.activeElement), 'Dialog-Escape gibt den Tastaturfokus zurück');
+        assert(await page.locator('#openPreviewDetails').evaluate(node => node === document.activeElement), 'Dialog-Escape gibt den Tastaturfokus zurück');
     } finally {
         await page.evaluate(() => {
             if (!window.__balanceDialogProbe) return;
@@ -5219,6 +5218,8 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
                 assert(state.selectedId === 'char_p50' && state.sameSource && state.selections === 2 && state.unchanged,
                     `${withFan}/${mode}: Auswahl, Quelllauf und Daten bleiben unverändert`);
             };
+            // SE-2: Die Szenariolinien stehen im Diagramm „Gewähltes Szenario“ hinter dem Umschalter.
+            await page.locator('#scenarioChartView [data-scenario-chart="selected"]').click();
             verify(await measure(), [1000, 1200, 1200, 1500, 1400], 'real');
             assert(await page.locator('#mcWealthMode [data-wealth-mode="real"]').getAttribute('aria-pressed') === 'true',
                 `${withFan}: Sitzung startet real und behält die Wahl beim erneuten Binden`);
@@ -5250,7 +5251,7 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
                         const selected = document.querySelector('#scenarioList [data-scenario-id="char_p50"]');
                         const normal = document.querySelector('#scenarioList [data-scenario-id="char_best"]');
                         const pane = document.querySelector('.scenario-selection-pane');
-                        const card = chart.closest('.scenario-paths-panel'), protocol = document.querySelector('#scenarioLogContainer .protocol-head');
+                        const card = chart.closest('.scenario-paths-panel'), protocol = document.getElementById('scenarioProtocolDisclosure');
                         const rows = [...document.querySelectorAll('.scenario-list-item')];
                         const style = getComputedStyle(chart);
                         return { height: svg.getBoundingClientRect().height,
@@ -5259,7 +5260,7 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
                             chartOverflow: chart.scrollWidth > chart.clientWidth + 1,
                             paneHeight: pane.getBoundingClientRect().height, leftHeight: chart.parentElement.getBoundingClientRect().height,
                             listScrollable: getComputedStyle(document.getElementById('scenarioList')).overflowY === 'auto' && document.getElementById('scenarioList').scrollHeight > document.getElementById('scenarioList').clientHeight,
-                            protocolGap: protocol.getBoundingClientRect().top - card.getBoundingClientRect().bottom,
+                            protocolGap: protocol.getBoundingClientRect().top - split.getBoundingClientRect().bottom,
                             rowOverflow: rows.some(row => row.scrollWidth > row.clientWidth + 1),
                             cardOverflow: card.scrollWidth > card.clientWidth + 1,
                             detailWrap: [...document.querySelectorAll('.scenario-details')].every(node => getComputedStyle(node).whiteSpace === 'normal' && getComputedStyle(node).hyphens === 'none'),
@@ -5308,10 +5309,10 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
 
                     assert(!layout.chartOverflow && Math.abs(layout.nativeWidth - layout.contentWidth) < 1
                         && Math.abs(layout.svgWidth - layout.nativeWidth) < 1, `${width}: native Inhaltsbreite ohne inneren Chartüberlauf`);
-                    if (width >= 1366) assert(layout.paneHeight <= layout.leftHeight + 1 && layout.protocolGap >= 0 && layout.protocolGap <= 24.5,
-                        `${width}: Liste bestimmt keine Kartenhöhe und Protokoll folgt binnen 24 px`);
-                    if (width >= 1366) assert(Math.abs(layout.height - 470) < 5 && Math.abs(layout.ratio - 2) < .05
-                        && layout.plotHeight / layout.height >= .65 && layout.listHeight <= layout.leftHeight, `${width}: 470 px Grafik, nutzbare Plotspanne, begrenzte Scrollliste und Flächenverhältnis 2:1`);
+                    if (width >= 1366) assert(layout.protocolGap >= 0 && layout.protocolGap <= 24.5,
+                        `${width}: zugeklapptes Protokoll folgt binnen 24 px (SE-2)`);
+                    if (width >= 1366) assert(Math.abs(layout.height - 470) < 5 && layout.ratio > 1.2 && layout.ratio < 1.7
+                        && layout.plotHeight / layout.height >= .65 && layout.listHeight <= layout.leftHeight, `${width}: 470 px Grafik, nutzbare Plotspanne, begrenzte Scrollliste und Kartenverhältnis 7:5 (SE-2)`);
                     assert(!layout.stacked, `${width}: Desktop zeigt Grafik und Auswahl nebeneinander`);
                 }
                 await page.setViewportSize({ width: 1920, height: 1000 });
@@ -5473,7 +5474,7 @@ async function runScenarioWealthBasisSmoke(browser, baseUrl) {
             assert(await reference.isVisible() && (await reference.textContent()).includes('4,5'), `${width}: geöffnete Kennzahlenklappe zeigt die unveränderte 4,5-%-Berichtsreferenz`);
             assert(await reference.evaluate(node => node.scrollWidth <= node.clientWidth + 1 && getComputedStyle(node).borderBottomWidth === '0px'), `${width}: Referenzzeile bricht ohne Kachel oder Textüberlauf um`);
         }
-        assert(await page.locator('#riskKpiDashboard .reporting-reference-note').count() === 0, 'Risikoansicht erzeugt keine zweite Referenzkachel');
+        assert(await page.locator('#riskKpiDashboard [data-risk-row="risiko"] .reporting-reference-note').count() === 1, 'Risikoansicht zeigt die Berichtsreferenz einmal in Risiko-Details (SE-2)');
         await page.evaluate(async () => {
             const { disposeScenarioLogView } = await import('./app/simulator/scenario-log-view.js');
             disposeScenarioLogView(document);
@@ -5537,11 +5538,12 @@ async function runSimulatorSmoke(browser, baseUrl) {
         `Alle fuenf Haupttabs muessen im Desktop-Viewport ohne horizontales Scrollen sichtbar sein: ${JSON.stringify(tabStripLayout)}`);
     await page.locator('.tab-btn[data-tab="annahmen"]').click();
     // Seit „Haushalt & Plan wie im Entwurf“ sind Planfelder Textfelder mit eigener Anzeige („30.000 €“) ohne
-    // Zahlenprojektion; die native Projektion prüft daher ein verbliebenes Zahlenfeld (Pflege-Floor-Deckel).
+    // Zahlenprojektion; die native Projektion prüft daher ein verbliebenes Zahlenfeld (seit PFA-11 die Anstiegsdauer der Pflege;
+    // Deckel und regionaler Zuschlag stehen jetzt in Personen & Vermögen › Pflege).
     assert(await page.locator('#startFloorBedarf').evaluate(input => input.type === 'text'
         && /^\d{1,3}(?:\.\d{3})*$/.test(input.value) && !input.parentElement.querySelector('.sim-number-display')),
     'Planfeld zeigt den Planwert formatiert ohne zweite Zahlenprojektion');
-    const programmaticNumber = await page.locator('#pflegeMaxFloor').evaluate(input => {
+    const programmaticNumber = await page.locator('#pflegeRampUp').evaluate(input => {
         const original = input.value;
         const disabled = input.disabled;
         const attributes = [input.min, input.max, input.step];
@@ -5653,7 +5655,11 @@ async function runSimulatorSmoke(browser, baseUrl) {
     assert(!(await page.locator('#mcAdvancedDisclosure').evaluate(details => details.open)), 'Erweitert startet geschlossen');
     assert((await page.locator('#mcSetupSummaryRuns').textContent()) === '10.000',
         'Monte-Carlo setup summary exposes the current run count');
-    assert((await page.locator('#mcSetupSummaryDuration').textContent()) === '35',
+    // LE-1 (FR-75): Die Dauer ist automatisch 110 − Alter der jüngsten Person (vorher feste 35).
+    const autoDuration = await page.locator('#mcDauer').getAttribute('placeholder');
+    assert(/^\d+$/.test(autoDuration || '') && (await page.locator('#mcDauer').inputValue()) === ''
+        && (await page.locator('#mcSetupSummaryDuration').textContent()) === autoDuration
+        && (await page.locator('#mcDauerAuto').textContent()) === `automatisch: bis Alter 110 der jüngsten Person · ${autoDuration} Jahre`,
         'Monte-Carlo setup summary exposes the current duration');
     assert(await settingsToggle.getAttribute('aria-expanded') === 'false', 'Frische Einstellungen sind geschlossen');
     await toggleMonteCarloSettings(page);
@@ -6436,6 +6442,8 @@ async function runSimulatorSmoke(browser, baseUrl) {
     await page.locator('.sim-backtest-metrics').waitFor({ state: 'visible' });
 
     assert(await page.evaluate(() => document.activeElement?.id) === 'backtestResultHeading', 'Completed run must focus the metrics heading');
+    // SE-2: Das Backtest-Protokoll steht zugeklappt; Tabellenprüfungen öffnen es.
+    await page.evaluate(() => document.querySelectorAll('#backtestProtocolDisclosure, #scenarioProtocolDisclosure').forEach(node => { node.open = true; }));
     assert(await page.locator('#simulationLog caption').count() === 1, 'Backtest table needs exactly one caption');
     assert(await page.locator('#simulationLog thead th[scope="col"]').count() === await page.locator('#simulationLog .protocol-column-head th').count(),
         'Every backtest column header needs scope=col beneath the grouped header');
@@ -7123,6 +7131,9 @@ async function runTranchesSmoke(browser, baseUrl) {
             && !main.closest('[inert], [aria-hidden="true"]')
             && !main.querySelector('[inert], [aria-hidden="true"] .overview-assets');
     }), 'Sauberer Rückweg hinterlässt keine Dialog-/Overlay- oder Inhaltssperre');
+    // Der Startkursabruf der Übersicht schreibt den Kurs der manuell geänderten Tranche (PFA-9);
+    // ein Rahmenlink wartet dessen Commit ab. Vorher-Stand erst nach dem bestätigten Bericht lesen.
+    await page.waitForFunction(key => JSON.parse(sessionStorage.getItem(key) || 'null')?.status === 'complete', STARTUP_PRICE_SESSION_KEY);
     const beforeRecommendationRaw = (await readIndexedDb(page, 'kv', 'depot_tranchen')).value;
     await page.locator('.suite-navigation a[href="Balance.html"]').click();
     await page.locator('.balance-head h1').filter({ hasText: 'Balance' }).waitFor({ state: 'visible' });
@@ -8771,6 +8782,8 @@ async function runSimulatorSweepIntegration(browser, baseUrl) {
 // Slice 9: echte Layoutmessung nach Fontload; gefüllte Hosts bleiben sichtbar.
 async function assertSimulatorToggleRow(page, id) {
     const input = page.locator(`#${id}`);
+    // SE-2: Protokollschalter liegen in zugeklappten Protokollen; die Prüfung öffnet sie.
+    await input.evaluate(node => { for (let details = node.closest('details'); details; details = details.parentElement?.closest('details')) details.open = true; });
     const label = input.locator('..');
     const initial = await input.evaluate(node => {
         const handler = () => { window.__toggleRowProbe.changes++; };
@@ -8866,6 +8879,8 @@ async function runDesignsystemSimulatorLayout(browser, baseUrl) {
                 { key: 'p50', label: 'Zweites Szenario', endVermoegen: 200, logDataRows: [] }
             ] }, onSelect() {}, onMode() {} });
             document.getElementById('scenarioLogOutput').innerHTML = renderWorstRunLog([{ QuoteEndPct: 12.3, NominalReturnEquityPct: .123, jahr: 1 }], 0, { logDetailLevel: 'detailed' });
+            // SE-2: Das Szenario-Protokoll steht zugeklappt; die Layoutmessung öffnet es.
+            document.getElementById('scenarioProtocolDisclosure').open = true;
         });
         for (const width of [1920, 2560]) {
             await page.locator('#mcViewTabOverview').click();
@@ -8969,6 +8984,7 @@ async function runHeatmapTypography(browser, baseUrl) {
             histogramSamples = await measureNativeChartTypography(page, width, '#wealthDistribution', histogramSamples);
             await measureSimulatorPresentation(page, width, '#wealthDistribution', ['#wealthDistribution .ds-chart-scroll']);
             await page.locator('#mcViewTabLogs').click();
+            await page.locator('#scenarioChartView [data-scenario-chart="selected"]').click();
             scenarioSamples = await measureNativeChartTypography(page, width, '#scenarioWealthChart', scenarioSamples);
             await measureSimulatorPresentation(page, width, '#scenarioWealthChart', ['#scenarioWealthChart']);
         }
@@ -8998,6 +9014,7 @@ async function runDesignsystemTools(browser, baseUrl) {
             && ['completed', 'ruin'].includes(document.getElementById('backtestStatus')?.dataset.status), start);
         assert(await page.locator('#simulationLog table').count() === 1, 'Kurzer Werkzeug-Backtest erhält Tabellenanker');
         assert(await page.locator('#portfolioCompositionChart svg path').count() === 4, 'Kurzer Werkzeug-Backtest erzeugt vier Portfolio-Datenserien');
+        await page.evaluate(() => { document.getElementById('backtestProtocolDisclosure').open = true; });
         await assertSimulatorToggleRow(page, 'toggle-backtest-detail');
         const portfolioColors = await page.locator('#portfolioCompositionChart svg path').evaluateAll(nodes => nodes.map(node => node.getAttribute('fill')));
         assert(JSON.stringify(portfolioColors) === JSON.stringify(['var(--chart-1)', 'var(--chart-4)', 'var(--chart-2)', 'var(--history-cash)']), 'Browserportfolio verwendet feste Diagrammrollen');
@@ -9026,6 +9043,8 @@ async function runDesignsystemTools(browser, baseUrl) {
             summary: document.getElementById('simulationSummary').innerHTML
         }));
         let portfolioSamples = [];
+        // SE-2: Das Backtest-Protokoll steht zugeklappt; für die Messung wird es geöffnet.
+        await page.locator('#backtestProtocolDisclosure').evaluate(node => { node.open = true; });
         for (const width of [1920, 2560]) {
             portfolioSamples = await measureNativeChartTypography(page, width, '#portfolioCompositionChart', portfolioSamples);
             await measureSimulatorPresentation(page, width, '#simulationResults', ['#simulationLog', '#portfolioCompositionChart']);
@@ -9048,10 +9067,10 @@ async function runDesignsystemTools(browser, baseUrl) {
                     headings: [...document.querySelectorAll('#simulationLog th')].map(node => node.textContent),
                     periodStatus: document.getElementById('backtestPeriodStatus').textContent };
             });
-            if (width >= 1920) assert(backtestLayout.columns === 3, `${width}: drei Hauptkennzahlen im Backtest`);
-            assert(backtestLayout.chartInCard && Math.abs(backtestLayout.gridWidth - backtestLayout.chartWidth) <= 1
-                && backtestLayout.metricWidth <= backtestLayout.chartWidth,
-                `${width}: Portfoliochart in eigener voller Karte`);
+            if (width >= 1920) assert(backtestLayout.columns === 5, `${width}: fünf Hauptkennzahlen in der Backtest-Leiste (SE-2)`);
+            assert(backtestLayout.chartInCard && backtestLayout.chartWidth < backtestLayout.gridWidth * .7
+                && Math.abs(backtestLayout.gridWidth - backtestLayout.metricWidth) <= 1,
+                `${width}: Portfoliochart in eigener Karte neben „Was im Lauf auffällt“, Kennzahlleiste über volle Breite (SE-2)`);
             assert(Math.abs(backtestLayout.hostWidth - backtestLayout.available) <= 2
                 && backtestLayout.chartWidthInside >= backtestLayout.hostWidth - 2, `${width}: Portfolioverlauf füllt die nutzbare Kartenbreite`);
             assert(Math.abs(backtestLayout.nativeWidth - Math.max(820, backtestLayout.contentWidth)) <= 1
@@ -9495,7 +9514,8 @@ async function runDesignsystemFoundation(browser, baseUrl) {
     const pages = [
         // Neues Layout: weiße Plan-/Grundkarten und sichtbare dunkle Hauptaktion je Seite statt alter .panel/.container-Anker.
         ['index.html', '.overview-assets', '.overview-plan .ds-button-secondary'],
-        ['Balance.html', '.ds-plan-card.ov-hero', '#openActionDetails'],
+        // WT-1: Ohne Jahresbeleg bleibt in „Was zu tun ist“ der sekundäre Weg zu den Details der Vorschau.
+        ['Balance.html', '.ds-plan-card.ov-hero', '#openPreviewDetails'],
         // B1: Monatsabschluss ist primär; CSV-Import bleibt sekundär.
         ['Ausgaben.html', '.expenses-card', '#expensesClose'],
         // Paket 16: einzige MC-Hauptaktion ist #mcButton im Seitenkopf.
@@ -9553,7 +9573,7 @@ async function runDesignsystemFoundation(browser, baseUrl) {
                     assert(view.actionBackground === 'rgb(244, 245, 241)' && view.actionText === 'rgb(29, 40, 48)', `${entry}/${width}: sekundärer Balanceknopf mit lesbarem Grundtext`);
                     assert(await page.locator(action).getAttribute('href') === 'Balance.html', 'Sekundärer Planlink erhält sein Ziel');
                 } else if (entry === 'Balance.html') {
-                    assert(view.actionBackground === 'rgb(122, 90, 31)' && view.actionText === 'rgb(255, 255, 255)', `${entry}/${width}: messingfarbene Detailaktion mit hellem Text`);
+                    assert(view.actionBackground === 'rgb(244, 245, 241)' && view.actionText === 'rgb(29, 40, 48)', `${entry}/${width}: sekundäre Detailaktion der Vorschau mit lesbarem Grundtext`);
                 } else if (entry === 'depot-tranchen-manager.html') {
                     assert(view.actionBackground === 'rgb(244, 245, 241)' && view.actionText === 'rgb(29, 40, 48)', `${entry}/${width}: sekundäre Verkaufsaktion mit lesbarem Grundtext`);
                 } else assert(view.actionBackground === 'rgb(29, 40, 48)' && view.actionText === 'rgb(255, 255, 255)', `${entry}/${width}: dunkle Hauptaktion mit hellem Text`);
@@ -13993,6 +14013,10 @@ async function runPersonDataCards(browser, baseUrl) {
                 if (id === 'profileKirchensteuerPct') await page.locator(`#profileChurchSegments [data-value="${value}"]`).click();
                 else { await page.locator('#' + id).fill(value); await page.locator('#' + id).blur(); }
             }
+            // Erst die automatische Profilspeicherung abschließen lassen (Navigationsfreigabe), dann den Bestand lesen.
+            // Wartet die Abfrage auf deren noch laufenden Flush, meldet Chromium zeitweise „Promise was collected“;
+            // Playwright zeigt das als „Execution context was destroyed“, obwohl die Seite nicht navigiert (PFA-13).
+            await waitForPageNavigationRelease(page);
             await waitForPageCondition(page, async () => {
                 const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
                 await PersistenceFacade.flush();
@@ -14067,6 +14091,8 @@ async function runPersonDataCards(browser, baseUrl) {
             if (!await page.locator('#scenarioSelectionDisclosure').evaluate(node => node.open)) await page.locator('#scenarioSelectionSummary').click();
             await page.locator('#scenarioList [role="option"]').first().click();
             assert((await page.locator('#scenarioProtocolSummary').textContent()).includes('Abweichung · nur diese Rechnung'), 'Jahresprotokoll zeigt denselben Laufhinweis');
+            // SE-2: Das Szenario-Protokoll mit seinen Downloads steht zugeklappt.
+            await page.evaluate(() => { document.getElementById('scenarioProtocolDisclosure').open = true; });
             const scenarioDownload = page.waitForEvent('download'); await page.locator('#exportScenarioLogJson').click();
             const scenarioDocument = JSON.parse(await readDownloadText(await scenarioDownload));
             assert(JSON.stringify(scenarioDocument.personDataContext) === JSON.stringify(mcContext), 'Szenariodownload behält genau den MC-Laufbeleg');
@@ -14177,7 +14203,7 @@ async function runSimulatorHeadAction(browser, baseUrl) {
         });
         const answerBefore = await answerRead();
         assert(await page.locator('#monteCarloAnswers h2').allTextContents().then(texts => JSON.stringify(texts)
-            === JSON.stringify(['Ist mein Grundbedarf gedeckt?', 'Muss ich mich einschränken?'])), 'Echter MC-Abschluss zeigt genau beide Kernfragen');
+            === JSON.stringify(['Reicht das Vermögen?', 'Muss ich mich einschränken?'])), 'Echter MC-Abschluss zeigt genau beide Kernfragen');
         assert(await page.locator('#monteCarloAnswers').evaluate(node => Boolean(node.compareDocumentPosition(document.getElementById('monteCarloSummary')) & Node.DOCUMENT_POSITION_FOLLOWING)), 'Antworten stehen vor den vorhandenen Kennzahlen');
         await page.locator('[data-mc-view="risk"]').click(); await page.locator('[data-mc-view="overview"]').click();
         await toggleMonteCarloSettings(page);
@@ -14232,7 +14258,7 @@ async function runSimulatorCoreAnswers(browser, baseUrl) {
                         unchanged: before === JSON.stringify(results), clipped: [...host.querySelectorAll('section')].some(node => node.scrollWidth > node.clientWidth + 1) };
                 }, kind);
                 assert(output.unchanged && !output.clipped && !/Ruin|Quantil/i.test(output.text), `${width}/${kind}: lesbare Antworten ohne Abschneiden oder geänderte Kennzahlen`);
-                if (kind === 'mixed') assert(JSON.stringify(output.values) === JSON.stringify(['96,0 %', '12,0 %', '—']) && output.text.includes('18,0 %'), 'Browser zeigt feste 96-%-/12-%-der-Jahre-/18-%-Orakel');
+                if (kind === 'mixed') assert(JSON.stringify(output.values) === JSON.stringify(['96,0 %', '—', '—', '—', '12,0 %', '—']) && output.text.includes('18,0 %'), 'Browser zeigt feste 96-%-/12-%-der-Jahre-/18-%-Orakel (SE-1: P10 · Median · P90 ohne Endwerte als —)');
                 if (kind === 'death') assert(output.text.includes('bis zum simulierten Lebensende'), 'Vollständiger Todpfad wird korrekt benannt');
                 if (kind === 'horizon') assert(output.text.includes('kein nachgewiesenes Lebensende'), 'Zeitraumende behauptet kein Lebensende');
                 if (kind === 'technical' || kind === 'missing') assert(output.values.every(value => value === '—'), 'Fehler/fehlende Daten erscheinen nie als Null');
@@ -14276,6 +14302,8 @@ async function runSimulatorProtocolViews(browser, baseUrl) {
         await page.locator('[data-mc-view="logs"]').click();
         // Die Handelsfixture prüft nominale Beträge; die gemeinsame Wahl gilt auch für den Backtest unten.
         await page.locator('#mcWealthMode [data-wealth-mode="nominal"]').click();
+        // SE-2: Protokolle stehen zugeklappt; die Kopfprüfung öffnet sie.
+        await page.evaluate(() => document.querySelectorAll('#backtestProtocolDisclosure, #scenarioProtocolDisclosure').forEach(node => { node.open = true; }));
         const mc = page.locator('#scenarioLogOutput');
         await mc.waitFor({ state: 'visible' });
         const checkHeads = async host => {
@@ -14353,7 +14381,7 @@ async function runManagerViewsSmoke(browser, baseUrl) {
         await expectPerson('views-a');
         assert(await page.locator('[role="tablist"]').count() === 1, 'Manager besitzt genau eine Ansichtsreiterliste');
         assert(JSON.stringify(await page.locator('#managerSectionNav [role="tab"] > span:not([class])').allTextContents())
-            === JSON.stringify(['Haushalt & Plan', 'Anna & Änne', 'Béla <B>', 'Clara „C“', 'Außen < & >', 'Verlauf']), 'Haushaltsreihenfolge und Sonderzeichennamen stimmen mit den Karten überein');
+            === JSON.stringify(['Haushalt & Plan', 'Pflege', 'Anna & Änne', 'Béla <B>', 'Clara „C“', 'Außen < & >', 'Verlauf']), 'Haushaltsreihenfolge und Sonderzeichennamen stimmen mit den Karten überein');
         assert(await page.locator('#managerHousehold .pv-person-card').count() === 4, 'Alle Karten bleiben in der Planansicht erreichbar');
         await page.locator('#managerPlanTab').click(); await expectPlan();
         assert(!await page.locator('#depotAddTrancheBtn').isVisible() && !await page.locator('#managerPersonToggle').isVisible(), 'Inaktive Personenfunktionen liefern keine sichtbaren Controls');
@@ -14379,6 +14407,12 @@ async function runManagerViewsSmoke(browser, baseUrl) {
         await waitForPageCondition(page, () => document.activeElement?.id === 'profileTagesgeld');
         assert(await page.locator('#profileTagesgeld').isVisible() && !await page.locator('#managerAssetsBody').isVisible(), 'Direktlink zeigt Tagesgeld und lässt Golddetails geschlossen');
         await page.evaluate(() => { location.hash = '#haushalt-plan'; }); await expectPlan();
+        // PFA-10: Sprungziel Pflege öffnet den Bereich mit den Pflegewerten des Haushalts.
+        await page.evaluate(() => { location.hash = '#pflege'; });
+        await waitForPageCondition(page, () => document.querySelector('#managerSectionNav [aria-selected="true"]')?.dataset.managerView === 'care' && document.activeElement?.id === 'pflege');
+        // UR-1: Die Annahmen stehen zugeklappt mit einem Satz je Zeile; die Felder erscheinen erst beim Aufklappen.
+        assert(await page.locator('#managerCarePanel').isVisible() && !await page.locator('#managerPlanPanel').isVisible() && await page.locator('#managerCareRowHomeSummary').isVisible()
+            && !await page.locator('#managerCareCost3').isVisible(), 'Pflegeansicht zeigt zugeklappte Annahmen mit eigener Panelgrenze');
         await page.evaluate(() => { location.hash = '#personendaten'; }); await expectPerson('views-b');
         await waitForPageCondition(page, () => ['profileGeburtsdatum', 'managerBirthDate'].includes(document.activeElement?.id));
         await page.evaluate(() => { location.hash = '#managerDepotTitle'; });
@@ -14401,7 +14435,7 @@ async function runManagerViewsSmoke(browser, baseUrl) {
     try {
         await waitForPageCondition(single.page, () => document.querySelector('#managerSectionNav [aria-selected="true"]')?.dataset.managerProfile === 'views-single');
         assert(JSON.stringify(await single.page.locator('#managerSectionNav [role="tab"] > span:not([class])').allTextContents())
-            === JSON.stringify(['Plan · Solo & Name', 'Solo & Name', 'Verlauf']), 'Einzelprofil ohne Haushalt startet mit drei passend beschrifteten Ansichten');
+            === JSON.stringify(['Plan · Solo & Name', 'Pflege', 'Solo & Name', 'Verlauf']), 'Einzelprofil ohne Haushalt startet mit vier passend beschrifteten Ansichten');
         single.assertNoErrors();
     } finally { await single.close(); }
 }
@@ -15838,6 +15872,8 @@ async function runTagesgeldAnnualSmoke(browser, baseUrl) {
 
 async function runProbelaufExampleExpenses(browser, baseUrl) {
     for (const source of ['demo', 'copy']) {
+        const day = source === 'demo' ? '01' : '02';
+        const startDate = `2026-11-${day}`;
         const annualFixtures = { targetYear: 2026 };
         const smoke = await openSmokePage(browser, baseUrl, 'index.html?probelauf=1', {
             fixedTime: '2026-11-02T12:00:00Z', storage: createMusterHaushaltRecords('2026-11-02'), annualFixtures,
@@ -15961,9 +15997,11 @@ async function runProbelaufExampleExpenses(browser, baseUrl) {
             });
             await page.locator('#probelaufStart').click();
             await page.locator('[data-probelauf-dialog]').locator(`[data-probelauf-source="${source === 'demo' ? 'max-erika' : source}"]`).click();
-            await page.locator('[data-probelauf-dialog]').getByLabel('Echte Kurse von heute', { exact: true }).check();
-            await waitForProbelaufReload(page, () => page.locator('[data-probelauf-dialog]').getByRole('button', { name: 'Spielbereich starten', exact: true }).click(), null);
-            await page.locator('#probelaufBandText').filter({ hasText: 'echte Kurse von heute', hasNotText: /wird gestartet|wird umgestellt/ }).waitFor();
+            const trial = page.locator('[data-probelauf-dialog]');
+            await trial.getByLabel(source === 'demo' ? 'Spielkurse' : 'Echte Kurse von heute', { exact: true }).check();
+            if (source === 'demo') assert(await trial.getByLabel('Testdatum').inputValue() === startDate, 'Beispiel startet mit dem vorgegebenen Testdatum');
+            await waitForProbelaufReload(page, () => trial.getByRole('button', { name: 'Spielbereich starten', exact: true }).click(), source === 'demo' ? startDate : null);
+            await page.locator('#probelaufBandText').filter({ hasText: source === 'demo' ? `Testdatum ${day}.11.2026 · Spielkurse` : 'echte Kurse von heute', hasNotText: /wird gestartet|wird umgestellt/ }).waitFor();
             await idle();
             assert(await page.locator('#overviewFocus .overview-play').count() === 0 && await page.locator('#overviewFocus.ds-card').count() === 0, `${source}: ruhiger Novemberstart`);
             assert(await page.locator('[data-overview-month-confirm]').count() === 0, `${source}: Oktober bereits bestätigt`);
@@ -15976,24 +16014,24 @@ async function runProbelaufExampleExpenses(browser, baseUrl) {
                 assert(await page.evaluate(() => typeof window.__releaseExpensesWriter === 'function'), 'Bandaktion wartet auf den erst beim Lockerwerb angemeldeten Startwriter');
                 assert(JSON.stringify(await read()) === JSON.stringify(beforeLateWriter), 'Erwerbsrennen vor Tagesaktion erhält die dauerhaften Records');
                 await releaseLocalWriter();
-            }, '2026-11-03');
-            await page.locator('#probelaufBandText').filter({ hasText: '03.11.2026', hasNotText: /wird umgestellt/ }).waitFor();
+            }, source === 'demo' ? '2026-11-02' : '2026-11-03');
+            await page.locator('#probelaufBandText').filter({ hasText: `${source === 'demo' ? '02' : '03'}.11.2026`, hasNotText: /wird umgestellt/ }).waitFor();
             await holdLocalWriter();
             await page.locator('#probelaufBand [data-probelauf-action="date"]').click();
-            await page.locator('[data-probelauf-dialog]').getByLabel('Testdatum').fill('2026-11-02');
+            await page.locator('[data-probelauf-dialog]').getByLabel('Testdatum').fill(startDate);
             await waitForProbelaufReload(page, async () => {
                 await page.locator('[data-probelauf-dialog]').getByRole('button', { name: 'Datum übernehmen', exact: true }).click();
                 await page.locator('#probelaufStatus').filter({ hasText: 'Speichert noch …' }).waitFor();
                 await releaseLocalWriter();
-            }, '2026-11-02');
-            await page.locator('#probelaufBandText').filter({ hasText: '02.11.2026', hasNotText: /wird umgestellt/ }).waitFor();
+            }, startDate);
+            await page.locator('#probelaufBandText').filter({ hasText: `${day}.11.2026`, hasNotText: /wird umgestellt/ }).waitFor();
             await holdLocalWriter();
             await waitForProbelaufReload(page, async () => {
                 await page.locator('#probelaufBand [data-probelauf-action="month"]').click();
                 await page.locator('#probelaufStatus').filter({ hasText: 'Speichert noch …' }).waitFor();
                 await releaseLocalWriter();
-            }, '2026-12-02');
-            await page.locator('#probelaufBandText').filter({ hasText: '02.12.2026', hasNotText: /wird umgestellt/ }).waitFor();
+            }, `2026-12-${day}`);
+            await page.locator('#probelaufBandText').filter({ hasText: `${day}.12.2026`, hasNotText: /wird umgestellt/ }).waitFor();
             const prior = (await read()).balance_expenses_v1;
             await page.locator('[data-overview-month-confirm]').click();
             await page.locator('[data-close-dialog-activate="expenses"]').click();
@@ -16026,8 +16064,8 @@ async function runProbelaufExampleExpenses(browser, baseUrl) {
             await page.locator('#expensesDetailClose').click();
             // Frühen Bandklick nach Modellbereitschaft zulassen.
             await page.goto(`${baseUrl}/index.html`);
-            await waitForProbelaufReload(page, () => page.locator('#probelaufBand [data-probelauf-action="month"]').click(), '2027-01-02');
-            await page.locator('#probelaufBandText').filter({ hasText: '02.01.2027', hasNotText: /wird umgestellt/ }).waitFor();
+            await waitForProbelaufReload(page, () => page.locator('#probelaufBand [data-probelauf-action="month"]').click(), `2027-01-${day}`);
+            await page.locator('#probelaufBandText').filter({ hasText: `${day}.01.2027`, hasNotText: /wird umgestellt/ }).waitFor();
             const beforeDecember = JSON.parse((await read()).balance_expenses_v1);
             // H4 öffnet die Januar-Sammelaktion direkt im Jahresdialog auf der Startseite.
             await settle();
@@ -17357,10 +17395,10 @@ async function runSimulatorDeferredPlanSmoke(browser, baseUrl) {
             await capturePageDialogImage(page, 'h7-simulator-annahmen-' + width);
             await page.evaluate(async () => {
                 const { revealAssumptionControl } = await import('./app/simulator/simulator-assumptions-ui.js');
-                revealAssumptionControl(document.getElementById('pflegeMaxFloor'));
-                (await import('./app/simulator/simulator-ui-pflege.js')).updatePflegeUIInfo();
+                // PFA-10/PFA-11: Pflegewerte stehen in Personen & Vermögen; im Simulator bleiben Verlauf und Sterblichkeit.
+                revealAssumptionControl(document.getElementById('pflegeRampUp'));
             });
-            await page.locator('#pflegeMaxFloor').scrollIntoViewIfNeeded();
+            await page.locator('#pflegeRampUp').scrollIntoViewIfNeeded();
             await capturePageDialogImage(page, 'h7-simulator-pflege-' + width);
         }
         // Erst nach Bestätigung die Backendbaseline sichern, einschließlich
@@ -17743,7 +17781,7 @@ async function runManagerHouseholdPlanSmoke(browser, baseUrl) {
         await page.locator('#managerPlanMore > summary').click();
         // Ohne Kursfixtures belegt createPage die Startsitzung mit „empty“; abgeschlossen ist der Startabruf bei complete oder empty.
         await waitForPageCondition(page, key => ['complete', 'empty'].includes(JSON.parse(sessionStorage.getItem(key) || 'null')?.status), STARTUP_PRICE_SESSION_KEY);
-        assert(await page.locator('.pv-plan-group').count() === 6, 'Sechs freigegebene Gruppen stehen im statischen Planbereich');
+        assert(await page.locator('.pv-plan-group').count() === 7, 'Sieben freigegebene Gruppen stehen im statischen Planbereich, Fondskosten eingeschlossen');
         await page.evaluate(async () => {
             const { PersistenceFacade: p } = await import('./app/shared/persistence-facade.js');
             const { sourceFingerprint } = await import('./app/overview/overview-simulation-summary.js');
@@ -18000,18 +18038,14 @@ async function runH4StartpageAnnualSmoke(browser, baseUrl) {
             }
             await page.setViewportSize({ width: 1920, height: 1080 });
             assert(!(await page.evaluate(() => performance.getEntriesByType('resource').some(entry => entry.name.includes('/engine/index.mjs')))), 'Startseite lädt vor Jahresstart keine Engine');
-            other = await page.context().newPage(); await other.goto(`${baseUrl}/Balance.html`); await waitForWealthBrowserIdle(other);
+            // ES-1: Ein zweiter Tab desselben Browsers zeigt nur den Tabhinweis und schreibt nichts.
+            other = await page.context().newPage(); await other.goto(`${baseUrl}/Balance.html`); await other.locator('#appTabDialog').waitFor();
             await page.locator('[data-overview-annual]').click();
             const root = page.locator('#balanceAnnualClose'); await root.waitFor();
             assert(page.url().includes('/index.html'), 'Jahresdialog bleibt auf der Startseite');
             await prepareBrowserClose(page);
             await page.waitForFunction(() => document.getElementById('annualConfirmBtn')?.disabled === false);
-            await openOverviewAnnual(other);
-            await other.locator('#overviewAnnualStatus').filter({ hasText: 'Jahresbesitz' }).waitFor();
-            assert(await other.locator('#balanceAnnualClose').count() === 0, 'Zweiter Seiteneinstieg startet keinen parallelen Dialog');
-            // Eine parallel offene Balance schreibt Leitplankenwerte, die der Zwischenspeicher dieser Seite nicht kennt; der Abschluss
-            // bricht dann an der Rohbestandsprüfung ab (Paket „Kleinigkeiten“, Punkt 13). Bis dahin die zweite Seite schließen und
-            // die Startseite neu laden, wie es die Meldung verlangt.
+            assert(await other.locator('#appTabDialog').isVisible() && await other.locator('#balanceAnnualClose').count() === 0, 'Zweiter Seiteneinstieg startet keinen parallelen Dialog');
             await other.close(); other = undefined;
             await closeAnnualPreparation(page);
             await page.reload(); await page.locator('[data-overview-annual]').click(); await root.waitFor();
@@ -18098,8 +18132,12 @@ async function runH4StartpageAnnualSmoke(browser, baseUrl) {
             assert(await root.evaluate(node => node.open), 'Ergebnisdialog bleibt offen');
             const action = root.locator('[data-annual-action-result]');
             assert(await action.isVisible(), 'Bestätigte Handlung steht in eigenem sichtbarem Element');
-            assert((await action.textContent()).includes(`Handlungsanweisung ${receipt.year}`), 'Handlung nennt das persistierte Planjahr');
-            assert((await action.textContent()).includes(receipt.adopted.action.type === 'NONE' ? 'Nichts tun – kein Handlungsbedarf' : receipt.adopted.action.title === 'Profilverbund-Transaktionen' ? 'Vorgeschlagene Verkäufe nach Person' : receipt.adopted.action.title), 'Handlung enthält adopted statt einer heutigen Vorschau');
+            assert(await action.locator('.todo-plan-chip').textContent() === `Plan ${receipt.year}`, 'Handlung nennt das persistierte Planjahr');
+            // FR-77: Die Karte „Was zu tun ist“ zeigt das Verb aus dem Beleg; bei NONE „Nichts tun“ mit „kein Handlungsbedarf“.
+            const adoptedVerb = receipt.adopted.action.type === 'NONE' ? 'Nichts tun' : await page.evaluate(async adoptedAction =>
+                (await import('./app/balance/balance-action-summary.js')).describePlanAction(adoptedAction).verb, receipt.adopted.action);
+            assert(await action.locator('.todo-main-verb').textContent() === adoptedVerb
+                && (receipt.adopted.action.type !== 'NONE' || await action.locator('.todo-main-note').textContent() === 'kein Handlungsbedarf'), 'Handlung enthält adopted statt einer heutigen Vorschau');
             assert(await action.evaluate(node => !node.closest('.ds-note-error, [role="alert"]')), 'Handlung wird ohne Fehlerkennzeichnung gezeigt');
             const status = await root.locator('.close-dialog-status[role="status"]').textContent();
             assert(!status.includes('Monatsbetrag noch nicht bereitgestellt'), 'Handlungsdialog erhält bestätigten Monatsstatus');
@@ -18129,8 +18167,10 @@ async function runH4StartpageAnnualSmoke(browser, baseUrl) {
             const after = await read(page);
             assert(after.annual_plan_record_v1 === annual.annual_plan_record_v1, 'Monatsbestätigung erhält Jahresbeleg');
             assert(after.profile_tagesgeld === annual.profile_tagesgeld, 'Januar übernimmt bestätigte Jahresend-Cashwerte unverändert');
-            other = await page.context().newPage(); await other.goto(`${baseUrl}/Balance.html`); await waitForWealthBrowserIdle(other);
-            assert((await read(other)).annual_plan_record_v1 === after.annual_plan_record_v1, 'Spätere Balancevorschau erhält festgeschriebenen Jahresbeleg');
+            // ES-1c: Der zweite Tab ist gesperrt; nach dem Schließen des ersten lädt „Erneut versuchen“ neu, und er liest den festgeschriebenen Bestand.
+            other = await page.context().newPage(); await other.goto(`${baseUrl}/Balance.html`); await other.locator('#appTabDialog').waitFor();
+            await page.close(); const reloaded = other.waitForEvent('load'); await other.locator('[data-app-tab-retry]').click(); await reloaded; await waitForWealthBrowserIdle(other);
+            assert(await other.locator('#appTabDialog').count() === 0 && (await read(other)).annual_plan_record_v1 === after.annual_plan_record_v1, 'Spätere Balancevorschau erhält festgeschriebenen Jahresbeleg');
             smoke.assertNoErrors();
         } finally { await other?.close(); await smoke.close(); }
     }
@@ -18241,9 +18281,10 @@ async function runExpensesPageSmoke(browser, baseUrl) {
                 await page.locator('#probelaufStart').click();
                 const trial = page.locator('[data-probelauf-dialog]');
                 await trial.locator('[data-probelauf-source="max-erika"]').click();
-                await trial.getByLabel('Echte Kurse von heute', { exact: true }).check();
-                await trial.getByRole('button', { name: 'Spielbereich starten', exact: true }).click();
-                await page.locator('#probelaufBandText').filter({ hasText: 'echte Kurse von heute', hasNotText: /wird gestartet|wird umgestellt/ }).waitFor();
+                await trial.getByLabel('Spielkurse', { exact: true }).check();
+                await trial.getByLabel('Testdatum').fill(HANDBOOK_MUSTER_DATE);
+                await waitForProbelaufReload(page, () => trial.getByRole('button', { name: 'Spielbereich starten', exact: true }).click(), HANDBOOK_MUSTER_DATE);
+                await page.locator('#probelaufBandText').filter({ hasText: `Testdatum ${HANDBOOK_MUSTER_DATE.split('-').reverse().join('.')} · Spielkurse`, hasNotText: /wird gestartet|wird umgestellt/ }).waitFor();
                 await waitForPageCondition(page, () => document.documentElement.dataset.expensesReady === 'true');
                 await page.locator('[data-expenses-example][data-month="10"]').first().click();
                 await page.locator('[data-expenses-preview-origin]').filter({ hasText: 'Beispieldaten (Spielbereich)' }).waitFor();
@@ -18508,7 +18549,7 @@ async function prepareBrowserClose(page, marketReading = 'year_end') {
             return host?.dataset.annualReadingPending === 'false' && host.dataset.annualMarketLoading === 'false';
         });
         const choice = marketReading && root.locator(`[data-annual-market-reading="${marketReading}"]`);
-        if (choice && await choice.count()) { await root.locator('[data-close-dialog-activate="market"]').click(); await choice.check(); }
+        if (choice && await choice.count()) { await root.locator('[data-close-dialog-activate="preview"]').click(); await choice.check(); }
     }
 }
 
@@ -18842,17 +18883,15 @@ async function runAnnualCombinedClose(browser, baseUrl, source) {
             await waitForPageCondition(page, async old => (await import('./app/shared/persistence-facade.js')).persistenceStorage.getItem('balance_expenses_v1') !== old, before.balance_expenses_v1);
             await prepareBrowserClose(page, source === 'demo' ? null : 'year_end');
             if (source === 'demo') {
-                const tab = root.locator('[data-close-dialog-activate="market"]');
-                assert((await tab.textContent()).includes('Wahl offen'), 'AR-2: Marktreiter nennt offene Wahl');
+                // WT-1 (FR-77): Verdeckter Bärenmarkt und Wahl stehen im Schritt „Plan 2027“, ohne Vorauswahl.
+                const tab = root.locator('[data-close-dialog-activate="preview"]');
+                assert((await tab.textContent()).includes('Wahl offen'), 'AR-2: Planreiter nennt offene Wahl');
                 await tab.click();
                 assert(await root.locator('[data-annual-market-reading]:checked').count() === 0, 'AR-2: keine Vorauswahl');
-                assert(await root.locator('[data-close-dialog-next="market"]').isDisabled() && await root.locator('#annualConfirmBtn').isDisabled(), 'AR-2: Weiter und Abschluss bis zur Wahl gesperrt');
+                assert(await root.locator('[data-hidden-bear="annual"]').filter({ hasText: 'Bärenmarkt, den die Jahresregel nicht sieht' }).isVisible(), 'AR-2: Block zum verdeckten Bärenmarkt');
+                assert(await root.locator('#annualConfirmBtn').isDisabled(), 'AR-2: Abschluss bis zur Wahl gesperrt');
                 await root.locator('[data-annual-market-reading="year_high"]').check();
-                await root.locator('[data-close-dialog-next="market"]').click();
-                await root.locator('[data-annual-market-plan-note]').filter({ hasText: 'deine Wahl' }).waitFor();
-                await root.locator('[data-annual-market-change]').click();
-                assert(await tab.getAttribute('aria-current') === 'step', 'AR-2: Wahl ändern führt zu Marktdaten');
-                await root.locator('[data-close-dialog-next="market"]').click();
+                await root.locator('[data-close-dialog-activate="preview"]').filter({ hasText: 'Jahreshoch' }).waitFor();
             }
             await waitForPageCondition(page, () => document.getElementById('annualConfirmBtn')?.disabled === false);
             await root.getByRole('button', { name: 'Jahr 2026 abschließen', exact: true }).click();

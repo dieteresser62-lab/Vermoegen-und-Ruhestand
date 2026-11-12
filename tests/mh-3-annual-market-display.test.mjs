@@ -49,15 +49,11 @@ assert(draft() === baseline, 'Übernommener Jahresentwurf bleibt nach Vergleich 
 const doc = new MockDocument(), all = node => [node, ...node.children.flatMap(all)];
 const content = node => node.textContent.replaceAll('\u00a0', ' ');
 const rendered = createAnnualMarketReadings(doc, view);
-const tags = tag => all(rendered).filter(node => node.tagName.toLowerCase() === tag);
-assertEqual(tags('thead')[0].children[0].children.length, 3, 'Zwei Varianten plus Zeilenbeschriftung');
-assertEqual(tags('tbody')[0].children.length, 5, 'AR-2: fünf Zeilen der Lesarten zuerst');
-for (const word of ['Bisherige Regel', 'Mit Jahreshoch 14.07.2026', '170,25 €', '200,00 €', 'höchster gespeicherter Schlusskurs am 14.07.2026', '14,9 %', 'Markt heiß gelaufen', 'Junge Korrektur', 'Der Markt war in diesem Jahr schon viel heißer'])
-    assert(content(rendered).includes(word), 'Jahresvergleich enthält ' + word);
+// WT-1 (FR-77 Punkt 5): Junge Korrektur am Jahreshoch ist kein verdeckter Bärenmarkt; der Schritt Marktdaten zeigt nichts zum Jahreshoch.
+assert(rendered.hidden && !rendered.children.length, 'Kein verdeckter Bär: keine Lesarten-Tabelle im Jahresabschluss');
 prices([170.25, 170.25], ['2026-07-14', '2026-12-31']);
 const equal = createAnnualMarketReadings(doc, await projectAnnualMarketReadings(options));
-assert(content(equal).includes('keine Auswirkung auf die Planung'), 'Gleiche Varianten ohne Budgetwarnung');
-assert(all(equal).filter(node => node.tagName === 'DETAILS').every(node => !node.open), 'Gleiche Budgets lassen Details geschlossen');
+assert(equal.hidden && !content(equal).includes('Nahe am Jahreshoch'), 'Gleiche Varianten zeigen nichts');
 prices([500, 600], ['2025-12-31', '2027-01-01']);
 assertEqual((await projectAnnualMarketReadings(options)).high.high.value, 500, 'Früheres Hoch zählt auch ohne gespeicherten Schluss im Abschlussjahr');
 const absent = createAnnualMarketReadings(doc, null);
@@ -86,12 +82,15 @@ async function prepared(projectMarketReadings, visible = false) {
 }
 assertEqual(await prepared(async () => view, true), await prepared(async () => null), 'Bestätigung liefert mit und ohne Vergleich bytegleiche übernommene Werte');
 
-// TN-1: Echter update()-Weg, einschließlich noch laufender und überholter Projektionen.
+// TN-1: Echter update()-Weg, einschließlich noch laufender und überholter Projektionen. Seit WT-1 steht im Schritt Marktdaten
+// nur noch der Hinweis „nicht belastbar“; geprüft wird, dass gleiche Ergebnisse den Knoten behalten und überholte nichts ersetzen.
 {
     const { doc } = createDialogFixture();
     const model = { occasion: { previousYear: 2026, previousMonth: 12 }, expenses: { complete: true } };
     let binding, resolveReading;
-    let nextView = structuredClone(view), delay = false;
+    const unreliable = reason => ({ withoutQuote: true, withoutQuoteReason: reason, quote: null, yearEndDate: null, readingsEqual: true,
+        comparison: { state: 'not_reliable', text: 'Vergleich nicht belastbar verfügbar', reason, rule: null, high: null, difference: null, changedParts: [] } });
+    let nextView = unreliable('Kurse fehlen'), delay = false;
     const ui = createAnnualCloseDialog({ document: doc, getModel: () => model, isCommitActive: () => false,
         projectMarketReadings: () => delay ? new Promise(resolve => { resolveReading = resolve; }) : Promise.resolve(structuredClone(nextView)),
         projectPreview: () => ({ targetYear: 2026, planningYear: 2027, people: [], needs: [] }) });
@@ -100,44 +99,40 @@ assertEqual(await prepared(async () => view, true), await prepared(async () => n
     binding.updateMarketData({ values: marketData, errors: {} });
     const settled = () => new Promise(resolve => setTimeout(resolve, 0));
     await settled();
-    const details = () => ['[data-budget-comparison-details]', '[data-market-comparison-details]'].map(selector => doc.querySelector(selector));
-    const initial = details(); initial.forEach(node => { node.open = true; });
+    const node = () => doc.querySelector('[data-annual-market-readings]');
+    const deep = element => all(element).map(item => item.textContent).join(' ');
+    const initial = node();
+    assert(initial && !initial.hidden && deep(initial).includes('Kurse fehlen'), 'TN-1: fehlende Kurse stehen als Hinweis im Schritt Marktdaten');
     binding.update(structuredClone(model)); await settled();
-    assert(details().every((node, index) => node === initial[index] && node.open), 'TN-1: gleiches Ergebnis behält beide offenen DOM-Knoten');
-    nextView.rule.index += 1;
+    assert(node() === initial, 'TN-1: gleiches Ergebnis behält den DOM-Knoten');
+    nextView = unreliable('Kurse lückenhaft');
     binding.update(structuredClone(model)); await settled();
-    assert(details().every((node, index) => node !== initial[index] && node.open), 'TN-1: geändertes Ergebnis erhält beide offenen Aufklapper');
-    delay = true; binding.update(structuredClone(model));
-    const waiting = details();
-    assert(waiting.every(node => node.open), 'TN-1: laufende Projektion entfernt keine Aufklapper');
-    waiting[0].open = false;
-    const changed = structuredClone(nextView); changed.rule.index += 2;
-    resolveReading(changed); await settled();
-    assert(!details()[0].open && details()[1].open, 'TN-1: Budget geschlossen und Markt offen werden unabhängig und erst beim Ersetzen übernommen');
+    assert(node() !== initial && deep(node()).includes('Kurse lückenhaft'), 'TN-1: geändertes Ergebnis ersetzt den Hinweis');
+    delay = true;
     binding.update(structuredClone(model)); const obsolete = resolveReading;
     binding.update(structuredClone(model)); const latest = resolveReading;
     latest(nextView); await settled();
-    const current = details(); obsolete(changed); await settled();
-    assert(details().every((node, index) => node === current[index]), 'TN-1: überholte Projektion ersetzt den jüngsten Vergleich nicht');
+    const current = node(); obsolete(unreliable('veraltet')); await settled();
+    assert(node() === current, 'TN-1: überholte Projektion ersetzt den jüngsten Vergleich nicht');
     binding.close(false); await pending;
 }
 
-// Die Balance-Budgetprüfung verwendet denselben Renderer und ersetzt ihren Inhalt ebenfalls.
+// Balance: Beim verdeckten Bärenmarkt behält der Kursverlauf seine Auswahl über gleiche und geänderte Ergebnisse.
 {
     const { doc } = createDialogFixture();
     for (const id of ['balanceMarketPreview', 'balanceMarketPreviewBody']) {
         const node = doc.createElement('div'); node.id = id; doc.body.append(node);
     }
+    const bear = structuredClone(view); bear.high.market = { key: 'bear_deep', text: 'Tiefer Bär' };
     const host = doc.getElementById('balanceMarketPreviewBody');
-    const details = () => [host.querySelector('[data-budget-comparison-details]'), host.querySelector('[data-market-comparison-details]')];
-    renderBalanceMarketPreview(doc, view);
-    const initial = details(); initial.forEach(node => { node.open = true; });
-    renderBalanceMarketPreview(doc, structuredClone(view));
-    assert(details().every((node, index) => node === initial[index] && node.open), 'TN-1: Balance behält bei gleichem Ergebnis offene DOM-Knoten');
-    const changed = structuredClone(view); changed.rule.index += 1;
+    const history = () => host.querySelector('[data-market-history-details]');
+    renderBalanceMarketPreview(doc, bear);
+    const initial = history(); initial.open = true;
+    renderBalanceMarketPreview(doc, structuredClone(bear));
+    assert(history() === initial && history().open, 'TN-1: Balance behält bei gleichem Ergebnis den offenen Kursverlauf');
+    const changed = structuredClone(bear); changed.rule.index += 1;
     renderBalanceMarketPreview(doc, changed);
-    assert(details().every((node, index) => node !== initial[index] && node.open), 'TN-1: Balance erhält beide offenen Aufklapper bei geändertem Ergebnis');
-    details()[0].open = false;
+    assert(history() !== initial && history().open, 'TN-1: Balance erhält den offenen Kursverlauf bei geändertem Ergebnis');
     renderBalanceMarketPreview(doc, view);
-    assert(!details()[0].open && details()[1].open, 'TN-1: Balance erhält auch die unabhängige geschlossene Auswahl');
+    assert(!history() && doc.getElementById('balanceMarketPreview').hidden, 'TN-1: ohne verdeckten Bären verschwindet der Block');
 }

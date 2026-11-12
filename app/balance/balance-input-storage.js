@@ -1,12 +1,12 @@
 import { readPartnership, PARTNERSHIP_KEY } from '../profile/household-partnership.js';
 import { projectBalancePlanningHorizon } from './balance-planning-horizon.js';
-import { readBalancePlannedPosts } from './balance-planned-posts.js';
+import { fixedPlannedTotal, readBalancePlannedPosts, readNextYearFixedExpenses } from './balance-planned-posts.js';
 import { readBalancePlanContext } from './balance-plan-context.js';
 import { prepareBalanceEngineAssets } from './balance-health-bucket.js';
 import { readBalanceInflationSource } from './balance-inflation-source.js';
 /** DOM-freier, ausschließlich lesender Eingabebau. Der UIReader bleibt das DOM-Orakel. */
 import { readBalancePersonStatus, projectParticipatingPerson } from '../shared/person-data-status.js';
-import { BALANCE_PLAN_INPUT_KEYS, assertPlanScope, projectPlanToBalance } from '../profile/household-plan.js';
+import { BALANCE_PLAN_INPUT_KEYS, assertPlanScope, projectPlanToBalance, applyBalanceEquityCost } from '../profile/household-plan.js';
 import { parseBalanceCurrencyInput } from './balance-reader.js';
 import { UIUtils } from './balance-utils.js';
 import { CONFIG, ValidationError } from './balance-config.js';
@@ -21,6 +21,9 @@ import { LIQUIDITY_RUNWAY_CONTRACT_V1 } from '../../types/liquidity-runway-contr
 import { LONGEVITY_DEFAULTS, normalizeLongevityMode } from '../simulator/dynamic-flex-longevity-contract.js';
 import { cloneBalanceState, validateBalanceInputs, prepareEngineLastState, projectBalancePlanHistory,
     createBalanceCommitBaseFingerprint, createBalanceFingerprint } from './balance-update-pipeline.js';
+import { projectBalanceCareNeeds, applyBalanceCareNeeds, personalCareCosts, careHintPersons } from './balance-care.js';
+import { resolvePlanOverviewRates } from '../simulator/simulator-plan-overview.js';
+import { careHintDone } from '../shared/household-care-hint.js';
 
 export const BALANCE_STORAGE_FIELD_IDS = Object.freeze([
     'aktuellesAlter', 'ath', 'bondRefillThreshold', 'bondTargetFactor', 'capeRatio', 'costBasisAlt',
@@ -50,6 +53,20 @@ function storedFields(inputs = {}, rawFields = {}) {
         checked: value === true
     }]));
     return { ...fields, ...rawFields };
+}
+
+/** Gespeicherte Bedarfsbasis ohne bestätigten Plan (Grundbedarf, Flex, Mindest-Flex), genau wie die Balance sie liest;
+ * Pflegehinweise außerhalb der Balance projizieren damit dieselben Beträge (Gutachten PFA-4, Befund 4).
+ *
+ * @param {import('../../typcheck/datenvertraege.js').RecordReader} storage Lesender Speicheradapter.
+ * @returns {{floorBedarf: number, flexBedarf: number, minimumFlexAnnual: number}} Euro im Jahr.
+ */
+export function readStoredBalanceCareBase(storage) {
+    const state = parseStoredBalanceStateFromData({ [CONFIG.STORAGE.LS_KEY]: storage.getItem(CONFIG.STORAGE.LS_KEY) }) || {};
+    const rawFields = Object.fromEntries(Object.entries(state.balanceInputFields || {}).filter(([key]) => BALANCE_STORAGE_FIELD_IDS.includes(key)));
+    const fields = storedFields(state.inputs, rawFields);
+    const num = id => fields[id] ? parseBalanceCurrencyInput(id, fields[id].value) : 0;
+    return { floorBedarf: num('floorBedarf'), flexBedarf: num('flexBedarf'), minimumFlexAnnual: num('minimumFlexAnnual') };
 }
 
 function readStoredInputValues({ fields, storage, status, trancheSource, plan }) {
@@ -284,6 +301,7 @@ function readStoredInputValues({ fields, storage, status, trancheSource, plan })
         if (projection.jointAssessment === true) output.jointAssessment = readPartnership(storage.getItem(PARTNERSHIP_KEY)).status !== 'unmarried';
         output.dynamicFlex = plan.entry.values.dynamicFlex && plan.entry.values.cape.value > 0;
     }
+    applyBalanceEquityCost(output, plan.status === 'valid' ? plan.entry.values : null);
     validateBalanceInputs(output);
     return projectBalancePlanningHorizon(output, readiness);
 }
@@ -382,11 +400,31 @@ export function buildBalanceEngineInputFromStorage({ scope, storage, referenceYe
     fields.inflation = { value: String(readBalanceInflationSource({ storage, scope: plan.scope, referenceYear }).value), checked: false };
     const readerInputData = readStoredInputValues({ fields, storage, status, trancheSource, plan });
     const inputData = projectStoredHouseholdInputs(profiles, cloneBalanceState(readerInputData));
+    // FR-73 Punkte 1, 5 und 10: Pflege heute wie im Simulator, immer – mit dem bestätigten Plan oder sonst mit der
+    // gespeicherten Bedarfsbasis als Grundbedarf ohne Pflege (Gutachten PFA-2, Befund 4; PFA-3, Befund 1).
+    const careBase = plan.status === 'valid' ? plan.entry.values : readStoredBalanceCareBase(storage);
+    // Folgejahreseinkünfte wachsen mit der Balance-Inflation; lohngebundene mit der Lohnannahme der Planübersicht (Gutachten PFA-4, Befund 1).
+    const careNeeds = projectBalanceCareNeeds({ status, storage, values: careBase, referenceYear: status.referenceYear, inflationPercent: inputData.inflation,
+        wagePercent: resolvePlanOverviewRates(persistentState.inputs).wage.value });
+    applyBalanceCareNeeds(inputData, careNeeds);
+    // FR-73 Punkt 10: Hinweis bei Pflegegrad heute mit den Beträgen derselben Projektion; „Erledigt“ liegt im Haushaltsrecord.
+    const careHint = { done: careHintDone(storage), persons: careHintPersons(careNeeds) };
+    if (careNeeds && readPartnership(storage.getItem(PARTNERSHIP_KEY)).status === 'unmarried') {
+        const personal = personalCareCosts(careNeeds);
+        for (const entry of profiles) Object.assign(entry, { personalCareNeed: personal[entry.profileId] || 0 });
+    }
     const plannedPosts = readBalancePlannedPosts({ storage, scope: plan.scope, year: status.referenceYear, people: status.entries });
     if (plannedPosts) {
         inputData.plannedPosts = plannedPosts;
         if (plannedPosts.reserve > 0) inputData.plannedExpenseLiquidityReserve = plannedPosts.reserve;
+        // FR-43 (11.11.2026): Feste geplante Ausgaben des Planungsjahres wirken wie ein höherer Grundbedarf.
+        const fixedExpenses = fixedPlannedTotal(plannedPosts);
+        if (fixedExpenses > 0) inputData.floorBedarf = (Number(inputData.floorBedarf) || 0) + fixedExpenses;
     }
+    // FR-43: Die Pflegeprojektion des Folgejahrs enthält dessen feste Ausgaben wie der Simulator.
+    const projection = inputData.careLiquidityProjection;
+    const nextFixed = projection ? readNextYearFixedExpenses({ storage, scope: plan.scope, year: status.referenceYear, priceFactor: projection.priceFactor }) : 0;
+    if (nextFixed > 0) inputData.careLiquidityProjection = { ...projection, floor: projection.floor + nextFixed };
     if (Object.hasOwn(persistentState.inputs || {}, 'depotLastUpdate')) inputData.depotLastUpdate = persistentState.inputs.depotLastUpdate;
     const profileId = storage.getItem('rs_current_profile');
     const history = projectBalancePlanHistory(persistentState, profiles, plan, { profileId });
@@ -401,7 +439,7 @@ export function buildBalanceEngineInputFromStorage({ scope, storage, referenceYe
     const baseStateFingerprint = createBalanceCommitBaseFingerprint({ persistentState, profilverbundProfiles: multi ? profiles : [],
         householdPlan: plan.status === 'valid' ? { scope: plan.scope, values: plan.entry.values } : null });
     return { inputData, readerInputData, engineInput, lastState, householdLastState, engineLastState: multi ? householdLastState : lastState, persistentState,
-        householdPlan: plan, scope: plan.scope, profiles: history.profiles, history, profileId,
+        householdPlan: plan, scope: plan.scope, profiles: history.profiles, history, profileId, careNeeds, careHint,
         profileInputs: history.profiles.map(entry => ({ profileId: entry.profileId, lastState: cloneBalanceState(entry.balanceState?.lastState || null),
             inputData: buildStoredProfileEngineInput(inputData, entry) })),
         baseStateFingerprint, sourceFingerprint: createBalanceFingerprint({ profileId, scope: plan.scope, inputData, baseStateFingerprint,

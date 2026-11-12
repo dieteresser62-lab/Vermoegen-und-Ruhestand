@@ -75,8 +75,9 @@ export function renderOverview(doc, model) {
     const reminder = doc.getElementById('overviewBackupReminder');
     if (reminder) reminder.hidden = !backupWarning;
     const pricesPill = doc.getElementById('overviewPrices');
-    if (pricesPill) pricesPill.dataset.warning = String(['offline', 'timeout', 'changed', 'cancelled', 'storage-failed', 'recovery', 'unavailable'].includes(model.priceReport?.status)
-        || Boolean(model.priceReport?.results?.some(result => result.status !== 'updated' && (!model.scope?.ids || !result.profileId || model.scope.ids.includes(result.profileId)))));
+    if (pricesPill) pricesPill.dataset.warning = String(!model.firstStart && model.priceTranches?.length !== 0
+        && (['offline', 'timeout', 'changed', 'cancelled', 'storage-failed', 'recovery', 'unavailable'].includes(model.priceReport?.status)
+        || Boolean(model.priceReport?.results?.some(result => result.status !== 'updated' && (!model.scope?.ids || !result.profileId || model.scope.ids.includes(result.profileId))))));
     set('overviewAssetTitle', members.length > 1 ? 'Gesamtvermögen · Haushalt' : 'Gesamtvermögen');
     set('overviewQuoteDate', `Bestand am ${displayDate(model.now)} · ${overviewQuoteLabel(model)}`);
     const homes = propertyParts(members);
@@ -237,9 +238,9 @@ export function renderOverviewYear(doc, model) {
         ['partial', 'Teilweise'], ['open', 'Offen'], ['missing', 'Import fehlt']
     ].map(([state, label]) => `<span><i class="overview-year-key is-${state}" aria-hidden="true"></i>${label}</span>`).join('')
         + (annual.budget === null ? '' : `<span><i class="overview-year-budget-key" data-budget-status="${budgetStatus}" aria-hidden="true"></i>${budgetName}${staleBudget ? ' · Vorschau veraltet' : ''}</span>`);
-    const maximum = Math.max(1, annual.budget || 0, ...annual.months.map(month => month.spent || 0)) * 1.15;
+    const maximum = Math.max(1, annual.budget || 0, ...annual.months.map(month => Math.max(month.spent || 0, month.budget || 0))) * 1.15;
     if (budgetLabel && annual.budget !== null) budgetLabel.style.top = `calc(150px * ${1 - annual.budget / maximum})`;
-    if (chart) chart.innerHTML = annual.months.map(month => renderYearMonth(month, annual.year, maximum, annual.budget, budgetStatus)).join('');
+    if (chart) chart.innerHTML = annual.months.map(month => renderYearMonth(month, annual.year, maximum, month.budget ?? annual.budget, budgetStatus)).join('');
     const comparison = annual.comparison;
     const wealthValue = money(comparison?.delta);
     const wealthDetail = wealthComparisonBasis(comparison, annual.year, annual.retrospective)

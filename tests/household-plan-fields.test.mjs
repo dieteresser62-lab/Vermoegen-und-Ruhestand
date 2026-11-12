@@ -369,8 +369,8 @@ import { managerPlanFieldId } from '../app/tranches/tranchen-manager-household-p
             assertEqual(label.textContent, spec.label, `${spec.path}/${page}/${id}: Projektion verwendet denselben führenden Namen`);
         }
     }
-    assertEqual(simulatorOnlyMissing.sort().join(), 'householdWithdrawalMode,jointAssessment,jointAssessment,liquidityCashMonths',
-        'Haushaltsverteilung, Steuerwahl und Tagesgeldaufteilung bleiben auf Manager und Balance beschränkt');
+    assertEqual(simulatorOnlyMissing.sort().join(), 'equityCostPct,householdWithdrawalMode,jointAssessment,jointAssessment,liquidityCashMonths',
+        'Haushaltsverteilung, Steuerwahl und Tagesgeldaufteilung bleiben auf Manager und Balance beschränkt, Fondskosten auf Manager und Simulator');
 }
 
 // UF-1: derselbe Prozentfehler wie im lokalen Balance-/Simulatorversuch.

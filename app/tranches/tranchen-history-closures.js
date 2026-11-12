@@ -11,6 +11,7 @@ import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { buildHistoryMeasurementHtml } from './tranchen-history-ui.js';
 import { projectProfileWealthHistory } from '../profile/profile-wealth-history.js';
 import { renderManagerHistoryReturns } from './tranchen-history-returns-ui.js';
+import { bindWealthRecords, renderWealthRecords } from './tranchen-history-records.js';
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 }) : '—';
 const signed = value => Number.isFinite(value) ? (value > 0 ? '+' : '') + money(value) : '—';
@@ -182,10 +183,13 @@ export function renderManagerWealthHistory(doc, projection, registry, activeId, 
         chart = prepared.chart ? { ...prepared.chart, closures: prepared.chart.closures.map(row => homes.present ? { ...row, totalWithHomes: row.total + homes.total } : row) } : null;
         byId('managerWealthMetrics').innerHTML = summaryMarkup(prepared.rows, { missingComparisonHint: 'Jahresvergleich braucht zwei erfasste Stände', homes });
         byId('managerWealthTable').innerHTML = prepared.rows.length ? tableMarkup(prepared.rows, { homes }) : '';
+        // UR-1: Tabelle als Aufklappzeile; ohne Stände entfällt die Zeile.
+        bindWealthRecords(doc); renderWealthRecords(doc, prepared.rows);
         byId('managerWealthHint').textContent = !household || prepared.rows.length ? '' : 'Noch keine Stände erfasst. Mit „Stand jetzt erfassen“ legst du den ersten an.';
     } catch (error) {
         byId('managerWealthMetrics').innerHTML = '';
         byId('managerWealthTable').innerHTML = '';
+        renderWealthRecords(doc, []);
         byId('managerWealthHint').textContent = `Erfasste Stände können nicht angezeigt werden: ${error.message}`;
         chart = history;
     }

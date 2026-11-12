@@ -97,7 +97,7 @@ try {
     const partnerDetails = doc.getElementById('r2PersonDetailValues').children.map(node => node.textContent).join(' · ');
     assert(partnerDetails.includes('Rentenbeginn in · 1 Jahr') && !partnerDetails.includes('1 Jahren'), 'Rentenbeginn in einem Jahr steht im Singular');
     assert(personList.parentNode.querySelectorAll('*').every(node => !['INPUT','SELECT','BUTTON'].includes(node.tagName)), 'Normalmodus enthält keine Personencontrols in der Karte');
-    assert(doc.getElementById('sharedPensionValues').children.some(node => node.textContent === 'Lohnentwicklung'), 'Rentenanpassung der Werteliste folgt nur Hauptprofil');
+    assert(doc.getElementById('sharedPensionValues').children.some(node => node.textContent === 'wie Löhne'), 'Rentenanpassung der Werteliste folgt nur Hauptprofil');
     const editorNode = doc.getElementById('p1Geburtsdatum');
 
     const fire = (id, value, type = 'change') => {

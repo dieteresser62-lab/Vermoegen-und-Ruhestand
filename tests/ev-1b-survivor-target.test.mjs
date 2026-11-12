@@ -99,7 +99,9 @@ compareNextYear('B2 Preise des Folgejahrs bei drei Prozent Inflation', inputsFor
         { id: 'neu', bezeichnung: 'Einmalig', monat: '2027-08', betrag: 9000 },
         { id: 'laufend', bezeichnung: 'Laufend', betragMonat: 500, ab: '2027-07', bis: '2028-06', anpassung: 'keine' }
     ];
-    compareNextYear('B5 geplante Ausgaben nur im Folgejahr', inputs, 212000);
+    // GA-2 (FR-43): Die feste Ausgabe (6 × 500 €) zählt zum Grundbedarf des Folgejahrs und damit mit dessen Reichweite
+    // (5 × 3.000 €) statt einmal; die einmalige bleibt einmalige Reserve (vorher 212.000 €).
+    compareNextYear('B5 geplante Ausgaben nur im Folgejahr', inputs, 224000);
 }
 {
     const inputs = inputsForCase();

@@ -13,9 +13,10 @@ import { bindDecimalInputDisplay } from '../tranchen-manager-decimal-input.js';
 import { bindInfoPopovers } from '../../shared/designsystem-info-popover.js';
 import { setManagerModalWriteStateReader, bindTrancheModalLifecycle, bindCashPostingModalLifecycle, closeTrancheModal } from '../tranchen-manager-modal.js';
 import { bindManagerProfileSwitch, bindManagerProfileControls, bindManagerPeopleDialog } from '../tranchen-manager-profiles.js';
-import { selectManagerView } from './views.js';
+import { selectManagerView, openManagerOverviewTarget } from './views.js';
+import { bindManagerCareValues } from '../tranchen-manager-care-values.js';
 import { bindHistoryRecoveryUI } from '../tranchen-history-ui.js';
-import { repairManagerHistory } from './history.js';
+import { repairManagerHistory, reloadManagerPrices } from './history.js';
 import { addTranche, saveTranche, editTranche, deleteTranche } from './tranches.js';
 import { bindManagerSaleDialog } from '../tranchen-manager-sale-dialog.js';
 import { createReconciliationPreview, clearReconciliationPreview, confirmReconciliation } from './reconciliation.js';
@@ -57,6 +58,14 @@ export function bindControls() {
     bindCashPostingModalLifecycle();
     bindManagerProfileSwitch(document, (profileId, opener) => selectManagerView({ kind: opener?.dataset.managerView || (profileId ? 'person' : 'plan'), profileId: profileId || state.profileId, ...(opener?.dataset.managerView === 'history' ? { historyScope: opener.dataset.managerHistoryScope || 'household' } : {}) }, { opener }));
     bindManagerProfileControls(document);
+    // PFA-10: Bereich Pflege; „Zur Personenkarte“ springt über das vorhandene Sprungziel zum heutigen Pflegegrad.
+    bindManagerCareValues(document, { blocked: processingIsBlocked, openPerson: profileId => openManagerOverviewTarget(
+        { hash: '#profileCareGradeToday', search: `?person=${encodeURIComponent(profileId)}` }, { ready: state.loadStatus !== 'unavailable' }) });
+    // UR-1: „Haushaltswerte im Reiter Pflege →“ im Pflegeband der Personenkarte nutzt dasselbe Sprungziel wie der Simulator.
+    byId('profileCareHouseholdLink')?.addEventListener('click', event => {
+        event.preventDefault();
+        void openManagerOverviewTarget({ hash: '#pflege', search: '' }, { ready: state.loadStatus !== 'unavailable' });
+    });
     bindHistoryRecoveryUI(document, { execute: repairManagerHistory, blocked: processingIsBlocked });
     for (const id of ['depotAddTrancheBtn']) byId(id)?.addEventListener('click', addTranche);
     const saleDialog = bindManagerSaleDialog(document, {
@@ -118,6 +127,7 @@ export function bindControls() {
         if (index < 0) return;
         if (target.dataset.action === 'edit-tranche') editTranche(index, target);
         if (target.dataset.action === 'delete-tranche') void deleteTranche(index);
+        if (target.dataset.action === 'reload-prices') void reloadManagerPrices(state.tranchen[index], target);
     });
 
     if (typeof document.addEventListener === 'function') {

@@ -2,8 +2,9 @@
 /** @import {EngineInput, EngineSuccess} from '../../typcheck/rechenkern.js' */
 /** @import {DailyPrices} from '../../typcheck/tranches-history.js' */
 import { projectBalanceBudget } from './balance-budget.js';
-import { summarizeBalanceAction } from './balance-action-summary.js';
+import { summarizeBalanceAction, describePlanAction } from './balance-action-summary.js';
 import { historyGaps } from '../tranches/tranchen-history-store.js';
+import { CONFIG } from '../../engine/config.mjs';
 
 /** @typedef {Required<Pick<EngineInput, 'endeVJ'|'endeVJ_1'|'endeVJ_2'|'endeVJ_3'|'ath'|'jahreSeitAth'>>} AnnualMarketInputs */
 /** @typedef {{value: number, origin: 'year_end'|'rule_high'|'stored_ath'|'stored_close', asOf: string|null,
@@ -76,13 +77,17 @@ export function prepareMarketPreview(options) {
         // Nur ein echt höherer Schluss ändert das Hoch und sein Alter.
         highInputs.jahreSeitAth = (day(quote.asOf) - day(high.asOf)) / 365.2425;
     }
-    const unreliableReason = !quote ? 'kein Tageskurs seit Jahresende VJ'
-        : evaluationDay - day(quote.asOf) > 10 ? 'letzter Schlusskurs älter als 10 Kalendertage'
+    // WT-1c (Gutachten WT1B-FABLE Befund 1): Ohne Kurs seit dem Jahresende gibt es in den ersten 10 Tagen noch kein Jahreshoch,
+    // also auch keinen verdeckten Bärenmarkt. Danach nennt der Grund, ob ein älterer Kurs vorliegt oder gar keiner.
+    const lastClose = series && index >= 0 ? series.days[index] : null;
+    const unreliableReason = !quote ? evaluationDay - start <= 10 ? PRICE_REASONS.yearStart
+        : lastClose !== null && evaluationDay - lastClose > 10 ? PRICE_REASONS.missingStale : PRICE_REASONS.missing
+        : evaluationDay - day(quote.asOf) > 10 ? PRICE_REASONS.stale
             : series && historyGaps(series.days[0], day(quote.asOf), series.queried).length
-                ? 'Kursreihe hat ungeprüfte Tage – Kurse auf der Seite Daten & Sicherung holen' : null;
+                ? PRICE_REASONS.gaps : null;
     return { ...options, quote, yearlyHigh, cutoff: dateOf(cutoff), closingYear,
         storedHigh, ruleHigh, high, ruleInputs, highInputs, withoutQuote: quote === null,
-        withoutQuoteReason: quote ? null : 'kein Tageskurs seit Jahresende VJ', unreliableReason };
+        withoutQuoteReason: quote ? null : PRICE_REASONS.missing, unreliableReason };
 }
 
 /** @param {string} reason */
@@ -94,7 +99,7 @@ export function unavailableBudgetComparison(reason) {
 /** Lesende Projektion der fertigen Budgetentscheidung, ohne erneute Policyrechnung.
  * @param {EngineSuccess} result */
 function budgetVariant(result) {
-    const { ui, input } = result, summary = summarizeBalanceAction(ui.action, ui.action);
+    const { ui, input } = result;
     const budget = projectBalanceBudget({ ...ui, input }).budget;
     const monthlyBudget = budget === null ? null : Math.round(budget);
     const annualBudget = monthlyBudget === null ? null : monthlyBudget * 12;
@@ -104,8 +109,16 @@ function budgetVariant(result) {
         + (ui.action.verwendungen?.liquiditaet ?? 0)
         - sources.filter(source => source.kind === 'liquiditaet').reduce((sum, source) => sum + source.brutto, 0);
     return { floor, releasedFlex: annualBudget === null ? null : annualBudget - floor, annualBudget, monthlyBudget,
-        mainAction: { type: ui.action.type, text: summary.verb, netAmount: summary.amount },
+        // WT-1b: Verb wie die Karte „Was zu tun ist“ (kein „Handlung prüfen“ bei eindeutigem Anleiheverkauf).
+        mainAction: planMainAction(ui.action),
         goldPurchase: ui.action.verwendungen?.gold ?? 0, tax: ui.action.steuer ?? 0, reserveAfterAction };
+}
+
+/** Hauptaktion eines Plans für Bärenblock und Wahl (WT-1b): Verb und Netto-Betrag wie in der Karte.
+ * @param {import('../../typcheck/balance-ui.js').Action} action */
+export function planMainAction(action) {
+    const summary = describePlanAction(action, summarizeBalanceAction(action, action));
+    return { type: action.type, text: summary.verb, netAmount: summary.amount };
 }
 
 /** @param {number|null|undefined} value */
@@ -152,7 +165,6 @@ export function compareMarketBudgets(ruleResult, highResult, reason = null) {
  * @param {EngineSuccess} result @param {number|null} yearEndPrice */
 function reading(inputs, high, result, yearEndPrice) {
     const market = result.ui.market, threshold = inputs.ath * 0.8;
-    const summary = summarizeBalanceAction(result.ui.action, result.ui.action);
     return { inputs: { ...inputs }, index: inputs.endeVJ, high, drawdownPct: market.abstandVomAthProzent,
         changeSinceYearEndPct: yearEndPrice && yearEndPrice > 0 ? (inputs.endeVJ / yearEndPrice - 1) * 100 : null,
         market: { key: market.sKey, text: market.szenarioText },
@@ -160,7 +172,7 @@ function reading(inputs, high, result, yearEndPrice) {
             remainingDeclinePct: inputs.endeVJ > 0 ? Math.max(0, (inputs.endeVJ - threshold) / inputs.endeVJ * 100) : null },
         monthsSinceHigh: inputs.jahreSeitAth * 12,
         monthlyBudget: projectBalanceBudget({ ...result.ui, input: result.input }).budget,
-        mainAction: { type: result.ui.action.type, text: summary.verb, netAmount: summary.amount } };
+        mainAction: planMainAction(result.ui.action) };
 }
 
 /** Ein Anzeigeobjekt für alle Lesarten; Ergebnisse und Marktlage stammen aus der Engine.
@@ -215,4 +227,53 @@ export function classifyMarketPreview(view, comparison = view.comparison) {
         : shown < 5 ? 'calm' : shown < MARKET_NOISE_PCT || !differs ? 'notice' : 'warning';
     // noise: Die Lesarten unterscheiden sich, der Abstand liegt aber im Grundrauschen; es gilt die Jahresendregel.
     return { stage, gapPct, noise: differs && stage !== 'warning' };
+}
+
+/** Marktlagen, in denen die Engine den Flex kürzt (FLEX_BUDGET.ACTIVE_REGIMES). */
+const FLEX_CUT_REGIMES = /** @type {string[]} */ (CONFIG.SPENDING_MODEL.FLEX_BUDGET.ACTIVE_REGIMES);
+
+/** FR-77 Punkt 5 (FR-71 geändert): Verdeckter Bärenmarkt. Gemessen am Jahreshoch ist die Marktlage eine, in der die Engine
+ * den Flex kürzt, nach der Jahresendregel nicht. Nur dann zeigen Balance und Jahresabschluss das Jahreshoch und die Wahl.
+ * Die Einstufung selbst bleibt die der Engine; die Anzeigestufen von `classifyMarketPreview` bleiben intern.
+ * @param {ReturnType<typeof projectMarketPreview>|UnavailableMarketPreview|null|undefined} view @returns {boolean} */
+export function isHiddenBearMarket(view) {
+    if (!view || !('rule' in view) || !view.quote || !view.rule?.market || !view.high?.market) return false;
+    if (view.comparison?.state === 'not_reliable' || !view.comparison?.rule || !view.comparison?.high) return false;
+    return FLEX_CUT_REGIMES.includes(String(view.high.market.key)) && !FLEX_CUT_REGIMES.includes(String(view.rule.market.key));
+}
+
+/** Gründe, aus denen die Kurse den Vergleich mit dem Jahreshoch nicht tragen (zu alt, lückenhaft, fehlend).
+ * `yearStart` (WT-1c): noch kein Kurs seit dem Jahresende, das höchstens 10 Tage zurückliegt; dann gibt es nichts zu prüfen. */
+const PRICE_REASONS = Object.freeze({ missing: 'kein Tageskurs seit Jahresende VJ', stale: 'letzter Schlusskurs älter als 10 Kalendertage',
+    missingStale: 'kein Tageskurs seit Jahresende VJ, letzter Schlusskurs älter als 10 Kalendertage',
+    gaps: 'Kursreihe hat ungeprüfte Tage – Kurse auf der Seite Daten & Sicherung holen',
+    yearStart: 'noch kein Tageskurs seit Jahresende VJ, Jahresende höchstens 10 Tage her' });
+
+/** WT-1c (Gutachten WT1B-FABLE Befund 1): Grund der Kurszeile. `stale`, wenn der letzte Kurs älter als 10 Tage ist; `missing`, wenn
+ * Kurse fehlen oder lückenhaft sind; `null` ohne Kursgrund, bei anderen Gründen einer fehlenden Vorschau und in den ersten
+ * 10 Tagen nach dem Jahresende ohne neuen Kurs. Der Grund der Vergleichsrechnung geht dem allgemeinen Grund ohne Kurs vor.
+ * @param {ReturnType<typeof projectMarketPreview>|UnavailableMarketPreview|null|undefined} view @returns {'stale'|'missing'|null} */
+export function hiddenBearPriceProblem(view) {
+    if (!hiddenBearCheckUnreliable(view)) return null;
+    const reasons = [view?.comparison?.reason, view?.withoutQuoteReason].map(reason => String(reason ?? ''));
+    if (reasons.some(reason => reason.startsWith(PRICE_REASONS.yearStart))) return null;
+    if (reasons.some(reason => reason.startsWith(PRICE_REASONS.stale) || reason.startsWith(PRICE_REASONS.missingStale))) return 'stale';
+    const missing = [PRICE_REASONS.missing, PRICE_REASONS.gaps.split(' – ')[0]];
+    return reasons.some(reason => missing.some(start => reason.startsWith(start))) ? 'missing' : null;
+}
+
+/** WT-1b (Soll 6): Die Balance nennt „verdeckter Bärenmarkt nicht prüfbar“ nur, wenn es an den Kursen liegt, nicht bei
+ * anderen Gründen einer fehlenden Vorschau (WT-1c: auch nicht kurz nach dem Jahresende ohne neuen Kurs).
+ * @param {ReturnType<typeof projectMarketPreview>|UnavailableMarketPreview|null|undefined} view */
+export function hiddenBearPricesUnreliable(view) {
+    return hiddenBearPriceProblem(view) !== null;
+}
+
+/** FR-77 Punkt 5: „nicht belastbar“ nur, wenn die Kurse für die Prüfung fehlen und es auf sie ankäme, also die Jahresendregel
+ * nicht schon selbst einen Bärenmarkt sieht. @param {ReturnType<typeof projectMarketPreview>|UnavailableMarketPreview|null|undefined} view */
+export function hiddenBearCheckUnreliable(view) {
+    if (!view) return false;
+    const unreliable = view.comparison?.state === 'not_reliable' || view.withoutQuote === true;
+    if (!unreliable) return false;
+    return !('rule' in view && view.rule?.market && FLEX_CUT_REGIMES.includes(String(view.rule.market.key)));
 }

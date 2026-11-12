@@ -1,10 +1,19 @@
+import { readPFA1References, pfa1Evidence } from './helpers/pfa-1-expectations.mjs';
+const readHE4References = value => readPFA1References(beforePFA1References(value));
 import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
+import { readHE2References, he2Evidence } from './helpers/he-2-expectations.mjs';
+import { readHE4References as beforePFA1References } from './helpers/he-4-expectations.mjs';
 import { readFileSync } from 'node:fs';
+import { le1Evidence } from './helpers/le-1-expectations.mjs';
 import { parityChunk, resultHashes, characteristicIndices } from './helpers/md-2-parity.mjs';
 import { ScenarioAnalyzer, WEALTH_SCENARIO_LABELS } from '../app/simulator/scenario-analyzer.js';
 import { buildScenarioEntries, renderScenarioWealthChart } from '../app/simulator/scenario-wealth-chart.js';
 import { renderScenarioList } from '../app/simulator/scenario-log-view.js';
 import { renderScenarioComparison } from '../app/simulator/scenario-comparison.js';
+import { setAppTestDate } from '../app/shared/app-clock.js';
+
+// LE-1b (P3-5): Das Ersatz-Geburtsjahr folgt der App-Uhr. Ein fester Stichtag (Messtag) hält die Belege über den Jahreswechsel.
+setAppTestDate('2026-11-12');
 
 const baseline = JSON.parse(readFileSync(new URL('./fixtures/md-2-parity-before.json', import.meta.url), 'utf8'));
 const equalization = JSON.parse(readFileSync(new URL('./fixtures/zg-1b-expectation-deltas.json', import.meta.url), 'utf8'));
@@ -15,13 +24,21 @@ for (const [name, before] of Object.entries(baseline.cases)) {
     // Bytebelege gelten auf der erfassten Plattform; die Verhaltensproben laufen überall.
     if (process.platform === equalization.runtime.platform && process.version === equalization.runtime.node) {
         assertEqual(JSON.stringify(equalization.cases[name].before), JSON.stringify(readEV1bReferences(before.hashes)), `${name}: vollständige Referenz vor ZG-1b bleibt erhalten`);
-        assertEqual(JSON.stringify(resultHashes(chunk)), JSON.stringify(equalization.cases[name].after), `${name}: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung`);
+        // LE-1 (FR-75): Kohortentafel und abgestimmte Grundsterblichkeit ändern jeden Fall; gemessene Werte in le-1-expectation-deltas.json.
+        assertEqual(JSON.stringify(resultHashes(chunk)), JSON.stringify(le1Evidence.md2Cases[name]?.hashes ?? readHE4References(readHE2References(equalization.cases[name].after))), `${name}: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung`);
         const selected = characteristicIndices(chunk.runMeta);
         const typical = new ScenarioAnalyzer(50);
         chunk.runMeta.forEach(run => typical.addRun(run));
         const typicalIndex = typical.buildScenarioLogs().characteristic.find(pick => pick.key === 'typicalMarket').sourceIdentity.absoluteRunIndex;
-        assert(before.characteristicIndices.every(index => selected.includes(index)), `${name}: alle bisherigen Protokollpfade bleiben ausgewählt`);
-        assert(selected.filter(index => !before.characteristicIndices.includes(index)).every(index => index === typicalIndex), `${name}: höchstens der neue Marktpfad kommt hinzu`);
+        // FR-72/HE-2: Heimpfade verändern Vermögen und damit die Auswahl; dann gilt die belegte Auswahl nach HE-2.
+        const he2Selection = le1Evidence.md2Cases[name]?.characteristicIndices ?? pfa1Evidence.characteristicIndices[name] ?? he2Evidence.characteristicIndices[name];
+        if (he2Selection) {
+            assertEqual(JSON.stringify(selected), JSON.stringify(he2Selection), `${name}: Protokollpfade wie nach HE-2 belegt`);
+            assert(selected.includes(typicalIndex), `${name}: typischer Marktpfad bleibt ausgewählt`);
+        } else {
+            assert(before.characteristicIndices.every(index => selected.includes(index)), `${name}: alle bisherigen Protokollpfade bleiben ausgewählt`);
+            assert(selected.filter(index => !before.characteristicIndices.includes(index)).every(index => index === typicalIndex), `${name}: höchstens der neue Marktpfad kommt hinzu`);
+        }
     }
     for (const run of chunk.runMeta) {
         const years = run.logDataRows.filter(row => row.recordType === 'financial_year');
@@ -77,3 +94,4 @@ assertEqual(tied.buildScenarioLogs().characteristic.find(pick => pick.key === 't
 const empty = new ScenarioAnalyzer(1);
 empty.addRun({ index: 0, equityCagr: null, endVermoegen: 0, lebensdauer: 0, maxKuerzung: 0 });
 assert(!empty.buildScenarioLogs().characteristic.some(pick => pick.key === 'typicalMarket'), 'Ohne Finanzjahr entsteht kein erfundener Marktpfad');
+setAppTestDate(null);

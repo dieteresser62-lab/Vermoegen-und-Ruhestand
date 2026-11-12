@@ -105,6 +105,7 @@ export async function runStartupPriceRefresh({ source = captureStartupPriceSourc
     now = Date.now, schedule = setTimeout, unschedule = clearTimeout, valid = /** @type {() => boolean} */ (() => true),
     commit = commitStartupPriceResults, progress = /** @type {(report: object) => void} */ (() => {}) } = {}) {
     const { jobs, issues } = collectJobs(source);
+    if (!jobs.length && !issues.length) return { status: 'empty', updated: 0, results: [] };
     const controller = new AbortController();
     const startedAt = now(), deadline = startedAt + STARTUP_PRICE_TIMEOUT_MS;
     const fetcher = createBatchQuoteFetcher(controller.signal, { deduplicateSearchNames: true, deadline, now, schedule, unschedule });
@@ -308,7 +309,7 @@ export function renderStartupPriceStatus(host, report, { readSource = captureSta
         changed: 'Bestand wurde zwischenzeitlich geändert. Keine Kurse gespeichert.',
         'storage-failed': 'Kurse konnten nicht dauerhaft gespeichert werden. Kein Erfolg bestätigt.',
         timeout: 'Zeitlimit von 15 Sekunden erreicht.', complete: 'Keine Kurse vorhanden.',
-        offline: 'Keine Kurse vorhanden.'
+        offline: 'Keine Kurse vorhanden.', empty: 'Kein Depot erfasst.'
     };
     const results = report.results || [];
     const failures = results.filter(result => result.status !== 'updated');
@@ -469,10 +470,26 @@ export function bindStartupPrices({ doc = globalThis.document, win = globalThis.
         try {
             if (!await initialize() || !await ready()) { render({ status: 'recovery' }); return; }
             if (!valid) return;
+            let empty = false;
+            try {
+                const { jobs, issues } = collectJobs(source());
+                empty = !jobs.length && !issues.length;
+            } catch { /* Unlesbare Quellen behalten den bisherigen Berichts-/Recoveryweg. */ }
+            if (empty) {
+                // Neutraler Befund ohne Abrufzeit und Reservierung. Eine spätere
+                // erste Runde mit Depot darf durch diesen Befund nicht blockieren.
+                const report = { status: 'empty', updated: 0, results: [] };
+                try {
+                    session ||= areaSessionStorage(win.sessionStorage);
+                    publishStartupPriceReport(report, session);
+                } catch { /* Ohne Abruf ist auch kein Sitzungsmerker nötig. */ }
+                render(report); startAutomatic(); return;
+            }
             try { session ||= areaSessionStorage(win.sessionStorage); } catch { render({ status: 'unavailable' }); return; }
             if (!session) { render({ status: 'unavailable' }); return; }
-            const retryable = report => ['started', 'cancelled'].includes(report?.status);
-            if (sessionRuns.has(session) && sessionRuns.get(session).status !== 'cancelled') { render(sessionRuns.get(session)); startAutomatic(); return; }
+            const unattempted = report => report?.status === 'empty' && !Number.isFinite(report.retrievedAt);
+            const retryable = report => ['started', 'cancelled'].includes(report?.status) || unattempted(report);
+            if (sessionRuns.has(session) && sessionRuns.get(session).status !== 'cancelled' && !unattempted(sessionRuns.get(session))) { render(sessionRuns.get(session)); startAutomatic(); return; }
             let prior;
             try {
                 prior = session.getItem(STARTUP_PRICE_SESSION_KEY);

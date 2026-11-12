@@ -1,7 +1,11 @@
+import { localCalendarDate } from '../../shared/app-clock.js';
+import { resolveCarePrices } from '../../shared/care-prices.js';
+import { careReference } from '../../shared/care-needs.js';
+import { sharesHouseholdCareValues } from '../../shared/care-profile-settings.js';
 /** @import {StorageReader} from '../../../typcheck/runtime-contracts.js' */
 import { persistenceStorage } from '../../shared/persistence-facade.js';
 import { migrateCareDefaultsRecord } from '../simulator-care-flex.js';
-import { readSimulatorHouseholdPlan, assertPlanValues, SIMULATOR_LEGACY_PLAN_FIELDS, projectPlanToSimulator } from '../../profile/household-plan.js';
+import { readSimulatorHouseholdPlan, assertPlanValues, SIMULATOR_LEGACY_PLAN_FIELDS, projectPlanToSimulatorProfile } from '../../profile/household-plan.js';
 import { parseStoredBalanceInputsFromData, parseProfileOverridesFromData, parseProfileHealthBucketFromData, PROFILE_VALUE_KEYS, parseStoredBalanceStateFromData } from '../../profile/profile-state.js';
 import { readCareValues, officialCareCosts, careValuesInputPatch } from '../../shared/household-care-values.js';
 import { parsePflegeGradeConfigs, careTodaySources } from './care.js';
@@ -10,20 +14,23 @@ import { parseDetailledTranches, sumTrancheTotals } from './tranches.js';
 import { readNumber, readBool, simKey, normalizeDynamicFlexHorizonMethod, readString, DYNAMIC_FLEX_DEFAULTS, clamp, readValue, normalizeDecumulationMode, readInt, parseWidowOptions, readPositiveBalanceNeed } from './values.js';
 import { simulatorOneTimeIncome, effectiveIncomeFromRecord } from '../../profile/profile-income.js';
 import { readImmobilien, IMMOBILIEN_KEY } from '../../profile/profile-immobilien.js';
-import { projectPerson, personReferenceYear, personGenderAssumed } from '../../profile/profile-person-data.js';
+import { projectPerson, personReferenceYear, personGenderAssumed, personBirthYear } from '../../profile/profile-person-data.js';
 import { careTodayFromRecord } from '../../profile/profile-care.js';
 import { normalizeLongevityMode, LONGEVITY_DEFAULTS } from '../dynamic-flex-longevity-contract.js';
 import { STRATEGY_OPTIONS } from '../../../types/strategy-options.js';
 import { normalizeCareCostDriftPercent } from '../simulator-input-care.js';
 import { survivorFloorPercent, survivorFlexPercent } from '../simulator-survivor.js';
+import { residentialOwnExpensesInputPatch } from '../simulator-residential-care.js';
 import { resolveLiquidityRunwayYears } from '../../../types/liquidity-runway-contract.js';
 
 /** @param {Record<string, string>} profileData
- * @param {{referenceYear?: number, planValues?: object, storage?: StorageReader}} [options]
+ * @param {{referenceYear?: number, planValues?: object, storage?: StorageReader, profileId?: string}} [options]
+ *   `profileId` nennt den Preisbesitzer: Haushaltsmitglieder lesen den gemeinsamen Preisblock, Außenpersonen ihre
+ *   eigene `sim_`-Staffel (Gutachten PFA-2, Befund 5); ohne Angabe gilt das geöffnete Profil.
  *
  * @returns Ergebnis der Operation.
  */
-export function buildSimulatorInputsFromProfileData(profileData, { referenceYear, planValues, storage = persistenceStorage } = {}) {
+export function buildSimulatorInputsFromProfileData(profileData, { referenceYear, planValues, storage = persistenceStorage, profileId } = {}) {
     profileData = migrateCareDefaultsRecord(profileData);
     if (planValues === undefined) {
         const plan = readSimulatorHouseholdPlan();
@@ -37,7 +44,10 @@ export function buildSimulatorInputsFromProfileData(profileData, { referenceYear
     // Balance-App Inputs (falls vorhanden) liefern Defaults für fehlende Simulator-Werte.
     const balanceInputs = parseStoredBalanceInputsFromData(profileData);
     const careValues = readCareValues(storage);
-    const pflegeGradeConfigs = parsePflegeGradeConfigs(profileData);
+    // FR-73 P8: Preise aus dem Pflegewerte-Record, alte sim_-Beträge nur lesend als Altbestand; Außenpersonen behalten ihre Staffel.
+    const shared = profileId === undefined ? sharesHouseholdCareValues(storage) : sharesHouseholdCareValues(storage, profileId);
+    const careCosts = resolveCarePrices(careValues, profileData, { shared });
+    const pflegeGradeConfigs = parsePflegeGradeConfigs(profileData, careCosts.costs);
     if (profileData.sim_pflegeKostenStaffelPreset === 'amtlich') {
         const costs = officialCareCosts(careValues);
         for (const grade of SUPPORTED_PFLEGE_GRADES) pflegeGradeConfigs[grade].zusatz = costs[grade];
@@ -65,6 +75,8 @@ export function buildSimulatorInputsFromProfileData(profileData, { referenceYear
     const home = readImmobilien(profileData[IMMOBILIEN_KEY]);
     const fixedIncome = effectiveIncomeFromRecord(profileData).filter(entry => entry.art === 'sonstige');
     const person = projectPerson(profileData, referenceYear ?? personReferenceYear(null));
+    // FR-75: Geburtsjahr für die Kohortensterbetafel (sonst Planungsjahr − Startalter).
+    const birthYear = personBirthYear(profileData, referenceYear ?? personReferenceYear(null));
     const careToday = careTodayFromRecord(profileData);
     careTodaySources.set(careToday, profileData);
     const p1StartAlter = person.startAlter;
@@ -145,7 +157,7 @@ export function buildSimulatorInputsFromProfileData(profileData, { referenceYear
     // Profil-Tagesgeld (Balance) überschreibt Simulator-Tagesgeld, falls gesetzt.
     const tagesgeld = hasProfileTagesgeld ? profileTagesgeld : simTagesgeld;
     const baseInputs = {
-        ...(careToday.grade ? { careToday } : {}),
+        ...(careToday.grade ? { careToday, ...careReference(localCalendarDate(), person.referenceYear) } : {}),
         startVermoegen: readNumber(profileData, simKey('simStartVermoegen'), 0),
         depotwertAlt: readNumber(profileData, simKey('depotwertAlt'), 0),
         tagesgeld,
@@ -177,6 +189,7 @@ export function buildSimulatorInputsFromProfileData(profileData, { referenceYear
         rebalancingBand: goldAktiv ? rebalancingBand : 25,
         goldSteuerfrei: goldAktiv && goldSteuerfrei,
         startAlter: p1StartAlter,
+        ...(birthYear !== null ? { geburtsjahr: birthYear } : {}),
         geschlecht: p1Geschlecht,
         ...(personGenderAssumed(profileData) ? { residenceGenderUnknown: true } : {}),
         startSPB: person.startSPB,
@@ -196,15 +209,13 @@ export function buildSimulatorInputsFromProfileData(profileData, { referenceYear
         pflegeGradeConfigs,
         pflegeStufe1Zusatz: grade1Config.zusatz,
         pflegeStufe1FlexCut: grade1Config.flexCut,
-        pflegeMaxFloor: readNumber(profileData, simKey('pflegeMaxFloor'), 0),
+        pflegeMaxFloor: careCosts.maximumFloor,
         pflegeRampUp: readInt(profileData, simKey('pflegeRampUp'), 5),
         pflegeMinDauer: readInt(profileData, simKey('pflegeMinDauer'), 5),
         pflegeMaxDauer: readInt(profileData, simKey('pflegeMaxDauer'), 10),
-        pflegeKostenDrift: normalizeCareCostDriftPercent(
-            readNumber(profileData, simKey('pflegeKostenDrift'), 0),
-            0
-        ),
+        pflegeKostenDrift: normalizeCareCostDriftPercent(careCosts.driftPercent),
         pflegeRegionalZuschlag: readNumber(profileData, simKey('pflegeRegionalZuschlag'), 0) / 100,
+        ...residentialOwnExpensesInputPatch(careCosts.ownExpensesMonthly),
         healthBucket,
         healthBucketEnabled: healthBucket.enabled,
         healthBucketInitialAmount: healthBucket.initialAmount,
@@ -301,6 +312,6 @@ export function buildSimulatorInputsFromProfileData(profileData, { referenceYear
         transitionAge,
         detailledTranches: detailedTranches,
         trancheInputState: trancheInput.state,
-        ...(planValues ? projectPlanToSimulator(planValues) : {})
+        ...(planValues ? projectPlanToSimulatorProfile(planValues) : {})
     };
 }

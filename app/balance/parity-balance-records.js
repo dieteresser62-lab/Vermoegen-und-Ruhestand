@@ -65,6 +65,8 @@ function planForYear(initial, year) {
     for (const field of PLAN_FIELDS.filter(key => !['cape', 'horizonYears', ...Object.keys(needSources)].includes(key))) {
         if (Object.hasOwn(year.assumptions, field)) values[field] = structuredClone(year.assumptions[field]);
     }
+    // FR-76: Fehlen die Fondskosten in den Simulatoreingaben, rechnete der Simulator ohne Kosten; der Planwert folgt ihm.
+    if (!(Number(year.assumptions.equityCostPct) > 0)) values.equityCostPct = 0;
     for (const [field, source] of Object.entries(needSources)) {
         const value = year.simulatorStateBefore?.[source];
         requireValue(Number.isFinite(value), `simulatorStateBefore.${source}`, 'annual_plan_basis_unavailable');

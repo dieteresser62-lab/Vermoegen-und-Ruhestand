@@ -25,7 +25,11 @@ const STYLE_PHRASES = Object.freeze(['Im Folgenden', 'Es ist wichtig zu beachten
 // Nur diese Textstellen in diesen Dateien ausnehmen, keine ganzen Register/URLs.
 const HEX_EXCEPTIONS = Object.freeze({
     'data/historical/gold-german-investor-chain/README.md': ['32.15074656862798'],
-    'docs/reference/DATA_SOURCES.md': ['32.15074656862798'],
+    // Destatis-Artikelnummer der Kohortensterbetafeln (FR-75), keine Commit-Kennung.
+    'data/historical/german-cohort-life-table/README.md': ['5126101269005'],
+    'docs/reference/DATA_SOURCES.md': ['32.15074656862798',
+        // MSCI-Dokumentkennungen der Factsheets zur Herleitung der Fondskosten (FR-76), keine Commit-Kennungen.
+        '/documents/10199/178e6643-6ae6-47b9-82be-e1fc565ededb', '/documents/10199/4db922ce-68d2-446d-2f9e-4ed408a9db29'],
     'docs/reference/MARKTVERGLEICH_EVIDENZREGISTER.md': [
         '/articles/10563826-how-do-i-account-for-rate-of-return-assumptions'
     ],
@@ -56,7 +60,7 @@ export const ACTIVE_FILES = Object.freeze([
     'scripts/dev/README.md',
     ...['global-equity-research-chain', 'german-cpi-chain',
         'german-cash-money-market-chain', 'gold-german-investor-chain',
-        'us-shiller-cape-chain', 'german-gross-wage-growth-chain']
+        'us-shiller-cape-chain', 'german-gross-wage-growth-chain', 'german-cohort-life-table']
         .map(name => `data/historical/${name}/README.md`),
     'data/static/german-demography-care-survivor-contract/README.md',
     ...['TECHNICAL', 'FACHKONZEPT', 'DATENVERTRAEGE',
@@ -103,7 +107,8 @@ export const IMAGE_FILES = Object.freeze([
     'protokoll-backtest', 'protokoll-backtest-details', 'protokoll-monte-carlo', 'protokoll-monte-carlo-details',
     'tagesgeld-bearbeiten', 'personen-pflegegrad',
     'partnerschaft-todesfall', 'personen-immobilien', 'simulator-hinterbliebene', 'partnerschaft-verheiratet',
-    'monte-carlo-vergleich', 'monte-carlo-zielwert'
+    'monte-carlo-vergleich', 'monte-carlo-zielwert', 'personen-pflege', 'verlauf-vermoegensstaende', 'personen-erika-einkuenfte',
+    'simulator-fondskosten', 'personen-rente-wie-loehne', 'personen-fondskosten'
 ].map(name => `docs/ui/${name}.png`));
 const APP_PAGES = ['index.html', 'depot-tranchen-manager.html', 'Ausgaben.html',
     'Balance.html', 'Simulator.html', 'Daten-Sicherung.html'];

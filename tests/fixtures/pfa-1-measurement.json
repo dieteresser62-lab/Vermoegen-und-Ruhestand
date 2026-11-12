@@ -1,0 +1,319 @@
+{
+  "basis": "5a3fbc1d",
+  "runs": 2000,
+  "horizon": 35,
+  "seeds": [
+    12345,
+    67890
+  ],
+  "scenarios": [
+    {
+      "name": "staffel",
+      "seed": 12345,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 0,
+        "terminalRealMedian": 2802357.604572929,
+        "taxesMedian": 47175.1836452272,
+        "fullResultHash": "1594a1d94cc8f65ddbd29b3da4cb8a821ca4218eec91447aba500f2448a1ed15",
+        "failuresUpper95Pct": 0.14967448951883067
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 0,
+        "terminalRealMedian": 2856873.4716719403,
+        "taxesMedian": 37981.46944328953,
+        "fullResultHash": "da82dda69bfbca6ba8bf8f8f9062e8498ccfde19a950630fa2fc707c647b438f",
+        "failuresUpper95Pct": 0.14967448951883067
+      },
+      "comparedYears": 41421,
+      "mismatches": 0
+    },
+    {
+      "name": "drift",
+      "seed": 12345,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 0,
+        "terminalRealMedian": 2855448.6303572045,
+        "taxesMedian": 37835.48675519134,
+        "fullResultHash": "e53825bf55363f5774ada4bc59831a54e926dcb7a29309943f4d8eef7a73b4e2",
+        "failuresUpper95Pct": 0.14967448951883067
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 2,
+        "terminalRealMedian": 2797593.17011576,
+        "taxesMedian": 47881.58051143637,
+        "fullResultHash": "cace90515fd8edee6abf38108c624aec35d7d9cdf74bf456b4486d9e73d0d8ce",
+        "failuresUpper95Pct": 0.314451783788966
+      },
+      "comparedYears": 41417,
+      "mismatches": 0
+    },
+    {
+      "name": "drift-minus30",
+      "seed": 12345,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 0,
+        "terminalRealMedian": 2855448.6303572045,
+        "taxesMedian": 37835.48675519134,
+        "fullResultHash": "e53825bf55363f5774ada4bc59831a54e926dcb7a29309943f4d8eef7a73b4e2",
+        "failuresUpper95Pct": 0.14967448951883067
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 0,
+        "terminalRealMedian": 2856873.4716719403,
+        "taxesMedian": 37981.46944328953,
+        "fullResultHash": "da82dda69bfbca6ba8bf8f8f9062e8498ccfde19a950630fa2fc707c647b438f",
+        "failuresUpper95Pct": 0.14967448951883067
+      },
+      "comparedYears": 41421,
+      "mismatches": 0
+    },
+    {
+      "name": "drift-plus30",
+      "seed": 12345,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 7,
+        "terminalRealMedian": 2726092.803741824,
+        "taxesMedian": 58021.31467875109,
+        "fullResultHash": "45eff3ecf1b2a3cfbe0c010094314e021f830368b10f8919d7e9fdf0161ed5c2",
+        "failuresUpper95Pct": 0.6563954853350097
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 7,
+        "terminalRealMedian": 2721874.1158704706,
+        "taxesMedian": 58820.49562721666,
+        "fullResultHash": "b8e6f7853dd6951597921e9fd4935e9120f85d6b98319e751915285fecb6a501",
+        "failuresUpper95Pct": 0.6563954853350097
+      },
+      "comparedYears": 41401,
+      "mismatches": 0
+    },
+    {
+      "name": "heute-grad3",
+      "seed": 12345,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 6,
+        "terminalRealMedian": 2140903.762995497,
+        "taxesMedian": 45933.959558471186,
+        "fullResultHash": "1fb43ebae86e737b9072bfa823f5bc130f41335199c2a7bca85e32890e6e623f",
+        "failuresUpper95Pct": 0.591255200189672
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 14,
+        "terminalRealMedian": 1894823.4125736756,
+        "taxesMedian": 49194.586328458245,
+        "fullResultHash": "fc6481716b30eac008c2d62e9259f6e4359cc274777cab7dd4dd83c2e00de596",
+        "failuresUpper95Pct": 1.0921660754660223
+      },
+      "comparedYears": 38595,
+      "mismatches": 0
+    },
+    {
+      "name": "heute-heim",
+      "seed": 12345,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 3,
+        "terminalRealMedian": 2432826.475009255,
+        "taxesMedian": 30626.95164853595,
+        "fullResultHash": "6850354a5d7a733b9a515219e74bcfe2aa09fbc24ad315c2951c91ffe0b2a74e",
+        "failuresUpper95Pct": 0.38722231501575055
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 14,
+        "terminalRealMedian": 1831724.1772132618,
+        "taxesMedian": 43687.95407659019,
+        "fullResultHash": "1791df359b05a6cbe7ab01df925cd00992d17529cd6e9735309a8bc3ad3f4781",
+        "failuresUpper95Pct": 1.0921660754660223
+      },
+      "comparedYears": 38358,
+      "mismatches": 0
+    },
+    {
+      "name": "heute-heim-seit",
+      "seed": 12345,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 3,
+        "terminalRealMedian": 2432826.475009255,
+        "taxesMedian": 30626.95164853595,
+        "fullResultHash": "6850354a5d7a733b9a515219e74bcfe2aa09fbc24ad315c2951c91ffe0b2a74e",
+        "failuresUpper95Pct": 0.38722231501575055
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 11,
+        "terminalRealMedian": 1938549.2786393573,
+        "taxesMedian": 42812.13939377051,
+        "fullResultHash": "951efeeca2310f8f5c714a8d371b1f6231c2d443e981888b23cec97478ed6c6a",
+        "failuresUpper95Pct": 0.9087352469332513
+      },
+      "comparedYears": 38365,
+      "mismatches": 0
+    },
+    {
+      "name": "staffel",
+      "seed": 67890,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 0,
+        "terminalRealMedian": 2700229.764325016,
+        "taxesMedian": 46174.83968085808,
+        "fullResultHash": "e2166d75be66ccd3604d1b5d43c646f9841766b2b44745372dcddef70a196270",
+        "failuresUpper95Pct": 0.14967448951883067
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 0,
+        "terminalRealMedian": 2752074.2697953396,
+        "taxesMedian": 36824.35433225657,
+        "fullResultHash": "1ddbe71ec3ad88f69ef93de8316c281cccfd8ed63621000c42ea0a6a293fc9e7",
+        "failuresUpper95Pct": 0.14967448951883067
+      },
+      "comparedYears": 41328,
+      "mismatches": 0
+    },
+    {
+      "name": "drift",
+      "seed": 67890,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 0,
+        "terminalRealMedian": 2754467.990650408,
+        "taxesMedian": 37279.029642963935,
+        "fullResultHash": "5a758c07746593c7f93735022f250a7703e84741797abd46c854ea620ebbe5dc",
+        "failuresUpper95Pct": 0.14967448951883067
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 1,
+        "terminalRealMedian": 2710302.182615579,
+        "taxesMedian": 47051.84206848669,
+        "fullResultHash": "97659674465772bbb6bb49e6fa86c68a274496ae21b37d9788e909cbc4f776a2",
+        "failuresUpper95Pct": 0.23697133676568455
+      },
+      "comparedYears": 41327,
+      "mismatches": 0
+    },
+    {
+      "name": "drift-minus30",
+      "seed": 67890,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 0,
+        "terminalRealMedian": 2754467.990650408,
+        "taxesMedian": 37279.029642963935,
+        "fullResultHash": "5a758c07746593c7f93735022f250a7703e84741797abd46c854ea620ebbe5dc",
+        "failuresUpper95Pct": 0.14967448951883067
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 0,
+        "terminalRealMedian": 2752074.2697953396,
+        "taxesMedian": 36824.35433225657,
+        "fullResultHash": "1ddbe71ec3ad88f69ef93de8316c281cccfd8ed63621000c42ea0a6a293fc9e7",
+        "failuresUpper95Pct": 0.14967448951883067
+      },
+      "comparedYears": 41328,
+      "mismatches": 0
+    },
+    {
+      "name": "drift-plus30",
+      "seed": 67890,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 5,
+        "terminalRealMedian": 2644862.991037848,
+        "taxesMedian": 56917.03015362851,
+        "fullResultHash": "427eb14e6d42f3c379e54adb1b15e22e43d74cdb99e352f052ecd5954b8c595a",
+        "failuresUpper95Pct": 0.5249275286933475
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 5,
+        "terminalRealMedian": 2639167.014231798,
+        "taxesMedian": 58827.86004443802,
+        "fullResultHash": "79c3ee75de44cc400404c0dab689d8aee058844f77994eb269b1b1dd454d2b80",
+        "failuresUpper95Pct": 0.5249275286933475
+      },
+      "comparedYears": 41314,
+      "mismatches": 0
+    },
+    {
+      "name": "heute-grad3",
+      "seed": 67890,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 3,
+        "terminalRealMedian": 2071338.5958746362,
+        "taxesMedian": 43283.07230072433,
+        "fullResultHash": "6421cc1927e4eeac7b78df2759323f618bd153957d1b2132b4380dce56d5c830",
+        "failuresUpper95Pct": 0.38722231501575055
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 5,
+        "terminalRealMedian": 1827561.2361262245,
+        "taxesMedian": 45998.68579879356,
+        "fullResultHash": "f41b4d7ff906c7d27a457166937359624a65d4d1cc7793090ba6b605e19cadfb",
+        "failuresUpper95Pct": 0.5249275286933475
+      },
+      "comparedYears": 38464,
+      "mismatches": 0
+    },
+    {
+      "name": "heute-heim",
+      "seed": 67890,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 1,
+        "terminalRealMedian": 2407858.429413744,
+        "taxesMedian": 30047.04817975981,
+        "fullResultHash": "1ad79510536e00655c0f890a1852299b02b17fec4ceaafb02921e5184be1c1cc",
+        "failuresUpper95Pct": 0.23697133676568455
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 2,
+        "terminalRealMedian": 1815501.8324131197,
+        "taxesMedian": 41105.098953827604,
+        "fullResultHash": "e775e3eb81b2ad986b09f5a6f2fd36ad3de61d970448faafe9492acf6dafa011",
+        "failuresUpper95Pct": 0.314451783788966
+      },
+      "comparedYears": 38382,
+      "mismatches": 0
+    },
+    {
+      "name": "heute-heim-seit",
+      "seed": 67890,
+      "before": {
+        "technicalErrors": 0,
+        "failures": 1,
+        "terminalRealMedian": 2407858.429413744,
+        "taxesMedian": 30047.04817975981,
+        "fullResultHash": "1ad79510536e00655c0f890a1852299b02b17fec4ceaafb02921e5184be1c1cc",
+        "failuresUpper95Pct": 0.23697133676568455
+      },
+      "after": {
+        "technicalErrors": 0,
+        "failures": 1,
+        "terminalRealMedian": 1916413.119276067,
+        "taxesMedian": 41278.49975297565,
+        "fullResultHash": "a0ea94d0bbd8cf4f08e420de2db6e9b1a7f4319de656139b2df76f6cdb4d5ed8",
+        "failuresUpper95Pct": 0.23697133676568455
+      },
+      "comparedYears": 38383,
+      "mismatches": 0
+    }
+  ]
+}

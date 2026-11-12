@@ -3,9 +3,26 @@ const moneyInputs = new Set(['profileTagesgeld', 'profileRenteMonatlich',
     'profileSparerPauschbetrag', 'profileHealthBucketInitialAmount', 'purchasePrice', 'currentPrice',
     'reconcileGrossProceeds', 'reconcileFees', 'reconcileRecommendedGross', 'reconcileInitialCashBalance', 'cashPostingBalance']);
 /** @param {{id?: string}|null} field @returns {boolean} */
-export const isMoneyInput = field => /^(?:home-(?:wert|mieteNetto|ortsueblicheMiete)|inheritance-min-\d+)$/.test(field?.id || '') || moneyInputs.has(field?.id) || /^(?:plannedInflow-\d+-amount|(?:income|expense)-\d+-(?:betrag|betragMonat))$/.test(field?.id || '');
+export const isMoneyInput = field => /^(?:home-(?:wert|mieteNetto|ortsueblicheMiete)|inheritance-min-\d+|managerCare(?:Cost[1-5]|MaxFloor|OwnExpenses|Allowance[2-5]|Heim(?:Care|Board|Invest)))$/.test(field?.id || '') || moneyInputs.has(field?.id) || /^(?:plannedInflow-\d+-amount|(?:income|expense)-\d+-(?:betrag|betragMonat))$/.test(field?.id || '');
 // Gruppierte Anzeige eindeutig vom weiterhin erlaubten Dezimalpunkt unterscheiden.
 const displays = new WeakMap();
+// UR-2b: Kursfelder behalten den Punkt als Dezimalzeichen (Kurse mit drei Nachkommastellen).
+const PRICE_INPUTS = new Set(['purchasePrice', 'currentPrice']);
+const GROUPED = /^([+-]?)([1-9]\d{0,2}(?:\.\d{3})+)(?:,(\d*))?$/;
+
+/** UR-2b: Betragsfelder lesen deutsche Gruppierung: Punkte vor genau drei Ziffern sind Tausenderpunkte, das Komma ist das
+ * Dezimalzeichen („2.088“ → 2088, „2.088,50“ → 2088.5). Ein einzelner Punkt mit ein oder zwei Ziffern bleibt Dezimalpunkt;
+ * weitere Punkte oder Punkt und Komma gemischt sind uneindeutig und ungültig.
+ *
+ * @param {string} text Getrimmter Feldtext.
+ * @returns {string|null} Kanonischer Text, 'NaN' oder null, wenn der bisherige Weg gilt.
+ */
+function canonicalGroupedMoney(text) {
+    const grouped = GROUPED.exec(text);
+    if (grouped) return `${grouped[1]}${grouped[2].replaceAll('.', '')}${grouped[3] ? `.${grouped[3]}` : ''}`;
+    const dots = (text.match(/\./g) || []).length;
+    return dots > 1 || dots === 1 && text.includes(',') ? 'NaN' : null;
+}
 
 /** @param {unknown} raw
  * @param {HTMLInputElement|HTMLSelectElement|null} [field]
@@ -15,6 +32,10 @@ export function canonicalDecimalInput(raw, field = null) {
     const display = field && displays.get(field);
     if (display?.text === text) return display.canonical;
     if (!text) return '';
+    if (isMoneyInput(field) && !PRICE_INPUTS.has(field.id)) {
+        const grouped = canonicalGroupedMoney(text);
+        if (grouped !== null) return grouped;
+    }
     if (!/^[+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:[eE][+-]?\d+)?$/.test(text)) return 'NaN';
     const canonical = text.replace(',', '.');
     return Number.isFinite(Number(canonical)) ? canonical : 'NaN';

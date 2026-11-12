@@ -42,6 +42,10 @@ export async function init(options = {}) {
     }
     storeState.persistenceWindow = options.window || globalThis.window;
     storeState.initPromise = (async () => {
+        // ES-1b: erst nach der Tabentscheidung. Ein abgewiesener Tab löst keinen Bereich auf, repariert und übernimmt nichts;
+        // er bleibt hier stehen, bis er die Sperre bekommt und neu lädt.
+        if (storeState.writeGate) await storeState.writeGate;
+        if (storeState.documentWriteBlock !== null) await new Promise(() => {});
         if (!storeState.adapterExplicitlyConfigured) {
             storeState.areaManager = createPersistenceAreas({ ...options, onAreaChanged: () => requireAreaReload(options.doc, options.window) });
             const resolved = await storeState.areaManager.resolve();

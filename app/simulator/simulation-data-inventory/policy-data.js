@@ -157,7 +157,8 @@ export const monte_carlo_defaults = staticEntry({
             'app/simulator/monte-carlo-parameters.js:MONTE_CARLO_SAMPLING_METHODS'
         ],
         unit: 'mixed_simulation_parameter_contract',
-        embeddedValueHash: resolved('e976c0aec92821a54c299c0422c04d7663d9d9319bfd23ac43e07373c81aacc4'),
+        // FR-75: legacyStoredDefault (alte Vorgabe 35 gilt beim Lesen als automatisch).
+        embeddedValueHash: resolved('2a85b230cfe4324e4630127d452c59f5588f3d3ce4305bd17831ea78b34502f3'),
         externalValidationStatus: 'not_validated'
     });
 

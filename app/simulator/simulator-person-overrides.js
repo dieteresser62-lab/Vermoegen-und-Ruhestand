@@ -136,7 +136,7 @@ export function createPersonOverrides(entries, primaryId, referenceYear) {
                 }).map(key => ({ field: key, profileValue: numeric.has(key) ? Number(entry.data[key] ?? 0) : entry.data[key] ?? '', effectiveValue: data[key] }));
                 persons.push({ profileId: entry.profileId, role: index === 0 ? 'primary' : 'partner',
                     ageStatus: effective.ageStatus, profileAgeStatus: original.ageStatus, changes });
-                return { ...entry, data, inputs: buildSimulatorInputsFromProfileData(data, { referenceYear: year }) };
+                return { ...entry, data, inputs: buildSimulatorInputsFromProfileData(data, { referenceYear: year, profileId: entry.profileId }) };
             });
             const { combined, warnings } = combineSimulatorProfiles(effectiveEntries, ordered[0]?.profileId);
             const context = freezePersonDataContext({ schemaVersion: 1, referenceYear: year,
@@ -226,7 +226,7 @@ function render(state, doc) {
     }
     showPersonValues(doc, 'sharedPensionValues', 'sharedPensionEditors', [
         ['Gemeinsame Rentenanpassung nach Hauptprofil', combined.rentAdjMode === 'fix'
-            ? `${germanNumber(combined.rentAdjPct)} % p.a.` : combined.rentAdjMode === 'wage' ? 'Lohnentwicklung' : 'Inflation']
+            ? `${germanNumber(combined.rentAdjPct)} % p.a.` : combined.rentAdjMode === 'wage' ? 'wie Löhne' : 'wie Inflation']
     ], state.controller.active);
     const adopted = {
         p1StartAlter: combined.startAlter, r2StartAlter: combined.partner.startAlter ?? 0,

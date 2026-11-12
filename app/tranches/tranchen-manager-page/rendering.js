@@ -24,16 +24,25 @@ export function cashMetric(doc = document) {
     } });
 }
 
+// Kacheln, Anzahl und Tabelle lesen dieselbe Immobilienliste: das Formularfeld des gebundenen Editors.
+const personHomes = values => state.immobilien ? state.immobilien.homes() : values.immobilien;
+
 export function renderPersonWealth() {
-    const values = loadProfileAssetValues(), cash = values.tagesgeld;
-    const count = byId('managerDepotCount'), homes = values.immobilien.length;
+    const values = loadProfileAssetValues(), cash = values.tagesgeld, immobilien = personHomes(values);
+    const count = byId('managerDepotCount'), homes = immobilien.length;
     if (count) count.textContent = `Tagesgeld${homes ? ', ' : ' und '}${state.tranchen.length} ${state.tranchen.length === 1 ? 'Tranche' : 'Tranchen'}${homes ? ` und ${homes} ${homes === 1 ? 'Immobilie' : 'Immobilien'}` : ''}`;
     const person = readCashPerson(state.profileId, '', Object.fromEntries([
         PROFILE_VALUE_KEYS.tagesgeld, PROFILE_CASH_HISTORY_KEY, PROFILE_CASH_CONFIRMED_DATE_KEY
     ].map(key => [key, readStoredValue(key)])));
     const date = [person.lastDate, person.confirmedDate].filter(Boolean).sort().at(-1);
     cashMetric().sync({ profileId: state.profileId, amount: cash, date });
-    renderTranchenStats(byId('stats'), state.tranchen, { cash, immobilien: values.immobilien });
+    renderTranchenStats(byId('stats'), state.tranchen, { cash, immobilien });
+}
+
+/** Nach Immobilienaktionen zeigen Kacheln und Tabelle denselben Stand. */
+export function renderPersonAssets() {
+    renderPersonWealth();
+    renderDepotHistory();
 }
 
 export function render() {
@@ -63,8 +72,11 @@ export function renderDepotHistory() {
     renderAssetStrategyWarnings(byId('managerPlanGoldWarning'), strategyWarnings.filter(warning => warning.kind === 'gold'), { showName: true });
     renderAssetStrategyWarnings(byId('managerGoldStrategyWarning'), strategyWarnings.filter(warning => warning.kind === 'gold' && warning.profileId === state.profileId));
     if (strategyWarnings.length && byId('managerPlanMore')) byId('managerPlanMore').open = true;
-    renderTranchenTable(byId('tranchenTable'), state.tranchen, { context, profileId: state.profileId, expandedId: state.historyUI?.expandedId, cash: loadProfileAssetValues().tagesgeld, immobilien: loadProfileAssetValues().immobilien, strategyWarnings });
+    const values = loadProfileAssetValues(), homes = state.immobilien, homeFocus = homes?.beforeRender();
+    renderTranchenTable(byId('tranchenTable'), state.tranchen, { context, profileId: state.profileId, expandedId: state.historyUI?.expandedId, cash: values.tagesgeld,
+        immobilien: personHomes(values), homeView: homes?.view(), strategyWarnings });
     state.historyUI?.afterRender(focusId);
+    homes?.afterRender(homeFocus);
 }
 
 export function updateActiveProfileLabel(profileId = state.profileId) {

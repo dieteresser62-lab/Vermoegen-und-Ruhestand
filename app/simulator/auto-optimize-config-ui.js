@@ -98,7 +98,8 @@ export function readAutoOptimizeConfigFromUI(doc = globalThis.document) {
         seedsTrain,
         seedsTest,
         constraints,
-        maxDauer: 35,
+        // LE-1b: keine feste Dauer mehr; der Lauf übernimmt das Feld „Maximale Dauer“ (leer = automatisch).
+        maxDauer: null,
         dynamicFlexMode
     };
 }

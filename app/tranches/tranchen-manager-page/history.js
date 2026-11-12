@@ -3,7 +3,7 @@ import { state } from './state.js';
 import { PROFILE_STORAGE_KEYS } from '../../profile/profile-state.js';
 import { PROFILE_WEALTH_LOTS_KEY, PROFILE_CASH_HISTORY_KEY } from '../../profile/profile-wealth-history.js';
 import { persistenceStorage } from '../../shared/persistence-facade.js';
-import { requestPageConfirmation } from '../../shared/page-dialog.js';
+import { requestPageConfirmation, showPageAlert } from '../../shared/page-dialog.js';
 import { byId } from './helpers.js';
 import { renderPersistenceState } from './persistence-status.js';
 import { processingIsBlocked } from './controls.js';
@@ -11,6 +11,8 @@ import { prepareHistoryRecovery, commitHistoryRecovery } from '../tranchen-histo
 import { render } from './rendering.js';
 import { assertHistoryStart } from '../tranchen-history-store.js';
 import { confirmManagerHistoryStart } from '../tranchen-history-ui.js';
+import { setReloadPricesProgress, reloadPricesDoneText } from '../tranche-split-hint.js';
+import { reloadSymbolHistory, historyReloadReason } from '../tranchen-history-reload.js';
 
 /** Entscheidung gehört zum ursprünglichen Dokument, Profil und unveränderten Bestand. */
 export async function requestManagerDecision(options, operation, decide) {
@@ -97,4 +99,51 @@ export async function saveManagerHistoryStart(startDate = byId('managerHistorySt
         if (status) status.textContent = `Beginn nicht bestätigt. ${error.message}`;
         return false;
     }
+}
+
+/** TH-2: Tageskurse eines Wertpapiers nach Rückfrage vollständig neu laden; scheitert etwas, bleibt alles unverändert.
+ * @param {{trancheId: string, name: string, ticker?: string}} tranche
+ * @param {HTMLElement} [opener]
+ */
+export async function reloadManagerPrices(tranche, opener) {
+    if (processingIsBlocked() || !tranche?.ticker) return false;
+    const doc = document, origin = state.profileId;
+    const valid = () => document === doc && state.boundDocument === doc && state.profileId === origin;
+    const status = byId('priceUpdateStatus');
+    state.persistenceError = '';
+    let reason = '', savedDays = 0;
+    const result = await runManagerOperation(async operation => {
+        const confirmed = await requestManagerDecision({ title: 'Tageskurse neu laden',
+            description: `Alle gespeicherten Tageskurse von „${tranche.name}“ werden beim Kursdienst neu abgerufen und erst nach vollständigem Abruf ersetzt. Tranchen und andere Wertpapiere bleiben unverändert.`,
+            confirmLabel: 'Tageskurse neu laden', opener }, operation);
+        if (!confirmed) return false;
+        if (status) status.textContent = `Tageskurse von „${tranche.name}“ werden geladen …`;
+        setReloadPricesProgress({ trancheId: tranche.trancheId, phase: 'running', text: '' });
+        render();
+        try { savedDays = (await reloadSymbolHistory(tranche.ticker, { operation, valid })).days; }
+        catch (error) {
+            setReloadPricesProgress(null);
+            if (operation.controller.signal.aborted) throw error;
+            reason = historyReloadReason(error) + (error?.rollbackConfirmed === false ? ' Der vorherige Stand konnte nicht sicher bestätigt werden.' : ' Die gespeicherten Kurse bleiben unverändert.');
+            return false;
+        }
+        return true;
+    });
+    setReloadPricesProgress(null);
+    if (!valid()) return false;
+    const message = result === true ? reloadPricesDoneText(tranche.name, savedDays)
+        : reason || state.persistenceError ? `Tageskurse von „${tranche.name}“ nicht neu geladen: ${reason || state.persistenceError}` : '';
+    if (status) status.textContent = message;
+    // TH-2c: Bestätigung bei der Tranche, nach wenigen Sekunden von selbst weg (ohne neues Rendern).
+    if (result === true) {
+        setReloadPricesProgress({ trancheId: tranche.trancheId, phase: 'done', text: message });
+        setTimeout(() => { setReloadPricesProgress(null); document.querySelectorAll('[data-price-reload-notice]').forEach(node => node.remove()); }, 8000);
+    }
+    render();
+    // Verschwindet der Splithinweis nach dem Neuladen, bleibt der Fokus in derselben Zeile.
+    const replacement = Array.from(/** @type {NodeListOf<HTMLButtonElement>} */ (byId('tranchenTable')?.querySelectorAll?.('[data-action="reload-prices"], [data-action="edit-tranche"]')) || [])
+        .find(button => button.dataset.trancheId === tranche.trancheId);
+    replacement?.focus?.();
+    if (result !== true && message) await showPageAlert({ title: 'Tageskurse nicht neu geladen', description: message }).catch(() => {});
+    return result === true;
 }

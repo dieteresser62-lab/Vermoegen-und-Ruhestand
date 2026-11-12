@@ -177,24 +177,17 @@ function renderBacktestSummary(result, moneyBasis = getEuroMode(document)) {
     const restrictionValue = restriction.legacy
         ? `${metrics.flex_reduction_years_gte_10_pct ?? '—'} von ${result.completedYears ?? '—'} Jahren`
         : restriction.valid ? `${restriction.count} von ${restriction.observationCount} Jahren · ${restriction.value}` : '—';
+    const anchor = (field, display, raw, title) => `<span data-result-field="${field}" data-canonical-value="${canonicalAttribute(raw)}" title="${escapeBacktestHtml(title)}">${escapeBacktestHtml(display)}</span>`;
+    // SE-2: Kennzahlleiste mit fünf Werten, darunter eine Zeile mit Jahresinventar und „▸ Weitere Kennzahlen“.
     summaryElement.innerHTML = `<div class="summary-grid sim-backtest-primary">
-        ${summaryItem({ label: 'Gesamtvermögen', displayValue: currencyOrDash(display.wealth_end_nominal_eur + (rowWealthParts(lastWealthRow(result.rows), moneyBasis)?.total || 0)), displayRawValue: display.wealth_end_nominal_eur, rawValue: metrics.wealth_end_nominal_eur, metricId: 'wealth_end_nominal_eur', detailHtml: Number.isFinite(lastWealthRow(result.rows).immobilien_wert_end) ? `<small class="sim-money-detail">davon Geldvermögen ${currencyOrDash(display.wealth_end_nominal_eur)} · Immobilien ${currencyOrDash(rowWealthParts(lastWealthRow(result.rows), moneyBasis)?.total)}</small>` : '', infoHtml: rowWealthInfo(lastWealthRow(result.rows), moneyBasis), otherBasisLine: otherBasisLine('wealth_end_nominal_eur') })}
+        ${summaryItem({ label: 'Ergebnis', displayValue: outcomeLabel, rawValue: outcome, resultField: 'outcome', detailHtml: `<small class="summary-description">${escapeBacktestHtml(`${result.completedYears ?? '—'} von ${result.requestedYears ?? '—'} Jahren ausgewertet`)}</small>` })}
+        ${summaryItem({ label: 'Gesamtvermögen', displayValue: currencyOrDash(display.wealth_end_nominal_eur + (rowWealthParts(lastWealthRow(result.rows), moneyBasis)?.total || 0)), displayRawValue: display.wealth_end_nominal_eur, rawValue: metrics.wealth_end_nominal_eur, metricId: 'wealth_end_nominal_eur', detailHtml: Number.isFinite(lastWealthRow(result.rows).immobilien_wert_end) ? `<small class="sim-money-detail">davon Geldvermögen ${currencyOrDash(display.wealth_end_nominal_eur)} · Immobilien ${currencyOrDash(rowWealthParts(lastWealthRow(result.rows), moneyBasis)?.total)}</small>` : '', infoHtml: rowWealthInfo(lastWealthRow(result.rows), moneyBasis), otherBasisLine: otherBasisLine('wealth_end_nominal_eur') })}
         ${moneyItem('Entnahmen Geldvermögen', 'withdrawal_total_nominal_eur')}
-        <div class="summary-item ds-card ds-metric"><strong>${escapeBacktestHtml(restriction.title)}</strong><span>${escapeBacktestHtml(restrictionValue)}</span><small class="summary-description">${escapeBacktestHtml(restriction.legacy ? restriction.basisNote : restriction.valid ? '' : restriction.reason)}</small></div>
-    </div><details class="ds-disclosure sim-backtest-more-metrics"${moreOpen ? ' open' : ''}><summary class="ds-disclosure-toggle"><span>Weitere Kennzahlen</span><span class="ds-slider" aria-hidden="true"></span></summary><div class="sim-metric-list sim-backtest-supplementary">
-        ${summaryItem({ label: 'Ergebnis', displayValue: outcomeLabel, rawValue: outcome, resultField: 'outcome', compact: true })}
-        ${summaryPair('Startjahr · Endjahr', [
-            { field: 'period_start', display: result.request?.startYear ?? '—', raw: result.request?.startYear, title: 'Startjahr' },
-            { field: 'period_end', display: result.request?.endYear ?? '—', raw: result.request?.endYear, title: 'Endjahr' }
-        ])}
-        ${summaryPair('Angeforderte · ausgewertete Jahre', [
-            { field: 'requested_years', display: result.requestedYears ?? '—', raw: result.requestedYears, title: 'Angeforderte Jahre' },
-            { field: 'completed_years', display: result.completedYears ?? '—', raw: result.completedYears, title: 'Wirtschaftlich ausgewertete Jahre' }
-        ])}
-        ${summaryItem({ label: 'Jahreszeilen', displayValue: result.rows?.length ?? 0, rawValue: result.rows?.length ?? 0, resultField: 'row_count', compact: true })}
+        ${summaryItem({ label: 'Jahre mit Kürzung (≥ 10 %)', displayValue: `${metrics.flex_reduction_years_gte_10_pct ?? '—'} von ${result.completedYears ?? '—'}`, rawValue: metrics.flex_reduction_years_gte_10_pct, metricId: 'flex_reduction_years_gte_10_pct' })}
+        ${summaryItem({ label: 'Max. Kürzungsdauer (≥ 10 %)', displayValue: `${metrics.flex_reduction_longest_streak_gte_10_pct ?? '—'} Jahre`, rawValue: metrics.flex_reduction_longest_streak_gte_10_pct, metricId: 'flex_reduction_longest_streak_gte_10_pct' })}
+    </div><details class="household-plan-more sim-backtest-more-metrics"${moreOpen ? ' open' : ''}><summary class="household-plan-summary-toggle"><span class="sim-backtest-inventory">Jahreszeilen ${anchor('row_count', result.rows?.length ?? 0, result.rows?.length ?? 0, 'Jahreszeilen')} · angeforderte und wirtschaftlich ausgewertete Jahre ${anchor('requested_years', result.requestedYears ?? '—', result.requestedYears, 'Angeforderte Jahre')} / ${anchor('completed_years', result.completedYears ?? '—', result.completedYears, 'Wirtschaftlich ausgewertete Jahre')} · Startjahr ${anchor('period_start', result.request?.startYear ?? '—', result.request?.startYear, 'Startjahr')} · Endjahr ${anchor('period_end', result.request?.endYear ?? '—', result.request?.endYear, 'Endjahr')}</span><span class="household-plan-disclosure-action"><span>▸ Weitere Kennzahlen</span><span>▾ Weitere Kennzahlen</span></span></summary><div class="sim-metric-list sim-backtest-supplementary">
+        <div class="summary-item ds-card ds-metric sim-metric-row"><strong>${escapeBacktestHtml(restriction.title)}</strong><span>${escapeBacktestHtml(restrictionValue)}</span><small class="summary-description">${escapeBacktestHtml(restriction.legacy ? restriction.basisNote : restriction.valid ? '' : restriction.reason)}</small></div>
         ${moneyItem('Startvermögen', 'wealth_start_nominal_eur', true)}
-        ${summaryItem({ label: 'Max. Kürzungsdauer (≥ 10 %)', displayValue: `${metrics.flex_reduction_longest_streak_gte_10_pct ?? '—'} Jahre`, rawValue: metrics.flex_reduction_longest_streak_gte_10_pct, metricId: 'flex_reduction_longest_streak_gte_10_pct', compact: true })}
-        ${summaryItem({ label: 'Jahre mit Kürzung (≥ 10 %)', displayValue: `${metrics.flex_reduction_years_gte_10_pct ?? '—'} von ${result.completedYears ?? '—'}`, rawValue: metrics.flex_reduction_years_gte_10_pct, metricId: 'flex_reduction_years_gte_10_pct', compact: true })}
         ${moneyItem('Gezahlte Steuern', 'tax_total_nominal_eur', true)}
         ${moneyItem(healthBucket.enabled ? 'Pflegebucket am Laufende (im Endvermögen enthalten)' : 'Pflegebucket am Laufende (deaktiviert; im Endvermögen enthalten)', 'health_bucket_end_nominal_eur', true)}
         ${summaryPair('Pflegereserve: Zieldeckung · Lücke', [
@@ -511,6 +504,8 @@ export function renderBacktestLog() {
             moneyBasis: getEuroMode(document) }
     );
     if (logElement) /** @type {BindInfoPopovers} */ (bindInfoPopovers)(document, { root: logElement });
+    const protocolLine = document.getElementById('backtestProtocolLine');
+    if (protocolLine) protocolLine.textContent = `${logRows.length} Jahreszeilen · ${backtestEuroBasis(window.globalBacktestData.result, getEuroMode(document))} · Einnahmen, Ausgaben, Marktphase, Handlung und Vermögen je Jahr`;
     const protocolSummary = document.getElementById('backtestProtocolSummary');
     if (protocolSummary) {
         if (protocolSummary.dataset) protocolSummary.dataset.personProfileIds =
@@ -690,6 +685,11 @@ export function initializeBacktestUI() {
         });
     }
 
+    // SE-2: JSON/CSV stehen im Kopf des zugeklappten Protokolls; ein Klick dort lädt herunter, ohne auf- oder zuzuklappen.
+    const protocolSummary = document.getElementById('backtestProtocolDisclosure')?.querySelector?.('summary');
+    bindBacktestEventOnce(protocolSummary, 'click', 'ProtocolActions', event => {
+        if (/** @type {HTMLElement} */ (event.target)?.closest?.('button')) event.preventDefault();
+    });
     const exportBacktestJsonBtn = /** @type {HTMLButtonElement} */ (document.getElementById('exportBacktestJson'));
     bindBacktestEventOnce(exportBacktestJsonBtn, 'click', 'ExportJson', () => exportBacktestLogData('json'));
     const exportBacktestCsvBtn = /** @type {HTMLButtonElement} */ (document.getElementById('exportBacktestCsv'));

@@ -16,11 +16,11 @@ Führe im Repository `npm run docs:bilder` aus. Du brauchst die installierten np
 
 Das Werkzeug startet denselben lokalen Server wie `npm run serve`, ohne Kursproxy. Es nutzt einen freien Port und isolierte Browserkontexte für Ansichten, Monat, Jahr, Vergleich und Jahresbudget. Vorhandene Browserprofile werden nicht geöffnet. Kurse und Marktdaten stammen aus festen lokalen Stubs oder dem Spielbereich; externe Abrufe werden blockiert.
 
-Im Startdialog wählt das Werkzeug „Max und Erika“ und den Kursmodus „Testdatum wählen“, trägt das Datum ein und bestätigt mit „Spielbereich starten“. Die Ansichten verwenden den 20.10.2026. Für Oktober springt der Spielbereich vom 20.10. auf den 10.11.2026. Für den Jahresabschluss springt ein eigener Spielbereich vom 15.12.2026 auf den 02.01.2027. Der Simulator rechnet einmal 10.000 Monte-Carlo-Läufe mit Seed 12345; die Werkstatt zeigt Eingaben. Die Backtestaufnahme zeigt „Was im Lauf auffällt“ mit drei Karten und geschlossenem „Weitere“. Die Aufnahme aus Szenario-Logs zeigt „Pfade vergleichen“ mit P10, Median und P90. Die Aufnahme Vergleich verwendet eine eigene Mustersitzung mit Wunschbudget +300 €/Monat, 1.000 gepaarten Läufen je Plan bei Einstellung 10.000 und Seed 12345. Das Werkzeug rechnet außerdem eine einmalige Ausgabe, eine verschobene Rente und die Zielwertsuche mit beiden Grenzen (99 % Grundbedarfsdeckung, höchstens 10 % Läufe mit Jahren unter Mindest-Flex). Es schreibt die drei VG-1-Prüfbilder und ZW-1b-pruefbild.png unter auftrag/. Das Zielwertbild nutzt 1.000 Läufe je Schritt und eine Endprobe mit 10.000 Läufen, Seed 12345. Hält keine Endprobenstufe, zeigt es den schnellen Fund als unbestätigt.
+Im Startdialog wählt das Werkzeug „Max und Erika“ und den Kursmodus „Testdatum wählen“, trägt das Datum ein und bestätigt mit „Spielbereich starten“. Die Ansichten verwenden den 20.10.2026. Für Oktober springt der Spielbereich vom 20.10. auf den 10.11.2026. Für den Jahresabschluss springt ein eigener Spielbereich vom 15.12.2026 auf den 02.01.2027. Der Simulator rechnet einmal 10.000 Monte-Carlo-Läufe mit Seed 12345; die Werkstatt zeigt Eingaben. Die Backtestaufnahme zeigt „Was im Lauf auffällt“ mit drei Karten und geschlossenem „Weitere“. Die Aufnahme aus Szenario-Logs zeigt „Pfade vergleichen“ mit P10, Median und P90. Die Aufnahme Vergleich verwendet eine eigene Mustersitzung mit Wunschbudget +300 €/Monat, 1.000 gepaarten Läufen je Plan bei Einstellung 10.000 und Seed 12345. Das Werkzeug rechnet außerdem eine einmalige Ausgabe, eine verschobene Rente und die Zielwertsuche mit beiden Grenzen (98 % Grundbedarfsdeckung, höchstens 10 % Läufe mit Jahren unter Mindest-Flex). Es schreibt die drei VG-1-Prüfbilder und ZW-1b-pruefbild.png unter auftrag/. Das Zielwertbild nutzt 1.000 Läufe je Schritt und eine Endprobe mit 10.000 Läufen, Seed 12345. Hält keine Endprobenstufe, zeigt es den schnellen Fund als unbestätigt.
 
 Mit `npm run docs:bilder -- --spielbereich` erneuerst du Band und Vergleich und behältst die übrigen Aufnahmen. Das Band zeigt den Zeitraffer links von Spielbereich beenden. Bei Max und Erika prüft das Werkzeug danach die kurze Beenden-Bestätigung ohne Vergleich und Übernehmen. Für das Vergleichsbild legt es Max und Erika als erfundenen echten Bestand in einem frischen Browserkontext an, startet eine Kopie ohne Datumssprung und ändert Gold, Flex und Tagesgeld. Es öffnet keine Balance und wartet auf die frisch gerechnete Vorschau mit höherem Monatsbudget und Goldkauf.
 
-Mit `npm run docs:bilder -- --verlauf` erneuerst du die drei bisherigen Verlaufsaufnahmen und zwei Bilder der Depotkennzahlen. Rendite und Risiko sowie Monatsrenditen stehen in verlauf-kennzahlen; verlauf-jahresuebersicht zeigt die vollständigen Jahreskarten. Die drei neuen Karten sind zusammen höher als der Bildschirm und werden deshalb in zwei Ausschnitten aufgenommen.
+Mit `npm run docs:bilder -- --verlauf` erneuerst du die drei bisherigen Verlaufsaufnahmen, zwei Bilder der Depotkennzahlen und verlauf-vermoegensstaende mit aufgeklappten erfassten Ständen. Rendite und Risiko sowie Monatsrenditen stehen in verlauf-kennzahlen; verlauf-jahresuebersicht zeigt die vollständigen Jahreskarten. Die drei neuen Karten sind zusammen höher als der Bildschirm und werden deshalb in zwei Ausschnitten aufgenommen.
 
 Mit `npm run docs:bilder -- --protokolle` erneuerst du nur die vier Backtest- und Monte-Carlo-Protokollbilder. Auch der volle Bilderlauf verwendet dafür denselben Musterlauf in einer eigenen Sitzung. Er ergänzt bei Max eine Betriebsrente von 3.000 €/Monat und 50.000 € Rückzahlung sowie 2.500 € für ein Auto im Planjahr und rechnet 128 Monte-Carlo-Pfade mit Seed 12345. Die Backtest-Übersicht zeigt das geöffnete Einnahmen-ⓘ der ersten Jahreszeile. Die Monte-Carlo-Bilder verwenden einen weiteren Spielbereich mit Nicht verheiratet, geerbten Immobilien samt Steuergeld und geöffnetem Erbe-ⓘ mit positiver Steuer im Todesjahr. Dazu kommt jeweils die Detailansicht.
 
@@ -58,7 +58,7 @@ Die [Ablaufdiagramme](ablaufdiagramme.md) halten die Mermaid-Quellen der drei st
 - [verlauf-max.png](verlauf-max.png): Max’ Vermögen lässt sich einzeln verfolgen.
 - [verlauf-erika.png](verlauf-erika.png): Erikas Vermögen ist einzeln sichtbar.
 - [verlauf-kennzahlen.png](verlauf-kennzahlen.png): Rendite und Risiko sowie Monatsrenditen zeigen Anlagen ohne Tagesgeld.
-- [verlauf-jahresuebersicht.png](verlauf-jahresuebersicht.png): Die Jahresübersicht trennt Wertänderung, Käufe und Verkäufe sowie Rendite.
+- [verlauf-jahresuebersicht.png](verlauf-jahresuebersicht.png): Die Jahresübersicht zeigt Anfangsstand, Käufe, Verkäufe, Markt und Endstand sowie die Rendite.
 - [ausgaben.png](ausgaben.png): Ausgaben zeigt Monats- und Jahreswerte.
 - [balance-ueberblick.png](balance-ueberblick.png): Überblick zeigt Beschluss, Vorschau und Reserven heute und nach Umsetzung.
 - [balance-bedarf-strategie.png](balance-bedarf-strategie.png): Bedarf & Strategie zeigt die Bedarfswerte; Alle Parameter fasst die Planwerte zusammen und ist zugeklappt.
@@ -66,7 +66,7 @@ Die [Ablaufdiagramme](ablaufdiagramme.md) halten die Mermaid-Quellen der drei st
 - [simulator-ergebnis.png](simulator-ergebnis.png): Ergebnis zeigt Backtest und MC.
 - [simulator-annahmen.png](simulator-annahmen.png): Die Planübersicht zeigt den gewählten Monat über den Jahreswerten.
 - [simulator-backtest.png](simulator-backtest.png): Was im Lauf auffällt zeigt drei Backtest-Karten und Jahreslinks; Weitere bleibt geschlossen.
-- [monte-carlo-einstellungen.png](monte-carlo-einstellungen.png): Simulation, Zeitraum & Daten und Stresstest stehen in Einstellungen; Erweitert zeigt die technischen Optionen.
+- [monte-carlo-einstellungen.png](monte-carlo-einstellungen.png): Simulation, Zeitraum & Daten und Stresstest stehen in Einstellungen; „Maximale Dauer“ ist leer und nennt die automatische Dauer; Erweitert zeigt die technischen Optionen.
 - [monte-carlo-ueberblick.png](monte-carlo-ueberblick.png): Überblick zeigt den Musterlauf.
 - [monte-carlo-risiko-verteilung.png](monte-carlo-risiko-verteilung.png): Die Verteilung macht die Streuung sichtbar.
 - [monte-carlo-pflege.png](monte-carlo-pflege.png): Pflege zeigt das Modellrisiko.
@@ -77,7 +77,7 @@ Die [Ablaufdiagramme](ablaufdiagramme.md) halten die Mermaid-Quellen der drei st
 - [werkstatt-auto-optimize.png](werkstatt-auto-optimize.png): Auto-Optimize zeigt die Sucheingaben.
 - [daten-sicherung.png](daten-sicherung.png): Der Datenstatus steht in Daten & Sicherung.
 - [daten-sicherung-punkte.png](daten-sicherung-punkte.png): Wiederherstellungspunkte sind nach Anlass gruppiert und zeigen je eine Grundzeile; einzeln löschbare Personenpunkte nennen „Bleibt, bis du ihn selbst löschst“.
-- [probelauf-band.png](probelauf-band.png): Das Band zeigt Testdatum und Kursmodus; Ein Jahr durchspielen steht links von Spielbereich beenden.
+- [probelauf-band.png](probelauf-band.png): Das Band kennzeichnet Spielkurse mit Testdatum; Ein Jahr durchspielen steht links von Spielbereich beenden.
 - [spielbereich-vergleich.png](spielbereich-vergleich.png): Eine Kopie ohne Datumssprung zeigt beim Beenden den Vergleich Echt / Spielbereich.
 - [handbuch-start.png](handbuch-start.png): Die Startseite zeigt die Aufgaben im aktuellen Handbuch.
 - [personen-sophie.png](personen-sophie.png): Sophie spart mit ihrem Gehalt an; die Rente beginnt im Januar 2038.
@@ -99,6 +99,12 @@ Die [Ablaufdiagramme](ablaufdiagramme.md) halten die Mermaid-Quellen der drei st
 - [partnerschaft-verheiratet.png](partnerschaft-verheiratet.png): Verheiratet: Erika erbt 50 % von Max, Klasse I mit steuerfreiem Familienheim.
 - [monte-carlo-vergleich.png](monte-carlo-vergleich.png): Vergleich: Wunschbudget +300 €/Monat, 1.000 gepaarte Läufe je Plan bei Einstellung 10.000, Seed 12345.
 - [monte-carlo-zielwert.png](monte-carlo-zielwert.png): Zielwertsuche: 1.000 gepaarte Läufe je Schritt, Endprobe mit 10.000 Läufen, Seed 12345; unbestätigter Fund wird gekennzeichnet.
+- [personen-pflege.png](personen-pflege.png): Personen & Vermögen › Pflege: Annahmen für spätere Pflege, „Pflege im Heim“ aufgeklappt mit den drei Bestandteilen als Felder, die übrigen Zeilen zugeklappt mit ihren Werten.
+- [verlauf-vermoegensstaende.png](verlauf-vermoegensstaende.png): Erfasste Vermögensstände aufgeklappt: Zeilenkopf mit Anzahl und letztem Datum, darunter die Tabelle im Kasten.
+- [personen-erika-einkuenfte.png](personen-erika-einkuenfte.png): Erika übernimmt die Rentenanpassung von Max; der Grund steht unter der Rente.
+- [simulator-fondskosten.png](simulator-fondskosten.png): Unter „Alle Parameter“ steht die Karte „Fondskosten“ mit „Laufende Kosten Aktien-ETF“ in % pro Jahr.
+- [personen-rente-wie-loehne.png](personen-rente-wie-loehne.png): Max mit Rentenanpassung „wie Löhne“; darunter steht der Hinweis zur Lohnreihe.
+- [personen-fondskosten.png](personen-fondskosten.png): Haushalt & Plan › Weitere Planwerte: Karte „Fondskosten“ mit „Laufende Kosten Aktien-ETF“, vorbelegt mit 0,5 % pro Jahr.
 
 ## Jahresbudget
 
@@ -123,7 +129,7 @@ Die zwei Budgetbilder verwenden dieselben Engine-Ergebnisse wie die erzeugten Ha
 - [03-ausgaben.png](jahresabschluss/03-ausgaben.png): Der Reiter Ausgaben Dezember zeigt Personenkarten und die offene Kategorie-Tabelle.
 - [04-budget.png](jahresabschluss/04-budget.png): Der Reiter Budgetvergleich zeigt links Dezember und rechts das Jahr.
 - [05-tagesgeld.png](jahresabschluss/05-tagesgeld.png): Der Reiter Tagesgeld 31.12. zeigt die Jahresendstände nebeneinander.
-- [06-marktdaten.png](jahresabschluss/06-marktdaten.png): Der Reiter Pflegewerte steht vor Marktdaten und zeigt Pflegegeld und Heim-Eigenanteil nebeneinander.
-- [07-pflegewerte.png](jahresabschluss/07-pflegewerte.png): Der Reiter Marktdaten zeigt Jahreswerte und die abgestufte Budgetprüfung; bei verschiedenen Folgen ist eine ausdrückliche Wahl nötig.
-- [08-plan.png](jahresabschluss/08-plan.png): Der Reiter Plan 2027 zeigt Bedarf links, Monatsbudget und Marktwahl rechts; „Wahl ändern“ führt zu Marktdaten.
-- [09-ergebnis.png](jahresabschluss/09-ergebnis.png): Das Ergebnis zeigt links Handlung und Monatsbudget, rechts Kacheln und Herleitungen ohne Reiter.
+- [06-marktdaten.png](jahresabschluss/06-marktdaten.png): Der Reiter Marktdaten zeigt die Jahreswerte; das Jahreshoch erscheint nur bei einem verdeckten Bärenmarkt, dann mit Wahl im Reiter Plan.
+- [07-pflegewerte.png](jahresabschluss/07-pflegewerte.png): Der Reiter Pflegewerte zeigt Pflegegeld, Heim-Eigenanteil sowie Staffel, Deckel und eigene Ausgaben bereits fortgeschrieben.
+- [08-plan.png](jahresabschluss/08-plan.png): Der Reiter Plan 2027 zeigt Bedarf links; rechts stehen der Stand des Plans 2026 und das Monatsbudget.
+- [09-ergebnis.png](jahresabschluss/09-ergebnis.png): Das Ergebnis zeigt links „Was zu tun ist“ und das Monatsbudget, rechts Kacheln, den Stand des alten Plans und Herleitungen ohne Reiter.

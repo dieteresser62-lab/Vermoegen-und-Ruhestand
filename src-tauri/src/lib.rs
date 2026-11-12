@@ -1,5 +1,7 @@
 #![cfg_attr(mobile, tauri::mobile_entry_point)]
 
+mod single_instance;
+
 use log::LevelFilter;
 use serde::Deserialize;
 use serde_json::json;
@@ -873,6 +875,13 @@ fn handle_proxy_request(request: tiny_http::Request) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  let context = tauri::generate_context!();
+  // ES-1: Ein zweiter Start derselben Kennung weckt das offene Fenster und endet ohne eigenes Fenster.
+  let instance = match single_instance::acquire(&single_instance::lock_path(&context.config().identifier)) {
+    single_instance::InstanceStart::Second => return,
+    single_instance::InstanceStart::First(lock) => Some(lock),
+    single_instance::InstanceStart::Unchecked => None,
+  };
   tauri::Builder::default()
     .manage(CloseState::default())
     .on_page_load(|webview, payload| {
@@ -893,7 +902,11 @@ pub fn run() {
       open_app_data_directory,
       confirm_app_close
     ])
-    .setup(|app| {
+    .setup(move |app| {
+      if let Some(lock) = instance {
+        let handle = app.handle().clone();
+        lock.serve(move || single_instance::bring_to_front(&handle));
+      }
       if cfg!(debug_assertions) {
         app.handle().plugin(
           tauri_plugin_log::Builder::default()
@@ -931,7 +944,7 @@ pub fn run() {
         });
       }
     })
-    .run(tauri::generate_context!())
+    .run(context)
     .expect("error while running tauri application");
 }
 

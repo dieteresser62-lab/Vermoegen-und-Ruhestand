@@ -72,8 +72,13 @@ for (const [year, amount] of [[2025, 0], [2026, 1350], [2027, 1350], [2028, 0]])
     for (let index = 0; index < 3; index++) {
         const ordinary = year(structuredClone(state), inputs, index), paid = year(state, withExpenses, index);
         assertEqual(paid.kind, 'success', 'Ausgabenjahr kann vollständig bezahlt werden');
-        close(portfolioTotal(ordinary.newState.portfolio) - portfolioTotal(paid.newState.portfolio), index < 2 ? 1350 : 0, 'Das Vermögen sinkt genau im Zahlungszeitraum');
-        for (const key of ['floor_brutto', 'flex_brutto', 'FlexRatePct', 'CutReason', 'Alarm', 'entnahmequote', 'QuoteEndPct', 'jahresentnahme_real', 'flex_haushalt_erfuellt']) same(paid.logData[key], ordinary.logData[key], `FR-43: ${key} bleibt im Zahlungsjahr unverändert`);
+        // FR-43 (11.11.2026): Feste Ausgaben erhöhen den Grundbedarf ihrer Monate und laufen nicht als eigene Zahlung.
+        // Der höhere Grundbedarf wirkt auch auf den Flex-Anteil (S-Kurve); das Vermögen sinkt um die Mehrentnahme.
+        close(paid.logData.floor_brutto - ordinary.logData.floor_brutto, index < 2 ? 1350 : 0, 'FR-43: Grundbedarf enthält die feste Ausgabe');
+        assert(!paid.logData.geplante_ausgaben, 'FR-43: Feste Ausgabe erscheint nicht als geplante Ausgabe');
+        close(portfolioTotal(ordinary.newState.portfolio) - portfolioTotal(paid.newState.portfolio),
+            paid.logData.jahresentnahme_real - ordinary.logData.jahresentnahme_real, 'Das Vermögen sinkt um die höhere Jahresentnahme');
+        if (index === 2) same(paid.logData.floor_brutto, ordinary.logData.floor_brutto, 'Nach dem Zeitraum ist die feste Ausgabe weg');
         close(paid.logData.portfolio_flow_delta, 0, 'Zusätzliche Ausgaben sind im Vermögensfluss erklärt');
         state = paid.newState;
     }
@@ -85,8 +90,10 @@ for (const [year, amount] of [[2025, 0], [2026, 1350], [2027, 1350], [2028, 0]])
     const second = year(first.newState, expenseInputs, 1, { inflation: 3 });
     const ordinary = year(structuredClone(second.newState), inputs, 2);
     const paid = year(second.newState, expenseInputs, 2);
-    close(paid.logData.geplante_ausgaben, 35200 * 1.02 * 1.03, 'Einmalige und indexierte feste Ausgaben nutzen die verkettete Inflation ab dem Folgejahr');
-    close(portfolioTotal(ordinary.newState.portfolio) - portfolioTotal(paid.newState.portfolio), paid.logData.geplante_ausgaben, 'Ohne Verkäufe entspricht der genaue Vermögensabzug dem fortgeschriebenen Betrag');
+    close(paid.logData.geplante_ausgaben, 35000 * 1.02 * 1.03, 'Einmalige Ausgaben nutzen die verkettete Inflation ab dem Folgejahr');
+    close(paid.logData.floor_brutto - ordinary.logData.floor_brutto, 200 * 1.02 * 1.03, 'Indexierte feste Ausgaben stehen im Grundbedarf mit derselben Inflation');
+    const extraWithdrawal = (paid.logData.jahresentnahme_real - ordinary.logData.jahresentnahme_real) * paid.logData.inflation_factor_cum;
+    close(portfolioTotal(ordinary.newState.portfolio) - portfolioTotal(paid.newState.portfolio), paid.logData.geplante_ausgaben + extraWithdrawal, 'Ohne Verkäufe entspricht der genaue Vermögensabzug der einmaligen Zahlung plus höherer Jahresentnahme');
 }
 for (const dynamicFlex of [false, true]) {
     const noCash = { ...inputs, startVermoegen: 200000, depotwertAlt: 0, einstandAlt: 0, tagesgeld: 0, geldmarktEtf: 0,
@@ -149,13 +156,16 @@ for (const patch of [{ plannedExpenses: [fixed({ betragMonat: -1 })] }, { planne
 }
 {
     const scenario = { ...inputs, plannedExpenses: [fixed({ ab: '2026-01', bis: '2027-12' }), once({ monat: '2026-05' })], plannedExpensesReferenceYear: 2026 };
-    close(backtest(scenario, 2000, 2001).rows[0].row.geplante_ausgaben, 40400, 'Backtest ordnet die Zahlung relativ zum Planjahr zu');
+    const historyRow = backtest(scenario, 2000, 2001).rows[0].row;
+    close(historyRow.geplante_ausgaben, 35000, 'Backtest ordnet die einmalige Zahlung relativ zum Planjahr zu');
+    close(historyRow.floor_brutto, 12000 + 5400, 'Backtest zählt die feste Ausgabe des Planjahrs zum Grundbedarf');
     const params = { anzahl: 2, maxDauer: 4, blockSize: 3, seed: 12345, methode: 'regime_markov', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' };
     const request = { inputs: scenario, widowOptions: scenario.widowOptions, monteCarloParams: params, useCapeSampling: false };
     const source = await runMonteCarloChunk({ ...request, runRange: { start: 0, count: 2 }, logIndices: [0, 1], stressReplayCapture: createStressReplayCaptureRequest([0]), engine: EngineAPI });
     assertEqual(source.technicalInventory.technicalError, 0, 'Monte Carlo verarbeitet die Ausgaben ohne technische Fehler');
     const meta = source.runMeta.find(run => run.index === 0);
-    close(meta.logDataRows[0].geplante_ausgaben, 40400, 'MC nutzt denselben Ausgabenbetrag');
+    close(meta.logDataRows[0].geplante_ausgaben, 35000, 'MC nutzt denselben Ausgabenbetrag');
+    close(meta.logDataRows[0].floor_brutto, 12000 + 5400, 'MC zählt die feste Ausgabe zum Grundbedarf');
     const mcCsv = serializeScenarioLogCsvV2(projectScenarioLogV2(meta.logDataRows));
     assert(mcCsv.split('\r\n')[0].split(';').includes('geplante_ausgaben'), 'Vollständiger MC-CSV-Download enthält die zusätzliche Ausgabe');
     const path = materializeStressReplayPathV1({ capture: meta.stressReplayCapture, sourceLogRows: meta.logDataRows, sourceRequest: request,
@@ -167,13 +177,13 @@ for (const patch of [{ plannedExpenses: [fixed({ betragMonat: -1 })] }, { planne
     assert(JSON.stringify(sweep.results[0].metrics) !== JSON.stringify(noExpenseSweep.results[0].metrics), 'Die Ausgaben verändern auch die tatsächlich berechneten Sweep-Ergebnisse');
     const definition = PROTOCOL_COLUMNS.find(column => column.id === 'planned-expenses');
     assertEqual(definition.label, 'Geplante Ausgaben', 'Vollständiger Download enthält die benannte Protokollspalte');
-    close(readProtocolValue(definition, meta.logDataRows[0], { source: 'mc' }), 40400, 'MC-Spalte liest den zusätzlichen Betrag');
+    close(readProtocolValue(definition, meta.logDataRows[0], { source: 'mc' }), 35000, 'MC-Spalte liest den zusätzlichen Betrag');
     const historical = backtest(scenario, 2000, 2001);
     const btCsv = serializeHistoricalBacktestCsv(historical);
     const csvLines = btCsv.split('\n').map(line => line.split(';'));
     const expenseIndex = csvLines[0].indexOf('planned_expenses_nominal_eur');
-    assert(expenseIndex >= 0 && Number(csvLines[1][expenseIndex]) === 40400, 'Vollständiger Backtest-CSV-Download enthält den Nominalbetrag');
-    close(readProtocolValue(definition, historical.rows[0], { source: 'backtest' }), 40400, 'Backtest-Spalte liest den zusätzlichen Betrag');
+    assert(expenseIndex >= 0 && Number(csvLines[1][expenseIndex]) === 35000, 'Vollständiger Backtest-CSV-Download enthält den Nominalbetrag');
+    close(readProtocolValue(definition, historical.rows[0], { source: 'backtest' }), 35000, 'Backtest-Spalte liest den zusätzlichen Betrag');
     assert(!getProtocolColumns({ source: 'mc', rows: meta.logDataRows }).some(column => column.id === definition.id), 'Normaler Protokolldialog bleibt kompakt');
     assert(getProtocolColumns({ source: 'mc', logDetailLevel: 'detailed', rows: meta.logDataRows }).some(column => column.id === definition.id), 'Detaillierter Dialog enthält Geplante Ausgaben');
 }

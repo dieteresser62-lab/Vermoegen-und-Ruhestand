@@ -35,6 +35,7 @@ const ACTIVE_PROFILE_KEY = PROFILE_STORAGE_KEYS.active;
 export const PROFILE_BUNDLE_GLOBAL_KEYS = Object.freeze([
     'household_partnership_v1',
     'household_care_values_v1',
+    'household_care_hint_v1',
     'rs_wealth_history_start_v1',
     'rs_daily_prices_v1',
     'etfProxyUrl',

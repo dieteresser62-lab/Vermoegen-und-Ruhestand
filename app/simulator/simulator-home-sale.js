@@ -4,6 +4,7 @@ import { inheritancePercent, inheritsHomeAndTax, testamentRule, hasTestament, te
 import { homeValueAtDeath, inheritanceReferenceFactor } from './simulator-inheritance.js';
 import { personalAssetValues } from './simulator-unmarried.js';
 import { syncPersonalLiquidity } from './simulator-personal-accounts.js';
+import { livesInResidentialCare } from './simulator-residential-care.js';
 
 /**
  * @param home
@@ -115,6 +116,19 @@ export function allLivingInExternalCare(inputs, household) {
         && careFormForPerson(inputs, care.grade, index, household) === 'residential');
 }
 
+/** FR-62 nach FR-72 Punkt 14: Alle Lebenden wohnen tatsächlich im Heim, unabhängig vom Grad.
+ * Den Heimzustand legt nur Monte Carlo ab; ohne ihn gilt die bisherige Grenze.
+ *
+ * @param inputs Wirksame Simulationseingaben.
+ * @param household
+ * @returns {boolean} Ergebnis der Operation.
+ */
+export function allLivingInResidence(inputs, household) {
+    const living = [{ alive: household.p1Alive, care: household.care?.p1 },
+        ...(inputs.partner?.aktiv ? [{ alive: household.p2Alive, care: household.care?.p2 }] : [])].filter(person => person.alive);
+    return living.length > 0 && living.every(({ care }) => livesInResidentialCare(care));
+}
+
 function isPartnerDeathYear(state, inputs, household, yearIndex) {
     return inputs.partner?.aktiv && household.p1Alive !== household.p2Alive
         && (!state.survivor || state.survivor.deathYearIndex === yearIndex);
@@ -175,9 +189,10 @@ export function homeRentForYear(portfolio, inputs, household, inflationFactor, s
 }
 
 function homeRentLifeFactor(inputs, household, state, yearIndex) {
-    const after = (household.p1Alive || (inputs.partner?.aktiv && household.p2Alive)) && !allLivingInExternalCare(inputs, household) ? 1 : 0;
+    const rentEnds = context => allLivingInExternalCare(inputs, context) || allLivingInResidence(inputs, context);
+    const after = (household.p1Alive || (inputs.partner?.aktiv && household.p2Alive)) && !rentEnds(household) ? 1 : 0;
     if (yearIndex < 0 || !isPartnerDeathYear(state, inputs, household, yearIndex)) return after;
-    const before = !allLivingInExternalCare(inputs, { ...household, p1Alive: true, p2Alive: true }) ? 1 : 0;
+    const before = !rentEnds({ ...household, p1Alive: true, p2Alive: true }) ? 1 : 0;
     return (before + after) / 2;
 }
 

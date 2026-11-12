@@ -1,7 +1,7 @@
 import { EngineAPI } from '../engine/index.mjs';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
-import { prepareMarketPreview, projectMarketPreview, classifyMarketPreview } from '../app/balance/balance-market-preview.js';
+import { prepareMarketPreview, projectMarketPreview, classifyMarketPreview, isHiddenBearMarket } from '../app/balance/balance-market-preview.js';
 import { renderBalanceMarketPreview } from '../app/balance/balance-market-preview-renderer.js';
 import { emptyHistorySymbol, historyDay } from '../app/tranches/tranchen-history-store.js';
 import { assertAnnualPlanRecord } from '../app/profile/annual-plan-record.js';
@@ -21,6 +21,12 @@ function project(inputs, dates, closes, today) {
 const doc = new MockDocument();
 const text = () => doc.getElementById('balanceMarketPreviewBody').textContent.replaceAll(' ', ' ');
 
+// WT-1 (FR-77 Punkt 5): Die Stufen bleiben intern; angezeigt wird nur noch der verdeckte Bärenmarkt.
+const assertNothingShown = (view, label) => {
+    renderBalanceMarketPreview(doc, view);
+    assert(!isHiddenBearMarket(view) && doc.getElementById('balanceMarketPreview').hidden && text() === '', `${label}: kein verdeckter Bär, die Balance zeigt nichts zum Jahreshoch`);
+};
+
 // B1: Ein älteres gespeichertes Hoch liegt über dem Jahreshoch (Bärenjahr). Der Abstand zählt trotzdem zum Jahreshoch.
 const bear = project({ endeVJ: 200, endeVJ_1: 250, endeVJ_2: 300, endeVJ_3: 280, ath: 300, jahreSeitAth: 2 },
     ['2025-12-31', '2026-03-10', '2026-10-30'], [200, 220, 160], '2026-10-30');
@@ -29,29 +35,19 @@ assertEqual(bear.comparison.state, 'same', 'Bärenjahr: beide Lesarten gleich');
 const bearStage = classifyMarketPreview(bear);
 assert(Math.abs(bearStage.gapPct - (220 - 160) / 220 * 100) < 1e-9, 'Abstand zum Jahreshoch 220, nicht 0');
 assertEqual(bearStage.stage, 'notice', '27 % unter dem Jahreshoch ist ein Hinweis, nicht ruhig');
-renderBalanceMarketPreview(doc, bear);
-assert(text().includes('Der Kurs liegt 27,3 % unter dem Jahreshoch'), 'Überschrift nennt den echten Abstand');
-assert(text().includes('Das Jahreshoch liegt unter dem gespeicherten Hoch von 300,00 €'), 'Erklärt, warum beide Lesarten gleich rechnen');
-assert(text().includes('Der Kurs liegt schon unter der Grenze zum tiefen Bärenmarkt (240,00 €, 20 % unter dem gespeicherten Hoch von 300,00 €)'),
-    'Unterschrittene Schwelle wird als erreicht beschrieben');
-assert(!text().includes('noch 0,0 %'), 'Kein „noch 0,0 %“ bei erreichter Schwelle');
-assert(text().includes('Fläche: tiefer Bärenmarkt, gemessen am gespeicherten Hoch von 300,00 €.'), 'Kurslinie nennt das Hoch der Bärenfläche');
+assertNothingShown(bear, 'Bärenjahr mit älterem Hoch');
 
 // Ruhig, aber Schwelle schon erreicht: kein „sinkt erst unter“.
 const calmBear = project({ endeVJ: 200, endeVJ_1: 250, endeVJ_2: 300, endeVJ_3: 280, ath: 300, jahreSeitAth: 2 },
     ['2025-12-31', '2026-03-10', '2026-10-30'], [200, 205, 200], '2026-10-30');
 assertEqual(classifyMarketPreview(calmBear).stage, 'calm', '2,4 % unter dem Jahreshoch ist ruhig');
-renderBalanceMarketPreview(doc, calmBear);
-assert(text().includes('Der Kurs liegt schon unter der Grenze zum tiefen Bärenmarkt') && !text().includes('Das Budget sinkt erst unter'),
-    'Ruhig mit erreichter Schwelle: richtiger Satz');
+assertNothingShown(calmBear, 'Ruhig mit erreichter Schwelle');
 
 // Normalfall unverändert: heute neues Hoch, beide Lesarten gleich, Schwelle noch nicht erreicht.
 const normal = project({ endeVJ: 150, endeVJ_1: 140, endeVJ_2: 120, endeVJ_3: 110, ath: 150, jahreSeitAth: 0 },
     ['2025-12-31', '2026-07-14', '2026-10-30'], [150, 190, 197], '2026-10-30');
 assertEqual(classifyMarketPreview(normal).stage, 'calm', 'Normalfall: am Hoch ruhig');
-renderBalanceMarketPreview(doc, normal);
-assert(text().includes('Das Budget sinkt erst unter 157,60 € (noch 20,0 %)'), 'Normalfall: Schwelle mit Restabstand');
-assert(text().includes('Fläche: tiefer Bärenmarkt, gemessen am Jahreshoch.'), 'Normalfall: Kurslinie gemessen am Jahreshoch');
+assertNothingShown(normal, 'Normalfall');
 
 // B6: Stufe folgt dem angezeigten Wert mit einer Nachkommastelle.
 for (const [price, expected] of [[187.4, 'calm'], [187.2, 'notice'], [187.15, 'notice']]) {
@@ -69,10 +65,7 @@ for (const [today, stage, title] of [[197, 'calm', 'Nahe am Jahreshoch – Grund
     const result = classifyMarketPreview(view);
     assertEqual(result.stage, stage, `Kurs ${today}: Stufe ${stage}`);
     assertEqual(result.noise, stage !== 'warning', `Kurs ${today}: Grundrauschen nur unter 10 %`);
-    renderBalanceMarketPreview(doc, view);
-    assert(text().includes(title), `Kurs ${today}: Überschrift`);
-    if (stage !== 'warning') assert(text().includes('Unter 10 % Abstand zum Jahreshoch ist das Grundrauschen. Der Plan folgt der Jahresendregel.'), `Kurs ${today}: Satz zum Grundrauschen`);
-    else assert(text().includes('Im Jahresabschluss wählst du, welcher Plan gilt'), 'Ab 10 % Verweis auf die Wahl');
+    assertNothingShown(view, `Kurs ${today} (${title})`);
 }
 
 // Argon 3: Datierung einer Jahreshoch-Meta muss in sich stimmen (über die Importfassade).

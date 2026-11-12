@@ -1,12 +1,14 @@
+import { projectCareLiquidityYear } from './simulator-care-projection.js';
 /** @import {CareMeta} from '../../typcheck/rechenkern.js' */
 /** Simulator-only household transition. The couple's inflation base stays intact. */
 import { syncPersonalLiquidity } from './simulator-personal-accounts.js';
-import { computeHouseholdFlexFactor, calcCareCost, resolveSimulatorCumulativeInflationFactor } from './simulator-engine-helpers.js';
-import { calculateTargetLiquidityBalanceLike, euros } from './simulator-engine-direct-utils.js';
-import { calculateHouseholdPensionForYear } from './simulator-household-pension.js';
-import { calculateFixedIncomeForYear } from './simulator-fixed-income.js';
-import { homeRentForYear } from './simulator-home-sale.js';
-import { plannedExpensesForYear } from '../profile/household-planned-expenses.js';
+import { resolveSimulatorCumulativeInflationFactor } from './simulator-engine-helpers.js';
+import { calculateTargetLiquidityBalanceLike } from './simulator-engine-direct-utils.js';
+import { simulatorPlannedExpenseYear } from '../profile/household-planned-expenses.js';
+import { replacesHomeFloor } from './simulator-residential-care.js';
+import { resolveHomeFloorFactor, resolveSurvivorFloorFactor } from '../shared/care-needs.js';
+export { survivorFloorPercent, survivorFlexPercent, resolveSurvivorFlexFactors, resolveSurvivorFloorFactor,
+    resolveHomeFloorFactor, composeYearNeed } from '../shared/care-needs.js';
 
 /** FR-67: voller Resthaushalt statt Halbjahresmischung, zu Preisen des Folgejahrs.
  *
@@ -25,90 +27,46 @@ import { plannedExpensesForYear } from '../profile/household-planned-expenses.js
  */
 export function survivorLiquidityTarget({ state, portfolio, transition, inputs, household, yearIndex,
     inflationFactor, marketData, pension, fixedIncomeWageFactor = state.fixedIncomeWageFactor }) {
-    const factor = inflationFactor / resolveSimulatorCumulativeInflationFactor(state);
-    const survivorState = { ...state, portfolio, survivor: transition.survivor, fixedIncomeWageFactor };
-    const care = { p1: household.p1Alive ? household.care?.p1 : null,
-        p2: household.p2Alive ? household.care?.p2 : null };
-    const floor = (state.baseFloor * resolveSurvivorFloorFactor(inputs, household, false)
-        + calcCareCost(care.p1, care.p2).zusatzFloor) * factor
-        + homeRentForYear({ ...portfolio }, inputs, household, inflationFactor);
-    const flexFactor = resolveSurvivorFlexFactors(inputs, { ...household, care }, false)?.flexFactor
-        ?? computeHouseholdFlexFactor({ hasPartner: inputs.partner?.aktiv === true,
-            p1Alive: household.p1Alive, p2Alive: household.p2Alive, careMetaP1: care.p1, careMetaP2: care.p2 });
-    const flex = state.baseFlex * flexFactor * factor;
+    const projected = projectCareLiquidityYear({ inputs, state, portfolio, household, yearIndex,
+        inflationFactor, pension, fixedIncomeWageFactor });
     const nextYearIndex = yearIndex + 1;
-    const nextPension = calculateHouseholdPensionForYear({ inputs, yearIndex: nextYearIndex, ...household,
-        currentAnnualPension: pension.nextAnnualPension, currentAnnualPension2: pension.nextAnnualPension2,
-        widowPensionP1: pension.nextWidowPensionP1, widowPensionP2: pension.nextWidowPensionP2 });
-    const income = calculateFixedIncomeForYear({ inputs, state: survivorState, household, care,
-        yearIndex: nextYearIndex, inflationFactor, deathThisYear: false });
-    const plannedExpense = inputs.plannedExpenses?.length ? euros(plannedExpensesForYear(inputs.plannedExpenses,
-        inputs.plannedExpensesReferenceYear + nextYearIndex, inflationFactor)) : 0;
+    // FR-43: Feste geplante Ausgaben stecken in projected.floor; nur einmalige kommen als Reserve dazu.
+    const plannedExpense = simulatorPlannedExpenseYear(inputs, nextYearIndex, inflationFactor).once;
     // Dynamic Flex und Go-Go benötigen die spätere Budgetentscheidung des Folgejahrs.
-    return calculateTargetLiquidityBalanceLike(inputs, marketData, floor, flex,
-        nextPension.pensionAnnual + (income?.total || 0)) + plannedExpense;
+    return calculateTargetLiquidityBalanceLike(inputs, marketData, projected.floor, projected.flex, projected.income) + plannedExpense;
 }
 
-/**
- * @param value Zu prüfender oder darzustellender Wert.
- * @returns {number} Ergebnis der Operation.
+/** Todesjahr des ersten Partners nach FR-23: getrennter Lebensstatus, noch kein oder genau dieser Übergang.
+ *
+ * @param {boolean} hasPartner Haushalt mit zwei Personen.
+ * @param {{p1Alive?: boolean; p2Alive?: boolean}} household Lebensstatus des Jahres.
+ * @param {{survivor?: {deathYearIndex?: number}|null}} state Zustand zu Jahresbeginn.
+ * @param {number} yearIndex Nullbasierter Index des Simulationsjahrs.
+ * @returns {boolean} Ergebnis der Prüfung.
  */
-export function survivorFloorPercent(value) {
-    if (value == null) return 75;
-    const percent = Number(value);
-    if (value === '' || !Number.isFinite(percent) || percent < 40 || percent > 200) {
-        throw new RangeError('Grundbedarf nach dem Tod einer Person muss zwischen 40 und 200 % liegen.');
-    }
-    return percent;
+export function isFirstDeathYear(hasPartner, household, state, yearIndex) {
+    return hasPartner && household.p1Alive !== household.p2Alive && (!state?.survivor || state.survivor.deathYearIndex === yearIndex);
 }
 
-/**
- * @param value Zu prüfender oder darzustellender Wert.
- * @param {string} [label]
- * @returns {number} Ergebnis der Operation.
- */
-export function survivorFlexPercent(value, label = 'Wunsch-Flex') {
-    if (value == null) return 50;
-    const percent = Number(value);
-    if (value === '' || !Number.isFinite(percent) || percent < 0 || percent > 100) {
-        throw new RangeError(`${label} nach dem Tod einer Person muss zwischen 0 und 100 % liegen.`);
-    }
-    return percent;
-}
-
-/** FR-55: getrennte Paarbezüge, Pflege zusätzlich; FR-23 mittelt das Todesjahr.
+/** FR-72 Punkt 18: Grundbedarf, den Personen im Heim gegenüber dem Haushalt ohne Heim einsparen
+ * (Hinterbliebenenregel und Todesjahrmischung wie bisher). Die Ersparnis wird nach dem Gewicht ihrer
+ * Heimposten verteilt: Lebende 1, Verstorbene im Todesjahr ½. Die Kennzahl „Pflege-Mehrbedarf“ zieht
+ * sie von den Pflegeausgaben ab; Bestand (heute im Heim) spart nichts.
  *
  * @param inputs Wirksame Simulationseingaben.
- * @param household
- * @param deathThisYear
- * @returns Ergebnis der Operation.
+ * @param {number} baseFloor Ursprünglicher Grundbedarf des Jahres (inflationiert).
+ * @param {{p1Alive?: boolean; p2Alive?: boolean; care?: {p1?: CareMeta|null; p2?: CareMeta|null}}} household Haushalt mit dem Pflegezustand des Jahres, Verstorbene im Todesjahr vor dem Tod.
+ * @param {boolean} deathThisYear Todesjahr nach FR-23.
+ * @returns {[number, number]} Eingesparter Grundbedarf von P1 und P2.
  */
-export function resolveSurvivorFlexFactors(inputs, household, deathThisYear) {
-    if (!inputs.partner?.aktiv || household.p1Alive === household.p2Alive) return null;
-    const { p1Alive, p2Alive, care } = household;
-    const careFactor = /** @type {(context: Omit<Parameters<typeof computeHouseholdFlexFactor>[0], "p2Alive" | "careMetaP2"> & {p2Alive?: boolean; careMetaP2?: CareMeta}) => number} */ (computeHouseholdFlexFactor)({ hasPartner: false, p1Alive: true,
-        careMetaP1: p1Alive ? care?.p1 : care?.p2 });
-    const coupleFactor = deathThisYear ? computeHouseholdFlexFactor({ hasPartner: true,
-        p1Alive: true, p2Alive: true, careMetaP1: care?.p1, careMetaP2: care?.p2 }) : 0;
-    const annualFactor = percent => deathThisYear
-        ? (coupleFactor + percent / 100 * careFactor) / 2 : percent / 100 * careFactor;
-    return {
-        flexFactor: annualFactor(survivorFlexPercent(inputs.survivorFlexPercent)),
-        minimumFlexFactor: annualFactor(survivorFlexPercent(inputs.survivorMinimumFlexPercent, 'Mindest-Flex'))
-    };
-}
-
-/** Gemeinsamer Grundbedarfsfaktor für Jahresrechnung und Pflegedeckel.
- *
- * @param inputs Wirksame Simulationseingaben.
- * @param household
- * @param deathThisYear
- * @returns {number} Ergebnis der Operation.
- */
-export function resolveSurvivorFloorFactor(inputs, household, deathThisYear) {
-    if (!inputs.partner?.aktiv || household.p1Alive === household.p2Alive) return 1;
-    const percent = survivorFloorPercent(inputs.survivorFloorPercent) / 100;
-    return deathThisYear ? (1 + percent) / 2 : percent;
+export function savedHomeFloorShares(inputs, baseFloor, household, deathThisYear) {
+    const weights = /** @type {const} */ (['p1', 'p2']).map(key => !replacesHomeFloor(household.care?.[key]) ? 0
+        : household[key === 'p1' ? 'p1Alive' : 'p2Alive'] !== false ? 1 : deathThisYear ? .5 : 0);
+    const sum = weights[0] + weights[1];
+    if (!(sum > 0)) return [0, 0];
+    const saved = (Number(baseFloor) || 0) * Math.max(0, resolveSurvivorFloorFactor(inputs, household, deathThisYear)
+        - resolveHomeFloorFactor(inputs, household, deathThisYear));
+    return [saved * weights[0] / sum, saved * weights[1] / sum];
 }
 
 /**

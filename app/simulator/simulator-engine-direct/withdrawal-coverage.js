@@ -14,7 +14,7 @@ export function coverYearWithdrawal(context) {
     let {
         plannedWithdrawalResolution, engineInput, pensionAnnual, plannedExpense, unmarried, portfolio, inputs,
         pensionResult, fixedIncome, incomeLog, liquiditaet, unmarriedShares, healthBucketCoverage,
-        healthBucketHousehold, pflegeMeta, careFloorAddition, personalTaxBook, profilesAtDecision, market,
+        healthBucketHousehold, pflegeMeta, careFloorAddition, healthBucketCareNeed, personalTaxBook, profilesAtDecision, market,
         is3Bucket, protectsEquity, depotTranchesAktien, depotTranchesGold, combinedTaxRawAggregate,
         stressReplayTransactionCapture, bondSaleAmount, unmetLiquidity, didForcedSale, forcedSaleScaleApplied,
         forcedTaxReserved, saleQuellen, regularSaleScale, executedSaleSources, balanceTrace
@@ -50,7 +50,7 @@ export function coverYearWithdrawal(context) {
         householdContext: healthBucketHousehold,
         pflegeMeta,
         forcedShortfall,
-        careFloorAddition
+        careFloorAddition: healthBucketCareNeed ?? careFloorAddition
     });
     if (healthBucketCoverage.used > 0) {
         const consumed = healthBucketCoverage.consumedTranches;

@@ -68,7 +68,7 @@ const handbookUi = fs.readFileSync(new URL('../app/handbook/handbook.js', import
 const imageManifest = JSON.parse(fs.readFileSync(new URL('../docs/ui/manifest.json', import.meta.url), 'utf8'));
 const handbookImages = [...handbook.matchAll(/<img\b[^>]*src="((?:docs\/ui|assets\/handbook)\/[^"]+)"/g)].map(match => match[1]);
 const budgetImages = imageManifest.images.filter(image => /^docs\/ui\/jahresbudget-max-erika-(?:normal|2002)\.png$/.test(image.path));
-assertEqual(handbookImages.filter(src => src.endsWith('.png')).length, 31 + budgetImages.length, 'Ausgewählte App-Ansichten stehen direkt bei den Klickwegen');
+assertEqual(handbookImages.filter(src => src.endsWith('.png')).length, 37 + budgetImages.length, 'Ausgewählte App-Ansichten stehen direkt bei den Klickwegen (PFA-10: Bereich Pflege; UR-1b: erfasste Stände, übernommene Rentenanpassung; GU-1b: Fondskosten, Hinweis „wie Löhne“; KO-2: Fondskosten in Haushalt & Plan)');
 assertEqual(handbookImages.filter(src => src.endsWith('.svg')).length, 3, 'Monat, Jahr und Spielbereich zeigen Offline-Abläufe');
 assert(handbookImages.every(src => src.endsWith('.svg') || imageManifest.images.some(image => image.path === src)), 'Handbuchbilder stammen aus dem geprüften Manifest');
 assertEqual((handbook.match(/<figcaption>/g) || []).length, handbookImages.length, 'Jedes Handbuchbild hat eine Unterschrift');
@@ -197,7 +197,7 @@ assert(simulatorChapter.includes('schreibfreie Liste')
     'P10: Handbuch erklärt flüchtige Alternativen und eingefrorene Downloads');
 const scenarioChapter = chapter('simulator-szenario-log');
 const answerChapter = chapter('simulator-ergebnisse');
-assert(answerChapter.includes('Ist mein Grundbedarf gedeckt?') && answerChapter.includes('Muss ich mich einschränken?')
+assert(answerChapter.includes('Reicht das Vermögen?') && answerChapter.includes('Muss ich mich einschränken?')
     && answerChapter.includes('Zeitraumende ist kein nachgewiesenes Lebensende')
     && answerChapter.includes('Anteil abgeschlossener Entnahmejahre') && answerChapter.includes('unter Mindest-Flex')
     && answerChapter.includes('Wunsch allein zählt nicht') && answerChapter.includes('gewählten Euro-Basis')

@@ -1,9 +1,10 @@
 {
   "baseline": "83188984c39b12067c3e292bdc5b266ebfed0e34",
   "hashes": {
-    "no-home": "0bf55b81500c5085d82c51dc6d15c936e39c7e3d4300247c1bb416e1deb6c92f",
-    "no-inflows": "81c89a8d6a8185b3e42c5a66b3ee92e72927b9f8288a6b4668af8d68165f3a2b",
-    "separation": "635997f80441b834b4dd458bf8428b03d784614e78623e04ca9862672f355564",
-    "unmarried": "4c998c548c3e2b82c625641d2198f4cc26707ffc1861f33f0cfa4e30a66a3ec5"
-  }
+    "no-home": "ded6c0fe7922f910016ed0a1689e95dc1ba10d58bb5e1358a98a498c6566f0ae",
+    "no-inflows": "c8a6616f4d80cd675999342d3c89c195fe6ee66979620141432d01a99de43cd4",
+    "separation": "7582c3afb8805765f4bb7e3fc2546bad2f5d90c238deb6d76dc1d06ef4810222",
+    "unmarried": "6814e792a42caef930a224d8a195d0113658492dd2118cb6a15965e828e16b2a"
+  },
+  "tj1": "TJ-1 bis TJ-2b: alle vier Todesjahre (Erbanteil 50 %) neu. Kauf und Auffüllung nach der Sicht der überlebenden Person, Verkauf nur aus ihren Losen; zulässige Engine-Käufe bleiben erhalten."
 }

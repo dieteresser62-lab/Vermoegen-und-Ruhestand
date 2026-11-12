@@ -3,7 +3,7 @@
 
 import { readRealRecords, readRealSnapshots, activatePlayArea, discardPlayArea, adoptPlayArea } from './play-area.js';
 import { createHousehold, switchHousehold, getHouseholds, renameHousehold, deleteHousehold, rebuildHousehold, createHouseholdFromRecords, readHouseholdRecords } from './households.js';
-import { setProbelaufProtection, blockSyncWrites, blockDocumentWrites, hasSyncWriteBlocks, hooks } from './state.js';
+import { setProbelaufProtection, blockSyncWrites, blockDocumentWrites, holdWritesUntil, hasSyncWriteBlocks, hooks } from './state.js';
 import { withProbelaufOperation, flush } from './writes.js';
 import { readPersistedRecords, exportAllSync, importAll, replaceRecordsTransactional, replaceLiveRecords } from './exchange.js';
 import { observeInputChanges, bindLifecycleFlush, bindTauriClose, unbindLifecycleFlush } from './lifecycle.js';
@@ -31,6 +31,7 @@ export const PersistenceFacade = {
     readPersistedRecords,
     blockSyncWrites,
     blockDocumentWrites,
+    holdWritesUntil,
     hasSyncWriteBlocks,
     observeInputChanges,
     configurePersistence,

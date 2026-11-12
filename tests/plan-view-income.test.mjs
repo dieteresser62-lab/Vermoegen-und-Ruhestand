@@ -1,11 +1,20 @@
-import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
+import { readLE1References } from './helpers/le-1-expectations.mjs';
+import { withPreviousRunEvidence } from './helpers/le-1b-expectations.mjs';
+const readQSCReferences = value => readPFA1References(beforePFA1QSCReferences(value));
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
+import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readHE4References = value => readPFA1References(beforePFA1References(value));
+import { readEV1bReferences as readBeforeHE2References } from './helpers/ev-1b-expectations.mjs';
+import { readHE2References } from './helpers/he-2-expectations.mjs';
+import { readHE4References as beforePFA1References } from './helpers/he-4-expectations.mjs';
+const readEV1bReferences = value => readHE4References(readHE2References(readBeforeHE2References(value)));
 const readMD2References = value => readEV1bReferences(readBeforeEV1bReferences(value));
 import { readMD2References as readBeforeEV1bReferences } from './helpers/md-2-expectations.mjs';
 import { readZG1References as readBeforeMD2References } from './helpers/zg-1-expectations.mjs';
 const readZG1References = value => readMD2References(readBeforeMD2References(value));
 import { readEV1References as readBeforeZG1References } from './helpers/ev-1-expectations.mjs';
 const readEV1References = value => readZG1References(readBeforeZG1References(value));
-import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
+import { readQSCReferences as beforePFA1QSCReferences } from './helpers/qs-c-expectations.mjs';
 import { readVF2BReferences as readBeforePA1References } from './helpers/vf-2b-expectations.mjs';
 import { readPA1References } from './helpers/pa-1-expectations.mjs';
 const readVF2BReferences = value => readQSCReferences(readPA1References(readBeforePA1References(value)));
@@ -100,9 +109,9 @@ assert(serializeScenarioLogCsvV2(scenario).includes('36000'), 'CSV enthält die 
 
 const baseline = JSON.parse(fs.readFileSync(new URL('./fixtures/pv-1-parity.json', import.meta.url)));
 const { inputs: measuredInputs, historical, chunk } = await measure(baseline.salary, baseline.count, { historicalSurvivor: true });
-assertEqual(hash(measuredInputs), readQSCReferences(readVF2BReferences(readAN1Hash(baseline.inputsHash))), 'Messinputs bytegleich zur Basis');
-assertEqual(hash(historical), readQSCReferences(readVF2BReferences(readAS1Hash(readAN1Hash(readNR1Hash(baseline.backtestHash))))), 'Vollständiges Backtestergebnis mit belegten NR-1-Anzeigeänderungen');
-assertEqual(hash(chunk), readEV1References(readQSCReferences(readVF2BReferences(readRNG1Hash(readPG1bHash(readAN1Hash(readNR1Hash(baseline.monteCarloHash))))))), 'Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen');
+assertEqual(hash(measuredInputs), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readAN1Hash(baseline.inputsHash))))), 'Messinputs bytegleich zur Basis');
+assertEqual(hash(historical), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readAS1Hash(readAN1Hash(readNR1Hash(baseline.backtestHash))))))), 'Vollständiges Backtestergebnis mit belegten NR-1-Anzeigeänderungen');
+assertEqual(hash(withPreviousRunEvidence(chunk)), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readRNG1Hash(readPG1bHash(readAN1Hash(readNR1Hash(baseline.monteCarloHash))))))))), 'Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen');
 const forExport = { ...historical, request: { ...historical.request, engine: captureHistoricalBacktestEngineProvenance(EngineAPI,
     { schemaVersion: 'RuntimeBuildProvenanceV1', sourceCommit: 'a'.repeat(40), sourceTreeStatus: 'clean', provider: 'synthetic_fixture' }) } };
 const oldHistorical = { ...forExport, rows: historical.rows.map(entry => ({ ...entry, row: strip(entry.row) })) };

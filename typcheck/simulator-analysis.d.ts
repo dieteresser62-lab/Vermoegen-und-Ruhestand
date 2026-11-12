@@ -22,7 +22,7 @@ export interface KpiDescriptor {
     title: string; value: string; description: string; tone: 'default' | 'success' | 'warning' | 'danger';
     secondaryLabel?: string; secondaryValue?: string; statusLine?: string; secondaryStatusLine?: string;
     layout?: 'exact-risk'; decisionCritical?: boolean; displayRole?: string; displayValue?: string;
-    countText?: string; intervalText?: string; tooltip?: string; otherBasisLine?: string; moneyDetail?: string; priceBasis?: string;
+    countText?: string; intervalText?: string; tooltip?: string; otherBasisLine?: string; moneyDetail?: string; priceBasis?: string; coveragePct?: number | null;
     pairedMetrics?: {label: string; value: string; detail?: string}[]; requestedRuns?: number;
     outcomes?: {kind: string; label: string; count: number}[];
 }

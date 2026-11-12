@@ -54,7 +54,10 @@ assert.ok(Object.values(zero.differences).every(value => value === 0));
 const normal = await runMonteCarloSimulation({ ...options, widowOptions: inputs.widowOptions });
 assert.deepEqual(zero.baseline.aggregated, normal.aggregatedResults);
 const budget = await runDecisionComparison({ ...options, change: { kind: 'budget', monthly: 300 } });
-assert.deepEqual(budget.baseline.diagnostics, budget.variant.diagnostics);
+// LE-1 (FR-75): Ein Lauf endet in der Variante ein Jahr früher im Ruin; dort fehlt nur das historische Marktjahr.
+assert.deepEqual(noCareLife(budget.baseline.diagnostics), noCareLife(budget.variant.diagnostics));
+assert.ok(budget.variant.diagnostics.every((row, index) => row.historicalYear === budget.baseline.diagnostics[index].historicalYear
+    || row.historicalYear === null));
 assert.equal(new Set(budget.baseline.diagnostics.map(row => row.runIndex)).size, 50);
 const expense = await runDecisionComparison({ ...options, change: { kind: 'expense', amount: 25000, month: '2030-06' } });
 for (let index = 0; index < 50; index++) {
@@ -63,10 +66,11 @@ for (let index = 0; index < 50; index++) {
 }
 const choice = comparisonIncomeChoices(inputs).find(entry => entry.id === 'pension:1');
 const shifted = await runDecisionComparison({ ...options, change: { kind: 'income', incomeId: choice.id, months: 12 } });
+// FR-73: Bei aktiver Pflege erreicht der geänderte Rentenbeginn das Liquiditätsziel schon im Vorjahr.
 const oldYearIndex = Number(choice.start.slice(0, 4)) - comparisonReferenceYear(inputs);
 for (let index = 0; index < 50; index++) {
-    assert.deepEqual(shifted.baseline.chunk.runMeta[index].logDataRows.filter(row => row.jahr <= oldYearIndex),
-        shifted.variant.chunk.runMeta[index].logDataRows.filter(row => row.jahr <= oldYearIndex));
+    assert.deepEqual(shifted.baseline.chunk.runMeta[index].logDataRows.filter(row => row.jahr < oldYearIndex),
+        shifted.variant.chunk.runMeta[index].logDataRows.filter(row => row.jahr < oldYearIndex));
 }
 assert.equal(JSON.stringify(inputs), original);
 assert.throws(() => createDecisionVariant(inputs, { kind: 'budget', monthly: -100000 }), /Flex|flex|Bedarf/);
@@ -124,20 +128,22 @@ const searchProgress = [];
 const searchStages = [];
 const searchOptions = { ...options, diagnosticRuns: 0, captureLogs: false,
     monteCarloParams: { ...monteCarloParams, anzahl: 128 } };
+// LE-1 (FR-75): Längere Lebensläufe; der heutige Plan erfüllt 99 % / 10 % nicht mehr (97,7 % / 14,8 %).
+const searchGoals = { coveragePct: 97, affectedPct: 20 };
 const goals = { coveragePct: 99, affectedPct: 10 };
-const found = await runTargetBudgetSearch({ ...searchOptions, goals,
+const found = await runTargetBudgetSearch({ ...searchOptions, goals: searchGoals,
     onProgress: (pct, detail) => { searchProgress.push(pct); searchStages.push(detail); } });
 assert.equal(found.status, 'found');
 assert.equal(found.monthly % 50, 0);
 assert.equal(found.lowerMonthly, 650);
 assert.equal(found.currentMonthly, 2500);
-assert.ok(targetBudgetMeetsGoals(found.currentMetrics, goals));
+assert.ok(targetBudgetMeetsGoals(found.currentMetrics, searchGoals));
 assert.ok(found.monthly >= 2500);
 assert.deepEqual(found.observations.slice(0, 3).map(point => point.monthly), [2500, 2750, 3000]);
 assert.ok(found.observations.every(point => point.monthly >= found.currentMonthly), 'Erfüllter heutiger Plan wird nur nach oben gesucht');
-assert.ok(targetBudgetMeetsGoals(found.comparison.variant.metrics, goals));
+assert.ok(targetBudgetMeetsGoals(found.comparison.variant.metrics, searchGoals));
 assert.equal(found.nextMonthly, found.monthly + 50);
-assert.ok(!targetBudgetMeetsGoals(found.nextMetrics, goals));
+assert.ok(!targetBudgetMeetsGoals(found.nextMetrics, searchGoals));
 assert.ok(searchProgress.every((pct, i) => pct >= 0 && pct <= 100 && (!i || pct >= searchProgress[i - 1])));
 assert.equal(searchProgress.at(-1), 100);
 assert.ok(searchStages.filter(point => point.searchStep).every(point =>
@@ -177,7 +183,9 @@ for (const value of [null, NaN, Infinity]) {
 }
 assert.match(renderDecisionResult(found.comparison, { targetSearch: { ...found,
     nextMetrics: { ...found.nextMetrics, coveragePct: null, affectedPct: 0 } } }), /Grundbedarfsdeckung nicht auswertbar/);
-const highInputs = { ...structuredClone(inputs), startFlexBedarf: 5000 * 12 };
+// FR-72/HE-2: Heimpflege ersetzt den Grundbedarf; mit 5.000 € erreichte der Plan das Ziel bereits.
+// 5.600 € verfehlt es weiterhin und erzwingt die Suche nach unten.
+const highInputs = { ...structuredClone(inputs), startFlexBedarf: 5600 * 12 };
 const highBefore = JSON.stringify(highInputs);
 const downGoals = { coveragePct: 99, affectedPct: 70 };
 const downward = await runTargetBudgetSearch({ ...searchOptions, inputs: highInputs, goals: downGoals,
@@ -185,11 +193,11 @@ const downward = await runTargetBudgetSearch({ ...searchOptions, inputs: highInp
 assert.equal(downward.status, 'found');
 assert.equal(downward.comparison.params.anzahl, 2000);
 assert.ok(!targetBudgetMeetsGoals(downward.currentMetrics, downGoals));
-assert.ok(downward.monthly < 5000);
+assert.ok(downward.monthly < 5600);
 assert.ok(targetBudgetMeetsGoals(downward.comparison.variant.metrics, downGoals));
 assert.equal(downward.nextMonthly, downward.monthly + 50);
 assert.ok(!targetBudgetMeetsGoals(downward.nextMetrics, downGoals));
-assert.deepEqual(downward.observations.slice(0, 2).map(point => point.monthly), [5000, 4750]);
+assert.deepEqual(downward.observations.slice(0, 2).map(point => point.monthly), [5600, 5300]);
 assert.equal(JSON.stringify(highInputs), highBefore);
 assert.equal(JSON.stringify(inputs), original);
 assert.equal(JSON.stringify(getCommonInputs()), pageInputsBefore);

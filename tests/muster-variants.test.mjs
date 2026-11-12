@@ -1,6 +1,10 @@
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
+// LE-1 (FR-75) und KO-2 (Ergänzung FR-76) in einem Leser; Paare, die beide ändern, sind für den vereinten Stand gemessen.
+import { readLE1KO2References } from './helpers/le-1-ko-2-expectations.mjs';
 import { withoutExampleNeeds } from './helpers/ff-3-expectations.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
 import { readVF2EReferences } from './helpers/vf-2e-expectations.mjs';
+import { readGA2References } from './helpers/ga-2-expectations.mjs';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { createMusterHaushaltRecords as create } from '../app/demo/muster-haushalt.js';
@@ -23,7 +27,7 @@ const before = JSON.parse(fs.readFileSync(new URL('./fixtures/mu-2-households-be
 const previousTZ = process.env.TZ;
 try {
     process.env.TZ = 'Europe/Berlin';
-    for (const [id, hash] of Object.entries(before)) assertEqual(createHash('sha256').update(JSON.stringify(withoutExampleNeeds(create(date, id)))).digest('hex'), readQSCReferences(readVF2EReferences(hash)), `${id}: vollständige Records, Drei-Töpfe-Korrekturen gesondert belegt`);
+    for (const [id, hash] of Object.entries(before)) assertEqual(createHash('sha256').update(JSON.stringify(withoutExampleNeeds(create(date, id)))).digest('hex'), readLE1KO2References(readGU1References(readGA2References(readQSCReferences(readVF2EReferences(hash))))), `${id}: vollständige Records, Drei-Töpfe-Korrekturen gesondert belegt`);
 } finally { if (previousTZ === undefined) delete process.env.TZ; else process.env.TZ = previousTZ; }
 const mp = create(date, 'martin-petra'), [martin, petra] = profiles(mp);
 for (const [person, birth, pensionStart, pension, cash, equity] of [
@@ -112,6 +116,8 @@ for (const h of MUSTER_HAUSHALTE) for (const v of musterVarianten(h.id)) {
     assert(brief.changes.length > 0, 'Variante erklärt Abweichungen');
     // AR-3: Die Marktvariante ändert absichtlich alle Spielkurse und davon abgeleitete Bestände; die Planwerte bleiben die des Grundfalls.
     if (v.id === 'kurssturz') { assertEqual(JSON.stringify(p), JSON.stringify(plan(base)), 'max-erika/kurssturz: Planwerte wie im Grundfall'); continue; }
+    // WT-1: Die Variante trägt eingetragene Planverkäufe; Planwerte und Jahresplan bleiben die des Grundfalls.
+    if (v.id === 'teilweise') { assertEqual(JSON.stringify(p), JSON.stringify(plan(base)), 'max-erika/teilweise: Planwerte wie im Grundfall'); continue; }
     assert(unchangedProjection(r, h.id) === unchangedProjection(base, h.id), `${h.id}/${v.id}: alle übrigen Daten bytegleich`);
     if (v.id === 'klein') {
         assertEqual([n.cash, n.depot, n.bonds, n.gold].map(Math.round).join(), '15000,75000,0,0', 'Renate: kleines Vermögen');
@@ -124,9 +130,12 @@ for (const h of MUSTER_HAUSHALTE) for (const v of musterVarianten(h.id)) {
         assertEqual(ps[1].data.profile_care_grade_today, '3', 'Werner: PG3');
         assertEqual(r.sim_pflegeStufe3Form, 'home-support', 'Grad 3: externe Unterstützung zu Hause');
         assertEqual(ps[1].data.profile_care_form_today, 'family', 'Werner heute: Angehörige mit Pflegegeld');
-        assertEqual(n.careIncluded, 18000, 'Heutige Pflegekosten nur als erklärter Grundbedarfsanteil');
-        assertEqual(n.totalNeed, 66000, 'Gesamtbedarf 66.000');
-        assertEqual(brief.metrics[2].sub, 'im Grundbedarf enthalten', 'Pflegekachel erklärt Anteil');
+        // FR-73 (PFA-3): Grundbedarf ohne Pflege; die App rechnet Werners 18.000 € selbst dazu (Sollfall A).
+        assertEqual(n.floor, 36000, 'Grundbedarf 36.000 € ohne Pflege');
+        assertEqual(n.careToday, 18000, 'Heutige Pflegekosten aus der gemeinsamen Bedarfsfunktion');
+        assertEqual(n.totalNeed, 48000, 'Gesamtbedarf 48.000 ohne Pflege');
+        assertEqual(brief.metrics[2].sub, 'rechnet die App selbst dazu', 'Pflegekachel erklärt die automatische Rechnung');
+        assert(brief.changes.includes('bleibt 36.000 € ohne Pflege') && brief.changes.includes('18.000 €'), 'Variante erklärt den unveränderten Grundbedarf und die Pflegekosten');
     }
     if (v.id === 'teilzeit') {
         const income = incomeFromRecord(ps[0].data);
@@ -160,5 +169,5 @@ try {
     const result = simulateOneYear(initMcRunState(careInputs), careInputs,
         { jahr: 2000, inflation: 0, rendite: 0, gold_eur_perf: 0, zinssatz: 0, lohn: 0 }, 0, null, 0, null, 1, EngineAPI);
     assertEqual(result.kind, 'success', 'Pflegevariante rechnet');
-    assertEqual(result.logData.floor_brutto, 54000, 'Heutige Pflegekosten im Grundbedarf, ohne Doppelzählung');
+    assertEqual(result.logData.floor_brutto, 54000, 'FR-73 Sollfall A: Grundbedarf 36.000 € ohne Pflege plus 18.000 € heutige Pflege zu Hause');
 } finally { P.resetPersistenceForTests(); setAppTestDate(null); Object.assign(globalThis, previous); }

@@ -1,11 +1,20 @@
-import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
+import { readLE1References } from './helpers/le-1-expectations.mjs';
+import { withPreviousRunEvidence } from './helpers/le-1b-expectations.mjs';
+const readQSCReferences = value => readPFA1References(beforePFA1QSCReferences(value));
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
+import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readHE4References = value => readPFA1References(beforePFA1References(value));
+import { readEV1bReferences as readBeforeHE2References } from './helpers/ev-1b-expectations.mjs';
+import { readHE2References } from './helpers/he-2-expectations.mjs';
+import { readHE4References as beforePFA1References } from './helpers/he-4-expectations.mjs';
+const readEV1bReferences = value => readHE4References(readHE2References(readBeforeHE2References(value)));
 const readMD2References = value => readEV1bReferences(readBeforeEV1bReferences(value));
 import { readMD2References as readBeforeEV1bReferences } from './helpers/md-2-expectations.mjs';
 import { readZG1References as readBeforeMD2References } from './helpers/zg-1-expectations.mjs';
 const readZG1References = value => readMD2References(readBeforeMD2References(value));
 import { readEV1References as readBeforeZG1References } from './helpers/ev-1-expectations.mjs';
 const readEV1References = value => readZG1References(readBeforeZG1References(value));
-import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
+import { readQSCReferences as beforePFA1QSCReferences } from './helpers/qs-c-expectations.mjs';
 import { readQSBReferences } from './helpers/qs-b-expectations.mjs';
 import { readVF2BReferences as readBeforePA1References } from './helpers/vf-2b-expectations.mjs';
 import { readPA1References } from './helpers/pa-1-expectations.mjs';
@@ -23,9 +32,10 @@ const partnership = readPartnership(createMusterHaushaltRecords(ref.testDate).ho
 assertEqual(partnership.status, 'married', 'Max/Erika bisherige Partnerschaft bleibt verheiratet');
 for (const id of ['muster_a', 'muster_b']) assertEqual(inheritancePercent(partnership, id), 100, 'Max/Erika gegenseitig 100 % wie bisheriger Default');
 const inputs = await measurementInputs(0, 'max-erika', ref.testDate);
-assertEqual(hash(inputs), readQSCReferences(readVF2BReferences(ref.inputsHash)), 'Max/Erika vollständige Simulatoreingaben bytegleich');
-assertEqual(hash(backtest(inputs)), readQSCReferences(readVF2BReferences(ref.backtestHash)), 'Max/Erika vollständiger Backtest bytegleich');
+assertEqual(hash(inputs), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(ref.inputsHash)))), 'Max/Erika vollständige Simulatoreingaben bytegleich');
+assertEqual(hash(backtest(inputs)), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(ref.backtestHash)))), 'Max/Erika vollständiger Backtest bytegleich');
 const chunk = await runMonteCarloChunk({ inputs, monteCarloParams: ref.parameters, widowOptions: inputs.widowOptions,
     useCapeSampling: false, runRange: { start: 0, count: 2000 }, engine: EngineAPI });
-assertEqual(hash(chunk), readEV1References(readQSCReferences(readVF2BReferences(ref.monteCarloHash))), 'Max/Erika MC 2.000 Läufe, Seed 12345, 23.10.2026 mit belegten PA-1-Folgen');
+// LE-1 (FR-75): Längere Lebensläufe machen runMeta als eine JSON-Zeichenkette zu lang; je Lauf gehasht.
+assertEqual(hash({ ...withPreviousRunEvidence(chunk), runMeta: chunk.runMeta.map(run => hash(run)) }), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(ref.monteCarloHash))))), 'Max/Erika MC 2.000 Läufe, Seed 12345, 23.10.2026 mit belegten PA-1-Folgen');
 P.resetPersistenceForTests(); setAppTestDate(null);

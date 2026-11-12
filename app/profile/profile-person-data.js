@@ -1,5 +1,5 @@
 /** @import * as P from "../../typcheck/profile-ui.js" */
-import { careAllowanceAnnual, careSettingsFromRecord } from '../shared/care-benefits.js';
+import { careAllowanceAnnual, careSettingsFromRecord, effectiveCareFormToday } from '../shared/care-benefits.js';
 import { careTodayFromRecord } from './profile-care.js';
 import { effectiveIncomeFromRecord, fixedMonthlyIncome, monthlyOtherIncome } from './profile-income.js';
 import { appNow } from '../shared/app-clock.js';
@@ -87,6 +87,19 @@ export function personAge(data, year) {
     return Number.isSafeInteger(age) && age >= 0
         ? { status: 'fallback', age, suggestedBirthYear: year - age - 1 }
         : { status: 'invalid', age: null };
+}
+
+/** FR-75: Geburtsjahr für die Kohortensterbetafel. Gültiges Geburtsdatum → dessen Jahr;
+ * sonst Planungsjahr − Startalter. Ohne Alter `null`.
+ * @param data Personenrecords der gelesenen Quelle.
+ * @param year Kalenderjahr der Planung.
+ * @returns {number|null} Geburtsjahr oder `null`.
+ */
+export function personBirthYear(data, year) {
+    const birth = validateIsoDate(data?.[PERSON_VALUE_KEYS.geburtsdatum]);
+    if (birth.status === 'valid') return birth.year;
+    const age = personAge(data, year);
+    return Number.isSafeInteger(age.age) && Number.isInteger(year) ? year - age.age : null;
 }
 
 /** Vollendete Jahre am lokalen App-Kalendertag, auch für die Wohnrechtbewertung; ohne Writes. */
@@ -183,7 +196,9 @@ export function projectPersonPension(data = {}, year, careSettings = careSetting
         annual.renteImJahr = 0;
     }
     const care = careTodayFromRecord(data, careSettings);
-    const pflegegeld = /** @type {import("../../typcheck/simulator-ui.js").CareAllowanceAnnual} */ (careAllowanceAnnual)({ grade: care.grade, preset: careSettings.preset, careForm: care.form, careValues: careSettings.careValues }) / 12;
+    // FR-73 P6: Pflegegeld erst nach dem Angehörigenausfall des Haushalts, wie im Simulator.
+    const pflegegeld = /** @type {import("../../typcheck/simulator-ui.js").CareAllowanceAnnual} */ (careAllowanceAnnual)({ grade: care.grade, preset: careSettings.preset,
+        careForm: effectiveCareFormToday(care, careSettings), careValues: careSettings.careValues }) / 12;
     return { ...(pflegegeld > 0 ? { pflegegeld } : {}), beginning, legacyStart, renteMonatlich: monthlyPension,
         sonstigeEinkuenfte: monthlyOtherIncome(effectiveIncomeFromRecord(data), year) + pflegegeld, ...annual,
         renteStartMonate: startMonths,

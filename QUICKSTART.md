@@ -29,7 +29,11 @@ Ausführlich: [Ein Beispiel wählen](docs/reference/BEISPIELHAUSHALTE.md#ein-bei
 
 ### Monatsbudget finden
 
-Wechsle zu Balance. Vergleiche Monatsbudget, feste Einkünfte und Entnahme aus dem Vermögen. Der Betrag ist eine Vorschau, bis ein Jahresbeschluss vorliegt. Öffne im Simulator „Annahmen → Einkünfte, Ausgaben und Bedarf“ und vergleiche die Jahreszeilen. Bei Max und Erika kannst du die Jahre vor und nach Erikas späterem Rentenbeginn vergleichen.
+Wechsle zu Balance. Vergleiche Monatsbudget, feste Einkünfte und Entnahme aus dem Vermögen. Das Beispiel bringt einen Jahresbeschluss mit; in einem neuen Haushalt ist der Betrag eine Vorschau, bis du das erste Jahr abschließt.
+
+Rechts zeigt „Was zu tun ist“ den Plan aus dem Jahresabschluss und je Zeile, ob er schon umgesetzt ist. Unten in der Karte steht zugeklappt die Vorschau auf den nächsten Plan. „Deine Reserven“ vergleicht Liquidität, Tagesgeld und Geldmarkt heute und nach Umsetzung. Die Marktphase findest du unter „Diagnose“. Den Abstand zum Jahreshoch zeigt die Karte nur bei einem verdeckten Bärenmarkt; die Variante „Markt erst heiß, dann Rückgang“ zeigt ihn im Jahresabschluss.
+
+Öffne im Simulator „Annahmen → Einkünfte, Ausgaben und Bedarf“ und vergleiche die Jahreszeilen. Bei Max und Erika kannst du die Jahre vor und nach Erikas späterem Rentenbeginn vergleichen. Monte Carlo rechnet automatisch, bis die jüngere Person 110 wäre. Die Lebensdauer zieht es für jede Person aus der Sterbetafel ihres Geburtsjahrgangs. Von der Aktienrendite gehen 0,5 % Fondskosten pro Jahr ab; den Wert findest du in Haushalt & Plan unter „Weitere Planwerte“.
 
 ## Erste Sicherung
 

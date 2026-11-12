@@ -66,14 +66,15 @@ try {
     assertEqual(regional.value, '10', 'Regionalzuschlag bleibt erhalten');
     const hint = addField(doc, 'pflegeStaffelPresetHint');
     updatePflegePresetHint({ value: 'amtlich' }, hint);
-    assert(hint.textContent.includes('Pflege zu Hause ohne Zuzahlung angenommen'), 'Hinweis nennt die Annahme zur Pflege zu Hause');
-    assert(hint.textContent.includes('40.400 €'), 'Hinweis grenzt den Preis eines Heimplatzes ab');
+    assert(hint.textContent.includes('zu Hause 0 € Zusatz und kein Pflegegeld'), 'Hinweis nennt die Annahme zur Pflege zu Hause');
+    assert(hint.textContent.includes('3.364 €/Monat'), 'Hinweis grenzt den Preis eines Heimplatzes ab');
     applyPflegeKostenPreset('custom');
     assertEqual(costs.map(field => Number(field.value)).join('/'), '200/2300/7100/15000/18900', 'Individuelle Werte erhält die übernommenen Beträge');
     applyPflegeKostenPreset('ambulant');
     assertEqual(costs.map(field => Number(field.value)).join('/'), '36000/42000/54000/66000/78000', 'Ambulante Staffel bleibt erhalten');
+    // FR-72 Punkt 6: „Stationär (Premium)“ entfällt; Heimzeilen rechnen mit den Pflegewerten.
     applyPflegeKostenPreset('stationaer');
-    assertEqual(costs.map(field => Number(field.value)).join('/'), '45000/60000/75000/90000/105000', 'Stationäre Staffel bleibt erhalten');
+    assertEqual(costs.map(field => Number(field.value)).join('/'), '36000/42000/54000/66000/78000', 'Entfallene Vorgabe „stationaer“ ändert keine Beträge');
 } finally {
     globalThis.document = previous;
     PersistenceFacade.resetPersistenceForTests();

@@ -16,7 +16,7 @@ Was eine Sicherung schützt und was beim Zurückholen verloren gehen kann. Für 
 
 Die Vollsicherung enthält alle gespeicherten Personen einschließlich Außenpersonen, deren Bestände und Einkünfte sowie Haushalt, Plan, Pflege- und Erbentscheidungen. Gespeicherte Ausgaben, Abschlussbelege, Vermögensverläufe, Tageskurse und Simulatoreinstellungen samt gespeicherten Kurzbelegen gehören dazu.
 
-Das Wiederherstellungsarchiv und Layoutpräferenzen gehören nicht in diese Datei. Eine Vollsicherung am anderen Gerät stellt daher keine Liste früherer Wiederherstellungspunkte her. Die Klappenstellung von „Budget im Vergleich“ und „Markt und Umschichtung“ bleibt während der Anzeige bei Aktualisierungen erhalten; sie wird nicht gespeichert. Während des Spielbereichs sind Vollsicherung und Import gesperrt. Auf Daten & Sicherung sind beide Knöpfe deaktiviert; eine graue Zeile erklärt den Grund.
+Das Wiederherstellungsarchiv und Layoutpräferenzen gehören nicht in diese Datei. Eine Vollsicherung am anderen Gerät stellt daher keine Liste früherer Wiederherstellungspunkte her. Die Klappenstellung des Kursverlaufs im Block zum verdeckten Bärenmarkt bleibt während der Anzeige bei Aktualisierungen erhalten; sie wird nicht gespeichert. Während des Spielbereichs sind Vollsicherung und Import gesperrt. Auf Daten & Sicherung sind beide Knöpfe deaktiviert; eine graue Zeile erklärt den Grund.
 
 ### Wiederherstellungspunkt
 

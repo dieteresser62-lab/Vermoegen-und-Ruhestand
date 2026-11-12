@@ -11,7 +11,7 @@ const raw = { jahr: 2, recordType: 'financial_year', financiallyEvaluable: true,
     WidowIncomeOffset: 1000, sonstige_einkuenfte: 60000,
     sonstige_einkuenfte_personen: [{ profileId: 'erika', amount: 40000 }, { profileId: 'max', amount: 20000 }],
     zufluss: 10000, zufluss_personen: [{ profileId: 'max', amount: 10000, label: 'Rückzahlung <sicher>' }],
-    einkuenfte_gespart: 30000, geplante_ausgaben: 5000, floor_brutto: 36000, floor_aus_depot: 0,
+    einkuenfte_gespart: 30000, geplante_ausgaben: 3000, floor_brutto: 38000, floor_aus_depot: 0,
     flex_erfuellt_nominal: 0, flex_haushalt_erfuellt: 6000, pflege_zusatz_floor: 4000, inflation_factor_cum: 1.25, inflation: 0 };
 const before = JSON.stringify(raw);
 const inputs = { partner: { aktiv: true }, simulationPeople: [{ profileId: 'max' }, { profileId: 'erika' }],
@@ -21,6 +21,7 @@ const inputs = { partner: { aktiv: true }, simulationPeople: [{ profileId: 'max'
         { monat: '2026-03', betrag: 1000, bezeichnung: 'Vorjahr' }
     ] };
 const personDisplayContext = { persons: [{ name: 'Max' }, { name: 'Erika' }] };
+const html0 = (entry, options) => renderProtocolTable([entry], options);
 for (const source of ['mc', 'backtest']) {
     const entry = source === 'mc' ? raw : { jahr: 2001, entscheidung: raw.entscheidung, row: raw, inflationVJ: 0 };
     for (const moneyBasis of ['nominal', 'real']) for (const logDetailLevel of ['normal', 'detailed']) {
@@ -30,12 +31,12 @@ for (const source of ['mc', 'backtest']) {
         else for (const id of ['withdrawal', 'floor-brutto', 'rente1', 'rente2', 'rentesum', 'widow-income-offset', 'other-income', 'zufluss', 'income-saved', 'planned-expenses', 'income-total', 'expense-total'])
             assert(block.some(column => column.id === id), `${source}: vollständige Einzelspalte ${id}`);
         assertEqual(block.find(column => column.id === 'income-total').extractor(entry), 82000, 'Renten bereits nach Anrechnung; Sparbetrag wird nicht zusätzlich gezählt');
-        assertEqual(block.find(column => column.id === 'expense-total').extractor(entry), 47000, 'Effektiver Grundbedarf plus gezahlter Haushalts-Flex plus geplante Ausgaben');
+        assertEqual(block.find(column => column.id === 'expense-total').extractor(entry), 47000, 'Effektiver Grundbedarf mit festen geplanten Ausgaben plus gezahlter Haushalts-Flex plus einmalige geplante Ausgaben');
         if (logDetailLevel === 'detailed') for (const id of ['withdrawal', 'jahresentnahme-real']) {
             const column = block.find(column => column.id === id);
             assertEqual(column.label, 'Laufende Entnahme', 'Detailspalte benennt die laufende Entnahme; Kennung bleibt erhalten');
             assertEqual(column.header, 'Laufende Entnahme', 'Sichtbarer Spaltenkopf benennt die laufende Entnahme');
-            assertEqual(column.explanation, 'Entnahme aus dem Vermögen für Grundbedarf und Flex; geplante Ausgaben stehen in eigener Spalte',
+            assertEqual(column.explanation, 'Entnahme aus dem Vermögen für Grundbedarf und Flex; feste geplante Ausgaben zählen zum Grundbedarf, einmalige stehen in eigener Spalte',
                 'Erklärung grenzt die laufende Entnahme von geplanten Ausgaben ab');
         }
         if (logDetailLevel === 'detailed') assertEqual(block.find(column => column.id === 'withdrawal').exportHeader,
@@ -44,9 +45,10 @@ for (const source of ['mc', 'backtest']) {
             'Entnahme aus Vermögen', 'Bisheriger Exportname der zweiten Entnahmespalte bleibt erhalten');
         const breakdown = protocolCashflowBreakdown(entry, options);
         assertEqual(breakdown.incomes.reduce((sum, item) => sum + item.amount, 0), 82000, 'Einnahmenposten ergeben exakt die Summe');
-        assertEqual(breakdown.expenses.reduce((sum, item) => sum + item.amount, 0), 47000, 'Ausgabenposten ergeben exakt die Summe');
+        assertEqual(breakdown.expenses.filter(item => !item.detail).reduce((sum, item) => sum + item.amount, 0), 47000, 'Ausgabenposten ohne davon-Zeile ergeben exakt die Summe');
         assertEqual(breakdown.expenses.map(item => `${item.label}:${item.amount}`).join('|'),
-            'Grundbedarf:32000|Pflege:4000|Flex:6000|Geplante Ausgaben (Auto <neu>):3000|Geplante Ausgaben (Raten):2000', 'Pflege im effektiven Bedarf enthalten; Ausgabenbezeichnungen nach Planjahr und Inflation');
+            'Grundbedarf:34000|davon feste geplante Ausgaben:2000|Pflege:4000|Flex:6000|Geplante Ausgaben (Auto <neu>):3000', 'FR-43: feste Ausgaben als davon-Zeile unter dem Grundbedarf; einmalige nach Planjahr und Inflation');
+        assert(html0(entry, options).includes('protocol-cashflow-detail'), 'davon-Zeile nutzt die eingerückte Darstellung');
         assertEqual(breakdown.incomes.find(item => item.label === 'Sonstige Einkünfte Erika').amount, 40000, 'Personenbetrag folgt Profilkennung');
         const html = renderProtocolTable([entry], options);
         const infos = [...html.matchAll(/<span class="ds-info-pop" role="tooltip">([\s\S]*?)<\/span><\/span>/g)];
@@ -61,14 +63,14 @@ for (const source of ['mc', 'backtest']) {
         assert(html.indexOf('protocol-cashflow-saved') > html.indexOf('protocol-cashflow-sum'), 'davon angelegt steht getrennt unter der Summe');
         assert(html.indexOf('protocol-cashflow-withdrawal') > html.lastIndexOf('protocol-cashflow-sum'), 'Vermögensentnahme steht getrennt nach der Ausgabensumme');
         const expenseColumn = columns.find(column => column.id === 'expense-total');
-        assert(html.includes(`<span>davon aus dem Vermögen bezahlt</span><span>${expenseColumn.valueFormatter(5000, entry)}</span>`),
-            'Geplante Ausgaben zählen auch ohne laufende Entnahme zum Vermögensanteil und folgen der Euro-Basis');
+        assert(html.includes(`<span>davon aus dem Vermögen bezahlt</span><span>${expenseColumn.valueFormatter(3000, entry)}</span>`),
+            'Einmalige geplante Ausgaben zählen auch ohne laufende Entnahme zum Vermögensanteil und folgen der Euro-Basis');
     }
 }
 // Kohärente Jahresdaten: Einkommen deckt nur den Floor, zusätzlich Flex oder den
 // gesamten Verbrauch. Einmalige Einkünfte fließen stets vollständig ins Vermögen.
 for (const [income, saved, withdrawal, portfolioFlex] of [
-    [6000, 0, 24000, 6000], [27000, 0, 3000, 3000], [60000, 30000, 0, 0]
+    [6000, 0, 26000, 6000], [27000, 0, 5000, 3000], [60000, 28000, 0, 0]
 ]) {
     const year = { ...raw, sonstige_einkuenfte: income, einkuenfte_gespart: saved,
         flex_erfuellt_nominal: portfolioFlex, entscheidung: { jahresEntnahme: withdrawal } };

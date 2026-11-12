@@ -6,11 +6,14 @@ import {
     endCareForDeceased,
     makeDefaultCareMeta,
     priceCareMeta,
+    resolveSimulatorCumulativeInflationFactor,
     updateCareMeta
 } from './simulator-engine-wrapper.js';
 import { resolveSurvivorFloorFactor, resolveSurvivorFlexFactors } from './simulator-survivor.js';
 import { MORTALITY_TABLE } from './simulator-data.js';
+import { applyCareTodayMortalityFloor, resolveBaseMortalityProbability } from './target-mortality.js';
 import { applyPartnerCareFallback } from '../shared/care-benefits.js';
+import { assignOfficialCareDraws, priceResidentialCare, replacesHomeFloor, updateResidentialCareState } from './simulator-residential-care.js';
 import {
     computeMarriageYearsCompleted,
     normalizeWidowOptions
@@ -18,7 +21,9 @@ import {
 
 export const MAX_SIMULATOR_COUNTER_VALUE = 0xFFFFFFFF;
 
-/** @param {string} gender
+/** Periodentafel 2023/25. Die Todesziehung nutzt seit FR-75 `resolveBaseMortalityProbability`
+ * (Kohorte V2, Pflege abgestimmt); dieser Export bleibt für bestehende Aufrufer.
+ * @param {string} gender
  * @param {number} age */
 export function resolveSimulatorMortalityProbability(gender, age) {
     const normalizedAge = Number(age);
@@ -68,6 +73,8 @@ export function createMonteCarloLifeState(inputs, rand, widowOptions = null) {
     const widowPercent = normalizedWidowOptions.mode === 'percent' && inputs.partnership?.status !== 'unmarried'
         ? normalizedWidowOptions.percent
         : 0;
+    // FR-72 Punkt 7: bei „Amtlich“ je Person einmal U aus dem eigenen Strom CARE_FORM.
+    assignOfficialCareDraws(inputs, rand, careMetaP1, careMetaP2);
 
     return {
         careMetaP1,
@@ -158,7 +165,9 @@ export function createMonteCarloPostRuinLifeState(inputs, shadowRand, {
     return state;
 }
 
-/** Preisabschluss ohne weitere Zufallsziehungen; auch für den Schattenpfad nach Ruin. */
+/** Preisabschluss ohne weitere Zufallsziehungen; auch für den Schattenpfad nach Ruin.
+ * Reihenfolge nach FR-72 Punkt 16: Grad und Tod stehen fest, dann Angehörigenausfall,
+ * tatsächliche Form (Heimzustand) und zuletzt die Preise. */
 /** @param {SimulatorInputs} inputs
  * @param {CareMeta|null} careP1
  * @param {CareMeta|null} careP2
@@ -171,9 +180,17 @@ export function priceMonteCarloCareForYear(inputs, careP1, careP2, currentState,
     p1Alive, p2Alive, previouslyJointAlive) {
     const household = { p1Alive, p2Alive, care: { p1: careP1, p2: careP2 } };
     applyPartnerCareFallback(inputs, household);
+    updateResidentialCareState(careP1, inputs, 0, household, yearIndex);
+    updateResidentialCareState(careP2, inputs, 1, household, yearIndex);
+    // FR-72 Punkt 5: Der Deckelanker bleibt der ursprüngliche Grundbedarf nach FR-55.
     const floorFactor = resolveSurvivorFloorFactor(inputs, household, previouslyJointAlive);
     /** @type {import('../../typcheck/rechenkern-integration').PriceCareMeta} */ (priceCareMeta)(careP1, inputs, currentState, yearIndex, floorFactor);
     /** @type {import('../../typcheck/rechenkern-integration').PriceCareMeta} */ (priceCareMeta)(careP2, inputs, currentState, yearIndex, floorFactor);
+    if (replacesHomeFloor(careP1) || replacesHomeFloor(careP2)) {
+        const inflationFactor = resolveSimulatorCumulativeInflationFactor(currentState ?? {});
+        priceResidentialCare(careP1, inputs, inflationFactor, yearIndex);
+        priceResidentialCare(careP2, inputs, inflationFactor, yearIndex);
+    }
 }
 
 /** @param {MonteCarloLifeState} lifeState
@@ -205,7 +222,7 @@ export function updateMonteCarloLifeEventsForYear(
 
     if (lifeState.singleNoCareFastPath) {
         if (!isAccumulation && lifeState.p1Alive) {
-            const qx1 = resolveSimulatorMortalityProbability(inputs.geschlecht, ageP1);
+            const qx1 = resolveBaseMortalityProbability(inputs, 0, inputs.geschlecht, ageP1);
             if (rand() < qx1) {
                 lifeState.p1Alive = false;
             }
@@ -288,11 +305,12 @@ export function updateMonteCarloLifeEventsForYear(
     if (lifeState.p2ActiveThisYear) careEverActive = true;
 
     if (!isAccumulation && lifeState.p1Alive) {
-        let qx1 = resolveSimulatorMortalityProbability(inputs.geschlecht, ageP1);
+        let qx1 = resolveBaseMortalityProbability(inputs, 0, inputs.geschlecht, ageP1);
         const careFactorP1 = /** @type {import('../../typcheck/rechenkern-integration').ComputeCareMortalityMultiplier} */ (computeCareMortalityMultiplier)(careMetaP1, inputs);
         if (careFactorP1 > 1) {
             qx1 = Math.min(1.0, qx1 * careFactorP1);
         }
+        qx1 = applyCareTodayMortalityFloor(qx1, careMetaP1, inputs, 0, inputs.geschlecht, ageP1);
         if (rand() < qx1) {
             lifeState.p1Alive = false;
         }
@@ -300,11 +318,12 @@ export function updateMonteCarloLifeEventsForYear(
 
     if (!isAccumulation && lifeState.p2Alive) {
         const p2Gender = inputs.partner?.geschlecht || (inputs.geschlecht === 'm' ? 'w' : 'm');
-        let qx2 = resolveSimulatorMortalityProbability(p2Gender, ageP2);
+        let qx2 = resolveBaseMortalityProbability(inputs, 1, p2Gender, ageP2);
         const careFactorP2 = /** @type {import('../../typcheck/rechenkern-integration').ComputeCareMortalityMultiplier} */ (computeCareMortalityMultiplier)(careMetaP2, inputs);
         if (careFactorP2 > 1) {
             qx2 = Math.min(1.0, qx2 * careFactorP2);
         }
+        qx2 = applyCareTodayMortalityFloor(qx2, careMetaP2, inputs, 1, p2Gender, ageP2);
         if (rand() < qx2) {
             lifeState.p2Alive = false;
         }

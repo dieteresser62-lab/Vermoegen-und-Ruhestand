@@ -1,10 +1,10 @@
 # Beispielhaushalte
 
-Welcher vorhandene Haushalt zu deiner Übungsfrage passt und was seine Varianten ändern. Für Nutzer und fachlich Interessierte. Codeprüfung: 30.10.2026; Zahlenstand: Handbuchdatum 23.10.2026 mit Spielkursen.
+Welcher vorhandene Haushalt zu deiner Übungsfrage passt und was seine Varianten ändern. Für Nutzer und fachlich Interessierte. Codeprüfung: 11.11.2026; Zahlenstand: Handbuchdatum 23.10.2026 mit Spielkursen.
 
 ## Auf einen Blick
 
-- Sechs synthetische Haushalte bieten zusammen 14 Grundfälle und Varianten.
+- Sechs synthetische Haushalte bieten zusammen 16 Grundfälle und Varianten.
 - Jeder Haushalt beginnt mit einer Lebensfrage; eine kleine Änderung macht ihre Wirkung sichtbar.
 - Die Varianten ändern gezielt einzelne Vorgaben, etwa Vermögen, Mindest-Flex, Pflege oder Nachlass.
 - Die Zahlen sind Übungsdaten und keine Aussage über die Tragfähigkeit deines eigenen Plans.
@@ -13,7 +13,7 @@ Welcher vorhandene Haushalt zu deiner Übungsfrage passt und was seine Varianten
 
 ### Lebenssituationen
 
-Für den ersten Einstieg eignen sich Max und Erika mit gestaffeltem Rentenbeginn. Renate zeigt eine kleine Rente, Jan und Lena eine lange Zeit bis zur Rente. Helga und Werner verbinden Pflegevorsorge mit Anleihen und Gold. Sophie fragt nach Teilzeit, Martin und Petra nach der Absicherung des überlebenden Partners.
+Alle Beispiele passen die Renten „wie Inflation“ an; der Plan rechnet mit 0,5 % laufenden Kosten für Aktien-ETF. Für den ersten Einstieg eignen sich Max und Erika mit gestaffeltem Rentenbeginn. Renate zeigt eine kleine Rente, Jan und Lena eine lange Zeit bis zur Rente. Helga und Werner verbinden Pflegevorsorge mit Anleihen und Gold. Sophie fragt nach Teilzeit, Martin und Petra nach der Absicherung des überlebenden Partners.
 
 Die folgenden Anfangswerte gelten für die sechs Grundfälle am Handbuchdatum, auf volle Euro gerundet. Geldvermögen umfasst auch Tagesgeld, Geldmarkt, Gold und Anleihen. Immobilien kommen zum Gesamtvermögen hinzu.
 
@@ -40,7 +40,7 @@ Erste Übung: Verschiebe Erikas Rentenbeginn um ein Jahr. Vergleiche im Simulato
 
 Wie viel Wunschbedarf trägt eine kleine Rente? Renate ist 67, erhält 1.400 € netto monatlich und plant 24.000 € Grundbedarf plus 12.000 € Wunsch-Flex im Jahr. Mindest-Flex ist 3.000 €. Gegenüber der Rente bleiben jährlich 19.200 € Wunschbedarf aus dem Geldvermögen zu finanzieren, vor Erträgen und Steuern.
 
-Der Grundfall nutzt Drei Töpfe: 15.000 € Tagesgeld, 45.000 € Geldmarkt, 145.000 € Aktien und 145.000 € Anleihen. Erste Übung: Ändere den monatlichen Wunschbedarf in 100-€-Schritten und rechne Monte Carlo jeweils neu. Beobachte „Grundbedarf gedeckt“; vergleiche danach „Kleines Vermögen“. Beide Fälle starten ohne Immobilie.
+Der Grundfall nutzt Drei Töpfe: 15.000 € Tagesgeld, 45.000 € Geldmarkt, 145.000 € Aktien und 145.000 € Anleihen. Erste Übung: Ändere den monatlichen Wunschbedarf in 100-€-Schritten und rechne Monte Carlo jeweils neu. Beobachte „Grundbedarf gedeckt“; vergleiche danach „Kleines Vermögen“. Beide Fälle starten ohne Immobilie. Zwei weitere Übungen: Stelle Renates Rentenanpassung von „wie Inflation“ auf „wie Löhne“ und vergleiche die Deckung. Setze im Simulator mit „Nur hier ausprobieren“ „Laufende Kosten Aktien-ETF“ auf 0 % und vergleiche erneut; dauerhaft steht der Wert in Haushalt & Plan.
 
 ### Jan und Lena
 
@@ -52,7 +52,7 @@ Geplant sind 40.000 € Erbe im Januar 2028 und 60.000 € Nettozahlung aus vere
 
 Was finanziert spätere Pflege? Helga und Werner sind 74 und 76, erhalten zusammen 2.800 € netto Rente monatlich und planen 36.000 € Grundbedarf plus 12.000 € Wunsch-Flex jährlich. Mindest-Flex ist 6.000 €. Im Grundfall haben beide keinen heutigen Pflegegrad und keine Immobilie.
 
-Das Geldvermögen verteilt sich auf 80.000 € Tagesgeld, 20.000 € Geldmarkt, 250.000 € Aktien, 150.000 € Anleihen und 100.000 € Gold. Die Pflegereserve von zusammen 60.000 € ist darin enthalten. Erste Übung: Vergleiche mit „Mit Haus, Werner Pflegegrad 3“ und suche im Szenario-Protokoll nach Änderungen von Pflegeform und Finanzierung. Heutige Pflegekosten müssen bereits im eingegebenen Grundbedarf stecken; siehe [Pflege](PFLEGE.md#kosten-im-bedarf).
+Das Geldvermögen verteilt sich auf 80.000 € Tagesgeld, 20.000 € Geldmarkt, 250.000 € Aktien, 150.000 € Anleihen und 100.000 € Gold. Die Pflegereserve von zusammen 60.000 € ist darin enthalten. Erste Übung: Werner Pflegegrad 3 eintragen; der Grundbedarf bleibt 36.000 €, Balance zeigt „Pflege Werner“ mit 1.500 €/Monat und den Hinweis zur Pflege. Vergleiche danach mit „Mit Haus, Werner Pflegegrad 3“ und suche im Szenario-Protokoll nach Änderungen von Pflegeform und Finanzierung. Grundbedarf und Flex gelten ohne Pflege; siehe [Pflege](PFLEGE.md#kosten-im-bedarf). Die Übung „Werner seit 01/2023 im Heim“ zeigt am Testdatum 23.10.2026 Heimjahr 4: „Heim Werner“ 2.611 €/Monat, Grundbedarf zu Hause 2.250 €/Monat (Sollfall D). Die Übung „Beide Grad 4 im Heim“ setzt beide heute mit Grad 4 ins Heim: Balance zeigt zwei Heimzeilen mit je 3.864 €/Monat und keinen Grundbedarf zu Hause, zusammen 92.736 € im Jahr. Das ⓘ bei „Ausgaben“ im Szenario-Protokoll zeigt ab dem ersten Jahr den wegfallenden Grundbedarf, die mit den Heimjahren sinkenden Heimkosten und die eigenen Ausgaben im Heim; die [Rechenprobe](PFLEGE.md#helga-und-werner-im-heim) nennt die Beträge.
 
 Liquidität aufteilen: Starte den Grundfall mit „Spielkurse, Testdatum“ am 23.10.2026. Öffne unter „Haushalt & Plan“ die „Weiteren Planwerte“ und ändere „davon im Tagesgeld“ von 12 auf 60 Monate bei fünf Jahren Reichweite. Vergleiche in Balance unter „Details & Drucken“ Richtung und Betrag der „Internen Umschichtung“. Das Ziel gilt weiter für Tagesgeld und Geldmarkt zusammen; die Pflegereserve bleibt gebunden. Stelle danach wieder zwölf Monate ein.
 
@@ -74,15 +74,16 @@ Der Grundfall heißt „Haus + Steuer“: unverheiratet, gegenseitig 0 % Geldant
 
 ### Unterschiede zum Grundfall
 
-Die sechs beschriebenen Grundfälle und diese neun zusätzlichen Varianten bilden alle 15 Steckbriefe. Nicht genannte Eingaben stammen aus dem jeweiligen Grundfall. Ein Variantenwechsel baut das Beispiel neu auf und verwirft deine bisherigen Übungen darin.
+Die sechs beschriebenen Grundfälle und diese zehn zusätzlichen Varianten bilden alle 16 Steckbriefe. Nicht genannte Eingaben stammen aus dem jeweiligen Grundfall. Ein Variantenwechsel baut das Beispiel neu auf und verwirft deine bisherigen Übungen darin.
 
 | Haushalt und Variante | Geänderte Vorgaben | Übungsfrage |
 | --- | --- | --- |
 | Max und Erika · „Haus und vermietete Wohnung“ | Max erhält ein Haus für 450.000 €, Erika eine Wohnung für 210.000 € mit 650 € Nettomiete monatlich. Gesamtvermögen 1.450.000 €, davon Geldvermögen 790.000 € und Immobilien 660.000 €. | Wie unterscheiden sich verfügbares Geld, Miete und Immobilienwert? |
-| Max und Erika · „Markt erst heiß, dann Rückgang“ | Planwerte wie im Grundfall. Die Spielkurse der Aktien steigen 2026 bis zum 15.06. auf das Doppelte des Vorjahresendes und fallen bis Ende 2026 auf das 1,25-Fache; Geldmarkt, Anleihen und Gold wie im Grundfall. | Was zeigt der Jahresabschluss 2026, wenn die Jahresendregel ein neues Hoch sieht, der Kurs aber weit unter dem Jahreshoch liegt (FR-71)? |
+| Max und Erika · „Markt erst heiß, dann Rückgang“ | Planwerte wie im Grundfall. Die Spielkurse der Aktien steigen 2026 bis zum 15.06. auf das Doppelte des Vorjahresendes und fallen bis Ende 2026 auf das 1,25-Fache; Geldmarkt, Anleihen und Gold wie im Grundfall. | Was zeigt der Jahresabschluss 2026, wenn die Jahresendregel ein neues Hoch sieht, gemessen am Jahreshoch aber ein Bärenmarkt herrscht (FR-77, verdeckter Bärenmarkt)? |
+| Max und Erika · „Plan teilweise umgesetzt“ | Planwerte und Jahresplan wie im Grundfall. Max hat seine Planzeile am 12.03. verkauft und gutgeschrieben; Erika hat am 02.09. ein gutes Drittel ihrer Zeile verkauft, die Gutschrift aufs Tagesgeld ist noch offen. | Wie zeigt die Karte „Was zu tun ist“ den Stand des Jahresplans, und was bedeutet „Gutschrift nachtragen“ (FR-77)? |
 | Renate · „Kleines Vermögen“ | Gesamtvermögen 90.000 €, davon Geldvermögen 90.000 € und Immobilien 0 €: Tagesgeld 15.000 €, Aktien 75.000 €, keine Anleihen und kein Geldmarkt. Strategie Standard. | Wie reagiert der Plan bei gleicher Rente und gleichem Bedarf? Ein Scheitern ist ein mögliches Übungsergebnis. |
 | Jan und Lena · „Lebensstandard halten“ | Mindest-Flex steigt von 6.750 € auf den gesamten Wunsch-Flex von 27.000 € jährlich. | Wie oft unterschreitet der tatsächlich gezahlte Flex diese strengere Schwelle? |
-| Helga und Werner · „Mit Haus, Werner Pflegegrad 3“ | Haus 450.000 €, je zur Hälfte; Gesamtvermögen 1.050.000 €, davon Geldvermögen 600.000 € und Immobilien 450.000 €. Werner startet mit Grad 3 und Angehörigenpflege. Grundbedarf 54.000 € einschließlich 18.000 € heutiger Pflegekosten. | Wann wechselt die Pflegeform, wann greift die Hausverkaufsregel? |
+| Helga und Werner · „Mit Haus, Werner Pflegegrad 3“ | Haus 450.000 €, je zur Hälfte; Gesamtvermögen 1.050.000 €, davon Geldvermögen 600.000 € und Immobilien 450.000 €. Werner startet mit Grad 3 und Angehörigenpflege. Grundbedarf 36.000 € ohne Pflege wie im Grundfall; die App rechnet 18.000 € heutige Pflegekosten im Jahr selbst dazu. | Wann wechselt die Pflegeform, wann greift die Hausverkaufsregel? |
 | Sophie · „Teilzeit vor der Rente“ | Gehalt ab Januar 2033 bis Ende 2037 nur 2.600 € monatlich; Rente unverändert. Bei unveränderten Beträgen bleiben rechnerisch 1.200 € Jahresüberschuss. | Welche Anlagebeträge entfallen durch fünf Jahre Teilzeit? |
 | Martin und Petra · „Gegenseitig 100 %“ | Weiter unverheiratet; jeder vererbt dem Partner Geld und Immobilien vollständig. | Wie viel bleibt nach modellierter Steuer verfügbar? |
 | Martin und Petra · „Verheiratet“ | Gegenseitig 100 % wie zuvor, nun verheiratet mit den dafür geltenden Steuer- und Hinterbliebenenannahmen. | Welche Folgen entstehen allein durch den Partnerschaftsstatus? |
@@ -106,7 +107,7 @@ Für dieselben Zahlen brauchst du ein unverändertes Beispiel mit „Handbuchdat
 
 ### Echte Kurse und Spielkurse
 
-„Spielkurse, Testdatum“ verwendet künstliche EUR-Kurse, Inflation und CAPE ohne Kursnetzanfragen. Echte Börsensymbole machen diese Werte nicht zu Marktkursen. „Echte Kurse von heute“ erlaubt dagegen aktuelle Abrufe; beim Beispiel sind die synthetischen Musterkurse zunächst Startwerte. Ohne erfolgreichen Abruf sind sie kein Beleg eines echten Kursstands.
+„Spielkurse, Testdatum“ verwendet künstliche EUR-Kurse, Inflation und CAPE ohne Kursnetzanfragen. Echte Börsensymbole machen diese Werte nicht zu Marktkursen. Beispielhaushalte bieten ausschließlich Spielkurse. „Erst ausprobieren – mit Max und Erika“ startet direkt am Handbuchdatum 23.10.2026 mit 790.000 € Gesamtvermögen. „Echte Kurse von heute“ ist im Startdialog nur bei „Kopie meiner Daten“ wählbar. Früher mit echten Kursen gestartete Beispiele bleiben bedienbar; ohne erfolgreichen Abruf sind ihre Musterkurse kein Beleg eines echten Kursstands.
 
 Ein Datumssprung schaltet bis zum Beenden auf Spielkurse, auch wenn du das Datum wieder auf heute stellst. Für Ergebnisvergleiche müssen außerdem Methode, Zeitraum, Seed und Ereignisannahmen übereinstimmen; siehe [Simulationsergebnisse lesen](SIMULATION_LESEN.md#gleiche-vergleichsannahmen).
 

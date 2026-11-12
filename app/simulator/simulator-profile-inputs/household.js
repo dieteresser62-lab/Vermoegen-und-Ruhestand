@@ -1,5 +1,6 @@
+import { localCalendarDate } from '../../shared/app-clock.js';
 import { HOUSEHOLD_CURRENT_LIMIT_MESSAGE } from '../../profile/profile-registry.js';
-import { readSimulatorHouseholdPlan, projectPlanToSimulator } from '../../profile/household-plan.js';
+import { readSimulatorHouseholdPlan, projectPlanToSimulatorProfile } from '../../profile/household-plan.js';
 import { buildProfileAssetRecord } from './tranches.js';
 import { aggregateProfileHealthBuckets } from '../../profile/profile-state.js';
 import { sumNumbers, moneyToCents, weightedAverage, maxNumber, ensureValueMatch, stableStringify } from './aggregate-values.js';
@@ -9,6 +10,8 @@ import { careTodaySources } from './care.js';
 import { SUPPORTED_PFLEGE_GRADES } from '../simulator-data.js';
 import { normalizeCareForm } from '../../shared/care-benefits.js';
 import { careTodayFromRecord } from '../../profile/profile-care.js';
+import { householdPensionAdjustment } from '../../shared/income-adjustment.js';
+import { careReference } from '../../shared/care-needs.js';
 
 /** @param {object[]} profileInputs
  * @param {string} primaryProfileId
@@ -26,7 +29,7 @@ export function combineSimulatorProfiles(profileInputs, primaryProfileId, { plan
         planValues = plan.status === 'valid' ? plan.entry.values : null;
     }
     if (planValues) {
-        const projected = projectPlanToSimulator(planValues);
+        const projected = projectPlanToSimulatorProfile(planValues);
         profileInputs = profileInputs.map(entry => ({ ...entry, inputs: { ...entry.inputs, ...projected } }));
     }
 
@@ -284,6 +287,7 @@ export function combineSimulatorProfiles(profileInputs, primaryProfileId, { plan
         aktiv: true,
         geschlecht: secondaryInputs.geschlecht || 'w',
         startAlter: secondaryInputs.startAlter || 0,
+        ...(Number.isSafeInteger(secondaryInputs.geburtsjahr) ? { geburtsjahr: secondaryInputs.geburtsjahr } : {}),
         startInJahren: secondaryInputs.renteStartOffsetJahre || 0,
         renteStartMonate: secondaryInputs.renteStartMonate ?? 12, renteKalenderbeginn: secondaryInputs.renteKalenderbeginn ?? false,
         monatsrente: partnerRente,
@@ -298,21 +302,23 @@ export function combineSimulatorProfiles(profileInputs, primaryProfileId, { plan
         brutto: 0
     };
 
+    // Rechnungstag (P7, PFA-7): Tagesdatum und Planjahr des ersten Profils mit heutiger Pflege.
+    const careSource = [primaryInputs, secondaryInputs].find(entry => entry?.careReferenceDate);
     const merged = {
         ...combined,
+        ...(primaryInputs.careToday?.grade || partnerCare?.grade ? careReference(careSource?.careReferenceDate || localCalendarDate(), careSource?.careReferenceYear) : {}),
         startAlter: primaryInputs.startAlter || combined.startAlter,
         geschlecht: primaryInputs.geschlecht || combined.geschlecht,
         renteMonatlich: p1Rente,
         renteStartOffsetJahre: primaryInputs.renteStartOffsetJahre || 0,
         renteStartMonate: primaryInputs.renteStartMonate ?? 12, renteKalenderbeginn: primaryInputs.renteKalenderbeginn ?? false,
-        rentAdjMode: primaryInputs.rentAdjMode || combined.rentAdjMode,
-        rentAdjPct: Number.isFinite(primaryInputs.rentAdjPct) ? primaryInputs.rentAdjPct : combined.rentAdjPct,
+        ...householdPensionAdjustment(primaryInputs, combined),
         partner
     };
 
 
     if (planValues) {
-        Object.assign(merged, projectPlanToSimulator(planValues));
+        Object.assign(merged, projectPlanToSimulatorProfile(planValues));
         delete merged.minimumFlexProfiles;
     }
     return { combined: merged, warnings };

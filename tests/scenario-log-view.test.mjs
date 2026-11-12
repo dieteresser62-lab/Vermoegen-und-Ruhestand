@@ -263,7 +263,7 @@ try {
     for (const mode of ['real', 'nominal']) {
         setEuroMode(mode, doc);
         const basis = mode === 'real' ? 'heutige Euro' : 'nominale Euro';
-        assertEqual(hosts.scenarioPathsHeading.textContent, `Ausgewählte Szenarien · ${basis}`, 'Szenarioüberschrift folgt der Basis');
+        assertEqual(hosts.scenarioComparisonChartBasis.textContent, basis, 'Diagrammbasis folgt der Euro-Basis (SE-2: Überschrift „Vermögen der Pfade“ bleibt fest)');
         assertEqual(hosts.scenarioListBasis.textContent, `Gesamtvermögen · ${basis} · Pfade nach Geldvermögen oder Aktienrendite ausgewählt`, 'Szenarioliste nennt nur die gezeigte Geldbasis');
         assert(hosts.scenarioSelectionSummary.textContent.replaceAll('\u00a0', ' ').includes(`P10 des Geldendvermögens · ${mode === 'real' ? '80' : '100'} € · ${basis}`), 'Auswahlüberschrift verbindet neutralen Rang, passenden Betrag und Basis');
         const markup = hosts.scenarioList.innerHTML + hosts.scenarioSelectedHeading.innerHTML
@@ -542,4 +542,28 @@ assert(careNames.includes('data-scenario-group="care"') && careNames.includes('H
     disposeScenarioLogView(doc);
     for (const id of ['scenarioComparison', 'scenarioComparisonChart'])
         assert([...hosts[id].listeners.values()].every(handlers => !handlers.size), 'Dispose entfernt Vergleichslistener: ' + id);
+}
+
+// SE-2: Ein Diagramm mit Umschalter „Drei Vergleichspfade | Gewähltes Szenario“; Listenwahl zeigt das gewählte Szenario.
+{
+    const viewHost = new Element('scenarioChartView');
+    viewHost.children = ['comparison', 'selected'].map(view => { const button = new Element('button'); button.setAttribute('data-scenario-chart', view); return button; });
+    const panels = Object.fromEntries([['scenarioComparisonChartPanel', 'comparison'], ['scenarioSelectedChartPanel', 'selected']].map(([id, view]) => {
+        const panel = new Element(id); panel.setAttribute('data-scenario-chart-panel', view); panel.hidden = view !== 'comparison'; return [id, panel];
+    }));
+    Object.assign(hosts, { scenarioChartView: viewHost, ...panels });
+    const toggleBinding = bindScenarioLogView({ document: doc, logs, onSelect: () => {}, onMode: () => {}, chartOptions: { initialWealth: 80 } });
+    const pressed = () => viewHost.children.map(button => button.getAttribute('aria-pressed'));
+    assert(!panels.scenarioComparisonChartPanel.hidden && panels.scenarioSelectedChartPanel.hidden, 'Start: drei Vergleichspfade sichtbar');
+    viewHost.dispatch('click', viewHost.children[1]);
+    assert(panels.scenarioComparisonChartPanel.hidden && !panels.scenarioSelectedChartPanel.hidden
+        && JSON.stringify(pressed()) === '["false","true"]', 'Umschalter zeigt das gewählte Szenario');
+    viewHost.dispatch('click', viewHost.children[0]);
+    assert(!panels.scenarioComparisonChartPanel.hidden && panels.scenarioSelectedChartPanel.hidden, 'Umschalter kehrt zu den Vergleichspfaden zurück');
+    hosts.scenarioList.dispatch('click', pick('char_p50'));
+    assert(!panels.scenarioSelectedChartPanel.hidden && toggleBinding.selectedId === 'char_p50', 'Listenwahl zeigt das gewählte Szenario im Diagramm');
+    toggleBinding.showChart('comparison');
+    assert(focusSelectedScenario(doc) && !panels.scenarioSelectedChartPanel.hidden, 'Replay-Rückweg zeigt das gewählte Szenario');
+    disposeScenarioLogView(doc);
+    for (const id of ['scenarioChartView', 'scenarioComparisonChartPanel', 'scenarioSelectedChartPanel']) delete hosts[id];
 }

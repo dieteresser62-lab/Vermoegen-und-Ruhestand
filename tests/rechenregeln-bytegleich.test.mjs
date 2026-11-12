@@ -1,3 +1,4 @@
+import { readLE1References } from './helpers/le-1-expectations.mjs';
 import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
 const readZG1References = value => readEV1bReferences(readBeforeEV1bReferences(value));
 import { readZG1References as readBeforeEV1bReferences } from './helpers/zg-1-expectations.mjs';
@@ -57,8 +58,8 @@ try {
             monteCarloParams: { anzahl: 1, maxDauer: 35, methode: 'regime_markov', seed: 12345 },
             runRange: { start: 0, count: 1 }, logIndices: [0], useCapeSampling: false, engine: EngineAPI });
         assertEqual(mc.financialMetricsValid, true, `${preset}: MC auswertbar`);
-        assertEqual(hash({ rows: backtest.rows, outcome: backtest.outcome }), readQSCReferences(readVF2BReferences(readGL1References(readAN1Hash(readJB2Hash(expected[preset].backtest))))), `${preset}: Backtest entspricht BK-2-Referenz`);
-        assertEqual(hash(mc.runMeta[0].logDataRows), readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readJB2Hash(expected[preset].mc)))))))), `${preset}: MC-Pfad 0 mit FR-21–24/27`);
+        assertEqual(hash({ rows: backtest.rows, outcome: backtest.outcome }), readLE1References(readQSCReferences(readVF2BReferences(readGL1References(readAN1Hash(readJB2Hash(expected[preset].backtest)))))), `${preset}: Backtest entspricht BK-2-Referenz`);
+        assertEqual(hash(mc.runMeta[0].logDataRows), readLE1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readJB2Hash(expected[preset].mc))))))))), `${preset}: MC-Pfad 0 mit FR-21–24/27`);
     }
 } finally {
     annualData.splice(0, annualData.length, ...original);

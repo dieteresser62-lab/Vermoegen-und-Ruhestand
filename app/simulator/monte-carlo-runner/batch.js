@@ -30,19 +30,25 @@ export function createMonteCarloHouseholdLifeContractV2() {
 
 export function createDemographyCareSurvivorDiagnosticsV1() {
     const contract = GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT;
+    const target = contract.mortality.target;
     return {
         schemaVersion: 'DemographyCareSurvivorDiagnosticsV1',
         contractSchemaVersion: contract.schemaVersion,
         contractRevision: contract.revision,
         hashes: { ...contract.hashes },
+        // FR-75: Todesziehungen folgen der Zieltafel (Kohorte V2); die Periodentafel dient nur der Pflegeabstimmung.
         mortality: {
-            tableType: contract.mortality.tableType,
-            period: contract.mortality.period,
-            cohortProjection: contract.mortality.cohortProjection,
-            futureMortalityImprovement: contract.mortality.futureMortalityImprovement,
-            officialAgeRange: { ...contract.mortality.officialAgeRange },
+            tableType: target.tableType,
+            source: target.source,
+            variant: target.variant,
+            birthYearRange: { ...target.birthYearRange },
+            cohortProjection: target.cohortProjection,
+            futureMortalityImprovement: target.futureMortalityImprovement,
+            officialAgeRange: { ...target.officialAgeRange },
             runtimeAgeRange: { ...contract.mortality.runtimeAgeRange },
-            tailEvidenceClass: contract.mortality.tailAssumption.evidenceClass
+            tailEvidenceClass: target.tailAssumption.evidenceClass,
+            qxTableHash: target.qxTableHash,
+            careCalibrationTable: { tableType: contract.mortality.tableType, period: contract.mortality.period }
         },
         care: {
             observedPrevalenceRuntimeRole: contract.care.officialObservation.runtimeRole,

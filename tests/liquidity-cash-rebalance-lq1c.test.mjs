@@ -146,7 +146,7 @@ try {
     const summary = new SummaryRenderer({ outputs: { balanceAnnualAction: host } });
     summary.renderAnnualAction({ confirmed: { ...receipt, liquidityContext: context }, label: 'Festgeschrieben' }, [], context);
     const historic = dialogElements(host).map(n => n.textContent).join(' ');
-    assert(historic.includes('Liquidität (Tagesgeld bis zum Ziel, Rest Geldmarkt)') && !historic.includes('davon Tagesgeld'), 'N-7: Balance zeigt den Beleg auch mit heutigem Kontext ohne neue Aufteilung');
+    assert(historic.includes('Aufs Tagesgeld bis zum Tagesgeldziel, der Rest in den Geldmarkt') && !historic.includes('davon Tagesgeld'), 'N-7: Balance zeigt den Beleg auch mit heutigem Kontext ohne neue Aufteilung');
     const sourceReceipt = createAnnualActionResult({ doc, result: { year: 2027, action: buy(10000) } });
     assert(dialogElements(sourceReceipt).some(n => n.textContent.includes('· Liquidität:')), 'N-8: Quelle heißt schlicht Liquidität');
     const runway = doc.createElement('input'), cashMonths = doc.createElement('input');

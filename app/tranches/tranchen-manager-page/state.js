@@ -84,7 +84,7 @@ export const RECONCILIATION_INPUT_IDS = [
 
 export const PROFILE_INPUT_IDS = [
     'profileImmobilien',
-    'profileCareGradeToday', 'profileCareFormToday', 'profileCareProgression',
+    'profileCareGradeToday', 'profileCareFormToday', 'profileCareResidentialSince', 'profileCareHomeCostsMonthly', 'profileCareProgression',
     'profileEinkuenfte',
     'profileTagesgeld',
     ...Object.values(PERSON_FORM_IDS),
@@ -114,6 +114,8 @@ export const PROFILE_ASSET_STORAGE_KEYS = [
 export const PROFILE_ERROR_DOM_IDS = Object.freeze({
     'careToday.grade': 'profileCareGradeToday',
     'careToday.form': 'profileCareFormToday',
+    'careToday.residentialSince': 'profileCareResidentialSince',
+    'careToday.homeCostsMonthly': 'profileCareHomeCostsMonthly',
     'careToday.progression': 'profileCareProgression',
     tagesgeld: 'profileTagesgeld',
     renteMonatlich: 'profileRenteMonatlich',

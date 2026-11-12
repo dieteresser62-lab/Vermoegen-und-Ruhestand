@@ -162,10 +162,11 @@ function buildAutoOptimizeEvaluationContract({
 }) {
     const suppliedParameters = modelAssumptions?.monteCarloParameters;
     const rawParameters = suppliedParameters || readMonteCarloParameters(baseInputs);
+    // LE-1b: Ohne eigene Vorgabe gilt die Dauer des Monte-Carlo-Felds, leer = automatisch bis Alter 110 der jüngsten Person.
     const monteCarloParameters = normalizeMonteCarloParametersV1({
         ...rawParameters,
         anzahl: runsPerCandidate,
-        maxDauer
+        ...(maxDauer === null || maxDauer === undefined ? {} : { maxDauer })
     }, { inputs: baseInputs });
     const useCapeSampling = modelAssumptions?.useCapeSampling === undefined
         ? readControlChecked('useCapeSampling', false, doc)
@@ -189,7 +190,7 @@ function buildAutoOptimizeEvaluationContract({
             stressPreset: baseInputs?.stressPreset ?? 'NONE',
             dynamicFlex: baseInputs?.dynamicFlex === true,
             horizonMethod: baseInputs?.horizonMethod ?? 'survival_quantile',
-            maxDauer
+            maxDauer: monteCarloParameters.maxDauer
         })
     });
 }
@@ -263,7 +264,7 @@ export async function runAutoOptimize(config) {
         seedsTrain,
         seedsTest,
         constraints,
-        maxDauer,
+        maxDauer: requestedMaxDauer = null,
         dynamicFlexMode = 'inherit',
         safetyGuards = true,
         onProgress = () => { },
@@ -310,10 +311,11 @@ export async function runAutoOptimize(config) {
 
     const evaluationContract = buildAutoOptimizeEvaluationContract({
         runsPerCandidate,
-        maxDauer,
+        maxDauer: requestedMaxDauer,
         baseInputs,
         modelAssumptions
     });
+    const maxDauer = evaluationContract.monteCarloParameters.maxDauer;
     const seedContract = deriveSeedArrays(
         evaluationContract.monteCarloParameters.seed,
         seedsTrain,

@@ -134,6 +134,11 @@ function clearHighlight(state) {
     if (state) { state.row = null; state.timer = null; }
 }
 
+// SE-2: Protokolle stehen zugeklappt; ein Sprung öffnet alle umschließenden Aufklappzeilen.
+function openEnclosingDetails(element) {
+    for (let node = element?.closest?.('details'); node; node = node.parentElement?.closest?.('details')) node.open = true;
+}
+
 /** Auch Links nach einem Neuaufbau benutzen die aktuelle Protokolltabelle.
  *
  * @param documentRef - Dokument der Simulatorseite.
@@ -147,6 +152,7 @@ export function jumpToLogAnalysisYear(documentRef, year, options, state = {}) {
     const row = documentRef.getElementById(`${options.yearPrefix}${year}`);
     if (!row) return false;
     clearHighlight(state);
+    openEnclosingDetails(row);
     const log = documentRef.getElementById(options.logId);
     if (log) log.scrollLeft = 0;
     row.scrollIntoView({ block: 'center', inline: 'nearest' });
@@ -177,7 +183,7 @@ export function renderLogAnalysis(documentRef, view, options) {
             const protocol = event.target.closest('[data-scenario-analysis-protocol]');
             if (protocol && host.contains(protocol)) {
                 const heading = documentRef.getElementById('scenarioProtocolHeading');
-                if (heading) { event.preventDefault(); heading.scrollIntoView({ block: 'start' }); heading.focus({ preventScroll: true }); }
+                if (heading) { event.preventDefault(); openEnclosingDetails(heading); heading.scrollIntoView({ block: 'start' }); heading.focus({ preventScroll: true }); }
             }
         });
     }

@@ -1,4 +1,7 @@
-import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
+import { readLE1References } from './helpers/le-1-expectations.mjs';
+import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readQSCReferences = value => readPFA1References(beforePFA1References(value));
+import { readQSCReferences as beforePFA1References } from './helpers/qs-c-expectations.mjs';
 import { readQSBReferences } from './helpers/qs-b-expectations.mjs';
 import { readVF2DReferences } from './helpers/vf-2d-expectations.mjs';
 import { readVF2BReferences } from './helpers/vf-2b-expectations.mjs';
@@ -84,7 +87,7 @@ assertEqual(qsh.beforeHash, readQSCReferences(readQSBReferences(readVF2DReferenc
     'QS-H 4: bisheriger vollständiger Backtestbeleg bleibt erhalten');
 assertEqual(qsh.rowsBeforeHash, qsh.rowsAfterHash, 'QS-H 4: Jahresrechnungen bleiben bytegleich');
 assertEqual(hash(backtest.rows), qsh.rowsBeforeHash, 'QS-H 4: keine geänderten Entnahmen, Steuern oder Folgejahre');
-assertEqual(hash(backtest), qsh.afterHash,
+assertEqual(hash(backtest), readLE1References(readPFA1References(qsh.afterHash)),
     'Helga/Werner: vollständiger Backtest nach FR-63, Tagesgeld zuerst in Anleihen und keine Auffüllung im Bärenmarkt');
 assertEqual(backtest.rows.filter(r => r.entscheidung.kuerzungProzent >= 10).map(r => r.jahr).join(),
     '2002,2003,2004,2005,2008,2009', 'Helga/Werner: FR-36: sechs stärkere Kürzungsjahre');

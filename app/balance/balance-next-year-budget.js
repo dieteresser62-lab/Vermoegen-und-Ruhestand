@@ -2,6 +2,7 @@
 import { captureAnnualRecords, annualRecordStorage, computeAnnualPlanUpdate } from './balance-annual-storage.js';
 import { evaluateAnnualDraft } from './balance-annual-storage-commit.js';
 import { buildBalanceEngineInputFromStorage } from './balance-input-storage.js';
+import { fixedPlannedTotal, isLegacyPlannedPosts } from './balance-planned-posts.js';
 import { prepareMarketPreview, projectMarketPreview, compareMarketBudgets, unavailableBudgetComparison } from './balance-market-preview.js';
 import { projectBalanceActionOrigin } from './balance-action-origin.js';
 import { projectOverviewFromRecords } from '../overview/overview-model.js';
@@ -76,9 +77,14 @@ function currentPlan(before, storage, year, engineApi, now) {
     return { targetYear: year, source: receipt ? 'Bestätigter Jahresbeleg' : 'Gespeicherte Jahresbasis ohne Abschluss',
         floor: baseline.snapshot.plan.floorBedarf, desiredFlex: baseline.snapshot.plan.flexBedarf,
         needBeforeIndexation: before.householdPlan.entry.values.floorBedarf + before.householdPlan.entry.values.flexBedarf,
+        // FR-73: Abstand des Pflegebedarfs vom Plan im laufenden Jahr; die Vorschau nennt die Änderung als eigene Ursache.
+        careDeviation: before.careNeeds ? before.inputData.floorBedarf - fixedPlannedTotal(before.inputData.plannedPosts) + before.inputData.flexBedarf
+            - before.careNeeds.plan.floorBedarf - before.careNeeds.plan.flexBedarf : 0,
         annualBudget: Math.round(baseline.monthlyBudget) * 12,
         annualIncome: (baseline.monthlyBudget - baseline.monthlyWithdrawal + (baseline.monthlySaving || 0)) * 12,
-        plannedPosts: baseline.plannedPosts || before.inputData.plannedPosts || null };
+        plannedPosts: baseline.plannedPosts || before.inputData.plannedPosts || null,
+        // FR-43: Nur feste Posten, die im Budget dieses Belegs stecken; Altbelege und Belege ohne Posten zählen 0.
+        fixedInBudget: baseline.plannedPosts && !isLegacyPlannedPosts(baseline.plannedPosts) ? fixedPlannedTotal(baseline.plannedPosts) : 0 };
 }
 
 /** Beträge beschreiben verschiedene Wirkungen, keine additive Budgetzerlegung:
@@ -100,16 +106,23 @@ function changeReasons(current, next, annualBudget, draft, marketDifference = 0)
         return start?.startsWith(`${draft.planningYear}-`) ? [`Rente ${person.meta.name} ab ${start.slice(5, 7)}/${draft.planningYear}`] : [];
     });
     const posts = [...new Set((next.inputData.plannedPosts?.items || []).map(item => item.label))].join(', ');
+    const careNeeds = next.calculation?.careNeeds;
+    // FR-43: Feste geplante Ausgaben stecken im Grundbedarf der Engine, gehören aber nicht zur Pflegeabweichung.
+    const fixedNext = fixedPlannedTotal(next.inputData.plannedPosts), fixedChange = fixedNext - current.fixedInBudget;
+    const care = careNeeds || current.careDeviation ? next.inputData.floorBedarf - fixedNext + next.inputData.flexBedarf
+        - next.values.floorBedarf - next.values.flexBedarf - current.careDeviation : 0;
     const components = /** @type {ChangeReason[]} */ ([
         { kind: 'inflation', text: 'Inflation', amount: inflation, effect: 'need' },
         { kind: 'rounding', text: 'Rundung der Planwerte', amount: rounding, effect: 'need' },
+        ...(careNeeds || current.careDeviation ? [{ kind: 'care', text: 'Pflege: Heimjahr, Staffel und Deckel im Folgejahr', amount: care, effect: 'need' }] : []),
         { kind: 'income', text: pensions.join(', ') || 'Renten und laufende Einkünfte im Folgejahr',
             amount: next.inputData.renteMonatlich * 12 - current.annualIncome, effect: 'income' },
         { kind: 'planned_posts', text: posts ? `${posts} ${draft.planningYear}` : 'Geplante Ausgaben und einmalige Einkünfte im Folgejahr',
             amount: reserveChange - announcedIncomeChange, effect: 'planned_flows', reserveChange, announcedIncomeChange },
+        ...(fixedChange ? [{ kind: 'fixed_expenses', text: 'Feste geplante Ausgaben im Grundbedarf', amount: fixedChange, effect: 'need' }] : []),
         { kind: 'guardrail', text: 'Leitplanke/Budgetgedächtnis',
-            amount: annualBudget - current.annualBudget - inflation - rounding - marketDifference, effect: 'budget',
-            monthlyBudgetEffect: (annualBudget - current.annualBudget - inflation - rounding - marketDifference) / 12 },
+            amount: annualBudget - current.annualBudget - inflation - rounding - care - fixedChange - marketDifference, effect: 'budget',
+            monthlyBudgetEffect: (annualBudget - current.annualBudget - inflation - rounding - care - fixedChange - marketDifference) / 12 },
         ...(marketDifference ? [{ kind: 'market', text: 'Hochreferenz im Variantenvergleich', amount: marketDifference,
             effect: 'budget', monthlyBudgetEffect: marketDifference / 12 }] : [])
     ]);
@@ -182,7 +195,7 @@ export function projectNextYearBudget({ storage, engineApi, now = appNow, annual
                 stored: /** @type {import('../../typcheck/rechenkern.js').EngineSuccess} */ (rule.modelResult),
                 rule: /** @type {import('../../typcheck/rechenkern.js').EngineSuccess} */ (rule.modelResult),
                 high: /** @type {import('../../typcheck/rechenkern.js').EngineSuccess} */ (high.modelResult) }),
-            displayEvaluation: { modelResult: rule.modelResult, inputData: rule.inputData, profilverbundRuns: rule.runs },
+            displayEvaluation: { modelResult: rule.modelResult, inputData: rule.inputData, profilverbundRuns: rule.runs, careNeeds: rule.calculation.careNeeds },
             rule: variant(rule, comparison.rule, false), high: variant(high, comparison.high, true) };
     } catch (error) {
         const reason = error instanceof Error ? error.message : 'Folgejahresprojektion nicht verfügbar.';

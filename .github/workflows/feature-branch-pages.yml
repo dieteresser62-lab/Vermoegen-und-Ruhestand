@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    # Nur im öffentlichen Repo; der private Schnappschuss hat keine Pages
+    if: github.event.repository.name == 'Vermoegen-und-Ruhestand'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -2,6 +2,7 @@
 /** @import * as I from "../../../typcheck/speicher-integration.js" */
 
 import { HOUSEHOLD_CARE_VALUES_KEY, parseCareValues } from '../household-care-values.js';
+import { CARE_HINT_KEY, parseCareHint } from '../household-care-hint.js';
 import { PARTNERSHIP_KEY, readPartnership } from '../../profile/household-partnership.js';
 import { PLANNED_EXPENSES_KEY, assertPlannedExpensesRecord } from '../../profile/household-planned-expenses.js';
 import { HOUSEHOLD_PLAN_KEY, assertHouseholdPlanRecord } from '../../profile/household-plan.js';
@@ -91,7 +92,7 @@ export function validatePersistenceDomainRecords(records, options = {}) {
             const summary = assertBackupSummary(JSON.parse(/** @type {string} */ (records[DATA_BACKUP_SUMMARY_KEY])));
             if (hasOwn(records, OVERVIEW_BACKUP_KEY) && summary.exportedAt !== records[OVERVIEW_BACKUP_KEY]) throw new Error('Sicherungszeit und Vergleichsbasis widersprechen sich.');
         }
-        for (const [key, validator] of /** @type {[string, (value: unknown) => unknown][]} */ ([[HOUSEHOLD_CARE_VALUES_KEY, parseCareValues], [HOUSEHOLD_PLAN_KEY, assertHouseholdPlanRecord], [PLANNED_EXPENSES_KEY, assertPlannedExpensesRecord], [ANNUAL_PLAN_RECORD_KEY, assertAnnualPlanRecord]])) {
+        for (const [key, validator] of /** @type {[string, (value: unknown) => unknown][]} */ ([[HOUSEHOLD_CARE_VALUES_KEY, parseCareValues], [CARE_HINT_KEY, parseCareHint], [HOUSEHOLD_PLAN_KEY, assertHouseholdPlanRecord], [PLANNED_EXPENSES_KEY, assertPlannedExpensesRecord], [ANNUAL_PLAN_RECORD_KEY, assertAnnualPlanRecord]])) {
             if (hasOwn(records, key)) validator(records[key]);
         }
         if (hasOwn(records, PARTNERSHIP_KEY)) readPartnership(records[PARTNERSHIP_KEY]);

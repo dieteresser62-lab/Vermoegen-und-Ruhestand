@@ -1,9 +1,10 @@
 // @ts-check
 /** @import {SimulatorInputs,SimulationState,Random,CareMeta} from '../../../typcheck/rechenkern' */
 import { advanceSimulatorCumulativeInflationFactor } from '../simulator-engine-helpers.js';
-import { resolveSimulatorCumulativeInflationFactor, updateCareMeta, computeCareMortalityMultiplier, sampleNextYearData, resolveMonteCarloCape } from '../simulator-engine-wrapper.js';
+import { resolveSimulatorCumulativeInflationFactor, updateCareMeta, computeCareMortalityMultiplier, sampleNextYearData, resolveMonteCarloCape, endCareForDeceased } from '../simulator-engine-wrapper.js';
 import { euros } from '../simulator-engine-direct-utils.js';
-import { resolveSimulatorMortalityProbability, priceMonteCarloCareForYear, createMonteCarloPostRuinLifeState, updateMonteCarloLifeEventsForYear } from '../mc-life-events.js';
+import { priceMonteCarloCareForYear, createMonteCarloPostRuinLifeState, updateMonteCarloLifeEventsForYear } from '../mc-life-events.js';
+import { applyCareTodayMortalityFloor, resolveBaseMortalityProbability } from '../target-mortality.js';
 import { recordWealthFanYear, createWealthFanPath } from '../wealth-fan-aggregation.js';
 import { recordEuroZeroWithdrawal } from '../mc-euro-metrics.js';
 import { recordMonteCarloStressZeroWithdrawal } from '../mc-stress-tracker.js';
@@ -16,7 +17,7 @@ import { throwIfMonteCarloAborted } from './batch.js';
 import { sampleMonteCarloYearV1 } from '../mc-year-sampling.js';
 import { cloneReplayValue, createReplayStressEvents, createReplayHouseholdEvent, createReplayAnnualRecord } from './replay-records.js';
 import { applyStressOverride } from '../simulator-portfolio.js';
-import { buildNextMarketDataHist } from '../simulator-year-portfolio.js';
+import { buildNextMarketDataHist, readYearReturnRates } from '../simulator-year-portfolio.js';
 /** @param {import('../../../typcheck/rechenkern').StressContext|null} stressCtx */
 export function shouldUseStressBootstrap(stressCtx) {
     return stressCtx?.type === 'conditional_bootstrap' && stressCtx.remainingYears > 0;
@@ -86,16 +87,18 @@ export function appendPostRuinZeroWithdrawals({
             && simulationsJahr < effectiveTransitionYear;
 
         if (!isAccumulation && p1Alive) {
-            let qx1 = resolveSimulatorMortalityProbability(inputs.geschlecht, ageP1);
+            let qx1 = resolveBaseMortalityProbability(inputs, 0, inputs.geschlecht, ageP1);
             const careFactorP1 = /** @type {import('../../../typcheck/rechenkern-integration').ComputeCareMortalityMultiplier} */ (computeCareMortalityMultiplier)(postRuinCareP1);
             if (careFactorP1 > 1) qx1 = Math.min(1, qx1 * careFactorP1);
+            qx1 = applyCareTodayMortalityFloor(qx1, postRuinCareP1, inputs, 0, inputs.geschlecht, ageP1);
             if (rand() < qx1) p1Alive = false;
         }
         if (!isAccumulation && p2Alive) {
             const p2Gender = inputs.partner?.geschlecht || (inputs.geschlecht === 'm' ? 'w' : 'm');
-            let qx2 = resolveSimulatorMortalityProbability(p2Gender, ageP2);
+            let qx2 = resolveBaseMortalityProbability(inputs, 1, p2Gender, ageP2);
             const careFactorP2 = /** @type {import('../../../typcheck/rechenkern-integration').ComputeCareMortalityMultiplier} */ (computeCareMortalityMultiplier)(postRuinCareP2);
             if (careFactorP2 > 1) qx2 = Math.min(1, qx2 * careFactorP2);
+            qx2 = applyCareTodayMortalityFloor(qx2, postRuinCareP2, inputs, 1, p2Gender, ageP2);
             if (rand() < qx2) p2Alive = false;
         }
 
@@ -103,6 +106,9 @@ export function appendPostRuinZeroWithdrawals({
             p1Alive, p2Alive, previouslyJointAlive);
         comparisonPairing?.onYear?.({ runIndex: runIdx, yearIndex: simulationsJahr, historicalYear: null,
             p1Alive, p2Alive, careP1: postRuinCareP1?.grade ?? 0, careP2: postRuinCareP2?.grade ?? 0 });
+        // Wie im normalen Jahreslauf endet die Pflege einer verstorbenen Person nach ihrem Sterbejahr.
+        endCareForDeceased(postRuinCareP1, p1Alive);
+        endCareForDeceased(postRuinCareP2, p2Alive);
         if (!p1Alive && !p2Alive) break;
         recordWealthFanYear(wealthFanPath, simulationsJahr + 1, 0, 0, true);
         if (!isAccumulation) {
@@ -267,7 +273,7 @@ export function continuePostRuin(context) {
             context.simState.marketDataHist = buildNextMarketDataHist({
                 marketDataHist: context.simState.marketDataHist,
                 yearData: shadowYearData,
-                rA: Number(shadowYearData.rendite),
+                rA: readYearReturnRates(shadowYearData, context.inputs.equityCostPct).rA,
                 resolvedCapeRatio
             });
         }

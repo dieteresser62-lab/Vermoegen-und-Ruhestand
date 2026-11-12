@@ -1,8 +1,11 @@
+import { withPreviousRunEvidence } from './le-1b-expectations.mjs';
 /** FR-41 verändert ausschließlich diese vier Herkunftsfelder ohne Pflege.
  * Finanzdaten, Jahreszeilen, Zufallsziehungen und alle anderen Metadaten
  * bleiben Teil des vollständigen JSON-Vergleichs mit der historischen Referenz.
  */
 export function withLegacyCareProvenance(output) {
+    // LE-1b: Laufbeleg der Sterbetafel zuerst auf den Stand vor LE-1b (helpers/le-1b-expectations.mjs).
+    output = withPreviousRunEvidence(output);
     const original = output?.samplingDiagnostics?.modelContracts?.demographyCareSurvivor;
     if (!original) return output;
     const contract = { ...original, contractRevision: '2026-08-01.1', hashes: { ...original.hashes,

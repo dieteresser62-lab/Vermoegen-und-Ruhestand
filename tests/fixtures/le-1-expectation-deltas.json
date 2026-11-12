@@ -1,0 +1,1240 @@
+{
+ "schemaVersion": "LE1ExpectationDeltasV1",
+ "baseCommit": "0e98826d",
+ "reason": "FR-75/FR-41: Monte Carlo zieht Tod aus der Kohortentafel V2 mit pflegeabgestimmter Grundsterblichkeit; Pflegeeintritt und Fortschritt neu abgestimmt; Dynamic-Flex-Horizont aus der Kohortentafel; Eingaben tragen das Geburtsjahr und die automatische Dauer (Tail-Risk-Horizont). Backtests ohne Dynamic Flex ändern sich nur im Eingabeecho (request).",
+ "hashes": {
+  "7686bca5fd194b28d97514179dea5e26361e6f69da19ac30a8eead6454c714f7": "9685300807e3f05984393dfc24c75f00068d7564b3d407ffa28049ce59c5369f",
+  "21ba6d54c3f5fc3d7d33eafe8715718b025fabb43f1904ec4d49925d0ffa867e": "27bdde4329603fd0c1f06892cc0cadc1ec58b1071274539779e474344577653e",
+  "5b6282aa9e315d428eff4f4fcd3965a6e4d2a94e95a14ee529761d89698128f9": "bb29198c8b29489621f66a59f941005ed67961ca28d6aaa1fd0966950400e1f7",
+  "654135cd32dd241d77513a1be1c1580deeaf6e942d98b39f4a5fb80920a8d5e2": "0e26a4e072cc7645fc3ea0c2f8fa687b8aa76b42cfb5cac9b7903e314af04f50",
+  "cc4d7604df9d0a227b3827bc19fd3a917926b0d9b0fd548a0f843eafc903339b": "1fc22e189093794c473767f8d31246d5f69fec17684200a83734b344508a178d",
+  "6b42ccb15e6f9d62a9f0693317a06f21ddcdd1999cbd400edb8434f1b0435814": "4e34f2feefda6f8438c71fa753b770ce2e1fe2fb4051166e44f6f3fd2b285820",
+  "7b6603279c352944fd8bc1b0152725ba2a1faca63b076c3ec34fa364698c7715": "669eccd0f8f548f23d959aded4e987aed241cd3d33be4e7326b345f687047bb8",
+  "bbc5ce3f3af1bc482baf1fdc6ee23b0f6ebb3915105d926096ec7c337653d9fe": "0b9f75424f6b496990476334a8de5759bb697e32ec4a66f36c98f099ccc13b9f",
+  "46d8102e6a5928ec2579e33573cd8b4b71118aa450fe4cdce5978691c103b940": "3d273f97c0530941a1d173af4ec7b14ab0c7fc2aaa4fb6ef08003db964105d13",
+  "c7bf57d584f5c4fb0f80f7a9dd63da0f6ed63f9d4ab98f96ecb32fce6f9353a9": "d5461862428fb6f97e7d832e3c2ac6244bb2e9a2d0c6d1560ab29c6384806f65",
+  "2f267b77b611b184ceecd86f78bc2071dc886172f5486419c47526b7371caec9": "908b24d709dbec82d42a8c01b7e48a9b58898126a20af3b673954ba9101e1e4c",
+  "b70d11fdde6f766e47b77d2d01c3645cd8e53f702bd1d3e0190a097b45c4007b": "e717238be054aaa0f97df35a60e61f7e40d5e8759205ca45336ed8536ab01f60",
+  "df98f2ab0a3a59d2cd860f056b57b5ffabe5874215de1f86235951db2fa9fc18": "589cb9c4ba8eabda7b57ded92c5289239870960172cd26f522584593f88603f4",
+  "81e55f049b1eebe384bc97daf3b460b0557f6ba6a45f5ca7e77a77633ee5a8bc": "6495458786cdaa66ab2319c35381c2dcc3ff93965c7b74cf5b368115657dff12",
+  "45d144662c00c097805fdca8d4c54656195de84d95dfddb6e3112162cc6d5521": "fabeb4260fd67adf410ff32303cf72418eba29c70726d60923622ac8dc937e55",
+  "df70f34c00dfcc24d75bc9603d0f2a8673abeaccd0dc2cc8dfaf707653664633": "3bcca38764b102acba4ff72227ab4f9fc7001191ed4cbfc30ee8aed68fde748a",
+  "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4": "a8cc4fb6e287b9f75aefd2268df7d5ed6361a68677011be6d24f1105e191a154",
+  "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8": "47a7cbbc6f5a56ad33deed89e53145fc44187a2d5b9c3336d41bc9dccfb2a89e",
+  "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c": "14e17ec54c83d8e01af6acd024639c1161da856520c401ca887079bd33a6114d",
+  "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96": "e0d284d814a2293913689129bf4febe4389a5c16f0e207c8e866bba341dd5483",
+  "1cb3d507e4a80f63a69126d1d5f113f38e99142ac73a8856ced8473326f16ab9": "7e0fa8178d3a0b55d6d581db794ba1179b298ea5aef0c652cace8922a35a899f",
+  "9758a31817a20c85d5d1add7ce75e228c9f68ccd4a3cf9b86b38f2633f321293": "d4349af171e0e180f36a39f16b25f4f449e10971a5cafe4ef1579334579649c5",
+  "b9ed739f65fd1ac4b851487785c86bc077beb903fd859fec79cdd2e32647c958": "7e18aee9056e39a12470c140d2bc2ec510b4a1b5ee44a9b2b9e74a70441cb472",
+  "f8df9cd8aff2a15547006dd159111d1f484ed872e7bd271bd65fb7a734cd5fda": "6c3c1172f9a1d324197f94632fb70d4e4832b239aacb228b16c443858b3ef46f",
+  "6e528385052d5ba97a1d24fdd9188899dda7a486fbab59cbc9dbca099e2c986f": "11660a59c3d76925d5fc2c7a0f335eed0ba388a9acee6a81ec5d2d48f1a8b477",
+  "1946d6dec675510ad7437246a884d2acb252ddc29ce469e713ba26e6629f96b6": "1b2bf62463a7de064b78ad8e8cf4a84f59f4999cf8de5eb838ae119fb2844dfe",
+  "112db1af74eeeb564edfc9b54fde424c604a64527c291965fb474b426bfa1b9c": "95e3f8ef3f3d775b164eb32bc3bde18f264f0d87cb14249ec9e98460ec3f21ec",
+  "eadfe13cda2f9a17d0d620bd047ae3d615dfcd5b6b5498f450baa837a469f15e": "6a2ad34132fd2299d543045816859e413055efe3f57fbb8b98fbfff058ec1395",
+  "38090bf91e0f769ab3a4ff10c546eee1dcb700f7acdc40f7a332e2d896fffbb1": "fded1562f0b6464c3fef2b72afdba256cfce199311bfd6bb18d176f6a6402aad",
+  "97ffe36943898c578f45177e4966fa68b08d59b60c3489ab5ddb6ac5840f713a": "402a6cc89a4355f9aba2cdf952c100329b71885275d2b1e76280c7086c998dff",
+  "cc89c892fa62182688bd0dafcc0a7d357d11a4bf9ea6dca0e6fb68f8450f5428": "7e5fd9507755fdb1e9b590095ffe3d7535cc1f3a8e0936772e777a4364548b73",
+  "26d70ec8f2c8d42f3404b8a12bfd551e5add5a0e5004ec94922b181de5dd92d5": "85ae72f1b53ecb7e7dfb8b7890860187d7155d1186abd0792c7bcd14a37983d7",
+  "a2623669392c0b0f8ba86d796682a9a47fcc01e545f79f1bdb94e3e0d1db5a63": "4c3b5281f9524b42bc6236f04ba7924547d15036688e1be93416026c0d4f673b",
+  "0869c8f8c570f7b5bd9f4ff9d678c9a8063d29ff4027b7b41e6c834c58d1677f": "dfe00d8176c19b6ad6ff804515103362d663f68c1f7652ba4bf3c419b6fbae38",
+  "21a4f194243bcd26adc5f87cca7adbcc2d23b1d3f8fb86f2ac891662981344df": "bed319984dd01293d7bf838bece630b9791c7a86ae4f1696342b126fe5d6abc2",
+  "c87dee249abe5058b2a928d79427c0f009807eaa90f2c2ba4c556762c06f975f": "4633e32bf0d76a500840a0d9df45cec2a459544972fa5b47de61cdfe684f5c58",
+  "4e68cb145ebac4c6f496443357e5912a3a78ec19f03e140197fba087efbc1c05": "65857ffa21095afa05a751d45dc867db6b3d5d83d1c166bc5126d496ca31bd9f",
+  "1dbe1290d7e8c5666b32508cbe924111df3aed8a356c2a4a7e71e8834e73f3df": "8f76665054ec52f4b93c0510e6921726b5601d4987b468f048b264e382cde1c5",
+  "acd1070ee270cf5a98307a6203ca66bf4aae5f84c61485297a66e217ee23e3e9": "4832292fe4a8dfcf84f0a0f0af1b0103b5877d67db9d9e483dba828948a73c19",
+  "03a239d21a714e7cadcec8f491d2cab6ae7cd2894f3b47cc249885acaad3fadd": "5803bdfb3301d0cd43197bacb104fa7a237b441e67f6bc602b7fb487d606e60a",
+  "6e37ad7accef502a80863c2dd547c833025e5f219b54441a198ae97a3c75c0ff": "fe2f469576ca56e46ac736601d87a1a46250d3d0a25cc1968e8e122c3baf3ed3",
+  "efc5c7f0783599b6ad85334d28742c46f8890668341f72f37f5460637e81b1c5": "9750a89465c727237e0267a61371f36fb708f1f1eeaad10581e2eece6b7dd3cb",
+  "e3fc85b7c8ac790e3d20e9fd381de77cadfd0b71b99f85b163a116b5b4b1894e": "8c01abef5de3cfa41656374557e0548b806ba4496443de199ef1ef9618eb602e",
+  "1e2fecc7e957ebb7a55c50917274a3714aea8c28a78d408f41e87e6b4259953a": "ae188b7826c7e8d3aa6668ee382ddca6ff47506da5fd64469775cafd730799a7",
+  "89a57df223414c4c506d78acecef2693b38c0e6f5c14a0402f69d8d7fd2d9a2f": "d76fa6e418846798d1cb1c518d253b7fbbf177c26f56aa11b1758428e1525c07",
+  "21f121ae603a15127b384e0032772abc2a77c62a39b1a91317aaace6a99ee1e7": "bc0e93d7b8bcbc5e66a823abf9b40b53448fe16c91babf6e93d29fa4b29bf615",
+  "6361a47a86e157a54758b10925d04c55ab0aecefad52bae93f329dd45fddfd83": "c741de5b9c38b64c492eaf152753ae5390670230609d3d5cb078e5bf38594e64",
+  "713454c47c84de103489e73552749f8d83e1dd912e7b4340b43e8930cf8384fe": "d95ac1665747d7f33b83ef9748f86c83714863ffedab69bbd9a5d401098948af",
+  "b6722f1cc12b66232048344cca11c9229ea5c21a78eae6cadded802132336587": "865b17f03a6dec4539cbe1bf1e693d31946a7394d01e1584f9b301def00145c7",
+  "34a457229a649a97f2ae020b7eca97b86c89b71f1627c6de92233eb491dab10b": "5a3cbadfef3a61309d4b19b31c19ddd8103831ad7534088ce613704e2bbacfe6",
+  "22695a5c97710b709aa61295a86ba61a926c5913ab504894c3d63a686ee0b1b2": "fea363a222b6da830bc6d55212bc35c4b7d614517a2411475faa2dd85ac28310",
+  "4cd1b1946a75ba764e8f5bb895b259f6ec183a76c3d02e2f6c1e5e7acf2d025d": "cfc69198270c206cd0cfe8a510969e24fd2f2c8ec9654a725e34e1c1dedbb043",
+  "d4725eeb3059d8c425d43301caff66f7f86c5029341c8f7652545d45a2bc303a": "ff9be7e740175898c615a415c18d90d26ef72f1b33875d5d1306d031c32dd3e8",
+  "9ba0b169b5be842f4a0c8ea071020ca22f51a4694165f0534526d18876d4c5a3": "550c16e62e3d590f4b42fac39c2e634340489f41fe165545488e86e185b78061",
+  "37a3513fd0a14767783b1be7dcfe849d4123025ffae0e00baece3da0b6ebaef4": "e05f456af61ffad16a42de77713fe603c11b76b1d604e42d4e6fb52aef120139",
+  "9e5a0744398691b6a7d972c2748425b274c07166a75960384024905089c41d94": "027ce79fdde48b73d9ed0cfa2a0e5979d7e9fc245c0786a7d85fd4aa630366af",
+  "c45e054b939a3098395a4aa763a0926b4f5f28684d310573e1c273c9b2ddfcc6": "6391b0d3b7f5c09439b67564cace89a322bdb4b3abb95c1cdc35ae2a2b91bb0d",
+  "79f3d2056d422233a4e3042406d4c56addf5bce984300ab2621612d844495179": "644c4a64732ca062e3938256f51bb2b7f910b957b646ebf83624d9ac6fb5317b",
+  "11860e38cb787fc2d4f7b8c0ce0e4d5aae63df26ef8c13b1da0cd99f7dd1a854": "3b65e60c024f2aef680c0939abb091d35cb2a5eb5a74e1e1324dd4037a2ff8a7",
+  "ce4231e33fd60055269475cd6bf7703bc9498ffb1066152439bfa2802b3c40d9": "4cd6f53f0616b27c2ddfe4f752bb6916b8ba4ee0233e7af3b0d5e20acd59d50f",
+  "8ded79e9f82645b2697ab3c07ac0acd11b8cce887842cd7d62533af4c49fd140": "82e7965fd04770311098354bcff3cfa4bfee303f67a077732904b58544f41524",
+  "cb55c4cfa1a414086ed5caa7973315f80da6f33466d2c081b55c55d7d9c91a9a": "9dd69a21a62c7474790db2547aa88d496268f32d6f884aa0a9c85ee07e623e54",
+  "66f3938a9ae095c5ed269e9a929d8799e0d1f8da317fa9fbbc796d9f7cab1047": "259a4d08f0ded3514670aee5f5d4f116c351ee89cabacb905cb727bc7314ba0f",
+  "87eacc461c908aaa5794f95ec0421e54358ff84a5f02b9e893274dc78f3f309f": "82d872184ea853efba6ad0aba2b59b46e1c444361ca5dec5626a75e7ef3cbc2d",
+  "ccaaae485fb88c0f309587566cef86972cae5182f1d2b6771597882712f0886b": "c8504d93d7c3a9e6c6bc4bfd1c63d51222dd301e9880f5014e47fd772e999d77",
+  "426a7fefcea75b66b5c4ebb47f7dfdad27952b3b767d4986347972335c6be01e": "8baf8305fcaf2b456eb61221537f5ffb0ed897795e7460138565819577557821",
+  "1f34671fffe0bcc938ff0001b7479d9570467a929d45722bb86109ce5fef6b79": "1b5015f2f8bf749fe355c9ee8b3a042e9338c7b929a604a47730c40b0b83d307",
+  "db9d984565f7a15d47d152f5e735065842a18e2a06271638e9b7fad17ffc9b19": "490650adc5e58336a3af13609bacc4df8059109cf6cda06bb222ef79950e838a",
+  "fe56ac2da71bc5d96823a7b90be8426091ad38514a4d91ba147eab3c4f2e3563": "9768c8a8282a01f5a61215fd0c2cb79e1999daefa161ab1a1f71595e486eca35",
+  "1a3458d2c791cf473f4c4343c41e0706e15c97e24589c9943961184f65c64349": "293cf6fa3d5c88a65ebab2ea1572c1779b48c8d5d356f7724465eb026313959b",
+  "bd7bdb0f0aaf26835f8f6c1202c4e56e530e5904b81c7dd9cdac4eaa19d43fee": "a7e789278337631d7ef105d3f184c8e3162792a5bf9d59b559620aafcde0cfb0",
+  "e0e457e84a563f0bd22f8da187cf94c885d59e0e081a7347fe6658610114dd25": "8c64b84d7e41ecbfca13cc3d0125eddbda2d5a221c7e84929cd95b4d64530ae8",
+  "a05e8dec7eaf9c320fe3d280ba220ce1efd766cc34d748c66ddddc64fd0ffdf7": "5edea944f93d66d10c7c1d69041bbfe00e59b9a7d75f0f35da16f3265525a698",
+  "261c7dcff0cae86f83a2c80f1cc4063566bce126be1843ddcca607a6e8a3b071": "688b92d83fd84480f70fa96a6aa60129ee6a874681342a9eddd851a77644a13a",
+  "4707b2e0a1a1488a500cfdce746a0f11bd6eb4fa02101b79876f40d2c51375a3": "c3c5a735ca148be0f3b66bdba9634a0590b966d67149d4ab28c1759d4b25df82",
+  "25882f79c264c3730641fd0c9e129944223be86ac3d3eb56fc91842d5c557a14": "d51f2a93947c5f4fc4c65b808c4de6588ef110c41380d319eb97df7b92860beb",
+  "36ac68be6eac16549a5690ab08f22c33b3ca9b53cb4e7bb28acc65b268cb49bf": "acfd156b59ac280a9e2646918b2d91e32cef7ad51673eeca60ebfacd85578a8e",
+  "d8828cf4dc0dbf2a62e3be56bfb1aa868be169d1c8e71578a53dea931329b895": "ec6ab74749572883e64ec950d0753a3d98459307ae27e815c8d20091a51c500d",
+  "538df67451c1086afd8198211361bcfb1a7aa2afaa5ab5af3e168d8df3432cd3": "81dd789788878a6b20e379ac3ae6e804723a775e92ae83d80b0c184c1c9eed44",
+  "1d8165665efb0c0bee45ea951d80a6ea7706534270c3497a92c455d7d4a8e6e9": "f69e462f4051338dc6658700b9978a506d925cab0694a471d17c15524ecc5869",
+  "46583a003aea677c9c7b7c6c17ba160cb70a926cadf0e0f09359b0654e2cabc4": "38688ba161f83087827d06715b058f49cc8cfc9318a3a299d7675e2b8f10b1fa",
+  "833a2ba96d3e7d43d3a06111b88ad27492d49276381af506c0c1ebcfcac37221": "8fa1bb703e72ef784f7389fbc017edc763877adefc38264576d295b35f629393",
+  "7770085cb642c8518d423f8209c3bebd08f61748af56c12d555456ca7eb355c7": "11ec906ad159338298d5bb77e50ba7552e250f685e46a0209d13eaa225c0119d",
+  "7c0096e2a3a95ef47ba3861fa820674517b8f8759dfd164067decdf1b8e6a252": "87e65bf956d0923f84c0eaaa8948e060fb8d5a8551b9962d0e7b92744e9799c2",
+  "66d11ab4bbb965d47fd91eba26a06399c8e116b8d77ca39ffc6f05764df4afc6": "5831e59ea3f23979604c725f451ab727ee7f13ce38b7270dc9a5c32ed2fa5e36",
+  "9d53463a383a2fa34089248b15faa1db76a7c07297ab5ac64d52312169bf343f": "bb2799117997ee50b91a5dbc715d864c88895cb2518784ac23a50f02c847ed19",
+  "37d18c8c88fa20d2515228cba10605cdfb787e4a4a83685a13858c2f955ec415": "5553bbf960a2a0b460d5d6ac3864a812639f9eaad25e7274e72f2fe7a0203226",
+  "d3a783c7e061c38313d0e5c5fe86eecbb9d63676d12712b2150a446967bd2bcd": "a15ae736264963d49409874a025e1fc6ef973e7931f628c7c26b02e577b4ac91",
+  "2b2d89d58c4fd36d798a1b30baa8ab47165ad05875ace633f3188c9d6924863a": "c34aa4d97ea984a6a34689a679ecfcb20d56cc90524774684645bf8982a83150",
+  "9607aa5ebfb2efe709190267d07e6386f3bae3df8af1b076bc269d0060959c3e": "da17eb5b22abaa69816fd4c9c4c967ebbe017cb98d9d55b867de44dde641f186",
+  "2212e4b3c8da8d04e6cae1a7986e7b53de82dec765ecfcd85f4381d55e784c29": "499d24202b7e25099480a6057805fb5ce8de8dcd1c3a7ecca283eb078cc4fb50",
+  "6954491105a27dd791ad95cfa55f243a244de65effc1cea3016e842d5aa5d4bf": "4d6e6d83f92c7c3bf512a37aea9ba76317230912f94dd4bcc60f273a6ac0e920",
+  "98df5262baf9a41d0bef1961acaff8247882923e299752e8fcb4cadb201b05b9": "2cd9d83f203cf03c865d871392f3cea7ecfbfb90990524b4c04442b7c2e3a810",
+  "fb674e19857659397271b2dffabb9441eb4f4bb349a80734c0268ccb30334fcf": "46f80845aa31aa6faba4545bcc684a66ec11143b7a26c21b431a82985dc202ae",
+  "dac57b2bfe014ac417cacbe7bfb84930e86b0d0393889701176a06d29833d880": "9f58e234888737d770b9c5b2aa846fa87b109ad650191358d5c3d5600382cd4b",
+  "f309b346cab9594e0ed0c107960f0fb9686da3969c8661c6a953907ecea33d22": "56ecb594f7f2c5ae08f984f632540e1a6d9802d3756cbb2847345ffc0e3fc6b1",
+  "c935c015150049de22d14e414b13c11d3ba0241d82efd7dbee700f99190b97ab": "08545435024497877ecc59293f5e99c7922a63bac6048f2e1ce9e23c12f60e5b",
+  "2b7f929c6901383a3df8a0f8ff48e44690b7d10a0fea50785f99480ca1991973": "c6fade41c8f84c351a750685ec536cbf75b98168ca64d21cb45c22bffddf9edf",
+  "e409ee19a12f16d8d05ba8233592196cabb996f019ff6f69ab8d72aeaad4662c": "6b85485e3b7299f9310211fd4ab1b1a2c94afb7f6b2666b16c3583342049a587",
+  "c67807edeb7648b0152e11e10fd2ea0cebdce3f32a2cd7245b7c89ec1ee5dea0": "77ec2ae6e016cc8eab19f948253b4974b95589e2dfce01fff3511491280a0a0d",
+  "058ef6be4b5cc6e1982787814eb35d36a95d802050028990deb5e7706abcc569": "7387bf10fc3f0a6f1bfa10f63c21291eb2f90724a5c46e28980272ed9d5f141b",
+  "051d1c62e4b00b7180e545a849daeda4627a3052a02d9a7d8402ffa9421dd5ab": "b6b4a7332d1cbf2b46dbe891872fbffeafef78f2139dd54d257684f537515831",
+  "4440a5e44a36b5130993259bcbf322145aab1af09ddfb093878907f1b31e7116": "a8e2dec87cbfde167206dd70591c0280ee80818ae57cce76632da744906cd5a3",
+  "4a04de53fec9c9fdef39b43f208cb2970a61521dcf82ba0cf28478e0848dc662": "bc9b2153eeb15e185003bcd4cf5e77b19ac7941c7fd7dfb86196797e8e20c8ae",
+  "957c365a17bbb904accfaf15dec2bece029563dab96f8955ace555b9237294bf": "440554b09e43e1be82e28cbfbb3a39e6432123e2fe2d0449b2962d25000fdf81",
+  "6fe363928c14d1962132c554696119af8afe44f939b8d60046c391a4e1fa09fe": "2a13951d5690e54cdc0c181283f7d8817ab3333dfc3c251d184f1012222b939f",
+  "bcf84c85146f377dea553cacfe44cf228cd7ce9df435b7c4893117c602be426f": "20261de8252030edd0a4b2608560fac4a5ed722de7a8c14aba84086be493c1f7",
+  "f14aa64c3ddf739373b1a0fb72c034a58f4d3655b32594a42d4a25fb7888eca8": "c8e2674268f11c57e3a65558dbe87e8a3d02e0f8a58d40f39c291fb495e26e9a",
+  "61a9667aad99b9f15adc89d3264acb5a58bf5a7645521bad05cbfaff27517e2e": "3ebb4d79816bc05816b15ee9dd3cec3826843860559708b0b0920a3fe73cbd2b",
+  "d116eedbed1e18c0c5d4eb7494217f7310372d74a71b57267f5811a1bd8c75cf": "11c780ff5f651c5be9934212e13699189e83bbd276aadd558fb3b5f7489affc8",
+  "21a25d5c3788f0e8f6f6e04b4ec2bc262e3896f57d6a82295eb109cfec1a5553": "51d7bc9ec7accf3bd8d2b343298995b2d77e30fe40e945f8d77e60d55cffa2f0",
+  "2452a345e8ceb1fe2078f2f24f8c790f8c54e5fb02287b057b9302d541b6ddf1": "1b34e4369c2ccd38ffdc42a3bcb25d561b9382c97256ad2755881f66fcb6d2cf",
+  "55beab64df6355a4051329f9a90ba2da3f71dfb708b1faf326cb4207eccfca08": "0c4ad1abfd26657eec7b75e7725f8423fc2af036719233b44581c9d0c2445dee",
+  "58d62af14e8a3a0607ed1a3c1c4e593d8ca977a9b7bf2de5e0102e7b5ada363e": "390d762103f7af8ed9c03dac16d92cc0bf92e02bc3d73bf46fedfb2ebaf360d3",
+  "ce6f08e11c0fdf16cd9abcf2a115876cedb81f1a9694145773273c2df2f8b0d7": "fb4ff6ed97d39ce0bb2390493684c46586185ab33180d3302b2d710ec2fdebdd",
+  "8ad0629a3391edf255c9833ccd03a44503fa9be7fc0e0a7b2df6c64505822dce": "abbc3dfa1238964ea0ab6be1f863bfd99bbf9d8e6aaebfe228e8284e39cd1a07",
+  "0a6313c151af6b81be63801ffd649dac1203633926098b1229b818295f0169c8": "ea1343fd5118a6a451db00602397ee77366b2f961f713dc1e911d9825ddab894",
+  "6a6f9bb462eb812c26e76b2eb210ce5031a0ff807c8a002b960b22e8f0d2587c": "008fc4378970ad715e0c8f1563f997764b208ebece7692b09f2b4fb220ac6222",
+  "95f081cfef70068b765eb563657bcfacaaa23ee0cf2462da22809c03ed9fd17a": "729dc7c6d5432f9718375d97a803310c3da687bcc4a4de124b7a9849003f870e",
+  "e60676fcde6b4e369d5338c0306f96ca687f3dea7ab50396394c9da3f6c5b2f8": "57bd6e33c608c7317fa17da366af9772a452db045ba1c89962822fb54b618f1b",
+  "5a315a7b2ef605792bb7f898b7de19c4ad2886500e0352280332bad928764728": "89940cb33489bf2f9b3df9b933c30269302fcea2f3d5e0ac177a7518b9edf919",
+  "bafe8ec3fcc9bfb7c54adacea1885f7a92f2514364176d0ffaf83a55af37bf09": "482e5c5442489ab8fa7bdbe25ce6e557d983c1ad1bc5e15e3948761510af167d",
+  "eae56a3709f5032674aab0b9b61920282b8b88e489f917e80ff8ffd9dcb63bc2": "fa42679c869130f0c3a3fdbf43977ed3bba44830f424f1d243c7e7a1e0d7e03c",
+  "b2b9e0931dd4fcd19c574945f5fde3af4c894022b6b9175c3dc072ed28f04ca6": "bab4bcff8de7e45235f9331a7a7130aa6c23118d56e15eebdfe239bded336176",
+  "116f66c0c49102365f129c123d1451454fa1bd0e08e4967e3055b320c9dcfd93": "bc58d355d03a05becda1d2c3cbac326b267e392be0e0f639062d80d43dedb911",
+  "929d1c8e9d914c2ab7faf618008d9824c75de4193c12745fc81d299730820e37": "66da7c1c0c9bae46453cdadaf143c13163acb284aac1e62cbabf952c7975622c",
+  "185fe0ea65bbc919cad3a5587eae06f507ad2cba30c724aaccdd207b5a5e9e33": "57787b8c198679704ed260aacc59f8c65771d70cc200d1b2e000188dc911c220"
+ },
+ "evidence": [
+  {
+   "test": "annual-care-values.test.mjs",
+   "assertion": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen",
+   "old": "7686bca5fd194b28d97514179dea5e26361e6f69da19ac30a8eead6454c714f7",
+   "new": "9685300807e3f05984393dfc24c75f00068d7564b3d407ffa28049ce59c5369f"
+  },
+  {
+   "test": "annual-care-values.test.mjs",
+   "assertion": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen",
+   "old": "21ba6d54c3f5fc3d7d33eafe8715718b025fabb43f1904ec4d49925d0ffa867e",
+   "new": "27bdde4329603fd0c1f06892cc0cadc1ec58b1071274539779e474344577653e"
+  },
+  {
+   "test": "annual-care-values.test.mjs",
+   "assertion": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen",
+   "old": "5b6282aa9e315d428eff4f4fcd3965a6e4d2a94e95a14ee529761d89698128f9",
+   "new": "bb29198c8b29489621f66a59f941005ed67961ca28d6aaa1fd0966950400e1f7"
+  },
+  {
+   "test": "annual-care-values.test.mjs",
+   "assertion": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen",
+   "old": "654135cd32dd241d77513a1be1c1580deeaf6e942d98b39f4a5fb80920a8d5e2",
+   "new": "0e26a4e072cc7645fc3ea0c2f8fa687b8aa76b42cfb5cac9b7903e314af04f50"
+  },
+  {
+   "test": "annual-care-values.test.mjs",
+   "assertion": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen",
+   "old": "cc4d7604df9d0a227b3827bc19fd3a917926b0d9b0fd548a0f843eafc903339b",
+   "new": "1fc22e189093794c473767f8d31246d5f69fec17684200a83734b344508a178d"
+  },
+  {
+   "test": "annual-care-values.test.mjs",
+   "assertion": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen",
+   "old": "6b42ccb15e6f9d62a9f0693317a06f21ddcdd1999cbd400edb8434f1b0435814",
+   "new": "4e34f2feefda6f8438c71fa753b770ce2e1fe2fb4051166e44f6f3fd2b285820"
+  },
+  {
+   "test": "annual-care-values.test.mjs",
+   "assertion": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen",
+   "old": "7b6603279c352944fd8bc1b0152725ba2a1faca63b076c3ec34fa364698c7715",
+   "new": "669eccd0f8f548f23d959aded4e987aed241cd3d33be4e7326b345f687047bb8"
+  },
+  {
+   "test": "annual-care-values.test.mjs",
+   "assertion": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen",
+   "old": "bbc5ce3f3af1bc482baf1fdc6ee23b0f6ebb3915105d926096ec7c337653d9fe",
+   "new": "0b9f75424f6b496990476334a8de5759bb697e32ec4a66f36c98f099ccc13b9f"
+  },
+  {
+   "test": "annual-care-values.test.mjs",
+   "assertion": "Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen",
+   "old": "46d8102e6a5928ec2579e33573cd8b4b71118aa450fe4cdce5978691c103b940",
+   "new": "3d273f97c0530941a1d173af4ec7b14ab0c7fc2aaa4fb6ef08003db964105d13"
+  },
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:grund: Startbestand bytegleich",
+   "old": "c7bf57d584f5c4fb0f80f7a9dd63da0f6ed63f9d4ab98f96ecb32fce6f9353a9",
+   "new": "d5461862428fb6f97e7d832e3c2ac6244bb2e9a2d0c6d1560ab29c6384806f65"
+  },
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:grund: Datumssprung bytegleich",
+   "old": "2f267b77b611b184ceecd86f78bc2071dc886172f5486419c47526b7371caec9",
+   "new": "908b24d709dbec82d42a8c01b7e48a9b58898126a20af3b673954ba9101e1e4c"
+  },
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:grund: Januarbestand bytegleich",
+   "old": "b70d11fdde6f766e47b77d2d01c3645cd8e53f702bd1d3e0190a097b45c4007b",
+   "new": "e717238be054aaa0f97df35a60e61f7e40d5e8759205ca45336ed8536ab01f60"
+  },
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:halten: Startbestand bytegleich",
+   "old": "df98f2ab0a3a59d2cd860f056b57b5ffabe5874215de1f86235951db2fa9fc18",
+   "new": "589cb9c4ba8eabda7b57ded92c5289239870960172cd26f522584593f88603f4"
+  },
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:halten: Datumssprung bytegleich",
+   "old": "81e55f049b1eebe384bc97daf3b460b0557f6ba6a45f5ca7e77a77633ee5a8bc",
+   "new": "6495458786cdaa66ab2319c35381c2dcc3ff93965c7b74cf5b368115657dff12"
+  },
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:halten: Januarbestand bytegleich",
+   "old": "45d144662c00c097805fdca8d4c54656195de84d95dfddb6e3112162cc6d5521",
+   "new": "fabeb4260fd67adf410ff32303cf72418eba29c70726d60923622ac8dc937e55"
+  },
+  {
+   "test": "asset-strategy.test.mjs",
+   "assertion": "Jan und Lena: vollständige Musterrecords mit belegter FR-57-Anlage",
+   "old": "df70f34c00dfcc24d75bc9603d0f2a8673abeaccd0dc2cc8dfaf707653664633",
+   "new": "3bcca38764b102acba4ff72227ab4f9fc7001191ed4cbfc30ee8aed68fde748a"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+   "new": "a8cc4fb6e287b9f75aefd2268df7d5ed6361a68677011be6d24f1105e191a154"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8",
+   "new": "47a7cbbc6f5a56ad33deed89e53145fc44187a2d5b9c3336d41bc9dccfb2a89e"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+   "new": "14e17ec54c83d8e01af6acd024639c1161da856520c401ca887079bd33a6114d"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96",
+   "new": "e0d284d814a2293913689129bf4febe4389a5c16f0e207c8e866bba341dd5483"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "1cb3d507e4a80f63a69126d1d5f113f38e99142ac73a8856ced8473326f16ab9",
+   "new": "7e0fa8178d3a0b55d6d581db794ba1179b298ea5aef0c652cace8922a35a899f"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "9758a31817a20c85d5d1add7ce75e228c9f68ccd4a3cf9b86b38f2633f321293",
+   "new": "d4349af171e0e180f36a39f16b25f4f449e10971a5cafe4ef1579334579649c5"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "b9ed739f65fd1ac4b851487785c86bc077beb903fd859fec79cdd2e32647c958",
+   "new": "7e18aee9056e39a12470c140d2bc2ec510b4a1b5ee44a9b2b9e74a70441cb472"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "f8df9cd8aff2a15547006dd159111d1f484ed872e7bd271bd65fb7a734cd5fda",
+   "new": "6c3c1172f9a1d324197f94632fb70d4e4832b239aacb228b16c443858b3ef46f"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+   "new": "a8cc4fb6e287b9f75aefd2268df7d5ed6361a68677011be6d24f1105e191a154"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8",
+   "new": "47a7cbbc6f5a56ad33deed89e53145fc44187a2d5b9c3336d41bc9dccfb2a89e"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+   "new": "14e17ec54c83d8e01af6acd024639c1161da856520c401ca887079bd33a6114d"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96",
+   "new": "e0d284d814a2293913689129bf4febe4389a5c16f0e207c8e866bba341dd5483"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+   "new": "a8cc4fb6e287b9f75aefd2268df7d5ed6361a68677011be6d24f1105e191a154"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8",
+   "new": "47a7cbbc6f5a56ad33deed89e53145fc44187a2d5b9c3336d41bc9dccfb2a89e"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+   "new": "14e17ec54c83d8e01af6acd024639c1161da856520c401ca887079bd33a6114d"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96",
+   "new": "e0d284d814a2293913689129bf4febe4389a5c16f0e207c8e866bba341dd5483"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "6e528385052d5ba97a1d24fdd9188899dda7a486fbab59cbc9dbca099e2c986f",
+   "new": "11660a59c3d76925d5fc2c7a0f335eed0ba388a9acee6a81ec5d2d48f1a8b477"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "1946d6dec675510ad7437246a884d2acb252ddc29ce469e713ba26e6629f96b6",
+   "new": "1b2bf62463a7de064b78ad8e8cf4a84f59f4999cf8de5eb838ae119fb2844dfe"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "112db1af74eeeb564edfc9b54fde424c604a64527c291965fb474b426bfa1b9c",
+   "new": "95e3f8ef3f3d775b164eb32bc3bde18f264f0d87cb14249ec9e98460ec3f21ec"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "eadfe13cda2f9a17d0d620bd047ae3d615dfcd5b6b5498f450baa837a469f15e",
+   "new": "6a2ad34132fd2299d543045816859e413055efe3f57fbb8b98fbfff058ec1395"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "407f1aca6b749acbf19cf0eaf264fdc25241da5fa1ff5ce0ea7253fff337ffb4",
+   "new": "a8cc4fb6e287b9f75aefd2268df7d5ed6361a68677011be6d24f1105e191a154"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "9be6dfb66ea76685678d6870ef00c3fccd12392bd8a7b3b929dbf762f71e60a8",
+   "new": "47a7cbbc6f5a56ad33deed89e53145fc44187a2d5b9c3336d41bc9dccfb2a89e"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "a6d5dc658ea9fc353800ac82e3abbd754a5d836c69e444ac5bf66dc6d93e179c",
+   "new": "14e17ec54c83d8e01af6acd024639c1161da856520c401ca887079bd33a6114d"
+  },
+  {
+   "test": "balance-planned-posts.test.mjs",
+   "assertion": "Ohne geplante Posten: Standard bytegleich; vollständige Drei-Töpfe-Ergebnisse nach FR-63",
+   "old": "3d254d635f226279e1e6a7ee8d0f867c4108169b7efa829cb09f964897748a96",
+   "new": "e0d284d814a2293913689129bf4febe4389a5c16f0e207c8e866bba341dd5483"
+  },
+  {
+   "test": "care-price-continuation.test.mjs",
+   "assertion": "single-backtest: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten",
+   "old": "38090bf91e0f769ab3a4ff10c546eee1dcb700f7acdc40f7a332e2d896fffbb1",
+   "new": "fded1562f0b6464c3fef2b72afdba256cfce199311bfd6bb18d176f6a6402aad"
+  },
+  {
+   "test": "care-price-continuation.test.mjs",
+   "assertion": "couple-backtest: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten",
+   "old": "97ffe36943898c578f45177e4966fa68b08d59b60c3489ab5ddb6ac5840f713a",
+   "new": "402a6cc89a4355f9aba2cdf952c100329b71885275d2b1e76280c7086c998dff"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "usual, Paar false: vollständiges MC-Ergebnis mit belegten PA-1-Folgen",
+   "old": "cc89c892fa62182688bd0dafcc0a7d357d11a4bf9ea6dca0e6fb68f8450f5428",
+   "new": "7e5fd9507755fdb1e9b590095ffe3d7535cc1f3a8e0936772e777a4364548b73"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "usual, Paar false: vollständiger Backtest bytegleich zu vor LV-1",
+   "old": "26d70ec8f2c8d42f3404b8a12bfd551e5add5a0e5004ec94922b181de5dd92d5",
+   "new": "85ae72f1b53ecb7e7dfb8b7890860187d7155d1186abd0792c7bcd14a37983d7"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "none, Paar false: vollständiges MC-Ergebnis mit belegten PA-1-Folgen",
+   "old": "a2623669392c0b0f8ba86d796682a9a47fcc01e545f79f1bdb94e3e0d1db5a63",
+   "new": "4c3b5281f9524b42bc6236f04ba7924547d15036688e1be93416026c0d4f673b"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "none, Paar false: vollständiger Backtest bytegleich zu vor LV-1",
+   "old": "0869c8f8c570f7b5bd9f4ff9d678c9a8063d29ff4027b7b41e6c834c58d1677f",
+   "new": "dfe00d8176c19b6ad6ff804515103362d663f68c1f7652ba4bf3c419b6fbae38"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "zero, Paar false: vollständiges MC-Ergebnis mit belegten PA-1-Folgen",
+   "old": "a2623669392c0b0f8ba86d796682a9a47fcc01e545f79f1bdb94e3e0d1db5a63",
+   "new": "4c3b5281f9524b42bc6236f04ba7924547d15036688e1be93416026c0d4f673b"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "zero, Paar false: vollständiger Backtest bytegleich zu vor LV-1",
+   "old": "21a4f194243bcd26adc5f87cca7adbcc2d23b1d3f8fb86f2ac891662981344df",
+   "new": "bed319984dd01293d7bf838bece630b9791c7a86ae4f1696342b126fe5d6abc2"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "slower, Paar false: vollständiger Backtest bytegleich zu vor LV-1",
+   "old": "c87dee249abe5058b2a928d79427c0f009807eaa90f2c2ba4c556762c06f975f",
+   "new": "4633e32bf0d76a500840a0d9df45cec2a459544972fa5b47de61cdfe684f5c58"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "much_slower, Paar false: vollständiger Backtest bytegleich zu vor LV-1",
+   "old": "4e68cb145ebac4c6f496443357e5912a3a78ec19f03e140197fba087efbc1c05",
+   "new": "65857ffa21095afa05a751d45dc867db6b3d5d83d1c166bc5126d496ca31bd9f"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "usual, Paar true: vollständiges MC-Ergebnis mit belegten PA-1-Folgen",
+   "old": "1dbe1290d7e8c5666b32508cbe924111df3aed8a356c2a4a7e71e8834e73f3df",
+   "new": "8f76665054ec52f4b93c0510e6921726b5601d4987b468f048b264e382cde1c5"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "usual, Paar true: vollständiger Backtest bytegleich zu vor LV-1",
+   "old": "acd1070ee270cf5a98307a6203ca66bf4aae5f84c61485297a66e217ee23e3e9",
+   "new": "4832292fe4a8dfcf84f0a0f0af1b0103b5877d67db9d9e483dba828948a73c19"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "none, Paar true: vollständiges MC-Ergebnis mit belegten PA-1-Folgen",
+   "old": "03a239d21a714e7cadcec8f491d2cab6ae7cd2894f3b47cc249885acaad3fadd",
+   "new": "5803bdfb3301d0cd43197bacb104fa7a237b441e67f6bc602b7fb487d606e60a"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "none, Paar true: vollständiger Backtest bytegleich zu vor LV-1",
+   "old": "6e37ad7accef502a80863c2dd547c833025e5f219b54441a198ae97a3c75c0ff",
+   "new": "fe2f469576ca56e46ac736601d87a1a46250d3d0a25cc1968e8e122c3baf3ed3"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "zero, Paar true: vollständiges MC-Ergebnis mit belegten PA-1-Folgen",
+   "old": "03a239d21a714e7cadcec8f491d2cab6ae7cd2894f3b47cc249885acaad3fadd",
+   "new": "5803bdfb3301d0cd43197bacb104fa7a237b441e67f6bc602b7fb487d606e60a"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "zero, Paar true: vollständiger Backtest bytegleich zu vor LV-1",
+   "old": "efc5c7f0783599b6ad85334d28742c46f8890668341f72f37f5460637e81b1c5",
+   "new": "9750a89465c727237e0267a61371f36fb708f1f1eeaad10581e2eece6b7dd3cb"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "slower, Paar true: vollständiger Backtest bytegleich zu vor LV-1",
+   "old": "e3fc85b7c8ac790e3d20e9fd381de77cadfd0b71b99f85b163a116b5b4b1894e",
+   "new": "8c01abef5de3cfa41656374557e0548b806ba4496443de199ef1ef9618eb602e"
+  },
+  {
+   "test": "care-today.test.mjs",
+   "assertion": "much_slower, Paar true: vollständiger Backtest bytegleich zu vor LV-1",
+   "old": "1e2fecc7e957ebb7a55c50917274a3714aea8c28a78d408f41e87e6b4259953a",
+   "new": "ae188b7826c7e8d3aa6668ee382ddca6ff47506da5fd64469775cafd730799a7"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "backtest: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+   "old": "89a57df223414c4c506d78acecef2693b38c0e6f5c14a0402f69d8d7fd2d9a2f",
+   "new": "d76fa6e418846798d1cb1c518d253b7fbbf177c26f56aa11b1758428e1525c07"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "backtest: vollständige Referenz ohne Grund und Anmerkung",
+   "old": "21f121ae603a15127b384e0032772abc2a77c62a39b1a91317aaace6a99ee1e7",
+   "new": "bc0e93d7b8bcbc5e66a823abf9b40b53448fe16c91babf6e93d29fa4b29bf615"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "backtest: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+   "old": "6361a47a86e157a54758b10925d04c55ab0aecefad52bae93f329dd45fddfd83",
+   "new": "c741de5b9c38b64c492eaf152753ae5390670230609d3d5cb078e5bf38594e64"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "backtest: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+   "old": "713454c47c84de103489e73552749f8d83e1dd912e7b4340b43e8930cf8384fe",
+   "new": "d95ac1665747d7f33b83ef9748f86c83714863ffedab69bbd9a5d401098948af"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "mc: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+   "old": "b6722f1cc12b66232048344cca11c9229ea5c21a78eae6cadded802132336587",
+   "new": "865b17f03a6dec4539cbe1bf1e693d31946a7394d01e1584f9b301def00145c7"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "mc: vollständige Referenz ohne Grund und Anmerkung",
+   "old": "34a457229a649a97f2ae020b7eca97b86c89b71f1627c6de92233eb491dab10b",
+   "new": "5a3cbadfef3a61309d4b19b31c19ddd8103831ad7534088ce613704e2bbacfe6"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "mc: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+   "old": "22695a5c97710b709aa61295a86ba61a926c5913ab504894c3d63a686ee0b1b2",
+   "new": "fea363a222b6da830bc6d55212bc35c4b7d614517a2411475faa2dd85ac28310"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "mc: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+   "old": "4cd1b1946a75ba764e8f5bb895b259f6ec183a76c3d02e2f6c1e5e7acf2d025d",
+   "new": "cfc69198270c206cd0cfe8a510969e24fd2f2c8ec9654a725e34e1c1dedbb043"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "engineResults: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder",
+   "old": "d4725eeb3059d8c425d43301caff66f7f86c5029341c8f7652545d45a2bc303a",
+   "new": "ff9be7e740175898c615a415c18d90d26ef72f1b33875d5d1306d031c32dd3e8"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "engineResults: vollständige Referenz ohne Grund und Anmerkung",
+   "old": "9ba0b169b5be842f4a0c8ea071020ca22f51a4694165f0534526d18876d4c5a3",
+   "new": "550c16e62e3d590f4b42fac39c2e634340489f41fe165545488e86e185b78061"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "engineResults: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen",
+   "old": "9ba0b169b5be842f4a0c8ea071020ca22f51a4694165f0534526d18876d4c5a3",
+   "new": "550c16e62e3d590f4b42fac39c2e634340489f41fe165545488e86e185b78061"
+  },
+  {
+   "test": "cut-reason-bytegleich.test.mjs",
+   "assertion": "engineResults: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste",
+   "old": "37a3513fd0a14767783b1be7dcfe849d4123025ffae0e00baece3da0b6ebaef4",
+   "new": "e05f456af61ffad16a42de77713fe603c11b76b1d604e42d4e6fb52aef120139"
+  },
+  {
+   "test": "decision-comparison-pool.test.mjs",
+   "assertion": "",
+   "old": "9e5a0744398691b6a7d972c2748425b274c07166a75960384024905089c41d94",
+   "new": "027ce79fdde48b73d9ed0cfa2a0e5979d7e9fc245c0786a7d85fd4aa630366af"
+  },
+  {
+   "test": "decision-comparison-pool.test.mjs",
+   "assertion": "",
+   "old": "c45e054b939a3098395a4aa763a0926b4f5f28684d310573e1c273c9b2ddfcc6",
+   "new": "6391b0d3b7f5c09439b67564cace89a322bdb4b3abb95c1cdc35ae2a2b91bb0d"
+  },
+  {
+   "test": "decision-comparison-pool.test.mjs",
+   "assertion": "",
+   "old": "79f3d2056d422233a4e3042406d4c56addf5bce984300ab2621612d844495179",
+   "new": "644c4a64732ca062e3938256f51bb2b7f910b957b646ebf83624d9ac6fb5317b"
+  },
+  {
+   "test": "ff-g-regression.test.mjs",
+   "assertion": "Helga/Werner: vollständiger Backtest nach FR-63, Tagesgeld zuerst in Anleihen und keine Auffüllung im Bärenmarkt",
+   "old": "11860e38cb787fc2d4f7b8c0ce0e4d5aae63df26ef8c13b1da0cd99f7dd1a854",
+   "new": "3b65e60c024f2aef680c0939abb091d35cb2a5eb5a74e1e1324dd4037a2ff8a7"
+  },
+  {
+   "test": "he-2-heimpflege.test.mjs",
+   "assertion": "FR-73: Backtest rechnet heutige Heimpflege automatisch",
+   "old": "ce4231e33fd60055269475cd6bf7703bc9498ffb1066152439bfa2802b3c40d9",
+   "new": "4cd6f53f0616b27c2ddfe4f752bb6916b8ba4ee0233e7af3b0d5e20acd59d50f"
+  },
+  {
+   "test": "gu-1-sollfaelle.test.mjs",
+   "assertion": "S2: max-erika Monte Carlo mit k = 0 bytegleich zu b1ef8ff6",
+   "old": "8ded79e9f82645b2697ab3c07ac0acd11b8cce887842cd7d62533af4c49fd140",
+   "new": "82e7965fd04770311098354bcff3cfa4bfee303f67a077732904b58544f41524"
+  },
+  {
+   "test": "gu-1-sollfaelle.test.mjs",
+   "assertion": "S2: max-erika Backtest mit k = 0 bytegleich zu b1ef8ff6",
+   "old": "cb55c4cfa1a414086ed5caa7973315f80da6f33466d2c081b55c55d7d9c91a9a",
+   "new": "9dd69a21a62c7474790db2547aa88d496268f32d6f884aa0a9c85ee07e623e54"
+  },
+  {
+   "test": "gu-1-sollfaelle.test.mjs",
+   "assertion": "S2: renate Monte Carlo mit k = 0 bytegleich zu b1ef8ff6",
+   "old": "66f3938a9ae095c5ed269e9a929d8799e0d1f8da317fa9fbbc796d9f7cab1047",
+   "new": "259a4d08f0ded3514670aee5f5d4f116c351ee89cabacb905cb727bc7314ba0f"
+  },
+  {
+   "test": "gu-1-sollfaelle.test.mjs",
+   "assertion": "S2: renate Backtest mit k = 0 bytegleich zu b1ef8ff6",
+   "old": "87eacc461c908aaa5794f95ec0421e54358ff84a5f02b9e893274dc78f3f309f",
+   "new": "82d872184ea853efba6ad0aba2b59b46e1c444361ca5dec5626a75e7ef3cbc2d"
+  },
+  {
+   "test": "immobilien-empty-bytegleich.test.mjs",
+   "assertion": "Ohne Immobilien: vollständige Eingaben bytegleich zum Ausgangsstand",
+   "old": "ccaaae485fb88c0f309587566cef86972cae5182f1d2b6771597882712f0886b",
+   "new": "c8504d93d7c3a9e6c6bc4bfd1c63d51222dd301e9880f5014e47fd772e999d77"
+  },
+  {
+   "test": "immobilien-empty-bytegleich.test.mjs",
+   "assertion": "Ohne Immobilien: vollständiger Backtest 2000–2025 bytegleich zum Ausgangsstand",
+   "old": "426a7fefcea75b66b5c4ebb47f7dfdad27952b3b767d4986347972335c6be01e",
+   "new": "8baf8305fcaf2b456eb61221537f5ffb0ed897795e7460138565819577557821"
+  },
+  {
+   "test": "immobilien-empty-bytegleich.test.mjs",
+   "assertion": "Ohne Immobilien: vollständige 24 MC-Pfade mit Seed 12345 und belegter Ehe-Erbschaftsteuer",
+   "old": "1f34671fffe0bcc938ff0001b7479d9570467a929d45722bb86109ce5fef6b79",
+   "new": "1b5015f2f8bf749fe355c9ee8b3a042e9338c7b929a604a47730c40b0b83d307"
+  },
+  {
+   "test": "immobilien-empty-bytegleich.test.mjs",
+   "assertion": "Ohne Immobilien: vollständiger Paritätsbeleg mit bisheriger Anzeigebasis bytegleich zum Ausgangsstand",
+   "old": "db9d984565f7a15d47d152f5e735065842a18e2a06271638e9b7fad17ffc9b19",
+   "new": "490650adc5e58336a3af13609bacc4df8059109cf6cda06bb222ef79950e838a"
+  },
+  {
+   "test": "monte-carlo-measurement-contract.test.mjs",
+   "assertion": "Snapshot value mismatch at minimumFlexAffordability.monteCarlo.targetProjectionHashes.finalResultSha256",
+   "old": "fe56ac2da71bc5d96823a7b90be8426091ad38514a4d91ba147eab3c4f2e3563",
+   "new": "9768c8a8282a01f5a61215fd0c2cb79e1999daefa161ab1a1f71595e486eca35"
+  },
+  {
+   "test": "muster-max-erika-parity.test.mjs",
+   "assertion": "Max/Erika vollständige Simulatoreingaben bytegleich",
+   "old": "1a3458d2c791cf473f4c4343c41e0706e15c97e24589c9943961184f65c64349",
+   "new": "293cf6fa3d5c88a65ebab2ea1572c1779b48c8d5d356f7724465eb026313959b"
+  },
+  {
+   "test": "muster-max-erika-parity.test.mjs",
+   "assertion": "Max/Erika vollständiger Backtest bytegleich",
+   "old": "bd7bdb0f0aaf26835f8f6c1202c4e56e530e5904b81c7dd9cdac4eaa19d43fee",
+   "new": "a7e789278337631d7ef105d3f184c8e3162792a5bf9d59b559620aafcde0cfb0"
+  },
+  {
+   "test": "muster-variants.test.mjs",
+   "assertion": "jan-lena: vollständige Records, Drei-Töpfe-Korrekturen gesondert belegt",
+   "old": "df70f34c00dfcc24d75bc9603d0f2a8673abeaccd0dc2cc8dfaf707653664633",
+   "new": "3bcca38764b102acba4ff72227ab4f9fc7001191ed4cbfc30ee8aed68fde748a"
+  },
+  {
+   "test": "pfa-1-invariance.test.mjs",
+   "assertion": "Ohne heutigen Grad und Pflegeeintritt vollständige MC-Bytes gleich",
+   "old": "e0e457e84a563f0bd22f8da187cf94c885d59e0e081a7347fe6658610114dd25",
+   "new": "8c64b84d7e41ecbfca13cc3d0125eddbda2d5a221c7e84929cd95b4d64530ae8"
+  },
+  {
+   "test": "pfa-1-invariance.test.mjs",
+   "assertion": "Backtest ohne heutigen Grad bei gleichen wirksamen Eingaben bytegleich",
+   "old": "a05e8dec7eaf9c320fe3d280ba220ce1efd766cc34d748c66ddddc64fd0ffdf7",
+   "new": "5edea944f93d66d10c7c1d69041bbfe00e59b9a7d75f0f35da16f3265525a698"
+  },
+  {
+   "test": "pfa-1-invariance.test.mjs",
+   "assertion": "healthy/custom: 64 Seeds, bis 40 Jahre gleiche Grad-, Todes- und Formfolgen wie Basis",
+   "old": "261c7dcff0cae86f83a2c80f1cc4063566bce126be1843ddcca607a6e8a3b071",
+   "new": "688b92d83fd84480f70fa96a6aa60129ee6a874681342a9eddd851a77644a13a"
+  },
+  {
+   "test": "pfa-1-invariance.test.mjs",
+   "assertion": "healthy/amtlich: 64 Seeds, bis 40 Jahre gleiche Grad-, Todes- und Formfolgen wie Basis",
+   "old": "4707b2e0a1a1488a500cfdce746a0f11bd6eb4fa02101b79876f40d2c51375a3",
+   "new": "c3c5a735ca148be0f3b66bdba9634a0590b966d67149d4ab28c1759d4b25df82"
+  },
+  {
+   "test": "pfa-1-invariance.test.mjs",
+   "assertion": "home/custom: 64 Seeds, bis 40 Jahre gleiche Grad-, Todes- und Formfolgen wie Basis",
+   "old": "25882f79c264c3730641fd0c9e129944223be86ac3d3eb56fc91842d5c557a14",
+   "new": "d51f2a93947c5f4fc4c65b808c4de6588ef110c41380d319eb97df7b92860beb"
+  },
+  {
+   "test": "pfa-1-invariance.test.mjs",
+   "assertion": "home/amtlich: 64 Seeds, bis 40 Jahre gleiche Grad-, Todes- und Formfolgen wie Basis",
+   "old": "36ac68be6eac16549a5690ab08f22c33b3ca9b53cb4e7bb28acc65b268cb49bf",
+   "new": "acfd156b59ac280a9e2646918b2d91e32cef7ad51673eeca60ebfacd85578a8e"
+  },
+  {
+   "test": "pfa-1-invariance.test.mjs",
+   "assertion": "heim/custom: 64 Seeds, bis 40 Jahre gleiche Grad-, Todes- und Formfolgen wie Basis",
+   "old": "d8828cf4dc0dbf2a62e3be56bfb1aa868be169d1c8e71578a53dea931329b895",
+   "new": "ec6ab74749572883e64ec950d0753a3d98459307ae27e815c8d20091a51c500d"
+  },
+  {
+   "test": "pfa-1-invariance.test.mjs",
+   "assertion": "heim/amtlich: 64 Seeds, bis 40 Jahre gleiche Grad-, Todes- und Formfolgen wie Basis",
+   "old": "538df67451c1086afd8198211361bcfb1a7aa2afaa5ab5af3e168d8df3432cd3",
+   "new": "81dd789788878a6b20e379ac3ae6e804723a775e92ae83d80b0c184c1c9eed44"
+  },
+  {
+   "test": "plan-view-income.test.mjs",
+   "assertion": "Messinputs bytegleich zur Basis",
+   "old": "1d8165665efb0c0bee45ea951d80a6ea7706534270c3497a92c455d7d4a8e6e9",
+   "new": "f69e462f4051338dc6658700b9978a506d925cab0694a471d17c15524ecc5869"
+  },
+  {
+   "test": "plan-view-income.test.mjs",
+   "assertion": "Vollständiges Backtestergebnis mit belegten NR-1-Anzeigeänderungen",
+   "old": "46583a003aea677c9c7b7c6c17ba160cb70a926cadf0e0f09359b0654e2cabc4",
+   "new": "38688ba161f83087827d06715b058f49cc8cfc9318a3a299d7675e2b8f10b1fa"
+  },
+  {
+   "test": "plan-view-income.test.mjs",
+   "assertion": "Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen",
+   "old": "833a2ba96d3e7d43d3a06111b88ad27492d49276381af506c0c1ebcfcac37221",
+   "new": "8fa1bb703e72ef784f7389fbc017edc763877adefc38264576d295b35f629393"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "jan-lena: vollständige Musterreferenz; Renate mit 3 Töpfen nach FR-58",
+   "old": "7770085cb642c8518d423f8209c3bebd08f61748af56c12d555456ca7eb355c7",
+   "new": "11ec906ad159338298d5bb77e50ba7552e250f685e46a0209d13eaa225c0119d"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+   "old": "7c0096e2a3a95ef47ba3861fa820674517b8f8759dfd164067decdf1b8e6a252",
+   "new": "87e65bf956d0923f84c0eaaa8948e060fb8d5a8551b9962d0e7b92744e9799c2"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ: vollständiger PM-1c-Backtest und MC-Pfad 0",
+   "old": "66d11ab4bbb965d47fd91eba26a06399c8e116b8d77ca39ffc6f05764df4afc6",
+   "new": "5831e59ea3f23979604c725f451ab727ee7f13ce38b7270dc9a5c32ed2fa5e36"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/payload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "9d53463a383a2fa34089248b15faa1db76a7c07297ab5ac64d52312169bf343f",
+   "new": "bb2799117997ee50b91a5dbc715d864c88895cb2518784ac23a50f02c847ed19"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/payload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "37d18c8c88fa20d2515228cba10605cdfb787e4a4a83685a13858c2f955ec415",
+   "new": "5553bbf960a2a0b460d5d6ac3864a812639f9eaad25e7274e72f2fe7a0203226"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/payload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "d3a783c7e061c38313d0e5c5fe86eecbb9d63676d12712b2150a446967bd2bcd",
+   "new": "a15ae736264963d49409874a025e1fc6ef973e7931f628c7c26b02e577b4ac91"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "9d53463a383a2fa34089248b15faa1db76a7c07297ab5ac64d52312169bf343f",
+   "new": "bb2799117997ee50b91a5dbc715d864c88895cb2518784ac23a50f02c847ed19"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/legacyPayload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "9d53463a383a2fa34089248b15faa1db76a7c07297ab5ac64d52312169bf343f",
+   "new": "bb2799117997ee50b91a5dbc715d864c88895cb2518784ac23a50f02c847ed19"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/legacyPayload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "2b2d89d58c4fd36d798a1b30baa8ab47165ad05875ace633f3188c9d6924863a",
+   "new": "c34aa4d97ea984a6a34689a679ecfcb20d56cc90524774684645bf8982a83150"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/legacyPayload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "d3a783c7e061c38313d0e5c5fe86eecbb9d63676d12712b2150a446967bd2bcd",
+   "new": "a15ae736264963d49409874a025e1fc6ef973e7931f628c7c26b02e577b4ac91"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "9d53463a383a2fa34089248b15faa1db76a7c07297ab5ac64d52312169bf343f",
+   "new": "bb2799117997ee50b91a5dbc715d864c88895cb2518784ac23a50f02c847ed19"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+   "old": "9607aa5ebfb2efe709190267d07e6386f3bae3df8af1b076bc269d0060959c3e",
+   "new": "da17eb5b22abaa69816fd4c9c4c967ebbe017cb98d9d55b867de44dde641f186"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+   "old": "2212e4b3c8da8d04e6cae1a7986e7b53de82dec765ecfcd85f4381d55e784c29",
+   "new": "499d24202b7e25099480a6057805fb5ce8de8dcd1c3a7ecca283eb078cc4fb50"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen: vollständiger PM-1c-Backtest und MC-Pfad 0",
+   "old": "6954491105a27dd791ad95cfa55f243a244de65effc1cea3016e842d5aa5d4bf",
+   "new": "4d6e6d83f92c7c3bf512a37aea9ba76317230912f94dd4bcc60f273a6ac0e920"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/payload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "98df5262baf9a41d0bef1961acaff8247882923e299752e8fcb4cadb201b05b9",
+   "new": "2cd9d83f203cf03c865d871392f3cea7ecfbfb90990524b4c04442b7c2e3a810"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/payload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "fb674e19857659397271b2dffabb9441eb4f4bb349a80734c0268ccb30334fcf",
+   "new": "46f80845aa31aa6faba4545bcc684a66ec11143b7a26c21b431a82985dc202ae"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/payload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "dac57b2bfe014ac417cacbe7bfb84930e86b0d0393889701176a06d29833d880",
+   "new": "9f58e234888737d770b9c5b2aa846fa87b109ad650191358d5c3d5600382cd4b"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "98df5262baf9a41d0bef1961acaff8247882923e299752e8fcb4cadb201b05b9",
+   "new": "2cd9d83f203cf03c865d871392f3cea7ecfbfb90990524b4c04442b7c2e3a810"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/legacyPayload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "98df5262baf9a41d0bef1961acaff8247882923e299752e8fcb4cadb201b05b9",
+   "new": "2cd9d83f203cf03c865d871392f3cea7ecfbfb90990524b4c04442b7c2e3a810"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/legacyPayload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "f309b346cab9594e0ed0c107960f0fb9686da3969c8661c6a953907ecea33d22",
+   "new": "56ecb594f7f2c5ae08f984f632540e1a6d9802d3756cbb2847345ffc0e3fc6b1"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/legacyPayload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "dac57b2bfe014ac417cacbe7bfb84930e86b0d0393889701176a06d29833d880",
+   "new": "9f58e234888737d770b9c5b2aa846fa87b109ad650191358d5c3d5600382cd4b"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "98df5262baf9a41d0bef1961acaff8247882923e299752e8fcb4cadb201b05b9",
+   "new": "2cd9d83f203cf03c865d871392f3cea7ecfbfb90990524b4c04442b7c2e3a810"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+   "old": "c935c015150049de22d14e414b13c11d3ba0241d82efd7dbee700f99190b97ab",
+   "new": "08545435024497877ecc59293f5e99c7922a63bac6048f2e1ce9e23c12f60e5b"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+   "old": "2b7f929c6901383a3df8a0f8ff48e44690b7d10a0fea50785f99480ca1991973",
+   "new": "c6fade41c8f84c351a750685ec536cbf75b98168ca64d21cb45c22bffddf9edf"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv: vollständiger PM-1c-Backtest und MC-Pfad 0",
+   "old": "e409ee19a12f16d8d05ba8233592196cabb996f019ff6f69ab8d72aeaad4662c",
+   "new": "6b85485e3b7299f9310211fd4ab1b1a2c94afb7f6b2666b16c3583342049a587"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/payload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "c67807edeb7648b0152e11e10fd2ea0cebdce3f32a2cd7245b7c89ec1ee5dea0",
+   "new": "77ec2ae6e016cc8eab19f948253b4974b95589e2dfce01fff3511491280a0a0d"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/payload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "058ef6be4b5cc6e1982787814eb35d36a95d802050028990deb5e7706abcc569",
+   "new": "7387bf10fc3f0a6f1bfa10f63c21291eb2f90724a5c46e28980272ed9d5f141b"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/payload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "051d1c62e4b00b7180e545a849daeda4627a3052a02d9a7d8402ffa9421dd5ab",
+   "new": "b6b4a7332d1cbf2b46dbe891872fbffeafef78f2139dd54d257684f537515831"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "c67807edeb7648b0152e11e10fd2ea0cebdce3f32a2cd7245b7c89ec1ee5dea0",
+   "new": "77ec2ae6e016cc8eab19f948253b4974b95589e2dfce01fff3511491280a0a0d"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/legacyPayload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "c67807edeb7648b0152e11e10fd2ea0cebdce3f32a2cd7245b7c89ec1ee5dea0",
+   "new": "77ec2ae6e016cc8eab19f948253b4974b95589e2dfce01fff3511491280a0a0d"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/legacyPayload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "4440a5e44a36b5130993259bcbf322145aab1af09ddfb093878907f1b31e7116",
+   "new": "a8e2dec87cbfde167206dd70591c0280ee80818ae57cce76632da744906cd5a3"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/legacyPayload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "051d1c62e4b00b7180e545a849daeda4627a3052a02d9a7d8402ffa9421dd5ab",
+   "new": "b6b4a7332d1cbf2b46dbe891872fbffeafef78f2139dd54d257684f537515831"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "c67807edeb7648b0152e11e10fd2ea0cebdce3f32a2cd7245b7c89ec1ee5dea0",
+   "new": "77ec2ae6e016cc8eab19f948253b4974b95589e2dfce01fff3511491280a0a0d"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+   "old": "4a04de53fec9c9fdef39b43f208cb2970a61521dcf82ba0cf28478e0848dc662",
+   "new": "bc9b2153eeb15e185003bcd4cf5e77b19ac7941c7fd7dfb86196797e8e20c8ae"
+  },
+  {
+   "test": "rechenregeln-bytegleich.test.mjs",
+   "assertion": "konservativ: Backtest entspricht BK-2-Referenz",
+   "old": "957c365a17bbb904accfaf15dec2bece029563dab96f8955ace555b9237294bf",
+   "new": "440554b09e43e1be82e28cbfbb3a39e6432123e2fe2d0449b2962d25000fdf81"
+  },
+  {
+   "test": "rechenregeln-bytegleich.test.mjs",
+   "assertion": "konservativ: MC-Pfad 0 mit FR-21–24/27",
+   "old": "6fe363928c14d1962132c554696119af8afe44f939b8d60046c391a4e1fa09fe",
+   "new": "2a13951d5690e54cdc0c181283f7d8817ab3333dfc3c251d184f1012222b939f"
+  },
+  {
+   "test": "rechenregeln-bytegleich.test.mjs",
+   "assertion": "ausgewogen: Backtest entspricht BK-2-Referenz",
+   "old": "bcf84c85146f377dea553cacfe44cf228cd7ce9df435b7c4893117c602be426f",
+   "new": "20261de8252030edd0a4b2608560fac4a5ed722de7a8c14aba84086be493c1f7"
+  },
+  {
+   "test": "rechenregeln-bytegleich.test.mjs",
+   "assertion": "ausgewogen: MC-Pfad 0 mit FR-21–24/27",
+   "old": "f14aa64c3ddf739373b1a0fb72c034a58f4d3655b32594a42d4a25fb7888eca8",
+   "new": "c8e2674268f11c57e3a65558dbe87e8a3d02e0f8a58d40f39c291fb495e26e9a"
+  },
+  {
+   "test": "rechenregeln-bytegleich.test.mjs",
+   "assertion": "offensiv: Backtest entspricht BK-2-Referenz",
+   "old": "61a9667aad99b9f15adc89d3264acb5a58bf5a7645521bad05cbfaff27517e2e",
+   "new": "3ebb4d79816bc05816b15ee9dd3cec3826843860559708b0b0920a3fe73cbd2b"
+  },
+  {
+   "test": "rechenregeln-bytegleich.test.mjs",
+   "assertion": "offensiv: MC-Pfad 0 mit FR-21–24/27",
+   "old": "d116eedbed1e18c0c5d4eb7494217f7310372d74a71b57267f5811a1bd8c75cf",
+   "new": "11c780ff5f651c5be9934212e13699189e83bbd276aadd558fb3b5f7489affc8"
+  },
+  {
+   "test": "simulator-unmarried-parity.test.mjs",
+   "assertion": "Verheiratet: vollständiger serieller MC mit belegten FR-51-Folgen",
+   "old": "21a25d5c3788f0e8f6f6e04b4ec2bc262e3896f57d6a82295eb109cfec1a5553",
+   "new": "51d7bc9ec7accf3bd8d2b343298995b2d77e30fe40e945f8d77e60d55cffa2f0"
+  },
+  {
+   "test": "simulator-unmarried-parity.test.mjs",
+   "assertion": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51",
+   "old": "2452a345e8ceb1fe2078f2f24f8c790f8c54e5fb02287b057b9302d541b6ddf1",
+   "new": "1b34e4369c2ccd38ffdc42a3bcb25d561b9382c97256ad2755881f66fcb6d2cf"
+  },
+  {
+   "test": "simulator-unmarried-parity.test.mjs",
+   "assertion": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51",
+   "old": "55beab64df6355a4051329f9a90ba2da3f71dfb708b1faf326cb4207eccfca08",
+   "new": "0c4ad1abfd26657eec7b75e7725f8423fc2af036719233b44581c9d0c2445dee"
+  },
+  {
+   "test": "simulator-unmarried-parity.test.mjs",
+   "assertion": "Verheiratet: vollständige Ergebnisse aus drei Worker-Chunks mit FR-51",
+   "old": "58d62af14e8a3a0607ed1a3c1c4e593d8ca977a9b7bf2de5e0102e7b5ada363e",
+   "new": "390d762103f7af8ed9c03dac16d92cc0bf92e02bc3d73bf46fedfb2ebaf360d3"
+  },
+  {
+   "test": "simulator-unmarried-parity.test.mjs",
+   "assertion": "Verheiratet: vollständiger Sweep mit FR-51",
+   "old": "ce6f08e11c0fdf16cd9abcf2a115876cedb81f1a9694145773273c2df2f8b0d7",
+   "new": "fb4ff6ed97d39ce0bb2390493684c46586185ab33180d3302b2d710ec2fdebdd"
+  },
+  {
+   "test": "simulator-unmarried-parity.test.mjs",
+   "assertion": "Nicht verheiratet 0/100: vollständiger Backtest bytegleich zum Kopf vor UP-1b",
+   "old": "8ad0629a3391edf255c9833ccd03a44503fa9be7fc0e0a7b2df6c64505822dce",
+   "new": "abbc3dfa1238964ea0ab6be1f863bfd99bbf9d8e6aaebfe228e8284e39cd1a07"
+  },
+  {
+   "test": "simulator-unmarried-parity.test.mjs",
+   "assertion": "Nicht verheiratet 0/100: vollständiger Backtest bytegleich zum Kopf vor UP-1b",
+   "old": "0a6313c151af6b81be63801ffd649dac1203633926098b1229b818295f0169c8",
+   "new": "ea1343fd5118a6a451db00602397ee77366b2f961f713dc1e911d9825ddab894"
+  },
+  {
+   "test": "survivor-bytegleich.test.mjs",
+   "assertion": "konservativ: Backtest ohne Tod entspricht BK-2-Referenz",
+   "old": "6a6f9bb462eb812c26e76b2eb210ce5031a0ff807c8a002b960b22e8f0d2587c",
+   "new": "008fc4378970ad715e0c8f1563f997764b208ebece7692b09f2b4fb220ac6222"
+  },
+  {
+   "test": "survivor-bytegleich.test.mjs",
+   "assertion": "konservativ: MC ohne Tod entspricht BK-2-Referenz",
+   "old": "95f081cfef70068b765eb563657bcfacaaa23ee0cf2462da22809c03ed9fd17a",
+   "new": "729dc7c6d5432f9718375d97a803310c3da687bcc4a4de124b7a9849003f870e"
+  },
+  {
+   "test": "survivor-bytegleich.test.mjs",
+   "assertion": "ausgewogen: Backtest ohne Tod entspricht BK-2-Referenz",
+   "old": "e60676fcde6b4e369d5338c0306f96ca687f3dea7ab50396394c9da3f6c5b2f8",
+   "new": "57bd6e33c608c7317fa17da366af9772a452db045ba1c89962822fb54b618f1b"
+  },
+  {
+   "test": "survivor-bytegleich.test.mjs",
+   "assertion": "ausgewogen: MC ohne Tod entspricht BK-2-Referenz",
+   "old": "5a315a7b2ef605792bb7f898b7de19c4ad2886500e0352280332bad928764728",
+   "new": "89940cb33489bf2f9b3df9b933c30269302fcea2f3d5e0ac177a7518b9edf919"
+  },
+  {
+   "test": "survivor-bytegleich.test.mjs",
+   "assertion": "offensiv: Backtest ohne Tod entspricht BK-2-Referenz",
+   "old": "bafe8ec3fcc9bfb7c54adacea1885f7a92f2514364176d0ffaf83a55af37bf09",
+   "new": "482e5c5442489ab8fa7bdbe25ce6e557d983c1ad1bc5e15e3948761510af167d"
+  },
+  {
+   "test": "survivor-bytegleich.test.mjs",
+   "assertion": "offensiv: MC ohne Tod entspricht BK-2-Referenz",
+   "old": "eae56a3709f5032674aab0b9b61920282b8b88e489f917e80ff8ffd9dcb63bc2",
+   "new": "fa42679c869130f0c3a3fdbf43977ed3bba44830f424f1d243c7e7a1e0d7e03c"
+  },
+  {
+   "test": "he-3-amtlich-ziehung.test.mjs",
+   "assertion": "Amtlich: Marktjahre, Tode und Grade wie vor HE-3",
+   "old": "b2b9e0931dd4fcd19c574945f5fde3af4c894022b6b9175c3dc072ed28f04ca6",
+   "new": "bab4bcff8de7e45235f9331a7a7130aa6c23118d56e15eebdfe239bded336176"
+  },
+  {
+   "test": "he-3-amtlich-ziehung.test.mjs",
+   "assertion": "Ohne Amtlich: vollständiges Monte-Carlo-Ergebnis wie vor HE-3, Pflegekennzahl netto",
+   "old": "116f66c0c49102365f129c123d1451454fa1bd0e08e4967e3055b320c9dcfd93",
+   "new": "bc58d355d03a05becda1d2c3cbac326b267e392be0e0f639062d80d43dedb911"
+  },
+  {
+   "test": "he-3-amtlich-ziehung.test.mjs",
+   "assertion": "Backtest mit Amtlich: Bytes wie vor HE-3",
+   "old": "929d1c8e9d914c2ab7faf618008d9824c75de4193c12745fc81d299730820e37",
+   "new": "66da7c1c0c9bae46453cdadaf143c13163acb284aac1e62cbabf952c7975622c"
+  },
+  {
+   "test": "muster-max-erika-parity.test.mjs",
+   "assertion": "Max/Erika MC 2.000 Läufe, Seed 12345, 23.10.2026 mit belegten PA-1-Folgen",
+   "old": "185fe0ea65bbc919cad3a5587eae06f507ad2cba30c724aaccdd207b5a5e9e33",
+   "new": "57787b8c198679704ed260aacc59f8c65771d70cc200d1b2e000188dc911c220"
+  }
+ ],
+ "numericLeaves": {
+  "mc": 787414,
+  "engineResults": 1115796
+ },
+ "numericLeavesReason": "cut-reason-bytegleich: längere Lebensläufe (FR-75) erzeugen mehr Jahreszeilen und damit mehr Zahlenfelder.",
+ "md2Cases": {
+  "block/no-home": {
+   "hashes": {
+    "totals": "f9a3cb6ebf7dce6b795cda11d37f100676b44e64dcb7b75cd819eda0d591a320",
+    "lists": "271301bd389910314219e4063de4c96e41fc780436103addf16825050dbc1097",
+    "pathSummaries": "b06a79f80c92bfb2d73668bd51f10d40a68b9d4a125f4154deacb19ce4e4b467",
+    "heatmap": "68a4b1437b698f6e8edc39ef590fada4bedcf35d82712ca7614b3448cf0a5e22",
+    "combined": "78240c9f135c005292a712fda1e7877c3a77340e69bc115af6c4b5d99b81ddf3"
+   },
+   "characteristicIndices": [
+    10,
+    40,
+    15,
+    33,
+    22,
+    26,
+    45,
+    35,
+    47,
+    3,
+    43,
+    8
+   ]
+  },
+  "regime_markov/no-home": {
+   "hashes": {
+    "totals": "615c8c06e4e271a5ef3076de7317a5e4c8ed6cad26ba86a80057791e4da29eab",
+    "lists": "deb411358f2b6468ad35bec9f37528f33092ea8c5401f5e8913d76a5f9b7cd33",
+    "pathSummaries": "a36f9bd11a63a435b600815a625dd358da87385c87f5a82185d7312bf16d3e10",
+    "heatmap": "137f99b1249b64056f5e440201ce42ca38f5cea9f97237f50a905ec306f31a39",
+    "combined": "42b215cd41e2f024ea1745545c256b00858e3bd8b1cd02744e50e81b47402d7d"
+   },
+   "characteristicIndices": [
+    29,
+    31,
+    6,
+    16,
+    36,
+    14,
+    19,
+    10,
+    35,
+    18,
+    39,
+    11,
+    22
+   ]
+  },
+  "regime_iid/no-home": {
+   "hashes": {
+    "totals": "3f60fd22d2294b37a8c47aaede34115bbc50871d5857c674ca602316667340b5",
+    "lists": "cb7d1e23c8daa1f98573bcaa1c95059fabf41cccb657895d8c3d98b8d45bc7fc",
+    "pathSummaries": "4e86085830495a754b076b5818b865944836e13ccf760174cf793e85cf0c728a",
+    "heatmap": "4ccf1a566fb8df9c75132b228e23f3472a09560a5d07586f58d304f2a14003c8",
+    "combined": "4bf2ba1c9482955332f284c45435fe038c1b7398e0aa988040a528f956208aa2"
+   },
+   "characteristicIndices": [
+    29,
+    49,
+    5,
+    18,
+    41,
+    28,
+    10,
+    11,
+    19,
+    48,
+    39,
+    22
+   ]
+  },
+  "stationary/no-home": {
+   "hashes": {
+    "totals": "0bf03ca9ea6fe7ba1364aa6d8680498b67319058692cbb9b1c013a36e97e10f2",
+    "lists": "e3d77f086ea010af7fedf6183b26cfd5bd3771c2eb05b8072c783f4de0e1ab90",
+    "pathSummaries": "5ff1d4ba56b8f72d4fac6db97934412e79025d1dcce35d505b03a32a78184a45",
+    "heatmap": "d4f4ef7afaded87c575cf8bfa4a729816c713114e94ff6f544a2ca2e6aba5ae6",
+    "combined": "a9bf522903eb874a7661e935cd7a8c6cff501c9b74ae23ad704dadbc931a8da1"
+   },
+   "characteristicIndices": [
+    1,
+    27,
+    15,
+    43,
+    20,
+    14,
+    47,
+    25,
+    36,
+    4,
+    30,
+    49,
+    26,
+    22,
+    39
+   ]
+  },
+  "block/home": {
+   "hashes": {
+    "totals": "98e1aa94b2960eec63cc75de6feffadd3c620be967544e74985f7ccceb535d9a",
+    "lists": "82030aa808cca8f470ce3a1eec9c002772d49e613f7913863769ae1803349424",
+    "pathSummaries": "087a4cf7a94034591cdea9dd9eb1bc19ce809555ea21ea9991ea30dc77ec40dd",
+    "heatmap": "68a4b1437b698f6e8edc39ef590fada4bedcf35d82712ca7614b3448cf0a5e22",
+    "combined": "2a53e61174cafc9746fc53e0c58e57ea7d0d495e9cb8e2dd1a09438d8480f90d"
+   },
+   "characteristicIndices": [
+    10,
+    40,
+    15,
+    8,
+    42,
+    26,
+    31,
+    24,
+    47,
+    3,
+    43,
+    22
+   ]
+  },
+  "regime_markov/home": {
+   "hashes": {
+    "totals": "615c8c06e4e271a5ef3076de7317a5e4c8ed6cad26ba86a80057791e4da29eab",
+    "lists": "07eb2b535d28d419f20fb2302b647114fdc98f27c3b92d5fc503131f8925417f",
+    "pathSummaries": "77e32b23b248929923e041221d7cb9464dd8dd765322909d82699c86e897d4f3",
+    "heatmap": "137f99b1249b64056f5e440201ce42ca38f5cea9f97237f50a905ec306f31a39",
+    "combined": "88013a18230317f4ae27882a6bf6e898c352323dd34426f8674c4b75bd75eb9d"
+   },
+   "characteristicIndices": [
+    29,
+    31,
+    7,
+    48,
+    21,
+    13,
+    2,
+    10,
+    11,
+    18,
+    39,
+    22
+   ]
+  },
+  "regime_iid/home": {
+   "hashes": {
+    "totals": "412500c3df1a71bf3705d978e51951a6d3aadcbd881e7de12590eb85906e7788",
+    "lists": "2150ed9e9ed1e3b995affaa21dee648729f2911ed12cf0a2e3307f79e57e01e1",
+    "pathSummaries": "c017caa8c977b7a1877baec7959b63395fa4c96ee592b5309edf4fec6ec99bc1",
+    "heatmap": "4ccf1a566fb8df9c75132b228e23f3472a09560a5d07586f58d304f2a14003c8",
+    "combined": "8dddec8b8d92b776ec1375c7823e0b0db662e49d789d8f17fa9e5bb38400af37"
+   },
+   "characteristicIndices": [
+    29,
+    49,
+    7,
+    37,
+    9,
+    33,
+    10,
+    11,
+    19,
+    48,
+    39,
+    22,
+    5
+   ]
+  }
+ },
+ "md2Reason": "md-2-scenarios: neue Sterblichkeit ändert Ergebnisse und Auswahl der Protokollpfade je Fall; gemessen 12.11.2026 auf derselben Plattform."
+}

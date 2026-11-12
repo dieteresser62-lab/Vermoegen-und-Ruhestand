@@ -7,6 +7,9 @@ import { formatPercentage, formatCoveragePercentage, formatCoveredRuns } from '.
 import { missingMoney, directMetricReason, finalMoney, otherBasisLine, formatConservativeCurrency, summaryEuro, unavailableStatus, wealthPartsDetail } from './display-values.js';
 import { percentileWealthNotice } from '../../shared/wealth-display.js';
 
+// Wilson-Grenzen wie bisher auf der Ergebnisseite mit höchstens zwei Nachkommastellen (SE-1b).
+const wilsonPercent = value => `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(value)} %`;
+
 /** Reine Anzeigeprojektion vorhandener Kennzahlen; keine neue Statistik.
  *
  * @param options - Optionen des Aufrufers.
@@ -27,13 +30,24 @@ export function buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBas
     const maxCut = !technical && Number.isFinite(results?.kpiMaxKuerzung?.p50)
         ? formatPercentage(results.kpiMaxKuerzung.p50) : '—';
     const reason = technical ? 'Wegen technischer Fehler ist diese Antwort nicht auswertbar.' : 'Die Deckungsquote fehlt.';
+    const interval = coverageAvailable && current ? inventory.floorCoverageEstimate?.confidenceInterval95 : null;
+    const coveredRuns = current ? inventory.all_dead + inventory.horizon_exhausted : null;
     return [
-        { question: 'Ist mein Grundbedarf gedeckt?', value: coverage,
+        // SE-1: Deckung und Endvermögen bilden eine Antwort; Werte stammen aus denselben Summary-Karten.
+        { question: 'Reicht das Vermögen?', kind: 'coverage', value: coverage,
+            label: completeLife ? 'Grundbedarf gedeckt bis zum simulierten Lebensende' : 'Grundbedarf gedeckt bis Laufende',
             countText: coverageAvailable ? floor.countText : '',
+            coveragePct: coverageAvailable ? floor.coveragePct : null,
+            interval: !coverageAvailable ? '' : interval
+                ? `95-%-Intervall ${wilsonPercent(interval.lowerPct)}–${wilsonPercent(interval.upperPct)}` : '95-%-Intervall nicht verfügbar',
+            uncoveredHint: coverageAvailable && current && coveredRuns < inventory.requestedRuns && floor.coveragePct > 99 ? 'mindestens ein Lauf ungedeckt' : '',
+            technicalRuns: current && !coverageAvailable ? inventory.technical_error ?? null : null,
             text: coverageAvailable ? `Dein Grundbedarf ist in diesen Läufen ${completeLife ? 'bis zum simulierten Lebensende' : 'bis zum jeweiligen Laufende'} gedeckt.` : reason,
             note: completeLife ? 'Alle Läufe bilden einen vollständigen simulierten Lebenspfad ab.'
                 : current ? 'Ein Lauf kann am gewählten Zeitraumende enden. Das ist kein nachgewiesenes Lebensende.'
-                    : 'Altes Ergebnis ohne vollständigen Endzustandsbeleg. Eine Deckung bis zum Lebensende ist daraus nicht nachgewiesen.' },
+                    : 'Altes Ergebnis ohne vollständigen Endzustandsbeleg. Eine Deckung bis zum Lebensende ist daraus nicht nachgewiesen.',
+            tooltip: floor.description,
+            endWealth: endWealthView(results, totalRuns, failCount, moneyBasis) },
         { question: 'Muss ich mich einschränken?', value: !restriction.legacy
                 ? restriction.value === '—' ? '—' : `${restriction.value} der Jahre`
                 : cutShare === '—' ? '—' : `${cutShare} der Jahre`,
@@ -55,6 +69,24 @@ export function buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBas
             compactNote: true }
 
     ];
+}
+
+// P10, Median und P90 einzeln aus denselben Werten wie die Summary-Karten „Median (alle)“ und „10%/90% Perzentil“.
+function endWealthView(results, totalRuns, failCount, moneyBasis) {
+    const cards = buildSummaryData({ results, totalRuns, failCount, moneyBasis });
+    const final = finalMoney(results, moneyBasis);
+    const range = cards[4].displayValue === '—' ? ['—', '—'] : [summaryEuro(final.p10), summaryEuro(final.p90)];
+    const parts = results?.displayWealth?.[moneyBasis]?.parts;
+    const partSets = parts ? [parts.p10, parts.p50, parts.p90] : [];
+    let partsText = [cards[4].moneyDetail, cards[2].moneyDetail ? `Median ${cards[2].moneyDetail}` : ''].filter(Boolean).join(' · ');
+    if (partSets.length && partSets.every(Boolean)) {
+        const homes = partSets.map(part => summaryEuro(part.homes));
+        partsText = `davon Geldvermögen ${partSets.map(part => summaryEuro(part.money)).join(' · ')} · Immobilien ${homes.every(home => home === homes[0]) ? `je ${homes[0]}` : homes.join(' · ')}`;
+    }
+    return { label: 'Am Laufende · Gesamtvermögen',
+        values: [{ label: 'P10', value: range[0] }, { label: 'Median', value: cards[2].displayValue }, { label: 'P90', value: range[1] }],
+        parts: partsText, partsTooltip: results?.displayWealth ? percentileWealthNotice : '',
+        basis: `Einschließlich Pflegereserve · ${euroBasisLabel(moneyBasis)}` };
 }
 
 /**
@@ -112,6 +144,7 @@ export function buildSummaryData({ results, totalRuns, failCount, moneyBasis = D
             value: floorValue,
             displayRole: 'floor',
             displayValue: floorDisplay,
+            coveragePct: floorCoveragePct,
             countText: floorDisplay === '—' ? '' : formatCoveredRuns(coveredRuns, requestedRuns),
             intervalText: floorInterval ? `95-%-Konfidenzintervall ${formatPercentage(floorInterval.lowerPct)}–${formatPercentage(floorInterval.upperPct)}` : '95-%-Konfidenzintervall nicht verfügbar',
             description: technicalRuns > 0

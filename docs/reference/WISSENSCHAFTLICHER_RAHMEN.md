@@ -27,7 +27,7 @@ Dynamic Flex verteilt verfügbares Kapital über einen angenommenen Resthorizont
 
 Yaari und weitere Lebenszyklusarbeiten zeigen, weshalb unsichere Lebensdauer Entsparen und Versicherungsbedarf verändert. Ein Mittelwert der Restlebensdauer ist kein ausreichendes persönliches Enddatum. Ein vorsichtigeres Quantil kann heutigen Konsum senken; ein zu kurzer Horizont kann ihn zulasten späterer Jahre erhöhen. Die App bildet diese Abwägung mit eigenen Horizont- und Pufferregeln ab. [Lebensdauerdossier](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-14).
 
-Die verwendete Periodensterbetafel beschreibt beobachtete Sterblichkeit eines Zeitraums. Sie modelliert keine künftigen Verbesserungen eines Geburtsjahrgangs. Fortsetzung hoher Alter, divers-Zuordnung und Partnerabhängigkeit sind zusätzliche Grenzen. Amtliche Herkunft der Tabelle bestätigt keine persönliche Lebensdauerprognose. [Datenherkunft](DATA_SOURCES.md#sterblichkeit).
+Seit FR-75 rechnet die App mit der Kohortensterbetafel des Statistischen Bundesamts, Variante V2 „mittel“, für den Geburtsjahrgang jeder Person. Anders als eine Periodentafel enthält sie die erwartete Verbesserung der Sterblichkeit dieses Jahrgangs; für 60- bis 70-Jährige liegt die Lebenserwartung dadurch 0,7 bis 1,6 Jahre höher. Die künftigen Werte sind eine Vorausberechnung: V1 und V3 liegen rund ein halbes Jahr darunter oder darüber. Wer heute ohne Pflegegrad ist, lebt im Modell im Mittel wie die Tafel; nur ein Pflegegrad verkürzt. Der Schwanz ab 100, divers als Mittelwert und fehlende Abhängigkeit zwischen Partnern bleiben Grenzen. Amtliche Herkunft bestätigt keine persönliche Lebensdauerprognose. [Datenherkunft](DATA_SOURCES.md#sterblichkeit).
 
 ## Pfade und Bewertung
 
@@ -57,7 +57,7 @@ Auto-Optimize bewertet führende Kandidaten mit getrennten Seeds. Da dieses Set 
 
 ### Deutscher Haushalt
 
-Amtliche Rentenreihen liefern Populations- und Finanzierungskontext. Die persönliche Simulation braucht eingegebene Beträge und Termine; sie berechnet keinen Rentenbescheid. Steuern, Produktkosten und Anleihen sind vereinfacht. Gesamtvermögen enthält Immobilien; Entnahmefähigkeit, Renditen und Ruin sind auf das Geldvermögen zu beziehen. [Rentenbezug](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-15), [Modellüberblick](FACHKONZEPT.md), [Steuern](STEUERN.md).
+Amtliche Rentenreihen liefern Populations- und Finanzierungskontext. Die persönliche Simulation braucht eingegebene Beträge und Termine; sie berechnet keinen Rentenbescheid. Steuern, Produktkosten und Anleihen sind vereinfacht. Die Aktienreihe ist eine Bruttorendite; der Simulator zieht pauschal 0,5 % laufende ETF-Kosten ab, ein Mittelwert aus Index- und Fondsdaten, keine Prognose. Die Lohnreihe als Rentenproxy enthält die Wirtschaftswunderjahre und steigt seit 1992 real kaum; „wie Inflation“ ist deshalb die vorsichtigere Vorgabe. Gesamtvermögen enthält Immobilien; Entnahmefähigkeit, Renditen und Ruin sind auf das Geldvermögen zu beziehen. [Rentenbezug](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-15), [Modellüberblick](FACHKONZEPT.md), [Steuern](STEUERN.md).
 
 Liquiditätstöpfe können Entscheidungen strukturieren. Estradas Bucket-Gegenbefund verlangt aber, Verhaltenseffekt und Anlageaufteilung getrennt zu prüfen. Auch Gold ist laut Baur/Lucey und Erb/Harvey kein zeitlos verlässlicher Krisen- oder Inflationsschutz. Ob die jeweiligen Appregeln helfen, braucht Vergleiche bei gleichen Gesamtbeständen, Kosten und Zahlungsströmen. [Liquidität](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-06), [Gold](FORSCHUNGSABGLEICH_EVIDENZREGISTER.md#map-07).
 

@@ -51,6 +51,11 @@ export function cashTotalMoney(values) {
     return integer + (fraction ? ',' + fraction : '') + ' €';
 }
 
+/** FR-43: Jahresbudget für Floor/Flex aus dem Beleg (Jahresmittel × 12), nie aus dem Monatswert. */
+const annualMeanBudget = model => model.expenseBudgetSource?.months ? model.expenseBudgetSource.monthly : model.expenseBudget;
+/** Floor/Flex des Monatsabschlusses aus denselben Quellen wie die Ausgaben-Seite. @param {any} model @param {number} year @param {any} [storage] */
+export const readMonthCloseNeeds = (model, year, storage) => readCloseExpenseNeeds(model, year, annualMeanBudget(model), storage);
+
 /** Dieselben Anzeigequellen für Karte und Dialog; keine neuen Abschlussbedingungen. */
 /**
  * @param model Bereits gelesene Anzeigeprojektion.
@@ -58,7 +63,7 @@ export function cashTotalMoney(values) {
  */
 export function projectOverviewMonthSteps(model = {}) {
     const expenses = model.expenses || {}, summary = model.summary;
-    const needs = model.expenseNeeds ?? readCloseExpenseNeeds(model, expenses.year ?? model.occasion?.previousYear, model.expenseBudget);
+    const needs = model.expenseNeeds ?? readMonthCloseNeeds(model, expenses.year ?? model.occasion?.previousYear);
     const split = needs?.months.find(month => month.month === (expenses.month ?? model.occasion?.previousMonth));
     const previous = monthName(model.occasion?.previousYear, model.occasion?.previousMonth);
     const next = model.now?.toLocaleDateString('de-DE', { month: 'long' }) || 'Folgemonat';
@@ -157,7 +162,7 @@ export function createOverviewStepContent({ doc, model, step, status, wealthStat
     const button = text => { const el = node('button', text); el.type = 'button'; el.className = 'ds-button ds-button-secondary'; return el; };
     const body = node('div');
     const year = model.expenses?.year ?? model.occasion?.previousYear;
-    const needs = model.expenseNeeds ?? readCloseExpenseNeeds(model, year, model.expenseBudget);
+    const needs = model.expenseNeeds ?? readMonthCloseNeeds(model, year);
     const split = needs?.months.find(month => month.month === (model.expenses?.month ?? model.occasion?.previousMonth));
 
     if (step.id === 'prices') {
@@ -268,7 +273,8 @@ export function createOverviewStepContent({ doc, model, step, status, wealthStat
  */
 export function monthlyNeedsTiles(needs, month, year) {
     return ['floor', 'flex'].map(key => {
-        const plan = needs.plans[key] === null ? null : needs.plans[key] / 12;
+        // FR-43: Floor des Monats mit dessen festen Ausgaben; Flex nach Regeln ist in jedem Monat gleich.
+        const plan = needs.plans[key] === null ? null : key === 'floor' && needs.plans.floorMonths ? needs.plans.floorMonths[month.month - 1] : needs.plans[key] / 12;
         return { label: `${key === 'floor' ? 'Floor' : 'Flex'} ${monthName(year, month.month)}`, value: money(month[key]),
             detail: `${key === 'floor' ? 'Grundbedarf' : `Flex ${year} nach Regeln`}: ${money(plan)} im Monat · ${expenseDeviation(month[key], plan, money).replace('über Plan', 'darüber').replace('unter Plan', 'darunter')}`,
             tone: plan !== null && month[key] > plan ? 'warning' : '' };

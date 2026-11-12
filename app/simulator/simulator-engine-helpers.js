@@ -17,6 +17,10 @@ import {
     resolveRuntimeCumulativeInflationFactor
 } from '../../types/cumulative-inflation-contract.js';
 
+import { normalizeCareForm } from '../shared/care-benefits.js';
+import { localCalendarDate } from '../shared/app-clock.js';
+import { homeCareAnnualCosts, initialResidentialYear } from '../shared/care-needs.js';
+
 let historicalDataPrepared = false;
 export const SIMULATOR_INFLATION_RATE_ERROR_CODE = 'SIMULATOR_INFLATION_RATE_INVALID';
 
@@ -290,10 +294,16 @@ export function makeDefaultCareMeta(enabled, personGender = 'm', careToday = nul
     };
     if (initialGrade) {
         const config = resolveGradeConfig(inputs, initialGrade);
+        if (normalizeCareForm(careToday.form || inputs.pflegeGradeConfigs?.[initialGrade]?.careForm, initialGrade) === 'residential') {
+            care.heimStartJahr = 1 - initialResidentialYear(careToday.residentialSince, inputs.careReferenceDate || localCalendarDate(),
+                careToday.residentialFirstYear, inputs.careReferenceYear);
+        }
         Object.assign(care, { active: true, triggered: true, startAge,
             grade: initialGrade, gradeLabel: PFLEGE_GRADE_LABELS[initialGrade],
             mortalityFactor: config.mortalityFactor, flexFactor: 1,
             initialGrade,
+            // FR-73 Punkt 13: eigener Wert für Pflege zu Hause heute; nur gesetzt, wenn die Person ihn eingetragen hat.
+            ...(Number.isFinite(careToday.homeCostsMonthly) ? { initialHomeCostsMonthly: careToday.homeCostsMonthly } : {}),
             initialProgressionFactor: careToday.progression === 'slower' ? .5 : careToday.progression === 'much_slower' ? .25 : 1 });
     }
     return care;
@@ -542,46 +552,7 @@ export function calcCareCost(careMetaP1, careMetaP2 = null) {
     return { zusatzFloor, flexFactor };
 }
 
-/**
- * Computes the effective household flex factor by splitting the flex budget across
- * all living persons and only cutting the portion that belongs to the person in care.
- *
- * @param {object} options
- * @param options.hasPartner
- * @param options.p1Alive
- * @param options.careMetaP1
- * @param options.p2Alive
- * @param options.careMetaP2
- * @returns {number} Ergebnis der Operation.
- */
-export function computeHouseholdFlexFactor({
-    hasPartner,
-    p1Alive,
-    careMetaP1,
-    p2Alive,
-    careMetaP2
-}) {
-    const f1 = p1Alive ? resolveIndividualFlexFactor(careMetaP1) : 0.0;
-
-    if (hasPartner !== true) {
-        return f1;
-    }
-
-    const f2 = p2Alive ? resolveIndividualFlexFactor(careMetaP2) : 0.0;
-    const householdFactor = (0.5 * Math.max(f1, f2)) + (0.25 * f1) + (0.25 * f2);
-    return householdFactor;
-}
-
-function resolveIndividualFlexFactor(careMeta) {
-    if (!careMeta || !careMeta.active) {
-        return 1.0;
-    }
-    const rawFactor = careMeta.flexFactor;
-    if (typeof rawFactor !== 'number' || !Number.isFinite(rawFactor)) {
-        return 1.0;
-    }
-    return Math.min(1, Math.max(0, rawFactor));
-}
+export { computeHouseholdFlexFactor } from '../shared/care-needs.js';
 
 const CARE_PROBABILITY_BUCKETS = Object.keys(PFLEGE_GRADE_PROBABILITIES).map(Number).sort((a, b) => a - b);
 
@@ -782,43 +753,23 @@ export function priceCareMeta(care, inputs, currentState = {}, yearIndex = 0, fl
     const careYearIndex = care.currentYearInCare;
     // Input readers normalize the persisted/UI percentage exactly once.
     // Runner and worker contracts transport this ratio without rescaling.
-    const driftFactor = inputs.pflegeKostenDrift;
-    const cumulativeInflationFactor = resolveSimulatorCumulativeInflationFactor(currentState);
-    const carePriceFactor = cumulativeInflationFactor * Math.pow(1 + driftFactor, yearIndex);
-    const regionalMultiplier = 1 + Math.max(0, inputs?.pflegeRegionalZuschlag || 0);
-
-    const floorAtTriggerAdjusted = (currentState.baseFloor ?? inputs.startFloorBedarf) * floorFactor;
     const flexAtTriggerAdjusted = currentState.baseFlex ?? inputs.startFlexBedarf;
-    const maxFloorAdjusted = inputs.pflegeMaxFloor * carePriceFactor;
-
+    const costs = homeCareAnnualCosts(care, inputs, {
+        baseFloor: currentState.baseFloor ?? inputs.startFloorBedarf,
+        inflationFactor: resolveSimulatorCumulativeInflationFactor(currentState), yearIndex, floorFactor, gradeConfig
+    });
+    const { floorAnchor: floorAtTriggerAdjusted, maximum: maxFloorAdjusted, cap: capZusatz,
+        homeCareAddition: zusatzFloorZielFinal } = costs;
     if (careYearIndex === 1) {
         care.floorAtTrigger = floorAtTriggerAdjusted;
         care.flexAtTrigger = flexAtTriggerAdjusted;
         care.maxFloorAtTrigger = maxFloorAdjusted;
     }
 
-    const capZusatz = Math.max(0, maxFloorAdjusted - floorAtTriggerAdjusted);
-
-    // FR-45: heutige Pflege steckt bereits in Grundbedarf/Flex. Erst ein höherer Grad ergänzt die volle Staffel.
-    const additionalAnnual = care.initialGrade && care.initialGrade === care.grade && !care.familyCareFallback ? 0 : gradeConfig.zusatz;
-    const zielRoh = additionalAnnual * carePriceFactor * regionalMultiplier;
-    const cappedZiel = Math.min(capZusatz, zielRoh);
-    const needsRamp = (zielRoh > capZusatz) && capZusatz > 0;
-    let zusatzFloorZielFinal = cappedZiel;
-    if (needsRamp) {
-        const rampYears = Math.max(1, inputs.pflegeRampUp);
-        const rampUpFactor = Math.min(1.0, careYearIndex / rampYears);
-        const rampedTarget = Math.min(capZusatz, zielRoh * rampUpFactor);
-        zusatzFloorZielFinal = rampedTarget;
-    }
-
     const zusatzFloorDelta = Math.max(0, zusatzFloorZielFinal - care.zusatzFloorZiel);
     care.zusatzFloorDelta = zusatzFloorDelta;
     care.zusatzFloorZiel = zusatzFloorZielFinal;
-    // Der eingetragene Flex enthält die heutige Pflege bereits. Weitere
-    // Kürzungen beziehen sich auf diesen Ausgangszustand (FR-45).
-    const initialFlex = care.initialGrade ? resolveGradeConfig(inputs, care.initialGrade).flexCut : 1;
-    care.flexFactor = initialFlex > 0 ? Math.min(1, gradeConfig.flexCut / initialFlex) : 1;
+    care.flexFactor = costs.flexFactor;
 
     const flexVerlust = flexAtTriggerAdjusted * (1 - care.flexFactor);
     care.kumulierteKosten += zusatzFloorDelta + flexVerlust;

@@ -13,12 +13,12 @@ export interface PrepareMarketOptions extends AnnualFetchOptions {manualPrice?: 
     onProgress?: (message: string)=>void; readers?: ReturnType<typeof import('../app/shared/annual-marketdata.js').createAnnualMarketDataReaders>; now?: ()=>Date;
     navigationOperation?: I.Operation;
 }
-export interface PlanPreviewOptions extends I.AnnualOptions {targetYear?: number; storage?: D.RecordStorage;
+export interface PlanPreviewOptions extends I.AnnualOptions {targetYear?: number; storage?: D.RecordStorage; choiceVariant?: "year_end"|"year_high";
     marketData?: B.ComputeAnnualOptions['marketData'] & {manualPrice?: number}; engineLoader?: typeof import('../app/shared/annual-engine-loader.js').annualEngineLoader; signal?: AbortSignal;}
 export type PlanPreview = Awaited<ReturnType<typeof import('../app/shared/annual-plan-editor.js').evaluateAnnualPlanPreview>>;
 export interface PlanDraftOptions {evaluate?: (patch: import('./profile-ui.js').PlanPatch|undefined)=>Promise<PlanPreview>; notify?: (state: PlanDraftState)=>void;}
 export interface PlanEditorOptions extends PlanDraftOptions {doc?: Document; listen?: (node: EventTarget, type: string, callback: (event: FocusEvent)=>unknown)=>void;
-    getPreview?: ()=>ReturnType<typeof import("../app/balance/balance-annual-preview.js").projectAnnualPreview>; getAnnualExpenses?: ()=>{needsReview?: ReturnType<typeof import("../app/expenses/expenses-needs.js").readCloseExpenseNeeds>}; onState?: (state: PlanDraftState)=>void;}
+    getPreview?: ()=>ReturnType<typeof import("../app/balance/balance-annual-preview.js").projectAnnualPreview>; getAnnualExpenses?: ()=>{needsReview?: ReturnType<typeof import("../app/expenses/expenses-needs.js").readCloseExpenseNeeds>}; onState?: (state: PlanDraftState)=>void; budgetNote?: ()=>string|null;}
 export interface RetryOptions {storage?: D.RecordStorage; archive?: Archive; getProfileId?: ()=>string; getReferenceDate?: ()=>Date; now?: number; scope?: D.PlanScope;}
 export interface AnnualRetry {token?: string; profileId: string; snapshotId: string; instrument: string; targetYear: number; periodId: string; createdAt?: number; price?: number;}
 export interface CoordinatorRequest extends Partial<Omit<B.PreparedAnnual,"adoptedPlanPatch">> {targetYear?: number; resume?: AnnualRetry; clarify?: boolean; opener?: HTMLElement;
@@ -53,6 +53,8 @@ export interface AnnualDialogOptions {document?: Document; getLastUpdateResults?
     priceActions?: ReturnType<typeof import('../app/shared/close-price-actions.js').createClosePriceActions>;
     projectMarketReadings?: typeof import('../app/balance/balance-annual-market-preview.js').projectAnnualMarketReadings;
     projectPreview?: typeof import('../app/balance/balance-annual-preview.js').projectAnnualPreview;
+    /** WT-1: Umsetzungsstand des Plans für das abzuschließende Jahr (Schritt „Plan“ und Ergebnis). */
+    readPlanProgress?: typeof import('../app/shared/annual-close-dialog.js').readAnnualClosePlanProgress;
     evaluatePlan?: typeof import('../app/shared/annual-plan-editor.js').evaluateAnnualPlanPreview;
     onError?: (error: Error, action?: string)=>void; onClearError?: ()=>void; onNotice?: (text: string)=>void; isCommitActive?: ()=>boolean;
 }

@@ -87,11 +87,14 @@ export function aggregateProfilverbundInputs(profileInputs, overrides = {}) {
 // Ermittelt den gemeinsamen Haushaltsbedarf, bevor Finanzierungsprofile betrachtet werden.
 export function calculateHouseholdWithdrawalNeed(profileInputs, overrides = {}) {
     const aggregated = aggregateProfilverbundInputs(profileInputs, overrides);
+    // FR-72 Punkt 10 / FR-73 B9: persönliche Pflegekosten unverheirateter Personen bleiben bei der Person.
+    const personal = (Array.isArray(profileInputs) ? profileInputs : []).filter(entry => entry.personalCareNeed > 0);
     return {
         ...aggregated,
         grossNeed: aggregated.totalBedarf,
         incomeAnnual: aggregated.totalRenteJahr,
-        netWithdrawal: Math.max(0, aggregated.totalBedarf - aggregated.totalRenteJahr)
+        netWithdrawal: Math.max(0, aggregated.totalBedarf - aggregated.totalRenteJahr),
+        ...(personal.length ? { personalNeeds: Object.fromEntries(personal.map(entry => [entry.profileId, entry.personalCareNeed])) } : {})
     };
 }
 

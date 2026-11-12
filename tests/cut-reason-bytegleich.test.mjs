@@ -1,4 +1,8 @@
-import { readEV1bReferences, ev1bEvidence } from './helpers/ev-1b-expectations.mjs';
+import { readLE1References, le1Evidence } from './helpers/le-1-expectations.mjs';
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
+import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readEV1bReferences = value => readPFA1References(beforePFA1References(value));
+import { readEV1bReferences as beforePFA1References, ev1bEvidence } from './helpers/ev-1b-expectations.mjs';
 const readMD2References = value => readEV1bReferences(readBeforeEV1bReferences(value));
 import { readMD2References as readBeforeEV1bReferences, md2Evidence } from './helpers/md-2-expectations.mjs';
 import { readZG1References as readBeforeMD2References, zg1Evidence } from './helpers/zg-1-expectations.mjs';
@@ -50,6 +54,8 @@ assertEqual(JSON.stringify(kg1Parameters), JSON.stringify(evidence.parameters), 
 assertEqual(samples.backtest.outcome.kind, 'completed', 'KG-1: Muster-Backtest 2000–2025 vollständig');
 assertEqual(samples.mc.financialMetricsValid, true, 'KG-1: Monte Carlo ohne technische Ausfälle');
 assertEqual(samples.mc.runMeta.length, kg1Parameters.paths, 'KG-1: alle 100 festen Seeds enthalten');
+// GU-1 (FR-74): Nur die Engine-Ergebnisse der Beispielhaushalte ändern sich mit „wie Inflation“; die Stichproben bleiben.
+const gu1 = (key, value) => key === 'engineResults' ? readGU1References(value) : value;
 for (const [key, result] of Object.entries({ ...samples, engineResults })) {
     // JSON ist derselbe Exportvertrag wie bei der Vorhermessung, auch für TypedArrays.
     const serialized = JSON.stringify(withLegacyCareProvenance(result));
@@ -62,12 +68,12 @@ for (const [key, result] of Object.entries({ ...samples, engineResults })) {
     assertEqual(historical.beforeNumericSha256, historical.afterNumericSha256, `${key}: historischer KG-1-Zahlenbeleg bleibt identisch`);
     assertEqual(display.before.numericSha256, expected.numericSha256, `${key}: NR-1-Ausgangsstand entspricht dem bisherigen Zahlenbeleg`);
     assertEqual(display.before.afterSha256, expected.afterSha256, `${key}: bisherige vollständige Referenz bleibt erhalten`);
-    assertEqual(numeric.count, ev1bEvidence.numericLeaves[key] ?? md2Evidence.numericLeaves[key] ?? zg1Evidence.numericLeaves[key] ?? ev1Evidence.numericLeaves[key] ?? qscEvidence.numericLeaves[key] ?? vf2bEvidence.numericLeaves[key] ?? gl1Evidence.numericLeaves[key] ?? as1Evidence.numericLeaves[key] ?? ep1Evidence.numericLeaves[key] ?? rng1Evidence.numericLeaves[key] ?? an1Evidence.numericLeaves[key] ?? display.after.numericLeaves, `${key}: sämtliche Zahlenfelder einschließlich belegter Rentenreste`);
-    assertEqual(numeric.hash, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.numericSha256)))))), `${key}: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder`);
-    assertEqual(hash(JSON.stringify(normalized, (field, value) => textFields.has(field) ? undefined : value)), readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.unchangedExceptTextsSha256)))))), `${key}: vollständige Referenz ohne Grund und Anmerkung`);
+    assertEqual(numeric.count, le1Evidence.numericLeaves[key] ?? ev1bEvidence.numericLeaves[key] ?? md2Evidence.numericLeaves[key] ?? zg1Evidence.numericLeaves[key] ?? ev1Evidence.numericLeaves[key] ?? qscEvidence.numericLeaves[key] ?? vf2bEvidence.numericLeaves[key] ?? gl1Evidence.numericLeaves[key] ?? as1Evidence.numericLeaves[key] ?? ep1Evidence.numericLeaves[key] ?? rng1Evidence.numericLeaves[key] ?? an1Evidence.numericLeaves[key] ?? display.after.numericLeaves, `${key}: sämtliche Zahlenfelder einschließlich belegter Rentenreste`);
+    assertEqual(numeric.hash, readLE1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.numericSha256))))))), `${key}: jedes Zahlenfeld mit Pfad einschließlich korrigierter vk-Felder`);
+    assertEqual(hash(JSON.stringify(normalized, (field, value) => textFields.has(field) ? undefined : value)), readLE1References(gu1(key, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.unchangedExceptTextsSha256)))))))), `${key}: vollständige Referenz ohne Grund und Anmerkung`);
     const unchangedHash = hash(JSON.stringify(normalized, (field, value) => field === 'vk' || textFields.has(field) ? undefined : value));
-    assertEqual(unchangedHash, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.before.unchangedExceptDisplaySha256)))))), `${key}: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen`);
-    assertEqual(hash(serialized), readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.afterSha256)))))), `${key}: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste`);
+    assertEqual(unchangedHash, readLE1References(gu1(key, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.before.unchangedExceptDisplaySha256)))))))), `${key}: vollständiger Feldvergleich außerhalb vk und Grundtexten mit belegten FR-46-Käufen`);
+    assertEqual(hash(serialized), readLE1References(gu1(key, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(display.after.afterSha256)))))))), `${key}: vollständige Ergebnisse einschließlich Gründe, vk und Rentenreste`);
 }
 for (const row of [...samples.backtest.rows.map(entry => entry.row), ...samples.mc.runMeta.flatMap(meta => meta.logDataRows)]) {
     if (!row.entscheidung) continue;

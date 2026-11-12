@@ -51,11 +51,11 @@ try {
     const result = EngineAPI.simulateSingleYear(input, balance.engineLastState);
     assert(!result.error, 'AS-1: Balance-Sophie kann gerechnet werden');
     assert(decidedFixedIncomeSurplus({ ...result.ui, input }) > 0, 'AS-1: FR-52 kennzeichnet das Ansparjahr');
-    assertEqual(result.ui.action.verwendungen.aktien, 10000, 'AS-1: Balance empfiehlt den Kauf des verfügbaren Überschusses');
+    assertEqual(result.ui.action.verwendungen.aktien, 9400, 'AS-1: Balance empfiehlt den Kauf des verfügbaren Überschusses (GA-2: höhere Reserve durch den Ratenkredit im Grundbedarf)');
     const renderer = new ActionRenderer({ outputs: {} });
     const split = splitPlayLiquidity(input, result.ui.action, result.ui.spending, result.ui.zielLiquiditaet);
-    assertEqual(resolveTargetTagesgeld(result.ui.spending, result.ui.zielLiquiditaet), 1000, 'FR-66: zwölf Tagesgeldmonate entsprechen einem Fünftel der Reserve');
-    assertEqual(input.tagesgeld - split.fromTagesgeld, 5000, 'AS-1: Nach dem Kauf verbleiben 5.000 Euro Tagesgeld');
+    assertEqual(resolveTargetTagesgeld(result.ui.spending, result.ui.zielLiquiditaet), 1120, 'FR-66: zwölf Tagesgeldmonate entsprechen einem Fünftel der Reserve');
+    assertEqual(input.tagesgeld - split.fromTagesgeld, 5600, 'AS-1: Nach dem Kauf verbleiben 5.600 Euro Tagesgeld');
     assertEqual(renderer.determineInternalCashRebalance(input, result.ui.action, result.ui.spending, result.ui.zielLiquiditaet), null,
         'AS-1: Aktienkauf wird nicht durch Geldmarktumschichtung ersetzt');
     assertEqual(resolveTargetTagesgeld({ monatlicheEntnahme: 1000 }, 5000), 2000, 'FR-66: Die eiserne Reserve begrenzt den Tagesgeldanteil nach unten');

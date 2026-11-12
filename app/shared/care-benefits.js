@@ -1,5 +1,5 @@
 /** BMG: Leistungsansprüche 2026, Übersicht vom 11.12.2025. Beträge in Euro. */
-import { CARE_ALLOWANCE_SOURCE, DEFAULT_CARE_VALUES } from './household-care-values.js';
+import { CARE_ALLOWANCE_SOURCE, DEFAULT_CARE_VALUES, officialResidentialShare } from './household-care-values.js';
 export const CARE_BENEFITS_SOURCE = CARE_ALLOWANCE_SOURCE;
 export const CARE_BENEFITS_2026 = Object.freeze({
     1: Object.freeze({ allowance: 0, services: 0, relief: 131, respiteAnnual: 0, residential: 0 /* PG1: nur Entlastungsbetrag, kein Leistungsbetrag nach § 43 SGB XI */ }),
@@ -25,6 +25,21 @@ export const defaultCareForm = grade => Number(grade) <= 2 ? 'family' : Number(g
 export const normalizeCareForm = (form, grade) => form === 'external'
     ? Number(grade) <= 3 ? 'home-support' : 'residential' : Object.hasOwn(CARE_FORMS, form || '') ? form : defaultCareForm(grade);
 
+/** FR-72 Punkt 7: Bei „Amtlich“ gilt in Monte Carlo die gezogene Form. Die Zufallszahl `heimZufall` liegt
+ * nur dort auf der Pflege-Metadaten; ohne sie (Backtest, Balance, ältere Replays) bleibt es bei der Vorgabe.
+ *
+ * @param {{heimZufall?: unknown}|null|undefined} care Pflege-Metadaten der Person.
+ * @param {number} grade Aktiver Pflegegrad.
+ * @returns {string|null} Gezogene Form oder null ohne Zufallszahl.
+ */
+export function officialDrawnCareForm(care, grade) {
+    const draw = care?.heimZufall;
+    if (typeof draw !== 'number' || !Number.isFinite(draw)) return null;
+    if (draw < officialResidentialShare(grade)) return 'residential';
+    const form = defaultCareForm(grade);
+    return form === 'residential' ? 'home-support' : form;
+}
+
 /** Die bekannte heutige Form gilt bis zum ersten Gradwechsel, danach die Staffel.
  *
  * @param inputs Eingaben des Aufrufers.
@@ -35,8 +50,10 @@ export const normalizeCareForm = (form, grade) => form === 'external'
  */
 export function careFormForPerson(inputs, grade, personIndex = 0, household = null) {
     const today = personIndex === 0 ? inputs.careToday : inputs.partner?.careToday;
+    const official = inputs.pflegeKostenStaffelPreset === 'amtlich';
     const form = normalizeCareForm(today?.form && today.grade === grade ? today.form
-        : inputs.pflegeKostenStaffelPreset === 'amtlich' ? null : inputs.pflegeGradeConfigs?.[grade]?.careForm, grade);
+        : official ? officialDrawnCareForm(household?.care?.[personIndex === 0 ? 'p1' : 'p2'], grade)
+            : inputs.pflegeGradeConfigs?.[grade]?.careForm, grade);
     return form === 'family' && familyCareFallback(inputs, grade, personIndex, household) ? 'home-support' : form;
 }
 
@@ -84,6 +101,21 @@ export function applyPartnerCareFallback(inputs, household) {
         const fallback = familyCareFallback(inputs, care.grade, index, household);
         if (fallback) care.familyCareFallback = fallback;
     }
+}
+
+/** FR-73 P6: Balance prüft den Angehörigenausfall wie der Simulator, bevor sie Pflegegeld ansetzt. Die
+ * Pflegeform der Person bleibt gespeichert; nur die wirksame Form des Haushalts wechselt zu externer Unterstützung.
+ *
+ * @param {{grade?: number; form?: string}} care Heutiger Pflegezustand der Person.
+ * @param {{preset?: string; partnerCare?: {grade?: number}|null}} [settings] Staffelvorgabe und heutige Pflege der Partnerperson.
+ * @returns {string|undefined} Wirksame Form.
+ */
+export function effectiveCareFormToday(care, settings = {}) {
+    if (!care?.grade || care.form !== 'family' || !settings.partnerCare) return care?.form;
+    const inputs = { pflegeKostenStaffelPreset: settings.preset, partner: { aktiv: true } };
+    const household = { p1Alive: true, p2Alive: true, care: { p1: { active: true, grade: care.grade },
+        p2: settings.partnerCare.grade > 0 ? { active: true, grade: Number(settings.partnerCare.grade) } : null } };
+    return familyCareFallback(inputs, care.grade, 0, household) ? 'home-support' : care.form;
 }
 
 /**

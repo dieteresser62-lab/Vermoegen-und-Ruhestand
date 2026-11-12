@@ -11,6 +11,8 @@ import { isAllowedPersistenceImportKey, PROBELAUF_STATE_KEY } from '../shared/pe
 import { PersistenceFacade } from '../shared/persistence-facade.js';
 import { validatePersistenceDomainRecords } from '../shared/persistence-backup.js';
 import { createNavigationOperationLifecycle } from '../shared/navigation-guard.js';
+import { OWN_CARE_PRICES_KEY } from '../shared/care-prices.js';
+import { assertCarePrices } from '../shared/household-care-values.js';
 
 const REGISTRY = 'rs_profiles_v1';
 const active = new WeakSet();
@@ -29,8 +31,20 @@ function assertAllowed(records, options) {
 // in eine Ein-Person-Datei. Der Vollbundlevertrag bleibt unverändert.
 const PERSON_FILE_KEYS = new Set([...Object.values(PROFILE_VALUE_KEYS), PROFILE_HEALTH_BUCKET_KEY,
     'depot_tranchen', 'profile_cash_history_v1', 'profile_wealth_history_lots_v1']);
-function personData(data) {
-    return Object.fromEntries(Object.entries(migrateIncomeRecord(data)).filter(([key]) => PERSON_FILE_KEYS.has(key)));
+/** Personenrecords der Datei; eine Außenperson nimmt ihren eigenen Preisblock mit (Gutachten PFA-5 B2). Haushaltsmitglieder
+ * rechnen mit den Haushaltspreisen und bleiben ohne Block.
+ *
+ * @param {Record<string, string>} data Personenrecords.
+ * @param {{ownPrices?: boolean}} [options] `ownPrices`: der Preisblock gehört dieser Person.
+ * @returns {Record<string, string>} Gefilterte Records.
+ */
+function personData(data, { ownPrices = false } = {}) {
+    const keep = key => PERSON_FILE_KEYS.has(key) || ownPrices && key === OWN_CARE_PRICES_KEY;
+    const result = Object.fromEntries(Object.entries(migrateIncomeRecord(data)).filter(([key]) => keep(key)));
+    if (result[OWN_CARE_PRICES_KEY] !== undefined) {
+        try { assertCarePrices(JSON.parse(result[OWN_CARE_PRICES_KEY])); } catch { throw new Error('Die Personendatei enthält ungültige Pflegepreise. Bitte die Person in der Quell-App prüfen und neu exportieren.'); }
+    }
+    return result;
 }
 function importedPersonData(source, file) {
     // Nur die Datei migrieren, niemals Livewerte oder Partner im Zielbestand.
@@ -39,7 +53,8 @@ function importedPersonData(source, file) {
     const data = source.profile.data;
     const balance = JSON.parse(data[CONFIG.STORAGE.LS_KEY] || '{}');
     const referenceYear = personReferenceYear(balance.annualPeriodMetadata, new Date(file.exportedAt));
-    if (!buildPersonMigrationDraft(records, { referenceYear, inspectOnly: true }).people[0].needed) return personData(migrateCareFormsRecord(data));
+    // Die importierte Person ist eine Außenperson: ihr eigener Preisblock kommt mit.
+    if (!buildPersonMigrationDraft(records, { referenceYear, inspectOnly: true }).people[0].needed) return personData(migrateCareFormsRecord(data), { ownPrices: true });
     for (const key of ['sim_partnerAktiv', 'sim_chkPartnerAktiv']) {
         if (data[key] !== undefined && data[key] !== '' && data[key] !== 'false') {
             throw new Error('Die Personendatei enthält eine unklare Partnerangabe. Bitte die Personen in der Quell-App zuordnen und einzeln neu exportieren.');
@@ -65,7 +80,7 @@ function importedPersonData(source, file) {
     const migrated = applyPersonMigrationChoices(draft);
     const migratedData = JSON.parse(migrated[REGISTRY]).profiles[source.id].data;
     projectPersonPension(migratedData, referenceYear);
-    return personData(migrateCareFormsRecord(migratedData));
+    return personData(migrateCareFormsRecord(migratedData), { ownPrices: true });
 }
 function bundleFor(id, profile, exportedAt = new Date().toISOString()) {
     return { bundleType: PROFILE_BUNDLE_TYPE, app: PROFILE_BUNDLE_APP_ID,
@@ -100,7 +115,8 @@ export async function previewPersonExport(id, options = {}) {
     const stored = registry.profiles[id];
     if (!stored) throw new Error('Bitte eine vorhandene Person auswählen.');
     // Aktuelle Livewerte nur lesend überlagern, keinen Save/Switch auslösen.
-    const data = id === records.rs_active_profile ? personData(records) : personData(stored.data);
+    const ownPrices = stored.meta?.belongsToHousehold === false;
+    const data = id === records.rs_active_profile ? personData(records, { ownPrices }) : personData(stored.data, { ownPrices });
     const profile = { meta: { id, name: stored.meta.name, createdAt: stored.meta.createdAt, updatedAt: stored.meta.updatedAt, belongsToHousehold: false }, data };
     const file = bundleFor(id, profile);
     normalizePersonFile(file);

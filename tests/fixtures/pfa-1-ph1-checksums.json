@@ -1,0 +1,57 @@
+{
+  "basis": "5a3fbc1d",
+  "before": {
+    "max-erika": {
+      "balance": "9dc6402524b5858e812d34ecac99e289ba67e6e9f89259fde5f3fee28d584eaa",
+      "backtest": "74a2ab0ca889cad120a6271d583442d5d8f205b7d1fdc82ef8e14b68c529d0bf",
+      "monteCarlo": "cfdfe8b5686370f6e30695f375e9a831aa17718a8c837a2aa523f6bdb0ef5766",
+      "overview": "93531860858b7734b6b8efe9f64adfe89cb27c01d9af22fd0a820a90ecada26b"
+    },
+    "renate": {
+      "balance": "5c150cb7fea0c00527b37cbc6ff2efe257ed006b9660ba8a223127aa7014dc16",
+      "backtest": "48ae11b17ec61471aae9f720d16232231fdd7ae2a17ef39e293b400b097223bd",
+      "monteCarlo": "370e3d4d6999f423b20d207d3b74fbd32792b2fca0f30dfc393cf829471a43f4",
+      "overview": "ec60dc03d3ee4de8381e1cca083724d20f84f65c6954a67fc3bcadab2188e056"
+    }
+  },
+  "after": {
+    "max-erika": {
+      "balance": "9dc6402524b5858e812d34ecac99e289ba67e6e9f89259fde5f3fee28d584eaa",
+      "backtest": "cb55c4cfa1a414086ed5caa7973315f80da6f33466d2c081b55c55d7d9c91a9a",
+      "monteCarlo": "8ded79e9f82645b2697ab3c07ac0acd11b8cce887842cd7d62533af4c49fd140",
+      "overview": "93531860858b7734b6b8efe9f64adfe89cb27c01d9af22fd0a820a90ecada26b"
+    },
+    "renate": {
+      "balance": "5c150cb7fea0c00527b37cbc6ff2efe257ed006b9660ba8a223127aa7014dc16",
+      "backtest": "87eacc461c908aaa5794f95ec0421e54358ff84a5f02b9e893274dc78f3f309f",
+      "monteCarlo": "66f3938a9ae095c5ed269e9a929d8799e0d1f8da317fa9fbbc796d9f7cab1047",
+      "overview": "ec60dc03d3ee4de8381e1cca083724d20f84f65c6954a67fc3bcadab2188e056"
+    }
+  },
+  "checks": {
+    "max-erika": {
+      "balanceByteEqual": true,
+      "overviewByteEqual": true,
+      "backtestExceptRequestByteEqual": true,
+      "changedBacktestPaths": [
+        "request.inputs.pflegeGradeConfigs.1.zusatz",
+        "request.inputs.pflegeGradeConfigs.2.zusatz",
+        "request.inputs.pflegeStufe1Zusatz",
+        "request.inputs.pflegeKostenDrift"
+      ],
+      "reason": "Backtest: ausschließlich die geforderten neuen wirksamen Eingabevorgaben in request.inputs. Monte Carlo: neue Staffel und neuer Kostenanstieg sowie volle Pflegevorschau."
+    },
+    "renate": {
+      "balanceByteEqual": true,
+      "overviewByteEqual": true,
+      "backtestExceptRequestByteEqual": true,
+      "changedBacktestPaths": [
+        "request.inputs.pflegeGradeConfigs.1.zusatz",
+        "request.inputs.pflegeGradeConfigs.2.zusatz",
+        "request.inputs.pflegeStufe1Zusatz",
+        "request.inputs.pflegeKostenDrift"
+      ],
+      "reason": "Backtest: ausschließlich die geforderten neuen wirksamen Eingabevorgaben in request.inputs. Monte Carlo: neue Staffel und neuer Kostenanstieg sowie volle Pflegevorschau."
+    }
+  }
+}

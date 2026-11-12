@@ -9,7 +9,8 @@ import { cloneReplayValue, createReplayStressEvents, createReplayHouseholdEvent 
 import { applyStressOverride } from '../simulator-portfolio.js';
 import { applyTailRiskOverlay } from '../tail-risk-overlay.js';
 import { computeMarriageYearsCompleted } from '../simulator-sweep-utils.js';
-import { resolveSimulatorMortalityProbability, priceMonteCarloCareForYear } from '../mc-life-events.js';
+import { priceMonteCarloCareForYear } from '../mc-life-events.js';
+import { applyCareTodayMortalityFloor, resolveBaseMortalityProbability } from '../target-mortality.js';
 import { resolveSurvivorFlexFactors } from '../simulator-survivor.js';
 /** @param {import('./path-state.js').YearContext} context */
 export function prepareAnnualLife(context) {
@@ -91,11 +92,12 @@ export function prepareAnnualLife(context) {
     context.isAccumulation = context.inputs.accumulationPhase?.enabled && context.simulationsJahr < context.effectiveTransitionYear;
 
     if (!context.isAccumulation && context.p1Alive) {
-        let qx1 = resolveSimulatorMortalityProbability(context.inputs.geschlecht, context.ageP1);
+        let qx1 = resolveBaseMortalityProbability(context.inputs, 0, context.inputs.geschlecht, context.ageP1);
         const careFactorP1 = /** @type {import('../../../typcheck/rechenkern-integration').ComputeCareMortalityMultiplier} */ (computeCareMortalityMultiplier)(context.careMetaP1);
         if (careFactorP1 > 1) {
             qx1 = Math.min(1.0, qx1 * careFactorP1);
         }
+        qx1 = applyCareTodayMortalityFloor(qx1, context.careMetaP1, context.inputs, 0, context.inputs.geschlecht, context.ageP1);
         if (rand() < qx1) {
             context.p1Alive = false;
         }
@@ -103,11 +105,12 @@ export function prepareAnnualLife(context) {
 
     if (!context.isAccumulation && context.p2Alive) {
         const p2Gender = context.inputs.partner?.geschlecht || (context.inputs.geschlecht === 'm' ? 'w' : 'm');
-        let qx2 = resolveSimulatorMortalityProbability(p2Gender, context.ageP2);
+        let qx2 = resolveBaseMortalityProbability(context.inputs, 1, p2Gender, context.ageP2);
         const careFactorP2 = /** @type {import('../../../typcheck/rechenkern-integration').ComputeCareMortalityMultiplier} */ (computeCareMortalityMultiplier)(context.careMetaP2);
         if (careFactorP2 > 1) {
             qx2 = Math.min(1.0, qx2 * careFactorP2);
         }
+        qx2 = applyCareTodayMortalityFloor(qx2, context.careMetaP2, context.inputs, 1, p2Gender, context.ageP2);
         if (rand() < qx2) {
             context.p2Alive = false;
         }

@@ -1,3 +1,5 @@
+import { readLE1References } from './helpers/le-1-expectations.mjs';
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
 import { readVF2BReferences } from './helpers/vf-2b-expectations.mjs';
 import { readGL1References } from './helpers/gl-1-expectations.mjs';
@@ -43,6 +45,15 @@ for (const preset of ['off', 'konservativ', 'ausgewogen', 'offensiv']) {
     assertEqual(mc.financialMetricsValid, true, `${preset}: MC auswertbar`);
     assertEqual(rows.length, 12, `${preset}: vollständiger MC-Pfad`);
     assert(rows.every(row => row.Person1Alive === 1 && row.Person2Alive === 1), `${preset}: nachweislich ohne Tod`);
-    assertEqual(hash({ rows: bt.rows, outcome: bt.outcome }), readQSCReferences(readVF2BReferences(readGL1References(readAN1Hash(readJB2Hash(expected[preset].backtest))))), `${preset}: Backtest ohne Tod entspricht BK-2-Referenz`);
-    assertEqual(hash(rows), readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readJB2Hash(expected[preset].mc))))))), `${preset}: MC ohne Tod entspricht BK-2-Referenz`);
+    if (preset === 'off') {
+        // LE-1b (Gutachten P3-9): Der Anker ohne Dynamic Flex bleibt unübersetzt. FR-75 ändert nur den Horizont
+        // des Dynamic Flex; ohne Dynamic Flex und ohne Todesfall rechnen Backtest und MC bytegleich zum Stand davor.
+        const prior = value => readGU1References(readQSCReferences(readVF2BReferences(readGL1References(value))));
+        const backtestBefore = prior(readAN1Hash(readJB2Hash(expected.off.backtest)));
+        const mcBefore = prior(readRNG1Hash(readAN1Hash(readEK1dHash(readJB2Hash(expected.off.mc)))));
+        assertEqual(readLE1References(backtestBefore), backtestBefore, 'off: Backtest-Anker ohne LE-1-Übersetzung');
+        assertEqual(readLE1References(mcBefore), mcBefore, 'off: MC-Anker ohne LE-1-Übersetzung');
+    }
+    assertEqual(hash({ rows: bt.rows, outcome: bt.outcome }), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(readAN1Hash(readJB2Hash(expected[preset].backtest))))))), `${preset}: Backtest ohne Tod entspricht BK-2-Referenz`);
+    assertEqual(hash(rows), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readJB2Hash(expected[preset].mc))))))))), `${preset}: MC ohne Tod entspricht BK-2-Referenz`);
 }

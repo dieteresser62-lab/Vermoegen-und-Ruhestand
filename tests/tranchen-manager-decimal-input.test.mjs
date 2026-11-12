@@ -72,9 +72,21 @@ for (const id of ['profileTagesgeld', 'profileSparerPauschbetrag', 'profileHealt
         focusOut({ target: field });
         assertEqual(field.value, '98.000,123456789', id + ': Fokusfolge verändert den Betrag nicht');
     }
+    if (id === 'purchasePrice') continue;
+    // UR-2b (bewusste Änderung der Festlegung vom 13.10.): Betragsfelder lesen deutsch; „1.234“ ist 1234, „1.23“ bleibt 1,23.
     focusIn({ target: field }); field.value = '1.234'; focusOut({ target: field });
-    assertEqual(field.value, '1,234', id + ': eingegebener Dezimalpunkt behält seine Bedeutung');
-    assertEqual(readDecimalInput(field.value, field), 1.234, id + ': Dezimalpunkt wird nicht als Gruppierung gerechnet');
+    assertEqual(field.value, '1.234', id + ': eingegebener Tausenderpunkt bleibt gruppiert');
+    assertEqual(readDecimalInput(field.value, field), 1234, id + ': „1.234“ ergibt 1234');
+    focusIn({ target: field }); field.value = '1.23'; focusOut({ target: field });
+    assertEqual(field.value, '1,23', id + ': Punkt mit zwei Ziffern bleibt Dezimalpunkt');
+    assertEqual(readDecimalInput(field.value, field), 1.23, id + ': „1.23“ ergibt 1,23');
+}
+// Kursfeld getrennt: „1.234“ bleibt 1,234 (drei Nachkommastellen), wie bisher.
+{
+    const field = decimalField('1.234', { id: 'purchasePrice' });
+    focusIn({ target: field }); focusOut({ target: field });
+    assertEqual(field.value, '1,234', 'purchasePrice: Kursfeld behält den eingegebenen Dezimalpunkt');
+    assertEqual(readDecimalInput(field.value, field), 1.234, 'purchasePrice: Kurs bleibt 1,234');
 }
 const planField = decimalField('30.000 €', { id: 'managerPlan_floorBedarf', hasAttribute: name => name === 'data-manager-plan-field' });
 focusOut({ target: planField });

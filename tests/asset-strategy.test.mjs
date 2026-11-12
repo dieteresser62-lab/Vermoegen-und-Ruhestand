@@ -1,3 +1,6 @@
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
+// LE-1 (FR-75) und KO-2 (Ergänzung FR-76) in einem Leser; Paare, die beide ändern, sind für den vereinten Stand gemessen.
+import { readLE1KO2References } from './helpers/le-1-ko-2-expectations.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
 import { withoutExampleNeeds } from './helpers/ff-3-expectations.mjs';
 import { readVF2EReferences } from './helpers/vf-2e-expectations.mjs';
@@ -17,6 +20,7 @@ import { createNavigationGuard, createNavigationOperationLifecycle } from '../ap
 import { createDialogFixture } from './close-dialog.test.mjs?fixture';
 import { tokenizeHTML } from './funktionsinventar-contract.mjs';
 import { buildSimulatorInputsFromProfileData, combineSimulatorProfiles } from '../app/simulator/simulator-profile-inputs.js';
+import { readGA2References } from './helpers/ga-2-expectations.mjs';
 
 // Vollständige Records vor AG-1, einschließlich Jahresbeleg, am festen Musterdatum.
 const unchanged = {
@@ -31,14 +35,14 @@ for (const household of MUSTER_HAUSHALTE) {
         `${household.name}: kein Muster zeigt eine Strategie-Warnung`);
     const previous = withoutExampleNeeds(records);
     if (household.id === 'sophie') {
-        assertEqual(createHash('sha256').update(JSON.stringify(previous)).digest('hex'), readQSCReferences('f58d6113cca7a6e395800ee6e26215edc1864644206696034cd447c1b09d97d8'),
+        assertEqual(createHash('sha256').update(JSON.stringify(previous)).digest('hex'), readLE1KO2References(readGU1References(readGA2References(readQSCReferences('f58d6113cca7a6e395800ee6e26215edc1864644206696034cd447c1b09d97d8')))),
             'Sophie: vollständige Records mit Personenzuordnung im Jahresbeleg');
         const receipt = JSON.parse(previous.annual_plan_record_v1);
         for (const entry of Object.values(receipt.entries)) for (const outcome of [entry.recommended, entry.adopted])
             for (const source of outcome.action.quellen || []) { delete source.sourceProfileId; delete source.sourceProfileName; }
         previous.annual_plan_record_v1 = JSON.stringify(receipt);
     }
-    if (unchanged[household.id]) assertEqual(createHash('sha256').update(JSON.stringify(previous)).digest('hex'), readQSCReferences(readMU1Hash(readAS1Hash(unchanged[household.id]))),
+    if (unchanged[household.id]) assertEqual(createHash('sha256').update(JSON.stringify(previous)).digest('hex'), readLE1KO2References(readGU1References(readGA2References(readQSCReferences(readMU1Hash(readAS1Hash(unchanged[household.id])))))),
         `${household.name}: vollständige Musterrecords mit belegter FR-57-Anlage`);
 }
 

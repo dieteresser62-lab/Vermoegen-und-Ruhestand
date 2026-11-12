@@ -83,8 +83,8 @@ try {
     const { scope, entry } = readBalanceHouseholdPlan({ storage });
     const outcome = evaluateAnnualDraft({ records, planningYear: 2026, scope, values: entry.values,
         ageByPerson: Object.fromEntries(scope.ids.map(id => [id, 55])) }, { engineApi: EngineAPI }).outcome;
-    assertEqual(outcome.monthlyBudget, 2500, 'Neuer Sophie-Plan speichert das begrenzte Budget');
-    assertEqual(outcome.monthlySaving, 900, 'Neuer Sophie-Plan speichert angelegt getrennt');
+    assertEqual(outcome.monthlyBudget, 2800, 'Neuer Sophie-Plan speichert das begrenzte Budget (GA-2: mit 300 € Ratenkredit im Grundbedarf)');
+    assertEqual(outcome.monthlySaving, 600, 'Neuer Sophie-Plan speichert angelegt getrennt');
     const commitStorage = annualRecordStorage(records), clock = () => new Date('2027-01-02T12:00:00Z');
     const state = JSON.parse(commitStorage.getItem(CONFIG.STORAGE.LS_KEY));
     state.annualPeriodMetadata.pendingCommit = { periodId: 'calendar-year:2026', snapshotId: 'synthetic-before', phase: 'writes_started' };
@@ -96,8 +96,8 @@ try {
             cape: { capeRatio: 25, capeAsOf: '2026-12-01', capeSource: 'synthetisch', capeFetchStatus: 'ok_primary', capeUpdatedAt: clock().toISOString() } } });
     const committed = prepareAnnualCommitRecords(draft, { engineApi: EngineAPI, now: clock });
     const savedPlan = readAnnualPlanRecord({ year: 2027, scope, storage: annualRecordStorage(committed.records) });
-    assertEqual(savedPlan.adopted.monthlyBudget, 2500, 'Vollständiger Jahrescommit speichert das begrenzte Budget');
-    assertEqual(savedPlan.adopted.monthlySaving, 900, 'Vollständiger Jahrescommit speichert den Anlageanteil');
+    assertEqual(savedPlan.adopted.monthlyBudget, 2800, 'Vollständiger Jahrescommit speichert das begrenzte Budget');
+    assertEqual(savedPlan.adopted.monthlySaving, 600, 'Vollständiger Jahrescommit speichert den Anlageanteil');
     const legacyRecord = JSON.parse(records[ANNUAL_PLAN_RECORD_KEY]);
     for (const receipt of Object.values(legacyRecord.entries)) {
         receipt.recommended.monthlyBudget = receipt.adopted.monthlyBudget = 3400;
@@ -120,11 +120,11 @@ try {
         JSON.stringify(Object.values(legacyRecord.entries)[0]), 'Neuer Ansparplan bewahrt vorhandene Belege vollständig');
     const comparison = projectHouseholdPlanComparison({ year: 2027, scope,
         storage: { getItem: key => key === ANNUAL_PLAN_RECORD_KEY ? next.raw : records[key] ?? null } });
-    const model = { scope, summary: { monthlyBudget: 2500 }, planComparison: comparison };
+    const model = { scope, summary: { monthlyBudget: 2800 }, planComparison: comparison };
     const close = projectAnnualCloseResult({ targetYear: 2026, confirmed: true, model });
-    assertEqual(close.monthlySaving, 900, 'Ergebnis liest den gespeicherten Anlageanteil');
+    assertEqual(close.monthlySaving, 600, 'Ergebnis liest den gespeicherten Anlageanteil');
     const { doc } = createDialogFixture();
-    assert(dialogElements(createAnnualPlanResult({ doc, result: close, model })).some(node => node.textContent.includes('900,00')),
+    assert(dialogElements(createAnnualPlanResult({ doc, result: close, model })).some(node => node.textContent.includes('600,00')),
         'Jahresbeleg zeigt den gespeicherten Anlageanteil');
 
     const dom = createPresentationTestDocument(); globalThis.document = dom;

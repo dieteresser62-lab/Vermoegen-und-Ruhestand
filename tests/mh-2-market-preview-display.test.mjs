@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { EngineAPI } from '../engine/index.mjs';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
-import { prepareMarketPreview, projectMarketPreview, compareMarketBudgets } from '../app/balance/balance-market-preview.js';
+import { prepareMarketPreview, projectMarketPreview, compareMarketBudgets, classifyMarketPreview, isHiddenBearMarket } from '../app/balance/balance-market-preview.js';
 import { renderBalanceMarketPreview, createAnnualMarketReadings } from '../app/balance/balance-market-preview-renderer.js';
 import { emptyHistorySymbol, historyDay } from '../app/tranches/tranchen-history-store.js';
 import { MockDocument } from './helpers/balance-page-fixture.mjs';
@@ -38,77 +38,40 @@ phaseOnly.comparison = compareMarketBudgets(different.results.rule, different.re
 assert(different.rule.market.key !== different.high.market.key, 'p24 hat verschiedene Marktphasen');
 assertEqual(different.comparison.state, 'budget_same_action_differs', 'p24 hat nur eine andere Umschichtung');
 assertEqual(lower.comparison.state, 'budget_lower', 'Februar-Sollfall hat weniger Budget');
-for (const [view, stage, title, historyOpen] of [
-    [same, 'calm', 'Nahe am Jahreshoch – keine Auswirkung auf die Planung', false],
-    [phaseOnly, 'notice', 'Der Kurs liegt 15,0 % unter dem Jahreshoch', true],
-    [different, 'warning', 'Der Markt war in diesem Jahr schon viel heißer', true],
-    [lower, 'warning', 'Der Markt war in diesem Jahr schon viel heißer', true],
-    [higher, 'warning', 'Der Markt war in diesem Jahr schon viel heißer', true],
-    [project({ quote: false }), 'not_reliable', 'Vergleich mit dem Jahreshoch nicht möglich', false]
-]) {
+// WT-1 (FR-77 Punkt 5): Die Stufen bleiben intern. Angezeigt wird nur der verdeckte Bärenmarkt; im Jahresabschluss steht
+// sonst höchstens „nicht belastbar“, wenn Kurse fehlen und es auf sie ankäme.
+for (const [view, stage] of [[same, 'calm'], [phaseOnly, 'notice'], [different, 'warning'], [lower, 'warning'], [higher, 'warning'],
+    [project({ quote: false }), 'not_reliable']]) {
+    assertEqual(classifyMarketPreview(view).stage, stage, 'Gemeinsame Anzeigestufe: ' + stage);
     render(null);
-    const body = render(view), result = body.children[0];
-    assertEqual(result.dataset.marketStage, stage, 'Gemeinsame Anzeigestufe: ' + stage);
-    assert(text(result).includes(title), 'Ergebnis zuerst: ' + stage);
-    assertEqual(result.children[0].className.includes('result-warning'), stage === 'warning', 'Alle unterschiedlichen Folgen warnen: ' + stage);
-    const details = tags(body, 'details');
-    assertEqual(details.length, stage === 'not_reliable' ? 2 : 3, 'Jahresverlauf und bestehende Klappen: ' + stage);
-    if (stage !== 'not_reliable') {
-        assertEqual(text(details[0].children[0]), 'Jahresverlauf', 'Kursverlauf vor Detailvergleichen');
-        assertEqual(details[0].open, historyOpen, 'Jahresverlauf nach Stufe geöffnet: ' + stage);
-        assert(tags(details[0], 'svg')[0].getAttribute('aria-label').includes('Sicht der Jahresendregel'), 'Kurslinie mit Bildbeschreibung');
-        assertEqual(tags(details[0], 'path')[0].getAttribute('stroke'), 'var(--text-main)', 'Kurslinie aus Tokens');
-        assert(tags(details[0], 'line').some(node => node.getAttribute('stroke-dasharray') === '2 5'), 'Jahresendregel gepunktet');
-        assert(tags(details[0], 'line').some(node => node.getAttribute('stroke-dasharray') === '6 4'), 'Bärengrenze gestrichelt');
-        assertEqual(text(details[1].children[0]), 'Budget im Vergleich', 'Budgetklappe bleibt');
-        assertEqual(text(details[2].children[0]), 'Markt und Umschichtung', 'Marktklappe bleibt');
-        assertEqual(tags(details[1], 'tbody')[0].children.length, 4, 'Vier Budgetzeilen bleiben');
-        if (stage !== 'calm') {
-            assert(text(result).includes('Zwei Lesarten des Hochs'), 'Lesarten bei Hinweis und Warnung');
-            assertEqual(tags(result, 'tbody')[0].children.length, 5, 'Hoch, Abstand, Marktlage, Budget und Verkauf');
-        }
-        if (stage === 'warning') assert(tags(result, 'td').some(node => node.className === 'balance-preview-cell-warning' && /anders|weniger|mehr/.test(text(node))), 'Abweichung mit Farbe und Wort');
-    } else {
-        assert(text(result).includes('Nicht bewertet'), 'Nicht belastbar mit Chip');
-        assert(text(result).includes('Kurse auf Daten & Sicherung holen'), 'Nicht belastbar mit Kurslink');
+    const body = render(view), hidden = isHiddenBearMarket(view);
+    // WT-1b (Soll 6): Fehlende oder alte Kurse zeigen statt des Blocks genau eine kleine Zeile mit „Kurse holen →“.
+    assertEqual(!get('balanceMarketPreview').hidden, hidden || stage === 'not_reliable', 'Block nur bei verdecktem Bärenmarkt, Zeile bei fehlenden Kursen: ' + stage);
+    // WT-1c: Der Text nennt den Grund; ohne Kurs heißt es „Kurse fehlen oder sind lückenhaft“.
+    if (stage === 'not_reliable') assertEqual(text(body), 'Kurse fehlen oder sind lückenhaft – verdeckter Bärenmarkt nicht prüfbar · Kurse holen →', 'Fehlende Kurse: genau eine Zeile');
+    else if (!hidden) assertEqual(body.children.length, 0, 'Kein Jahreshoch ohne verdeckten Bären: ' + stage);
+    else {
+        assert(text(body).includes('Bärenmarkt, den die Jahresregel nicht sieht') && text(body).includes('Was das für'), 'Verdeckter Bär mit Folgen: ' + stage);
+        const history = tags(body, 'details')[0];
+        assert(!history.open && tags(history, 'svg')[0].getAttribute('aria-label').includes('Sicht der Jahresendregel'), 'Kursverlauf zugeklappt mit Bildbeschreibung');
     }
+    assertEqual(!get('balanceHighBudget').hidden, hidden && ['budget_lower', 'budget_higher'].includes(view.comparison.state), 'Budgetzeile nur bei verdecktem Bären mit anderem Budget: ' + stage);
     const annual = createAnnualMarketReadings(doc, view);
-    assertEqual(annual.children[1].dataset.marketStage, stage, 'Jahresabschluss nutzt dieselbe Stufe');
+    assertEqual(annual.hidden, stage !== 'not_reliable', 'Jahresabschluss zeigt nur fehlende Kurse: ' + stage);
+    if (stage === 'not_reliable') assert(text(annual.children[0]).includes('Kurse auf Daten & Sicherung holen'), 'Nicht belastbar mit Kurslink');
 }
-assert(text(render(lower)).includes('um 300 € niedriger: 4.700 € statt 5.000 €'), 'Budgetdifferenz mit beiden Monatsbeträgen');
-assert(text(render(phaseOnly)).includes('Ab wann es zählt: Fällt der Kurs unter 160,00 € (noch 5,9 %)'), 'Hinweis erklärt Schwelle und Restabstand');
-assert(text(render(same)).includes('ändert hier weder Budget noch Verkauf'), 'Ruhige Erklärung');
-const body = render(different);
-assert(text(body).includes('Index unter 120,00 €'), 'Regelschwelle verwendet gespeichertes statt fortgeschriebenes Hoch');
-assertEqual(text(get('balanceMarketPreviewSource')), 'Referenz VWCE.DE · Schlusskurs 30.10.2026', 'Quelle mit Schlusskursdatum');
-// Wieder aufgenommen nach dem Gutachten AR2 (Fable B4): Zusatzzeilen, Spaltenherkunft und undatiertes Hoch bestehen weiter.
-for (const [view, left, right] of [[same, false, false], [phaseOnly, false, false], [different, false, true], [lower, true, true], [higher, true, true], [project({ quote: false }), false, false]]) {
-    render(null); render(view);
-    assertEqual(!get('balanceHighBudget').hidden, left, 'Budgetzeile nur bei Budgetunterschied: ' + view.comparison.state);
-    assertEqual(!get('balanceHighAction').hidden, right, 'Aktionszeile nur bei anderer Hauptaktion: ' + view.comparison.state);
-}
-const sameAction = structuredClone(different); sameAction.comparison.high.mainAction = { ...sameAction.comparison.rule.mainAction };
-render(sameAction); assert(get('balanceHighAction').hidden, 'Gleiche Hauptaktion trotz anderer Steuer verborgen');
-sameAction.comparison.high.mainAction.netAmount += 1;
-render(sameAction); assert(!get('balanceHighAction').hidden, 'Anderer Verkaufsbetrag sichtbar');
-sameAction.comparison.high.mainAction = { ...sameAction.comparison.rule.mainAction, type: 'other' };
-render(sameAction); assert(!get('balanceHighAction').hidden, 'Andere Hauptaktion sichtbar');
-assert(text(render(project({ closed: false }))).includes('Bisherige Regel (Jahresmarktdaten Ende VJ)'), 'Ohne Abschluss: ehrliche Spaltenherkunft');
-const undated = project({ equal: true }); undated.rule.high.origin = 'year_end'; undated.rule.high.asOf = null; undated.high.high.origin = 'stored_ath'; undated.high.high.asOf = null;
-const undatedText = text(render(undated));
-assertEqual(undatedText.split('Hoch aus Jahresmarktdaten · Datum nicht belegt').length - 1, 2, 'Undatiertes Hoch in beiden Spalten gleich');
-assert(undatedText.includes('Mit Hoch (Datum nicht belegt)'), 'Kein erfundenes Hochdatum');
-for (const reason of ['Kursreihe hat ungeprüfte Tage', 'letzter Schlusskurs älter als 10 Kalendertage', 'Jahresstand unklar oder nicht verfügbar']) {
+for (const [reason, line] of [['Kursreihe hat ungeprüfte Tage', 'Kurse fehlen oder sind lückenhaft'], ['letzter Schlusskurs älter als 10 Kalendertage', 'Kurse älter als 10 Tage']]) {
     const view = structuredClone(different); view.comparison.state = 'not_reliable'; view.comparison.reason = reason;
-    assert(text(render(view)).includes(reason), 'Grund bleibt sichtbar: ' + reason);
-    assertEqual(tags(get('balanceMarketPreviewBody'), 'table').length, 0, 'Keine Tabelle bei nicht belastbarem Vergleich');
+    // WT-1b (Soll 6): Statt des Vergleichs steht genau eine kleine Zeile mit „Kurse holen →“; WT-1c: Text passt zum Grund.
+    const body = render(view);
+    assert(!get('balanceMarketPreview').hidden && text(body) === `${line} – verdeckter Bärenmarkt nicht prüfbar · Kurse holen →`,
+        'Balance zeigt bei nicht belastbaren Kursen nur die Kurszeile: ' + reason);
 }
 render(null); assert(get('balanceMarketPreview').hidden && !get('balanceMarketPreviewBody').children.length, 'Neuer Start entfernt alten Block');
 const absent = createAnnualMarketReadings(doc, null); assert(absent.hidden && !absent.children.length, 'Vor Kursabruf kein Jahresvergleich');
 const html = fs.readFileSync(new URL('../Balance.html', import.meta.url), 'utf8');
-for (const label of ['nach Regel (Jahresendstände)', 'Vorläufige Empfehlung · nach Regel', 'Budgetprüfung für das nächste Jahr', 'Mehr im Handbuch', 'Handbuch.html#balance-vorschau']) assert(html.includes(label), 'Statische Beschriftung: ' + label);
-const info = html.match(/id="balanceMarketPreviewInfo"[^>]*>(.*?)<a /s)[1];
-assertEqual(info.trim(), 'Bereitet das nächste Jahr wie der Jahresabschluss vor – nur auf einer Kopie, ohne zu speichern – und rechnet beide Varianten. Unbekannte Werte sind Annahmen. Verbindlich ist nur der Jahresabschluss.', 'Info enthält die drei beauftragten Sätze');
+for (const label of ['nach Regel (Jahresendstände)', 'Was zu tun ist', 'Vorschau auf den Plan', 'Details der Vorschau']) assert(html.includes(label), 'Statische Beschriftung: ' + label);
+for (const label of ['Vorläufige Empfehlung · nach Regel', 'Budgetprüfung für das nächste Jahr']) assert(!html.includes(label), 'Entfernte Beschriftung: ' + label);
 
 // Produktiver Balancezugang: Tageswerte in der Vorschau, Jahreswerte bei ihrer Herkunft.
 const { PersistenceFacade: P } = await import('../app/shared/persistence-facade.js');
@@ -145,13 +108,12 @@ try {
     setAppTestDate('2026-10-30');
     const update = main.update({ mode: 'preview' }); assert(update.ok, 'Produktive Tageskursvorschau erfolgreich'); await update.overviewPersistence;
     const content = id => text(document.getElementById(id));
-    assert(content('balanceMarketPreviewBody').includes('170,00 €'), 'Produktiver Renderer zeigt Tageskurs im neuen Block');
+    assert(document.getElementById('balanceMarketPreview').hidden, 'Produktiver Renderer: junge Korrektur ist kein verdeckter Bär');
     assertEqual(content('balanceMarket-endeVJ-value'), '150,00 €', 'Strategiekachel zeigt gespeicherte Jahresbasis statt Tageskurs');
     assertEqual(content('balanceMarket-ath-value'), '150,00 €', 'Herkunft und gespeichertes Hoch passen zusammen');
     assert(content('marketDataProvenance').startsWith('Jahresmarktdaten ·'), 'Gespeicherte Provenienz ausdrücklich benannt');
     assert(content('balanceMarketSource').includes('Vorschau nach Regel · VWCE.DE · Schlusskurs 30.10.2026'), 'Marktfakten bekommen die Vorschauherkunft');
-    assert(document.getElementById('balanceHighAction').hidden, 'Gleiche Folgejahres-Hauptaktionen erhalten keine Zusatzzeile');
-    assertEqual(content('balanceMarketPreviewTitle'), 'Budgetprüfung für 2027', 'Produktiver Renderer zeigt Folgejahr statt p25-Vorschau');
+    assertEqual(content('balanceActionPreviewTitle'), 'Vorschau auf den Plan 2027', 'Produktiver Renderer zeigt die Vorschauzeile');
 } finally {
     UIReader.planFormSource = null;
     restoreLocks(); P.resetPersistenceRuntimeForTests(); setAppTestDate(originalDate);

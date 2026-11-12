@@ -32,13 +32,21 @@ export interface EngineInput {
  longevityMode?: PlanValues['longevityMode']; longevityQuantileShift?: Ratio; longevityRelativePct?: Ratio; longevityBufferYears?: number;
  goGoActive?: boolean; goGoMultiplier?: number; goGoAge?: number; partnerAlter?: number;
  minimumFlexAnnual?: Euro; flexBudgetAnnual?: Euro; flexBudgetYears?: number; flexBudgetRecharge?: Euro;
+ careLiquidityProjection?: { floor:number;flex:number;income:number;priceFactor:number };
  plannedExpenseLiquidityReserve?: Euro; lockedHealthBucketAmount?: Euro;
  decumulation?: Partial<StrategyOptions>; lastState?: EngineState|null;
  tqfAlt?:Ratio;tqfNeu?:Ratio;taxExemptAlt?:boolean;taxExemptNeu?:boolean;longevityHorizonDiagnostics?:LongevityDiagnostics|null; renteAktiv?: boolean; renteMonatlich?: Euro; goldAktiv?: boolean; goldZielProzent?: Percent; goldFloorProzent?: Percent;
  goldSteuerfrei?: boolean; minCashBufferMonths?: number; risikoprofil?: string;
  endeVJ?: number; endeVJ_1?: number; endeVJ_2?: number; endeVJ_3?: number; ath?: number; jahreSeitAth: number;
- detailledTranches?: readonly EngineTranche[]|null; returnPolicy?: string;
+ detailledTranches?: readonly EngineTranche[]|null; returnPolicy?: string; equityCostPct?: Percent;
  finalizeThreeBucketAction?: boolean; deferTaxSettlement?: boolean;
+ transactionView?: TransactionView;
+}
+/** TJ-2: Sicht der überlebenden Person für Kauf und Auffüllung im Todesjahr. */
+export interface TransactionView {
+ aktuelleLiquiditaet: Euro; tagesgeld: Euro; geldmarktEtf: Euro; depotwertAlt: Euro; depotwertNeu: Euro; goldWert: Euro;
+ costBasisAlt: Euro; costBasisNeu: Euro; goldCost: Euro; anleihenWert?: Euro; tqfAlt?: Ratio; tqfNeu?: Ratio;
+ taxExemptAlt?: boolean; taxExemptNeu?: boolean; detailledTranches: readonly EngineTranche[];
 }
 export interface EngineState {
  [key:string]:unknown;
@@ -85,7 +93,7 @@ export type MinimumFlexContext = Partial<SpendingParameters> & {state?:PlannerSt
 export interface SignalDefinition {source:string;severity0Value:number;severity1Value:number;scale:string;hardBoundary:boolean;}
 export type SignalContract = Record<string,SignalDefinition>;
 export interface SafetyCandidate {source:string;candidateFlexRatePct:number;anchorStage:string;evidence:object;}
-export interface VpwReturnContext extends Partial<typeofConfigCape> {capeRatio?:number;marketCapeRatio?:number;equityWeightPct?:Percent;goldWeightPct?:Percent;goldAktiv?:boolean;safeRealReturn?:Ratio;goldRealReturn?:Ratio;returnPolicy?:string;}
+export interface VpwReturnContext extends Partial<typeofConfigCape> {capeRatio?:number;marketCapeRatio?:number;equityWeightPct?:Percent;goldWeightPct?:Percent;goldAktiv?:boolean;safeRealReturn?:Ratio;goldRealReturn?:Ratio;returnPolicy?:string;equityCostPct?:Percent;}
 type typeofConfigCape = typeof import('../engine/config.mjs').CONFIG.CAPE_CONTINUOUS;
 /** Diese nativen Prädikate akzeptieren keine Zahlenstrings. Nach true liegt
  * tatsächlich number vor; NaN/Infinity bleiben ohne erfolgreiche Prüfung möglich.
@@ -218,7 +226,7 @@ export type YearOutcome = YearSuccess|YearRuin|YearTechnicalError;
 export type EuroPathField = 'taxPaidRealEur'|'taxSavedRealEur'|'withdrawalP10NominalEur'|'stressWithdrawalP10NominalEur'|'minimumFlexPaidMedianRealEur'|'minimumFlexDesiredMedianRealEur'|'minimumFlexPaidMinimumRealEur'|'healthBucketUsedRealEur'|'healthBucketEndRealEur'|'healthBucketTargetGapRealEur';
 export type EuroPath = Record<EuroPathField,number> & {valid:boolean};
 export interface DiagnosticNotice {key:string;severity:string;message:string;}
-export interface CareMeta { [key:string]:unknown;active:boolean;triggered:boolean;startAge:number;durationYears:number;currentYearInCare:number;zusatzFloorZiel:number;zusatzFloorDelta:number;flexFactor:number;kumulierteKosten:number;floorAtTrigger:number;flexAtTrigger:number;maxFloorAtTrigger:number;grade:number|null;gradeLabel:string;mortalityFactor:number;personGender:string;}
+export interface CareMeta { [key:string]:unknown;active:boolean;triggered:boolean;startAge:number;durationYears:number;currentYearInCare:number;zusatzFloorZiel:number;zusatzFloorDelta:number;flexFactor:number;kumulierteKosten:number;floorAtTrigger:number;flexAtTrigger:number;maxFloorAtTrigger:number;grade:number|null;gradeLabel:string;mortalityFactor:number;personGender:string;careForm?:string;initialHomeCostsMonthly?:number;heimBestand?:boolean;heimStartJahr?:number;heimJahr?:number;heimZuschuss?:number;heimKosten?:number;heimEigeneAusgaben?:number;heimZufall?:number;}
 export interface HouseholdContext {p1Alive:boolean;p2Alive:boolean;widowBenefits:{p1FromP2:boolean;p2FromP1:boolean;p1FromP2Percent:number;p2FromP1Percent:number};care?:{p1?:CareMeta|null;p2?:CareMeta|null};careMetaP1?:CareMeta|null;careMetaP2?:CareMeta|null;}
 export interface LifeLogContext {hasPartner:boolean;p1Alive:boolean;p2Alive:boolean;careMetaP1?:CareMeta|null;careMetaP2?:CareMeta|null;deathThisYear?:boolean;effectiveFlexFactor?:number;p1ActiveThisYear?:boolean;p2ActiveThisYear?:boolean;includeLegacyCareGrade?:boolean;}
 export interface ReplayCollector {beginYear(state:SimulationState,index:number,data:HistoricalYear):unknown;beforeEngine(year:unknown,value:unknown):void;afterEngine(year:unknown,value:unknown):void;}

@@ -1,3 +1,4 @@
+import { isLegacyPlannedPosts } from './balance-planned-posts.js';
 import { UIUtils } from './balance-utils.js';
 const formatCurrency = UIUtils.formatBalanceCurrency;
 
@@ -24,7 +25,11 @@ export function createPlannedPostsView(doc, posts) {
     root.className = 'balance-planned-posts';
     const heading = doc.createElement('h4'); heading.textContent = `Geplante Posten ${posts.year}`;
     const note = doc.createElement('p'); note.className = 'ds-help';
-    note.textContent = `Zusätzlich zum Liquiditätsziel bereithalten: ${formatCurrency(posts.reserve)}. Einmalige Einkünfte zählen erst nach Eingang im bestätigten Tagesgeldstand. Grundbedarf, Flex und Monatsbudget bleiben unverändert.`;
+    // FR-43 (11.11.2026): Feste Ausgaben stecken im Grundbedarf; die Reserve gilt nur für einmalige.
+    const hasFixed = posts.items.some(item => item.kind === 'expense' && item.fixed) && !isLegacyPlannedPosts(posts);
+    note.textContent = `Zusätzlich zum Liquiditätsziel bereithalten: ${formatCurrency(posts.reserve)}. Einmalige Einkünfte zählen erst nach Eingang im bestätigten Tagesgeldstand. ${hasFixed
+        ? 'Feste Ausgaben zählen in ihren Monaten zum Grundbedarf und stecken im Monatsbudget; einmalige lassen Grundbedarf, Flex und Monatsbudget unverändert.'
+        : 'Grundbedarf, Flex und Monatsbudget bleiben unverändert.'}`;
     const table = doc.createElement('table'); table.className = 'ds-table';
     const head = doc.createElement('thead'), headings = doc.createElement('tr');
     for (const label of ['Monat', 'Geplanter Posten', 'Betrag', 'Berücksichtigung']) {
@@ -35,6 +40,7 @@ export function createPlannedPostsView(doc, posts) {
     for (const item of annualRows(posts.items)) {
         const row = doc.createElement('tr'); row.dataset.postKind = item.kind;
         const status = item.kind === 'income' ? `${item.person} · Eingang im Tagesgeld bestätigen`
+            : item.fixed && hasFixed ? 'im Grundbedarf und Monatsbudget'
             : item.paid ? `bezahlt · ${formatCurrency(item.paidAmount)}` : item.paidCount > 0
                 ? `${item.paidCount} von ${item.count} bezahlt · ${formatCurrency(item.paidAmount)}; Rest reservieren` : 'bis zur Zahlung reservieren';
         const period = item.count > 1 ? `${item.month.slice(5)}.–${item.endMonth.slice(5)}.${posts.year}` : `${item.month.slice(5)}.${item.month.slice(0, 4)}`;

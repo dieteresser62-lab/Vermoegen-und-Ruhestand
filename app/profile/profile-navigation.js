@@ -20,6 +20,7 @@ import { PersistenceFacade } from '../shared/persistence-facade.js';
 import { CONFIG } from '../balance/balance-config.js';
 import { getPageNavigationGuard, reloadGuardedPage } from '../shared/navigation-guard-dialog.js';
 import { renderReloadRequiredNotice } from '../shared/reload-required-notice.js';
+import { startAppTabLock } from '../shared/app-tab-lock.js';
 
 async function runPersistenceFlush(flusher) {
     if (typeof flusher !== 'function') return true;
@@ -232,6 +233,9 @@ export function initializeProfilePage(options = {}) {
     const { doc = globalThis.document, win = globalThis.window, kind = doc?.documentElement?.dataset?.suitePage } = options;
     bindProfileNavigationHandoff({ root: doc, win });
     if (pageInitializations.has(doc)) return pageInitializations.get(doc);
+    // ES-1: Schreibbesitz des Tabs vor init() und jedem Seitenwrite klären; ein abgewiesener Tab startet nicht.
+    // ES-1d: Auch das Handbuch nimmt an der Sperre teil wie jede App-Seite.
+    startAppTabLock({ win, doc });
     lockProfileStartupControls(doc);
     const task = (async () => {
         try {

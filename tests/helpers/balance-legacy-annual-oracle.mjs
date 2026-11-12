@@ -18,6 +18,9 @@ import { readBalanceHouseholdPlan, stageBalancePlanPatch, stripBalancePlanInputs
 import { projectBalancePlanHistory, persistBalanceUpdate, BALANCE_UPDATE_MODE, createBalanceFingerprint,
     createBalanceCommitBaseFingerprint } from '../../app/balance/balance-update-pipeline.js';
 import { PersistenceFacade, persistenceStorage } from '../../app/shared/persistence-facade.js';
+import { HOUSEHOLD_CARE_VALUES_KEY } from '../../app/shared/household-care-values.js';
+import { OWN_CARE_PRICES_KEY, careDriftPercent, projectCarePrices, projectCareValuesForYear, resolveCarePrices } from '../../app/shared/care-prices.js';
+import { annualCareProfileId, careSettingsStorage, sharesHouseholdCareValues } from '../../app/shared/care-profile-settings.js';
 
 export async function legacyAnnualOracle({ dom, marketData, engineApi, targetYear }) {
     const handlers = createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS: { mode: 'household_withdrawal_mode' } });
@@ -61,6 +64,23 @@ export async function legacyAnnualOracle({ dom, marketData, engineApi, targetYea
     const annual = await orchestration.handleJahresUpdate({ preparedMarketData: marketData, nested: true });
     if (!annual.ok) throw annual.error || new Error(JSON.stringify(annual.results.errors));
     inflation.applyAnnualInflation();
+    // FR-73 Punkt 9: Der Jahresweg schreibt die fortgeschriebenen Pflegewerte vor der Jahresrechnung (wie der Speicherweg).
+    // PFA-6 (Argon FR73A B2): Preisbesitzer wie im Speicherweg; im Einzelprofil einer Außenperson schreibt der Abschluss ihren
+    // eigenen Preisblock fort und lässt die Preise des Haushaltsrecords stehen.
+    const careProfileId = annualCareProfileId(persistenceStorage), careLegacy = careSettingsStorage(persistenceStorage, careProfileId);
+    const careShared = sharesHouseholdCareValues(persistenceStorage, careProfileId);
+    const careRates = { inflationRate: marketData.inflation.rate, driftPercent: careDriftPercent(careLegacy), priceYear: targetYear + 1 };
+    const careBase = persistenceStorage.getItem(HOUSEHOLD_CARE_VALUES_KEY);
+    const careNext = projectCareValuesForYear(careBase, { ...careRates, legacySource: careLegacy, shared: careShared });
+    if (!careShared) {
+        const own = JSON.stringify(projectCarePrices(resolveCarePrices(null, careLegacy, { shared: false }), careRates));
+        careNext.prices = careBase ? JSON.parse(careBase).prices : undefined;
+        const registry = JSON.parse(persistenceStorage.getItem('rs_profiles_v1'));
+        registry.profiles[careProfileId].data[OWN_CARE_PRICES_KEY] = own;
+        persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(registry));
+        persistenceStorage.setItem(OWN_CARE_PRICES_KEY, own);
+    }
+    persistenceStorage.setItem(HOUSEHOLD_CARE_VALUES_KEY, JSON.stringify(careNext));
     update({ mode: BALANCE_UPDATE_MODE.COMMIT_PERIOD, periodId: `calendar-year:${targetYear}` });
     await PersistenceFacade.flush();
     const pending = StorageManager.loadState().annualPeriodMetadata;

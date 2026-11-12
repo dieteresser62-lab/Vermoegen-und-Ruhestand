@@ -3,7 +3,7 @@ import { getEuroMode, bindEuroMode, euroBasisLabel } from './euro-display.js';
 import { projectMonthlyFlow, roundedIncomeDetails, renderIncomeDetails, renderMonthlyFlowBar } from '../shared/monthly-flow.js';
 import { createInfoPopover, bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 import { annualOtherIncome, effectiveIncomeFromRecord } from '../profile/profile-income.js';
-import { plannedExpenseOccurrences, plannedExpensesForYear } from '../profile/household-planned-expenses.js';
+import { isFixedExpense, plannedExpenseOccurrences, plannedExpenseSplitForYear } from '../profile/household-planned-expenses.js';
 import { parseStoredBalanceInputsFromData } from '../profile/profile-state.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { CONFIG } from '../balance/balance-config.js';
@@ -85,10 +85,11 @@ export function buildPlanOverview({ inputs, entries, referenceYear, inflationPct
             : group.careAllowance ? group.careAllowance * inflationFactor
                 : annualOtherIncome(group.items, year, { baseYear: referenceYear, inflationPct, wagePct }));
         const oneTime = (inputs.plannedInflows || []).filter(item => item.year === year).reduce((sum, item) => sum + item.amount, 0);
-        const needs = ((inputs.startFloorBedarf || 0) + (inputs.startFlexBedarf || 0)) * inflationFactor;
-        const expenses = plannedExpensesForYear(inputs.plannedExpenses, year, inflationFactor);
+        // FR-43: Feste geplante Ausgaben gehören zum Bedarf ihrer Monate, einmalige stehen getrennt.
+        const { fixed: fixedExpenses, once: expenses } = plannedExpenseSplitForYear(inputs.plannedExpenses, year, inflationFactor);
+        const needs = ((inputs.startFloorBedarf || 0) + (inputs.startFlexBedarf || 0)) * inflationFactor + fixedExpenses;
         const result = incomes.reduce((sum, amount) => sum + amount, 0) + oneTime - needs - expenses;
-        rows.push({ year, incomes, oneTime, needs, expenses, result });
+        rows.push({ year, incomes, oneTime, needs, fixedExpenses, expenses, result });
     }
     return { groups, rows, inflationPct, wagePct };
 }
@@ -123,7 +124,8 @@ export function renderPlanMonthly(doc, view, row, inputs = {}, factor = 1) {
     const heading = doc.createElement('span'); heading.textContent = `Im Monat ${row.year} · laut Plan, ohne Marktschwankung`;
     if (inputs.dynamicFlex) {
         const planNeed = (inputs.startFloorBedarf || 0) + (inputs.startFlexBedarf || 0);
-        const limit = planNeed > 0 ? row.needs * (1 + inputs.startFlexBedarf / planNeed) / factor / 12 : 0;
+        const baseNeed = row.needs - (row.fixedExpenses || 0);
+        const limit = planNeed > 0 ? (baseNeed * (1 + inputs.startFlexBedarf / planNeed) + (row.fixedExpenses || 0)) / factor / 12 : 0;
         const dynamic = doc.createElement('span'); dynamic.textContent = ` · mit Dynamik bis ${money(limit)} `;
         heading.append(dynamic, createInfoPopover(doc, 'Plan und Dynamik',
             'Die Balance kann darüber liegen, wenn die Dynamik mehr erlaubt.'));
@@ -166,7 +168,8 @@ export function renderPlanMonthly(doc, view, row, inputs = {}, factor = 1) {
     };
     const annual = [];
     if (row.oneTime > 0) annual.push(`Einmalige Einkünfte: ${annualItems((inputs.plannedInflows || []).filter(item => item.year === row.year), row.oneTime)}`);
-    if (row.expenses > 0) annual.push(`Geplante Ausgaben: ${annualItems(plannedExpenseOccurrences(inputs.plannedExpenses || [], row.year), row.expenses)}`);
+    if (row.fixedExpenses > 0) annual.push(`Feste geplante Ausgaben im Bedarf: ${annualItems(plannedExpenseOccurrences((inputs.plannedExpenses || []).filter(isFixedExpense), row.year), row.fixedExpenses)}`);
+    if (row.expenses > 0) annual.push(`Geplante Ausgaben: ${annualItems(plannedExpenseOccurrences((inputs.plannedExpenses || []).filter(item => !isFixedExpense(item)), row.year), row.expenses)}`);
     if (annual.length) { notes.textContent = annual.join(' · '); host.appendChild(notes); }
     bindInfoPopovers(doc, { root: host });
 }

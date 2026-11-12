@@ -1,5 +1,6 @@
 /** @import {VpwReturnContext} from '../../typcheck/rechenkern' */
 import { CONFIG } from '../config.mjs';
+import { netEquityReturn } from './equity-cost.mjs';
 
 const POLICY_LEGACY_STEP = 'legacy_step';
 const POLICY_CAPE_CONTINUOUS = 'cape_continuous';
@@ -111,6 +112,8 @@ export function deriveCAPEContinuousReturn(cape, options = {}, config = CONFIG) 
         capeCfg.MIN_EQUITY_REAL_RETURN,
         capeCfg.MAX_EQUITY_REAL_RETURN
     );
+    // FR-76: Fondskosten mindern die erwartete Aktienrendite einmal, nach der Bandbreite des Marktmodells.
+    const equityRealReturnNet = netEquityReturn(equityRealReturn, options.equityCostPct);
     const eqPct = normalizeWeightPct(options.equityWeightPct, 60);
     const goldPctRaw = options.goldAktiv === true
         ? normalizeWeightPct(options.goldWeightPct, 0)
@@ -121,7 +124,7 @@ export function deriveCAPEContinuousReturn(cape, options = {}, config = CONFIG) 
     const { safeRealReturn, safeRealReturnSource } = resolveSafeRealReturn(options, dynamicFlexCfg, capeCfg);
     const goldContribution = goldPct > 0 ? (goldPct * goldRealReturn) : 0;
     const safeContribution = safePct > 0 ? (safePct * safeRealReturn) : 0;
-    const expectedRealReturnRaw = (eqPct * equityRealReturn) +
+    const expectedRealReturnRaw = (eqPct * equityRealReturnNet) +
         goldContribution +
         safeContribution;
     const expectedRealReturnClamped = clamp(
@@ -147,7 +150,7 @@ export function deriveCAPEContinuousReturn(cape, options = {}, config = CONFIG) 
         equityWeight: eqPct,
         goldWeight: goldPct,
         safeWeight: safePct,
-        equityContribution: eqPct * equityRealReturn,
+        equityContribution: eqPct * equityRealReturnNet,
         goldContribution,
         safeContribution,
         expectedRealReturnRaw,
@@ -169,6 +172,8 @@ export function deriveCAPELegacyStepReturn(context = {}, config = CONFIG) {
         finiteNumber(cape) && cape > 0 ? cape : valuation.DEFAULT_CAPE,
         valuation.EXPECTED_RETURN_CAPE_POINTS
     );
+    // FR-76: Die erwartete nominale Aktienrendite nach Fondskosten, (1 + e) × (1 − k) − 1; ER(CAPE) bleibt die Marktannahme.
+    const equityNominalNet = netEquityReturn(equityNominal, context.equityCostPct);
     const eqPct = normalizeWeightPct(context.equityWeightPct, 60);
     const goldPctRaw = context.goldAktiv === true ? normalizeWeightPct(context.goldWeightPct, 0) : 0;
     const goldPct = clamp(goldPctRaw, 0, Math.max(0, 1 - eqPct));
@@ -181,7 +186,7 @@ export function deriveCAPELegacyStepReturn(context = {}, config = CONFIG) {
     );
     const goldContribution = goldPct > 0 ? (goldPct * goldRealReturn) : 0;
     const safeContribution = safePct > 0 ? (safePct * safeRealReturn) : 0;
-    const expectedRealReturnRaw = (eqPct * (equityNominal - inflRate)) +
+    const expectedRealReturnRaw = (eqPct * (equityNominalNet - inflRate)) +
         goldContribution +
         safeContribution;
     const expectedRealReturnClamped = clamp(expectedRealReturnRaw, cfg.MIN_REAL_RETURN, cfg.MAX_REAL_RETURN);
@@ -200,7 +205,7 @@ export function deriveCAPELegacyStepReturn(context = {}, config = CONFIG) {
         safeRealReturnSource,
         goldRealReturn,
         goldRealReturnSource,
-        equityContribution: eqPct * (equityNominal - inflRate),
+        equityContribution: eqPct * (equityNominalNet - inflRate),
         goldContribution,
         safeContribution,
         clamped: expectedRealReturnClamped !== expectedRealReturnRaw

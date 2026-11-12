@@ -120,6 +120,31 @@ function assertSessionReport(report) {
 }
 try {
     installClock();
+    for (const day of ['2026-11-07', '2027-01-01', '2028-06-15']) {
+        time = Date.parse(day + 'T12:00:00Z');
+        await setup([], []);
+        let requests = 0;
+        globalThis.fetch = () => { requests++; throw new Error('Kein Kursdienst'); };
+        const report = await startCoordinator().task;
+        assert.equal(report.status, 'empty', day + ': ohne Tranchen kein Offlinebefund');
+        assert.equal(report.retrievedAt, undefined, 'Ohne Abruf keine Abrufzeit');
+        const session = sessionStore(), page = dom(); let runs = 0, visible;
+        session.setItem(STARTUP_PRICE_SESSION_KEY, JSON.stringify({ status: 'offline', updated: 0, results: [] }));
+        completeProfilePageReadiness(page.doc);
+        await bindStartupPrices({ ...page, session, initialize: async () => true, guard: createNavigationGuard(),
+            coordinator: async () => { runs++; return report; }, onReport: report => visible = report });
+        assert.equal(runs, 0, day + ': leerer Start plant keinen Kurslauf');
+        assert.equal(visible.status, 'empty', 'Alter Offlinebericht wird beim leeren Start verworfen');
+        assert.equal(JSON.parse(session.getItem(STARTUP_PRICE_SESSION_KEY)).status, 'empty', 'Leerer Start ersetzt alte Fehlerberichte durch einen neutralen Befund');
+        assert.equal(requests, 0, day + ': keine Netzanfrage ohne Tranchen');
+        assert.equal(timers.size, 0, 'Ohne Tranchen keine Abruf- oder Deadline-Timer');
+        await setup([lot('new', 'NEW.DE')], []);
+        const next = dom(); completeProfilePageReadiness(next.doc);
+        await bindStartupPrices({ ...next, session, initialize: async () => true, guard: createNavigationGuard(),
+            coordinator: async () => { runs++; return { status: 'complete', updated: 0, results: [] }; } });
+        assert.equal(runs, 1, day + ': nach Depoterfassung ist die erste Kursrunde frei');
+    }
+    installClock();
     // HS-1b: Das nächste Dokument muss nach Abbruch erneut abrufen dürfen.
     for (const aborted of ['pagehide', 'orphan-started', 'cancelled-report']) {
         const session = sessionStore();
@@ -127,7 +152,7 @@ try {
         const start = page => {
             completeProfilePageReadiness(page.doc);
             return bindStartupPrices({ ...page, session, initialize: async () => true,
-                source: () => ({}), guard: createNavigationGuard(),
+                source: () => ({ registry: { profiles: { a: { meta: { name: 'Test' }, data: {} } } }, activeId: 'a', liveRaw: JSON.stringify([lot('a', 'TEST.DE')]) }), guard: createNavigationGuard(),
                 coordinator: async ({ operation }) => {
                     runs++;
                     if (aborted === 'pagehide' && runs === 1) return new Promise((resolve, reject) => {

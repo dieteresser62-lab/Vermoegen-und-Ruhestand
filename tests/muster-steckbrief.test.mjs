@@ -19,13 +19,14 @@ for (const date of ['2026-10-23', '2031-06-15']) for (const { id } of MUSTER_HAU
     assertEqual(n.wealth, n.cash + n.depot + n.bonds + n.gold, `${id}: Geldvermögen enthält jede Anlageklasse einmal`);
     assertEqual(n.totalNeed, plan.floorBedarf + plan.flexBedarf, `${id}: Gesamtbedarf gleich Grundbedarf plus Wunschbedarf`);
     assert(brief.situation && brief.question && brief.observe && brief.exercises.length >= 1
-        && brief.exercises.length <= (id === 'max-erika' ? 4 : id === 'martin-petra' ? 3 : 2) && brief.restart, `${id}: vollständiger Steckbrief mit Neustartweg`);
+        && brief.exercises.length <= (['max-erika', 'helga-werner', 'renate'].includes(id) ? 4 : ['martin-petra', 'sophie'].includes(id) ? 3 : 2) && brief.restart, `${id}: vollständiger Steckbrief mit Neustartweg`);
     if (id === 'martin-petra') assert(brief.exercises.some(text => text.includes('Todesjahrzeile') && text.includes('Herkunft')),
         'Martin und Petra: Übungszeile zur Finanzierung der Erbschaftsteuer');
     const html = musterSteckbriefHtml(brief);
     assert(html.includes('Grundbedarf') && html.includes('Wunschbedarf') && html.includes('Gesamtbedarf'), `${id}: dreiteiliger Bedarf`);
     if (id === 'renate') assertEqual(n.gap, 19200, 'Renate: 19.200 € vor Erträgen und Steuern');
-    if (id === 'sophie') assertEqual(n.surplus, 10800, 'Sophie: 10.800 € vor Autoausgabe');
+    if (id === 'sophie') assertEqual(n.surplus, 7200, 'Sophie: 7.200 € vor Autoausgabe, nach 3.600 € Ratenkredit im Grundbedarf (GA-2)');
+    if (id === 'sophie') assert(brief.exercises.some(text => text.includes('Ratenkredit')), 'Sophie: Übungszeile zur festen geplanten Ausgabe');
     if (id === 'jan-lena') {
         assertEqual(n.minimumFlexAnnual, 6750, 'Jan/Lena Mindest-Flex 6.750 €');
         assert(JSON.stringify(records).includes('Nettozahlung aus vereinbartem Verkauf'), 'Jan/Lena feste Nettozahlung richtig benannt');
@@ -62,10 +63,23 @@ for (const date of ['2026-01-01', '2026-10-24']) for (const { id } of MUSTER_HAU
 const care = createMusterHaushaltRecords('2026-10-24', 'helga-werner', 'haus-pg3');
 const careFloor = Object.values(JSON.parse(care.household_plan_v1).entries)[0].values.floorBedarf;
 assertEqual(careFloor, musterVariante('helga-werner', 'haus-pg3').floorBedarf, 'Grundbedarf der Pflegevariante stammt aus denselben Variantendaten wie die Übung');
-assertEqual(careFloor, 54000, 'Pflegevariante: 54.000 € Grundbedarf');
-assert(musterLesson('helga-werner').exercises[0].includes(`${careFloor.toLocaleString('de-DE')} €`) && musterLesson('helga-werner').exercises[0].includes('nicht von selbst'), 'Pflegeübung nennt den berechneten Grundbedarf und erklärt heutige Pflegekosten');
+// FR-73 (PFA-3): Der Grundbedarf der Variante ist ohne Pflege; die App rechnet Werners Pflege selbst.
+assertEqual(careFloor, 36000, 'Pflegevariante: 36.000 € Grundbedarf ohne Pflege');
+assert(musterLesson('helga-werner').exercises[0].includes(`${careFloor.toLocaleString('de-DE')} €`) && musterLesson('helga-werner').exercises[0].includes('rechnet die Pflege selbst')
+    && musterLesson('helga-werner').exercises[0].includes('„Pflege Werner“ mit 1.500 €/Monat') && !musterLesson('helga-werner').exercises[0].includes('nicht von selbst'), 'Pflegeübung nennt den unveränderten Grundbedarf und die Pflegezeile in Balance');
+// Neue Übung: Werner seit 01/2023 im Heim (Sollfall D, Testdatum 23.10.2026).
+const heimWerner = musterLesson('helga-werner').exercises[2];
+assert(heimWerner.includes('Pflegegrad heute 4') && heimWerner.includes('„im Heim“') && heimWerner.includes('01/2023') && heimWerner.includes('„Heim Werner“')
+    && heimWerner.includes('2.611 €/Monat') && heimWerner.includes('Heimjahr 4') && heimWerner.includes('2.250 €/Monat'), 'Helga und Werner: Übung „Werner seit 01/2023 im Heim“ nennt Einstellung, Heimzeile, Heimjahr und Grundbedarf zu Hause');
 assert(musterLesson('helga-werner', 'haus-pg3').note.includes('gewünschter Bedarf') && musterLesson('helga-werner', 'haus-pg3').note.includes('„Warum?“'), 'Pflegevariante erklärt finanziertes Budget und Kürzungsgrund in Balance');
 assert(musterLesson('helga-werner').exercises[1].includes('zu Hause durch Angehörige') && musterLesson('helga-werner').exercises[1].includes('599 €/Monat kommt dazu'), 'Grundfall: Übung 2 wechselt von externer Unterstützung zu Pflegegeld');
+// FR-72 Punkt 13 [A5]: Übung „beide Grad 4 im Heim“ mit Ort der Einstellung und sichtbarer Wirkung.
+// FR-73 (H-HE2-5): beide heute Grad 4 im Heim, Sollfall S; die Übung braucht keinen gesuchten Zufallspfad mehr.
+const heim = musterLesson('helga-werner').exercises[3];
+assert(heim.startsWith('Beide Grad 4 im Heim') && heim.includes('Pflegegrad heute 4') && heim.includes('keinen Grundbedarf zu Hause')
+    && heim.includes('92.736 €') && heim.includes('Heimjahr 1 bis 4') && heim.includes('eigenen Ausgaben im Heim'), 'Helga und Werner: Heimübung nennt Einstellung, Grundbedarf, Heimjahre und eigene Ausgaben');
+assert(musterLesson('helga-werner').observe.includes('Übung 4'), 'Helga und Werner: Beobachtungsort der Heimübung');
+assert(musterLesson('helga-werner', 'haus-pg3').exercises[1].includes('Grundbedarf zu Hause entfällt') && musterLesson('helga-werner', 'haus-pg3').exercises[1].includes('405.000 €'), 'Hausvariante: heute im Heim rechnet die App selbst und verkauft das Haus im ersten Jahr');
 assert(musterLesson('helga-werner', 'haus-pg3').exercises[0].includes('externer Unterstützung') && musterLesson('helga-werner', 'haus-pg3').exercises[0].includes('fällt weg'), 'Hausvariante: Übung beginnt mit Angehörigenpflege und nimmt Pflegegeld heraus');
 
 // Dieselbe Planprojektion wie in der sichtbaren Tabelle des Simulators.
@@ -79,7 +93,7 @@ const project = () => {
 };
 const before = project(); controls.activate(true); controls.set('muster_b', 'profile_rentenbeginn', '2028-07-01');
 const after = project();
-for (const [year, oldAmount, newAmount] of [[2027, 22619, 32266], [2028, 12744, 22437]]) {
+for (const [year, oldAmount, newAmount] of [[2027, 22800, 32400], [2028, 13200, 22800]]) {
     const old = before.rows.find(row => row.year === year), next = after.rows.find(row => row.year === year);
     const factor = Math.pow(1.02, year - 2026);
     assertEqual(Math.round(-old.result / factor), oldAmount, `${year}: Entnahme vorher in heutigen Euro`);

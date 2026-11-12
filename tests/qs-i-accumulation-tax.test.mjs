@@ -4,7 +4,8 @@ import { EngineAPI } from '../engine/index.mjs';
 import { initializePortfolio, sumDepot } from '../app/simulator/simulator-portfolio.js';
 import { beginAggregateTaxYear, settleAggregateTaxYear } from '../app/simulator/simulator-personal-tax.js';
 
-const base = await measurementInputs(0, 'sophie', '2026-10-23');
+// Steuermechanik ohne Marktbewegung: ohne Fondskosten (FR-76), sonst änderte der Kostenabschlag die Bestände.
+const base = { ...await measurementInputs(0, 'sophie', '2026-10-23'), equityCostPct: 0 };
 const year = { jahr: 2000, rendite: 0, gold_eur_perf: 0, bond_return: 0, inflation: 0, zinssatz: 4, lohn: 0 };
 for (const jointAssessment of [true, false]) for (const invest of [true, false]) for (const carry of [0, 3000, 5000]) {
     const results = [];

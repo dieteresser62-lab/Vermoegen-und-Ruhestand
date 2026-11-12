@@ -34,16 +34,16 @@ try {
     const custom = ['1234', '5678', '9012', '34567', '89123'];
     ui.costs.forEach((field, index) => { field.value = custom[index]; field.dispatchEvent(new Event('input')); });
     assertEqual(persistenceStorage.getItem(PFLEGE_CUSTOM_COSTS_KEY), null, 'Altdaten ohne Merker bleiben bis zum Wechsel erhalten');
-    for (const preset of ['amtlich', 'ambulant', 'stationaer']) {
+    for (const preset of ['amtlich', 'ambulant']) {
         selectPreset(ui, preset);
-        assertEqual(Object.values(JSON.parse(persistenceStorage.getItem(PFLEGE_CUSTOM_COSTS_KEY))).join('/'), custom.join('/'), 'Eigene Kosten liegen im Simulator-Speicherweg');
+        assertEqual(Object.values(JSON.parse(persistenceStorage.getItem(PFLEGE_CUSTOM_COSTS_KEY)).values).join('/'), custom.join('/'), 'Eigene Kosten liegen markiert im Simulator-Speicherweg (PFA-4 B7)');
         await P.flush();
         // Ein neues Dokument und ein neu gestartetes Backend lesen nur bestätigte Speicherbytes.
         ui = await restart(await P.readPersistedRecords());
         selectPreset(ui, 'custom');
         assertEqual(ui.costs.map(field => field.value).join('/'), custom.join('/'), `${preset}: Neustart stellt alle fünf Eingaben wieder her`);
     }
-    selectPreset(ui, 'stationaer'); await P.flush();
+    selectPreset(ui, 'ambulant'); await P.flush();
     const backup = normalizeFullPersistenceBackup(JSON.parse(JSON.stringify(buildFullPersistenceBackup())));
     assert(backup.ok, 'Vollsicherung lässt sich über den produktiven Importparser lesen');
     ui = await restart(backup.backup.records); selectPreset(ui, 'custom');

@@ -9,7 +9,7 @@ import { projectBalanceFlexTrace } from './balance-flex-trace.js';
 export function balanceIncomeDetails(status) {
     if (!status?.ready || status.status === 'demo') return [];
     return status.entries.flatMap(entry => {
-        const person = projectPerson(entry.data, status.referenceYear, balanceCareSettings(status));
+        const person = projectPerson(entry.data, status.referenceYear, balanceCareSettings(status, entry.profileId));
         const name = entry.name || entry.profileId;
         return [
             { label: `${entry.data[PENSION_LABEL_KEY] || 'Rente'} ${name}`, amount: person.renteImJahr / 12 },

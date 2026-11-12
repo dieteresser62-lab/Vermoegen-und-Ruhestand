@@ -98,6 +98,7 @@ export async function resetNewBeginningBrowserStorage({ window: win = storeState
  */
 export function resetPersistenceForTests(nextAdapter = createLocalStorageAdapter()) {
     storeState.documentWriteBlock = null;
+    storeState.writeGate = null;
     storeState.syncWriteBlocks.clear();
     storeState.beforeFlushObservers.clear();
     storeState.probelaufProtection = null;

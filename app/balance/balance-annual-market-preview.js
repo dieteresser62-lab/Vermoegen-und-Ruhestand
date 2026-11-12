@@ -10,11 +10,11 @@ import { evaluateAnnualDraft } from './balance-annual-storage-commit.js';
 /** @param {{targetYear: number, quote?: {price: number, asOf: string},
  * storage?: import('../../typcheck/datenvertraege.js').RecordStorage,
  * engineLoader?: typeof annualEngineLoader, marketData?: import('../../typcheck/balance-ui.js').ComputeAnnualOptions['marketData'],
- * cash?: import('../../typcheck/speicher-integration.js').Cash, careValues?: unknown}} options */
-export async function projectAnnualMarketReadings({ targetYear, quote, marketData, cash, careValues, storage = persistenceStorage, engineLoader = annualEngineLoader }) {
+ * cash?: import('../../typcheck/speicher-integration.js').Cash, careValues?: unknown, careToday?: Record<string, number>}} options */
+export async function projectAnnualMarketReadings({ targetYear, quote, marketData, cash, careValues, careToday, storage = persistenceStorage, engineLoader = annualEngineLoader }) {
     if (!quote) return null;
     try {
-        return await prepareAnnualMarketReadings({ targetYear, quote, marketData, cash, careValues, storage, engineLoader });
+        return await prepareAnnualMarketReadings({ targetYear, quote, marketData, cash, careValues, careToday, storage, engineLoader });
     } catch (error) {
         console.error('Jahresabschlussvergleich nicht verfügbar:', error);
         const reason = 'Marktvorschau nicht verfügbar';
@@ -26,8 +26,8 @@ export async function projectAnnualMarketReadings({ targetYear, quote, marketDat
 /** @param {{targetYear: number, quote: {price: number, asOf: string},
  * storage: import('../../typcheck/datenvertraege.js').RecordStorage,
  * engineLoader: typeof annualEngineLoader, marketData?: import('../../typcheck/balance-ui.js').ComputeAnnualOptions['marketData'],
- * cash?: import('../../typcheck/speicher-integration.js').Cash, careValues?: unknown}} options */
-async function prepareAnnualMarketReadings({ targetYear, quote, marketData, cash, careValues, storage, engineLoader }) {
+ * cash?: import('../../typcheck/speicher-integration.js').Cash, careValues?: unknown, careToday?: Record<string, number>}} options */
+async function prepareAnnualMarketReadings({ targetYear, quote, marketData, cash, careValues, careToday, storage, engineLoader }) {
     const series = readDailyPrices(storage).value?.symbols['VWCE.DE'];
     const end = historyDay(quote.asOf);
     const calculation = buildBalanceEngineInputFromStorage({ storage, referenceYear: targetYear });
@@ -61,7 +61,7 @@ async function prepareAnnualMarketReadings({ targetYear, quote, marketData, cash
         const evaluate = (/** @type {import('../../typcheck/datenvertraege.js').YearHighChoice|undefined} */ choice) => {
             const draft = computeAnnualPlanUpdate({ targetYear, marketData, yearHigh: choice, storage });
             return /** @type {import('../../typcheck/rechenkern.js').EngineSuccess} */ (evaluateAnnualDraft(
-                /** @type {import('../../typcheck/speicher-integration.js').AnnualDraft} */ (draft), { engineApi: engine, cash, careValues }).modelResult);
+                /** @type {import('../../typcheck/speicher-integration.js').AnnualDraft} */ (draft), { engineApi: engine, cash, careValues, careToday }).modelResult);
         };
         return projectMarketPreview(prepared, { stored, rule: evaluate(undefined), high: evaluate(yearHigh) });
     }

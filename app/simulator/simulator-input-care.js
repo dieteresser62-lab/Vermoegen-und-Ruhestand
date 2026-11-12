@@ -1,3 +1,6 @@
+import { resolveCareSetting } from '../shared/care-cost-resolver.js';
+import { resolveCarePrices } from '../shared/care-prices.js';
+import { careSettingsStorage, sharesHouseholdCareValues } from '../shared/care-profile-settings.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { readCareValues, officialCareCosts, careValuesInputPatch } from '../shared/household-care-values.js';
 import { defaultCareForm, normalizeCareForm } from '../shared/care-benefits.js';
@@ -11,8 +14,9 @@ import { SUPPORTED_PFLEGE_GRADES } from './simulator-data.js';
 import { normalizeCareDurationRange } from './simulator-portfolio-care.js';
 import { readChecked, readInt, readNumber, readValue } from './simulator-input-dom.js';
 import { CARE_FLEX_DEFAULT_PERCENT, CARE_MORTALITY_DEFAULT_FACTORS } from './simulator-care-flex.js';
+import { residentialOwnExpensesInputPatch } from './simulator-residential-care.js';
 
-const DEFAULT_PFLEGE_DRIFT_PCT = 3.5; // Realistische Langfrist-Annahme (3-4 % ueber VPI)
+const DEFAULT_PFLEGE_DRIFT_PCT = 5;
 
 /**
  * Normalizes a persisted/UI percentage to the simulator's ratio contract.
@@ -41,9 +45,12 @@ export function normalizeCareCostDriftPercent(rawPercent, fallbackPercent = 0) {
 export function readCareInputs({ gender = 'w', doc = globalThis.document, storage = persistenceStorage } = {}) {
     const careValues = readCareValues(storage), official = officialCareCosts(careValues);
     const isOfficial = readValue('pflegeKostenStaffelPreset', 'custom', doc) === 'amtlich';
+    // FR-73 P8/B3: Trägt der Pflegewerte-Record Preise, sind die Felder bewusste Eingaben und werden nie umgedeutet.
+    const prices = resolveCarePrices(careValues, careSettingsStorage(storage), { shared: sharesHouseholdCareValues(storage) });
+    const price = (key, raw, fallback) => prices.stored ? numberOr(raw, fallback) : resolveCareSetting(key, raw);
     const pflegeGradeConfigs = {};
     SUPPORTED_PFLEGE_GRADES.forEach(grade => {
-        const zusatz = isOfficial ? official[grade] : readNumber(`pflegeStufe${grade}Zusatz`, 0, doc) || 0;
+        const zusatz = isOfficial ? official[grade] : price(`sim_pflegeStufe${grade}Zusatz`, readValue(`pflegeStufe${grade}Zusatz`, null, doc), prices.costs[grade]);
         const flexPercent = readNumber(`pflegeStufe${grade}FlexCut`, NaN, doc);
         const flexCut = Math.min(1, Math.max(0, ((Number.isFinite(flexPercent) ? flexPercent : CARE_FLEX_DEFAULT_PERCENT[grade]) / 100)));
         const mortalityRaw = readNumber(`pflegeStufe${grade}Mortality`, NaN, doc);
@@ -67,11 +74,22 @@ export function readCareInputs({ gender = 'w', doc = globalThis.document, storag
         pflegeGradeConfigs,
         pflegeStufe1Zusatz: grade1Config.zusatz,
         pflegeStufe1FlexCut: grade1Config.flexCut,
-        pflegeMaxFloor: readNumber('pflegeMaxFloor', 0, doc) || 0,
+        pflegeMaxFloor: price('sim_pflegeMaxFloor', readValue('pflegeMaxFloor', null, doc), prices.maximumFloor),
         pflegeRampUp: readInt('pflegeRampUp', 5, doc) || 5,
         pflegeMinDauer: normalizedCareDuration.minYears,
         pflegeMaxDauer: normalizedCareDuration.maxYears,
-        pflegeKostenDrift: normalizeCareCostDriftPercent(driftPctRaw, DEFAULT_PFLEGE_DRIFT_PCT),
-        pflegeRegionalZuschlag: Math.max(0, Number.isFinite(regionalRaw) ? regionalRaw : 0) / 100
+        // Gutachten PFA-2, Befund 6: Ein im Preisblock markierter Kostenanstieg ist bewusste Eingabe und wird nicht umgedeutet.
+        pflegeKostenDrift: normalizeCareCostDriftPercent(prices.driftMarked ? (Number.isFinite(driftPctRaw) ? Math.max(0, driftPctRaw) : prices.driftPercent)
+            : resolveCareSetting('sim_pflegeKostenDrift', Number.isFinite(driftPctRaw) ? driftPctRaw : null), DEFAULT_PFLEGE_DRIFT_PCT),
+        pflegeRegionalZuschlag: Math.max(0, Number.isFinite(regionalRaw) ? regionalRaw : 0) / 100,
+        // FR-72 Punkt 3: wie die Pflegewerte erst bei Abweichung von der Vorgabe übergeben.
+        ...residentialOwnExpensesInputPatch(prices.stored ? numberOr(readValue('pflegeHeimEigeneAusgaben', null, doc), prices.ownExpensesMonthly)
+            : readNumber('pflegeHeimEigeneAusgaben', NaN, doc))
     };
+}
+
+function numberOr(raw, fallback) {
+    const text = raw == null ? '' : String(raw).trim();
+    const value = Number(text.replace(',', '.'));
+    return !text || !Number.isFinite(value) ? fallback : Math.max(0, value);
 }

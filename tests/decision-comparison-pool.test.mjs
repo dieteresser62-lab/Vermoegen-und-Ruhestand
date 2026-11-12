@@ -1,4 +1,10 @@
-import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
+import { readLE1References } from './helpers/le-1-expectations.mjs';
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
+import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+import { readEV1bReferences as readBeforeHE2References } from './helpers/ev-1b-expectations.mjs';
+import { readHE2References } from './helpers/he-2-expectations.mjs';
+import { readHE4References } from './helpers/he-4-expectations.mjs';
+const readEV1bReferences = value => readPFA1References(readHE4References(readHE2References(readBeforeHE2References(value))));
 const readZG1References = value => readEV1bReferences(readBeforeEV1bReferences(value));
 import { readZG1References as readBeforeEV1bReferences } from './helpers/zg-1-expectations.mjs';
 import { readEV1References as readBeforeZG1References } from './helpers/ev-1-expectations.mjs';
@@ -49,8 +55,8 @@ try {
     assert.equal(DecisionNodeWorker.instances.length - comparisonWorkers, 4, 'Ein Pool für beide Vergleichspläne');
     assert.ok(DecisionNodeWorker.instances.every(worker => worker.terminated));
     // Referenz vor VS-1b, bereits mit dem Datenstand nach KETTE TB.
-    assert.equal(checksum(pooled.baseline), readEV1References(readQSCReferences(readVF2BReferences(readGL1References('a96ddabcf9286552785a6406175a5a3b133d150ce19357a847a2c710bf67a6ce')))));
-    assert.equal(checksum(pooled.variant), readEV1References(readQSCReferences(readVF2BReferences(readGL1References('244b5d9c72c108b27e8764e46ad426b7b2a7cb6becbed0b5f7181e1e34f2ade4')))));
+    assert.equal(checksum(pooled.baseline), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('a96ddabcf9286552785a6406175a5a3b133d150ce19357a847a2c710bf67a6ce')))))));
+    assert.equal(checksum(pooled.variant), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('244b5d9c72c108b27e8764e46ad426b7b2a7cb6becbed0b5f7181e1e34f2ade4')))))));
     assert.ok(progress.some(row => row.completedRuns > 0 && row.completedRuns < 24));
     assert.ok(progress.every((row, i) => !i || row.pct >= progress[i - 1].pct));
     console.log('VS-1 Vergleich SHA256', checksum(pooled.baseline), checksum(pooled.variant));
@@ -74,12 +80,13 @@ try {
     const serialStep = await evaluate();
     assert.deepEqual(poolStep.metrics, serialStep.metrics);
     assert.equal(checksum(poolStep), checksum(serialStep));
-    assert.equal(checksum(poolStep), readEV1References(readQSCReferences(readVF2BReferences(readGL1References('f4ce36cbd93c3d38b9dbf88db996a31f16ec76c840e77fdebb3421ac86f32c9c')))));
+    assert.equal(checksum(poolStep), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('f4ce36cbd93c3d38b9dbf88db996a31f16ec76c840e77fdebb3421ac86f32c9c')))))));
     assert.deepEqual(poolStep.diagnostics, serialStep.diagnostics);
     assert.deepEqual(poolStep.chunk.runMeta, serialStep.chunk.runMeta);
     console.log('VS-1 Suchschritt nach Ruin SHA256', checksum(poolStep));
     const searchOptions = { ...options, diagnosticRuns: 0, captureLogs: false,
-        goals: { coveragePct: 99, affectedPct: 10 }, maximumMonthly: 2750 };
+        // LE-1 (FR-75): Ziele so, dass Suche und Endprobe weiter laufen (vorher 99 % / 10 %).
+        goals: { coveragePct: 97, affectedPct: 20 }, maximumMonthly: 2750 };
     const serialSearch = await runTargetBudgetSearch(searchOptions);
     globalThis.Worker = DecisionNodeWorker;
     const searchWorkers = DecisionNodeWorker.instances.length;

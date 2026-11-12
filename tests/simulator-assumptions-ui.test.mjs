@@ -37,13 +37,19 @@ for (const id of ['rentAdjMode', 'rentAdjPct']) {
         `${id} zeigt die gesperrte gemeinsame Rentenanpassung`);
     assertEqual(find(`[data-parameters="personen"] #${id}`).length, 0, `${id} ist getrennt von den Modellannahmen`);
 }
-for (const id of ['pflegeModellTyp', 'pflegeMinDauer', 'pflegeMaxDauer', 'pflegeRampUp', 'pflegeMaxFloor', 'pflegeRegionalZuschlag', 'pflegeKostenDrift']) {
+for (const id of ['pflegeModellTyp', 'pflegeMinDauer', 'pflegeMaxDauer', 'pflegeRampUp', ...[1, 2, 3, 4, 5].map(grade => `pflegeStufe${grade}Mortality`)]) {
     assertEqual(find(`#simCareDetails #${id}`).length, 1, `${id} liegt in der geschlossenen Pflegeklappe`);
 }
+// PFA-10/PFA-11: Die Pflegewerte stehen in Personen & Vermögen › Pflege; im Simulator tragen verborgene Felder sie nur in die Rechnung.
+for (const id of ['pflegeMaxFloor', 'pflegeKostenDrift', 'pflegeHeimEigeneAusgaben', 'pflegeKostenStaffelPreset', 'pflegeRegionalZuschlag',
+    ...[1, 2, 3, 4, 5].flatMap(grade => [`pflegeStufe${grade}Zusatz`, `pflegeStufe${grade}Form`, `pflegeStufe${grade}FlexCut`])]) {
+    assertEqual(find(`#simCareValueCarrier[hidden] #${id}`).length, 1, `${id} ist im Simulator keine sichtbare Eingabe mehr`);
+}
+assertEqual(find('#simCareValuesSummary a[href="depot-tranchen-manager.html#pflege"]').length, 1, 'Simulator verlinkt die Pflegewerte in Personen & Vermögen');
 assertEqual(find('.sim-care-duration-field #pflegeMinDauer').length, 1, 'Pflegedauer gruppiert den bisherigen Minimumcontrol');
 assertEqual(find('.sim-care-duration-field #pflegeMaxDauer').length, 1, 'Pflegedauer gruppiert den bisherigen Maximumcontrol');
-assertEqual(find('.sim-care-table input').length, 15, 'Alle Staffelcontrols bleiben native Eingaben');
-assertEqual(find('.sim-care-table input[aria-label]').length, 15, 'Alle Staffelcontrols haben eindeutige zugängliche Namen');
+assertEqual(find('.sim-care-table input').length, 5, 'Sterblichkeit je Grad bleibt native Eingabe (Flex-Level seit PFA-11 im Bereich Pflege)');
+assertEqual(find('.sim-care-table input[aria-label]').length, 5, 'Sterblichkeit je Grad hat eindeutige zugängliche Namen');
 
 const doc = createPresentationTestDocument();
 const original = doc.createElement.bind(doc);
@@ -257,7 +263,7 @@ assert(!careDetails.hidden && !careDetails.open, 'Pflege aus verändert den gesc
 assertEqual(markupDoc.getElementById('simCareSummary').textContent, 'Pflegefälle werden nicht gerechnet.', 'Zusammenfassung folgt dem Schalter');
 careToggle.checked = true; refreshAssumptionFillStatus(markupDoc);
 assert(markupDoc.getElementById('simCareSummary').textContent.includes('120.000 €')
-    && markupDoc.getElementById('simCareSummary').textContent.includes('3,5 %'), 'Pflegezusammenfassung zeigt die bestehenden Kostenannahmen');
+    && markupDoc.getElementById('simCareSummary').textContent.includes('5 %'), 'Pflegezusammenfassung zeigt die bestehenden Kostenannahmen');
 initializeAssumptionsUI(markupDoc);
 // Die Klappenklasse bestimmt nur das Layout, nicht die Zahlenformatierung.
 for (const field of markupDoc.querySelectorAll('#tab-annahmen input[type="number"], #mcSetupDisclosure input[type="number"]')) {
@@ -284,14 +290,11 @@ mcHost.events.get('input')({ type: 'input', target: mcRuns });
 assertEqual(mcRuns.nextSibling.textContent, '30.000', 'MC-Host synchronisiert native Eingabe');
 assert(['change', 'focusin', 'focusout'].every(event => mcHost.events.has(event)), 'MC-Host bindet Wechsel und Fokus wie Annahmen');
 const careHead = markupDoc.getElementById('simCareDetailsSummary');
-assert(careHead.textContent.includes('Kosten Grad 1–5:') && careHead.textContent.includes('12.000 €')
-    && careHead.textContent.includes('Drift 3,5 %'), 'Geschlossener Pflegekopf nennt aktuelle Kosten, Pflegeform und Drift');
-markupDoc.getElementById('pflegeStufe2Zusatz').value = '13000';
-markupDoc.getElementById('pflegeKostenDrift').value = '4.2';
-markupDoc.getElementById('pflegeStufe2Form').value = 'home-support';
-assumptions.events.get('input')({ type: 'input', target: markupDoc.getElementById('pflegeKostenDrift') });
-assert(careHead.textContent.includes('13.000 €') && careHead.textContent.includes('Drift 4,2 %')
-    && careHead.textContent.includes('2 externe Unterstützung'), 'Pflegekopf folgt Änderungen ohne Rechenstart');
+assert(careHead.textContent.includes('Verlauf chronisch') && careHead.textContent.includes('Anstiegsdauer 5 Jahre')
+    && careHead.textContent.includes('Sterblichkeit je Grad') && !careHead.textContent.includes('Zuschlag'), 'Geschlossener Pflegekopf nennt Verlauf, Anstieg und Sterblichkeit (PFA-11)');
+markupDoc.getElementById('pflegeRampUp').value = '7';
+assumptions.events.get('input')({ type: 'input', target: markupDoc.getElementById('pflegeRampUp') });
+assert(careHead.textContent.includes('Anstiegsdauer 7 Jahre'), 'Pflegekopf folgt Änderungen ohne Rechenstart');
 assert(!careDetails.open, 'Kopfprojektion lässt den Klappzustand unverändert');
 for (const id of ['simCareDetails', 'mcSetupDisclosure', 'mcAdvancedDisclosure']) {
     assertEqual(find(`#${id}.household-plan-more > summary.household-plan-summary-toggle`).length, 1, id + ': gemeinsamer nativer Klappkopf');
@@ -402,7 +405,7 @@ for (const id of ['mcAnzahl', 'mcDauer', 'stressPreset']) {
     assert(inside(byId(id), byId('mcSetupDisclosure')), id + ': hinter Monte-Carlo-Einstellungen');
     assert(!inside(byId(id), byId('simPlanParameters')) && !inside(byId(id), byId('tab-annahmen')), id + ': weder unter Alle Parameter noch in Annahmen');
 }
-assertEqual(find('.sim-parameter-card h3[data-plan-group-label]').map(item => item.attrs['data-plan-group-label']).join(','), '1,2,3,4,5', 'Gemeinsame Gruppen folgen dem Raster von Haushalt & Plan');
+assertEqual(find('.sim-parameter-card h3[data-plan-group-label]').map(item => item.attrs['data-plan-group-label']).join(','), '1,2,3,4,5,6', 'Gemeinsame Gruppen folgen dem Raster von Haushalt & Plan, Fondskosten als sechste Planwertkarte (FR-76)');
 const withdrawal = find('.sim-parameter-card').find(item => inside(byId('entnahmeStrategie'), item));
 for (const id of ['bondTargetFactor', 'drawdownTrigger', 'bondRefillThreshold'])
     assert(inside(byId(id), withdrawal), id + ': in derselben Entnahmekarte wie im Plan');

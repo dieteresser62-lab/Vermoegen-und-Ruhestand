@@ -147,8 +147,10 @@ export function analyzeHouseholdPlanMigration(records) {
         }
         const values = structuredClone(PLAN_DEFAULTS), fields = [], warnings = [];
         for (const path of PLAN_FIELD_PATHS) {
-            let balance = balanceSource(state, path, sourceId);
-            let simulator = simulatorSource(data, state, path, sourceId);
+            // FR-76: Fondskosten haben keinen Altbestand; der frühere Simulator-Schlüssel wird weder gelesen noch übernommen.
+            const withoutSource = path === 'equityCostPct';
+            let balance = withoutSource ? missing() : balanceSource(state, path, sourceId);
+            let simulator = withoutSource ? missing() : simulatorSource(data, state, path, sourceId);
             if (simulator.status === 'missing' && ['floorBedarf', 'flexBedarf', 'minimumFlexAnnual'].includes(path)) {
                 for (const id of ordered.slice(1)) {
                     const other = dataFor(id), found = simulatorSource(other, parseState(other), path, id);

@@ -270,7 +270,7 @@ try {
         assertEqual(careSettingsStorage(persistenceStorage).getItem('sim_pflegeKostenStaffelPreset'), 'amtlich', `${current}: Übersichtstart erhält die gemeinsame Staffel`);
         assertEqual([1, 2, 3, 4, 5].map(grade => careSettingsStorage(persistenceStorage).getItem(`sim_pflegeStufe${grade}Zusatz`)).join('/'),
             '200/2300/7100/15000/18900', 'Alle amtlichen Staffelwerte bleiben erhalten');
-        assertEqual(careSettingsStorage(persistenceStorage).getItem(PFLEGE_CUSTOM_COSTS_KEY), JSON.stringify({ 1: '1000', 2: '2000', 3: '3000', 4: '4000', 5: '5000' }),
+        assertEqual(careSettingsStorage(persistenceStorage).getItem(PFLEGE_CUSTOM_COSTS_KEY), JSON.stringify({ version: 1, origin: 'von Hand', values: { 1: '1000', 2: '2000', 3: '3000', 4: '4000', 5: '5000' } }),
             'Die eigenen Pflegewerte bleiben neben der amtlichen Auswahl erhalten');
         assertEqual(persistence.getPersistenceStatus().activeArea, play ? 'spiel' : 'echt', 'Übersichtstart erhält den Datenbereich');
         if (play) assertEqual(f.realBytes(), beforeReal, `${kind}/${current}/${exit}: echte Daten bleiben bytegleich`);

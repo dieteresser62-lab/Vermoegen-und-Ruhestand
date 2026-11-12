@@ -13,7 +13,7 @@ function deepFreeze(value, seen = new WeakSet()) {
 
 export const GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT = deepFreeze({
   "schemaVersion": "GermanDemographyCareSurvivorContractV1",
-  "revision": "2026-10-21.2",
+  "revision": "2026-11-12.2",
   "sourceFiles": {
     "mortality": {
       "fileName": "destatis-period-life-table-2023-2025.xlsx",
@@ -36,8 +36,8 @@ export const GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT = deepFreeze({
     "rawDataHash": "a21bab59269970d29f1e15ad49b64e82a74348692cc38759e4339e1be1205fc3",
     "mortalityTableHash": "88c1000eac950016a65e7408127d5c1256683946933b710a0c28f672fde5f232",
     "careObservationHash": "c9b55d32c1d084ba948e2b77bddb7392c918bce14ec11c908ab38afde8c9a48a",
-    "careEntryModelHash": "1274dd938dd6991b40b0aca21f00707dd6bf94b4abc62becae26bacea4e377c5",
-    "careProgressionModelHash": "ad3366b9f34a1081025e51bf37ef0cd317d5810c221a2e8ca412d600105d9998",
+    "careEntryModelHash": "5671a7d7a03f1522aae5d34a19f7a4ede983c310de5e293b23d26df10ca0cffb",
+    "careProgressionModelHash": "e4f835deb11fbe2c3085cd316187bc9eabddeb52a0d2dfa94bf2638ac4f15947",
     "careMortalityDefaultsHash": "d7c44e59d60f5382c77529bd909ee2f9083da294111cdaa74ca83836da8c952a",
     "careTaxonomyHash": "82e9af7152342ce8db3d6212471fa5107d1f44bc72ae0cf1d9ece5f93bb12885",
     "survivorRuntimeContractHash": "73e6b04c76698347cfbffeb2e8b3037d04875731850b0fd2e75052df67aacff9"
@@ -77,7 +77,41 @@ export const GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT = deepFreeze({
       "construction": "Retained legacy simulator tail because the official source ends at age 100; age 110 remains the deterministic terminal boundary.",
       "futureMortalityImprovement": false
     },
-    "application": "Annual qx for attained simulated age; no cohort shifting or calendar-year improvement.",
+    "application": "Period table 2023/2025: FR-41 care calibration (cross-section 2023) and callers without a birth year. Runtime target since FR-75: see target.",
+    "target": {
+      "evidenceClass": "official_projection_with_model_tail",
+      "tableType": "cohort",
+      "cohortProjection": true,
+      "futureMortalityImprovement": true,
+      "source": "Destatis Kohortensterbetafeln 1926-2026, variant V2 (mittel), tables 12621-b03/-b04",
+      "module": "app/simulator/german-cohort-life-table.js",
+      "sourceSha256": "724baa7893854da51dfb2991c5bc03174c046a34e96d6230eb08e5d579504379",
+      "qxTableHash": "708ce991b0d709fb1af7ed307b7b128f9fa3fb2e8ede9a8f2aabfa9e9057370a",
+      "variant": "V2",
+      "variantSelectable": false,
+      "birthYearRange": {
+        "first": 1926,
+        "last": 2026
+      },
+      "birthYearRule": "Birth year from the person profile; otherwise planning year minus start age; outside 1926-2026 the nearest edge year.",
+      "officialAgeRange": {
+        "startAge": 18,
+        "endAge": 99
+      },
+      "runtimeSexMapping": {
+        "m": "official_male",
+        "w": "official_female",
+        "d": "model_assumption_unweighted_mean_of_male_and_female_qx"
+      },
+      "tailAssumption": {
+        "startAge": 100,
+        "endAge": 110,
+        "evidenceClass": "model_assumption",
+        "construction": "Source lists 100+ with qx = 1. Ages 100-109 use the period qx (official 100, legacy tail 101-109) times the cohort/period qx ratio at 99, capped at 1; age 110 remains terminal."
+      },
+      "application": "Annual qx for attained age of the birth cohort; same target for Monte Carlo deaths and planning horizon (FR-75).",
+      "implementation": "app/simulator/target-mortality.js"
+    },
     "table": {
       "m": {
         "18": 0.00036141744556400155,
@@ -445,7 +479,7 @@ export const GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT = deepFreeze({
         2
       ],
       "minimumEntryAge": 65,
-      "construction": "per Simulation auf Destatis-Pflegestatistik 2023 abgestimmt (FR-41)",
+      "construction": "exakt auf Destatis-Pflegestatistik 2023 abgestimmt, mit Grundsterblichkeit ohne Pflege nach FR-75 (FR-41); scripts/retune-care-model.mjs",
       "calibration": {
         "constraint": "Nondecreasing PG1 + PG2 entry probability across age buckets, for each sex.",
         "initialStock": {
@@ -460,123 +494,123 @@ export const GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT = deepFreeze({
       },
       "probabilitiesByAgeAndInitialGrade": {
         "65": {
-          "1": 0.005175115,
-          "2": 0.004404885
+          "1": 0.004983345,
+          "2": 0.004241655
         },
         "70": {
-          "1": 0.007562800000000001,
-          "2": 0.0064372000000000006
+          "1": 0.007195465,
+          "2": 0.006124535
         },
         "75": {
-          "1": 0.020562715000000002,
-          "2": 0.017502285
+          "1": 0.017891425,
+          "2": 0.015228575000000001
         },
         "80": {
-          "1": 0.04518233000000001,
-          "2": 0.03845767
+          "1": 0.039315755,
+          "2": 0.033464245000000004
         },
         "85": {
-          "1": 0.11546235,
-          "2": 0.09827765
+          "1": 0.08522465,
+          "2": 0.07254035
         },
         "90": {
-          "1": 0.274427,
-          "2": 0.23358299999999999
+          "1": 0.185272395,
+          "2": 0.15769760500000002
         },
         "95": {
-          "1": 0.317543065,
-          "2": 0.27028193500000003
+          "1": 0.185272395,
+          "2": 0.15769760500000002
         }
       },
       "probabilitiesBySexAndAgeAndInitialGrade": {
         "m": {
           "65": {
-            "1": 0.00548843,
-            "2": 0.00467157
+            "1": 0.00537499,
+            "2": 0.00457501
           },
           "70": {
-            "1": 0.0070226,
-            "2": 0.0059774
+            "1": 0.00660665,
+            "2": 0.00562335
           },
           "75": {
-            "1": 0.01849645,
-            "2": 0.01574355
+            "1": 0.01550914,
+            "2": 0.01320086
           },
           "80": {
-            "1": 0.03789503,
-            "2": 0.03225497
+            "1": 0.03259567,
+            "2": 0.02774433
           },
           "85": {
-            "1": 0.09842444,
-            "2": 0.08377556
+            "1": 0.07141984,
+            "2": 0.06079016
           },
           "90": {
-            "1": 0.24730896,
-            "2": 0.21050104
+            "1": 0.15941842,
+            "2": 0.13569158
           },
           "95": {
-            "1": 0.28310802,
-            "2": 0.24097198
+            "1": 0.15941842,
+            "2": 0.13569158
           }
         },
         "w": {
           "65": {
-            "1": 0.0048618,
-            "2": 0.0041382
+            "1": 0.0045917,
+            "2": 0.0039083
           },
           "70": {
-            "1": 0.008103,
-            "2": 0.006897
+            "1": 0.00778428,
+            "2": 0.00662572
           },
           "75": {
-            "1": 0.02262898,
-            "2": 0.01926102
+            "1": 0.02027371,
+            "2": 0.01725629
           },
           "80": {
-            "1": 0.05246963,
-            "2": 0.04466037
+            "1": 0.04603584,
+            "2": 0.03918416
           },
           "85": {
-            "1": 0.13250026,
-            "2": 0.11277974
+            "1": 0.09902946,
+            "2": 0.08429054
           },
           "90": {
-            "1": 0.30154504,
-            "2": 0.25666496
+            "1": 0.21112637,
+            "2": 0.17970363
           },
           "95": {
-            "1": 0.35197811,
-            "2": 0.29959189
+            "1": 0.21112637,
+            "2": 0.17970363
           }
         },
         "d": {
           "65": {
-            "1": 0.005175115,
-            "2": 0.004404885
+            "1": 0.004983345,
+            "2": 0.004241655
           },
           "70": {
-            "1": 0.007562800000000001,
-            "2": 0.0064372000000000006
+            "1": 0.007195465,
+            "2": 0.006124535
           },
           "75": {
-            "1": 0.020562715000000002,
-            "2": 0.017502285
+            "1": 0.017891425,
+            "2": 0.015228575000000001
           },
           "80": {
-            "1": 0.04518233000000001,
-            "2": 0.03845767
+            "1": 0.039315755,
+            "2": 0.033464245000000004
           },
           "85": {
-            "1": 0.11546235,
-            "2": 0.09827765
+            "1": 0.08522465,
+            "2": 0.07254035
           },
           "90": {
-            "1": 0.274427,
-            "2": 0.23358299999999999
+            "1": 0.185272395,
+            "2": 0.15769760500000002
           },
           "95": {
-            "1": 0.317543065,
-            "2": 0.27028193500000003
+            "1": 0.185272395,
+            "2": 0.15769760500000002
           }
         }
       },
@@ -585,18 +619,27 @@ export const GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT = deepFreeze({
     "progressionModel": {
       "evidenceClass": "model_assumption",
       "yearConvention": "annual_transition_to_next_care_grade",
-      "construction": "per Simulation auf Destatis-Pflegestatistik 2023 abgestimmt (FR-41)",
+      "construction": "exakt auf Destatis-Pflegestatistik 2023 abgestimmt, mit Grundsterblichkeit ohne Pflege nach FR-75 (FR-41); scripts/retune-care-model.mjs",
       "probabilitiesByCurrentGrade": {
-        "1": 0.678,
-        "2": 0.2706,
-        "3": 0.1569,
-        "4": 0.1231,
+        "1": 0.5085,
+        "2": 0.203,
+        "3": 0.1177,
+        "4": 0.0923,
         "5": 0
       }
     },
+    "baseMortalityAdjustment": {
+      "evidenceClass": "model_construction",
+      "method": "markov_exact_per_person_R2",
+      "rule": "FR-75: total annual mortality per age equals the target table, with and without care logic. A person without care at simulation start lives like the target table; only an entered or drawn care grade shortens life.",
+      "construction": "Exact Markov chain of the care model per person from the start age (entry, progression, acute duration), base qx solved in closed form from sum(share x min(1, base x factor)) = target qx; cached per person and care assumptions.",
+      "withoutCareLogic": "Base qx equals the target qx.",
+      "careToday": "Base qx is computed as if the person were without care at start; the care factor applies on top. With the course \"slower\" or \"much slower\" the total qx is at least the target qx for life (LE-1b), so a care grade today never lengthens life.",
+      "implementation": "app/simulator/target-mortality.js"
+    },
     "mortalityModel": {
       "evidenceClass": "model_assumption",
-      "construction": "per Simulation auf Destatis-Pflegestatistik 2023 abgestimmt (FR-41)",
+      "construction": "exakt auf Destatis-Pflegestatistik 2023 abgestimmt, mit Grundsterblichkeit ohne Pflege nach FR-75 (FR-41); scripts/retune-care-model.mjs",
       "defaultFactorsByGrade": {
         "1": 1.5,
         "2": 2,

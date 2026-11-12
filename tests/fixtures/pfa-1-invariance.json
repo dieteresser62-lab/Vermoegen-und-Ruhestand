@@ -1,0 +1,12 @@
+{
+  "noCareMonteCarlo": "76005b36e13a5753311fbcd1db47a2c1156f2f56f90248964964629045be4cf1",
+  "noCareBacktest": "1c6ab2617b886ce89750f3eaedeb29ca25208add0d88224a075dbd1a8e9fa3dd",
+  "traces": {
+    "healthy/custom": "261c7dcff0cae86f83a2c80f1cc4063566bce126be1843ddcca607a6e8a3b071",
+    "healthy/amtlich": "4707b2e0a1a1488a500cfdce746a0f11bd6eb4fa02101b79876f40d2c51375a3",
+    "home/custom": "25882f79c264c3730641fd0c9e129944223be86ac3d3eb56fc91842d5c557a14",
+    "home/amtlich": "36ac68be6eac16549a5690ab08f22c33b3ca9b53cb4e7bb28acc65b268cb49bf",
+    "heim/custom": "d8828cf4dc0dbf2a62e3be56bfb1aa868be169d1c8e71578a53dea931329b895",
+    "heim/amtlich": "538df67451c1086afd8198211361bcfb1a7aa2afaa5ab5af3e168d8df3432cd3"
+  }
+}

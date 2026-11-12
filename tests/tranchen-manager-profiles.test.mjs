@@ -121,8 +121,8 @@ try {
         await originalFlush.call(PersistenceFacade);
         initTranchenManagerPage({ profileId: 'a' });
         const nav = doc.getElementById('managerSectionNav');
-        assertEqual(nav.children.map(tab => tab.dataset.managerProfile || tab.dataset.managerView).join(','), 'plan,a,b,c,outside,history', 'Ansichtsreiter ordnen Haushalt stabil vor einer zuerst registrierten Außenperson');
-        assert(nav.children[1].textContent.includes('Anna & Änne') && nav.children[2].textContent.includes('Béla <B>'), 'Sonderzeichennamen werden im echten Reiter-DOM als Namen dargestellt');
+        assertEqual(nav.children.map(tab => tab.dataset.managerProfile || tab.dataset.managerView).join(','), 'plan,care,a,b,c,outside,history', 'Ansichtsreiter ordnen Haushalt stabil vor einer zuerst registrierten Außenperson');
+        assert(nav.children[2].textContent.includes('Anna & Änne') && nav.children[3].textContent.includes('Béla <B>'), 'Sonderzeichennamen werden im echten Reiter-DOM als Namen dargestellt');
         assertEqual(await choose(doc, 'b'), true, 'Vor dem nächsten Start lässt sich Person 2 bestätigt öffnen');
         globalThis.window.location.hash = '#verlauf';
         assertEqual(resolveManagerTarget(globalThis.window.location).profileId, 'b', 'Verlaufsziel übernimmt aktives Profil statt Standardperson');
@@ -136,7 +136,7 @@ try {
         await selectManagerView({ kind: 'plan', profileId: 'a' });
         await startTranchenManagerPage();
         assertEqual(getManagerView(doc).kind, 'person', 'Frischer Start übernimmt keine vorherige Planansicht');
-        const focused = nav.children[2]; focused.focus();
+        const focused = nav.children[3]; focused.focus();
         registry.profiles.b.meta.name = 'Béla & neuer Name';
         renderManagerProfiles(doc, projectManagerProfiles(registry, 'a'));
         assertEqual(doc.activeElement.dataset.managerProfile, 'b', 'Namensänderung und Rerender erhalten den fokussierten Personenreiter');
@@ -154,7 +154,7 @@ try {
         initTranchenManagerPage({ profileId: 'b' });
         await startTranchenManagerPage();
         const tabs = doc.getElementById('managerSectionNav').children;
-        assertEqual(tabs.length, 3, 'Einzelprofil ohne Haushalt erhält Plan, Person und Verlauf');
+        assertEqual(tabs.length, 4, 'Einzelprofil ohne Haushalt erhält Plan, Pflege, Person und Verlauf');
         assertEqual(tabs[0].textContent, 'Plan · Solo & Name', 'Einzelplanreiter verwendet denselben Profilnamen');
         assertEqual(getManagerView(doc).profileId, 'b', 'Einzelprofil startet in seiner Personenansicht');
     }
@@ -177,12 +177,12 @@ try {
         const tabs = nav.querySelectorAll('[role="tab"]');
         const keyboard = (tab, key) => nav.listeners.keydown[0]({ target: tab, key, preventDefault() {} });
         const selected = getManagerView(doc);
-        keyboard(tabs[1], 'ArrowRight'); assertEqual(doc.activeElement, tabs[2], 'Rechts bewegt den Fokus zur nächsten Person');
+        keyboard(tabs[2], 'ArrowRight'); assertEqual(doc.activeElement, tabs[3], 'Rechts bewegt den Fokus zur nächsten Person');
         assertEqual(getManagerView(doc), selected, 'Fokusbewegung aktiviert kein Profil');
-        keyboard(tabs[2], 'Home'); assertEqual(doc.activeElement, tabs[0], 'Home fokussiert den Planreiter');
-        keyboard(tabs[0], 'ArrowLeft'); assertEqual(doc.activeElement, tabs[3], 'Links läuft vom ersten zum letzten Reiter um');
-        keyboard(tabs[2], 'End'); assertEqual(doc.activeElement, tabs[3], 'End fokussiert den letzten Reiter');
-        await keyboard(tabs[2], 'Enter');
+        keyboard(tabs[3], 'Home'); assertEqual(doc.activeElement, tabs[0], 'Home fokussiert den Planreiter');
+        keyboard(tabs[0], 'ArrowLeft'); assertEqual(doc.activeElement, tabs[4], 'Links läuft vom ersten zum letzten Reiter um');
+        keyboard(tabs[3], 'End'); assertEqual(doc.activeElement, tabs[4], 'End fokussiert den letzten Reiter');
+        await keyboard(tabs[3], 'Enter');
         assertEqual(getManagerView(doc).profileId, 'b', 'Enter bestätigt die fokussierte Person');
         initTranchenManagerPage({ profileId: 'b' });
         assertEqual(nav.querySelector('[aria-selected="true"]').dataset.managerProfile, 'b', 'Erneutes Rendern erhält den bestätigten internen Personenwechsel');

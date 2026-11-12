@@ -54,10 +54,18 @@ export function resolveTargetTagesgeld(spending, targetLiquidity, input = {}) {
         : Math.max(0, (spending?.monatlicheEntnahme || 0) * 12);
     const target = Number.isFinite(targetLiquidity) ? Math.max(0, targetLiquidity)
         : calculateTargetLiquidityDetails(null, null, plannedNeed, /** @type {Parameters<typeof calculateTargetLiquidityDetails>[3]} */ (input)).targetLiquidity;
-    const grossNeed = Number.isFinite(input.floorBedarf) || Number.isFinite(input.flexBedarf)
-        ? positive(input.floorBedarf) + positive(input.flexBedarf) : plannedNeed;
-    const minimumCash = input.minimumTagesgeld ?? grossNeed / 12 * (input.minCashBufferMonths ?? 2);
+    const minimumCash = ironCashReserve(spending, input, plannedNeed);
     return input.personalTagesgeldTarget ?? Math.max(target / months * cashMonths, minimumCash);
+}
+
+/** Eiserne Reserve im Tagesgeld (Mindest-Liquidität): Bruttobedarf je Monat × `minCashBufferMonths`, wie in `resolveTargetTagesgeld`.
+ * WT-1c: auch für den Hinweis „Tagesgeld auffüllen“. @param {any} spending @param {any} [input] @param {number} [plannedNeed] */
+export function ironCashReserve(spending, input = {}, plannedNeed) {
+    input ||= {};
+    // Ohne Floor und Flex ist der geplante Bedarf die Jahresentnahme, wie in `resolveTargetTagesgeld`.
+    const grossNeed = Number.isFinite(input.floorBedarf) || Number.isFinite(input.flexBedarf)
+        ? positive(input.floorBedarf) + positive(input.flexBedarf) : plannedNeed ?? Math.max(0, (spending?.monatlicheEntnahme || 0) * 12);
+    return input.minimumTagesgeld ?? grossNeed / 12 * (input.minCashBufferMonths ?? 2);
 }
 
 /** Erlösverteilung ohne interne Transfers; identisch in Karte, Dialog und Jahresabschluss. */

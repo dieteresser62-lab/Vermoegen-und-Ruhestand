@@ -1,4 +1,9 @@
+import { readGU1References as readBeforeKO2References } from './helpers/gu-1-expectations.mjs';
+import { readKO2References } from './helpers/ko-2-expectations.mjs';
+// KO-2 (Ergänzung FR-76): gemessene Hashpaare für Fondskosten im Dynamic Flex und den gelesenen Planwert.
+const readGU1References = value => readKO2References(readBeforeKO2References(value));
 import { createHash } from 'node:crypto';
+import { readPFA2References } from './helpers/pfa-2-expectations.mjs';
 import { EngineAPI } from '../engine/index.mjs';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { annualTestMarketData as marketData, annualTestNow as now, annualServiceFixture } from './helpers/balance-storage-fixtures.mjs';
@@ -26,8 +31,9 @@ const options = { targetYear: 2026, marketData, storage, now };
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const draft = computeAnnualPlanUpdate(options), plain = prepareAnnualCommitRecords(draft, { engineApi: EngineAPI, now });
 // Aus den Quellen vor AR-2 ermittelt, gleicher Musterhaushalt, identischer Zeitpunkt.
-assertEqual(hash(draft.records), 'aeac523006dd72fde26591464f7b22656ed1a4004c7318a6af89a382078463aa', 'Ohne Wahl bleibt der Jahresentwurf bytegleich zum Ausgangsstand');
-assertEqual(hash(plain.records), '634a5aebc0add1eca20d29e2f8d3d053799c699bb969c158a5d24d8594e49ec1', 'Ohne Wahl bleiben alle Abschlussrecords bytegleich zum Ausgangsstand');
+assertEqual(hash(draft.records), readGU1References('aeac523006dd72fde26591464f7b22656ed1a4004c7318a6af89a382078463aa'), 'Ohne Wahl bleibt der Jahresentwurf bytegleich zum Ausgangsstand');
+// FR-73: Der Abschluss schreibt den fortgeschriebenen Pflegewerte-Record auch ohne Dialogentwurf.
+assertEqual(hash(plain.records), readGU1References(readPFA2References('634a5aebc0add1eca20d29e2f8d3d053799c699bb969c158a5d24d8594e49ec1')), 'Ohne Wahl bleiben alle Abschlussrecords bytegleich zum Ausgangsstand');
 const chosenDraft = computeAnnualPlanUpdate({ ...options, yearHigh });
 const chosen = prepareAnnualCommitRecords(chosenDraft, { engineApi: EngineAPI, now });
 const after = JSON.parse(chosen.records[key]), age = (Date.parse('2026-12-31') - Date.parse(yearHigh.asOf)) / 86400000 / 365.2425;
@@ -100,24 +106,21 @@ for (const selection of ['year_high', 'year_end']) {
     const ui = createAnnualCloseDialog({ document: doc, getModel: () => model, isCommitActive: () => false,
         projectMarketReadings: opts => projectAnnualMarketReadings({ ...opts, storage, engineLoader: { load: async () => EngineAPI } }),
         projectPreview: opts => projectAnnualPreview({ ...opts, storage }),
-        evaluatePlan: async opts => { lastEvaluation = opts; return evaluateAnnualPlanPreview({ ...opts, storage, now, engineLoader: { load: async () => EngineAPI } }); } });
+        // WT-1b: Rechnungen für die Beträge an der Wahl (`choiceVariant`) sind nicht die Planrechnung.
+        evaluatePlan: async opts => { if (!opts.choiceVariant) lastEvaluation = opts; return evaluateAnnualPlanPreview({ ...opts, storage, now, engineLoader: { load: async () => EngineAPI } }); } });
     const pending = ui.showAnnualPreparation({ targetYear: 2026, model, people, onReady: handle => { binding = handle; } });
     binding.updateMarketData({ values: marketData, errors: {} });
     const settle = () => new Promise(resolve => setTimeout(resolve, 30)); await settle();
     const all = root => [root, ...root.children.flatMap(all)];
-    const marketTab = doc.querySelector('[data-close-dialog-activate="market"]');
+    // WT-1 (FR-77 Punkte 5 und 6): Block zum verdeckten Bärenmarkt und Wahl stehen im Schritt „Plan“, ohne Vorauswahl.
+    const planTab = doc.querySelector('[data-close-dialog-activate="preview"]');
     assert(!all(doc.body).some(el => el.type === 'radio' && el.checked), 'Keine Vorauswahl');
-    assert(marketTab.getAttribute('aria-label').includes('Wahl offen'), 'Wahl offen schon vor erstem Besuch');
-    await prepareCloseFixture(doc, { marketReading: null }); await settle(); binding.activate('market');
-    const next = doc.querySelector('[data-close-dialog-next="market"]');
-    assert(next.disabled && doc.getElementById('annualConfirmBtn').disabled, 'Weiter und Abschluss bis zur Wahl gesperrt');
-    await next.fire('click'); assertEqual(marketTab.getAttribute('aria-current'), 'step', 'Auch programmatisches Weiter überspringt keine Wahl');
+    assert(planTab.getAttribute('aria-label').includes('Wahl offen'), 'Wahl offen schon vor erstem Besuch');
+    await prepareCloseFixture(doc, { marketReading: null }); await settle(); binding.activate('preview');
+    assert(doc.getElementById('annualConfirmBtn').disabled, 'Abschluss bis zur Wahl gesperrt');
+    assert(doc.querySelector('[data-annual-market-plan-note] [data-hidden-bear="annual"]') || doc.querySelector('[data-hidden-bear="annual"]'), 'Schritt Plan zeigt den verdeckten Bärenmarkt');
     const radio = doc.querySelector(`[data-annual-market-reading="${selection}"]`); radio.checked = true; await radio.fire('change'); await settle();
-    assert(marketTab.getAttribute('aria-label').includes(selection === 'year_high' ? 'Jahreshoch' : 'Jahresendregel'), 'Reiter nennt die Wahl');
-    assert(!doc.querySelector('[data-close-dialog-next="market"]').disabled, 'Weiter nach Wahl frei');
-    await doc.querySelector('[data-close-dialog-next="market"]').fire('click');
-    assert(doc.querySelector('[data-annual-market-plan-note]').children[0].textContent.includes('deine Wahl'), 'Plan nennt eigene Wahl');
-    await doc.querySelector('[data-annual-market-change]').fire('click'); assertEqual(marketTab.getAttribute('aria-current'), 'step', 'Wahl ändern führt zu Marktdaten');
+    assert(planTab.getAttribute('aria-label').includes(selection === 'year_high' ? 'Jahreshoch' : 'Jahresendregel'), 'Reiter nennt die Wahl');
     binding.activate('preview');
     const floor = doc.getElementById('annualPlan_floorBedarf'); floor.value = '35.000'; await floor.fire('input'); await settle();
     assertEqual(Boolean(lastEvaluation.yearHigh), selection === 'year_high', 'Bedarfsänderung erhält die Wahl in der echten Rechnung');

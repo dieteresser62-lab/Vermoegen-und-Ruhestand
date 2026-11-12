@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { GERMAN_COHORT_LIFE_TABLE } from '../app/simulator/german-cohort-life-table.js';
 
 const SCRIPT_DIRECTORY = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(SCRIPT_DIRECTORY, '..');
@@ -41,15 +42,15 @@ const LEGACY_MORTALITY_TAIL = Object.freeze({
     w: Object.freeze({ 101: 0.42, 102: 0.45, 103: 0.48, 104: 0.51, 105: 0.55, 106: 0.6, 107: 0.65, 108: 0.75, 109: 0.85, 110: 1 })
 });
 
-// FR-41: per Simulation auf Destatis-Pflegestatistik 2023 abgestimmt.
-// Kein Quotient aus Prävalenz und Dauer. Rohgewichte: 54,02 % Grad 1.
-// RNG-1: mit gleichverteiltem Xorshift32 nach demselben Kohortenverfahren neu abgestimmt.
+// FR-41: auf Destatis-Pflegestatistik 2023 abgestimmt; kein Quotient aus Prävalenz und Dauer.
+// Rohgewichte: 54,02 % Grad 1. FR-75: nach der Absenkung der Grundsterblichkeit ohne Pflege mit
+// scripts/retune-care-model.mjs exakt neu abgestimmt (Fortschritt × 0,75), MC-Prüfung calibrate-care-model.mjs.
 const careEntryTable = totals => Object.fromEntries(totals.map((total, index) => [
     65 + 5 * index, { 1: Number((total * .5402).toFixed(8)), 2: Number((total * .4598).toFixed(8)) }
 ]));
 const CARE_ENTRY_MODEL_BY_SEX = {
-    m: careEntryTable([.01016, .013, .03424, .07015, .18220, .45781, .52408]),
-    w: careEntryTable([.009, .015, .04189, .09713, .24528, .55821, .65157])
+    m: careEntryTable([.00995, .01223, .02871, .06034, .13221, .29511, .29511]),
+    w: careEntryTable([.0085, .01441, .03753, .08522, .18332, .39083, .39083])
 };
 // Für divers bleibt die ausdrücklich als Modellannahme geführte Mittelung.
 const CARE_ENTRY_MODEL = Object.fromEntries(Object.keys(CARE_ENTRY_MODEL_BY_SEX.m).map(age => [age,
@@ -58,14 +59,14 @@ const CARE_ENTRY_MODEL = Object.fromEntries(Object.keys(CARE_ENTRY_MODEL_BY_SEX.
 ]));
 
 const CARE_PROGRESSION_MODEL = Object.freeze({
-    1: 0.6780,
-    2: 0.2706,
-    3: 0.1569,
-    4: 0.1231,
+    1: 0.5085,
+    2: 0.2030,
+    3: 0.1177,
+    4: 0.0923,
     5: 0
 });
 const CARE_MORTALITY_DEFAULTS = { 1: 1.5, 2: 2, 3: 3, 4: 4, 5: 5 };
-const CARE_CALIBRATION = 'per Simulation auf Destatis-Pflegestatistik 2023 abgestimmt (FR-41)';
+const CARE_CALIBRATION = 'exakt auf Destatis-Pflegestatistik 2023 abgestimmt, mit Grundsterblichkeit ohne Pflege nach FR-75 (FR-41); scripts/retune-care-model.mjs';
 
 const CARE_GRADE_LABELS = Object.freeze({
     1: 'Pflegegrad 1 – geringe Beeinträchtigung',
@@ -438,7 +439,7 @@ function buildArtifact() {
 
     return {
         schemaVersion: 'GermanDemographyCareSurvivorContractV1',
-        revision: '2026-10-21.2',
+        revision: '2026-11-12.2',
         sourceFiles: {
             mortality: {
                 fileName: path.basename(MORTALITY_SOURCE_PATH),
@@ -490,7 +491,31 @@ function buildArtifact() {
                 construction: 'Retained legacy simulator tail because the official source ends at age 100; age 110 remains the deterministic terminal boundary.',
                 futureMortalityImprovement: false
             },
-            application: 'Annual qx for attained simulated age; no cohort shifting or calendar-year improvement.',
+            application: 'Period table 2023/2025: FR-41 care calibration (cross-section 2023) and callers without a birth year. Runtime target since FR-75: see target.',
+            target: {
+                evidenceClass: 'official_projection_with_model_tail',
+                tableType: 'cohort',
+                cohortProjection: true,
+                futureMortalityImprovement: true,
+                source: 'Destatis Kohortensterbetafeln 1926-2026, variant V2 (mittel), tables 12621-b03/-b04',
+                module: 'app/simulator/german-cohort-life-table.js',
+                sourceSha256: GERMAN_COHORT_LIFE_TABLE.source.sha256,
+                qxTableHash: GERMAN_COHORT_LIFE_TABLE.hashes.qxTableHash,
+                variant: GERMAN_COHORT_LIFE_TABLE.variant.id,
+                variantSelectable: false,
+                birthYearRange: { first: GERMAN_COHORT_LIFE_TABLE.birthYears.first, last: GERMAN_COHORT_LIFE_TABLE.birthYears.last },
+                birthYearRule: 'Birth year from the person profile; otherwise planning year minus start age; outside 1926-2026 the nearest edge year.',
+                officialAgeRange: { startAge: GERMAN_COHORT_LIFE_TABLE.ages.first, endAge: GERMAN_COHORT_LIFE_TABLE.ages.last },
+                runtimeSexMapping: { m: 'official_male', w: 'official_female', d: 'model_assumption_unweighted_mean_of_male_and_female_qx' },
+                tailAssumption: {
+                    startAge: GERMAN_COHORT_LIFE_TABLE.ages.last + 1,
+                    endAge: MODEL_MAX_AGE,
+                    evidenceClass: 'model_assumption',
+                    construction: 'Source lists 100+ with qx = 1. Ages 100-109 use the period qx (official 100, legacy tail 101-109) times the cohort/period qx ratio at 99, capped at 1; age 110 remains terminal.'
+                },
+                application: 'Annual qx for attained age of the birth cohort; same target for Monte Carlo deaths and planning horizon (FR-75).',
+                implementation: 'app/simulator/target-mortality.js'
+            },
             table: mortality.table
         },
         care: {
@@ -524,6 +549,15 @@ function buildArtifact() {
                 yearConvention: 'annual_transition_to_next_care_grade',
                 construction: CARE_CALIBRATION,
                 probabilitiesByCurrentGrade: CARE_PROGRESSION_MODEL
+            },
+            baseMortalityAdjustment: {
+                evidenceClass: 'model_construction',
+                method: 'markov_exact_per_person_R2',
+                rule: 'FR-75: total annual mortality per age equals the target table, with and without care logic. A person without care at simulation start lives like the target table; only an entered or drawn care grade shortens life.',
+                construction: 'Exact Markov chain of the care model per person from the start age (entry, progression, acute duration), base qx solved in closed form from sum(share x min(1, base x factor)) = target qx; cached per person and care assumptions.',
+                withoutCareLogic: 'Base qx equals the target qx.',
+                careToday: 'Base qx is computed as if the person were without care at start; the care factor applies on top. With the course "slower" or "much slower" the total qx is at least the target qx for life (LE-1b), so a care grade today never lengthens life.',
+                implementation: 'app/simulator/target-mortality.js'
             },
             mortalityModel: {
                 evidenceClass: 'model_assumption',

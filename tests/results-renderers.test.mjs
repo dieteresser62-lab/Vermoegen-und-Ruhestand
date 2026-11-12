@@ -266,7 +266,15 @@ try {
     };
     const beforeSplit = JSON.stringify(splitModel);
     renderKpiDashboard(dashboard, splitModel, riskDashboard);
-    assert(!riskDashboard.innerHTML.includes('reporting-reference-note'), 'Separater Risiko-Host erzeugt keine zweite Berichtsreferenz');
+    // SE-2: Die Risikoansicht zeigt die Berichtsreferenz in der Aufklappzeile „Risiko-Details“.
+    assertEqual((riskDashboard.innerHTML.match(/reporting-reference-note/g) || []).length, 1, 'Risiko-Host zeigt die Berichtsreferenz genau einmal');
+    assert(/data-risk-row="risiko"[^]*reporting-reference-note/.test(riskDashboard.innerHTML), 'Berichtsreferenz steht in Risiko-Details');
+    for (const row of ['tail', 'stress']) assert(riskDashboard.innerHTML.includes(`data-risk-row="${row}"`), 'Risiko-Host hat die Aufklappzeile ' + row);
+    assert(riskDashboard.innerHTML.includes('Kein Stress-Szenario gewählt') && !/data-risk-row="stress" open/.test(riskDashboard.innerHTML), 'Ohne Stress bleibt die Stresszeile zu und nennt den Grund');
+    renderKpiDashboard(dashboard, splitModel, riskDashboard, { stressMetrics: { presetLabel: 'Crash fixture', years: 3 } });
+    assert(/data-risk-row="stress" open/.test(riskDashboard.innerHTML) && riskDashboard.innerHTML.includes('sim-risk-stress-anchor')
+        && riskDashboard.innerHTML.includes('Crash fixture · betrifft die ersten 3 Jahre'), 'Mit aktivem Stress ist die Stresszeile aufgeklappt und nimmt die Stresskarten auf');
+    assert(riskDashboard.innerHTML.includes('▸ Alle Details zeigen'), 'Kopf bietet „Alle Details zeigen“');
     assert(dashboard.innerHTML.includes('Primary split') && dashboard.innerHTML.includes('Drawdown split')
         && dashboard.innerHTML.includes('Tail split'), 'Überblick erhält Hauptwerte, Drawdown und aufklappbare Detailkarten');
     assert(riskDashboard.innerHTML.includes('Tail split') && !riskDashboard.innerHTML.includes('Primary split'),

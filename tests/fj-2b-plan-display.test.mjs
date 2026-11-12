@@ -67,13 +67,11 @@ try {
             assertEqual(payload.input.referenceYear, 2027, mode + ': Überblick verwendet Zieljahr');
             assertEqual(payload.input.floorBedarf, 32000, mode + ': Projektionsinput schreibt 31000 mit 2 % und Abschlussrundung fort');
             assertEqual(payload.nextYearBudget.current.needBeforeIndexation, 31000 + values.flexBedarf, mode + ': Projektion basiert auf übernommenem Plan');
-            assertEqual(get('balanceMarketPreviewTitle').textContent, 'Budgetprüfung für 2027', mode + ': Budgetprüfung verwendet Folgejahr');
+            assertEqual(get('balanceActionPreviewTitle').textContent, 'Vorschau auf den Plan 2027', mode + ': Vorschauzeile verwendet Folgejahr');
             assertEqual(get('balanceMonthlyBudget').textContent, UIUtils.formatBalanceCurrency(payload.nextYearBudget.rule.monthlyBudget), mode + ': Budgetkarte zeigt Folgejahresbudget');
             const projectedAction = json(UIRenderer.getActionSummary());
-            const coverage = get('balanceActionCoverage').textContent;
             render.call(UIRenderer, { ...payload, currentYear: undefined });
             assertEqual(json(UIRenderer.getActionSummary()), projectedAction, mode + ': Empfehlung bleibt vollständig bei der Projektion');
-            assertEqual(get('balanceActionCoverage').textContent, coverage, mode + ': Empfehlungsdeckung bleibt bei der Projektion');
             assert(texts(planIds) !== planText, mode + ': Gegenprobe mit Folgejahreswerten ändert Bedarfskarten');
             render.call(UIRenderer, { ...current, marketPreview: payload.marketPreview }); renderDiagnosis.call(UIRenderer, diagnosis);
             assertEqual(texts(planIds), planText, mode + ': Bedarf, Strategie, Markt und Reserven entsprechen laufender Rechnung');

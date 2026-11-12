@@ -1,0 +1,16 @@
+{
+  "basis": "244409ea",
+  "reason": "FR-73 Paket 2: Der Jahresabschluss schreibt den Pflegewerte-Record mit fortgeschriebener Staffel, Deckel, Heim-Bestandteilen und eigenen Ausgaben auch ohne Dialogentwurf (Vorschau = Abschluss); der Backtest verkauft wie Monte Carlo das Haus, wenn heute alle Lebenden ab Grad 4 im Heim leben (Gutachten PFA-1, Befund 1); das Beispiel Helga und Werner „Werner Pflegegrad 3“ rechnet die Pflege in Balance jetzt selbst (Grundbedarf 36.000 € folgt in PFA-3). Monte Carlo, Balance ohne Pflegegrad heute und Übersicht bleiben bytegleich.",
+  "files": [
+    { "file": "tests/ar-2-year-high.test.mjs", "hashes": 1, "why": "Abschlussrecords enthalten den fortgeschriebenen Pflegewerte-Record" },
+    { "file": "tests/ar-3-kurssturz.test.mjs", "hashes": 3, "why": "Beispielvariante helga-werner:haus-pg3 mit heutigem Grad 3: Balance rechnet die Pflege selbst" },
+    { "file": "tests/he-3-amtlich-ziehung.test.mjs", "hashes": 1, "why": "Backtest mit Amtlich und beiden Personen heute Grad 4 im Heim verkauft das Haus im ersten Jahr" }
+  ],
+  "hashes": {
+    "634a5aebc0add1eca20d29e2f8d3d053799c699bb969c158a5d24d8594e49ec1": "f0dfe0d2c3c46b4570b14dcd6601e5519e96b312b37362f811567c2d618a9785",
+    "deb180fe27667d49bb0dfbfa9b1fcdc573777c73b929051b2fb43f05d38e004e": "dfa9d915387bd29d53feb86460621173f56572d06545d7b06b6288bca5a9ce9b",
+    "59461ee0337aeb247a2c05c260a4d6cd63567cb463d142d4850647db73d3e5cf": "42348d32d570248b64892e83d9e6d006ccd7f0e6b026af6568fe396598e2274f",
+    "abc8ec42bdae47be194af1ff9456dbd50de49471169a9ce1acffeb5a5d2b9fdc": "9db095eedb5a9e034f475180785531332586f20f3fc7b63b6f2c3f3c3b9d46ce",
+    "ed6d06dc2f21c6f114655f5e5be2e1af5cf178a5ff16758f39e21724c20d9abd": "e742fbe6c6093892a6b4019538b57e2cf47e8656eb06f9a1ff42f45c7d7bb59d"
+  }
+}

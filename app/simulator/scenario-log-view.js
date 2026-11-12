@@ -198,8 +198,6 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
         }
         const basis = doc.getElementById('scenarioListBasis');
         if (basis) basis.textContent = `Gesamtvermögen · ${euroBasisLabel(mode)} · Pfade nach Geldvermögen oder Aktienrendite ausgewählt`;
-        const pathsHeading = doc.getElementById('scenarioPathsHeading');
-        if (pathsHeading) pathsHeading.textContent = `Ausgewählte Szenarien · ${euroBasisLabel(mode)}`;
         const heading = doc.getElementById('scenarioSelectedHeading');
         const events = entry ? scenarioLifeEvents(entry.scenario, chartOptions.startYear, chartOptions.personDisplayContext) : [];
         if (heading) heading.innerHTML = entry ? `<p class="scenario-selected-eyebrow">Ausgewählt · Nach ${groups.find(([key]) => key === activeGroup)[1]}</p><strong class="scenario-selected-title">${escape(label)} · Gesamtvermögen <span title="${escape(exactWealth === null ? wealth : formatCurrency(exactWealth))}"${entry.scenario.failed ? ' class="is-ruin"' : ''}>${escape(wealth)}</span></strong>${displayed?.hasHomes ? `<small class="sim-money-detail">davon Geldvermögen ${escape(formatCurrency(displayed.money))} · Immobilien ${escape(formatCurrency(displayed.total - displayed.money))}</small>` : ''}${events.length ? `<div class="scenario-selected-events">${renderPersonMarks(events)}</div>` : ''}<div class="scenario-selected-meta"><span>Startjahr: ${Number.isInteger(chartOptions.startYear) ? chartOptions.startYear : 'unbekannt'}</span><span>${entry.scenario.logDataRows?.length || 0} Logzeilen</span><span>${euroBasisLabel(mode)}</span></div>` : '<strong>Ausgewählt: Kein Szenario</strong>';
@@ -287,9 +285,22 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
             for (const option of options()) option.setAttribute('tabindex', option.getAttribute('data-scenario-id') === id ? '0' : '-1');
         }
     });
+    // SE-2: ein Diagramm mit Umschalter „Drei Vergleichspfade | Gewähltes Szenario“.
+    const viewHost = doc.getElementById('scenarioChartView');
+    const showChart = view => {
+        for (const button of viewHost?.querySelectorAll?.('[data-scenario-chart]') || []) button.setAttribute('aria-pressed', String(button.getAttribute('data-scenario-chart') === view));
+        for (const id of ['scenarioComparisonChartPanel', 'scenarioSelectedChartPanel']) {
+            const panel = doc.getElementById(id);
+            if (panel) panel.hidden = panel.getAttribute('data-scenario-chart-panel') !== view;
+        }
+    };
+    listen(viewHost, 'click', event => {
+        const view = event.target?.closest?.('[data-scenario-chart]')?.getAttribute('data-scenario-chart');
+        if (view) showChart(view);
+    });
     const pick = event => {
         const id = event.target?.closest?.('[data-scenario-id]')?.getAttribute('data-scenario-id');
-        if (id) { choose(id); if (disclosure) disclosure.open = true; focusOption(selectedId); }
+        if (id) { choose(id); if (disclosure) disclosure.open = true; if (event.currentTarget === list) showChart('selected'); focusOption(selectedId); }
     };
     listen(list, 'click', pick);
     listen(chart, 'click', pick);
@@ -329,7 +340,8 @@ export function bindScenarioLogView({ document: doc, logs, onSelect, onMode, cha
     }));
     const binding = {
         choose, switchGroup,
-        focusSelected: () => { if (disclosure) disclosure.open = true; focusOption(selectedId, { preventScroll: false }); },
+        focusSelected: () => { if (disclosure) disclosure.open = true; showChart('selected'); focusOption(selectedId, { preventScroll: false }); },
+        showChart,
         get activeGroup() { return activeGroup; },
         get focusedId() { return focusedId; },
         get selectedId() { return selectedId; },

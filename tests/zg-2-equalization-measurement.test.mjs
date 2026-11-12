@@ -1,6 +1,6 @@
 import { measureZG2 } from '../scripts/measure-zg2-equalization.mjs';
 
-// Echter MC-Pfad; Debugger liest den Originalcode, Sollwerte stammen aus den
+// FR-73: neue Pflegepreise und Folgejahresreserven; echter MC-Pfad; Debugger liest den Originalcode, Sollwerte stammen aus den
 // Rohbeständen und einer getrennten Nachrechnung, nicht aus erfundenen Logzeilen.
 const result = await measureZG2();
 const [max, erika] = result.people;
@@ -17,15 +17,15 @@ assertEqual(result.historicalYear, 1983, 'Todesjahr verwendet das gezogene Markt
 assertEqual(max.initialAssets, 864000, 'Max: 414.000 Geld plus 450.000 Haus am Planstart');
 assertEqual(erika.initialAssets, 586000, 'Erika: 376.000 Geld plus 210.000 Wohnung am Planstart');
 assertClose(result.inflationFactor, 1.4841747668547232, 1e-12, 'Inflation enthält auch das Todesjahr');
-assertClose(max.endAssets, 4565155.983647285, 1e-7, 'Max: nominales Gesamtvermögen vor Erbaufteilung');
-assertClose(erika.endAssets, 3994736.3710178263, 1e-7, 'Erika: nominales Gesamtvermögen zur selben Messstelle');
-assertClose(max.gain, 3282828.9850848042, 1e-7, 'Max: Endvermögen minus indexiertes Anfangsvermögen');
-assertClose(erika.gain, 3125009.9576409585, 1e-7, 'Erika: derselbe Index und dieselbe Bewertung');
-assertClose(hand.rawAllowance, 78909.51372192288, 1e-7, 'Handrechnung: halbe positive Zugewinndifferenz');
-assertClose(hand.allowance, 67365.11539300121, 1e-7, 'Handrechnung: Familienheim kürzt den Ausgleich anteilig');
-assertClose(hand.taxWith, 632683.3224022351, 1e-7, 'Steuer mit Ausgleich: Bemessung mal 19 Prozent');
-assertClose(hand.taxWithout, 645482.6943269053, 1e-7, 'Steuer ohne Ausgleich bei identischen Nachlasswerten');
-assertClose(hand.taxWithout - hand.taxWith, 12799.37192467018, 1e-7, 'Steuerminderung getrennt von Verkaufssteuern');
+assertClose(max.endAssets, 4576046.832254801, 1e-7, 'Max: nominales Gesamtvermögen vor Erbaufteilung');
+assertClose(erika.endAssets, 3985089.5485637216, 1e-7, 'Erika: nominales Gesamtvermögen zur selben Messstelle');
+assertClose(max.gain, 3293719.83369232, 1e-7, 'Max: Endvermögen minus indexiertes Anfangsvermögen');
+assertClose(erika.gain, 3115363.135186854, 1e-7, 'Erika: derselbe Index und dieselbe Bewertung');
+assertClose(hand.rawAllowance, 89178.34925273317, 1e-7, 'Handrechnung: halbe positive Zugewinndifferenz');
+assertClose(hand.allowance, 76162.67934088237, 1e-7, 'Handrechnung: Familienheim kürzt den Ausgleich anteilig');
+assertClose(hand.taxWith, 633081.0464875657, 1e-7, 'Steuer mit Ausgleich: Bemessung mal 19 Prozent');
+assertClose(hand.taxWithout, 647551.9555623333, 1e-7, 'Steuer ohne Ausgleich bei identischen Nachlasswerten');
+assertClose(hand.taxWithout - hand.taxWith, 14470.90907476761, 1e-7, 'Steuerminderung getrennt von Verkaufssteuern');
 
 assertEqual(result.observations.map(row => row.phase).join(','),
     'year_open,after_returns,before_payout,after_payout,before_inheritance', 'Lauf misst die wirkliche Buchungsfolge');

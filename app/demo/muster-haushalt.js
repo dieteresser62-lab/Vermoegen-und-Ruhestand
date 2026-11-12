@@ -66,7 +66,10 @@ const STECKBRIEFE = {
         floorBedarf: 22000, flexBedarf: 8000, minimumFlexAnnual: 2000,
         maxSkimPctOfEq: 10, maxBearRefillPctOfEq: 5,
         categories: { Wohnen: 50, Alltag: 35, Reisen: 15 },
-        plannedExpenses: [{ id: 'muster-auto', monat: '2029-04', betrag: 25000, bezeichnung: 'Auto' }],
+        // GA-2: Der Ratenkredit zeigt feste geplante Ausgaben im Grundbedarf. Er endet vor der Teilzeitvariante,
+        // damit deren Frage (Teilzeit leistbar?) gleich bleibt.
+        plannedExpenses: [{ id: 'muster-auto', monat: '2029-04', betrag: 25000, bezeichnung: 'Auto' },
+            { id: 'muster-kredit', bezeichnung: 'Ratenkredit', betragMonat: 300, ab: null, bis: '2032-12', anpassung: 'keine' }],
         people: [
             { id: 'muster_sophie', name: 'Sophie', birthDate: '1971-01-01', sex: 'w', pensionStart: '2038-01-01', pension: 1500,
                 income: [{ id: 'muster-gehalt', art: 'sonstige', bezeichnung: 'Gehalt', betragMonat: 3400,
@@ -182,6 +185,42 @@ function addMusterAnnualPlan(records, year, values, scope) {
         if (id === records.rs_active_profile) records.overview_balance_summary_v1 = profile.data.overview_balance_summary_v1;
     }
     records.rs_profiles_v1 = JSON.stringify(currentRegistry);
+}
+
+/** WT-1 (FR-77): Variante „Plan teilweise umgesetzt“. Die erste Person hat ihre Planzeile verkauft und gutgeschrieben, die zweite
+ * ein gutes Drittel ihrer Zeile, die Gutschrift aufs Tagesgeld ist noch offen. Verkaufsbelege wie nach „Verkauf eintragen“
+ * (Stücke weniger, bestätigter Verkauf in der Registry); Datum spätestens am Testdatum.
+ * @param {Record<string, string>} records @param {string} testDate */
+function addMusterPlanSales(records, testDate) {
+    const year = testDate.slice(0, 4), registry = JSON.parse(records.rs_profiles_v1);
+    const entry = Object.values(JSON.parse(records[ANNUAL_PLAN_RECORD_KEY]).entries)[0];
+    const lines = (entry.adopted.action.quellen || []).filter(source => source.sourceProfileId && source.trancheId && source.netto > 0
+        && !['liquiditaet', 'cash'].includes(source.kind));
+    const day = date => date < testDate ? date : testDate;
+    // Belegquellen tragen die Tranche mit Personenpräfix („person:tranche“).
+    const sales = lines.slice(0, 2).map((source, index) => ({ profileId: source.sourceProfileId, trancheId: String(source.trancheId).split(':').pop(),
+        net: index === 0 ? Math.round(source.netto) : Math.round(source.netto * 0.38), executedAt: day(index === 0 ? `${year}-03-12` : `${year}-09-02`), pending: index > 0 }));
+    const actions = [];
+    for (const [index, sale] of sales.entries()) {
+        const data = registry.profiles[sale.profileId].data;
+        const cash = Number(data.profile_tagesgeld) + (sale.pending ? 0 : sale.net);
+        data.profile_tagesgeld = String(cash);
+        const tranches = JSON.parse(data.depot_tranchen), lot = tranches.find((/** @type {any} */ item) => item.trancheId === sale.trancheId);
+        if (!lot) continue;
+        const sold = sale.net / lot.currentPrice, before = lot.shares;
+        lot.shares = before - sold;
+        if ('marketValue' in lot) lot.marketValue = lot.shares * lot.currentPrice;
+        data.depot_tranchen = JSON.stringify(tranches);
+        actions.push({ schemaVersion: 1, eventType: 'sale_reconciled', actionId: `muster-plan-verkauf-${index + 1}`, profileId: sale.profileId, trancheId: sale.trancheId,
+            executedAt: sale.executedAt, actual: { sharesSold: sold, grossProceeds: sale.net, fees: 0, taxes: 0, netProceeds: sale.net },
+            ...(sale.pending ? { cashStatus: 'pending_manual_posting' } : { cashStatus: 'confirmed_already_reflected', cashBalanceAfterPostingEur: cash,
+                cashConfirmedAt: `${sale.executedAt}T10:00:00.000Z` }),
+            result: { beforeShares: before, remainingShares: lot.shares, trancheRemoved: false }, reconciledAt: `${sale.executedAt}T10:00:00.000Z` });
+    }
+    registry.trancheReconciliation = { schemaVersion: 1, actions };
+    const active = registry.profiles[records.rs_current_profile].data;
+    records.profile_tagesgeld = active.profile_tagesgeld; records.depot_tranchen = active.depot_tranchen;
+    records.rs_profiles_v1 = JSON.stringify(registry);
 }
 
 /** Reproduzierbare Records, ohne echte Daten, Migration, Netzwerk oder Schreibzugriff.
@@ -311,7 +350,7 @@ function createRecords(testDate, householdId, variantId) {
             ...(person.careGrade ? { profile_care_grade_today: String(person.careGrade), profile_care_form_today: person.careForm || 'family' } : {}),
             profile_person_schema_version: '1', profile_geburtsdatum: shiftedDate(person.birthDate),
             profile_geschlecht: person.sex, profile_rentenbeginn: shiftedDate(person.pensionStart),
-            profile_rentenanpassung_art: 'wage', profile_rentenanpassung_pct: '0', profile_kirchensteuer_pct: String(household.churchTax || 0),
+            profile_rentenanpassung_art: 'cpi', profile_rentenanpassung_pct: '0', profile_kirchensteuer_pct: String(household.churchTax || 0),
             profile_sparer_pauschbetrag: '1000', profile_rente_steuerquote_pct: '80',
             profile_rente_monatlich: String(person.pension), profile_tagesgeld: String(cash),
             profile_gold_aktiv: String(Boolean(household.gold)), profile_gold_steuerfrei: String(Boolean(household.gold)),
@@ -342,7 +381,8 @@ function createRecords(testDate, householdId, variantId) {
                 [field, Object.values(capture.people).reduce((sum, person) => sum + person[field], 0)])) } };
         }) }));
     if (household.plannedExpenses) records[PLANNED_EXPENSES_KEY] = JSON.stringify({ version: 1, entries: {
-        [annualScope.key]: { scope: annualScope, items: household.plannedExpenses.map(entry => ({ ...entry, monat: shiftedDate(entry.monat) })) }
+        [annualScope.key]: { scope: annualScope, items: household.plannedExpenses.map(entry => entry.monat ? { ...entry, monat: shiftedDate(entry.monat) }
+            : { ...entry, ab: entry.ab && shiftedDate(entry.ab), bis: entry.bis && shiftedDate(entry.bis) }) }
     } });
     if (household.partnership) {
         const partnership = structuredClone(household.partnership);
@@ -351,6 +391,7 @@ function createRecords(testDate, householdId, variantId) {
     }
     for (const [grade, form] of Object.entries(household.careForms || {})) records[`sim_pflegeStufe${grade}Form`] = form;
     addMusterAnnualPlan(records, year, planValues, annualScope);
+    if (householdId === 'max-erika' && variantId === 'teilweise') addMusterPlanSales(records, testDate);
     // Vorjahr und abgelaufene Monate zeigen das Wunschbudget; der Startmonat bleibt offen.
     const categoryEntries = Object.entries(household.categories), weight = categoryEntries.reduce((sum, [, value]) => sum + value, 0);
     const personBudget = Math.round((planValues.floorBedarf + planValues.flexBedarf) / 12 * 100 / ids.length);

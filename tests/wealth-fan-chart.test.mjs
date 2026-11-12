@@ -21,5 +21,5 @@ assertClose(endPricePath.points[1].value, 100000, 1e-8, 'Szenariolinie und Fäch
 const labels = [...real.matchAll(/class="wealth-fan-end-label" x="[^"]+" y="([^"]+)"/g)].map(match => Number(match[1]));
 assertEqual(new Set(labels).size, labels.length, 'Zusammenfallende Nullquantile haben getrennte Endbeschriftungen');
 
-assert(real.includes('width="1400" height="490" viewBox="0 0 1400 490"'), 'Vermögensfächer: native Pixelmaße');
+assert(real.includes('width="720" height="300" viewBox="0 0 720 300"'), 'Vermögensfächer: native Pixelmaße');
 assert(real.includes('class="scenario-chart-scroll ds-chart-scroll" role="region" tabindex="0" aria-label='), 'Fächer hat eine benannte per Tastatur bedienbare innere Scrollregion');

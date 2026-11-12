@@ -121,6 +121,7 @@ export function requestProbelaufDate({ doc, testDate, starting = false, demoAvai
             const today = node('input'); today.type = 'radio'; today.name = game.name; today.value = 'today'; today.setAttribute('aria-label', 'Echte Kurse von heute');
             const updateMode = () => {
                 game.checked = mode === 'date'; today.checked = mode === 'today';
+                today.disabled = selected !== 'copy'; todayLabel.hidden = today.disabled;
                 input.disabled = mode === 'today'; input.required = !input.disabled;
                 handbookButton.disabled = selected === 'copy' || input.disabled; updateHandbookHint();
             };
@@ -176,7 +177,9 @@ export function requestProbelaufDate({ doc, testDate, starting = false, demoAvai
             const date = starting && mode === 'today' ? null : input.value;
             try {
                 if (date !== null) validateAppTestDate(date);
-                if (starting && date === testDate) throw new Error('Heute gibt es nur echte Kurse. Für Spielkurse bitte ein anderes Testdatum wählen, sonst ‚Echte Kurse von heute‘.');
+                if (starting && date === testDate) throw new Error(selected === 'copy'
+                    ? 'Heute gibt es nur echte Kurse. Für Spielkurse bitte ein anderes Testdatum wählen, sonst ‚Echte Kurse von heute‘.'
+                    : 'Für Spielkurse bitte ein anderes Testdatum als heute wählen.');
             } catch (cause) { error.textContent = cause.message; error.hidden = false; input.focus(); return; }
             finish(starting ? { source: selected === 'copy' ? 'copy' : 'demo',
                 ...(selected === 'copy' ? {} : { householdId: selected, variantId }), testDate: date } : date);
@@ -352,7 +355,7 @@ export function bindProbelaufUI(doc, controller, { dateDialog = requestProbelauf
         try {
             let result;
             if (action === 'start') result = await controller.start(({ testDate, demoAvailable }) => demo
-                ? { source: 'demo', testDate: null }
+                ? { source: 'demo', testDate: HANDBOOK_MUSTER_DATE }
                 : dateDialog({ doc, testDate, demoAvailable, starting: true, opener }), { opener });
             else if (action === 'restart') result = await controller.restart(() => confirmRestart(opener), { opener });
             else if (action === 'variant') {

@@ -22,6 +22,10 @@ export function annualNeedsComparison(preview, annual) {
     return { need, expenses, difference, percent: difference !== null && need > 0 ? difference / need * 100 : null };
 }
 
+/** FR-43 (N2): Ist + Inflation; mit festen Ausgaben im Ist erst abziehen, Untergrenze 0. Ohne sie wie bisher. */
+const fromActualSuggestion = (actual, fixedInActual, preview) => roundAnnualSuggestion((Number.isFinite(fixedInActual)
+    ? Math.max(0, actual - fixedInActual) : actual) * (1 + (preview.inflation?.rate ?? 0) / 100));
+
 /**
  * @param preview Wert für den bestehenden Aufrufvertrag.
  * @param annual Wert für den bestehenden Aufrufvertrag.
@@ -34,7 +38,8 @@ export function annualNeedSuggestions(preview, annual, path, projected) {
     const actual = path !== 'minimumFlexAnnual' && review?.monthsWithBreakdown ? review.annualForecast[key] : null;
     const plan = path === 'floorBedarf' ? review?.plans.floor : review?.plans.flex;
     return { plan: roundAnnualSuggestion(projected), actual,
-        fromActual: actual === null ? null : roundAnnualSuggestion(actual * (1 + (preview.inflation?.rate ?? 0) / 100)),
+        // FR-43 (N2): Feste Ausgaben im Ist kommen nicht in den Grundbedarf.
+        fromActual: actual === null ? null : fromActualSuggestion(actual, path === 'floorBedarf' ? review.fixedInActual : undefined, preview),
         comparison: actual === null ? '—' : expenseDeviation(actual, plan, money).replace('über Plan', path === 'flexBedarf' ? 'über Flex nach Regeln' : 'über Plan').replace('unter Plan', path === 'flexBedarf' ? 'unter Flex nach Regeln' : 'unter Plan') };
 }
 

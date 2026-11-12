@@ -510,7 +510,7 @@ input[aria-invalid="true"] {
     outline-offset: 3px;
 }
 
-button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item) {
+:where(.simulator-surface) button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item) {
     font-family: var(--font-sans);
     background-color: var(--primary-color);
     color: var(--surface);
@@ -525,17 +525,17 @@ button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household
     margin-top: 10px;
 }
 
-button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item):hover {
+:where(.simulator-surface) button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item):hover {
     background-color: var(--secondary-color);
     transform: translateY(-2px);
     box-shadow: var(--shadow-card);
 }
 
-button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item):active {
+:where(.simulator-surface) button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item):active {
     transform: translateY(0);
 }
 
-button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item):disabled {
+:where(.simulator-surface) button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item):disabled {
     background-color: var(--surface-sunken);
     color: var(--text-muted);
     cursor: not-allowed;
@@ -1169,21 +1169,6 @@ fieldset.collapsible legend .legend-text {
     color: var(--tranchen-warning-color);
 }
 
-.scenario-replay-link {
-    padding: 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    text-align: center;
-}
-
-.scenario-replay-link p {
-    margin: 0 0 8px;
-}
-
-.scenario-replay-link button {
-    width: auto;
-}
-
 .stress-replay-step {
     min-width: 0;
     margin-top: 20px;
@@ -1602,11 +1587,12 @@ fieldset.collapsible legend .legend-text {
 .sim-eyebrow { font: 600 var(--balance-help)/1.5 var(--font-sans); color: var(--text-muted); margin: 0; }
 .sim-lead { font: 400 var(--balance-lead)/1.5 var(--font-sans); color: var(--text-muted); max-width: none; }
 .sim-page-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
-.sim-result-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); }
-.sim-result-grid > section { min-width: 0; padding: var(--space-4); font-size: var(--balance-body); }
-.sim-overview-backtest, .sim-overview-crises { grid-column: span 7; }
-.sim-overview-mc, .sim-overview-assumptions { grid-column: span 5; }
-.sim-overview-mc { align-self: start; }
+.sim-result-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
+/* SE-1: zwei unabhängig fließende Spalten statt gemeinsamer Zeilenhöhe. */
+.sim-result-column { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.sim-result-column > section { min-width: 0; padding: var(--space-4); font-size: var(--balance-body); }
+.sim-result-main { grid-column: span 7; }
+.sim-result-side { grid-column: span 5; }
 .sim-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .sim-result-grid h2 { font-size: var(--balance-h2); text-align: left; border: 0; padding: 0; margin: 0 0 12px; }
 .sim-result-grid h3 { font-size: var(--balance-h3); text-align: left; margin: 0; }
@@ -1626,9 +1612,6 @@ fieldset.collapsible legend .legend-text {
 .sim-overview-chart { width: 100%; min-width: 0; overflow-x: auto; margin: 20px 0; }
 .sim-overview-chart .ds-portfolio-svg { width: 100%; min-width: 820px; height: auto; }
 .ds-portfolio-svg.ds-portfolio-calendar { width: auto; max-width: none; height: auto; }
-.sim-floor-dots { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 8px; max-width: 380px; margin: 24px 0; }
-.sim-floor-dots i { width: 100%; aspect-ratio: 1; background: var(--surface-sunken); border: 1px solid var(--border-strong); border-radius: 50%; }
-.sim-floor-dots i.covered { background: var(--accent); border-color: var(--accent); }
 .sim-crisis-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .sim-crisis { border: 1px solid var(--border); border-radius: 14px; padding: 16px; min-width: 0; }
 .sim-result-grid .ds-row { gap: 12px; align-items: flex-start; flex-wrap: wrap; font-size: var(--text-base); }
@@ -1637,13 +1620,13 @@ fieldset.collapsible legend .legend-text {
 .sim-workshop-panel { min-width: 0; }
 .sim-workshop-panel[hidden] { display: none; }
 @container simulator-content (min-width: 2300px) {
-    .sim-overview-backtest { grid-column: span 8; }
-    .sim-overview-mc { grid-column: span 4; }
+    .sim-result-main { grid-column: span 8; }
+    .sim-result-side { grid-column: span 4; }
     .sim-crisis-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .sim-hero-amount { font-size: var(--value-lg); }
 }
 @container simulator-content (max-width: 1200px) {
-    .sim-result-grid > section { grid-column: 1 / -1; }
+    .sim-result-column { grid-column: 1 / -1; }
 }
 @container simulator-content (max-width: 640px) {
     .sim-crisis-grid, .sim-result-grid .ds-kpi-strip { grid-template-columns: minmax(0, 1fr); }
@@ -1652,7 +1635,8 @@ fieldset.collapsible legend .legend-text {
     .sim-page-actions { display: none; }
     .sim-overview-chart { overflow: visible; }
     .sim-overview-chart .ds-portfolio-svg { min-width: 0; }
-    .sim-result-grid > section { grid-column: 1 / -1; break-inside: avoid; }
+    .sim-result-column { grid-column: 1 / -1; }
+    .sim-result-column > section { break-inside: avoid; }
 }
 
 /* Simulator-Fortsetzung: Karten und Bausteinknöpfe auf der nutzbaren Inhaltsbreite. */
@@ -1675,8 +1659,10 @@ fieldset.collapsible legend .legend-text {
 .sim-crisis { background: var(--surface-sunken); }
 .sim-crisis .sim-card-heading { align-items: baseline; flex-wrap: wrap; gap: 8px; }
 .sim-crisis .sim-card-heading p { margin: 0; font-size: var(--text-base); color: var(--text-muted); }
-.sim-crisis .ds-row { flex-direction: column; gap: 4px; padding: 10px 0; }
-.sim-crisis .ds-row strong { text-align: left; font: 500 var(--value-md)/1.3 var(--font-serif); }
+.sim-crisis .ds-row { flex-direction: row; justify-content: space-between; gap: 4px 12px; padding: 8px 0; }
+.sim-crisis .ds-row strong { text-align: right; font: 500 var(--value-md)/1.3 var(--font-serif); }
+.sim-crisis .ds-row .sim-money-detail { flex-basis: 100%; text-align: right; }
+.sim-crisis-grid > p { grid-column: 1 / -1; }
 .sim-run-head .ds-row { padding: 10px 0; }
 .sim-run-head .ds-row strong { font: 400 var(--text-base)/1.5 var(--font-sans); }
 .sim-assumptions-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; align-items: start; }
@@ -1732,9 +1718,9 @@ fieldset.collapsible legend .legend-text {
 
 /* Fortsetzungsslice 2: historische Details und vier MC-Ansichten. */
 .sim-backtest-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; }
-.sim-backtest-period { grid-column: span 4; display: flex; flex-direction: column; align-self: stretch; gap: var(--plan-content-gap); }
+.sim-backtest-period { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-4); }
 .sim-backtest-period-title { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); }
-.sim-backtest-period-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: var(--space-4); }
+.sim-backtest-period-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3) var(--space-4); }
 .sim-backtest-period-controls .ds-field { min-width: 0; }
 .sim-backtest-period-controls > .ds-button { grid-column: 1 / -1; justify-self: start; min-height: 44px; width: auto; }
 .sim-backtest-grid > #backtestStatus { grid-column: 1 / -1; margin: 0; padding: var(--space-3) var(--space-4); }
@@ -1745,7 +1731,7 @@ fieldset.collapsible legend .legend-text {
 #backtestDatasetInfoPop { left: 0; right: auto; }
 #backtestResultInfoPop p { margin: 0; }
 #backtestResultInfoPop p + p { margin-top: var(--space-3); }
-.sim-backtest-metrics { grid-column: span 8; }
+.sim-backtest-metrics { grid-column: 1 / -1; }
 .sim-backtest-log { grid-column: 1 / -1; }
 .backtest-analysis { grid-column: 1 / -1; display: flex; flex-direction: column; gap: var(--plan-content-gap); }
 .backtest-analysis[hidden] { display: none; }
@@ -2076,7 +2062,7 @@ fieldset.collapsible legend .legend-text {
 .sim-backtest-outcome { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
 .sim-outcome-primary { min-width: 0; }
 .sim-overview-backtest .sim-verdict { font-size: var(--balance-h3); margin: 0 0 var(--space-2); }
-.sim-overview-backtest .sim-hero-amount { text-align: right; margin: 0 0 6px; }
+.sim-overview-backtest .sim-hero-amount { text-align: left; margin: 0 0 6px; }
 .sim-outcome-caption, .sim-outcome-start { font-size: var(--balance-help); color: var(--text-muted); }
 .sim-result-grid .sim-outcome-start { margin-top: 6px; }
 .sim-result-grid .sim-outcome-metrics { border: 0; border-radius: 0; background: transparent; margin: 0; gap: var(--space-3); overflow: visible; }
@@ -2086,9 +2072,6 @@ fieldset.collapsible legend .legend-text {
 .sim-result-grid .sim-cut-missing { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 400; overflow-wrap: normal; word-break: normal; }
 .sim-overview-chart { margin: 0; }
 @container simulator-content (min-width: 1280px) {
-    .sim-overview-backtest { grid-column: span 8; }
-    .sim-overview-mc { grid-column: span 4; }
-    .sim-backtest-outcome { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: end; }
     .sim-result-grid .sim-outcome-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 .sim-assumption-step { gap: 0; }
@@ -2215,6 +2198,7 @@ fieldset.collapsible legend .legend-text {
 .protocol-cashflow-line > span:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .protocol-cashflow-sum { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px; font-weight: 600; }
 .protocol-cashflow-saved, .protocol-cashflow-withdrawal { border-top: 1px solid var(--border); margin-top: 10px; padding-top: 8px; color: var(--text-muted); }
+.protocol-cashflow-detail { padding-left: 12px; color: var(--text-muted); }
 #simulationLog .protocol-table .protocol-chip, #scenarioLogOutput .protocol-table .protocol-chip { font-size: var(--text-dense); }
 #simulationLog .protocol-table small, #scenarioLogOutput .protocol-table small { display: block; color: var(--text-muted); font-size: var(--text-dense); font-weight: 400; }
 #simulationLog .protocol-year, #scenarioLogOutput .protocol-year { position: sticky; left: 0; z-index: 1; min-width: 128px; background: var(--surface); font-weight: 600; box-shadow: inset 4px 0 0 transparent, 1px 0 0 var(--border); }
@@ -2256,7 +2240,7 @@ fieldset.collapsible legend .legend-text {
 .scenario-comparison-source { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font: var(--text-dense) var(--font-sans); }
 .scenario-comparison-heading .ds-segment { font-size: var(--text-dense); }
 .scenario-comparison-heading .ds-segment > .ds-button { width: auto; min-width: 0; margin: 0; }
-.scenario-comparison-chips { margin: 18px 0; }
+.scenario-comparison-chips { margin: 12px 0; }
 .scenario-comparison-chips .ds-badge { border: 1px solid var(--border); padding: 6px 14px; }
 .scenario-comparison-table { table-layout: fixed; font: var(--text-dense)/1.5 var(--font-sans); }
 .scenario-comparison-table th:first-child { width: 23%; }
@@ -2277,7 +2261,7 @@ fieldset.collapsible legend .legend-text {
 .scenario-comparison-legend .ds-button { display: inline-flex; align-items: center; gap: 8px; min-width: 0; width: auto; margin: 0; font: var(--text-dense) var(--font-sans); }
 .wealth-fan-placeholder { min-height: 160px; display: grid; place-content: center; text-align: center; background: var(--surface-sunken); }
 .scenario-paths-heading { display: flex; align-items: start; justify-content: space-between; gap: 24px; }
-.scenario-paths-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 24px; }
+.scenario-paths-split { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 16px; align-items: start; margin-bottom: 16px; }
 .scenario-paths-split > div { min-width: 0; }
 .scenario-wealth-svg, .wealth-distribution-svg { display: block; width: 100%; color: var(--text-muted); fill: var(--text-muted); }
 .wealth-distribution-svg { min-width: 760px; }
@@ -2293,7 +2277,7 @@ fieldset.collapsible legend .legend-text {
 .scenario-list-item .scenario-value { text-align: right; overflow-wrap: anywhere; }
 .scenario-list-item .scenario-details { grid-column: 2 / -1; white-space: normal; overflow-wrap: anywhere; hyphens: none; }
 .scenario-selection-pane { position: relative; min-height: 0; }
-.scenario-list { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 4px; scrollbar-gutter: stable; }
+.scenario-list { flex: 1; min-height: 0; max-height: 300px; overflow-y: auto; overflow-x: hidden; padding: 4px; scrollbar-gutter: stable; }
 .scenario-list:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .scenario-list-hint { flex: 0 0 auto; margin: 0; color: var(--text-muted); font: var(--text-dense) var(--font-sans); }
 .scenario-outliers { font: var(--text-dense) var(--font-sans); }
@@ -2448,10 +2432,10 @@ fieldset.collapsible legend .legend-text {
 }
 
 /* Eine begrenzte Auswahlfläche, dieselben Optionen auf allen Fensterbreiten. */
-#scenarioSelectionDisclosure { position: absolute; inset: 0; min-width: 0; }
+#scenarioSelectionDisclosure { position: static; min-width: 0; }
 #scenarioSelectionSummary { display: none; color: var(--text-main); }
-/* Absolute Kanten umgehen die auto-Höhe des details-Inhaltsslots. */
-.scenario-selection-content { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
+/* SE-2: Die Auswahl steht in einer eigenen Karte; die Liste scrollt in einem Kasten fester Höhe. */
+.scenario-selection-content { position: static; display: flex; flex-direction: column; min-height: 0; gap: 8px; }
 .scenario-groups { display: flex; flex-wrap: wrap; gap: 2px; flex: 0 0 auto; padding: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-sunken); }
 .scenario-groups .ds-button { display: inline-flex; align-items: baseline; gap: 4px; width: auto; min-width: 0; min-height: 28px; margin: 0; padding: 4px; border: 1px solid transparent; font: var(--text-dense) var(--font-sans); white-space: nowrap; }
 .scenario-group-count { color: var(--text-muted); font-variant-numeric: tabular-nums; }
@@ -2500,10 +2484,39 @@ input[data-plan-trial-readonly][type="text"] { text-align: right; }
 .sim-plan-trial-status:empty { display: none; }
 
 /* Kernantworten stehen auch in der Ergebnisansicht vor den MC-Details. */
-.sim-overview-mc .sim-mc-answers { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+.sim-overview-mc .sim-mc-answers { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); margin: var(--space-4) 0 0; }
 .sim-overview-mc .sim-mc-answers:empty { display: none; }
 .sim-overview-mc .sim-mc-answer { padding: var(--space-3); }
 .sim-overview-mc .sim-mc-answer .sim-hero-amount { margin: var(--space-2) 0; }
+
+/* SE-1: Monte-Carlo-Kopf mit Bedienteilen oben, eine Deckungsantwort mit Balken und Endvermögen. */
+.sim-mc-head { display: flex; flex-direction: column; gap: var(--space-3); }
+.sim-mc-run-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-4); }
+.sim-mc-run-row .sim-mc-actions { margin: 0; }
+.sim-mc-run-row > .sim-mc-progress, .sim-mc-run-row > [role="status"] { flex: 1 0 100%; margin: 0; }
+.sim-mc-run-row > [role="status"]:empty { display: none; }
+.sim-mc-preview { background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 14px; padding: var(--space-3) var(--space-4); }
+.sim-mc-preview h3 { margin: 0 0 var(--space-1); }
+.sim-coverage-answer { display: flex; flex-direction: column; gap: var(--space-2); }
+.sim-coverage-answer > p, .sim-coverage-answer .sim-card-heading h2 { margin: 0; }
+.sim-coverage-figure { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3); }
+.sim-coverage-figure .sim-hero-amount, .sim-coverage-figure .sim-answer-count { margin: 0; }
+.sim-coverage-bar { position: relative; height: 10px; overflow: hidden; background: var(--surface-sunken); border: 1px solid var(--border-strong); border-radius: 999px; }
+.sim-coverage-bar > span { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 999px; }
+.sim-end-wealth { display: flex; flex-direction: column; gap: var(--space-2); border-top: 1px solid var(--border); padding-top: var(--space-3); margin-top: var(--space-1); }
+.sim-end-wealth p { margin: 0; }
+.sim-end-wealth .sim-card-heading { align-items: center; }
+.sim-end-wealth-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+.sim-end-wealth-values > div { min-width: 0; }
+.sim-end-wealth-values .sim-answer-metric-value { font: 500 var(--value-md)/1.3 var(--font-serif); overflow-wrap: anywhere; }
+.sim-run-heads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.sim-run-heads > * { min-width: 0; }
+.sim-run-heads .sim-run-head h4 { margin-top: 0; }
+.sim-overview-assumptions > .ds-help { margin-top: var(--space-3); }
+.sim-backtest-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3) var(--space-4); border-top: 1px solid var(--border); padding-top: var(--space-3); }
+.sim-backtest-footer .sim-backtest-foot { border-top: 0; padding-top: 0; }
+.sim-card-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sim-card-title h2 { margin: 0; }
 
 @media screen {
     .sim-mc-answer .sim-flex-note { font-size: var(--balance-help); white-space: normal; overflow: visible; text-overflow: clip; }
@@ -2577,6 +2590,11 @@ input[data-plan-trial-readonly][type="text"] { text-align: right; }
 #tab-annahmen .sim-person-details .ds-field > .sim-select-segment { grid-column: 2; }
 #tab-annahmen .sim-assumption-step[data-assumption-step="5"] { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-3) var(--space-4); }
 #tab-annahmen #simCareSummary { margin: 0; white-space: normal; grid-column: 1; }
+/* PFA-10, Befund D1: Der Kopftext „Pflegegrad heute …“ bricht als Fließtext um und bleibt links vom Schalter. */
+#tab-annahmen #simCareTodaySummary { margin: 0; white-space: normal; overflow-wrap: anywhere; grid-column: 1; font: 400 var(--text-base)/var(--leading-body) var(--font-sans); }
+#tab-annahmen .sim-care-values { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2) var(--space-4); margin: 0; }
+#tab-annahmen .sim-care-values strong { font-weight: 600; color: var(--text-main); }
+.sim-care-values-carrier[hidden] { display: none; }
 #tab-annahmen .care-panel-toggle { grid-column: 2; grid-row: 1 / 3; flex-direction: row; align-items: center; gap: var(--space-2); }
 #tab-annahmen .care-panel-toggle .sim-toggle-row { width: auto; padding: 0; white-space: nowrap; }
 #tab-annahmen .sim-care-details { grid-column: 1 / -1; }
@@ -2697,3 +2715,103 @@ input[data-plan-trial-readonly][type="text"] { text-align: right; }
 
 .sim-allocation-5 { background: var(--chart-4); }
 #tab-annahmen :is(#simGoldTile, #simBondTile, #simPortfolioParameters, .sim-allocation-values)[hidden] { display: none; }
+
+/* SE-2 A: Risiko und Verteilung – Kennzahlleiste, Verteilung und Fächer nebeneinander, Heatmap neben Aufklappzeilen. */
+#mcViewPanelRisk:not([hidden]) { display: flex; flex-direction: column; gap: var(--space-4); }
+#mcViewPanelRisk .ds-card { margin: 0; }
+#mcViewPanelRisk h2 { font: 500 var(--balance-h3)/1.25 var(--font-serif); text-align: left; border: 0; padding: 0; margin: 0 0 var(--space-2); }
+.sim-risk-figures:not([hidden]) { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 18px 24px; }
+.sim-risk-figure { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 0 var(--space-4); }
+.sim-risk-figure:first-child { padding-left: 0; }
+.sim-risk-figure + .sim-risk-figure { border-left: 1px solid var(--border); }
+.sim-risk-figure-label { font-size: var(--text-base); color: var(--text-main); }
+.sim-risk-figure-value { font: 500 var(--value-lg)/1.15 var(--font-serif); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.sim-risk-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-items: start; }
+.sim-risk-split { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--space-4); align-items: start; }
+.sim-risk-pair > .ds-card, .sim-risk-split > .ds-card { min-width: 0; }
+#mcViewPanelRisk .wealth-distribution-panel, #mcViewPanelRisk .wealth-fan-panel { padding: 24px; }
+#mcViewPanelRisk .wealth-population { margin: 0 0 var(--space-2); font-size: var(--balance-help); }
+#mcViewPanelRisk .wealth-sentence { font-size: var(--balance-help); line-height: 1.5; }
+.wealth-distribution-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+.wealth-distribution-tools .wealth-marker-toggle, .wealth-distribution-tools .wealth-statistics-details { margin: var(--space-2) 0; }
+.wealth-distribution-tools .wealth-statistics-details[open] { flex-basis: 100%; }
+#mcViewPanelRisk .wealth-reading { margin: var(--space-2) 0 0; }
+#mcViewPanelRisk .sim-mc-heatmap > .ds-help { margin: 0 0 var(--space-3); }
+.sim-mc-risk > .sim-card-heading { align-items: center; margin-bottom: var(--space-3); }
+.sim-mc-risk > .sim-card-heading h2 { margin: 0; }
+.sim-risk-rows { display: flex; flex-direction: column; gap: var(--space-3); }
+.sim-risk-row.household-plan-more { padding: var(--space-3) var(--space-4); }
+.sim-risk-row .household-plan-summary-toggle strong { font: 500 var(--balance-h3)/1.25 var(--font-serif); }
+.sim-risk-row .household-plan-summary { margin-top: 2px; font-size: var(--balance-help); }
+.sim-risk-row-body { margin-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+#tab-montecarlo .sim-risk-row-body .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.sim-risk-row-body #stressKpiResults { margin: 0; padding: 0; border: 0; box-shadow: none; }
+@container simulator-content (max-width: 1500px) {
+    .sim-risk-pair, .sim-risk-split { grid-template-columns: minmax(0, 1fr); }
+    .sim-risk-figures:not([hidden]) { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: var(--space-3); }
+    .sim-risk-figure:nth-child(3) { border-left: 0; padding-left: 0; }
+}
+
+/* SE-2 B: Szenario-Logs – ein Diagramm mit Umschalter neben der Auswahl, Protokoll zugeklappt. */
+.scenario-paths-split > .ds-card { margin: 0; min-width: 0; }
+.scenario-paths-panel h2, .scenario-selection-pane h2 { margin: 0; font: 500 var(--balance-h3)/1.25 var(--font-serif); text-align: left; border: 0; padding: 0; }
+.scenario-paths-heading { align-items: center; margin-bottom: var(--space-2); }
+.scenario-paths-heading .ds-segment { font-size: var(--text-dense); }
+.scenario-paths-heading .ds-segment-button { width: auto; min-width: 0; margin: 0; }
+[data-scenario-chart-panel][hidden] { display: none; }
+[data-scenario-chart-panel] > .ds-help { margin: 0 0 var(--space-2); }
+.scenario-selection-pane.ds-card { display: flex; flex-direction: column; gap: var(--space-3); padding: 24px; }
+.scenario-selection-pane .sim-card-heading { align-items: center; }
+.scenario-selection-pane .scenario-list { border: 1px solid var(--border); border-radius: 12px; }
+.scenario-selection-pane .scenario-selected-bar { margin-top: 0; }
+.scenario-replay-link { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); margin-bottom: var(--space-3); }
+.scenario-replay-link .ds-button { width: auto; margin: 0; }
+.scenario-selection-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.scenario-selection-actions .ds-button { width: auto; margin: 0; }
+.scenario-comparison-panel { margin-bottom: 16px; }
+#scenarioLogAnalysis { margin-bottom: 16px; }
+.scenario-protocol-panel.household-plan-more { padding: 18px 24px; }
+.scenario-protocol-panel .household-plan-summary-toggle strong { font: 500 var(--balance-h3)/1.25 var(--font-serif); }
+.scenario-protocol-panel[open] > .protocol-head { margin-top: var(--space-3); }
+@container simulator-content (max-width: 1000px) {
+    .scenario-paths-split { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* SE-2 C: Backtest – schmale Zeitraumleiste, Kennzahlleiste, Verlauf neben „Was im Lauf auffällt“, Protokoll zugeklappt. */
+.sim-backtest-grid { gap: var(--space-4); }
+.sim-backtest-grid .sim-backtest-period { padding: 14px 20px; }
+.sim-backtest-period h2 { font: 600 var(--text-base)/1.4 var(--font-sans); }
+#tab-backtesting .sim-backtest-period .ds-field { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+#tab-backtesting .sim-backtest-period .ds-field > .ds-input { width: 96px; }
+#tab-backtesting .sim-backtest-period .field-error { flex-basis: 100%; margin: 0; }
+.sim-backtest-period-controls > .ds-button { min-height: 38px; }
+.sim-backtest-period > .sim-euro-control { margin: 0; }
+.sim-backtest-grid .sim-backtest-metrics { padding: 18px 24px; }
+.sim-backtest-grid .sim-backtest-metrics .sim-card-heading { margin-bottom: var(--space-3); }
+#tab-backtesting .sim-backtest-primary, #tab-backtesting .sim-backtest-primary:has(.sim-money-detail) { grid-template-columns: minmax(0, 1fr) minmax(max-content, 1.5fr) repeat(3, minmax(0, 1fr)); gap: 0; }
+#tab-backtesting .sim-backtest-primary > .summary-item { margin: 0; padding: 0 18px; border: 0; border-left: 1px solid var(--border); border-radius: 0; background: transparent; box-shadow: none; }
+#tab-backtesting .sim-backtest-primary > .summary-item:first-child { padding-left: 0; border-left: 0; }
+#tab-backtesting .sim-backtest-primary .summary-item > span:not(.ds-visually-hidden) { font-size: var(--value-md); }
+#tab-backtesting .sim-backtest-primary .summary-item[data-metric-id="wealth_end_nominal_eur"] > span:not(.ds-visually-hidden) { font-size: var(--value-lg); }
+.sim-backtest-more-metrics.household-plan-more { margin-top: var(--space-3); padding: var(--space-3) 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent; }
+.sim-backtest-inventory { color: var(--text-muted); font: 400 var(--balance-help)/1.5 var(--font-sans); }
+.sim-backtest-split { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--space-4); align-items: start; }
+.sim-backtest-split:has(> .backtest-analysis[hidden]) { grid-template-columns: minmax(0, 1fr); }
+.sim-backtest-grid .sim-backtest-split > .sim-backtest-chart, .sim-backtest-grid .sim-backtest-split > .backtest-analysis { grid-column: auto; min-width: 0; }
+.sim-backtest-split .backtest-analysis-cards { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+.sim-backtest-split .backtest-analysis-head { flex-wrap: wrap; }
+.sim-backtest-split .sim-backtest-chart .backtest-chart-head h2, .sim-backtest-split .backtest-analysis h2 { font-size: var(--balance-h3); }
+.sim-backtest-grid .sim-backtest-log.household-plan-more { padding: 18px 24px; }
+.sim-backtest-log .household-plan-summary-toggle strong { font: 500 var(--balance-h3)/1.25 var(--font-serif); }
+.sim-backtest-log-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.sim-backtest-log-actions .log-export-buttons { display: flex; gap: var(--space-2); }
+.sim-backtest-log-actions .ds-button { width: auto; margin: 0; min-height: 34px; padding: 6px 12px; font-size: var(--text-dense); }
+.sim-backtest-log[open] > .protocol-head { margin-top: var(--space-3); }
+/* SE-2b: Nur Jahr und Alter bleiben in einer Zeile; Handlung und Texte brechen wie im Monte-Carlo-Protokoll um (Nutzertest 11.11.). */
+#simulationLog .protocol-table td.protocol-year { white-space: nowrap; }
+#simulationLog .protocol-table td small { display: inline; margin-left: .4em; }
+@container simulator-content (max-width: 1500px) {
+    .sim-backtest-split { grid-template-columns: minmax(0, 1fr); }
+    #tab-backtesting .sim-backtest-primary, #tab-backtesting .sim-backtest-primary:has(.sim-money-detail) { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--space-3); }
+    #tab-backtesting .sim-backtest-primary > .summary-item:nth-child(4) { padding-left: 0; border-left: 0; }
+}

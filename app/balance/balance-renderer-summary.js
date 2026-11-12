@@ -2,10 +2,11 @@ import { renderBalanceMarketPreview } from './balance-market-preview-renderer.js
 import { balanceIncomeDetails, projectBalanceMonthlyFlow } from './balance-monthly-flow.js';
 import { renderIncomeDetails, renderMonthlyFlowBar, roundedIncomeDetails } from '../shared/monthly-flow.js';
 import { balanceCareSettings } from '../shared/person-data-status.js';
-import { noCareAllowanceReason } from '../shared/care-benefits.js';
+import { effectiveCareFormToday, noCareAllowanceReason } from '../shared/care-benefits.js';
 import { careTodayFromRecord } from '../profile/profile-care.js';
 import { projectBalanceFlexTrace } from './balance-flex-trace.js';
 import { createPlannedPostsView } from './balance-planned-posts-renderer.js';
+import { fixedPlannedTotal } from './balance-planned-posts.js';
 import { bindBalanceBudgetWhy, renderBalanceStrategyValues } from './balance-presentation-controls.js';
 import { householdPlanFieldSpec } from '../shared/household-plan-fields.js';
 import { readBalanceInflationSource } from './balance-inflation-source.js';
@@ -15,11 +16,14 @@ import { projectExpenses, readExpensesBudget } from '../expenses/expenses-model.
 import { loadExpensesStoreResult } from './balance-expenses-storage.js';
 import { appNow } from '../shared/app-clock.js';
 import { projectBalanceReserves } from './balance-reserves.js';
+import { withAnnualActionProgress } from './annual-action-progress.js';
+import { projectAnnualTodoPlan, projectCashRefill, cashRefillPeople, cashRefillMonthlyBase, cashRefillIronReserve } from './annual-todo.js';
+import { createTodoPlan, createCashRefill, createPlanDetails } from '../shared/annual-todo-view.js';
 import { projectBalanceActionOrigin } from './balance-action-origin.js';
-import { createAnnualActionResult } from '../shared/annual-close-result.js';
 import { overviewScope } from '../overview/overview-storage.js';
 import { projectOverviewWithAnnualArchive } from '../overview/overview-model.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
+import { bindCareHintDone, renderCareHint } from '../shared/care-hint.js';
 import { loadProfileRegistry } from '../profile/profile-registry.js';
 import { personReferenceYear, projectPerson, describePersonDates } from '../profile/profile-person-data.js';
 import { readBalancePersonStatus } from '../shared/person-data-status.js';
@@ -210,11 +214,11 @@ export class SummaryRenderer {
         {
             if (status.ready && status.status !== 'demo') {
                 for (const entry of status.entries) {
-                    const person = projectPerson(entry.data, status.referenceYear, balanceCareSettings(status));
-                    const settings = balanceCareSettings(status), care = careTodayFromRecord(entry.data, settings);
+                    const settings = balanceCareSettings(status, entry.profileId), care = careTodayFromRecord(entry.data, settings);
+                    const person = projectPerson(entry.data, status.referenceYear, settings);
                     if (care.grade && !person.pflegegeld) {
                         const careHint = document.createElement('p'); careHint.className = 'ds-help';
-                        careHint.textContent = `${entry.name}: ${noCareAllowanceReason({ grade: care.grade, careForm: care.form, preset: settings.preset })}`;
+                        careHint.textContent = `${entry.name}: ${noCareAllowanceReason({ grade: care.grade, careForm: effectiveCareFormToday(care, settings), preset: settings.preset })}`;
                         pensionHints.push(careHint);
                     }
                     if (person.renteMonatlich <= 0) continue;
@@ -264,7 +268,8 @@ export class SummaryRenderer {
                     amount.replaceChildren(document.createTextNode(value.slice(0, -1)), unit);
                 }
                 if (meta) {
-                    if (label.startsWith('Inflation') || label === 'Finanzierter Haushalts-Flex') {
+                    if (label.startsWith('Inflation') || label === 'Finanzierter Haushalts-Flex' || /^(Pflege|Heim) /.test(label)
+                        || label === householdPlanFieldSpec('floorBedarf').label) {
                         name.appendChild(createDiagnosisInfo(label, meta));
                     } else {
                         const detail = document.createElement('small'); detail.className = 'balance-need-meta'; detail.textContent = meta;
@@ -281,10 +286,11 @@ export class SummaryRenderer {
         const planned = ui.input?.plannedPosts;
         const plannedNote = this.getPresentationOutput('balancePlannedExpensesNote');
         if (plannedNote) {
-            plannedNote.textContent = `Geplante Ausgaben ${planYear}: ${planned?.year === planYear && finite(planned.expenseTotal)
-                ? planned.expenseTotal > 0 ? currency(planned.expenseTotal) : 'keine' : !planned ? 'keine' : 'nicht verfügbar'} `;
-            plannedNote.appendChild(createDiagnosisInfo('Geplante Ausgaben außerhalb des Budgets',
-                'Geplante Ausgaben zahlt die App direkt aus dem Vermögen. Sie zählen außerhalb von Grundbedarf, Flex und Monatsbudget.'));
+            const fixedTotal = planned?.year === planYear ? fixedPlannedTotal(planned) : 0;
+            plannedNote.textContent = `${fixedTotal > 0 ? 'Einmalige geplante' : 'Geplante'} Ausgaben ${planYear}: ${planned?.year === planYear && finite(planned.expenseTotal)
+                ? planned.expenseTotal > 0 ? currency(planned.expenseTotal) : 'keine' : !planned ? 'keine' : 'nicht verfügbar'}${fixedTotal > 0 ? ` · feste ${currency(fixedTotal)} im Grundbedarf` : ''} `;
+            plannedNote.appendChild(createDiagnosisInfo('Geplante Ausgaben',
+                'Einmalige geplante Ausgaben zahlt die App direkt aus dem Vermögen, außerhalb von Grundbedarf, Flex und Monatsbudget. Feste geplante Ausgaben zählen in ihren Monaten zum Grundbedarf und stecken im Monatsbudget.'));
         }
         const state = this.storageManager?.loadState?.();
         const adjustedAge = state?.needsAdjustedForInflationYear || 0;
@@ -293,8 +299,26 @@ export class SummaryRenderer {
             ? inflationYear > adjustedAge ? 'Bedarfe noch nicht angepasst'
                 : inflationYear === adjustedAge && adjustedAge > 0 ? 'Bedarfe bereits angepasst' : null : null;
         const annualInflation = readBalanceInflationSource({ scope: readBalanceHouseholdPlan().scope });
+        // FR-73 Punkt 5: Grundbedarf zu Hause und je Person „Pflege“ oder „Heim“, zusammen der nicht kürzbare Bedarf.
+        const care = ui.careNeeds;
+        const careRows = (care?.persons || []).filter(person => person.grade > 0).map(person => person.residentialCosts > 0 || person.form === 'residential'
+            ? [`Heim ${person.name}`, currency((person.residentialCosts + person.residentialOwnExpenses) / 12), '€ / Monat',
+                `Heimkosten ${currency(person.residentialCosts / 12)} und eigene Ausgaben ${currency(person.residentialOwnExpenses / 12)} im Monat · Heimjahr ${person.heimJahr}`
+                + (person.residentialSince ? ` (seit ${person.residentialSince.slice(5)}/${person.residentialSince.slice(0, 4)})` : ' (ohne „seit“)') + ` · Zuschuss der Kasse ${formatDisplayNumber(person.subsidy * 100, { fractionDigits: 0 })} %`, 'Plan']
+            : [`Pflege ${person.name}`, currency(person.homeCareAddition / 12), '€ / Monat',
+                // Argon FR73A B4: das ⓘ nennt, womit gerechnet wurde – amtlicher Durchschnitt, eigener Wert oder Staffel.
+                `Pflegegrad ${person.grade} zu Hause: ${care.preset === 'amtlich' ? 'Beim amtlichen Durchschnitt gilt die Netto-Konvention (0 € Zusatz, kein Pflegegeld).' : `${Number.isFinite(person.homeCostsMonthly) ? 'eigener Wert „Pflegekosten heute über die Kasse hinaus“' : 'Staffelbetrag des Grads'}, höchstens bis zum Deckel „Maximaler Pflege-Floor“.`}`, 'Plan']);
+        // FR-73 Punkt 10: Hinweis bei Pflegegrad heute unter den Bedarfszeilen; „Erledigt“ schreibt den Haushaltsrecord (einmal gebunden).
+        const careHint = this.getPresentationOutput('balanceCareHint');
+        if (careHint) { renderCareHint(careHint, overviewUi.careHint ?? ui.careHint ?? null); bindCareHintDone(careHint); }
         rows('balanceNeedRows', [
-            [householdPlanFieldSpec('floorBedarf').label, finite(input.floorBedarf) ? currency(input.floorBedarf / 12) : null, '€ / Monat', null, 'Plan'],
+            [householdPlanFieldSpec('floorBedarf').label, finite(input.floorBedarf) ? currency((care ? care.current.homeFloor : input.floorBedarf) / 12) : null, '€ / Monat',
+                [care && care.current.homeFloorFactor < 1 ? `Grundbedarf zu Hause: ${formatDisplayNumber(care.current.homeFloorFactor * 100, { fractionDigits: 0 })} % des Plans, weil nicht alle zu Hause leben` : null,
+                    !care && fixedPlannedTotal(input.plannedPosts) > 0 ? `enthält feste geplante Ausgaben von ${currency(fixedPlannedTotal(input.plannedPosts) / 12)} im Monatsmittel` : null].filter(Boolean).join(' · ') || null, 'Plan'],
+            ...careRows,
+            // FR-43: Mit Pflege zeigt der Grundbedarf nur den Anteil zu Hause; die festen Ausgaben stehen in eigener Zeile.
+            ...(care && fixedPlannedTotal(input.plannedPosts) > 0 ? [['Feste geplante Ausgaben', currency(fixedPlannedTotal(input.plannedPosts) / 12), '€ / Monat',
+                'im Monatsmittel, gehören zum Grundbedarf und werden nie gekürzt', 'Plan']] : []),
             [householdPlanFieldSpec('flexBedarf').label, householdFlex === null ? null : currency(householdFlex), '€ / Monat',
                 dynamic && finite(input.flexBedarf) ? `Dynamik erlaubt bis ${currency(input.flexBedarf * 2 / 12)}/Monat` : null, 'Plan'],
             ['Finanzierter Haushalts-Flex', financedHouseholdFlex === null ? null : currency(financedHouseholdFlex),
@@ -342,61 +366,58 @@ export class SummaryRenderer {
         this.renderContext(input, overviewUi);
     }
 
+    /** FR-77: Karte „Was zu tun ist“. Oben der Plan aus dem Jahresabschluss mit Status; ohne Beleg ein Satz in neuer Sprache.
+     * Der Dialog „Details & Drucken“ zeigt im Planmodus genau diesen Beleg. */
     renderAnnualAction(origin, people = []) {
         const host = this.getPresentationOutput('balanceAnnualAction');
         if (!host) return;
         host.replaceChildren();
         const doc = host.ownerDocument || globalThis.document;
-        if (origin.confirmed) {
-            const section = createAnnualActionResult({ doc, result: { ...origin.confirmed,
-                people: origin.confirmed.people || people, liquidityContext: undefined } });
-            const heading = section.querySelector('h3'); heading.textContent = origin.label;
-            const details = section.querySelector('[data-annual-action-details]');
-            if (details) {
-                const summary = details.querySelector('summary'); summary.textContent = 'Details';
-                // Der vollständige Beleg bleibt centgenau; nur seine Kartenansicht wird gekürzt.
-                const marketChoice = section.querySelector('[data-annual-market-choice-label]');
-                const exact = [...section.children].filter(child => child !== heading && child !== details && child !== marketChoice);
-                const existing = [...details.children].filter(child => child !== summary);
-                details.replaceChildren(summary, ...exact, ...existing);
-                const rows = doc.createElement('div'); rows.className = 'balance-annual-rows';
-                const row = (label, amount) => {
-                    const line = doc.createElement('div'); line.className = 'balance-row ds-row';
-                    const name = doc.createElement('span'); name.textContent = label;
-                    const value = doc.createElement('strong'); value.textContent = UIUtils.formatBalanceCurrency(amount);
-                    line.append(name, value); rows.append(line);
-                };
-                const result = origin.confirmed, action = result.action, members = result.people || people;
-                const names = { aktien_alt: 'Aktien (Altbestand)', aktien_neu: 'Aktien (Neubestand)', gold: 'Gold',
-                    bonds: 'Anleihen', anleihe: 'Anleihen', geldmarkt: 'Geldmarkt' };
-                for (const source of (action.quellen || []).filter(source => source.brutto > 0)) {
-                    const person = source.sourceProfileName || members.find(person => person.id === source.sourceProfileId)?.name
-                        || (!source.sourceProfileId && members.length === 1 ? members[0].name : 'Im Beleg nicht zugeordnet');
-                    const cash = ['liquiditaet', 'cash'].includes(source.kind);
-                    const security = source.name && source.name !== source.isin ? source.name : names[source.kind] || source.kind;
-                    row(`${person} · ${cash ? 'aus dem Tagesgeld entnehmen' : `${security} verkaufen`}`, source.netto);
-                }
-                for (const [key, amount] of Object.entries(action.verwendungen || {}).filter(([, amount]) => amount > 0)) {
-                    // Ohne damalige Bestände keine heutige Aufteilung für den festgeschriebenen Beleg erfinden.
-                    row(key === 'liquiditaet' ? 'Erlös in die Liquidität (Tagesgeld bis zum Ziel, Rest Geldmarkt)'
-                        : key === 'cash' ? 'Erlös ins Tagesgeld' : `Erlös in ${names[key] || (key === 'aktien' ? 'Aktien' : key)}`, amount);
-                }
-                const note = doc.createElement('p'); note.className = 'ds-source'; note.textContent = 'Die Umsetzung entscheidest du.';
-                section.replaceChildren(heading);
-                if (marketChoice) section.append(marketChoice);
-                if (/Beispieldaten.*Spielbereich|Spielbereich.*Beispieldaten/.test(action.title || '')) {
-                    const marker = doc.createElement('small'); marker.className = 'ds-source'; marker.textContent = 'Spielbereich · Beispieldaten'; section.append(marker);
-                }
-                if (action.type === 'NONE') { const empty = doc.createElement('p'); empty.textContent = result.text; section.append(empty); }
-                section.append(rows, note, details);
+        const chip = this.dom?.outputs?.balanceActionPeriod || doc.getElementById?.('balanceActionPeriod');
+        const confirmed = origin.confirmed;
+        const plan = confirmed ? projectAnnualTodoPlan({ confirmed, people: confirmed.people || people }) : null;
+        this.todoPlan = plan;
+        this.planDetails = null;
+        if (chip) { chip.hidden = !plan; chip.textContent = plan ? `Plan ${plan.year}` : ''; }
+        if (plan) {
+            host.appendChild(createTodoPlan(doc, plan));
+            if (/Beispieldaten.*Spielbereich|Spielbereich.*Beispieldaten/.test(confirmed.action?.title || '')) {
+                const marker = doc.createElement('small'); marker.className = 'ds-source'; marker.textContent = 'Spielbereich · Beispieldaten'; host.append(marker);
             }
-            host.appendChild(section);
+            this.planDetails = createPlanDetails(doc, plan, confirmed.action, confirmed.people || people);
         } else {
-            const title = doc.createElement('h3'); title.textContent = origin.label; host.appendChild(title);
+            const text = doc.createElement('p'); text.className = 'todo-empty';
+            text.textContent = `Noch keine Handlungsanweisung aus dem Jahresabschluss. Den Plan beschließt du im Jahresabschluss Anfang ${origin.previewYear + 1}; bis dahin zeigt die Vorschau unten, was die App heute vorschlagen würde.`;
+            host.appendChild(text);
             if (origin.notice) {
                 const notice = doc.createElement('p'); notice.setAttribute('role', 'alert'); notice.textContent = origin.notice; host.appendChild(notice);
             }
         }
+        const planHost = doc.getElementById?.('balancePlanDetails');
+        if (planHost) planHost.replaceChildren(...(this.planDetails ? [this.planDetails.root] : []));
+    }
+
+    /** FR-77 Punkt 3: „Tagesgeld auffüllen“, je Person mit dem Tagesgeldziel des Routings. Nur ohne offenen Planverkauf.
+     * @param {any} currentYear Laufendes Jahr (Eingaben, Entnahme, Personeneinträge). @param {{trial?: boolean}} [options] */
+    renderCashRefill(currentYear = {}, { trial = false } = {}) {
+        const doc = globalThis.document;
+        const host = doc?.getElementById?.('balanceCashRefill');
+        if (!host) return null;
+        host.replaceChildren();
+        const plan = this.todoPlan;
+        const planOpen = Boolean(plan && (plan.status === 'offen' || plan.status === 'teilweise'));
+        let refill = null;
+        try {
+            refill = trial ? null : projectCashRefill({ people: cashRefillPeople(currentYear, () => loadProfileRegistry().value, persistenceStorage.getItem('rs_current_profile')),
+                monthlyBase: cashRefillMonthlyBase(currentYear), cashMonths: currentYear.input?.liquidityCashMonths, planOpen,
+                ironReserve: cashRefillIronReserve(currentYear) });
+        } catch { refill = null; }
+        host.hidden = !refill;
+        if (refill) host.appendChild(createCashRefill(doc, refill));
+        if (refill && plan?.status === 'erledigt') {
+            const rest = doc.createElement('p'); rest.className = 'ds-source'; rest.textContent = 'Sonst ist bis zum Jahresabschluss nichts zu tun.'; host.appendChild(rest);
+        }
+        return refill;
     }
 
     renderBudgetOrigin(model, ui) {
@@ -481,11 +502,14 @@ export class SummaryRenderer {
 
         const firstYearText = `Erstes Planungsjahr ${model.firstPlanningYear} · erster Jahresabschluss Anfang ${model.firstPlanningYear + 1}`;
         const origin = model.actionOrigin || projectBalanceActionOrigin({ comparison: model.planComparison, year: targetYear + 1, scope: model.scope, occasion: model.occasion });
-        this.actionOrigin = origin;
-        this.renderAnnualAction(origin, model.members);
-        set('balanceActionFootnote', `Festgeschrieben erst im Jahresabschluss ${origin.previewYear}`);
+        this.actionOrigin = withAnnualActionProgress(origin, () => loadProfileRegistry().value, model.scope?.ids); // Umsetzungsstand FR-77
+        this.renderAnnualAction(this.actionOrigin, model.members);
+        // Vorschau aufs nächste Jahr nur als zugeklappte Zeile (FR-77 Punkt 4).
+        const previewTitle = outputs.balanceActionPreviewTitle || globalThis.document?.getElementById?.('balanceActionPreviewTitle');
+        // WT-1b: Die Vorschau zeigt den Plan, den der nächste Jahresabschluss beschließt: „Jahr J abschließen“ beschließt den Plan J+1.
+        if (previewTitle) previewTitle.textContent = `Vorschau auf den Plan ${origin.previewYear + 1}`;
         const disclaimer = this.getPresentationOutput('balanceActionDisclaimer');
-        if (disclaimer) disclaimer.textContent = origin.previewNotice;
+        if (disclaimer) disclaimer.textContent = `So sähe der Plan aus, wenn heute der 31.12. wäre. Verbindlich wird er erst im Jahresabschluss im Januar.${notApplicable ? ` ${firstYearText}.` : ''}`;
         for (const [id, offset] of /** @type {[string, number][]} */ ([['endeVJ', 0], ['endeVJ_1', 1], ['endeVJ_2', 2], ['endeVJ_3', 3]])) {
             const label = globalThis.document?.querySelector?.(`label[for="${id}"]`);
             if (label) label.textContent = `Ende ${targetYear - offset}`;
@@ -496,7 +520,6 @@ export class SummaryRenderer {
             : `Jahresmarktdaten · ${marketView.available ? `${marketView.instrument} · ${marketView.asOf} · ${marketView.source}` : 'Quelle und Stand noch nicht bestätigt.'}`);
         set('balanceMarketDate', marketView.available && /^\d{4}-\d{2}-\d{2}$/.test(marketView.asOf) ? marketView.asOf.split('-').reverse().join('.') : 'nicht verfügbar');
         const recovery = annualState === 'recovery' || Boolean(metadata?.pendingCommit);
-        set('balanceActionPeriod', origin.previewLabel);
         if (outputs.balanceBudgetChips) {
             const chip = outputs.balanceBudgetChips.querySelector?.('[data-period-chip]') || document.createElement('p');
             chip.className = 'ds-help balance-period-status';
@@ -537,8 +560,8 @@ export class SummaryRenderer {
     }
 
     /** Reserven verwenden genau die für Karte und Spieleintragung vorbereiteten Aktionen. */
-    renderReserves(ui = {}, entries = []) {
-        const view = projectBalanceReserves(ui, entries), input = ui.input || {};
+    renderReserves(ui = {}, entries = [], options = {}) {
+        const view = projectBalanceReserves(ui, entries, options), input = ui.input || {};
         const doc = globalThis.document;
         const get = key => this.getPresentationOutput(key);
         const set = (key, value) => { const host = get(key); if (host) host.textContent = value; };
@@ -562,6 +585,14 @@ export class SummaryRenderer {
                 parts.append(make('span', label, 'ds-source'), make('strong', money(view.before[key])));
                 if (view.after) parts.append(make('span', '→', 'ds-source'), make('strong', money(view.after[key])));
             }
+        }
+        // WT-1 (Gutachten GU1B-FABLE Befund 2): Ein eingetragener Verkauf mit offener Gutschrift fehlt heute im Tagesgeld und gilt
+        // im Plan schon als verkauft. „Nach Umsetzung“ enthält ihn deshalb nicht; ein Satz nennt den Grund.
+        const creditNote = doc?.getElementById?.('balanceReserveCreditNote');
+        if (creditNote) {
+            const pending = Number.isFinite(options.creditPendingNet) ? options.creditPendingNet : 0;
+            creditNote.hidden = !(pending >= 0.5);
+            creditNote.textContent = pending >= 0.5 ? `Ohne die offene Gutschrift von ${money(pending)}: Der Erlös ist verkauft, aber noch nicht im Tagesgeld. Nach dem Nachtragen steigt die Liquidität um diesen Betrag.` : '';
         }
         const months = Number.isFinite(input.liquidityRunwayYears) ? input.liquidityRunwayYears * 12 : null;
         const number = value => formatDisplayNumber(value, { fractionDigits: 0 });

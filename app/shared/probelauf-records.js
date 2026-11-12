@@ -7,6 +7,7 @@ import { BALANCE_PLAN_INPUT_KEYS, SIMULATOR_LEGACY_PLAN_FIELDS } from '../profil
 import { HOUSEHOLD_PLAN_FIELDS, formatHouseholdPlanValue } from './household-plan-fields.js';
 import { fingerprint } from '../overview/overview-simulation-summary.js';
 import { formatDisplayNumber } from './designsystem-number-format.js';
+import { CARE_HINT_KEY } from './household-care-hint.js';
 
 /**
  * @param raw Rohwert vor der bestehenden Prüfung.
@@ -109,7 +110,8 @@ export function probelaufRecordContext(records) {
 function domainData(data, hasPlan) {
     data = migrateIncomeRecord(data);
     const goldAliases = { goldAktiv: 'profile_gold_aktiv', goldZielProzent: 'profile_gold_ziel_pct', goldFloorProzent: 'profile_gold_floor_pct', goldSteuerfrei: 'profile_gold_steuerfrei', rebalancingBand: 'profile_gold_rebal_band' };
-    return Object.fromEntries(Object.entries(data).filter(([key]) => !ignoredKey(key) && !['profile_sonstige_einkuenfte', 'profile_planned_inflows_v1'].includes(key)
+    // FR-73: „Pflegehinweis erledigt“ wandert mit, ist aber wie der Formenhinweis keine Nutzeränderung.
+    return Object.fromEntries(Object.entries(data).filter(([key]) => !ignoredKey(key) && !['profile_sonstige_einkuenfte', 'profile_planned_inflows_v1', CARE_HINT_KEY].includes(key)
         && !(hasPlan && key.startsWith('sim_') && SIMULATOR_LEGACY_PLAN_FIELDS.includes(key.slice(4)))).map(([key, raw]) => {
         let value = parseRecord(raw);
         if (key === CONFIG.STORAGE.LS_KEY && object(value)) {
@@ -160,6 +162,8 @@ const display = value => value === undefined || value === null || value === '' ?
     : typeof value === 'number' ? number(value) : typeof value === 'string' ? value : Array.isArray(value) ? `${value.length} Einträge` : Object.values(value).map(display).join(', ');
 const labels = {
     profile_care_grade_today: 'Pflegegrad heute', profile_care_form_today: 'Pflegeform heute', profile_care_additional_monthly: 'Mehrkosten heute pro Monat',
+    profile_care_residential_since: 'Im Heim seit', profile_care_residential_first_year: 'Heimjahr 1 angesetzt im Jahr',
+    profile_care_home_costs_monthly: 'Pflegekosten heute über die Kasse hinaus',
     profile_care_progression: 'Verlauf im heutigen Grad', profile_care_allowance_as_income: 'Pflegegeld heute als Einkunft',
     [INCOME_KEY]: 'Einkünfte',
     profile_immobilien_v1: 'Immobilien',
@@ -224,7 +228,7 @@ export function summarizeProbelaufChanges(realRecords, playRecords, { beforeDoma
                 const group = key === 'profile_tagesgeld' ? 'Tagesgeld' : key.startsWith('profile_gold') ? 'Bedarf & Strategie' : 'Personen';
                 const format = value => key === 'profile_immobilien_v1' ? (value?.entries || []).map(home => `${home.bezeichnung} · ${number(home.wert, 'currency')} · ${home.nutzung === 'vermietet' ? `${number(home.mieteNetto, 'currency')} Miete/Monat · ${home.anpassung}` : 'selbst genutzt'} · ${home.stand}`).join('; ') || 'keine Immobilien'
                     : key === 'profile_care_progression' ? ({ usual: 'üblich', slower: 'langsamer', much_slower: 'deutlich langsamer' })[value] || display(value)
-                    : key === 'profile_care_additional_monthly' ? value === null || value === '' || value === undefined ? 'Staffelwert' : number(Number(value), 'currency')
+                    : key === 'profile_care_additional_monthly' || key === 'profile_care_home_costs_monthly' ? value === null || value === '' || value === undefined ? 'Staffelwert' : number(Number(value), 'currency')
                     : key === 'profile_care_grade_today' && Number(value) === 0 ? 'keiner'
                     : /(?:tagesgeld|monatlich|einkuenfte|pauschbetrag)/.test(key) && typeof value === 'number' ? number(value, 'currency')
                     : /(?:pct|band)$/.test(key) && typeof value === 'number' ? number(value, 'percent') : display(value);

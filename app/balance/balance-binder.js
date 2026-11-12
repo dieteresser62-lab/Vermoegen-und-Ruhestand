@@ -122,13 +122,32 @@ function bindBalancePresentation() {
     });
     const dialog = document.getElementById('actionDetailsDialog');
     let actionTrigger = null;
-    const open = trigger => {
+    // FR-77: Derselbe Dialog zeigt „Details & Drucken“ des Plans (Beleg) oder die Details der Vorschau.
+    const showMode = mode => {
+        if (!dialog) return;
+        const plan = mode === 'plan' && Boolean(document.getElementById('balancePlanDetails')?.children.length);
+        dialog.dataset.actionDetailsMode = plan ? 'plan' : 'preview';
+        const head = dialog.querySelector?.('.balance-action-dialog-head');
+        for (const node of [head, document.getElementById('handlungsanweisung'), document.getElementById('actionPurposeContent'),
+            dialog.querySelector?.('.balance-action-note'), dialog.querySelector?.('.ds-actions'), document.getElementById('balancePlayExecutionStatus')]) {
+            if (node) /** @type {HTMLElement} */ (node).hidden = plan;
+        }
+        const planHost = document.getElementById('balancePlanDetails');
+        if (planHost) planHost.hidden = !plan;
+        dialog.setAttribute('aria-labelledby', plan ? 'balancePlanDetailsTitle' : 'actionDetailsTitle');
+    };
+    const open = (trigger, mode = 'preview') => {
         if (!dialog || dialog.open) return;
         actionTrigger = trigger;
+        showMode(mode);
         dialog.showModal();
         document.getElementById('closeActionDetails')?.focus();
     };
-    document.getElementById('openActionDetails')?.addEventListener('click', e => open(e.currentTarget));
+    // Der Planknopf entsteht mit der Karte neu; deshalb ein Listener am Dokument.
+    document.addEventListener('click', event => {
+        const trigger = /** @type {HTMLElement|null} */ (/** @type {HTMLElement} */ (event.target)?.closest?.('[data-action-details]'));
+        if (trigger) open(trigger, trigger.dataset.actionDetails);
+    });
     document.getElementById('closeActionDetails')?.addEventListener('click', () => dialog.close());
     dialog?.addEventListener('close', () => actionTrigger?.focus());
     dialog?.addEventListener('click', e => {
@@ -578,7 +597,7 @@ export const UIBinder = {
                 if (cape.capeFetchStatus === 'error_no_source_no_stored') throw new Error('Keine CAPE-Quelle für die Wiederaufnahme verfügbar.');
                 // Die gewählte Lesart des Hochs reist mit (FR-71); ein unpassendes Hoch lässt den Abschluss abbrechen.
                 annualOptions.confirmedPreparation = { manualPrice: options.resume.price,
-                    adoptedPlanPatch: options.resume.adoptedPlanPatch, careValues: options.resume.careValues,
+                    adoptedPlanPatch: options.resume.adoptedPlanPatch, careValues: options.resume.careValues, careToday: options.resume.careToday,
                     ...(options.resume.yearHigh ? { yearHigh: options.resume.yearHigh } : {}),
                     ...(options.resume.cash ? { cash: options.resume.cash }
                         : people.length ? { cash: { people, values: Object.fromEntries(people.map(person => [person.id, person.value])) } } : {}),

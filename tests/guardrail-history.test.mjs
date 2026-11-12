@@ -17,7 +17,7 @@ const plan = copy(PLAN_DEFAULTS);
 const history = { initialized: true, flexRate: 60, peakRealVermoegen: 900000,
     cumulativeInflationFactor: 1.1, vpwSafetyStage: 2, taxState: { lossCarry: 1234 } };
 const beforeBytes = json({ plan, history });
-for (const path of PLAN_FIELD_PATHS.filter(path => !path.startsWith('cape.') && !['jointAssessment', 'liquidityCashMonths'].includes(path))) {
+for (const path of PLAN_FIELD_PATHS.filter(path => !path.startsWith('cape.') && !['jointAssessment', 'liquidityCashMonths', 'equityCostPct'].includes(path))) {
     const changed = copy(plan), parts = path.split('.'), field = parts.pop();
     const target = parts.reduce((value, part) => value[part], changed), old = target[field];
     target[field] = typeof old === 'boolean' ? !old : typeof old === 'string' ? `${old}_changed` : old === null ? 1 : old + 0.01;
@@ -26,6 +26,7 @@ for (const path of PLAN_FIELD_PATHS.filter(path => !path.startsWith('cape.') && 
 }
 assert(!shouldResetGuardrailState(plan, { ...plan, jointAssessment: true }), 'Reine Steuerwahl erhält die Leitplankenhistorie');
 assert(!shouldResetGuardrailState(plan, { ...plan, liquidityCashMonths: 24 }), 'Reine Tagesgeldaufteilung erhält Budget und Simulatorhistorie');
+assert(!shouldResetGuardrailState(plan, { ...plan, equityCostPct: 0.3 }), 'Fondskosten sind eine Renditeannahme und erhalten die Leitplankenhistorie (FR-76)');
 assert(!shouldResetGuardrailState(plan, copy(plan)), 'No-op und reine Darstellung erhalten die Historie');
 assert(!shouldResetGuardrailState({}, plan), 'Fehlende Altbelege erfinden keine bewusste Planänderung');
 assert(!shouldResetGuardrailState(null, plan), 'Altbestand ohne Planbeleg bleibt lesbar');

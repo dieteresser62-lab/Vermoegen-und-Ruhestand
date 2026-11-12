@@ -15,7 +15,9 @@ export function balanceStorageFixture(kind, strategy = 'standard', cape = 25) {
     delete records[ANNUAL_PLAN_RECORD_KEY];
     const registry = JSON.parse(records.rs_profiles_v1);
     const values = { ...structuredClone(PLAN_DEFAULTS), floorBedarf: 30000, flexBedarf: 30000,
-        minimumFlexAnnual: 7500, dynamicFlex: true, cape: { value: cape, asOf: null, source: null } };
+        minimumFlexAnnual: 7500, dynamicFlex: true, cape: { value: cape, asOf: null, source: null },
+        // KO-2: Mechanikfixture ohne Fondskosten wie die Mechaniktests aus GU-1; die Wirkung von k prüft tests/ko-2-sollfaelle.test.mjs.
+        equityCostPct: 0 };
     values.decumulation.mode = strategy;
     if (kind === 'Einzelprofil') {
         registry.profiles = { muster_a: registry.profiles.muster_a };

@@ -1,6 +1,6 @@
 # Immobilien
 
-Wie Immobilienwert, Miete und Verkauf in der Haushaltsplanung wirken. Für Nutzer und fachlich Interessierte. Appstand geprüft am 01.11.2026.
+Wie Immobilienwert, Miete und Verkauf in der Haushaltsplanung wirken. Für Nutzer und fachlich Interessierte. Appstand geprüft am 07.11.2026.
 
 ## Auf einen Blick
 
@@ -35,13 +35,13 @@ Ruin, Deckung, Entnahmequoten und Strategieentscheidungen beziehen sich auf Geld
 
 ### Heimverkauf
 
-Der Simulator verkauft verfügbare eigene und geerbte Immobilienanteile, sobald alle noch lebenden Personen mindestens Pflegegrad 4 haben und „im Heim“ gepflegt werden. Externe Unterstützung zu Hause reicht nicht. Nur aktive Lebenszeitregeln sperren den Verkauf; eine gespeicherte, inaktive Wohnrechtsregel sperrt ihn nicht. Einzelheiten unter [Tod und Erbe](TOD_UND_ERBE.md#wohnrecht-und-eigentum).
+Der Simulator verkauft verfügbare eigene und geerbte Immobilienanteile, sobald alle noch lebenden Personen mindestens Pflegegrad 4 haben und „im Heim“ gepflegt werden. Externe Unterstützung zu Hause reicht nicht. Lebt eine Person im Heim und die andere zu Hause, verkauft die App nicht regulär; ein Notverkauf bleibt möglich. Nur aktive Lebenszeitregeln sperren den Verkauf; eine gespeicherte, inaktive Wohnrechtsregel sperrt ihn nicht. Einzelheiten unter [Tod und Erbe](TOD_UND_ERBE.md#wohnrecht-und-eigentum).
 
 Der Erlös beträgt 90 % des fortgeschriebenen Anteilswerts und fließt aufs persönliche Tagesgeld des Eigentümers. Es fällt im Modell keine Einkommensteuer auf den Immobilienverkauf an. Der Pflegeverkauf erzeugt keine neue Wohnmiete. Balance führt solche Verkäufe nicht automatisch aus. Der Backtest zieht keine neuen Pflegeereignisse und führt diesen regulären Pflegeverkauf nicht aus.
 
 ### Einzelner Notverkauf
 
-Liegt das gemeinsame Geldvermögen strikt unter einem offenen Jahresgrundbedarf einschließlich Pflege, prüft der Simulator einen Notverkauf. Laufende Renten und sonstige Einkünfte mindern die Schwelle. Zum Geldvermögen zählen hier auch Anleihen, Gold und Pflege-Rücklage. Gleichheit an der Schwelle löst keinen Jahresanfangsverkauf aus.
+Liegt das gemeinsame Geldvermögen strikt unter einem offenen Jahresgrundbedarf einschließlich Pflege, prüft der Simulator einen Notverkauf. Im Heim zählen dabei Heimkosten und eigene Ausgaben statt des Grundbedarfsanteils der Person. Laufende Renten und sonstige Einkünfte mindern die Schwelle. Zum Geldvermögen zählen hier auch Anleihen, Gold und Pflege-Rücklage. Gleichheit an der Schwelle löst keinen Jahresanfangsverkauf aus.
 
 Es wird zu Jahresbeginn und erneut vor drohendem Ruin geprüft. Die App verkauft einzelne verfügbare Immobilien, bis die angepasste Deckung reicht beziehungsweise Ruin vermieden wird. Unverkaufte Immobilien behalten Wert, Miete und Erbfolge. Auch der Notverkauf verwendet 10 % Abschlag. Er wirkt im historischen Backtest und in Monte Carlo.
 
@@ -78,7 +78,7 @@ Die Nettomiete der verkauften Immobilie endet im Verkaufsjahr vollständig. Ohne
 
 Nach Notverkauf einer selbst genutzten Immobilie erhöht eine jährliche Wohnmiete von 4 % ihres fortgeschriebenen Anteilswerts vor Abschlag den Grundbedarf, ab dem Verkaufsjahr. Danach steigt sie mit Inflation. Die Hinterbliebenenprozentsätze kürzen sie nicht.
 
-Die Miete entfällt, sobald alle Lebenden ab Grad 4 im Heim sind oder die letzte Person stirbt. Beim Tod eines Partners mittelt das Jahresmodell den Zustand vor und nach dem Tod; fällt die Mietpflicht dadurch weg, zählt noch die Hälfte. Ein Heimverkauf erzeugt keine Ersatzmiete. Ein Wohnrechtsende erzeugt ebenfalls keine neue Miete.
+Die Miete entfällt, sobald alle Lebenden tatsächlich im Heim wohnen, bei jedem Pflegegrad, oder die letzte Person stirbt. Beim Tod eines Partners mittelt das Jahresmodell den Zustand vor und nach dem Tod; fällt die Mietpflicht dadurch weg, zählt noch die Hälfte. Lebten vor dem Tod schon alle im Heim, bleibt die Miete auch im Todesjahr bei null. Den Heimaufenthalt verfolgt nur Monte Carlo; im Backtest endet die Miete, wenn alle Lebenden ab Grad 4 „im Heim“ gepflegt werden. Ein Heimverkauf erzeugt keine Ersatzmiete. Ein Wohnrechtsende erzeugt ebenfalls keine neue Miete.
 
 ## Beispiel und Grenzen
 
@@ -88,7 +88,7 @@ Die vorhandene Variante „Haus und vermietete Wohnung“ enthält 450.000 € s
 
 ### Wo du es in der App siehst
 
-„Personen & Vermögen“ führt die Immobilien je Person. Übersicht und Simulator zeigen die Vermögensanteile. Das Jahresprotokoll nennt tatsächlichen „Immobilienverkauf“, Verkaufsjahr und „Miete nach Notverkauf“. Die [Handbucheingabe](../../Handbuch.html#immobilien-eintragen) erklärt den Klickweg; [technische Belege](TECHNICAL.md#lebensereignisse-und-steuer-belegen) führen zu den vorhandenen Grenzprüfungen.
+„Personen & Vermögen“ führt die Immobilien je Person in der Tabelle der Anlageformen. „Immobilien selbst genutzt“ und „Immobilien vermietet“ klappen wie die Tranchen auf; „+ Immobilie“ steht oben in der Personenkarte. Übersicht und Simulator zeigen die Vermögensanteile. Das Jahresprotokoll nennt tatsächlichen „Immobilienverkauf“, Verkaufsjahr und „Miete nach Notverkauf“. Die [Handbucheingabe](../../Handbuch.html#immobilien-eintragen) erklärt den Klickweg; [technische Belege](TECHNICAL.md#lebensereignisse-und-steuer-belegen) führen zu den vorhandenen Grenzprüfungen.
 
 ### Modellgrenzen
 

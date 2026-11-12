@@ -1,5 +1,6 @@
-/** Gemeinsame Sterbetafelrechnung für Balance und Simulator. */
-import { MORTALITY_TABLE } from '../simulator/german-demography-care-survivor-contract.js';
+/** Gemeinsame Sterbetafelrechnung für Balance und Simulator.
+ * FR-75: Mit Geburtsjahr gilt die Kohortentafel V2 dieses Jahrgangs, ohne Geburtsjahr die Periodentafel. */
+import { resolveTargetMortalityTable } from '../simulator/target-mortality.js';
 import { BMF_LIFETIME_USE_2026 } from './bmf-lifetime-use-2026.js';
 
 /** FR-64, § 14 BewG: amtliche Tabelle 2026; fehlendes Geschlecht vorsichtig weiblich.
@@ -23,10 +24,11 @@ function clamp(value, min, max) {
  *
  * @param gender Wert für den bestehenden Aufrufvertrag.
  * @param currentAge Wert für den bestehenden Aufrufvertrag.
+ * @param {number} [birthYear] Geburtsjahr für die Kohortentafel (FR-75).
  * @returns {number} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
-export function estimateRemainingLifeYears(gender, currentAge) {
-    const table = MORTALITY_TABLE[gender] || MORTALITY_TABLE.m;
+export function estimateRemainingLifeYears(gender, currentAge, birthYear) {
+    const table = resolveTargetMortalityTable(gender, birthYear);
     const ages = Object.keys(table).map(Number).sort((a, b) => a - b);
     const minAge = ages[0] ?? currentAge;
     const maxAge = ages[ages.length - 1] ?? currentAge;
@@ -58,11 +60,13 @@ export function estimateRemainingLifeYears(gender, currentAge) {
  * @param age1 Wert für den bestehenden Aufrufvertrag.
  * @param gender2 Wert für den bestehenden Aufrufvertrag.
  * @param age2 Wert für den bestehenden Aufrufvertrag.
+ * @param {number} [birthYear1] Geburtsjahr Person 1 (FR-75).
+ * @param {number} [birthYear2] Geburtsjahr Person 2 (FR-75).
  * @returns {number} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
-export function estimateJointRemainingLifeYears(gender1, age1, gender2, age2) {
-    const table1 = MORTALITY_TABLE[gender1] || MORTALITY_TABLE.m;
-    const table2 = MORTALITY_TABLE[gender2] || MORTALITY_TABLE.m;
+export function estimateJointRemainingLifeYears(gender1, age1, gender2, age2, birthYear1, birthYear2) {
+    const table1 = resolveTargetMortalityTable(gender1, birthYear1);
+    const table2 = resolveTargetMortalityTable(gender2, birthYear2);
     let survP1 = 1;
     let survP2 = 1;
     let expectedYears = 0;
@@ -89,13 +93,13 @@ export function estimateJointRemainingLifeYears(gender1, age1, gender2, age2) {
  * @param gender Wert für den bestehenden Aufrufvertrag.
  * @param currentAge Wert für den bestehenden Aufrufvertrag.
  * @param quantile Wert für den bestehenden Aufrufvertrag.
- * @param options Optionen des Aufrufers.
+ * @param options Optionen des Aufrufers; `birthYear` wählt die Kohortentafel (FR-75).
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export function estimateSingleRemainingLifeYearsAtQuantile(gender, currentAge, quantile, options = {}) {
     const minYears = Number.isFinite(options?.minYears) ? options.minYears : 1;
     const maxYears = Number.isFinite(options?.maxYears) ? options.maxYears : 60;
-    const table = MORTALITY_TABLE[gender] || MORTALITY_TABLE.m;
+    const table = resolveTargetMortalityTable(gender, options?.birthYear);
     const q = clamp(Number(quantile) || 0.85, 0.5, 0.99);
     const targetSurvival = 1 - q;
     let survivalProbability = 1;
@@ -121,14 +125,14 @@ export function estimateSingleRemainingLifeYearsAtQuantile(gender, currentAge, q
  * @param gender2 Wert für den bestehenden Aufrufvertrag.
  * @param age2 Wert für den bestehenden Aufrufvertrag.
  * @param quantile Wert für den bestehenden Aufrufvertrag.
- * @param options Optionen des Aufrufers.
+ * @param options Optionen des Aufrufers; `birthYear1`/`birthYear2` wählen die Kohortentafeln (FR-75).
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export function estimateJointRemainingLifeYearsAtQuantile(gender1, age1, gender2, age2, quantile, options = {}) {
     const minYears = Number.isFinite(options?.minYears) ? options.minYears : 1;
     const maxYears = Number.isFinite(options?.maxYears) ? options.maxYears : 60;
-    const table1 = MORTALITY_TABLE[gender1] || MORTALITY_TABLE.m;
-    const table2 = MORTALITY_TABLE[gender2] || MORTALITY_TABLE.m;
+    const table1 = resolveTargetMortalityTable(gender1, options?.birthYear1);
+    const table2 = resolveTargetMortalityTable(gender2, options?.birthYear2);
     const q = clamp(Number(quantile) || 0.85, 0.5, 0.99);
     const targetSurvival = 1 - q;
     let survP1 = 1;

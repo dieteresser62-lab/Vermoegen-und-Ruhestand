@@ -23,10 +23,11 @@ export function musterHaushalt(householdId = DEFAULT_MUSTER_HAUSHALT) {
 // Kennungen entsprechen den freigegebenen Varianten im Startdialog.
 /** @type {Record<string, [string, string, Partial<import("../../typcheck/datenvertraege.js").PlanValues>?][]>} */
 const VARIANTEN = {
-    'max-erika': [['immobilien', 'Haus und vermietete Wohnung'], ['kurssturz', 'Markt erst heiß, dann Rückgang']],
+    'max-erika': [['immobilien', 'Haus und vermietete Wohnung'], ['kurssturz', 'Markt erst heiß, dann Rückgang'], ['teilweise', 'Plan teilweise umgesetzt']],
     renate: [['klein', 'Kleines Vermögen']],
     'jan-lena': [['halten', 'Lebensstandard halten']],
-    'helga-werner': [['haus-pg3', 'Mit Haus, Werner Pflegegrad 3', { floorBedarf: 54000 }]],
+    // FR-73: Der Grundbedarf bleibt ohne Pflege; die heutige Pflege rechnet die App selbst.
+    'helga-werner': [['haus-pg3', 'Mit Haus, Werner Pflegegrad 3', { floorBedarf: 36000 }]],
     sophie: [['teilzeit', 'Teilzeit vor der Rente']],
     'martin-petra': [['hundert', 'Gegenseitig 100 %'], ['ehe', 'Verheiratet'], ['testament', 'Testament']]
 };

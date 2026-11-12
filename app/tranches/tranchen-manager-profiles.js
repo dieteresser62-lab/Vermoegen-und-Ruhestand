@@ -10,6 +10,8 @@ import { projectHistoryRecovery } from './tranchen-history-recovery.js';
 import { readManagerHistoryContext } from './tranchen-history-ui.js';
 import { bindInfoPopovers } from '../shared/designsystem-info-popover.js';
 import { syncManagerCareToday } from './tranchen-manager-care.js';
+import { renderManagerHouseholdAdoption, syncPensionWageHint } from './tranchen-manager-household-adoption.js';
+import { bindCareHintDone, renderCareHint } from '../shared/care-hint.js';
 import { loadProfileRegistry, getHouseholdPrimaryProfileId, householdMemberCount, HOUSEHOLD_LIMIT_REASON, HOUSEHOLD_MINIMUM_REASON } from '../profile/profile-registry.js';
 import { loadProfileAssetValues, validateProfileAssetValues } from '../profile/profile-asset-values.js';
 import { PROFILE_VALUE_KEYS, loadProfileHealthBucketFromData, loadStoredBalanceStateFromData } from '../profile/profile-state.js';
@@ -172,11 +174,8 @@ export function refreshManagerProfiles(doc, activeId) {
     if (!loaded.value) return;
     const projection = projectManagerProfiles(loaded.value, activeId, readManagerHistoryContext(loaded.value));
     renderManagerProfiles(doc, projection);
-    const primary = projection.profiles.find(profile => profile.belongs);
-    for (const id of ['managerHouseholdSettings', 'managerHouseholdCareSettings']) {
-        const hint = doc.getElementById(id);
-        if (hint) hint.textContent = primary ? `Für den Haushalt gelten Rentenanpassung und Pflegeeinstellungen von ${primary.name}.` : '';
-    }
+    // UR-1: übernommene Rentenanpassung und Satz zur Pflegereserve statt des pauschalen Haushaltssatzes.
+    renderManagerHouseholdAdoption(doc, projection, activeId);
     renderManagerPartnership(doc, projection);
     renderManagerWealthHistory(doc, projection, loaded.value, activeId, getManagerView(doc));
     bindInfoPopovers(doc);
@@ -323,6 +322,7 @@ export function syncManagerProfileControls(doc) {
     const mode = doc.getElementById('profileRentenanpassungArt')?.value;
     const rate = Number(String(doc.getElementById('profileRentenanpassungPct')?.value || '0').replace(',', '.'));
     if (fixedGroup) fixedGroup.hidden = mode !== 'fix' || rate === 0 && doc.getElementById('profilePensionSegments')?.dataset.explicitFixed !== 'true';
+    syncPensionWageHint(doc);
     const rente = doc.getElementById('profileRenteAktiv');
     if (rente) rente.disabled = true;
 }
@@ -332,6 +332,12 @@ export function bindManagerProfileControls(doc) {
     if (toggleBindings.has(doc)) return;
     toggleBindings.add(doc);
     bindPersonSegments(doc);
+    // FR-73 Punkt 10: „Erledigt“ an einem Host blendet beide Hinweise der Seite aus; kein Dokumenthandler.
+    const careHintHosts = () => ['profileCareHint', 'managerPlanCareHint'].map(id => doc.getElementById(id)).filter(Boolean);
+    for (const host of careHintHosts()) bindCareHintDone(host, { onDone: () => {
+        for (const other of careHintHosts()) renderCareHint(other, { done: true, persons: [] });
+        syncManagerProfileControls(doc);
+    } });
     doc.getElementById('profileGenderConfirm')?.addEventListener('click', () => {
         const field = doc.getElementById('profileGeschlecht');
         if (field && !field.disabled) field.dispatchEvent(new (doc.defaultView?.Event || Event)('change', { bubbles: true }));
@@ -359,7 +365,8 @@ export function bindManagerProfileControls(doc) {
 const personSegmentBindings = new WeakSet();
 function syncPersonSegments(doc) {
     for (const [hostId, fieldId, options] of /** @type {[string, string, string[][]][]} */ ([
-        ['profilePensionSegments', 'profileRentenanpassungArt', [['wage', 'wie Löhne'], ['fix', 'fester Satz'], ['none', 'keine'], ['cpi', 'Inflation']]],
+        // FR-74: „wie Inflation“ ist wieder wählbar und steht vorn; die Rechnung bleibt in income-adjustment.js.
+        ['profilePensionSegments', 'profileRentenanpassungArt', [['cpi', 'wie Inflation'], ['wage', 'wie Löhne'], ['fix', 'fester Satz'], ['none', 'keine']]],
         ['profileChurchSegments', 'profileKirchensteuerPct', [['0', 'keine'], ['8', '8 %'], ['9', '9 %']]]
     ])) {
         const host = doc.getElementById(hostId), field = doc.getElementById(fieldId);
@@ -371,7 +378,6 @@ function syncPersonSegments(doc) {
         if (fieldId === 'profileKirchensteuerPct' && !options.some(([value]) => Number(value) === Number(String(field.value).replace(',', '.')))) choices.push([field.value, `${field.value} % · bisher`]);
         host.replaceChildren();
         choices.forEach(([value, label]) => {
-            if (value === 'cpi' && field.value !== 'cpi') return;
             const button = doc.createElement('button'); button.type = 'button'; button.className = 'ds-button ds-button-secondary';
             button.dataset.personSegmentField = fieldId; button.dataset.value = String(value); button.textContent = label;
             button.disabled = field.disabled; button.setAttribute('aria-pressed', String(String(selected) === String(value)));

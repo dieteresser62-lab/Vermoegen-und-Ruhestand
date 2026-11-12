@@ -63,7 +63,7 @@ export function applyYearMarket(context) {
         goldBeforeReturn,
         equityAfterReturn,
         goldAfterReturn
-    } = applyAnnualReturnsToPortfolio({ portfolio, yearData, threeBucketInput });
+    } = applyAnnualReturnsToPortfolio({ portfolio, yearData, threeBucketInput, equityCostPct: inputs.equityCostPct });
     const balanceTrace = /** @type {Record<string,unknown>[]} */ ([]);
     snapshotBalance(balanceTrace, depotTranchesAktien, depotTranchesGold, liquiditaet, 'after_returns', {
         rA,

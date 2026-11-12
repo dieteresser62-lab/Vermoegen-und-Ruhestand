@@ -5,7 +5,7 @@ import { evaluateStoredAnnualHousehold } from '../app/balance/balance-main-profi
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { annualRecordStorage } from '../app/balance/balance-annual-storage.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
-import { calculateBudgetExamples } from './jahresbudget-beispiele.mjs';
+import { calculateBudgetExamples, EQUITY_COST_TEXT } from './jahresbudget-beispiele.mjs';
 import { calculateSaleAndTax } from '../engine/transactions/sale-engine.mjs';
 import { determineAction } from '../engine/transactions/transaction-action.mjs';
 import { computeAppliedMinTradeGate, computeCappedRefill, quantizeAmount } from '../engine/transactions/transaction-utils.mjs';
@@ -189,7 +189,7 @@ export function renderActionTechnicalExamples(examples = calculateActionExamples
         `Max Neu liefert ${eur(final.quellen[0].taxableAfterTqfSigned)} steuerlich gewichteten Gewinn. Verlustvortrag plus Pauschbetrag lassen danach ${eur(main.profiles[0].balanceState.lastState.taxState.lossCarry + main.profiles[0].inputs.sparerPauschbetrag - final.quellen[0].taxableAfterTqfSigned)} frei; deshalb kommt Max Alt hinzu. D2 hält den geplanten Nettozufluss fest und bestimmt dafür Brutto und Steuer neu. Der endgültige Bruttoverkauf ist dadurch nicht mehr glatt.`, '',
         `Die getrennte Auszahlungsverteilung weist ${main.runs.distribution.items.filter(row => row.withdrawalAmount > 0).map(row => `${main.profiles.find(p => p.profileId === row.profileId).name} ${eur(row.withdrawalAmount)}`).join(', ')} zu. Das Tagesgeldziel des Haushalts aus E2 beträgt ${eur(cashTarget)}: ${personalTargets}, nach Bedarf der kommenden zwölf Monate mit gleichem Planbudgetanteil als Ausgabenquelle. Der persönliche Mindestanteil bleibt erhalten. Alle Tabellen gelten vor Auszahlung; die Einzelanzeige kann durch Rundung um einen Cent von einer nachgerechneten Summe abweichen.`, '',
         '### Max und Erika im Bärenjahr', '',
-        `Unveränderte Musterprofile im historischen Lauf, Marktjahr ${bear.year}; der Simulator hat Renditen und Renten bereits angewandt. Die Grundversorgung ist durch Rente gedeckt. Der Bärenpfad schützt die vorhandene Liquidität und wartet; C3 als eigentlicher Auffüllverkauf wird hier nicht ausgelöst.`, '',
+        `Unveränderte Musterprofile im historischen Lauf mit ${EQUITY_COST_TEXT} Fondskosten auf Aktien, Marktjahr ${bear.year}; der Simulator hat Renditen und Renten bereits angewandt. Die Grundversorgung ist durch Rente gedeckt. Der Bärenpfad schützt die vorhandene Liquidität und wartet; C3 als eigentlicher Auffüllverkauf wird hier nicht ausgelöst.`, '',
         actionTable(bear.result), '',
         `Engineaktion: „${bear.result.ui.action.title}“, Typ ${bear.result.ui.action.type}. Eine Zielunterdeckung allein würde im Bär ebenfalls keinen opportunistischen Verkauf auslösen.`, '',
         '### Jan und Lena mit Gold über dem Band', '',
@@ -227,7 +227,7 @@ export function renderActionExamples(examples = calculateActionExamples()) {
         ...final.quellen.map(q => `| ${q.sourceProfileName} · ${q.name} | ${eur(q.brutto)} | ${eur(q.steuer)} | ${eur(q.netto)} |`), '',
         `Die getrennte Auszahlung nutzt ${main.runs.distribution.items.filter(row => row.withdrawalAmount > 0).map(row => `${main.profiles.find(p => p.profileId === row.profileId).name}: ${eur(row.withdrawalAmount)}`).join(', ')}. Die Tabellen gelten vor Auszahlung; gerundete Einzelanzeigen können um einen Cent abweichen.`, '',
         '### Max und Erika im Bärenjahr', '',
-        `Musterbestände vom 17.10.2026 im historischen Lauf, Beschluss nach der Rendite ${bear.year}. Die Rente deckt den Grundbedarf. Der Bärenpfad wartet bei ausreichender Liquidität; eine Kürzung erzwingt keinen Verkauf.`, '',
+        `Musterbestände vom 17.10.2026 im historischen Lauf mit ${EQUITY_COST_TEXT} Fondskosten auf Aktien, Beschluss nach der Rendite ${bear.year}. Die Rente deckt den Grundbedarf. Der Bärenpfad wartet bei ausreichender Liquidität; eine Kürzung erzwingt keinen Verkauf.`, '',
         actionTable(bear.result), '',
         `Anweisung: „${bear.result.ui.action.title}“. Gold, Überschussanlage, Pflege-Rücklage und isolierte Steuergegenproben stehen in den [vollständigen technischen Beispielen](TECHNICAL.md#vollständige-handelsbeispiele).`
     ].join('\n');

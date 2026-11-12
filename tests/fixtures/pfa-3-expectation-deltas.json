@@ -1,0 +1,12 @@
+{
+  "basis": "8aaadcaf",
+  "reason": "FR-73 Paket 3: Das Beispiel Helga und Werner „Mit Haus, Werner Pflegegrad 3“ trägt den Grundbedarf ohne Pflege (36.000 € statt 54.000 €), weil die App die heutige Pflege seit PFA-1/PFA-2 selbst rechnet. Alle übrigen Haushalte und Varianten bleiben bytegleich.",
+  "files": [
+    { "file": "tests/ar-3-kurssturz.test.mjs", "hashes": 3, "why": "Beispielvariante helga-werner:haus-pg3: Grundbedarf 36.000 € ohne Pflege in Plan, Simulatorbedarf und Ausgabenaufteilung" }
+  ],
+  "hashes": {
+    "dfa9d915387bd29d53feb86460621173f56572d06545d7b06b6288bca5a9ce9b": "e891d780ab8bfb5100fdb9e5b45db8bf3d93dd2d787776bd4ffc5102c2b85d4a",
+    "42348d32d570248b64892e83d9e6d006ccd7f0e6b026af6568fe396598e2274f": "a12fae20ad5de474d127810f2bdb799d231405a371708094eea152bd716ea168",
+    "9db095eedb5a9e034f475180785531332586f20f3fc7b63b6f2c3f3c3b9d46ce": "74ed6e51ebafb7fd371c2d1f6ace9ce80d5d5d22a62a5d557402bc30de7ddeb7"
+  }
+}

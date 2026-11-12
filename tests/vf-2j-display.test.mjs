@@ -102,8 +102,9 @@ for (const legacy of [false, true]) {
     host.replaceChildren = (...children) => { host.children.length = 0; host.append(...children); };
     const renderer = new SummaryRenderer({ outputs: { balanceAnnualAction: host } });
     renderer.renderAnnualAction(origin, people);
-    const text = plain(dialogElements(host).map(node => node.textContent || '').join(' '));
-    assert(text.includes('Martin: 100.000,00 € netto') && text.includes('Petra: 22.000,00 € netto') && !text.includes('Im Beleg nicht zugeordnet'),
+    // WT-1: Die Karte zeigt den Kauf; Details & Drucken nennt je Person, woher das Geld kommt (seit WT-1b auf den Cent).
+    const text = plain(renderer.planDetails.text);
+    assert(text.includes('Martin | aus dem Tagesgeld') && text.includes('100.000,00 €') && text.includes('Petra | aus dem Tagesgeld') && text.includes('22.000,00 €') && !text.includes('nicht zugeordnet'),
         legacy ? 'Balance löst auch echte alte Paarbelege mit vorhandenen Kennungen auf' : 'Balance nennt beide Namen beim Muster-Jahresplan');
     assertEqual(JSON.stringify(origin), bytes, 'Zuordnung in der Anzeige verändert keine gespeicherte Handlung');
 }

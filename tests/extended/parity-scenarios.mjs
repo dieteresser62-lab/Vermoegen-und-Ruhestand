@@ -190,7 +190,9 @@ export function runParityScenarios({ source: suppliedSource, engineApi = EngineA
         ath: prepared.initialMarketHistory.allTimeHigh.value * scale, jahreSeitAth: prepared.initialMarketHistory.yearsSinceAllTimeHigh };
     for (const [key, label] of DYNAMIC_FLEX_OPTIONS.filter(([key]) => key !== 'custom')) {
         const scenarioInputs = { ...structuredClone(inputs), ...dynamicFlexPresetPatch(key) };
-        const initialRecords = createParitySequenceSeed(records, dynamicFlexPresetPatch(key), market, inputs.referenceYear);
+        // FR-76: Der Plan der Balance trägt dieselben Fondskosten wie die Simulatoreingaben (fehlend = 0).
+        const initialRecords = createParitySequenceSeed(records, { ...dynamicFlexPresetPatch(key),
+            equityCostPct: Number(scenarioInputs.equityCostPct) > 0 ? Number(scenarioInputs.equityCostPct) : 0 }, market, inputs.referenceYear);
         const collector = createParityReplayCollector({ source: provenance, initialRecords });
         const inputBytes = JSON.stringify(scenarioInputs);
         const backtest = runFixture({ input: scenarioInputs, collector, engine: engineApi, selectedPeriod: SCENARIO_PERIOD });

@@ -207,6 +207,7 @@ try {
         };
         const doc = { getElementById: (id) => controls[id] || null };
         const config = readAutoOptimizeConfigFromUI(doc);
+        assertEqual(config.maxDauer, null, 'LE-1b: Config-Reader setzt keine feste Dauer, der Lauf übernimmt das Feld');
         assertEqual(config.params.survivalQuantile.min, 0.8, 'Config-Reader sollte Param-Min lesen');
         assertEqual(config.dynamicFlexMode, 'force_on', 'Config-Reader sollte Dynamic-Flex-Modus normalisieren');
 
@@ -827,6 +828,42 @@ try {
             'Optimizer sollte den kanonischen Haupt-Control-Lesepfad ausweisen');
     }
     console.log('✓ runAutoOptimize Champion nahe Optimum OK');
+
+    // LE-1b (P3-3): Auto-Optimize übernimmt die Dauer des Monte-Carlo-Felds statt fester 35 Jahre.
+    console.log('Test 23a: runAutoOptimize - Dauer aus dem Feld');
+    {
+        const durationField = global.document.getElementById('mcDauer');
+        const previousDuration = durationField.value;
+        const durationRun = async value => {
+            durationField.value = value;
+            const seen = new Set();
+            const result = await runAutoOptimize({
+                objective: { metric: 'EndWealth_P50', direction: 'max' },
+                params: { liquidityRunwayYears: { min: 4, max: 6, step: 1 } },
+                runsPerCandidate: 20, seedsTrain: 1, seedsTest: 1,
+                constraints: { sr99: false, noex: false, ts45: false, dd55: false },
+                maxDauer: null,
+                evaluateCandidateFn: async (candidate, baseInputs, runs, maxDauer) => {
+                    seen.add(maxDauer);
+                    return createVersionedMetricResult({ medianEndWealth: 1000, medianWithdrawalRate: 0.03 });
+                }
+            });
+            return { seen: [...seen], contract: result.optimizationContext.evaluationContract };
+        };
+        try {
+            const own = await durationRun('28');
+            assertEqual(own.seen.join(','), '28', 'Auto-Optimize rechnet mit dem eigenen Wert des Felds, nicht mit 35');
+            assertEqual(own.contract.monteCarloParameters.maxDauer, 28, 'Bewertungsvertrag nennt die Dauer des Felds');
+            assertEqual(own.contract.fixedModelAssumptions.maxDauer, 28, 'Modellannahmen nennen die Dauer des Felds');
+            const auto = await durationRun('');
+            assertEqual(auto.seen.length, 1, 'Leeres Feld ergibt eine Dauer für alle Kandidaten');
+            assertEqual(auto.seen[0], auto.contract.monteCarloParameters.maxDauer, 'Leeres Feld: Kandidaten rechnen mit der automatischen Dauer des Vertrags');
+            assert(auto.seen[0] !== 35, `Leeres Feld: automatische Dauer statt fester 35 Jahre (${auto.seen[0]})`);
+        } finally {
+            durationField.value = previousDuration;
+        }
+    }
+    console.log('✓ runAutoOptimize Dauer aus dem Feld OK');
 
     // Test 23b: Ungueltige Rahmendaten stoppen vor der ersten Evaluation
     console.log('Test 23b: runAutoOptimize - Current-Config Preflight');

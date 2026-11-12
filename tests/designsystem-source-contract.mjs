@@ -217,7 +217,7 @@ export const CONTRAST_PAIRS = [
 export const FOUNDATION_ROLES = {
     'css/components.css': { '.ds-plan-card': [null, 'surface'] },
     'css/balance.css': { body: ['text-main', 'page'], '#btnJahresUpdate': ['text-main', 'surface'], '.btn.ds-button-primary': ['surface', 'text-main'], '.tranchen-warning': ['warn', null] },
-    'simulator.css': { body: ['text-main', 'page'], '.panel': [null, 'surface'], fieldset: [null, 'surface-sunken'], 'button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item)': ['surface', 'text-main'], 'button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item):disabled': ['text-muted', 'surface-sunken'], '.tranchen-warning': ['warn', null] },
+    'simulator.css': { body: ['text-main', 'page'], '.panel': [null, 'surface'], fieldset: [null, 'surface-sunken'], ':where(.simulator-surface) button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item)': ['surface', 'text-main'], ':where(.simulator-surface) button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item):disabled': ['text-muted', 'surface-sunken'], '.tranchen-warning': ['warn', null] },
     'css/overview.css': { '.overview-page': ['text-main', null], '.overview-pill': ['text-main', 'surface'] },
     'Handbuch.html': { body: ['text-main', 'page'], '.hb-article': [null, 'surface'], '.hb-search': [null, 'surface'], '.step-number': ['surface', 'text-main'] },
     'css/suite-frame.css': { '.suite-header': [null, 'surface'], '.suite-brand': ['text-main', null], '.suite-navigation': [null, 'surface'], '.suite-navigation a': ['text-main', null], '.suite-navigation a[aria-current="page"]': [null, 'surface-sunken'], '.suite-navigation-status': ['bad', 'surface'] },
@@ -1093,7 +1093,7 @@ export function validateSimulatorOverviewFrame(sources) {
     const css = sources['simulator.css'];
     if (!/\.tab-content\s*\{\s*container:\s*simulator-content\s*\/\s*inline-size;/.test(css)) errors.push('Simulator: Inhaltscontainer fehlt');
     const wide = css.split('@container simulator-content (min-width: 2300px) {')[1]?.split('@container')[0] ?? '';
-    if (!wide.includes('.sim-overview-backtest { grid-column: span 8; }') || !wide.includes('.sim-overview-mc { grid-column: span 4; }')
+    if (!wide.includes('.sim-result-main { grid-column: span 8; }') || !wide.includes('.sim-result-side { grid-column: span 4; }')
         || !wide.includes('.sim-crisis-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }')) errors.push('Simulator: breites Ergebnisraster ab 2300 px fehlt');
     for (const rule of rules('simulator.css', css)) {
         if (!rule.selector.includes('.sim-')) continue;

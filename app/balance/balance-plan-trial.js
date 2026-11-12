@@ -10,8 +10,9 @@ import { syncSelectionText } from '../shared/designsystem-selection-text.js';
 import { projectHouseholdPlanParameters, resetHouseholdPlanParameterDetails } from '../shared/household-plan-presentation.js';
 
 import { createPlanTrial as createSharedPlanTrial, registerPlanTrial, registeredPlanTrial } from '../shared/plan-trial.js';
+// FR-76: Die Fondskosten stehen in Haushalt & Plan und im Simulator; die Balance liest sie nur aus dem Plan.
 export const BALANCE_PLAN_FIELD_MAP = Object.freeze({
-    ...Object.fromEntries(PLAN_FIELDS.filter(key => !['cape', 'decumulation', 'householdWithdrawalMode', 'jointAssessment'].includes(key)).map(key => [key, key])),
+    ...Object.fromEntries(PLAN_FIELDS.filter(key => !['cape', 'decumulation', 'householdWithdrawalMode', 'jointAssessment', 'equityCostPct'].includes(key)).map(key => [key, key])),
     marketCapeRatio: 'cape.value', entnahmeStrategie: 'decumulation.mode',
     bondTargetFactor: 'decumulation.bondTargetFactor', drawdownTrigger: 'decumulation.drawdownTrigger',
     bondRefillThreshold: 'decumulation.bondRefillThreshold', 'profilverbund-withdrawal-mode': 'householdWithdrawalMode'

@@ -14,7 +14,7 @@ export function executeYearAction(context) {
         actionResult, isBadYear, threeBucketState, bondRefillGross, bondRefillNet, bondRefillTax,
         equityPreserved, unmetLiquidity, portfolio, bondSaleAmount, depotTranchesAktien, depotTranchesGold,
         residenceAdvance, personalTaxBook, inputs, liquiditaet, equityAfterReturn, goldAfterReturn,
-        regularSaleScale, combinedTaxRawAggregate, stressReplayTransactionCapture, balanceTrace
+        regularSaleScale, combinedTaxRawAggregate, stressReplayTransactionCapture, balanceTrace, deathYearCash
     } = context;
 
     const allQuellen = Array.isArray(actionResult.quellen) ? actionResult.quellen : [];
@@ -70,7 +70,7 @@ export function executeYearAction(context) {
     );
     const cashFunding = cashSpend > 0
         ? /** @type {import('../../../typcheck/rechenkern-integration').DebitPersonalLiquidity} */ (debitPersonalLiquidity)(portfolio, cashSpend,
-            personalTaxBook && cashQuellen.every(source => source.sourceProfileId)
+            (personalTaxBook || deathYearCash) && cashQuellen.every(source => source.sourceProfileId)
                 ? { mode: inputs.householdWithdrawalMode, items: cashQuellen.map(source => ({
                     profileId: source.sourceProfileId, withdrawalAmount: source.brutto })) }
                 : personalWithdrawalPlan(personalProfiles(portfolio, inputs), cashSpend, inputs.householdWithdrawalMode)).items : [];

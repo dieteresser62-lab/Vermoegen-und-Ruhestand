@@ -1,6 +1,12 @@
+import { resolveCareSetting } from '../shared/care-cost-resolver.js';
 /** @import {SimulatorControl} from '../../typcheck/simulator-ui.js' */
-import { careSettingsStorage, isCareSettingKey } from '../shared/care-profile-settings.js';
+import { careSettingsStorage, isCareSettingKey, sharesHouseholdCareValues } from '../shared/care-profile-settings.js';
+import { resolveCarePrices } from '../shared/care-prices.js';
+import { readCareValues } from '../shared/household-care-values.js';
 import { normalizeCareForm } from '../shared/care-benefits.js';
+import { CARE_PRICE_FIELD_IDS, carePriceValue, normalizePflegeKostenPreset, writeCarePriceField } from '../shared/care-price-fields.js';
+// PFA-10: Der Schreibweg der Pflegewerte liegt gemeinsam mit Personen & Vermögen › Pflege in `care-price-fields.js`.
+export { writeCarePriceField };
 import { updateSimulatorPlanTrial, renderSimulatorPlanTrial, getSimulatorPlanTrial } from './simulator-plan-trial.js';
 "use strict";
 
@@ -9,6 +15,7 @@ import { SUPPORTED_PFLEGE_GRADES } from './simulator-data.js';
 import { updateStartPortfolioDisplay } from './simulator-portfolio.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { MONTE_CARLO_PARAMETER_LIMITS } from './monte-carlo-parameters.js';
+import { readStoredMonteCarloDuration } from './monte-carlo-duration.js';
 import { migrateStoredCareFlex } from './simulator-care-flex-persistence.js';
 import {
     HOUSEHOLD_SIMULATOR_NEED_FIELD_IDS,
@@ -18,7 +25,8 @@ import {
 } from './simulator-household-needs-persistence.js';
 
 // Diese Felder hatten vor H1 keinen Simulator-Autosave; der Altweg bleibt erhalten.
-const PLAN_ONLY_PERSIST_IDS = new Set(['liquidityRunwayYears', 'maxSkimPctOfEq', 'maxBearRefillPctOfEq']);
+// FR-76: Die Fondskosten sind ein Planwert; der frühere Schlüssel `sim_equityCostPct` wird weder gelesen noch geschrieben.
+const PLAN_ONLY_PERSIST_IDS = new Set(['liquidityRunwayYears', 'maxSkimPctOfEq', 'maxBearRefillPctOfEq', 'equityCostPct']);
 
 const CARE_GRADE_FIELD_IDS = SUPPORTED_PFLEGE_GRADES.flatMap(grade => [
     `pflegeStufe${grade}Zusatz`,
@@ -26,7 +34,6 @@ const CARE_GRADE_FIELD_IDS = SUPPORTED_PFLEGE_GRADES.flatMap(grade => [
     `pflegeStufe${grade}Mortality`,
     `pflegeStufe${grade}Form`
 ]);
-
 /**
  * @returns {void}
  */
@@ -47,8 +54,8 @@ export function initInputPersistence() {
         'longevityMode', 'longevityQuantileShift', 'longevityRelativePct', 'longevityBufferYears',
         'pflegefallLogikAktivieren', 'pflegeModellTyp', ...CARE_GRADE_FIELD_IDS,
         'pflegeMaxFloor', 'pflegeRampUp', 'pflegeMinDauer', 'pflegeMaxDauer', 'pflegeKostenDrift',
-        'pflegeRegionalZuschlag', 'pflegeKostenStaffelPreset',
-        'liquidityRunwayYears', 'maxSkimPctOfEq', 'maxBearRefillPctOfEq',
+        'pflegeRegionalZuschlag', 'pflegeHeimEigeneAusgaben', 'pflegeKostenStaffelPreset',
+        'liquidityRunwayYears', 'maxSkimPctOfEq', 'maxBearRefillPctOfEq', 'equityCostPct',
         'entnahmeStrategie', 'bondTargetFactor', 'drawdownTrigger', 'bondRefillThreshold',
         'mcAnzahl', 'mcDauer', 'mcBlockSize', 'mcSeed', 'mcMethode', 'rngMode',
         'mcWorkerCount', 'mcWorkerBudget', 'useCapeSampling',
@@ -58,6 +65,9 @@ export function initInputPersistence() {
     const projected = initialPlan.status === 'valid' ? projectPlanToSimulator(initialPlan.entry.values) : null;
     const householdNeedsState = projected ? { values: null } : ensureHouseholdSimulatorNeedsMigrationPending();
     const persistedHouseholdNeeds = householdNeedsState.values;
+    // Lesen: Record zuerst, sonst Altbestand über den Resolver; nichts wird dabei geschrieben.
+    const carePrices = resolveCarePrices(readCareValues(persistenceStorage), careSettingsStorage(persistenceStorage),
+        { shared: sharesHouseholdCareValues(persistenceStorage) });
 
     const renderHouseholdNeedWriteResult = (element, result, eventType) => {
         const message = result.ok ? '' : result.message;
@@ -73,9 +83,12 @@ export function initInputPersistence() {
             const fieldStorage = isCareSettingKey(storageKey) ? careSettingsStorage(persistenceStorage) : persistenceStorage;
             const isHouseholdNeed = isHouseholdSimulatorNeedField(id);
             const isPlanField = Object.hasOwn(SIMULATOR_PLAN_FIELD_MAP, id);
-            const storedVal = ['dynamicFlexPreset', 'dynamicFlexShowAdvanced'].includes(id) && projected ? null : !projected && PLAN_ONLY_PERSIST_IDS.has(id) ? null : projected && isPlanField ? projected[id] ?? '' : isHouseholdNeed
+            const rawStoredVal = ['dynamicFlexPreset', 'dynamicFlexShowAdvanced'].includes(id) && projected ? null : !projected && PLAN_ONLY_PERSIST_IDS.has(id) ? null : projected && isPlanField ? projected[id] ?? '' : isHouseholdNeed
                 ? (persistedHouseholdNeeds?.[id] ?? null)
-                : fieldStorage.getItem(storageKey);
+                : CARE_PRICE_FIELD_IDS.has(id) ? String(carePriceValue(id, carePrices))
+                    : resolveCareSetting(storageKey, fieldStorage.getItem(storageKey));
+            // FR-75: Die alte Vorgabe 35 gilt beim Lesen als automatische Dauer; nichts wird geschrieben.
+            const storedVal = id === 'mcDauer' ? readStoredMonteCarloDuration(rawStoredVal) : rawStoredVal;
             if (id === 'mcAnzahl' && (storedVal === null || storedVal === '')) {
                 element.value = String(MONTE_CARLO_PARAMETER_LIMITS.runs.default);
             }
@@ -87,7 +100,8 @@ export function initInputPersistence() {
                     // Radio buttons usually have same name but different IDs.
                 } else {
                     const formGrade = /^pflegeStufe([1-5])Form$/.exec(id)?.[1];
-                    element.value = formGrade ? normalizeCareForm(storedVal, formGrade) : storedVal;
+                    element.value = formGrade ? normalizeCareForm(storedVal, formGrade)
+                        : id === 'pflegeKostenStaffelPreset' ? normalizePflegeKostenPreset(storedVal) : storedVal;
                     if (isHouseholdNeed) {
                         element.dataset.householdNeedLastValidValue = String(storedVal);
                     }
@@ -154,6 +168,7 @@ export function initInputPersistence() {
                             fieldStorage.setItem(storageKey, element.checked);
                         } else if (element.type !== 'radio') {
                             fieldStorage.setItem(storageKey, element.value);
+                            if (CARE_PRICE_FIELD_IDS.has(id)) writeCarePriceField(id, element.value);
                         }
                     }
                 } catch (error) {

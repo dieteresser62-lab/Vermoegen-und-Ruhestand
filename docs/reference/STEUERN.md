@@ -1,6 +1,6 @@
 # Steuern
 
-Steuervereinfachungen und Zahlungsfinanzierung im Appmodell. Für fachlich Interessierte. Codeprüfung 29.10.2026; Rechtsquellen geprüft am 27.10.2026.
+Steuervereinfachungen und Zahlungsfinanzierung im Appmodell. Für fachlich Interessierte. Codeprüfung 11.11.2026; Rechtsquellen geprüft am 27.10.2026.
 
 ## Auf einen Blick
 
@@ -95,7 +95,7 @@ Synthetische Rechenvariante Max und Erika, geprüft am 27.10.2026, ohne Ehe und 
 
 ### Netto und Beispiel
 
-Renten, Nettomieten und sonstige Einkünfte sind verfügbare Nettobeträge; ziehe deren Steuern und Abgaben vor der Eingabe ab. Immobilienverkäufe enthalten im Modell keine Einkommensteuer. Vorabpauschalen, vollständige Ausschüttungsbesteuerung, Sozialabgaben und laufende Produktkosten werden nicht gesondert als vollständiges Steuermodell berechnet.
+Renten, Nettomieten und sonstige Einkünfte sind verfügbare Nettobeträge; ziehe deren Steuern und Abgaben vor der Eingabe ab. Immobilienverkäufe enthalten im Modell keine Einkommensteuer. Vorabpauschalen, vollständige Ausschüttungsbesteuerung und Sozialabgaben werden nicht gesondert als vollständiges Steuermodell berechnet. Fondskosten und die Quellensteuer im Fonds fasst der Planwert „Laufende Kosten Aktien-ETF“ in Haushalt & Plan pauschal zusammen, Vorgabe 0,5 % pro Jahr (FR-76). Backtest und Monte Carlo ziehen ihn von der Aktienrendite ab, Dynamic Flex von der erwarteten Rendite; die Kurse in Balance enthalten diese Kosten schon.
 
 Synthetische Rechenvariante Max und Erika, geprüft am 27.10.2026: Max verkauft für 30.000 € mit 15.000 € Gewinn. 30 % Teilfreistellung ergeben 10.500 € steuerlich gewichteten Gewinn. Nach 1.500 € Verlustvortrag und 1.000 € Pauschbetrag bleiben 8.000 €. Ohne Kirchensteuer sind das 2.110 € Steuer und 27.890 € Nettoerlös. Erika wird getrennt abgerechnet; Partnerausgleich ist hier ausgeschaltet. Die Jahresrechnung enthält keine weiteren Erträge.
 

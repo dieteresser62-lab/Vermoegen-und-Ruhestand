@@ -173,6 +173,37 @@ export function historyMonthlyReturns(series, { start, end, firstHoldingDay = st
     }).filter(row => row.months.some(Boolean));
 }
 
+/** Depotbilanz eines Kalenderjahrs aus der Tagesprojektion, unabhängig von der Renditebasis:
+ * Anfangsstand + Käufe − Verkäufe + Markt = Endstand. Flüsse zählen nach ihrem Ereignistag.
+ * Anfangsstand: bewerteter Tagesbestand vor Jahresbeginn; ohne Bestand 0 (der erste Kauf steht unter Käufe);
+ * mit Bestand, aber ohne Bewertung, der erste bewertete Tag im Jahr als datierte Messbasis (`baseDay`).
+ * Ist der Endstand nicht bewertet, bleiben Markt und Endstand unbekannt (null) – nie erfinden.
+ * @param {{day: number; total: number|null}[]} points Tagespunkte ab dem ersten Bestand.
+ * @param {{kind: string; day: number; amount: number}[]} events Kauf- und Verkaufsmarkierungen.
+ * @param {{start: number; end: number; heldAt: (day: number) => boolean}} options Jahresgrenzen; heldAt sagt, ob am Tag Stücke im Bestand waren.
+ * @returns {{startValue: number; deposits: number; withdrawals: number; market: number|null; endValue: number|null; baseDay: number|null}|null} */
+export function historyYearBalance(points, events, { start, end, heldAt }) {
+    const valued = point => point && finite(point.total);
+    const boundary = points.findLast(point => point.day < start);
+    let startValue, flowFrom = start, baseDay = null;
+    if (valued(boundary)) startValue = boundary.total;
+    else if (!heldAt(start - 1)) startValue = 0;
+    else {
+        const first = points.find(point => point.day >= start && point.day <= end && valued(point));
+        if (!first) return null;
+        startValue = first.total; flowFrom = first.day + 1; baseDay = first.day;
+    }
+    let deposits = 0, withdrawals = 0;
+    for (const event of events) {
+        if (!['buy', 'sell'].includes(event.kind) || event.day < flowFrom || event.day > end) continue;
+        if (!finite(event.amount) || event.amount < 0) return null;
+        if (event.kind === 'buy') deposits += event.amount; else withdrawals += event.amount;
+    }
+    const last = points.findLast(point => point.day <= end && point.day >= (baseDay ?? start));
+    const endValue = valued(last) ? last.total : last ? null : startValue;
+    return { startValue, deposits, withdrawals, market: endValue === null ? null : endValue - startValue - deposits + withdrawals, endValue, baseDay };
+}
+
 function prepareReturnHistory(history, quoteDays, today, firstHoldingDay, missingAt) {
     const points = history.points.filter(point => firstHoldingDay !== null && point.day >= firstHoldingDay)
         .map(point => ({ ...point, evaluated: !point.gap && finite(point.total)
@@ -242,12 +273,17 @@ export function evaluateHistoryReturns({ profiles, prices, events = [], startDat
     const all = prepareReturnHistory(history, allQuoteDays, today, firstHoldingDay, missingAt);
     all.provisional ||= groups.some(group => group.provisional);
     if (all.provisional && all.metrics.status === 'complete') all.metrics.status = 'provisional';
+    // Bestand an einem Tag aus den Stückketten (wie beim Abdeckungshinweis); entscheidet über Anfangsstand 0.
+    const heldAt = day => investments.some(profile => profile.lots.some(lot => {
+        try { return historySharesAt(reconstructHistoryShares(lot, events.filter(event => event.profileId === profile.id)), day) > 0; } catch { return false; }
+    }));
     const years = [];
     for (let year = Number(today.slice(0, 4)); year >= Number(startDate.slice(0, 4)); year--) {
         const start = Math.max(range.start, firstHoldingDay ?? range.start, Date.UTC(year, 0, 1) / 86400000), end = Math.min(range.end, all.coverage ? all.coverage.through ?? range.start - 1 : range.end, Date.UTC(year, 11, 31) / 86400000);
         if (firstHoldingDay === null || end < start) continue;
         const metrics = all.invalid ? { ...historyReturnMetrics([]), status: 'unavailable' } : historyReturnMetrics(all.series, { start, end, provisional: all.provisional });
-        years.push({ year, start, end, points: all.points.filter(p => p.day >= start && p.day <= end), metrics });
+        const balance = all.invalid ? null : historyYearBalance(all.points, all.events, { start, end, heldAt });
+        years.push({ year, start, end, points: all.points.filter(p => p.day >= start && p.day <= end), metrics, balance });
     }
     return { ...all, groups, years, today };
 }

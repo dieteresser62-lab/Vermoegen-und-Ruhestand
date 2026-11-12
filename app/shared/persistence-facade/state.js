@@ -102,6 +102,9 @@ export const storeState = {
     /** @type {string | null} */
     documentWriteBlock: null,
 
+    /** ES-1: Start und Writes warten, bis der Seitenstart den Schreibbesitz dieses Tabs kennt. @type {Promise<void> | null} */
+    writeGate: null,
+
     /** @type {Set<(change: {dirtyKeys: string[], deletedKeys: string[]}) => void>} */
     beforeFlushObservers: new Set(),
 
@@ -147,6 +150,18 @@ export function hasSyncWriteBlocks() {
  * @returns {void}
  */
 export function blockDocumentWrites(message) { storeState.documentWriteBlock = message; }
+
+/** ES-1: init() und dauerhafte Writes warten auf die Entscheidung über den Schreibbesitz dieses Tabs.
+ * Ein abgewiesener Tab sperrt vorher mit blockDocumentWrites; sein init() endet dann nie (ES-1b).
+ * @param {Promise<unknown>} decision
+ * @returns {void}
+ */
+export function holdWritesUntil(decision) {
+    /** @type {Promise<void>} */
+    const gate = Promise.resolve(decision).then(() => undefined, () => undefined)
+        .finally(() => { if (storeState.writeGate === gate) storeState.writeGate = null; });
+    storeState.writeGate = gate;
+}
 
 export function assertDocumentWritable() {
     if (storeState.documentWriteBlock === null) return;

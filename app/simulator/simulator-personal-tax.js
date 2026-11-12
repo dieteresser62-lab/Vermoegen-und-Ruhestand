@@ -177,13 +177,17 @@ export function limitCashInvestment(action, capacity) {
  * @param {object} [options]
  * @param {boolean} [options.followup]
  * @param [options.onlyProfileId]
+ * @param {boolean} [options.onlyProfileCash] Auch Liquidität nur von `onlyProfileId` (TJ-2b: Todesjahr ohne Nachlassmittel).
  * @param [options.cashReserves]
  * @returns Ergebnis der Operation.
  */
-export function attributeSimulatorAction(portfolio, action, inputs, { followup = false, onlyProfileId = null, cashReserves = null } = {}) {
+export function attributeSimulatorAction(portfolio, action, inputs, { followup = false, onlyProfileId = null, onlyProfileCash = false, cashReserves = null } = {}) {
     const book = books.get(portfolio);
     if (!book || book.length < 2 || portfolio.personAccounts.length < 2) return inputs.decumulation?.mode === '3_bucket_jilge' ? netActionEntriesOrOriginal([{ action, input: personalProfiles(portfolio, inputs)[0]?.inputs }])[0].action : action;
     const profiles = personalProfiles(portfolio, inputs);
+    if (onlyProfileId && onlyProfileCash) for (const profile of profiles) {
+        if (profile.profileId !== onlyProfileId) Object.assign(profile.inputs, { tagesgeld: 0, geldmarktEtf: 0 });
+    }
     const threeBucket = inputs.decumulation?.mode === '3_bucket_jilge';
     if (threeBucket) action = { ...action, quellen: (action.quellen || []).map(q => ({ ...q })), verwendungen: { ...action.verwendungen } };
     if (cashReserves && (action.quellen || []).some(source => source.kind === 'liquiditaet')) {

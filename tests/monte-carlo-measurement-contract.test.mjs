@@ -1,3 +1,4 @@
+import { readLE1References } from './helpers/le-1-expectations.mjs';
 import { readGL1References } from './helpers/gl-1-expectations.mjs';
 import { readRNG1Hash } from './helpers/rng-1-expectations.mjs';
 import fs from 'node:fs';
@@ -692,7 +693,7 @@ function compareSnapshotNode(actual, expected, pathName, sameRuntime, toleranceC
         }
         return;
     }
-    assertEqual(actual, expected, `Snapshot value mismatch at ${pathName}`);
+    assertEqual(actual, readLE1References(expected), `Snapshot value mismatch at ${pathName}`);
 }
 
 function determinismProjection(result) {

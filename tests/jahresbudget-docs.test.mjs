@@ -98,7 +98,7 @@ try {
     fs.writeFileSync(path.join(temporary, TECHNICAL_REFERENCE), technicalSource);
     nodeAssert.deepEqual(checkBudgetDocumentation(temporary, source), []);
     const temporaryHandbook = fs.readFileSync(path.join(temporary, 'Handbuch.html'), 'utf8');
-    fs.writeFileSync(path.join(temporary, 'Handbuch.html'), temporaryHandbook.replace('5.035,45 €', '5.035,46 €'));
+    fs.writeFileSync(path.join(temporary, 'Handbuch.html'), temporaryHandbook.replace('5.029,71 €', '5.029,72 €'));
     nodeAssert(checkBudgetDocumentation(temporary, source).some(d => d.code === 'budget-handbook'), 'Veraltete Handbuchzahl muss scheitern');
     fs.writeFileSync(path.join(temporary, 'Handbuch.html'), temporaryHandbook);
     const parameterStale = source.replace('| Glättung · Rohzielgewicht | 35 %', '| Glättung · Rohzielgewicht | 36 %');

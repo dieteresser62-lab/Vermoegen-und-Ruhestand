@@ -111,7 +111,7 @@ const toggle = ui.root.querySelector('[data-annual-plan-toggle]'), panel = ui.ro
 const pill = ui.root.querySelector('[data-annual-plan-adjusted]'), discardButton = ui.root.querySelector('[data-annual-plan-discard]');
 assert(panel.hidden && toggle.getAttribute('aria-expanded') === 'false', 'Feldbereich ist initial geschlossen');
 assertEqual(ui.root.querySelectorAll('table').length, 1, 'Zuerst ruhige Vergleichstabelle');
-assertEqual(ui.root.querySelectorAll('.household-plan-group').length, 6, 'Identische sechs Gruppen im Abschlussdialog');
+assertEqual(ui.root.querySelectorAll('.household-plan-group').length, 7, 'Identische sieben Gruppen im Abschlussdialog, Fondskosten eingeschlossen (FR-76)');
 assertEqual(ui.root.querySelectorAll('.household-plan-used').length, 0, 'Jahreseditor erzeugt keine Nutzungskennzeichen');
 assertEqual(ui.root.querySelectorAll('.household-plan-note').length, 0, 'Jahreseditor erzeugt keine ergänzende CAPE-Fußnote');
 assert(ui.root.querySelector('[data-annual-plan-cape]').textContent.length > 0, 'CAPE-Herkunft bleibt direkt am lesenden Wert');

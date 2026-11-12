@@ -16,10 +16,10 @@ console.log('--- Simulator Multi-Profile Aggregation ---');
     console.log('\n📋 Test 0: Persisted care drift keeps percent storage and one runtime normalization');
     const cases = [
         { stored: '0', expected: 0, label: 'zero' },
-        { stored: '3.5', expected: 0.035, label: '3.5 percent' },
+        { stored: '3.5', expected: 0.05, label: '3.5 percent' },
         { stored: '100', expected: 1, label: '100 percent' },
         { stored: '-1', expected: 0, label: 'negative' },
-        { stored: 'invalid', expected: 0, label: 'invalid' }
+        { stored: 'invalid', expected: 0.05, label: 'invalid' }
     ];
     for (const testCase of cases) {
         const profileData = { sim_pflegeKostenDrift: testCase.stored };
@@ -37,8 +37,8 @@ console.log('--- Simulator Multi-Profile Aggregation ---');
     }
     assertEqual(
         buildSimulatorInputsFromProfileData({}).pflegeKostenDrift,
-        0,
-        'Missing persisted care drift should keep the legacy 0 percent fallback'
+        .05,
+        'Missing persisted care drift uses the FR-73 5 percent default'
     );
     const migratedLegacyRunway = buildSimulatorInputsFromProfileData({
         sim_runwayTargetMonths: '25'

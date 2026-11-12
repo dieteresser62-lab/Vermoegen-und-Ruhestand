@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f1f2ee">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Depot</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <link rel="preload" href="fonts/newsreader-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <main id="app" aria-live="polite">
+    <header class="kopf">
+      <h1>Depot</h1>
+      <button id="menueKnopf" class="symbolknopf" type="button" aria-label="Menü">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>
+      </button>
+    </header>
+
+    <section id="leer" class="leer" hidden>
+      <h2>Noch keine Positionen</h2>
+      <p>Starte auf dem PC die QR-Ausgabe und scanne den Code hier ein. Die Positionen bleiben nur auf diesem Handy.</p>
+      <button class="hauptknopf" type="button" data-aktion="scannen">Code scannen</button>
+    </section>
+
+    <section id="inhalt" hidden>
+      <div class="gesamt">
+        <p class="etikett">Gesamt</p>
+        <p class="wert" id="gesamtWert">–</p>
+        <div id="gesamtDelta"></div>
+      </div>
+      <div id="personen"></div>
+      <footer class="stand">
+        <p id="kursStand"></p>
+        <p id="positionsStand"></p>
+        <button id="aktualisieren" class="zweitknopf" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4"/></svg>
+          <span>Aktualisieren</span>
+        </button>
+      </footer>
+    </section>
+  </main>
+
+  <dialog id="menue" class="blatt">
+    <form method="dialog">
+      <button class="blattzeile" type="button" data-aktion="scannen">Positionen neu einlesen</button>
+      <button class="blattzeile gefahr" type="button" data-aktion="loeschen">Daten auf diesem Handy löschen</button>
+      <button class="blattzeile leise" value="zu">Schließen</button>
+    </form>
+  </dialog>
+
+  <dialog id="scanner" class="vollbild">
+    <div class="scankopf">
+      <h2>Code scannen</h2>
+      <button class="symbolknopf" type="button" data-aktion="scanZu" aria-label="Schließen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="kamera"><video id="video" playsinline muted></video><div class="rahmen"></div></div>
+    <p id="scanHinweis" class="scanhinweis">Halte die Kamera auf den QR-Code am PC.</p>
+    <details class="einfuegen">
+      <summary>Code stattdessen einfügen</summary>
+      <textarea id="codeFeld" rows="4" spellcheck="false" autocomplete="off" placeholder="DEPOT1:…"></textarea>
+      <button class="zweitknopf" type="button" data-aktion="einfuegen">Übernehmen</button>
+    </details>
+  </dialog>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

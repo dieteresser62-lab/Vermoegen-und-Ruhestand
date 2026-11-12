@@ -339,9 +339,9 @@ export function update(options = {}) {
         const projected = nextYearBudget?.displayEvaluation;
         const uiDataForRenderer = { ...buildBalanceRendererPayload(projected?.modelResult || modelResult,
             projected ? { ...projected.inputData, referenceYear: nextYearBudget.targetYear } : previewInputData),
-            nextYearBudget, marketPreview: evaluation.marketPreview,
+            nextYearBudget, marketPreview: evaluation.marketPreview, careNeeds: projected ? projected.careNeeds : calculation.careNeeds, careHint: calculation.careHint,
             // Nur Budget und Empfehlung nutzen das Folgejahr; Bedarf und Diagnose bleiben beim Planjahr.
-            ...(projected ? { currentYear: { ...buildBalanceRendererPayload(modelResult, previewInputData),
+            ...(projected ? { currentYear: { ...buildBalanceRendererPayload(modelResult, previewInputData), careNeeds: calculation.careNeeds,
                 balanceAlarmActive: modelResult.diagnosis?.general?.alarmActive === true,
                 profileActionResults: profilverbundRuns?.map(run => ({ profileId: run.profileId,
                     name: run.name, action: run.ui.action, input: run.input, spending: run.ui.spending, targetLiquidity: run.ui.zielLiquiditaet }))

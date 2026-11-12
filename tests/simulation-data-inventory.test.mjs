@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { GERMAN_COHORT_LIFE_TABLE } from '../app/simulator/german-cohort-life-table.js';
 import {
     assertSimulationDataValueHash,
     evaluateSimulationDataSourceGate,
@@ -328,6 +329,7 @@ console.log('✓ historical series hashes OK');
 console.log('Test 6: exported static data values match their inventory SHA-256');
 const staticValues = {
     mortality_table: MORTALITY_TABLE,
+    cohort_life_table: GERMAN_COHORT_LIFE_TABLE.qx,
     care_grade_taxonomy: {
         grades: SUPPORTED_PFLEGE_GRADES,
         labels: PFLEGE_GRADE_LABELS

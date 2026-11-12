@@ -5,6 +5,8 @@ import { recordMonteCarloCareNeedYear } from '../mc-run-metrics.js';
 import { resolveSimulatorCumulativeInflationFactor, resolveMonteCarloCape, simulateOneYear } from '../simulator-engine-wrapper.js';
 import { computeRentAdjRate } from '../simulator-portfolio.js';
 import { resolveDynamicFlexRunnerHorizon } from '../dynamic-flex-runner-horizon.js';
+import { residentialSpending } from '../simulator-residential-care.js';
+import { isFirstDeathYear, savedHomeFloorShares } from '../simulator-survivor.js';
 import { normalizeTechnicalPathError } from './batch.js';
 /** @param {import('./path-state.js').YearContext} context */
 export function decideAnnualYear(context) {
@@ -27,9 +29,17 @@ export function decideAnnualYear(context) {
     // Measure the exact modelled care addition passed to the engine.
     // It is a need, not an attributable depot cash flow. Real values use
     // the same start-price factor as the current simulator year.
+    // FR-72 Punkt 18: netto, also Pflegeausgaben (Zusatz zu Hause, im Heim Heimkosten und eigene Ausgaben)
+    // minus eingesparter Grundbedarf je Person. Der Tracker zählt negative Jahreswerte als 0.
+    /** @param {number} cost
+     * @param {import('../../../typcheck/rechenkern').CareMeta|null} care */
+    const careSpending = (cost, care) => residentialSpending(care) ? cost + residentialSpending(care) : cost;
+    const household = { p1Alive: context.p1Alive, p2Alive: context.p2Alive, care: { p1: context.yearCareP1, p2: context.yearCareP2 } };
+    const savedFloor = savedHomeFloorShares(context.inputs, context.simState.baseFloor, household,
+        isFirstDeathYear(context.hasPartner, household, /** @type {{survivor?: {deathYearIndex?: number}}} */ (context.simState), context.simulationsJahr));
     recordMonteCarloCareNeedYear(context.careNeedTracker, {
-        p1CareAdditionalNeedNominalEur: context.careCostP1.zusatzFloor * (context.p1Alive ? 1 : .5),
-        p2CareAdditionalNeedNominalEur: (context.careCostP2?.zusatzFloor || 0) * (context.p2Alive ? 1 : .5),
+        p1CareAdditionalNeedNominalEur: careSpending(context.careCostP1.zusatzFloor, context.yearCareP1) * (context.p1Alive ? 1 : .5) - savedFloor[0],
+        p2CareAdditionalNeedNominalEur: careSpending(context.careCostP2?.zusatzFloor || 0, context.yearCareP2) * (context.p2Alive ? 1 : .5) - savedFloor[1],
         priceFactor: resolveSimulatorCumulativeInflationFactor(context.simState)
     });
 

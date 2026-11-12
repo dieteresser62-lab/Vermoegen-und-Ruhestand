@@ -17,6 +17,8 @@ import { buildHistoryRecoveryHtml, buildPersonHistoryHtml, buildPersonHistoryDet
 import { formatDisplayNumber, formatDisplayDate } from '../shared/designsystem-number-format.js';
 import { escapeHtml } from '../shared/security-utils.js';
 import { STARTUP_PRICE_SESSION_KEY } from './tranchen-startup-prices.js';
+import { buildHomeGroupsHtml } from './tranchen-manager-immobilien.js';
+import { splitHintHtml } from './tranche-split-hint.js';
 import { householdPlanSummary } from '../shared/household-plan-presentation.js';
 
 export function renderManagerPlanSummary(doc, values) {
@@ -62,7 +64,7 @@ export function renderManagerView(doc, view = getManagerView(doc)) {
         tab.setAttribute('tabindex', selected ? '0' : '-1');
     }
     const selected = tabs.find(tab => tab.getAttribute('aria-selected') === 'true');
-    for (const [id, kind] of [['managerPlanPanel', 'plan'], ['managerPersonPanel', 'person'], ['managerHistoryPanel', 'history']]) {
+    for (const [id, kind] of [['managerPlanPanel', 'plan'], ['managerPersonPanel', 'person'], ['managerHistoryPanel', 'history'], ['managerCarePanel', 'care']]) {
         const panel = doc.getElementById(id);
         if (!panel) continue;
         panel.hidden = view.kind !== kind;
@@ -83,6 +85,8 @@ export function renderManagerProfiles(doc, projection) {
         const planName = ordered.some(profile => profile.belongs) ? 'Haushalt & Plan' : `Plan · ${active?.name || ordered[0]?.name || ''}`;
         const tab = (id, label, attributes, selected, panel, avatar = '') => `<button type="button" id="${escapeHtml(id)}" role="tab" class="ds-button pv-tab" ${attributes} aria-selected="${selected}" tabindex="${selected ? 0 : -1}" aria-controls="${panel}">${avatar}<span>${escapeHtml(label)}</span></button>`;
         const html = tab('managerPlanTab', planName, 'data-manager-view="plan"', view.kind === 'plan', 'managerPlanPanel')
+            // PFA-10: Pflegewerte des Haushalts als eigener Reiter neben Haushalt & Plan.
+            + tab('managerCareTab', 'Pflege', 'data-manager-view="care"', view.kind === 'care', 'managerCarePanel', '<svg class="pv-avatar-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>')
             + ordered.map((profile, index) => tab(`managerPersonTab-${index + 1}`, profile.name, `data-manager-profile="${escapeHtml(profile.id)}"`, view.kind === 'person' && view.profileId === profile.id, 'managerPersonPanel', renderManagerAvatar(profile, true))).join('')
             + tab('managerHistoryTab', 'Verlauf', 'data-manager-view="history"', view.kind === 'history', 'managerHistoryPanel', '<svg class="pv-avatar-small" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 17l6-6 4 3 8-9"/></svg>');
         if (nav.innerHTML !== html) nav.innerHTML = html;
@@ -357,7 +361,7 @@ export function buildTranchenTableHtml(tranchen, { context = null, profileId = n
                 <td>${formatDisplayNumber(t.shares, { fractionDigits: 3, minimumFractionDigits: 0 })}</td>
                 <td>${formatDisplayNumber(t.purchasePrice, { unit: 'price', fractionDigits: 2 })}</td>
                 <td>${formatDisplayNumber(t.currentPrice, { unit: 'price', fractionDigits: 2 })}
-                    <small class="pv-quote-date">${date ? `Kurs ${formatQuoteStamp(t, date)}` : 'Kursdatum unbekannt'}</small></td>
+                    <small class="pv-quote-date">${date ? `Kurs ${formatQuoteStamp(t, date)}` : 'Kursdatum unbekannt'}</small>${splitHintHtml(t, context)}</td>
                 <td>${formatMoney(t.costBasis)}\u00a0€</td>
                 <td>${formatMoney(t.marketValue)}\u00a0€</td>
                 <td class="${gain === 0 ? '' : gain > 0 ? 'positive' : 'negative'}">${formatSignedMoney(gain)}\u00a0€<small class="pv-gain-percent">${formatSignedPercent(gainPct)}</small></td>
@@ -409,8 +413,7 @@ export function renderTranchenTable(container, tranchen, options = {}) {
     /** @type {{tranche: object, history: object} | undefined} */
     let detail;
     const cash = options.cash ?? 0;
-    const homes = propertyParts([{ values: { immobilien: options.immobilien || [] } }]);
-    const total = cash + homes.total + tranchen.reduce((sum, tranche) => sum + (Number(tranche.marketValue) || 0), 0);
+    const total = cash + propertyParts([{ values: { immobilien: options.immobilien || [] } }]).total + tranchen.reduce((sum, tranche) => sum + (Number(tranche.marketValue) || 0), 0);
     const summary = (key, label, count, value, expandable = false) => `<span class="pv-asset-swatch pv-asset-${key}" aria-hidden="true"></span><strong>${label}</strong><span class="pv-asset-count">${count}</span><span>${formatMoney(value)}\u00a0€</span><span class="pv-asset-share">${formatDisplayNumber(total > 0 ? value / total * 100 : 0, { fractionDigits: 1 })}\u00a0%</span><span class="pv-asset-arrow" aria-hidden="true">${expandable ? '▸' : ''}</span>`;
     const groups = ['aktien_alt', 'aktien_neu', 'geldmarkt', 'gold', 'anleihe'].map(key => [key, CLASSIFICATION_LABELS[key]]).map(([key, label]) => ({ key, label: key === 'aktien_alt' ? 'Aktien · Altbestand' : key === 'aktien_neu' ? 'Aktien · Neubestand' : label.category, items: tranchen.filter(t => t.type === key) }));
     const unknown = tranchen.filter(t => !Object.hasOwn(CLASSIFICATION_LABELS, t.type));
@@ -418,7 +421,7 @@ export function renderTranchenTable(container, tranchen, options = {}) {
     container.innerHTML = `<div class="pv-asset-list"><div class="pv-asset-row pv-asset-headings" aria-hidden="true"><span></span><span>Anlageform</span><span>Tranchen</span><span>Wert</span><span>Anteil</span><span></span></div>
         <div class="pv-asset-row pv-cash-row">${summary('cash', 'Tagesgeld', '—', cash)}</div>
         ${groups.filter(group => group.items.length).map(group => `<details class="pv-asset-group" data-asset-group="${group.key}" ${opened.has(group.key) || group.items.some(t => t.trancheId === options.expandedId || options.strategyWarnings?.some(warning => warning.profileId === options.profileId && warning.trancheIds.includes(t.trancheId))) ? 'open' : ''}><summary class="pv-asset-row">${summary(group.key, group.label, group.items.length, group.items.reduce((sum, t) => sum + (Number(t.marketValue) || 0), 0), true)}</summary><div class="pv-asset-tranches">${buildTranchenTableHtml(group.items, { ...options, onDetail: (tranche, history) => { detail = { tranche, history }; } })}</div></details>`).join('')}
-        ${[['homeSelf', 'Immobilien selbst genutzt', homes.self], ['homeRented', 'Immobilien vermietet', homes.rented]].filter(([, , value]) => value > 0).map(([key, label, value]) => `<div class="pv-asset-row">${summary(key, label, '—', value)}</div>`).join('')}
+        ${buildHomeGroupsHtml(options.immobilien || [], { summary, opened, view: options.homeView })}
         <div class="pv-asset-row pv-asset-total">${summary('total', 'Gesamtvermögen', '—', total)}</div>
         </div>${!tranchen.length ? buildEmptyTranchenHtml() : ''}`;
     if (container.dataset) container.dataset.profileId = options.profileId;
@@ -426,6 +429,7 @@ export function renderTranchenTable(container, tranchen, options = {}) {
     const host = container.querySelector?.('.pv-course-chart') || section;
     const region = host?.closest?.('.table-scroll') || container.querySelector?.('.table-scroll');
     if (host && detail) detailBindings.set(container, bindTrancheHistoryChart(host, detail.tranche, detail.history, { region, detail: section }));
+    if (container.ownerDocument && container.querySelector?.('[data-split-hint]')) bindInfoPopovers(container.ownerDocument, { root: container });
 }
 
 export function ensureReconciliationCashControls(doc = document) {
@@ -556,8 +560,8 @@ export function renderManagerPersonData(doc, profile) {
     const health = v.healthBucket || { enabled: false };
     const money = value => `${formatMoney(value)} €`;
     const pct = value => formatDisplayNumber(value, { fractionDigits: 1 });
-    const adjustment = v.rentenanpassungArt === 'fix' ? `${pct(v.rentenanpassungPct)} % Rentenanpassung` : v.rentenanpassungArt === 'cpi' ? 'Rente folgt Inflation' : 'Rente folgt Lohnentwicklung';
-    text('managerPersonSummary', `${dates?.identity || 'Geburtsdatum fehlt oder ist ungültig'}${v.careToday?.grade ? ` · Pflegegrad ${v.careToday.grade}` : ''} · ${(profile.currentIncome?.pensionStatus?.startsWith('Rente') ? profile.currentIncome.pensionStatus : profile.currentIncome?.status) || ''} · ${adjustment} · Kirchensteuer ${pct(v.kirchensteuerPct)} %`);
+    // UR-1: Die Rentenanpassung steht bei der Rente, nicht mehr in der Kopfzeile.
+    text('managerPersonSummary', `${dates?.identity || 'Geburtsdatum fehlt oder ist ungültig'}${v.careToday?.grade ? ` · Pflegegrad ${v.careToday.grade}` : ''} · ${(profile.currentIncome?.pensionStatus?.startsWith('Rente') ? profile.currentIncome.pensionStatus : profile.currentIncome?.status) || ''} · Kirchensteuer ${pct(v.kirchensteuerPct)} %`);
     text('managerPersonInflowsSummary', '');
     text('managerAssetsSummary', v.goldAktiv ? `Ziel ${pct(v.goldZiel)} % · Floor ${pct(v.goldFloor)} % · Band ± ${pct(v.goldBand)} % · ${v.goldSteuerfrei ? 'steuerfrei' : 'steuerpflichtig'}` : 'aus');
     text('managerCareSummary', health.enabled ? `aktiv · Ziel ${money(health.initialAmount)} · ab Pflegegrad ${health.triggerMinGrade}` : 'inaktiv · Ziel innerhalb der Liquidität');

@@ -17,6 +17,7 @@ import { loadStoredBalanceStateFromData } from '../profile/profile-state.js';
 import { renderManagerPlanComparison, renderManagerPlanSummary } from './tranchen-manager-renderer.js';
 import { bindHouseholdPlanDynamicFlex } from '../shared/household-plan-dynamic-flex.js';
 import { isCapePlausible } from '../shared/annual-marketdata.js';
+import { refreshCareHints } from '../shared/care-hint.js';
 
 /** @param {string} path @returns {string} */
 export const managerPlanFieldId = path => 'managerPlan_' + path.replaceAll('.', '_');
@@ -172,6 +173,8 @@ export function createManagerHouseholdPlan({ doc, getProfileId, storage = persis
             const names = scope?.ids.map(id => registry?.profiles[id]?.meta.name || id) || [];
             text('managerPlanScope', scope?.kind === 'household' ? `Haushalt: ${names.join(' + ')}` : `${names[0] || '—'} (allein gerechnet)`);
             projectFields(true);
+            // FR-73 Punkt 10: Hinweis beim Grundbedarf aus dem gespeicherten Haushalt; der Plan selbst bleibt unberührt.
+            refreshCareHints(doc, { storage });
             // Rückmeldungen desselben Editors sind kein Verwerfen der Auswahl.
             if (previousScope !== scope?.key || previousOrigin !== origin) dynamic?.reset();
             else dynamic?.sync();
@@ -205,6 +208,8 @@ export function createManagerHouseholdPlan({ doc, getProfileId, storage = persis
                 confirmed = entry; inFlightChanges = null; saved = true;
                 if (revision === submittedRevision) projectFields();
                 safeComparison();
+                // Gutachten PFA-3, Befund 2: Nach jeder gespeicherten Planänderung die Pflegehinweise beider Karten neu projizieren.
+                refreshCareHints(doc, { storage });
             } catch (caught) {
                 inFlightChanges = null; retryChanges = batch; error = caught.message;
                 if (revision === submittedRevision) projectFields(true);

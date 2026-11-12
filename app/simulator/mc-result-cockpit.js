@@ -1,6 +1,7 @@
 "use strict";
 
 import { focusSelectedScenario } from './scenario-log-view.js';
+import { effectiveMonteCarloDurationValue } from './monte-carlo-duration.js';
 import { openWorkshopReplay } from './simulator-workshop-ui.js';
 import { activateSimulatorTab } from './simulator-main-tabs.js';
 import { bindResultInfoPopups } from './results-renderers.js';
@@ -128,7 +129,7 @@ function readDisplayValue(documentRef, id) {
 export function updateMonteCarloSetupSummary({ documentRef = globalThis.document } = {}) {
     const values = {
         mcSetupSummaryRuns: readDisplayValue(documentRef, 'mcAnzahl').replace(/^\d+$/, value => Number(value).toLocaleString('de-DE')),
-        mcSetupSummaryDuration: readDisplayValue(documentRef, 'mcDauer'),
+        mcSetupSummaryDuration: effectiveMonteCarloDurationValue(documentRef?.getElementById?.('mcDauer')) || '—',
         mcSetupSummaryMethod: getMethodLabel(documentRef?.getElementById?.('mcMethode')),
         mcSetupSummarySeed: readDisplayValue(documentRef, 'mcSeed'),
         mcSetupSummaryStress: documentRef?.getElementById?.('stressPreset')?.value

@@ -373,7 +373,7 @@ export function createAnnualCoordinator({ storage = persistenceStorage, persiste
             check();
             if (!confirmation) return { status: 'cancelled' };
             // Nur den bestätigten Beschluss mitnehmen, keine Abrufresultate oder UI-Sitzung.
-            confirmedDecision = structuredClone({ cash: confirmation.cash, careValues: confirmation.careValues,
+            confirmedDecision = structuredClone({ cash: confirmation.cash, careValues: confirmation.careValues, careToday: confirmation.careToday,
                 ...(confirmation.yearHigh ? { yearHigh: confirmation.yearHigh } : {}),
                 adoptedPlanPatch: options.adoptedPlanPatch ?? confirmation.adoptedPlanPatch });
             if (base !== JSON.stringify(captureAnnualRecords(storage))) throw new Error('Die Jahresquellen wurden während der Bestätigung geändert.');
@@ -404,7 +404,7 @@ export function createAnnualCoordinator({ storage = persistenceStorage, persiste
             metadata = { ...metadata, pendingCommit: { ...metadata.pendingCommit, phase: 'validating' } };
             operation.commit('validating'); await persistMetadata(metadata);
             const draft = prepareAnnualDraft({ targetYear, marketData: prepared.marketData, yearHigh: confirmation.yearHigh, scope, storage, now: () => date });
-            const committed = await commit(/** @type {import("../../typcheck/speicher-integration.js").AnnualCommitOptions} */ ({ draft, cash: confirmation.cash, careValues: confirmation.careValues, adoptedPlanPatch: options.adoptedPlanPatch ?? confirmation.adoptedPlanPatch,
+            const committed = await commit(/** @type {import("../../typcheck/speicher-integration.js").AnnualCommitOptions} */ ({ draft, cash: confirmation.cash, careValues: confirmation.careValues, careToday: confirmation.careToday, adoptedPlanPatch: options.adoptedPlanPatch ?? confirmation.adoptedPlanPatch,
                 engineApi: api, navigationOperation: operation, now: () => date, isCurrent: () => context() === capturedContext }));
             if (!committed.completed?.metadata || JSON.stringify(readState(storage).annualPeriodMetadata) !== JSON.stringify(committed.completed.metadata)) throw new Error('Der Jahresreadback wurde nicht bestätigt.');
             const calculation = committed.result;

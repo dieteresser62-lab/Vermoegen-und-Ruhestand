@@ -75,6 +75,14 @@ for (const age of [18, 30, 50, 65, 80, 95, 100]) {
 }
 assertClose(MORTALITY_TABLE.m[65], 0.014951194938233688, 1e-15, 'Male age-65 qx should match Destatis');
 assertClose(MORTALITY_TABLE.w[65], 0.008076907733749495, 1e-15, 'Female age-65 qx should match Destatis');
+// FR-75: Laufzeitziel ist die Kohortentafel V2; die Periodentafel bleibt für FR-41 und Aufrufer ohne Geburtsjahr.
+assertEqual(GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT.revision, '2026-11-12.2', 'Contract revision for FR-75 and LE-1b (care today)');
+assertEqual(mortality.target.tableType, 'cohort', 'Runtime target is the cohort table');
+assertEqual(mortality.target.variant, 'V2', 'Fixed variant V2 (mittel)');
+assertEqual(mortality.target.variantSelectable, false, 'No variant selection');
+assertEqual(mortality.target.tailAssumption.startAge, 100, 'Cohort tail starts at 100');
+assertEqual(GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT.care.baseMortalityAdjustment.method, 'markov_exact_per_person_R2',
+    'Base mortality without care is adjusted exactly per person');
 console.log('✓ mortality semantics and marker profiles OK');
 
 console.log('Test 3: care prevalence observations never become transition probabilities');
@@ -145,7 +153,11 @@ assertEqual(RUNTIME_CARE_ENTRY_MODEL, PFLEGE_GRADE_PROBABILITIES, 'Runtime shoul
 const diagnostics = createDemographyCareSurvivorDiagnosticsV1();
 assertEqual(diagnostics.contractSchemaVersion, GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT.schemaVersion, 'Diagnostics should expose contract schema');
 assertEqual(diagnostics.hashes.mortalityTableHash, GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT.hashes.mortalityTableHash, 'Diagnostics should expose mortality hash');
-assertEqual(diagnostics.mortality.tableType, 'period', 'Diagnostics should expose period-table semantics');
+assertEqual(diagnostics.mortality.tableType, 'cohort', 'LE-1b: Run evidence names the cohort target table');
+assertEqual(diagnostics.mortality.variant, 'V2', 'LE-1b: Run evidence names variant V2');
+assertEqual(diagnostics.mortality.cohortProjection, true, 'LE-1b: Run evidence names the cohort projection');
+assertEqual(diagnostics.mortality.qxTableHash, GERMAN_DEMOGRAPHY_CARE_SURVIVOR_CONTRACT.mortality.target.qxTableHash, 'LE-1b: Run evidence names the target table hash');
+assertEqual(diagnostics.mortality.careCalibrationTable.tableType, 'period', 'Period table stays visible as care calibration table');
 assertEqual(diagnostics.care.observedPrevalenceRuntimeRole, 'context_only_not_runtime_validation_or_transition_probability', 'Diagnostics should expose the prevalence boundary');
 assertEqual(diagnostics.survivor.defaultMode, 'percent', 'Diagnostics should expose survivor default');
 console.log('✓ runtime projection and diagnostics OK');

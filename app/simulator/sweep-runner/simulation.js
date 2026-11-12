@@ -14,6 +14,7 @@ import { resolveDynamicFlexRunnerHorizon } from '../dynamic-flex-runner-horizon.
 import { applyTailRiskOverlay, createTailRiskSchedule } from '../tail-risk-overlay.js';
 import { initializeMonteCarloSamplingStateV1, pickMonteCarloStartYearIndex, recordMonteCarloSampledYearV1, recordMonteCarloSamplingStartV1, sampleMonteCarloYearV1, buildYearSamplingConfig, resolveMonteCarloSamplingContractV1 } from '../mc-year-sampling.js';
 import { cloneStressContext } from '../simulator-sweep-utils.js';
+import { isFirstDeathYear, savedHomeFloorShares } from '../simulator-survivor.js';
 
 /** @param {import('../../../typcheck/rechenkern').StressContext|null} stressContext */
 function isConditionalStressActive(stressContext) {
@@ -235,6 +236,9 @@ export function runSweepSimulation({
         wasJointAliveAtPreviousHorizon = jointAliveThisYear;
         yearData.capeRatio = resolvedCapeRatio;
 
+        // FR-72 Punkt 18: eingesparter Grundbedarf für die Netto-Pflegesumme, vor der Jahresrechnung.
+        const savedHomeFloor = savedHomeFloorShares(inputs, simState.baseFloor, lifeYear.householdContext, isFirstDeathYear(lifeState.hasPartner,
+            { p1Alive, p2Alive }, /** @type {{survivor?: {deathYearIndex?: number}}} */ (simState), simulationsJahr));
         const result = /** @type {import('../../../typcheck/rechenkern-integration').SimulateOneYear} */ (/** @type {unknown} */ (simulateOneYear))(
             { ...simState },
             adjustedInputs,
@@ -257,7 +261,8 @@ export function runSweepSimulation({
                 previousLife,
                 horizonResolution,
                 tailRiskOverlay,
-                result
+                result,
+                savedHomeFloor
             }
         );
         previousLife = {

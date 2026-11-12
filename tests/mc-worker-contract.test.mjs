@@ -331,9 +331,9 @@ for (const pensionOnly of [false, true]) {
         const firstIncomeYear = result.runMeta.find(run => run.index === 0).logDataRows[0];
         assertEqual(firstIncomeYear.sonstige_einkuenfte, pensionOnly ? 0 : 48000,
             'FR-42: Echter Worker unterscheidet Rente und feste sonstige Einkünfte');
-        assertClose(firstIncomeYear.geplante_ausgaben, 40400, 1e-6, 'FR-43: Echter Worker bezahlt feste und einmalige Ausgaben im selben Jahrespfad');
-        if (pensionOnly) assertClose(firstIncomeYear.einkuenfte_gespart, 12000, 1e-6,
-            'EK-1d: Echter Worker schreibt den reinen Rentenrest gut');
+        assertClose(firstIncomeYear.geplante_ausgaben, 35000, 1e-6, 'FR-43: Echter Worker bezahlt die einmalige Ausgabe; die feste steckt im Grundbedarf');
+        if (pensionOnly) assertClose(firstIncomeYear.einkuenfte_gespart, 12000 - 5400, 1e-6,
+            'EK-1d: Echter Worker schreibt den reinen Rentenrest nach der festen Ausgabe im Grundbedarf gut');
         const direct = await runMonteCarloChunk({ inputs, monteCarloParams, widowOptions, useCapeSampling: false,
             runRange: { start: 0, count: monteCarloParams.anzahl }, logIndices: [0], engine: EngineAPI });
         assertEqual(JSON.stringify(result.runMeta), JSON.stringify(direct.runMeta), 'FR-42: Worker und Direktweg bleiben bytegleich');
@@ -935,7 +935,7 @@ for (const inputs of [{ ...createInputs(), minimumFlexAnnual: 10000 }, { ...crea
         assertEqual(JSON.stringify(message.runMeta), JSON.stringify(serial.runMeta), 'FR-45: sämtliche Pflege-/Einkommenslogs im Worker bytegleich');
         const first = message.runMeta[0].logDataRows.find(row => row.recordType === 'financial_year');
         assertEqual(first.CareP1_Grade, 2, 'FR-45: Worker startet unter 65 mit PG2');
-        assertClose(first.CareP1_Cost, 0, 1e-7, 'FR-47: Worker ergänzt im heutigen Grad keine Kosten');
+        assertClose(first.CareP1_Cost, 13200, 1e-7, 'FR-73: Worker rechnet den heutigen Grad ab Jahr 1');
         assertEqual(first.sonstige_einkuenfte, 347 * 12, 'FR-45: Worker rechnet Pflegegeld als persönliche Einkunft');
     } finally { await terminateWorker(worker); }
 }

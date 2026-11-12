@@ -1,0 +1,388 @@
+{
+ "schemaVersion": "LE1KO2ExpectationDeltasV1",
+ "baseCommit": "0e98826d",
+ "mergeParents": [
+  "59062858",
+  "70053ed2"
+ ],
+ "date": "2026-11-12",
+ "reason": "Merge LE-1 (FR-75/FR-41) und KO-2 (Ergänzung FR-76): Jan und Lena sowie die Dynamic-Flex-Voreinstellungen rechnen mit dem Horizont der Kohortentafel (LE-1) und der um die Fondskosten geminderten erwarteten Rendite (KO-2). Beide Regeln wirken auf dasselbe Budget, deshalb weicht der vereinte Wert von beiden Teilwerten ab. Gegenprobe: Mit k = 0 in der erwarteten Rendite des Dynamic Flex ergibt der vereinte Stand für alle Paare genau den LE-1-Wert; der Paritätsbeleg ändert sich nur, weil er k mitführt (Dreiwegevergleich: jede Änderung stammt aus LE-1 oder KO-2).",
+ "hashes": {
+  "c7bf57d584f5c4fb0f80f7a9dd63da0f6ed63f9d4ab98f96ecb32fce6f9353a9": "5bef9660cb5d9c8cd1770ac7f5d5e6e095280f714e7ce3de3ba34b0c8b9436a1",
+  "2f267b77b611b184ceecd86f78bc2071dc886172f5486419c47526b7371caec9": "9c0f125bc66cf5ce0e8206e5ffaeaf89d37dda63ad29007ba1e0e6cb2aef1125",
+  "b70d11fdde6f766e47b77d2d01c3645cd8e53f702bd1d3e0190a097b45c4007b": "d3ef7a0380e6495665ea92117ceacc7daa34b36c6d2c2db96b8a8e389b134e50",
+  "df98f2ab0a3a59d2cd860f056b57b5ffabe5874215de1f86235951db2fa9fc18": "69415a9370d56c193752703feeeced72a291efc698751b28c5a1ccbfca1dc600",
+  "81e55f049b1eebe384bc97daf3b460b0557f6ba6a45f5ca7e77a77633ee5a8bc": "f032184ea4be1cb1a90f16aab565ce79c4014aa31b4d3f5594bb288e900d6b68",
+  "45d144662c00c097805fdca8d4c54656195de84d95dfddb6e3112162cc6d5521": "272cefcff10fcab793882600fd6df36d5b46ba5682a8f2cf97b8b517e58195d4",
+  "df70f34c00dfcc24d75bc9603d0f2a8673abeaccd0dc2cc8dfaf707653664633": "9a8e889f70a665039f5fccf77920fe505ed3611ced39c8c397e5dc431237c3ed",
+  "db9d984565f7a15d47d152f5e735065842a18e2a06271638e9b7fad17ffc9b19": "b31d5742edc60ae4bd1345682e4b5c0ca38131e2fb1783ed8156b96a5f9fe3ae",
+  "7770085cb642c8518d423f8209c3bebd08f61748af56c12d555456ca7eb355c7": "7be34d640f1cd02fe6aae3dad917160efeb23e8f6170767d8e1313d70586953a",
+  "7c0096e2a3a95ef47ba3861fa820674517b8f8759dfd164067decdf1b8e6a252": "c59e9fbe3588450753beb047673cb565fd6b454da7c60ecca1579fb816ff0382",
+  "66d11ab4bbb965d47fd91eba26a06399c8e116b8d77ca39ffc6f05764df4afc6": "1f814c198610ff205137e2687017ca76a91af3b8d8ec04a479f6c9beeea97fc8",
+  "9d53463a383a2fa34089248b15faa1db76a7c07297ab5ac64d52312169bf343f": "2049b2b3e711248971daa4e11eb0e5fc464badccce5cd2b07f1746186a39e351",
+  "37d18c8c88fa20d2515228cba10605cdfb787e4a4a83685a13858c2f955ec415": "b7d1e9a042b360f15031eb7395fca27ef2fa414c65979e1a3d76577cf8ad182c",
+  "d3a783c7e061c38313d0e5c5fe86eecbb9d63676d12712b2150a446967bd2bcd": "f694a6d41ba578fa1062c24b4ed22870eae749d4cde1183342ee0d7b404c53f3",
+  "2b2d89d58c4fd36d798a1b30baa8ab47165ad05875ace633f3188c9d6924863a": "4fd300bccbcc39d13cbd31e41218d745b9209fe95bc43ab358ea7445d1982d69",
+  "9607aa5ebfb2efe709190267d07e6386f3bae3df8af1b076bc269d0060959c3e": "95340d942a49acc8d3ea20fa4377b67f5a05d35d444f8d46f1e4d60c7b3dea94",
+  "2212e4b3c8da8d04e6cae1a7986e7b53de82dec765ecfcd85f4381d55e784c29": "56210b4f8ffd18be2d540f1e68190050b35bd44553cc8e8f2ed1f461c6db6795",
+  "6954491105a27dd791ad95cfa55f243a244de65effc1cea3016e842d5aa5d4bf": "c7ac02d2eb2e06aa2975c0c3d2ae43e99ee6712eaba2bb691084620890b5ce58",
+  "98df5262baf9a41d0bef1961acaff8247882923e299752e8fcb4cadb201b05b9": "eaca2a428db9b85d5262e85fcfc5ef710309e1c66712c966c13bbeb1dc5cf50d",
+  "fb674e19857659397271b2dffabb9441eb4f4bb349a80734c0268ccb30334fcf": "0612b7484c830846f5ea5085df592810be5453dbf728da55e1ba97ded65b24cd",
+  "dac57b2bfe014ac417cacbe7bfb84930e86b0d0393889701176a06d29833d880": "84e112bcad02c88a87ee1067fed651abef468ae075ba47f11c0b770ff89dbfb6",
+  "f309b346cab9594e0ed0c107960f0fb9686da3969c8661c6a953907ecea33d22": "9f438ee788cf84b1ef1e3792841bf163bad6bd7107d8d098c12e7c7ab1987fa8",
+  "c935c015150049de22d14e414b13c11d3ba0241d82efd7dbee700f99190b97ab": "052d6d6c9a8fbd598ab51207231b133a66a11531f4dd5ea1ff3ae1a92847a7d9",
+  "2b7f929c6901383a3df8a0f8ff48e44690b7d10a0fea50785f99480ca1991973": "3b0cfe81164ee7c5aef855ab63ef486367523d1266640efcac4a69dfe1a38499",
+  "e409ee19a12f16d8d05ba8233592196cabb996f019ff6f69ab8d72aeaad4662c": "04132cee3e592e2aa0020254fc182a450fe0de896b113db1ba3482134ac08ecc",
+  "c67807edeb7648b0152e11e10fd2ea0cebdce3f32a2cd7245b7c89ec1ee5dea0": "858d31c0e431f6d16246917387867c4e9dca1c2b3f4cec695c059ed44b7e3e44",
+  "058ef6be4b5cc6e1982787814eb35d36a95d802050028990deb5e7706abcc569": "4f8903f34bf668a049d9ee182fe5fc339244e350ad7fd69f05ee8e16dae3368a",
+  "051d1c62e4b00b7180e545a849daeda4627a3052a02d9a7d8402ffa9421dd5ab": "64ee46532222a10c7605361d0e773718bce60439623b6a9b226be4860a793b42",
+  "4440a5e44a36b5130993259bcbf322145aab1af09ddfb093878907f1b31e7116": "3aca45dde2251ef535f761d83f7ff8f1f2400201648c72a10cc99b3a24a9715a",
+  "4a04de53fec9c9fdef39b43f208cb2970a61521dcf82ba0cf28478e0848dc662": "5c1acb5611b35f17f81905184c251c4cb9d4b5f62ec48b275707ad4cea4804a5"
+ },
+ "evidence": [
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:grund: Startbestand bytegleich",
+   "old": "c7bf57d584f5c4fb0f80f7a9dd63da0f6ed63f9d4ab98f96ecb32fce6f9353a9",
+   "le1": "d5461862428fb6f97e7d832e3c2ac6244bb2e9a2d0c6d1560ab29c6384806f65",
+   "ko2": "0bef3afd5d632c40970210a183e22a162f811e4ab27b42d4ae4157e5700088fe",
+   "new": "5bef9660cb5d9c8cd1770ac7f5d5e6e095280f714e7ce3de3ba34b0c8b9436a1"
+  },
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:grund: Datumssprung bytegleich",
+   "old": "2f267b77b611b184ceecd86f78bc2071dc886172f5486419c47526b7371caec9",
+   "le1": "908b24d709dbec82d42a8c01b7e48a9b58898126a20af3b673954ba9101e1e4c",
+   "ko2": "66be77f4b8d0a4d508579b9342b7e291cd61e5e273e74f7ceb4a15721eae0deb",
+   "new": "9c0f125bc66cf5ce0e8206e5ffaeaf89d37dda63ad29007ba1e0e6cb2aef1125"
+  },
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:grund: Januarbestand bytegleich",
+   "old": "b70d11fdde6f766e47b77d2d01c3645cd8e53f702bd1d3e0190a097b45c4007b",
+   "le1": "e717238be054aaa0f97df35a60e61f7e40d5e8759205ca45336ed8536ab01f60",
+   "ko2": "1245de46d56ea1d8db34316f51ea9228212b2e9a03430df2250a6668eb0e150f",
+   "new": "d3ef7a0380e6495665ea92117ceacc7daa34b36c6d2c2db96b8a8e389b134e50"
+  },
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:halten: Startbestand bytegleich",
+   "old": "df98f2ab0a3a59d2cd860f056b57b5ffabe5874215de1f86235951db2fa9fc18",
+   "le1": "589cb9c4ba8eabda7b57ded92c5289239870960172cd26f522584593f88603f4",
+   "ko2": "a8d0eb80eefe5578689220ee28e5368fb4d78801e8882b231875a7e9745592b9",
+   "new": "69415a9370d56c193752703feeeced72a291efc698751b28c5a1ccbfca1dc600"
+  },
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:halten: Datumssprung bytegleich",
+   "old": "81e55f049b1eebe384bc97daf3b460b0557f6ba6a45f5ca7e77a77633ee5a8bc",
+   "le1": "6495458786cdaa66ab2319c35381c2dcc3ff93965c7b74cf5b368115657dff12",
+   "ko2": "a9878cefb2282f07e7586dd5326d7927ec9a6d496bec9b655f1fa23065ceb21f",
+   "new": "f032184ea4be1cb1a90f16aab565ce79c4014aa31b4d3f5594bb288e900d6b68"
+  },
+  {
+   "test": "ar-3-kurssturz.test.mjs",
+   "assertion": "jan-lena:halten: Januarbestand bytegleich",
+   "old": "45d144662c00c097805fdca8d4c54656195de84d95dfddb6e3112162cc6d5521",
+   "le1": "fabeb4260fd67adf410ff32303cf72418eba29c70726d60923622ac8dc937e55",
+   "ko2": "d27914e0599f0b843f25d0991afb25f2e810026a08d35760efe3de5f5eeb52e0",
+   "new": "272cefcff10fcab793882600fd6df36d5b46ba5682a8f2cf97b8b517e58195d4"
+  },
+  {
+   "test": "asset-strategy.test.mjs",
+   "assertion": "Jan und Lena: vollständige Musterrecords mit belegter FR-57-Anlage",
+   "old": "df70f34c00dfcc24d75bc9603d0f2a8673abeaccd0dc2cc8dfaf707653664633",
+   "le1": "3bcca38764b102acba4ff72227ab4f9fc7001191ed4cbfc30ee8aed68fde748a",
+   "ko2": "905e315fc881a39fc6314572e9e9890a80002e57536124e47b879be9a7835b19",
+   "new": "9a8e889f70a665039f5fccf77920fe505ed3611ced39c8c397e5dc431237c3ed"
+  },
+  {
+   "test": "muster-variants.test.mjs",
+   "assertion": "jan-lena: vollständige Records, Drei-Töpfe-Korrekturen gesondert belegt",
+   "old": "df70f34c00dfcc24d75bc9603d0f2a8673abeaccd0dc2cc8dfaf707653664633",
+   "le1": "3bcca38764b102acba4ff72227ab4f9fc7001191ed4cbfc30ee8aed68fde748a",
+   "ko2": "905e315fc881a39fc6314572e9e9890a80002e57536124e47b879be9a7835b19",
+   "new": "9a8e889f70a665039f5fccf77920fe505ed3611ced39c8c397e5dc431237c3ed"
+  },
+  {
+   "test": "immobilien-empty-bytegleich.test.mjs",
+   "assertion": "Ohne Immobilien: vollständiger Paritätsbeleg mit bisheriger Anzeigebasis bytegleich zum Ausgangsstand",
+   "old": "db9d984565f7a15d47d152f5e735065842a18e2a06271638e9b7fad17ffc9b19",
+   "le1": "490650adc5e58336a3af13609bacc4df8059109cf6cda06bb222ef79950e838a",
+   "ko2": "1ee15c1010aea37e67765d30be56c61ef3168f67b4d8aa781bb02c6a60c92110",
+   "new": "b31d5742edc60ae4bd1345682e4b5c0ca38131e2fb1783ed8156b96a5f9fe3ae"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "jan-lena: vollständige Musterreferenz; Renate mit 3 Töpfen nach FR-58",
+   "old": "7770085cb642c8518d423f8209c3bebd08f61748af56c12d555456ca7eb355c7",
+   "le1": "11ec906ad159338298d5bb77e50ba7552e250f685e46a0209d13eaa225c0119d",
+   "ko2": "c39f0aa36368170fc85bd690c756986178a284ffa99636460f1b153e4fdc07a3",
+   "new": "7be34d640f1cd02fe6aae3dad917160efeb23e8f6170767d8e1313d70586953a"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+   "old": "7c0096e2a3a95ef47ba3861fa820674517b8f8759dfd164067decdf1b8e6a252",
+   "le1": "87e65bf956d0923f84c0eaaa8948e060fb8d5a8551b9962d0e7b92744e9799c2",
+   "ko2": "10f29be1e8d4f93f4587e8efb35fd17241f90d60c2d6d338b43cbdbdd11b56a4",
+   "new": "c59e9fbe3588450753beb047673cb565fd6b454da7c60ecca1579fb816ff0382"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ: vollständiger PM-1c-Backtest und MC-Pfad 0",
+   "old": "66d11ab4bbb965d47fd91eba26a06399c8e116b8d77ca39ffc6f05764df4afc6",
+   "le1": "5831e59ea3f23979604c725f451ab727ee7f13ce38b7270dc9a5c32ed2fa5e36",
+   "ko2": "bc7fbc364d46e6d02a7c131a5da05fa5d75cba63bf3411d55e8e7853a2ee35ae",
+   "new": "1f814c198610ff205137e2687017ca76a91af3b8d8ec04a479f6c9beeea97fc8"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/payload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "9d53463a383a2fa34089248b15faa1db76a7c07297ab5ac64d52312169bf343f",
+   "le1": "bb2799117997ee50b91a5dbc715d864c88895cb2518784ac23a50f02c847ed19",
+   "ko2": "786bb1927f41a5326e8536d2ff4d1f36cda566d45c49ac9ff97201b44b2ec5c5",
+   "new": "2049b2b3e711248971daa4e11eb0e5fc464badccce5cd2b07f1746186a39e351"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/payload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "37d18c8c88fa20d2515228cba10605cdfb787e4a4a83685a13858c2f955ec415",
+   "le1": "5553bbf960a2a0b460d5d6ac3864a812639f9eaad25e7274e72f2fe7a0203226",
+   "ko2": "689d2f099af93896d928edb3049ec4321b70a7e235ff23c371da2e08199d0415",
+   "new": "b7d1e9a042b360f15031eb7395fca27ef2fa414c65979e1a3d76577cf8ad182c"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/payload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "d3a783c7e061c38313d0e5c5fe86eecbb9d63676d12712b2150a446967bd2bcd",
+   "le1": "a15ae736264963d49409874a025e1fc6ef973e7931f628c7c26b02e577b4ac91",
+   "ko2": "2a1434b32b0335e04969fecdaecec88faf528544bcd3976697091d3be82805da",
+   "new": "f694a6d41ba578fa1062c24b4ed22870eae749d4cde1183342ee0d7b404c53f3"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "9d53463a383a2fa34089248b15faa1db76a7c07297ab5ac64d52312169bf343f",
+   "le1": "bb2799117997ee50b91a5dbc715d864c88895cb2518784ac23a50f02c847ed19",
+   "ko2": "786bb1927f41a5326e8536d2ff4d1f36cda566d45c49ac9ff97201b44b2ec5c5",
+   "new": "2049b2b3e711248971daa4e11eb0e5fc464badccce5cd2b07f1746186a39e351"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/legacyPayload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "9d53463a383a2fa34089248b15faa1db76a7c07297ab5ac64d52312169bf343f",
+   "le1": "bb2799117997ee50b91a5dbc715d864c88895cb2518784ac23a50f02c847ed19",
+   "ko2": "786bb1927f41a5326e8536d2ff4d1f36cda566d45c49ac9ff97201b44b2ec5c5",
+   "new": "2049b2b3e711248971daa4e11eb0e5fc464badccce5cd2b07f1746186a39e351"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/legacyPayload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "2b2d89d58c4fd36d798a1b30baa8ab47165ad05875ace633f3188c9d6924863a",
+   "le1": "c34aa4d97ea984a6a34689a679ecfcb20d56cc90524774684645bf8982a83150",
+   "ko2": "fac6f6f39ed9ba26fa35bbea6bb684b8a3c9de7a61b00742b306146be2c08130",
+   "new": "4fd300bccbcc39d13cbd31e41218d745b9209fe95bc43ab358ea7445d1982d69"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/legacyPayload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "d3a783c7e061c38313d0e5c5fe86eecbb9d63676d12712b2150a446967bd2bcd",
+   "le1": "a15ae736264963d49409874a025e1fc6ef973e7931f628c7c26b02e577b4ac91",
+   "ko2": "2a1434b32b0335e04969fecdaecec88faf528544bcd3976697091d3be82805da",
+   "new": "f694a6d41ba578fa1062c24b4ed22870eae749d4cde1183342ee0d7b404c53f3"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "9d53463a383a2fa34089248b15faa1db76a7c07297ab5ac64d52312169bf343f",
+   "le1": "bb2799117997ee50b91a5dbc715d864c88895cb2518784ac23a50f02c847ed19",
+   "ko2": "786bb1927f41a5326e8536d2ff4d1f36cda566d45c49ac9ff97201b44b2ec5c5",
+   "new": "2049b2b3e711248971daa4e11eb0e5fc464badccce5cd2b07f1746186a39e351"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "konservativ: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+   "old": "9607aa5ebfb2efe709190267d07e6386f3bae3df8af1b076bc269d0060959c3e",
+   "le1": "da17eb5b22abaa69816fd4c9c4c967ebbe017cb98d9d55b867de44dde641f186",
+   "ko2": "78ff847b905f5828d0efb3da339fd5d05760a91a22bf33a6d72697bbb6c5a801",
+   "new": "95340d942a49acc8d3ea20fa4377b67f5a05d35d444f8d46f1e4d60c7b3dea94"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+   "old": "2212e4b3c8da8d04e6cae1a7986e7b53de82dec765ecfcd85f4381d55e784c29",
+   "le1": "499d24202b7e25099480a6057805fb5ce8de8dcd1c3a7ecca283eb078cc4fb50",
+   "ko2": "56719e020762d36b823da4eee79753c69d1a893a7ae6028e1c4da459acb61dc6",
+   "new": "56210b4f8ffd18be2d540f1e68190050b35bd44553cc8e8f2ed1f461c6db6795"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen: vollständiger PM-1c-Backtest und MC-Pfad 0",
+   "old": "6954491105a27dd791ad95cfa55f243a244de65effc1cea3016e842d5aa5d4bf",
+   "le1": "4d6e6d83f92c7c3bf512a37aea9ba76317230912f94dd4bcc60f273a6ac0e920",
+   "ko2": "10abd3f44756b72cf35d6a2ed6df9e056f4660e57e2af467298da22aee457c19",
+   "new": "c7ac02d2eb2e06aa2975c0c3d2ae43e99ee6712eaba2bb691084620890b5ce58"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/payload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "98df5262baf9a41d0bef1961acaff8247882923e299752e8fcb4cadb201b05b9",
+   "le1": "2cd9d83f203cf03c865d871392f3cea7ecfbfb90990524b4c04442b7c2e3a810",
+   "ko2": "e78bc022ee4aaaebc939b651bd8c76f2d3d8537d50d708d7dfdaa5189a9568f6",
+   "new": "eaca2a428db9b85d5262e85fcfc5ef710309e1c66712c966c13bbeb1dc5cf50d"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/payload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "fb674e19857659397271b2dffabb9441eb4f4bb349a80734c0268ccb30334fcf",
+   "le1": "46f80845aa31aa6faba4545bcc684a66ec11143b7a26c21b431a82985dc202ae",
+   "ko2": "a98db7431963322b31607b2749fe6cebdd22e72744c5a7f930dd1e2789943a3a",
+   "new": "0612b7484c830846f5ea5085df592810be5453dbf728da55e1ba97ded65b24cd"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/payload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "dac57b2bfe014ac417cacbe7bfb84930e86b0d0393889701176a06d29833d880",
+   "le1": "9f58e234888737d770b9c5b2aa846fa87b109ad650191358d5c3d5600382cd4b",
+   "ko2": "6360e3409522a13e63e347d56460969aeb418748aadd1321efdfcba395b1d30a",
+   "new": "84e112bcad02c88a87ee1067fed651abef468ae075ba47f11c0b770ff89dbfb6"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "98df5262baf9a41d0bef1961acaff8247882923e299752e8fcb4cadb201b05b9",
+   "le1": "2cd9d83f203cf03c865d871392f3cea7ecfbfb90990524b4c04442b7c2e3a810",
+   "ko2": "e78bc022ee4aaaebc939b651bd8c76f2d3d8537d50d708d7dfdaa5189a9568f6",
+   "new": "eaca2a428db9b85d5262e85fcfc5ef710309e1c66712c966c13bbeb1dc5cf50d"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/legacyPayload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "98df5262baf9a41d0bef1961acaff8247882923e299752e8fcb4cadb201b05b9",
+   "le1": "2cd9d83f203cf03c865d871392f3cea7ecfbfb90990524b4c04442b7c2e3a810",
+   "ko2": "e78bc022ee4aaaebc939b651bd8c76f2d3d8537d50d708d7dfdaa5189a9568f6",
+   "new": "eaca2a428db9b85d5262e85fcfc5ef710309e1c66712c966c13bbeb1dc5cf50d"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/legacyPayload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "f309b346cab9594e0ed0c107960f0fb9686da3969c8661c6a953907ecea33d22",
+   "le1": "56ecb594f7f2c5ae08f984f632540e1a6d9802d3756cbb2847345ffc0e3fc6b1",
+   "ko2": "b462cbbc253dbdd5b8414e597cd2612e8e763b9a1d585e6ad488fd797bb35e89",
+   "new": "9f438ee788cf84b1ef1e3792841bf163bad6bd7107d8d098c12e7c7ab1987fa8"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/legacyPayload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "dac57b2bfe014ac417cacbe7bfb84930e86b0d0393889701176a06d29833d880",
+   "le1": "9f58e234888737d770b9c5b2aa846fa87b109ad650191358d5c3d5600382cd4b",
+   "ko2": "6360e3409522a13e63e347d56460969aeb418748aadd1321efdfcba395b1d30a",
+   "new": "84e112bcad02c88a87ee1067fed651abef468ae075ba47f11c0b770ff89dbfb6"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "98df5262baf9a41d0bef1961acaff8247882923e299752e8fcb4cadb201b05b9",
+   "le1": "2cd9d83f203cf03c865d871392f3cea7ecfbfb90990524b4c04442b7c2e3a810",
+   "ko2": "e78bc022ee4aaaebc939b651bd8c76f2d3d8537d50d708d7dfdaa5189a9568f6",
+   "new": "eaca2a428db9b85d5262e85fcfc5ef710309e1c66712c966c13bbeb1dc5cf50d"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "ausgewogen: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+   "old": "c935c015150049de22d14e414b13c11d3ba0241d82efd7dbee700f99190b97ab",
+   "le1": "08545435024497877ecc59293f5e99c7922a63bac6048f2e1ce9e23c12f60e5b",
+   "ko2": "c7e0412910e87b5e77100389cfda1f22bcdb09e863dc3207b6669ba2f4f37368",
+   "new": "052d6d6c9a8fbd598ab51207231b133a66a11531f4dd5ea1ff3ae1a92847a7d9"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv: vollständiger PM-1c-Pfad mit alten Flex-Werten",
+   "old": "2b7f929c6901383a3df8a0f8ff48e44690b7d10a0fea50785f99480ca1991973",
+   "le1": "c6fade41c8f84c351a750685ec536cbf75b98168ca64d21cb45c22bffddf9edf",
+   "ko2": "4b388f27ac2625bc7daf40ebb92913e73a87444e7cb0f81193dfc0c77d7aadf6",
+   "new": "3b0cfe81164ee7c5aef855ab63ef486367523d1266640efcac4a69dfe1a38499"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv: vollständiger PM-1c-Backtest und MC-Pfad 0",
+   "old": "e409ee19a12f16d8d05ba8233592196cabb996f019ff6f69ab8d72aeaad4662c",
+   "le1": "6b85485e3b7299f9310211fd4ab1b1a2c94afb7f6b2666b16c3583342049a587",
+   "ko2": "052ed39fb7f5d8e9e035a1ed4c8e27bed78dc657324043db7cb3721eb02522a1",
+   "new": "04132cee3e592e2aa0020254fc182a450fe0de896b113db1ba3482134ac08ecc"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/payload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "c67807edeb7648b0152e11e10fd2ea0cebdce3f32a2cd7245b7c89ec1ee5dea0",
+   "le1": "77ec2ae6e016cc8eab19f948253b4974b95589e2dfce01fff3511491280a0a0d",
+   "ko2": "6f0342a4fcc9e470f4268dad01fce8f95abaceefc4e041ff5831fe2c163b9458",
+   "new": "858d31c0e431f6d16246917387867c4e9dca1c2b3f4cec695c059ed44b7e3e44"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/payload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "058ef6be4b5cc6e1982787814eb35d36a95d802050028990deb5e7706abcc569",
+   "le1": "7387bf10fc3f0a6f1bfa10f63c21291eb2f90724a5c46e28980272ed9d5f141b",
+   "ko2": "4320a4720e6ae5ca3ed9228fb27bfc8f410a1481760cffe357a36e97515e3f56",
+   "new": "4f8903f34bf668a049d9ee182fe5fc339244e350ad7fd69f05ee8e16dae3368a"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/payload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "051d1c62e4b00b7180e545a849daeda4627a3052a02d9a7d8402ffa9421dd5ab",
+   "le1": "b6b4a7332d1cbf2b46dbe891872fbffeafef78f2139dd54d257684f537515831",
+   "ko2": "b90d6ad38cd0f2759d9140189f2d348d789fd62108f8bca6c381165c7e511868",
+   "new": "64ee46532222a10c7605361d0e773718bce60439623b6a9b226be4860a793b42"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/payload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "c67807edeb7648b0152e11e10fd2ea0cebdce3f32a2cd7245b7c89ec1ee5dea0",
+   "le1": "77ec2ae6e016cc8eab19f948253b4974b95589e2dfce01fff3511491280a0a0d",
+   "ko2": "6f0342a4fcc9e470f4268dad01fce8f95abaceefc4e041ff5831fe2c163b9458",
+   "new": "858d31c0e431f6d16246917387867c4e9dca1c2b3f4cec695c059ed44b7e3e44"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/legacyPayload: EV-1 lässt sämtliche Backtestzeilen bytegleich",
+   "old": "c67807edeb7648b0152e11e10fd2ea0cebdce3f32a2cd7245b7c89ec1ee5dea0",
+   "le1": "77ec2ae6e016cc8eab19f948253b4974b95589e2dfce01fff3511491280a0a0d",
+   "ko2": "6f0342a4fcc9e470f4268dad01fce8f95abaceefc4e041ff5831fe2c163b9458",
+   "new": "858d31c0e431f6d16246917387867c4e9dca1c2b3f4cec695c059ed44b7e3e44"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/legacyPayload: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich",
+   "old": "4440a5e44a36b5130993259bcbf322145aab1af09ddfb093878907f1b31e7116",
+   "le1": "a8e2dec87cbfde167206dd70591c0280ee80818ae57cce76632da744906cd5a3",
+   "ko2": "01c21f567f7baeec3393a2041ab3f9ff9ec74b4732b4f89a446f40e4ea30b9c2",
+   "new": "3aca45dde2251ef535f761d83f7ff8f1f2400201648c72a10cc99b3a24a9715a"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/legacyPayload: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen",
+   "old": "051d1c62e4b00b7180e545a849daeda4627a3052a02d9a7d8402ffa9421dd5ab",
+   "le1": "b6b4a7332d1cbf2b46dbe891872fbffeafef78f2139dd54d257684f537515831",
+   "ko2": "b90d6ad38cd0f2759d9140189f2d348d789fd62108f8bca6c381165c7e511868",
+   "new": "64ee46532222a10c7605361d0e773718bce60439623b6a9b226be4860a793b42"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv/legacyPayload: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen",
+   "old": "c67807edeb7648b0152e11e10fd2ea0cebdce3f32a2cd7245b7c89ec1ee5dea0",
+   "le1": "77ec2ae6e016cc8eab19f948253b4974b95589e2dfce01fff3511491280a0a0d",
+   "ko2": "6f0342a4fcc9e470f4268dad01fce8f95abaceefc4e041ff5831fe2c163b9458",
+   "new": "858d31c0e431f6d16246917387867c4e9dca1c2b3f4cec695c059ed44b7e3e44"
+  },
+  {
+   "test": "planned-inflows.test.mjs",
+   "assertion": "offensiv: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten",
+   "old": "4a04de53fec9c9fdef39b43f208cb2970a61521dcf82ba0cf28478e0848dc662",
+   "le1": "bc9b2153eeb15e185003bcd4cf5e77b19ac7941c7fd7dfb86196797e8e20c8ae",
+   "ko2": "1da046fd837e8687ae9aa5c39bc6914691bb5e8fc22749e88476fc001a57be62",
+   "new": "5c1acb5611b35f17f81905184c251c4cb9d4b5f62ec48b275707ad4cea4804a5"
+  }
+ ]
+}

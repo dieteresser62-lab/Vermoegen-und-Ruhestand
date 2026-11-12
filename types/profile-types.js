@@ -141,6 +141,7 @@
  * @property {number} pflegeMaxDauer
  * @property {number} pflegeKostenDrift
  * @property {number} pflegeRegionalZuschlag
+ * @property {number} [pflegeHeimEigeneAusgaben] FR-72: eigene Ausgaben im Heim, €/Monat je Person; fehlt bei der Vorgabe 500.
  * @property {Object} decumulation
  * @property {string} stressPreset
  * @property {PartnerConfig} partner

@@ -16,10 +16,10 @@ const has = (result, code, severity = 'error') => result.diagnostics.some(d => d
 const rules = '# Schreibregeln\n\n## Verbotene Muster\n- Floskeln: „Im Folgenden“, „Es ist wichtig zu beachten“, „Zusammenfassend“, „spielt eine zentrale/entscheidende Rolle“, „ermöglicht es Ihnen“, „nahtlos“, „umfassend“, „ganzheitlich“, „robust“, „intuitiv“, „optimal“, „leistungsstark“, „im Wesentlichen“, „grundsätzlich“, „gegebenenfalls“, „nicht nur …, sondern auch“, „Egal ob … oder …“.\n';
 
 try {
-    assertEqual(ACTIVE_FILES.length, 52, 'Zielstruktur enthält die technischen Hauptorte anstelle der sechs Sonderreferenzen');
+    assertEqual(ACTIVE_FILES.length, 53, 'Zielstruktur enthält die technischen Hauptorte anstelle der sechs Sonderreferenzen, dazu die Kohortentafel (FR-75)');
     assert(ACTIVE_FILES.includes('docs/reference/SIMULATION_LESEN.md'), 'Simulationsergebnisse gehören zum vollständig geprüften Leserbestand');
     assert(ACTIVE_FILES.includes('docs/reference/STRATEGIEN.md'), 'Strategien gehört zum vollständig geprüften Leserbestand');
-    assertEqual(IMAGE_FILES.length, 64, 'Bilderliste enthält Vergleich, Zielwertsuche, Protokolle, Tagesgeld, Pflegegrad, Partnerschaft und Immobilien');
+    assertEqual(IMAGE_FILES.length, 70, 'Bilderliste enthält Vergleich, Zielwertsuche, Protokolle, Tagesgeld, Pflegegrad, Bereich Pflege, Partnerschaft, Immobilien, erfasste Stände, übernommene Rentenanpassung, Fondskosten in Simulator und Haushalt & Plan und Hinweis „wie Löhne“');
     for (const file of ACTIVE_FILES) {
         assert(FINISHED_FILES.includes(file), file + ': volle Dokuprüfung einschließlich Handbuch und Bildern');
     }

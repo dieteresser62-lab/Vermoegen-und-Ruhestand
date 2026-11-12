@@ -51,14 +51,22 @@ try {
     // Die vorhandenen Resize-/Belegfixtures enthalten nur nominale Jahreswerte.
     setEuroMode('nominal', doc);
     renderSimulatorOverview();
-    assert(doc.getElementById('overviewMonteCarlo').innerHTML.includes('Monte-Carlo wird erst auf deinen Wunsch gestartet.'), 'Ohne Ergebnis und Lauf steht der Hinweis auf den manuellen Start');
+    // SE-1: ohne Lauf die beiden Fragen als Vorschau, Bedienteile mit unveränderten IDs.
+    const emptyHead = doc.getElementById('overviewMonteCarlo').innerHTML;
+    assert(emptyHead.includes('>noch nicht gerechnet</span>') && emptyHead.includes('Läufe laut Einstellungen')
+        && emptyHead.includes('<h3>Reicht das Vermögen?</h3>') && emptyHead.includes('<h3>Muss ich mich einschränken?</h3>'), 'Ohne Ergebnis und Lauf zeigt die Karte beide Fragen und den manuellen Start');
+    for (const id of ['overviewRunMonteCarlo', 'overviewCancelMonteCarlo', 'overviewMonteCarloSettings', 'overviewMonteCarloProgress', 'overviewMonteCarloProgressBar', 'overviewMonteCarloRunStatus'])
+        assert(emptyHead.includes(`id="${id}"`), 'Bedienteil behält seine ID: ' + id);
     const trialBasis = { inputs: { startFlexBedarf: 33000 }, settings: {}, planDataContext: { deviationApplied: true } };
     const trialToken = beginOverviewRun('montecarlo', trialBasis);
-    assert(!doc.getElementById('overviewMonteCarlo').innerHTML.includes('Monte-Carlo wird erst auf deinen Wunsch gestartet.'), 'Während des ersten Laufs entfällt der widersprüchliche Starthinweis');
+    const runningHead = doc.getElementById('overviewMonteCarlo').innerHTML;
+    assert(runningHead.includes('>läuft</span>') && !runningHead.includes('Läufe laut Einstellungen') && runningHead.includes('id="overviewCancelMonteCarlo"'), 'Während des ersten Laufs zeigt die Karte Status und Abbruch ohne Starthinweis');
     trialBasis.planDataContext.deviationApplied = false;
     completeOverviewRun('montecarlo', trialToken, projectMonteCarloOverview({}, 2, 0));
     renderSimulatorOverview();
-    assert(!doc.getElementById('overviewMonteCarlo').innerHTML.includes('Monte-Carlo wird erst auf deinen Wunsch gestartet.'), 'Mit Ergebnis entfällt der Hinweis auf den ersten Start');
+    const doneHead = doc.getElementById('overviewMonteCarlo').innerHTML;
+    assert(doneHead.includes('>abgeschlossen') && !doneHead.includes('Läufe laut Einstellungen') && !doneHead.includes('<h3>Reicht das Vermögen?</h3>')
+        && doneHead.indexOf('id="overviewRunMonteCarlo"') > doneHead.indexOf('Gerechnet'), 'Mit Ergebnis stehen Status, Zeitpunkt und Bedienteile oben statt der Vorschau');
     assert(doc.getElementById('overviewRunHeads').innerHTML.includes('mit Abweichung vom Plan'), 'Laufstart im Versuch behält Hinweis nach Rückkehr oder Übernahme');
     assert(!doc.getElementById('simMonteCarloPlanDeviation').hidden, 'MC-Detailansicht nutzt dieselbe eingefrorene Versuchsbasis');
     const inflowBasis = { inputs: { plannedInflows: [{ year: 2027, amount: 50000 }, { year: 2028, amount: 100000 }] }, settings: {} };
@@ -188,7 +196,7 @@ try {
     assert(!minimumMarkup.includes(mixedExplanation), 'Neuer Mindestvergleich ist trotz wechselnder Zielbasis auswertbar');
 
     const answerHost = doc.getElementById('monteCarloAnswers');
-    const mcValues = { inputs: { startFlexBedarf: 10000 }, settings: { anzahl: 100, maxDauer: 30 }, personDataContext: { ...context, deviationApplied: false, persons: [] } };
+    const mcValues = { inputs: { startFlexBedarf: 10000 }, settings: { anzahl: 100, maxDauer: 30, seed: 12345 }, personDataContext: { ...context, deviationApplied: false, persons: [] } };
     const mcProjection = projectMonteCarloOverview({ cutYearSharePct: { p50: 12, thresholdPct: 10, sampleSize: 100 }, kpiMaxKuerzung: { p50: 18 } }, 100, 4);
     const mcToken = runHeads.begin('montecarlo', mcValues, { startedAt: '2026-01-01T12:00:00Z' });
     runHeads.observe('montecarlo', mcValues); runHeads.complete('montecarlo', mcToken, mcProjection); renderSimulatorOverview();
@@ -198,8 +206,16 @@ try {
         const popup = answerTree.elements.find(node => node.attrs.id === `${id}Info2`);
         assert(popup?.attrs.role === 'tooltip' && popup.parent.parent.attrs.class === 'sim-card-heading', 'Beide Antwortansichten zeigen die Mindest-Flex-Info im Kartenkopf');
         assert(!answerTree.elements.some(node => node.tag === 'h2' && Object.hasOwn(node.attrs, 'title')), 'Beide Antwortansichten entfernen den kartenweiten Titeltooltip');
-        assert(!answerTree.elements[0].children.some(node => node.attrs.class === 'sim-card-heading'), 'Grundbedarfsantwort bleibt ohne Info-Baustein');
+        const coverage = answerTree.elements[0];
+        assert(coverage.attrs.class.includes('sim-coverage-answer') && answerTree.elements.find(node => node.attrs.id === `${id}Info1`)?.attrs.role === 'tooltip'
+            && doc.getElementById(id).innerHTML.includes(mcProjection.answers[0].tooltip),
+            'Zusammengelegte Antwort trägt die bisherige Floor-Erklärung im ⓘ');
+        assert(answerTree.elements.some(node => node.attrs.class === 'sim-coverage-bar' && node.attrs.role === 'img')
+            && !doc.getElementById(id).innerHTML.includes('sim-floor-dots') && !doc.getElementById(id).innerHTML.includes('Ein Punkt'), 'Schmaler Balken ersetzt die Kreisgrafik');
+        assert(doc.getElementById(id).innerHTML.includes('<h2>Reicht das Vermögen?</h2>') && doc.getElementById(id).innerHTML.includes('Grundbedarf gedeckt bis Laufende')
+            && doc.getElementById(id).innerHTML.includes('Am Laufende · Gesamtvermögen'), 'Eine Antwort enthält Deckung und Endvermögen');
     }
+    assert(doc.getElementById('overviewMonteCarlo').innerHTML.includes('Seed 12345'), 'SE-1b: Seed ohne Tausenderpunkt');
     const original = answerHost.innerHTML, runBytes = JSON.stringify(runHeads.read('montecarlo').last);
     assert(original.includes('96,0 %') && original.includes('12,0 %') && !original.includes('Annahmen seitdem geändert'), 'Laufabschluss zeigt frische Kernantworten');
     for (let change = 0; change < 3; change++) renderSimulatorOverview();

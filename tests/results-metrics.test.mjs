@@ -19,7 +19,7 @@ const answerFixture = (outcomes = { requestedRuns: 100, ruin: 4, all_dead: 40, h
 const answerInput = answerFixture();
 const answerBytes = JSON.stringify(answerInput);
 const answers = buildMonteCarloAnswers(answerInput);
-assertEqual(answers[0].question, 'Ist mein Grundbedarf gedeckt?', 'Erste Kernfrage wortgetreu');
+assertEqual(answers[0].question, 'Reicht das Vermögen?', 'Erste Kernfrage wortgetreu (SE-1: Deckung und Endvermögen zusammengelegt)');
 assertEqual(answers[1].question, 'Muss ich mich einschränken?', 'Zweite Kernfrage wortgetreu');
 assertEqual(answers[0].value, '96,0 %', 'Antwort verwendet unveränderte 96-%-Deckung');
 assertEqual(answers[1].value, '12,0 % der Jahre', 'Antwort verwendet unveränderten kanonischen p50-Anteil der Kürzungsjahre');
@@ -42,6 +42,40 @@ for (const [runs, ruin, expected, count] of [
     assertEqual(answer.countText, count, 'Deckung zeigt erfolgreichen Zähler und gesamten Nenner');
     assertEqual(summary.displayValue, answer.value, 'Zusammenfassung und Kernantwort haben dieselbe Deckung');
     assertEqual(summary.countText, count, 'Zusammenfassung verwendet dieselben Laufzahlen');
+}
+// SE-1: Die zusammengelegte Antwort übernimmt Deckung, Intervall und Endvermögen unverändert aus den Summary-Karten.
+{
+    const wealthInput = answerFixture();
+    wealthInput.results.outcomeInventory = { ...wealthInput.results.outcomeInventory, floorCoverageEstimate: { confidenceInterval95: { lowerPct: 90.125, upperPct: 98.5 } } };
+    wealthInput.results.finalOutcomes = { p10: 640000, p50: 2310000, p90: 5900000 };
+    wealthInput.results.displayWealth = { real: { p10: 640000, p50: 2310000, p90: 5900000, parts: {
+        p10: { money: 10000, homes: 630000 }, p50: { money: 1680000, homes: 630000 }, p90: { money: 5270000, homes: 630000 } } } };
+    const wealthBytes = JSON.stringify(wealthInput);
+    for (const moneyBasis of ['nominal', 'real']) {
+        const merged = buildMonteCarloAnswers({ ...wealthInput, moneyBasis })[0];
+        const cards = buildSummaryData({ ...wealthInput, moneyBasis });
+        const floorCard = buildSummaryData(wealthInput)[0];
+        assertEqual(merged.value, floorCard.displayValue, moneyBasis + ': Hauptzahl gleich der Floor-Karte');
+        assertEqual(merged.countText, floorCard.countText, moneyBasis + ': Laufzahl gleich der Floor-Karte');
+        assertEqual(merged.coveragePct, 96, moneyBasis + ': Balken nutzt den unveränderten Deckungsanteil');
+        assertEqual(merged.interval, '95-%-Intervall 90,13 %–98,5 %', moneyBasis + ': Intervall aus dem vorhandenen Wilson-Schätzer mit höchstens zwei Nachkommastellen');
+        assertEqual(merged.tooltip, floorCard.description, moneyBasis + ': ⓘ trägt die bisherige Floor-Erklärung');
+        assertEqual(merged.endWealth.values[1].value, cards[2].displayValue, moneyBasis + ': Median gleich „Median (alle)“');
+        assertEqual(`${merged.endWealth.values[0].value} / ${merged.endWealth.values[2].value}`, cards[4].displayValue, moneyBasis + ': P10 und P90 gleich „10%/90% Perzentil“');
+        assert(merged.endWealth.basis.includes('Pflegereserve'), moneyBasis + ': Endvermögen nennt Pflegereserve und Euro-Basis');
+    }
+    const realMerged = buildMonteCarloAnswers({ ...wealthInput, moneyBasis: 'real' })[0];
+    assert(realMerged.endWealth.parts.startsWith('davon Geldvermögen 10.000') && realMerged.endWealth.parts.includes('Immobilien je 630.000'), 'Aufteilung Geld · Immobilien bleibt unter P10/Median/P90');
+    assert(realMerged.endWealth.partsTooltip.includes('Perzentil'), 'Aufteilungshinweis bleibt hinter ⓘ');
+    assertEqual(JSON.stringify(wealthInput), wealthBytes, 'Zusammengelegte Antwort verändert keine Ergebniswerte');
+    const nearlyAll = buildMonteCarloAnswers(answerFixture({ requestedRuns: 10000, ruin: 1, all_dead: 0, horizon_exhausted: 9999, technical_error: 0 }))[0];
+    assertEqual(nearlyAll.uncoveredHint, 'mindestens ein Lauf ungedeckt', 'Sonderhinweis bei einem ungedeckten Lauf bleibt');
+    const { renderMonteCarloAnswers } = await import('../app/simulator/results-renderers.js');
+    const answerHost = { id: 'probeAnswers', innerHTML: '' };
+    renderMonteCarloAnswers(answerHost, [nearlyAll]);
+    assert(answerHost.innerHTML.includes('style="width:99%"'), 'SE-1b: Bei einem ungedeckten Lauf ist der Balken sichtbar nicht ganz voll');
+    const technicalAnswer = buildMonteCarloAnswers(answerFixture({ requestedRuns: 10, ruin: 0, all_dead: 0, horizon_exhausted: 9, technical_error: 1 }))[0];
+    assert(technicalAnswer.value === '—' && technicalAnswer.technicalRuns === 1 && technicalAnswer.coveragePct === null, 'Technische Läufe: keine Deckung, Zahl der technischen Läufe bleibt');
 }
 const deathAnswers = buildMonteCarloAnswers(answerFixture({ requestedRuns: 100, ruin: 0, all_dead: 100, horizon_exhausted: 0, technical_error: 0 }));
 assert(deathAnswers[0].text.includes('bis zum simulierten Lebensende'), 'Vollständiger Todpfad wird als simuliertes Lebensende bezeichnet');

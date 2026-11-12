@@ -1,3 +1,4 @@
+import { summarizeBalanceAction } from '../app/balance/balance-action-summary.js';
 import { installRealClock } from './helpers/fixed-real-clock.mjs';
 import { annualCloseArchiveReader } from '../app/shared/annual-close-evidence.js';
 import { SnapshotArchive } from '../app/shared/snapshot-archive.js';
@@ -114,7 +115,7 @@ export async function verifySamePageAnnualArchive(destination) {
                 dom.expenses = { yearSelect: { value: '2026' } }; dom.containers = {}; dom.outputs = {};
                 initUIBinder(dom, { inputs: {} }, () => ({ ok: true }), () => {});
                 binding = preserveUIBinderStateForTests().handlers;
-                outputs = Object.fromEntries(['balanceActionPeriod', 'balanceActionFootnote'].map(id => [id, f.doc.createElement('button')]));
+                outputs = Object.fromEntries(['balanceActionPeriod', 'balanceActionPreviewTitle'].map(id => [id, f.doc.createElement('button')]));
                 Object.values(outputs).forEach(node => f.doc.body.append(node));
                 renderer = new SummaryRenderer({ outputs, controls: dom.controls });
                 UIRenderer.renderContext = () => renderer.renderContext();
@@ -149,7 +150,8 @@ export async function verifySamePageAnnualArchive(destination) {
                 f.refresh(); renderer?.renderContext();
                 assertEqual((binding?.getAnnualModel() || f.model).occasion.annualState, 'unclear', destination + ': reines Rendern erkennt späteren Kurswrite');
                 if (outputs) {
-                    assertEqual(outputs.balanceActionPeriod.textContent, 'Vorläufige Vorschau · Jahresabschluss 2026', 'Heutige Aktion bleibt trotz ungeklärter Periode eine Vorschau für den anstehenden Abschluss');
+                    // WT-1: Die heutige Aktion steht als Vorschauzeile auf den Januar nach dem anstehenden Abschluss 2026.
+                    assertEqual(outputs.balanceActionPreviewTitle.textContent, 'Vorschau auf den Plan 2027', 'Heutige Aktion bleibt trotz ungeklärter Periode eine Vorschau für den anstehenden Abschluss');
                 } else {
                     const host = f.doc.getElementById('overviewFocus');
                     assert(host.isConnected && !host.hidden && /<button[^>]*data-overview-annual>Jahresstatus klären<\/button>/.test(host.innerHTML), 'Produktiver Startseitenrenderer zeigt den Klärungsknopf');
@@ -302,8 +304,10 @@ const checkAction = (root, receipt) => {
     const section = root.querySelector('[data-annual-action-result]');
     assert(visible(section), 'Beschlossene Handlung steht in eigenem sichtbarem Element');
     const texts = dialogElements(section).map(node => node.textContent);
-    assert(texts.includes(`Handlungsanweisung ${receipt.year} · festgeschrieben`), 'Handlung nennt das bestätigte Planjahr');
-    assert(texts.some(text => text.includes(receipt.adopted.action.type === 'NONE' ? 'Nichts tun – kein Handlungsbedarf' : receipt.adopted.action.title === 'Profilverbund-Transaktionen' ? 'Verkäufe und Käufe je Person' : receipt.adopted.action.title)), 'Handlung enthält den Titel aus dem persistierten adopted-Beleg');
+    // WT-1 (FR-77 Punkt 6): Das Ergebnis zeigt den neuen Plan im Baustein „Was zu tun ist“.
+    assert(texts.includes('Was zu tun ist') && texts.includes(`Plan ${receipt.year}`), 'Handlung nennt das bestätigte Planjahr');
+    const action = receipt.adopted.action;
+    assert(texts.some(text => text.includes(action.type === 'NONE' ? 'kein Handlungsbedarf' : summarizeBalanceAction(action, action).verb)), 'Handlung enthält das Verb aus dem persistierten adopted-Beleg');
     for (let node = section; node; node = node.parent) {
         assert(!node.className?.includes('ds-note-error') && node.getAttribute('role') !== 'alert', 'Handlung wird nicht als Fehler gekennzeichnet');
     }
@@ -350,9 +354,10 @@ try {
             binding = preserveUIBinderStateForTests().handlers;
             start = () => UIBinder.handleJahresabschluss();
             if (!stale) {
-                const outputs = Object.fromEntries(['balanceActionPeriod', 'balanceActionFootnote'].map(id => [id, f.doc.createElement('button')]));
+                const outputs = Object.fromEntries(['balanceActionPeriod', 'balanceActionPreviewTitle'].map(id => [id, f.doc.createElement('button')]));
                 new SummaryRenderer({ outputs, controls: dom.controls }).renderContext();
-                assert(outputs.balanceActionPeriod.textContent.startsWith('Vorläufige Vorschau'), 'Balance trennt die vorläufige Aktion vom Jahresstatus');
+                // WT-1: Die vorläufige Aktion steht als zugeklappte Vorschauzeile unter dem Plan, getrennt vom Jahresstatus.
+                assert(outputs.balanceActionPreviewTitle.textContent.startsWith('Vorschau auf den Plan'), 'Balance trennt die vorläufige Aktion vom Jahresstatus');
                 assertEqual(binding.getAnnualModel().occasion.annualState, 'unclear', 'Summary und Bindermodell stimmen überein');
             }
         }

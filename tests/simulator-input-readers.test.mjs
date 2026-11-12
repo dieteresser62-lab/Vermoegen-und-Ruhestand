@@ -201,7 +201,7 @@ console.log('Test 5: care reader tolerates missing DOM fields');
     const care = readCareInputs({ gender: 'w', doc: createDocumentMock() });
     assertEqual(care.pflegefallLogikAktivieren, false, 'Missing care toggle should default to false');
     assert(care.pflegeGradeConfigs && typeof care.pflegeGradeConfigs === 'object', 'Care grade config should exist');
-    assertEqual(care.pflegeKostenDrift, 0.035, 'Care drift should use default ratio');
+    assertEqual(care.pflegeKostenDrift, 0.05, 'Care drift should use default ratio');
     assertEqual(
         readCareInputs({ doc: createDocumentMock({ pflegeKostenDrift: '0' }) }).pflegeKostenDrift,
         0,
@@ -209,7 +209,7 @@ console.log('Test 5: care reader tolerates missing DOM fields');
     );
     assertEqual(
         readCareInputs({ doc: createDocumentMock({ pflegeKostenDrift: '3.5' }) }).pflegeKostenDrift,
-        0.035,
+        0.05,
         '3.5 care drift percent should normalize exactly once'
     );
     assertEqual(
@@ -224,8 +224,8 @@ console.log('Test 5: care reader tolerates missing DOM fields');
     );
     assertEqual(
         readCareInputs({ doc: createDocumentMock({ pflegeKostenDrift: 'invalid' }) }).pflegeKostenDrift,
-        0.035,
-        'Invalid UI care drift should use the documented 3.5 percent fallback'
+        0.05,
+        'Invalid UI care drift should use the documented 5 percent fallback'
     );
 }
 console.log('✓ care reader missing DOM defaults OK');

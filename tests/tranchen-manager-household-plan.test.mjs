@@ -17,7 +17,7 @@ import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 
 const html = fs.readFileSync(new URL('../depot-tranchen-manager.html', import.meta.url), 'utf8');
 const paths = [...html.matchAll(/data-manager-plan-field="([^"]+)"/g)].map(match => match[1]);
-assertEqual(new Set(paths).size, 28, 'Alle 28 editierbaren Planfelder haben eindeutige Pfade');
+assertEqual(new Set(paths).size, 29, 'Alle 29 editierbaren Planfelder haben eindeutige Pfade');
 const elements = tokenizeHTML(html).elements;
 const node = id => elements.find(element => element.attrs.id === id);
 assert(node('managerPlanCape').tag === 'input' && node('managerPlanCape').attrs['data-manager-plan-field'] === 'cape.value', 'CAPE ist an den Plan-Autosave gebunden');

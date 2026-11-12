@@ -22,11 +22,14 @@ const html = fs.readFileSync(new URL('../Balance.html', import.meta.url), 'utf8'
 const css = fs.readFileSync(new URL('../css/balance.css', import.meta.url), 'utf8');
 for (const removed of ['jahresabschlussBtn', 'balanceNextAnnual', 'balanceNextStatus', 'balanceNextSteps', 'ov-next', 'ov-after', 'Wenn du die Schritte umsetzt', 'Jahresabschluss &amp; Vorschau'])
     assert(!html.includes(removed), 'Balance entfernt den alten Überblicksanker: ' + removed);
-assert(html.indexOf('ov-mkt') < html.indexOf('ov-need') && html.indexOf('ov-need') < html.indexOf('ov-res'), 'Untere Reihe folgt Marktphase, Bedarf, Reserven');
-assert(css.includes('.balance-overview > .ov-hero, .balance-overview > .ov-act { grid-column: span 6; }')
-    && css.includes('.balance-overview > .ds-plan-card { grid-column: span 4; }'), 'Beide PC-Breiten teilen 6+6 und 4+4+4');
-assert(css.includes('.balance-overview > .ov-hero, .balance-overview > .ov-act { align-self: start; }'), 'Nur die oberen Karten bleiben oben bündig ohne Streckung');
-assert(!/align-self/.test(css.match(/\.balance-overview > \.ds-plan-card \{([^}]+)\}/)[1]), 'Untere Reihe behält die gleiche Kartenhöhe');
+// BL-1/LY-1: zwei unabhängige Spalten; links Budget und Bedarf, rechts Handlung und darunter Reserven.
+const mainColumn = html.indexOf('balance-overview-main'), sideColumn = html.indexOf('balance-overview-side');
+assert(mainColumn > 0 && mainColumn < html.indexOf('ov-hero') && html.indexOf('ov-hero') < html.indexOf('ov-need') && html.indexOf('ov-need') < sideColumn
+    && sideColumn < html.indexOf('ov-act') && html.indexOf('ov-act') < html.indexOf('ov-res') && html.indexOf('ov-res') < html.indexOf('ov-mkt'), 'Linke Spalte Budget, Bedarf; rechte Spalte Handlung, Reserven');
+assert(css.includes('.balance-overview-column { grid-column: span 6; display: flex; flex-direction: column;'), 'Beide Spalten je halbe Breite und unabhängig fließend');
+assert(css.includes('.balance-overview { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); align-items: start;'), 'Keine gemeinsame Zeilenhöhe zwischen links und rechts');
+assert(css.includes('.balance-overview-column > [hidden] { display: none; }'), 'Verborgene Karten hinterlassen keine Lücke');
+assert(!/\.balance-overview > \.ds-plan-card/.test(css), 'Kein altes Zeilenraster der Karten');
 assert(css.includes('.balance-reserve-goal-label { position: absolute; top: 0; transform: translateX(-50%); }') && css.includes('padding-top: 1.5em;'), 'Ziel steht unter der Marke mit eigener kollisionsfreier Zeile');
 assert(!/order:/.test(css.slice(css.indexOf('@container balance-page (min-width: 2300px)'), css.indexOf('@container balance-page (max-width: 1180px)'))), 'Breitansicht behält dasselbe Raster');
 

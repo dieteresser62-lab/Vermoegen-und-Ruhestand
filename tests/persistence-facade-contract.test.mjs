@@ -5,8 +5,9 @@ import { PersistenceFacade as assembledFacade, persistenceStorage } from '../app
 assert(facade === publicExports.PersistenceFacade, 'default und benannte Fassade sind dasselbe Objekt');
 assert(facade === assembledFacade, 'Re-Export erhält das einmal zusammengesetzte API-Objekt');
 assert(persistenceStorage === publicExports.persistenceStorage, 'Storage-Re-Export erhält dieselbe Objektidentität');
-// HV-1/HV-2: Haushaltsfunktionen kommen bewusst hinzu; DS-1: readSnapshots (Sammellesen).
-assertEqual(Object.keys(facade).length, 51, 'öffentliche Fassade hat ihre 51 Eigenschaften');
+// HV-1/HV-2: Haushaltsfunktionen kommen bewusst hinzu; DS-1: readSnapshots (Sammellesen); ES-1: holdWritesUntil (Schreibtor des Tabs).
+assertEqual(Object.keys(facade).length, 52, 'öffentliche Fassade hat ihre 52 Eigenschaften');
+assert(typeof facade.holdWritesUntil === 'function', 'Fassade bietet holdWritesUntil');
 for (const name of ['createHousehold', 'switchHousehold', 'getHouseholds', 'renameHousehold', 'deleteHousehold', 'rebuildHousehold', 'createHouseholdFromRecords', 'readHouseholdRecords']) assert(typeof facade[name] === 'function', `Fassade bietet ${name}`);
 for (const [name, method] of Object.entries(facade)) {
     assert(method === publicExports[name], `${name}: Objektmethode und benannter Funktionsexport sind identisch`);

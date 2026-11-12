@@ -11,6 +11,7 @@ import {
     applyLongevityHorizonAdjustment,
     applyLongevityTransitionSmoothing
 } from '../simulator/dynamic-flex-longevity-horizon.js';
+import { resolveBirthYear } from '../simulator/target-mortality.js';
 
 const DYNAMIC_FLEX_MIN_HORIZON = 1;
 const DYNAMIC_FLEX_MAX_HORIZON = 60;
@@ -45,7 +46,10 @@ function resolveHouseholdContext(inputs, context = {}) {
         genderP2: inputs?.partner?.geschlecht || ((inputs?.geschlecht || 'm') === 'm' ? 'w' : 'm'),
         p1Alive: context.p1Alive !== false,
         p2Alive: partnerActive && context.p2Alive !== false,
-        partnerActive
+        partnerActive,
+        // FR-75: Zieltafel des Geburtsjahrs; ohne gespeichertes Jahr Bezugsjahr − Startalter.
+        birthYearP1: resolveBirthYear(inputs?.geburtsjahr, startAgeP1),
+        birthYearP2: resolveBirthYear(inputs?.partner?.geburtsjahr, startAgeP2)
     };
 }
 
@@ -73,7 +77,9 @@ function deriveRawHorizon(inputs, context, quantileOverride = null) {
                     household.genderP1,
                     household.ageP1,
                     household.genderP2,
-                    household.ageP2
+                    household.ageP2,
+                    household.birthYearP1,
+                    household.birthYearP2
                 ),
                 DYNAMIC_FLEX_MIN_HORIZON,
                 DYNAMIC_FLEX_MAX_HORIZON
@@ -85,14 +91,15 @@ function deriveRawHorizon(inputs, context, quantileOverride = null) {
             household.genderP2,
             household.ageP2,
             quantile,
-            { minYears: DYNAMIC_FLEX_MIN_HORIZON, maxYears: DYNAMIC_FLEX_MAX_HORIZON }
+            { minYears: DYNAMIC_FLEX_MIN_HORIZON, maxYears: DYNAMIC_FLEX_MAX_HORIZON,
+                birthYear1: household.birthYearP1, birthYear2: household.birthYearP2 }
         );
     }
 
     if (household.p1Alive) {
         if (method === 'mean') {
             return clamp(
-                estimateRemainingLifeYears(household.genderP1, household.ageP1),
+                estimateRemainingLifeYears(household.genderP1, household.ageP1, household.birthYearP1),
                 DYNAMIC_FLEX_MIN_HORIZON,
                 DYNAMIC_FLEX_MAX_HORIZON
             );
@@ -101,14 +108,14 @@ function deriveRawHorizon(inputs, context, quantileOverride = null) {
             household.genderP1,
             household.ageP1,
             quantile,
-            { minYears: DYNAMIC_FLEX_MIN_HORIZON, maxYears: DYNAMIC_FLEX_MAX_HORIZON }
+            { minYears: DYNAMIC_FLEX_MIN_HORIZON, maxYears: DYNAMIC_FLEX_MAX_HORIZON, birthYear: household.birthYearP1 }
         );
     }
 
     if (household.p2Alive) {
         if (method === 'mean') {
             return clamp(
-                estimateRemainingLifeYears(household.genderP2, household.ageP2),
+                estimateRemainingLifeYears(household.genderP2, household.ageP2, household.birthYearP2),
                 DYNAMIC_FLEX_MIN_HORIZON,
                 DYNAMIC_FLEX_MAX_HORIZON
             );
@@ -117,7 +124,7 @@ function deriveRawHorizon(inputs, context, quantileOverride = null) {
             household.genderP2,
             household.ageP2,
             quantile,
-            { minYears: DYNAMIC_FLEX_MIN_HORIZON, maxYears: DYNAMIC_FLEX_MAX_HORIZON }
+            { minYears: DYNAMIC_FLEX_MIN_HORIZON, maxYears: DYNAMIC_FLEX_MAX_HORIZON, birthYear: household.birthYearP2 }
         );
     }
 

@@ -21,7 +21,8 @@ const result = { schemaVersion: 'RNG1MeasurementV1', seed: 12345, runtime: proce
 const save = () => writeFileSync(output, JSON.stringify(result, null, 2) + '\n');
 const html = readFileSync(resolve(source, 'Simulator.html'), 'utf8');
 const defaultValue = id => Number(html.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`))?.[0].match(/\bvalue="([^"]*)"/)?.[1]);
-const defaults = { anzahl: 2000, maxDauer: defaultValue('mcDauer'), blockSize: defaultValue('mcBlockSize'),
+// Seit FR-75 ist das Feld leer (automatisch); die RNG-1-Messung bleibt bei 35 Jahren.
+const defaults = { anzahl: 2000, maxDauer: defaultValue('mcDauer') || 35, blockSize: defaultValue('mcBlockSize'),
     seed: 12345, methode: 'regime_markov', rngMode: 'per-run-seed', startYearMode: 'UNIFORM' };
 
 for (const part of selection.split(',')) {

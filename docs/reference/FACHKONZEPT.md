@@ -1,6 +1,6 @@
 # Fachkonzept und Regelverzeichnis
 
-Modellüberblick und fachliche Hauptorte für Nutzer, Fachleser und Entwickler. Stand: 29.10.2026. Die Kennungen verweisen auf belegte Entscheidungen; sie bilden keine zweite Regelerklärung. [Technik](TECHNICAL.md) und [Datenverträge](DATENVERTRAEGE.md) führen Implementierung und Records.
+Modellüberblick und fachliche Hauptorte für Nutzer, Fachleser und Entwickler. Stand: 11.11.2026. Die Kennungen verweisen auf belegte Entscheidungen; sie bilden keine zweite Regelerklärung. [Technik](TECHNICAL.md) und [Datenverträge](DATENVERTRAEGE.md) führen Implementierung und Records.
 
 ## Modell
 
@@ -14,7 +14,7 @@ Die Rechnung verwendet nominale Euro in Jahresschritten. Ergebnisse können in S
 
 ### Grenzen
 
-Ein Haushalt umfasst eine oder zwei Personen. Weitere gespeicherte Personen bleiben außerhalb der Haushaltsrechnung; die [Verwaltung](../../Handbuch.html#personen-verwalten) ordnet sie zu. Kein vollständiges Kosten-, FX-, Kredit- oder Anleihelaufzeitmodell. Historische Proxies und Lebensereignisse sind Modellannahmen, keine individuelle Prognose. [Quellen und Validierungsgrenzen](DATA_SOURCES.md#modellgrenzen-und-validierung) erhalten offene Nachweise; [technische Befunde](TECHNICAL.md#fehlertypen-und-offene-grenzen) bleiben sichtbar.
+Ein Haushalt umfasst eine oder zwei Personen. Weitere gespeicherte Personen bleiben außerhalb der Haushaltsrechnung; die [Verwaltung](../../Handbuch.html#personen-verwalten) ordnet sie zu. Kein vollständiges Kosten-, FX-, Kredit- oder Anleihelaufzeitmodell; Aktien tragen in Simulator und Dynamic Flex nur einen pauschalen Fondskostenabschlag aus Haushalt & Plan. Historische Proxies und Lebensereignisse sind Modellannahmen, keine individuelle Prognose. [Quellen und Validierungsgrenzen](DATA_SOURCES.md#modellgrenzen-und-validierung) erhalten offene Nachweise; [technische Befunde](TECHNICAL.md#fehlertypen-und-offene-grenzen) bleiben sichtbar.
 
 ## Regelverzeichnis
 
@@ -56,7 +56,7 @@ Status „umgesetzt“ bedeutet im gelieferten Code belegt, keine externe Validi
 | <a id="fr-35"></a>FR-35 | [Höchststand und Reservebasis](JAHRESBUDGET.md#b0) | umgesetzt |
 | <a id="fr-37"></a>FR-37 | [Kaufkraft-Anhebung](JAHRESBUDGET.md#b8) | umgesetzt |
 | <a id="fr-42"></a>FR-42 | [Feste Einkünfte einschließlich Überschuss](JAHRESBUDGET.md#einkommen) | umgesetzt |
-| <a id="fr-43"></a>FR-43 | [Geplante Ausgaben außerhalb Budget](HANDLUNGSANWEISUNG.md#liquiditätsziel) | umgesetzt |
+| <a id="fr-43"></a>FR-43 | [Feste geplante Ausgaben im Grundbedarf, einmalige außerhalb Budget](HANDLUNGSANWEISUNG.md#liquiditätsziel) | umgesetzt |
 | <a id="fr-44"></a>FR-44 | [Balance im Planungsjahr](HANDLUNGSANWEISUNG.md#liquiditätsziel) | umgesetzt |
 | <a id="fr-46"></a>FR-46 | [Abschöpflimit nur für Verkäufe](HANDLUNGSANWEISUNG.md#c9) | umgesetzt |
 | <a id="fr-50"></a>FR-50 | [Bedarf und Pflegewerte im Jahresdialog](../../Handbuch.html#jahr-abschliessen) | umgesetzt |
@@ -65,6 +65,7 @@ Status „umgesetzt“ bedeutet im gelieferten Code belegt, keine externe Validi
 | <a id="fr-60"></a>FR-60 | [Begrenzte Kaufkraft-Anhebung](JAHRESBUDGET.md#b8) | umgesetzt |
 | <a id="fr-63"></a>FR-63 | [Drei Töpfe ohne Gegenaufträge](HANDLUNGSANWEISUNG.md#drei-töpfe) | umgesetzt |
 | <a id="fr-65"></a>FR-65 | [Personen verwalten und Haushaltsgrenze](../../Handbuch.html#personen-verwalten) | umgesetzt |
+| <a id="fr-74"></a>FR-74 | [Rentenanpassung „wie Inflation“ als Vorgabe](../../Handbuch.html#person-rente) | umgesetzt |
 
 ### Lebensereignisse
 
@@ -100,6 +101,7 @@ Status „umgesetzt“ bedeutet im gelieferten Code belegt, keine externe Validi
 | <a id="fr-61"></a>FR-61 | [Einzelner Notverkauf vor Ruin](IMMOBILIEN.md#verkauf) | umgesetzt |
 | <a id="fr-62"></a>FR-62 | [Wohnmiete nach Notverkauf](IMMOBILIEN.md#danach) | umgesetzt |
 | <a id="fr-66"></a>FR-66 | [Tagesgeld und Geldmarkt aufteilen](HANDLUNGSANWEISUNG.md#tagesgeldanteil) | umgesetzt |
+| <a id="fr-76"></a>FR-76 | [Fondskosten Aktien im Simulator und im Dynamic Flex](DATA_SOURCES.md#fondskosten-aktien) | umgesetzt |
 
 ## Ergebnisse
 

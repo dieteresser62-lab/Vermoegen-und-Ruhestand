@@ -30,6 +30,7 @@ export interface PersistenceContents {
     household_partnership_v1: PartnershipRecord;
     household_care_values_v1: HouseholdCareValues;
     household_care_forms_notice_v1: "pending" | "shown";
+    household_care_hint_v1: HouseholdCareHint;
     household_withdrawal_mode: PlanValues["householdWithdrawalMode"];
     household_simulator_needs_v1: HouseholdSimulatorNeedsAlt;
     household_simulator_needs_warning_ack_v1: string;
@@ -56,11 +57,14 @@ export interface PersistenceContents {
     profile_einkuenfte_v1: { schemaVersion: 1; entries: IncomeEntry[] };
     profile_einkuenfte_migration_v1: '1'; profile_rente_bezeichnung: string;
     profile_care_grade_today: 0 | 1 | 2 | 3 | 4 | 5;
+    profile_care_residential_since: string;
+    profile_care_residential_first_year: string;
+    profile_care_home_costs_monthly: string;
     profile_care_progression: 'usual' | 'slower' | 'much_slower';
     profile_care_form_today: 'family' | 'home-support' | 'residential' | 'external';
 }
 export type PersistenceKey = keyof PersistenceContents | `sim_${string}` | `sim.${string}` | `ruhestandsmodell_snapshot_${string}` | `balance_expenses_${string}`
-    | 'depot_tranchen' | 'household_care_values_v1' | 'household_care_forms_notice_v1'
+    | 'depot_tranchen' | 'household_care_values_v1' | 'household_care_forms_notice_v1' | 'household_care_hint_v1'
     | 'overview_simulation_summary_v1' | 'rs_data_backup_summary_v1' | 'rs_wealth_history_start_v1'
     | 'rs_daily_prices_v1' | 'rs_household_wealth_captures_v1' | 'rs_probelauf_state_v1'
     | 'etfProxyUrl' | 'etfProxyUrls' | 'enableWorkerTelemetry' | 'featureFlags'
@@ -96,6 +100,8 @@ export interface PlanValues {
     jointAssessment?: boolean; longevityRelativePct: number; longevityBufferYears: number;
     householdWithdrawalMode: 'tax_optimized' | 'proportional' | 'runway_first';
     cape: { value: number; asOf: string | null; source: string | null };
+    /** FR-76: Laufende Kosten Aktien-ETF in % pro Jahr; fehlt in älteren Ständen, gelesen als Vorgabe. */
+    equityCostPct?: number;
 }
 export interface HouseholdPlanRecord { version: 1; entries: Record<string, { scope: PlanScope; updatedAt: string; values: PlanValues }>; }
 export type PlanValuesAlt = Omit<PlanValues, 'liquidityCashMonths'>;
@@ -195,9 +201,15 @@ export interface PartnershipRecord { schemaVersion: 1; status: 'married' | 'unma
     inheritance: Record<string, number>; marriedInheritance?: Record<string, number>;
     homeAndTaxInheritance?: Record<string, boolean>; activeInheritanceRule?: Record<string, 'testament' | 'home-and-tax'>;
     testament?: Record<string, {minimum?: Euro; minimumStand?: YearMonth; maximumPercent?: number; home?: 'money' | 'residence' | 'life-estate'; residenceTax?: 'immediate' | 'annual'}>; }
-export interface CareValueSource { asOf: YearMonth; source: string; origin: 'mitgeliefert' | 'von Hand'; validFrom: YearMonth; }
-export interface HouseholdCareValues { version: 1; allowance: CareValueSource & {values: Record<2 | 3 | 4 | 5, Euro>};
-    residential: CareValueSource & {monthly: Euro}; confirmedForYear: number | null; }
+export type CarePriceOrigin = 'mitgeliefert' | 'von Hand' | 'fortgeschrieben';
+export interface CareValueSource { asOf: YearMonth; source: string; origin: CarePriceOrigin; validFrom: YearMonth; }
+/** FR-73 P8: Staffel zu Hause (€/Jahr je Grad), Deckel (€/Jahr) und eigene Ausgaben im Heim (€/Monat) mit Preisstand (Planjahr);
+ * `driftPercent` steht nur nach bewusster Eingabe des Kostenanstiegs (Gutachten PFA-2, Befund 6). */
+export interface CarePrices { costs: Record<1 | 2 | 3 | 4 | 5, Euro>; maximumFloor: Euro; ownExpensesMonthly: Euro; driftPercent?: number; origin: CarePriceOrigin; priceYear: number; }
+export interface HouseholdCareValues { version: 1; allowance: CareValueSource & {values: Record<2 | 3 | 4 | 5, Euro>; origin: 'mitgeliefert' | 'von Hand'};
+    residential: CareValueSource & {monthly: Euro; components?: {care: Euro; board: Euro; invest: Euro}}; confirmedForYear: number | null; prices?: CarePrices; }
+/** FR-73 Punkt 10: „Pflegehinweis erledigt“ je Haushalt; `rule` ist die Regelversion, `doneAt` ein Kalendertag. */
+export interface HouseholdCareHint { version: 1; rule: string; doneAt: IsoDate; }
 export interface HealthBucket { enabled: boolean; initialAmount: Euro; assetSource: 'money_market_first_then_cash'; triggerMinGrade: number;
     triggerMode: 'OR' | 'AND'; coverageMode: 'care_additional_floor_only' | 'floor_when_care_active'; returnMode: 'cash_return';
     targetMode: 'inflation_indexed_diagnostic' | 'nominal_fixed'; }

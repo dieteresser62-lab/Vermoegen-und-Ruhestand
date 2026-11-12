@@ -81,6 +81,7 @@ import {
  * @param options.pflegeMeta
  * @param [options.householdContext]
  * @param [options.careLogContext]
+ * @param [options.yearNeed] Bestandteile des Jahresbedarfs nach FR-72.
  * @param {boolean} [options.hasPartner]
  * @param options.widowBenefits
  * @param options.widowPensionP1
@@ -168,6 +169,7 @@ export function buildSimulatorYearResult({
     pflegeMeta,
     householdContext = null,
     careLogContext = null,
+    yearNeed = null,
     hasPartner = false,
     widowBenefits,
     widowPensionP1,
@@ -668,6 +670,12 @@ export function buildSimulatorYearResult({
     }
     if (careLog.CareP1_FamilyFallback) logData.CareP1_FamilyFallback = careLog.CareP1_FamilyFallback;
     if (careLog.CareP2_FamilyFallback) logData.CareP2_FamilyFallback = careLog.CareP2_FamilyFallback;
+    // FR-72 Punkt 18: verbleibender Grundbedarf und Heimposten getrennt, nur bei Heimpflege; die gezogene
+    // Form bei „Amtlich“ steht auch zu Hause im Jahreszustand.
+    if (Object.hasOwn(careLog, 'pflege_heimkosten')) logData.grundbedarf_zu_hause = yearNeed?.homeFloor ?? null;
+    for (const [key, value] of Object.entries(careLog)) {
+        if (/^(?:pflege_heim|CareP[12]_(?:Form|Heim))/.test(key)) logData[key] = value;
+    }
 
     const inheritanceFields = inheritanceLog ? { abgang_erben: inheritanceLog.abgang_erben,
         erbschaftsteuer: inheritanceLog.erbschaftsteuer, inheritance: inheritanceLog.inheritance } : null;

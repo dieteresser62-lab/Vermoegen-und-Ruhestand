@@ -4,7 +4,7 @@ import { registeredPlanTrial, planTrialPatch, planTrialDifferences } from '../sh
 import { readBalanceInflationSource, renderBalanceInflationSource } from './balance-inflation-source.js';
 import { BALANCE_STORAGE_FIELD_IDS, buildBalanceEngineInputFromStorage } from './balance-input-storage.js';
 import { readBalancePersonStatus, projectParticipatingPerson } from '../shared/person-data-status.js';
-import { PLAN_FIELDS, BALANCE_PLAN_INPUT_KEYS, HOUSEHOLD_PLAN_KEY, buildPlanRecord, readBalanceHouseholdPlan, projectPlanToBalance, assertPlanValues } from '../profile/household-plan.js';
+import { PLAN_FIELDS, BALANCE_PLAN_INPUT_KEYS, HOUSEHOLD_PLAN_KEY, buildPlanRecord, readBalanceHouseholdPlan, projectPlanToBalance, assertPlanValues, applyBalanceEquityCost } from '../profile/household-plan.js';
 import { validateBalanceInputs } from './balance-update-pipeline.js';
 /**
  * Module: Balance Reader
@@ -579,7 +579,8 @@ export const UIReader = {
             for (const key of Object.keys(output)) if (Object.hasOwn(projection, key)) output[key] = projection[key];
             if (projection.jointAssessment === true) output.jointAssessment = readPartnership(persistenceStorage.getItem(PARTNERSHIP_KEY)).status !== 'unmarried';
             output.dynamicFlex = values.dynamicFlex && values.cape.value > 0;
-        }
+            applyBalanceEquityCost(output, values);
+        } else applyBalanceEquityCost(output, null);
         const trial = registeredPlanTrial(globalThis.document);
         if (trial?.read().active && trial.localValues().rebalancingBand !== undefined) output.rebalancingBand = trial.localValues().rebalancingBand;
         return projectBalancePlanningHorizon(output, readiness);

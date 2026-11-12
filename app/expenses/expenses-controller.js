@@ -69,8 +69,8 @@ export function createExpensesController({ doc, win, storage = persistenceStorag
             forecast: { year: currentYear, amount: current.stats.monthsWithData ? current.stats.annualForecast : null } });
         if (result.status === 'corrupt') history.hint.textContent = 'Jahresausgaben nicht lesbar. Bitte die Recovery unter Monate verwenden.';
         // Matrix und Kacheln lesen dieselbe Budgetquelle; kein Engine-/Planwrite.
-        const monthly = budget.monthly;
         for (const month of view.months) {
+            const monthly = /** @type {{months?: number[]}} */ (budget).months?.[month.month - 1] ?? budget.monthly;
             const budgetCell = refs.expenses.table.querySelector(`[data-month="${month.month}"][data-role="budget"]`);
             const delta = refs.expenses.table.querySelector(`[data-month="${month.month}"][data-role="delta"]`);
             if (budgetCell) budgetCell.textContent = monthly === null ? '—' : new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(monthly);

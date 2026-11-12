@@ -1,6 +1,9 @@
 /** @import * as D from "../../typcheck/datenvertraege.js" */
 /** @import * as I from "../../typcheck/speicher-integration.js" */
-import { HOUSEHOLD_CARE_VALUES_KEY, parseCareValues } from '../shared/household-care-values.js';
+import { HOUSEHOLD_CARE_VALUES_KEY, parseCareValues, readCareValues } from '../shared/household-care-values.js';
+import { OWN_CARE_PRICES_KEY, projectCarePrices, projectCareValuesForYear, resolveCarePrices } from '../shared/care-prices.js';
+import { annualCareProfileId, careSettingsStorage, sharesHouseholdCareValues } from '../shared/care-profile-settings.js';
+import { applyCareTodayClosing } from '../shared/care-today-closing.js';
 import { appNow } from '../shared/app-clock.js';
 import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
 import { CONFIG } from './balance-config.js';
@@ -27,12 +30,27 @@ import { WEALTH_CAPTURES_KEY } from '../../types/wealth-capture-contract.js';
 import { projectBalanceBudget } from './balance-budget.js';
 import { ANNUAL_NEED_PATHS, roundAnnualSuggestion } from '../shared/annual-needs-review.js';
 
+/** Eigener Preisblock einer Außenperson im Abschlussentwurf: Registry und, für die aktive Person, die Livequelle.
+ *
+ * @param {D.RecordStorage} adapter Speicheradapter des Abschlussentwurfs.
+ * @param {string|null} profileId Außenperson.
+ * @param {D.CarePrices} prices Bestätigter oder fortgeschriebener Block.
+ */
+function writeOwnCarePrices(adapter, profileId, prices) {
+    const raw = JSON.stringify(prices), registry = JSON.parse(/** @type {string} */ (adapter.getItem('rs_profiles_v1')));
+    const data = profileId ? registry.profiles?.[profileId]?.data : null;
+    if (!data) return;
+    data[OWN_CARE_PRICES_KEY] = raw;
+    adapter.setItem('rs_profiles_v1', JSON.stringify(registry));
+    if (profileId === (adapter.getItem('rs_current_profile') || adapter.getItem('rs_active_profile'))) adapter.setItem(OWN_CARE_PRICES_KEY, raw);
+}
+
 /** Beide Rechnungen verwenden dieselbe historische Basis, niemals den Empfehlungs-Neustate. */
 /**
  * @param {I.AnnualDraft} draft
  * @param {I.AnnualOptions} [options]
  */
-export function evaluateAnnualDraft(draft, { engineApi, adoptedPlanPatch, careValues, cash, now = appNow } = {}) {
+export function evaluateAnnualDraft(draft, { engineApi, adoptedPlanPatch, careValues, careToday, cash, now = appNow } = {}) {
     const adapter = /** @type {D.RecordStorage & {records: D.StringRecords}} */ (annualRecordStorage(draft.records));
     let cashUpdate = null;
     if (cash) {
@@ -42,7 +60,27 @@ export function evaluateAnnualDraft(draft, { engineApi, adoptedPlanPatch, careVa
         for (const [key, raw] of Object.entries(cashUpdate.records)) adapter.setItem(key, raw);
         adapter.setItem('rs_profiles_v1', JSON.stringify(cashUpdate.registry));
     }
-    if (careValues !== undefined) adapter.setItem(HOUSEHOLD_CARE_VALUES_KEY, JSON.stringify(parseCareValues(careValues)));
+    // Argon FR73A B2: Preisbesitzer ist der Haushalt, auch wenn zuletzt eine Außenperson geöffnet war (wie im Dialog).
+    const careProfileId = annualCareProfileId(adapter);
+    const careLegacy = careSettingsStorage(adapter, careProfileId), careShared = sharesHouseholdCareValues(adapter, careProfileId);
+    const closingDrift = () => resolveCarePrices(readCareValues(adapter), careLegacy, { shared: careShared }).driftPercent;
+    const closingRates = draft.status === 'prepared' && Number.isFinite(draft.inflation?.rate)
+        ? { inflationRate: /** @type {number} */ (draft.inflation?.rate), driftPercent: closingDrift() } : null;
+    // Einzelprofil einer Außenperson: ihre Preise gehören in ihren eigenen Preisblock, der Haushaltsrecord behält seine.
+    const ownPrices = careShared ? null : careValues !== undefined ? parseCareValues(careValues).prices
+        : closingRates ? projectCarePrices(resolveCarePrices(null, careLegacy, { shared: false }), { ...closingRates, priceYear: draft.planningYear }) : null;
+    const householdRecord = /** @param {unknown} values */ values => {
+        const parsed = parseCareValues(values);
+        return careShared ? parsed : { ...parsed, prices: parseCareValues(adapter.getItem(HOUSEHOLD_CARE_VALUES_KEY)).prices };
+    };
+    if (careValues !== undefined) adapter.setItem(HOUSEHOLD_CARE_VALUES_KEY, JSON.stringify(householdRecord(careValues)));
+    // FR-73 Punkt 9: Ohne Dialogentwurf rechnet die Vorschau mit denselben fortgeschriebenen Pflegewerten wie der Abschluss.
+    else if (closingRates) adapter.setItem(HOUSEHOLD_CARE_VALUES_KEY, JSON.stringify(householdRecord(projectCareValuesForYear(adapter.getItem(HOUSEHOLD_CARE_VALUES_KEY),
+        { ...closingRates, priceYear: draft.planningYear, legacySource: careLegacy, shared: careShared }))));
+    if (ownPrices) writeOwnCarePrices(adapter, careProfileId, ownPrices);
+    // FR-73 Punkt 13 / PFA-2 B1: eigene Werte der Personen fortschreiben oder den im Dialog bestätigten Betrag übernehmen,
+    // Heimjahr-Anker ohne „seit“ setzen (Vorschau wie Abschluss).
+    if (closingRates) applyCareTodayClosing(adapter, { ids: draft.scope.ids, activeId: draft.profileId, ...closingRates, targetYear: draft.targetYear, ownValues: careToday });
     // Im vorbereiteten Jahresabschluss sind die aufgerundeten Vorschläge die
     // Empfehlung. Bestehende Planstände (z. B. Musterbelege) bleiben unverändert.
     let values = structuredClone(draft.values), /** @type {string[]} */ adjustedFields = [];
@@ -103,11 +141,11 @@ export function evaluateAnnualDraft(draft, { engineApi, adoptedPlanPatch, careVa
  * @param {I.AnnualDraft} draft
  * @param {I.AnnualOptions} [options]
  */
-export function prepareAnnualCommitRecords(draft, { engineApi, adoptedPlanPatch, careValues, cash, now = appNow } = {}) {
+export function prepareAnnualCommitRecords(draft, { engineApi, adoptedPlanPatch, careValues, careToday, cash, now = appNow } = {}) {
     if (careValues !== undefined && parseCareValues(careValues).confirmedForYear !== draft.planningYear) throw new Error('Die Pflegewerte sind nicht für das neue Planjahr bestätigt.');
     const date = now(), clock = () => date;
-    const recommended = evaluateAnnualDraft(draft, { engineApi, careValues, cash, now: clock });
-    const adopted = adoptedPlanPatch === undefined ? recommended : evaluateAnnualDraft(draft, { engineApi, adoptedPlanPatch, careValues, cash, now: clock });
+    const recommended = evaluateAnnualDraft(draft, { engineApi, careValues, careToday, cash, now: clock });
+    const adopted = adoptedPlanPatch === undefined ? recommended : evaluateAnnualDraft(draft, { engineApi, adoptedPlanPatch, careValues, careToday, cash, now: clock });
     const { adapter, calculation, inputData, modelResult, runs, cashUpdate } = adopted;
     const registry = JSON.parse(/** @type {string} */ (adapter.getItem('rs_profiles_v1')));
     const stateKey = CONFIG.STORAGE.LS_KEY;
@@ -184,7 +222,7 @@ const activeCommits = new WeakSet();
  * @param {I.AnnualCommitOptions} [options]
  */
 export async function commitAnnualPlanUpdate({ draft, targetYear, marketData, yearHigh, scope, storage = persistenceStorage,
-    persistence = PersistenceFacade, engineApi, adoptedPlanPatch, careValues, cash, navigationOperation, now = appNow, isCurrent = () => true } = {}) {
+    persistence = PersistenceFacade, engineApi, adoptedPlanPatch, careValues, careToday, cash, navigationOperation, now = appNow, isCurrent = () => true } = {}) {
     if (activeCommits.has(storage)) throw new Error('Der Jahresabschluss läuft bereits.');
     activeCommits.add(storage);
     try {
@@ -202,7 +240,7 @@ export async function commitAnnualPlanUpdate({ draft, targetYear, marketData, ye
             if (JSON.stringify(captureAnnualRecords(storage)) !== JSON.stringify(/** @type {I.AnnualDraft} */ (draft).baseRecords)) throw new Error('Die Jahresquellen wurden seit der Vorbereitung verändert.');
         };
         assertBase();
-        const prepared = prepareAnnualCommitRecords(draft, { engineApi, adoptedPlanPatch, careValues, cash, now });
+        const prepared = prepareAnnualCommitRecords(draft, { engineApi, adoptedPlanPatch, careValues, careToday, cash, now });
         assertBase();
         const keys = new Set(Object.keys(prepared.records));
         const expected = Object.fromEntries([...keys].filter(key => /** @type {I.AnnualDraft} */ (draft).baseRecords[key] != null).map(key => [key, /** @type {I.AnnualDraft} */ (draft).baseRecords[key]]));

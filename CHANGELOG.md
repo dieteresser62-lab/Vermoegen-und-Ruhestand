@@ -2,36 +2,99 @@
 
 ## Aktuelle dokumentierte Fassung
 
-Stand 5. November 2026.
+Stand 12. November 2026.
 
-### Haushalte und Sicherung
+### Was sich an deinen Zahlen ändert
+
+- Erfolgsquoten im Simulator sinken. Die App rechnet mit einer längeren Lebenserwartung, simuliert bis zum Alter 110 und zieht Fondskosten von der Aktienrendite ab.
+- Mit Dynamic Flex sinkt das Monatsbudget in Balance und Simulator. Fondskosten mindern die erwartete Rendite, und der längere Horizont verteilt das Vermögen auf mehr Jahre.
+- Gespeicherte Rentenanpassungen bleiben, wie sie sind. Wer „wie Löhne“ eingestellt hat, rechnet weiter damit und sieht dazu einen Hinweis.
+- Ergebnisse, die vor dieser Fassung gerechnet wurden, zeigt die Übersicht einmal als veraltet. Ein Backtest ohne Dynamic Flex bleibt gültig.
+
+### Balance
+
+- Die Karte „Was zu tun ist“ ersetzt im Überblick Handlungsanweisung, Budgetprüfung und Marktphase. Sie zeigt oben den Plan aus dem Jahresabschluss mit Stand je Zeile: „Offen“, „Teilweise erledigt“ oder „Erledigt“. Der Stand kommt aus den eingetragenen Verkäufen seit dem Beschluss.
+- „Verkauf eintragen“ öffnet den Verkaufsdialog mit der Tranche der Planzeile. Fehlt zu einem Verkauf die Gutschrift aufs Tagesgeld, steht dort „Gutschrift nachtragen“.
+- Deckt das Tagesgeld weniger als sechs Monate Entnahme und ist kein Planverkauf offen, schlägt die Karte „Tagesgeld auffüllen“ vor, bei Paaren je Person.
+- Unten in der Karte steht zugeklappt „Vorschau auf den Plan ‹Jahr›“: der Plan, den der nächste Jahresabschluss beschließen würde.
+- Den Abstand zum Jahreshoch zeigt die App nur noch bei einem verdeckten Bärenmarkt, also wenn gemessen am Jahreshoch der Flex gekürzt würde, nach Kursen zum Jahresende aber nicht. Kleinere Abstände entfallen. Sind die Kurse zu alt oder lückenhaft, steht dort eine Zeile mit dem Weg zu frischen Kursen; in den ersten zehn Tagen nach dem Jahresende fehlt sie, solange kein neuer Kurs da ist.
+- „Deine Reserven“ steht rechts unter „Was zu tun ist“. „nach Umsetzung“ zählt nur den Teil der Anweisung, den du noch nicht als Verkauf eingetragen hast. Die Marktphase steht unter „Diagnose“.
+- Fehlt nur der Betrag, den die Abrundung der Monatsentnahme weglässt, gilt der Flex als voll finanziert. Die App meldet dann keine Kürzung; der Abschlussbeleg nennt die Rundung.
+
+### Jahresabschluss
+
+- Der Schritt „Plan“ zeigt, wie weit der alte Plan umgesetzt ist, und den neuen Plan als Karte „Was zu tun ist“.
+- Den Vergleich mit dem Jahreshoch gibt es nur noch bei einem verdeckten Bärenmarkt. Dann wählst du im Schritt „Plan“ ohne Vorauswahl zwischen „Nach Kursen zum Jahresende“ und „Mit dem Jahreshoch vom …“. Sonst gilt die Jahresendregel ohne Rückfrage.
+
+### Planwerte
+
+- Neue Personen und Beispiele starten mit der Rentenanpassung „wie Inflation“. „wie Löhne“ bleibt wählbar; ein Hinweis erklärt, warum die Lohnreihe als Rentenannahme optimistisch ist.
+- „Laufende Kosten Aktien-ETF“ ist ein Planwert in Haushalt & Plan unter „Weitere Planwerte › Fondskosten“, vorbelegt mit 0,5 % pro Jahr. Backtest und Monte Carlo ziehen ihn jedes Jahr von der Aktienrendite ab; Gold und Geldmarkt bleiben ohne Abschlag. Mit Dynamic Flex mindert er auch die erwartete Rendite. Im Simulator probierst du einen anderen Wert mit „Nur hier ausprobieren“ aus.
+- Feste geplante Ausgaben, etwa eine Kreditrate oder eine Versicherung bis Rentenbeginn, zählen wieder in ihren Monaten zum Grundbedarf. Simulator, Monte Carlo und Backtest kürzen sie nie; die Balance rechnet sie ins Jahresbudget, und das Monatsbudget steigt in diesen Monaten um den Betrag. Ausgaben-Seite, Monatsabschluss und Überblick zeigen diesen Monatswert, der Floor/Flex-Vergleich zählt sie zum Grundbedarf. Einmalige geplante Ausgaben bleiben außerhalb des Budgets, mit Reserve und Zuordnung im Import.
+- Übergang: Ein Jahresplan, der vor dem 11.11.2026 beschlossen wurde, behält bis zum nächsten Beschluss seine alte Bedeutung. Sein Monatsbudget bleibt gleichmäßig, und der Import bietet feste Ausgaben in diesem Jahr weiter zur Zuordnung an.
+- Der Kostenanstieg der Pflege heißt überall „Inflation + …“.
+
+### Lebenserwartung und Pflege
+
+- Monte Carlo und Planungshorizont rechnen mit der Kohortensterbetafel V2 des Statistischen Bundesamts für den Geburtsjahrgang jeder Person. Vorher galt die Periodentafel 2023/2025; sie dient jetzt nur noch der Pflegeabstimmung. Für 60- bis 70-Jährige liegt die Lebenserwartung dadurch 0,7 bis 1,6 Jahre höher.
+- Wer heute ohne Pflegegrad ist, lebt im Modell im Mittel so lange wie die Tafel, auch mit gezogenem Pflegefall. Ein eingetragener Pflegegrad verkürzt das Leben, auch mit langsamerem Verlauf.
+- Pflegeeintritt und Gradfortschritt sind auf die neue Sterblichkeit abgestimmt. Menschen in Pflege leben im Modell länger, ein Pflegefall dauert deshalb länger als vorher.
+- „Maximale Dauer“ in Monte Carlo ist leer und damit automatisch: bis die jüngste Person 110 wäre. Eine gespeicherte 35, die frühere Vorgabe, gilt als automatisch. Auch Auto-Optimize rechnet mit dieser Dauer statt fest mit 35 Jahren.
+
+### Beispiele
+
+- Neue Variante „Plan teilweise umgesetzt“ bei Max und Erika: Sie zeigt den Stand eines halb erledigten Jahresplans und „Gutschrift nachtragen“. Die Variante „Markt erst heiß, dann Rückgang“ führt jetzt zum verdeckten Bärenmarkt im Jahresabschluss.
+- Renate hat Übungen zur Rentenanpassung und zu den Fondskosten.
+
+## Frühere Fassungen
+
+### Pflege, Haushalte und Abschlüsse
+
+Stand 11. November 2026.
+
+#### Pflege
+
+- Personen & Vermögen › Pflege zeigt eine frühere Flex-Vorgabe 75 / 25 / 10 / 0 / 0 % wie der Simulator als 100 / 100 / 50 / 0 / 0 % und speichert eine Änderung samt dieser Staffel. Der Simulator schreibt beim Öffnen mit „Amtlicher Durchschnitt“ nichts mehr.
+- Regionaler Zuschlag und Flex-Level je Grad stehen jetzt ebenfalls in Personen & Vermögen › Pflege, weil auch Balance mit ihnen rechnet. Der Simulator nennt sie in der Zeile „Pflegewerte“ und behält unter Annahmen nur Verlauf, Dauer, Anstiegsdauer und Sterblichkeit je Grad. Gespeichert und gerechnet wird wie bisher.
+- Neuer Reiter „Pflege“ in Personen & Vermögen neben Haushalt & Plan: Pflege heute je Person mit angesetztem Monatsbetrag und Link zur Personenkarte, Staffel zu Hause je Grad mit üblicher Form, Deckel, Kostenanstieg, Heim-Bestandteile und Heimjahre, eigene Ausgaben im Heim, Pflegegeld und Preisstand. Der Simulator zeigt diese Werte unter Annahmen › Pflege nur noch in einer Zeile mit Link und behält Verlauf und Simulationsannahmen. Gespeichert und gerechnet wird wie bisher. Der Kopftext „Pflegegrad heute …“ bricht im Simulator um und läuft nicht mehr unter den Schalter.
+- Grundbedarf und Flex beschreiben den Haushalt ohne Pflege. Simulator, Backtest und Balance rechnen heutige Pflege selbst: Staffel zu Hause ohne Anlaufphase, Heimkosten nach Heimjahr aus „Im Heim seit“, eigene Ausgaben im Heim, Flex nach dem Pflege-Level, Pflegegeld nach dem Angehörigenausfall. Das Monatsbudget zeigt je Person eine Zeile „Pflege“ oder „Heim“.
+- Der Jahresabschluss schreibt Staffel, Deckel, Heim-Bestandteile und eigene Ausgaben im Heim mit der Inflation des Jahres und dem Kostenanstieg fort; Pflegegeld bleibt. Staffel, Deckel und eigene Ausgaben gehören jetzt zu den gemeinsamen Pflegewerten des Haushalts.
+- Hat eine Person einen Pflegegrad heute, zeigen Personenkarte, Haushalt & Plan und Balance einmal einen Hinweis mit den angesetzten Pflegekosten je Person: Grundbedarf und Flex ohne Pflege eintragen. „Erledigt“ merkt sich der Haushalt, auch über Sicherung und Spielbereich. Der Hinweis nennt, ob ein eigener Wert oder die Staffel gilt, und folgt jeder gespeicherten Planänderung.
+- Neu in der Personenkarte: „Pflegekosten heute über die Kasse hinaus (€/Monat)“ für Pflege zu Hause. Der Betrag ersetzt den Staffelbetrag des heutigen Grads, auch mit 0 €, und wird im Jahresabschluss wie die Staffel fortgeschrieben.
+- Korrekturen nach Gutachten: Ohne „Im Heim seit“ zählt das Heimjahr ab dem ersten Jahresabschluss weiter statt jedes Jahr neu bei 1 zu beginnen. Das Liquiditätsziel der Balance nutzt die Einkünfte des Folgejahrs (Rentenbeginn, befristete Einkünfte). Bei unverheirateten Paaren werden eigene Einkünfte der Person angerechnet, deren Pflegekosten sie trägt. Balance rechnet Pflege und Flex-Faktor auch ohne bestätigten Plan. Außenpersonen behalten im Simulator ihre eigene Staffel. Ein bewusst eingegebener Kostenanstieg von 3,5 % bleibt 3,5 %; gemerkte „Individuelle Werte“ kennzeichnen sich selbst. Im Protokoll-ⓘ gilt die 0,50-€-Grenze in der gewählten Eurobasis. Die Fortschreibung rundet kaufmännisch ohne Gleitkommarest.
+- Beispiel Helga und Werner: Die Variante „Mit Haus, Werner Pflegegrad 3“ trägt den Grundbedarf ohne Pflege (36.000 € statt 54.000 €). Neue Übung „Werner seit 01/2023 im Heim“; die Übung „Beide Grad 4 im Heim“ setzt beide heute ins Heim. Im Ausgaben-ⓘ des Protokolls entfallen Zeilen mit „-0 €“.
+- Korrekturen nach dem zweiten Gutachten: Das Liquiditätsziel der Balance schreibt die Einkünfte des Folgejahrs fort (Rentenanpassung, inflations- oder lohngebundene Einkünfte, Pflegegeld). Außenpersonen behalten im Simulator einen bewusst eingegebenen Kostenanstieg. Der eigene Wert „Pflegekosten heute über die Kasse hinaus“ ist im Jahresabschluss unter „Werte ändern …“ je Person änderbar. Personenkarte und Haushalt & Plan nennen die angesetzten Pflegekosten auch ohne bestätigten Plan; das Feld zeigt als Platzhalter den Staffelbetrag des Grads.
+- Korrekturen nach dem dritten Gutachten: „Im Heim seit“ geht beim Speichern der Personenkarte nicht mehr verloren und wandert beim Personenwechsel nicht mehr mit. Das Liquiditätsziel der Balance nimmt für beide Renten die Rentenanpassung des Hauptprofils wie der Simulator. Die Personendatei einer Außenperson nimmt ihre eigenen Pflegepreise mit. Der Jahresabschluss schreibt die Pflegepreise des Haushalts fort, auch wenn zuletzt eine Außenperson geöffnet war. Die Personenkarte zeigt nach dem Angehörigenausfall kein Pflegegeld mehr. Der eigene Wert für Pflege zu Hause erscheint und wirkt nur dort, wo er gilt.
+- Korrektur nach dem vierten Gutachten: Wer das Jahr schon im Dezember abschließt, sieht in Balance und Simulator dasselbe Heimjahr. „Im Heim seit“ zählt immer bis heute, ein Heimjahr ohne „seit“ nach dem Planjahr.
+- Korrektur im Jahresabschluss: Ändert man unter „Pflegewerte“ nur den eigenen Wert für Pflege zu Hause, zeigt der Schritt „Marktdaten“ die Neuberechnung jetzt als laufend an, auch beim Zurücksetzen auf den Vorschlag.
+- Korrektur: Wer seine Pflegeannahmen nie im Simulator gespeichert hatte, rechnete in Vergleichsläufen, Beispielhaushalten und über die Schnittstelle bisher mit Deckel 0 € und Kostenanstieg 0 %, also ohne Pflegezusatz zu Hause bei einem Pflegeeintritt. Jetzt gelten dort wie im Simulator 120.000 € und 5 %.
+
+#### Haushalte und Sicherung
 
 - Eine Installation führt mehrere getrennte Haushalte, etwa den eigenen und den eines erwachsenen Kindes. Der Umschalter oben auf jeder Seite zeigt und wechselt den geöffneten Haushalt. Jeder Haushalt hat eigene Daten, Sicherungen, Kurse und einen eigenen Spielbereich.
 - Ein Haushalt lässt sich als Übergabedatei weitergeben und in einer anderen Installation einspielen.
 - Daten & Sicherung zeigt je Haushalt, wann die letzte Vollsicherung lief. Bei mehreren Haushalten trägt der Dateiname der Vollsicherung den Haushaltsnamen.
 - In einem neuen, leeren Haushalt ersetzt die erste angelegte Person den Platzhalter „Default“.
 
-### Abschlüsse und Budget
+#### Abschlüsse und Budget
 
 - Monats- und Jahresabschluss öffnen ein Fenster mit Reitern.
 - Balance zeigt eine Budgetprüfung für das Folgejahr und den Abstand zum Jahreshoch. Führen Jahresendregel und Jahreshoch zu verschiedenen Folgen, wählst du im Jahresabschluss.
 - Liquidität ist ein Reserveziel für Tagesgeld und Geldmarkt; ein einstellbarer Teil davon liegt im Tagesgeld.
 - Ausgaben lassen sich mit Aufteilung in Grundbedarf (Floor) und Flex importieren und so auswerten.
 
-### Planungsumfang
+#### Planungsumfang
 
 - Erbschaften, Verkäufe, Einmalzahlungen und größere Ausgaben lassen sich je Jahr planen, weitere Einkünfte je Person.
 - Für Partnerschaft und Todesfall rechnet die App Erbschaftsteuer mit Güterstand und Zugewinnausgleich. Testament, unverheiratete Paare und Immobilien, selbst genutzt oder vermietet, gehen in die Rechnung ein.
 - Das Pflegemodell nutzt amtliche Daten. Pflegegeld zählt als Einkunft, der Pflegeverlauf gilt je Person.
 - Der Simulator vergleicht Pläne, sucht Zielwerte und rechnet Monte Carlo schneller.
 
-### Hilfe und Hinweise
+#### Hilfe und Hinweise
 
 - Handbuch und Themenseiten sind neu geschrieben. Im Spielbereich stehen weitere Beispielhaushalte mit Steckbrief bereit.
 - Info-Hinweise öffnen neben ihrem Symbol, auch in Simulator-Ergebnis und Monte Carlo.
 - README und Handbuch sagen ausdrücklich, dass die App keine Anlage-, Steuer- oder Rechtsberatung ist.
-
-## Frühere Fassungen
 
 ### Oberfläche, Planung und neuer Name
 

@@ -1,3 +1,4 @@
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { withoutExampleNeeds } from './helpers/ff-3-expectations.mjs';
 import { installRealClock } from './helpers/fixed-real-clock.mjs';
 import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
@@ -49,7 +50,7 @@ try {
         '2026-10-16': readQSCReferences('0ed222171e89f1dca39b382a61c531ad7d7aadc5c2be5455fdfea6cae0c5052f'),
         '2031-06-15': '981708735e271fa4ae567ab742ed48aa51cc7c820463353934afa3a47d258a02',
         '2060-06-15': readQSCReferences('e45eea4f6572c8af77d13ef071ed787f6b5d5623677dfdeef9a698bf3f9f823f')
-    })) assertEqual(createHash('sha256').update(JSON.stringify(legacyDemoIncomeRecords(withoutExampleNeeds(createMusterHaushaltRecords(date))))).digest('hex'), readQSCReferences(readVF2BReferences(expected)),
+    })) assertEqual(createHash('sha256').update(JSON.stringify(legacyDemoIncomeRecords(withoutExampleNeeds(createMusterHaushaltRecords(date))))).digest('hex'), readGU1References(readQSCReferences(readVF2BReferences(expected))),
         `${date}: Max und Erika entsprechen der FF-E-Referenz samt berechnetem Jahresplan`);
 } finally {
     if (previousTimezone === undefined) delete process.env.TZ; else process.env.TZ = previousTimezone;
@@ -234,7 +235,7 @@ try {
                 assert(annual.outcome.monthlyBudget * 12 >= entry.values.floorBedarf, 'Jan und Lena decken ihren Grundbedarf mit der linearen Renditeannahme');
                 assert(annual.inputData.dynamicFlex, 'Dynamic Flex ist in der Jahresrechnung aktiv');
                 assert(annual.modelResult.ui.spending.kuerzungProzent > 0 && annual.modelResult.ui.spending.kuerzungProzent < 100, 'FR-33: Kürzung der dynamischen Basis bleibt sichtbar');
-                assertEqual(annual.outcome.monthlyBudget * 12, 55200, 'Jan und Lena erhalten mit 6.750 € Mindest-Flex ein Startbudget von 55.200 €');
+                assertEqual(annual.outcome.monthlyBudget * 12, 51600, 'Jan und Lena erhalten mit 6.750 € Mindest-Flex ein Startbudget von 51.600 € (KO-2: 0,5 % Fondskosten in der erwarteten Rendite, zusammen mit dem Horizont nach FR-75; nur KO-2 52.800 €, nur LE-1 und vorher 55.200 €)');
                 assert(model.household.assets > 1100000 && model.household.assets < 1300000, 'Jan und Lena besitzen rund 1,2 Mio. € einschließlich Tagesgeld');
             } else if (household.id === 'helga-werner') {
                 assertEqual(annual.inputData.renteMonatlich, 2800, 'Beide Renten laufen vollständig');

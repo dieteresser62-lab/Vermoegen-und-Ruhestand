@@ -1,8 +1,9 @@
+import { projectCareLiquidityYear } from '../simulator-care-projection.js';
 // @ts-check
 /** @import {EngineSuccess,YearOutcome} from '../../../typcheck/rechenkern' */
-import { plannedExpensesForYear } from '../../profile/household-planned-expenses.js';
-import { calculateFixedIncomeForYear, creditFixedIncomeSurplus, decidedIncomeFlex } from '../simulator-fixed-income.js';
-import { personalProfiles } from '../simulator-personal-accounts.js';
+import { simulatorPlannedExpenseYear } from '../../profile/household-planned-expenses.js';
+import { calculateFixedIncomeForYear, creditFixedIncomeSurplus, decidedIncomeFlex, nextFixedIncomeWageFactor } from '../simulator-fixed-income.js';
+import { personalProfiles, personalWithdrawalPlan } from '../simulator-personal-accounts.js';
 import { applyGuardrailPlanChange, prepareGuardrailPlanInputs, shouldResetGuardrailState } from '../../shared/guardrail-history.js';
 import { sumDepot } from '../simulator-portfolio.js';
 import { euros } from '../simulator-engine-direct-utils.js';
@@ -11,6 +12,8 @@ import { calculateHouseholdPensionForYear } from '../simulator-household-pension
 import { buildSimulatorEngineInput } from '../simulator-engine-input.js';
 import { resolvePlannedAnnualWithdrawal } from '../../../types/planned-withdrawal-contract.js';
 import { snapshotBalance } from './year-diagnostics.js';
+import { deathYearCashShare, deathYearTransactionView } from '../simulator-death-year-cash.js';
+import { unmarriedInvestmentReserves } from '../simulator-unmarried.js';
 import { SIMULATOR_TECHNICAL_ERROR_CODES, buildTechnicalErrorOutcome } from './outcomes.js';
 import { restoreEngineBoundaryPortfolio, alignEngineInflationContract } from './engine-boundary.js';
 /** @typedef {import('./year-market.js').YearContext & NonNullable<ReturnType<typeof decideYear>['state']>} YearContext */
@@ -24,7 +27,7 @@ export function decideYear(context) {
         baseMinimumFlexAnnual, temporaryMinimumFlexFactor, baseFlexBudgetAnnual, baseFlexBudgetRecharge,
         resolvedCapeRatio, preparedGuardrailPlan, lastState, replayYear, pflegeMeta, careFloorAddition,
         householdContext, is3Bucket, unmarried, engine, engineBoundaryPortfolio, balanceTrace,
-        depotTranchesAktien, depotTranchesGold
+        depotTranchesAktien, depotTranchesGold, hasLifeEvents, unmarriedShares
     } = context;
 
     // ==========================================
@@ -82,8 +85,8 @@ export function decideYear(context) {
     // ==========================================
 
     const profilesAtDecision = personalProfiles(portfolio, inputs);
-    const plannedExpense = inputs.plannedExpenses?.length ? euros(plannedExpensesForYear(inputs.plannedExpenses,
-        /** @type {NonNullable<typeof inputs.plannedExpensesReferenceYear>} */ (inputs.plannedExpensesReferenceYear) + yearIndex, cumulativeInflationFactor)) : 0;
+    // FR-43: Feste geplante Ausgaben stecken schon im Grundbedarf (year-preparation); hier nur einmalige.
+    const plannedExpense = simulatorPlannedExpenseYear(inputs, yearIndex, cumulativeInflationFactor).once;
     const { engineInput, detailedTranches } = /** @type {{engineInput:import('../../../typcheck/rechenkern').NormalizedEngineInput & {personalCashInvestmentCapacity?:number};detailedTranches:import('../../../typcheck/rechenkern').EngineTranche[]}} */ (buildSimulatorEngineInput({
         preserveInputShape: Boolean(replayCollector),
         inputs,
@@ -109,6 +112,15 @@ export function decideYear(context) {
     // addieren. Das Geld bleibt bis zur späteren Zahlung vor Käufen geschützt.
     if (plannedExpense > 0) engineInput.plannedExpenseLiquidityReserve = plannedExpense;
 
+    if ((careP1?.active || careP2?.active) && careP1?.heimBestand !== true && careP2?.heimBestand !== true) {
+        // Lohnindexierte Einkünfte des Folgejahrs wie im Hinterbliebenenpfad (Gutachten PFA-1, Befund 8).
+        engineInput.careLiquidityProjection = projectCareLiquidityYear({ inputs, state: currentState, portfolio,
+            household: { ...householdCtx, care: { p1: careP1, p2: careP2 } }, yearIndex,
+            inflationFactor: cumulativeInflationFactor * (1 + yearData.inflation / 100), pension: pensionResult,
+            fixedIncomeWageFactor: inputs.fixedIncome?.length ? nextFixedIncomeWageFactor(inputs, currentState, yearData)
+                : currentState.fixedIncomeWageFactor });
+    }
+
     // **HAUPTUNTERSCHIED**: Ein einziger Engine-Aufruf statt 3-5 Adapter-Aufrufe
     // PE-1/MP-1: Der MC-Runner reicht die unveränderten Planwerte je Paket durch,
     // auch wenn Hinterbliebenen- oder Steuerzweige inputs lokal kopieren.
@@ -132,43 +144,52 @@ export function decideYear(context) {
             guardrailResetApplied: shouldResetGuardrailState(currentState.guardrailPlanInputs, guardrailPlanInputs)
         });
     }
-    if (is3Bucket && unmarried) engineInput.finalizeThreeBucketAction = false;
-    let fullResult;
-    try {
-        fullResult = engine.simulateSingleYear(engineInput, engineLastState);
-    } catch (cause) {
-        restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
-        return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
-            SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_EXECUTION_EXCEPTION,
-            `Die Simulations-Engine konnte das Jahr nicht berechnen (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_EXECUTION_EXCEPTION}).`,
-            cause
-        )) };
+    // TJ-1b: Auch im Todesjahr mit Erbanteil unter 100 % fertigt der Simulator die Drei-Töpfe-Aktion nach der Begrenzung.
+    const deathYearShare = deathYearCashShare({ inputs, transition: survivorYear, hasLifeEvents });
+    if (is3Bucket && (unmarried || deathYearShare < 1)) {
+        engineInput.finalizeThreeBucketAction = false;
     }
-
-    // Die Engine liefert bereits die vollständige Drei-Töpfe-Aktion.
-    if (replayCollector) replayCollector.afterEngine(replayYear, fullResult);
-
-    // FAIL-SAFE: Error-Handling
-    if (fullResult?.error) {
-        restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
-        return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
-            SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_ERROR,
-            `Die Simulations-Engine hat das Jahr abgewiesen (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_ERROR}).`,
-            fullResult.error
-        )) };
-    }
-    if (!fullResult?.ui
-        || !fullResult.ui.spending
-        || !fullResult.ui.action
-        || !fullResult.ui.market
-        || !fullResult.newState) {
-        restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
-        return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
-            SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID,
-            `Die Simulations-Engine lieferte ein unvollständiges Ergebnis (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
-            fullResult
-        )) };
-    }
+    /** Engine-Aufruf mit denselben Prüfungen für Haushalts- und Todesjahrsicht. */
+    const runEngine = () => {
+        let result;
+        try {
+            result = engine.simulateSingleYear(engineInput, engineLastState);
+        } catch (cause) {
+            restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
+            return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
+                SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_EXECUTION_EXCEPTION,
+                `Die Simulations-Engine konnte das Jahr nicht berechnen (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_EXECUTION_EXCEPTION}).`,
+                cause
+            )) };
+        }
+        // Die Engine liefert bereits die vollständige Drei-Töpfe-Aktion.
+        if (replayCollector && !engineInput.transactionView) replayCollector.afterEngine(replayYear, result);
+        // FAIL-SAFE: Error-Handling
+        if (result?.error) {
+            restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
+            return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
+                SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_ERROR,
+                `Die Simulations-Engine hat das Jahr abgewiesen (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_ERROR}).`,
+                result.error
+            )) };
+        }
+        if (!result?.ui
+            || !result.ui.spending
+            || !result.ui.action
+            || !result.ui.market
+            || !result.newState) {
+            restoreEngineBoundaryPortfolio(portfolio, engineBoundaryPortfolio);
+            return { outcome: /** @type {YearOutcome} */ (buildTechnicalErrorOutcome(
+                SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID,
+                `Die Simulations-Engine lieferte ein unvollständiges Ergebnis (${SIMULATOR_TECHNICAL_ERROR_CODES.ENGINE_RESULT_SHAPE_INVALID}).`,
+                result
+            )) };
+        }
+        return { result };
+    };
+    const engineRun = runEngine();
+    if (engineRun.outcome) return { outcome: engineRun.outcome };
+    let fullResult = engineRun.result;
 
     const plannedWithdrawalResolution = resolvePlannedAnnualWithdrawal({
         spendingResult: fullResult.ui.spending
@@ -202,6 +223,21 @@ export function decideYear(context) {
         if (/** @type {NonNullable<typeof incomeLog>} */ (incomeLog).einkuenfte_gespart > creditedBeforeDecision) snapshotBalance(balanceTrace, depotTranchesAktien, depotTranchesGold, liquiditaet, 'after_income_surplus_final', {
             incomeSurplus: /** @type {NonNullable<typeof incomeLog>} */ (incomeLog).einkuenfte_gespart - creditedBeforeDecision });
     }
+    // TJ-2: Im Todesjahr mit Erbanteil unter 100 % entscheidet die Engine Kauf und Auffüllung erneut mit der Sicht der
+    // überlebenden Person. Die Ausgabenplanung hängt nicht von dieser Sicht ab und bleibt gleich.
+    const deathYearView = deathYearTransactionView({ portfolio, inputs, transition: survivorYear, share: deathYearShare,
+        householdLiquidity: /** @type {number} */ (engineInput.aktuelleLiquiditaet),
+        bookings: () => unmarried ? unmarriedInvestmentReserves(portfolio, inputs, unmarriedShares,
+            plannedWithdrawalResolution.annualWithdrawal, plannedExpense, pensionResult, fixedIncome, incomeLog)
+            : personalWithdrawalPlan(personalProfiles(portfolio, inputs), plannedWithdrawalResolution.annualWithdrawal + plannedExpense,
+                inputs.householdWithdrawalMode).items.map(item => ({ profileId: item.profileId, amount: item.withdrawalAmount })) });
+    if (deathYearView) {
+        engineInput.transactionView = deathYearView.engineView;
+        const viewRun = runEngine();
+        if (viewRun.outcome) return { outcome: viewRun.outcome };
+        fullResult = viewRun.result;
+        alignEngineInflationContract(/** @type {EngineSuccess} */ (fullResult), cumulativeInflationFactor);
+    }
     return { state: {
         pensionResult, inputs, yearIndex, widowPensionP1, widowPensionP2, p1Alive, p2Alive, householdCtx,
         survivorYear, effectiveBaseFloor, baseFlex, temporaryFlexFactor, fixedIncome, currentState, portfolio,
@@ -211,6 +247,6 @@ export function decideYear(context) {
         baseMinimumFlexAnnual, baseFlexBudgetAnnual, baseFlexBudgetRecharge, resolvedCapeRatio,
         guardrailPlanInputs, pflegeMeta, careFloorAddition, is3Bucket, unmarried, fullResult,
         engineBoundaryPortfolio, plannedWithdrawalResolution, balanceTrace, depotTranchesAktien,
-        depotTranchesGold
+        depotTranchesGold, deathYearView
     } };
 }

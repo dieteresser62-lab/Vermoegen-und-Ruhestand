@@ -62,19 +62,8 @@ export class ActionRenderer {
 
         container.appendChild(content);
         const outputs = this.dom.outputs;
-        const proposedTitle = {
-            'Aktien verkaufen': 'Vorgeschlagener Verkauf · Aktien',
-            'Gold verkaufen': 'Vorgeschlagener Verkauf · Gold',
-            'Gold kaufen': 'Vorgeschlagener Kauf · Gold',
-            'Aktien kaufen': 'Vorgeschlagener Kauf · Aktien',
-            'Anleihen verkaufen': 'Vorgeschlagener Verkauf · Anleihen',
-            'Anleihen kaufen': 'Vorgeschlagener Kauf · Anleihen',
-            'Handel ausführen': 'Vorgeschlagener Handel · Saldo je Anlageklasse',
-            'Umschichten': 'Vorgeschlagene Umschichtung',
-            'Handlung prüfen': 'Vorgeschlagene Handlung prüfen',
-            'Nichts tun': 'Keine Transaktion vorgeschlagen'
-        }[summary.verb];
-        if (outputs.balanceActionTitle) outputs.balanceActionTitle.textContent = proposedTitle;
+        // FR-77 Punkt 4: Die Vorschau steht als zugeklappte Zeile „Hauptaktion · Betrag“ unter dem Plan.
+        if (outputs.balanceActionTitle) outputs.balanceActionTitle.textContent = summary.verb;
         if (outputs.balanceActionAmount) {
             outputs.balanceActionAmount.textContent = '';
             if (summary.amount !== null) {
@@ -82,11 +71,6 @@ export class ActionRenderer {
                 outputs.balanceActionAmount.replaceChildren(document.createTextNode(UIUtils.formatBalanceCurrency(summary.amount).slice(0, -1)), unit);
             }
         }
-        const card = outputs.balanceActionTitle?.closest?.('.ov-act');
-        card?.classList.toggle('action-hold', summary.verb === 'Nichts tun');
-        if (outputs.balanceActionIcon) outputs.balanceActionIcon.innerHTML = summary.verb === 'Nichts tun'
-            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg>'
-            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8M14 7h7v7M3 21h18"/></svg>';
         const purpose = outputs.balanceActionPurpose || outputs.balanceActionNote;
         if (purpose) purpose.textContent = summary.note;
         const routingEntries = this._materialProfileActions() || [{ action: uiAction, input, spending, targetLiquidity }];

@@ -1,5 +1,5 @@
-import { makeDefaultCareMeta, priceCareMeta, calcCareCost, computeHouseholdFlexFactor } from './simulator-engine-helpers.js';
-import { applyPartnerCareFallback } from '../shared/care-benefits.js';
+import { makeDefaultCareMeta, calcCareCost, computeHouseholdFlexFactor } from './simulator-engine-helpers.js';
+import { priceMonteCarloCareForYear } from './mc-life-events.js';
 
 /** Backtest: heutige Grade festhalten, ohne Ereignisse oder Zufallsziehungen.
  *
@@ -23,9 +23,7 @@ export function fixedCareTodayForYear(inputs, state, yearIndex) {
     const p2 = inputs.partner?.aktiv
         ? personCare(inputs.partner.careToday, inputs.partner.geschlecht, inputs.partner.startAlter) : null;
     const householdContext = { p1Alive: true, p2Alive: inputs.partner?.aktiv === true, care: { p1, p2 } };
-    applyPartnerCareFallback(inputs, householdContext);
-    priceCareMeta(p1, inputs, state, yearIndex);
-    priceCareMeta(p2, inputs, state, yearIndex);
+    priceMonteCarloCareForYear(inputs, p1, p2, state, yearIndex, true, inputs.partner?.aktiv === true, true);
     return { pflegeMeta: p1, householdContext,
         careFloorAddition: calcCareCost(p1, p2).zusatzFloor,
         temporaryFlexFactor: computeHouseholdFlexFactor({ hasPartner: inputs.partner?.aktiv === true,

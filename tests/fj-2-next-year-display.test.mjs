@@ -7,6 +7,7 @@ import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input
 import { HOUSEHOLD_PLAN_KEY, buildPlanRecord } from '../app/profile/household-plan.js';
 import { INFLATION_RESULT_METRIC } from '../app/balance/balance-annual-inflation.js';
 import { MockDocument } from './helpers/balance-page-fixture.mjs';
+import { isHiddenBearMarket } from '../app/balance/balance-market-preview.js';
 import { fjFixture, fixtureNow, stateKey, changeProfiles, setPrices } from './helpers/fj-1-fixtures.mjs';
 
 const project = (storage = fjFixture(), options = {}) => projectNextYearBudget({ storage, engineApi: EngineAPI, now: fixtureNow, ...options });
@@ -47,15 +48,11 @@ const tinyView = project(tiny);
 assert(Math.abs(tinyView.rule.components.find(item => item.kind === 'inflation').amount) < 1, 'Probe enthält Bedarfsänderung unter einem Euro');
 assert(!tinyView.rule.reasons.some(item => item.kind === 'inflation'), 'Grund unter einem Euro wird weggelassen');
 
+// WT-1 (FR-77 Punkt 5): Ohne verdeckten Bärenmarkt zeigt die Balance nichts zum Jahreshoch; die Grundzeile bleibt.
 renderBalanceMarketPreview(doc, null, view);
-assertEqual(text(get('balanceMarketPreviewTitle')), 'Budgetprüfung für 2027', 'Titel nennt Folgejahr');
-assertEqual(text(get('balanceMarketPreviewSubtitle')), 'Projektion mit heutigen Werten', 'Projektionsuntertitel sichtbar');
-assert(!get('balanceMarketPreviewSubtitle').hidden, 'Untertitel immer sichtbar');
 assert(text(get('balanceBudgetReasons')).startsWith('Warum anders als 2026:'), 'Grundzeile nennt Vergleichsjahr');
-assert(text(get('balanceMarketPreviewBody')).includes(assumptions), 'Annahmen stehen außerhalb der Klappen');
-assert(get('balanceHighBudget').hidden && get('balanceHighAction').hidden, 'same ohne Zusatzzeilen');
-assert(!detail('budgetComparisonDetails').open && !detail('marketComparisonDetails').open, 'Gleiche Budgets lassen Budget und Umschichtung zugeklappt');
-assert(detail('marketHistoryDetails').open, 'AR-2: Hinweis öffnet den Jahresverlauf trotz gleicher Budgets');
+assert(get('balanceMarketPreview').hidden && text(get('balanceMarketPreviewBody')) === '', 'Gleiche Lesarten: kein Block zum Jahreshoch');
+assert(get('balanceHighBudget').hidden, 'same ohne Zusatzzeile');
 const renderer = new SummaryRenderer({ outputs: {} });
 const previousDoc = globalThis.document;
 globalThis.document = doc;
@@ -102,17 +99,13 @@ assertEqual(lower.state, 'budget_lower', 'Folgejahr mit höherem Hoch hat niedri
 assertEqual(lower.high.components.find(item => item.kind === 'market').amount, lower.comparison.difference.annualBudget, 'Marktwirkung nur aus Variantenvergleich');
 renderBalanceMarketPreview(doc, null);
 renderBalanceMarketPreview(doc, null, lower);
-assert(!get('balanceHighBudget').hidden, 'Anderes Folgejahresbudget zeigt Hochzeile');
-assert(detail('budgetComparisonDetails').open, 'Niedrigeres Budget öffnet Tabelle');
-assert(text(get('balanceMarketPreviewBody')).includes('Der Markt war in diesem Jahr schon viel heißer'), 'Niedrigeres Budget nennt Prüfbedarf');
-for (const state of ['same', 'budget_same_action_differs', 'budget_lower', 'budget_higher']) {
-    const changed = structuredClone(lower); changed.marketPreview.comparison.state = state;
-    renderBalanceMarketPreview(doc, null, changed);
-    assertEqual(!get('balanceHighBudget').hidden, ['budget_lower', 'budget_higher'].includes(state), 'Budgetzeile nur bei Differenz: ' + state);
-    assert(detail('marketHistoryDetails').open, 'AR-2: Jahresverlauf bei Hinweis und Warnung offen: ' + state);
-    // Wieder aufgenommen nach dem Gutachten AR2 (Fable B4): Budgettabelle nur bei Budgetunterschied offen.
-    assertEqual(detail('budgetComparisonDetails').open, ['budget_lower', 'budget_higher'].includes(state), 'Klappenstatus Budget: ' + state);
-}
+const lowerHidden = isHiddenBearMarket(lower.marketPreview);
+assertEqual(!get('balanceMarketPreview').hidden, lowerHidden, 'Block nur bei verdecktem Bärenmarkt');
+assertEqual(!get('balanceHighBudget').hidden, lowerHidden, 'Hochzeile beim Budget nur bei verdecktem Bärenmarkt');
+if (lowerHidden) assert(text(get('balanceMarketPreviewBody')).includes('Bärenmarkt, den die Jahresregel nicht sieht'), 'Verdeckter Bär nennt den Block');
+const calm = structuredClone(lower); calm.marketPreview.high.market = { ...calm.marketPreview.rule.market };
+renderBalanceMarketPreview(doc, null, calm);
+assert(get('balanceMarketPreview').hidden && get('balanceHighBudget').hidden, 'Anderes Budget ohne verdeckten Bären bleibt unsichtbar');
 
 const planned = fjFixture('renate');
 const calculation = buildBalanceEngineInputFromStorage({ storage: planned, referenceYear: 2026 });
@@ -129,13 +122,9 @@ assert(zero.rule.reasons.every(reason => Math.abs(reason.amount) >= 1), 'Nullän
 // Nicht möglich: Ergebnis mit Grund, keine Varianten; p25-Rechnung bleibt eigener Fallback.
 const failed = project(fjFixture(), { engineApi: { simulateSingleYear: () => { throw new Error('Projektionsprobe'); } } });
 renderBalanceMarketPreview(doc, lower.marketPreview, failed);
-assert(text(get('balanceMarketPreviewBody')).includes('Vergleich mit dem Jahreshoch nicht möglich') && text(get('balanceMarketPreviewBody')).includes('Projektionsprobe'), 'Projektionsfehler sichtbar');
-assertEqual(tags(get('balanceMarketPreviewBody'), 'table').length, 0, 'Keine Varianten bei Projektionsfehler');
-assert(get('balanceBudgetReasons').hidden && get('balanceHighBudget').hidden && get('balanceHighAction').hidden, 'Fehler entfernt alte Zusatzzeilen');
-assert(text(get('balanceMarketPreviewBody')).includes('Annahmen:'), 'Annahmenzeile bleibt auch bei Fehler sichtbar');
-const annual = createAnnualMarketReadings(doc, view.marketPreview);
-assert(text(annual).includes('Abschließende Berechnung mit bestätigten Jahresdaten'), 'Jahresabschluss zeigt abschließende Beschriftung');
-assert(text(annual).includes('Budget und Verkauf bleiben trotzdem gleich.'), 'Jahresabschluss zeigt denselben Hinweis ohne Wahl');
+assert(get('balanceMarketPreview').hidden && text(get('balanceMarketPreviewBody')) === '', 'Projektionsfehler: Balance zeigt nichts zum Jahreshoch');
+assert(get('balanceBudgetReasons').hidden && get('balanceHighBudget').hidden, 'Fehler entfernt alte Zusatzzeilen');
+assert(createAnnualMarketReadings(doc, view.marketPreview).hidden, 'Jahresabschluss: belastbare Kurse ohne verdeckten Bären zeigen nichts');
 const main = fs.readFileSync(new URL('../app/balance/balance-main.js', import.meta.url), 'utf8');
 assert(main.includes('annualInflation: options.annualInflation'), 'Balance reicht vorbereitete Januarquelle durch');
 assert(main.includes('projected?.modelResult || modelResult'), 'Fehler lässt bisherige Vorschau bestehen');

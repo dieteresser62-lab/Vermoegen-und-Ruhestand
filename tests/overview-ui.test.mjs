@@ -435,7 +435,7 @@ assert(html.includes('href="depot-tranchen-manager.html#personen"') && html.incl
     option.click(); option.click();
     await Promise.resolve(); await Promise.resolve();
     assertEqual(starts, 1, 'Musteroption teilt Doppelklicks über den vorhandenen Startablauf');
-    assertEqual(JSON.stringify(choice), JSON.stringify({ source: 'demo', testDate: null }), 'Erststartklick wählt Muster mit Stand heute ohne Testdatum');
+    assertEqual(JSON.stringify(choice), JSON.stringify({ source: 'demo', testDate: '2026-10-23' }), 'Erststartklick wählt Muster mit Spielkursen am Handbuchdatum');
     assertEqual(dialogs, 0, 'Erststartklick öffnet keinen Startdialog');
     for (const flag of ['busy', 'waiting', 'blocked']) {
         trial[flag] = true; renderProbelaufUI(trialDoc, trial);
@@ -1211,3 +1211,13 @@ for (const [period, phrase] of [['1m', 'im letzten Monat'], ['1w', 'in der letzt
 const periodLabels = ['Alles', 'Laufendes Jahr', 'Letzte 12 Monate', 'Letzter Monat', 'Letzte Woche'];
 const buttons = [...html.matchAll(/data-history-period="[^"]+" aria-pressed="[^"]+">([^<]+)</g)].map(m => m[1]);
 assertEqual(JSON.stringify(buttons), JSON.stringify(periodLabels), 'Fünf Zeitraumtexte in vorgegebener Reihenfolge');
+
+// SPK-1: Alte Sitzungsfehler bleiben bei leerem Depot auch optisch neutral.
+for (const day of ['2026-11-07', '2027-01-01', '2028-06-15']) {
+    for (const status of ['offline', 'timeout', 'complete']) {
+        renderOverview(doc, { ...monthly, now: new Date(day + 'T12:00:00'), priceTranches: [], quoteDate: null,
+            priceReport: { status, updated: 0, results: [{ status: 'failed' }] } });
+        assertEqual(doc.getElementById('overviewPricesValue').textContent, 'Kein Depot erfasst', day + ': kein Abruffehler ohne Depot');
+        assertEqual(doc.getElementById('overviewPrices').dataset.warning, 'false', day + ': keine Warnmarkierung ohne Depot');
+    }
+}

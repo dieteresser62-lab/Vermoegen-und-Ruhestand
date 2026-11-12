@@ -81,6 +81,35 @@ export function summarizeBalanceAction(action, uiAction, profileEntries = null) 
         goldPurchaseAmount: uses('gold'), amountUnit: ['Aktien verkaufen', 'Gold verkaufen'].includes(verb) ? '€ netto' : '€', extraTransfer: opposingTransfers || verb === 'Umschichten' ? 0 : transfer };
 }
 
+/** Anlageklasse einer Verkaufsquelle wie bei `threeBucketActionTrades`. @param {any} source @returns {string|null} */
+function saleClassLabel(source) {
+    const category = String(source?.category || source?.kind || '').toLowerCase(), kind = String(source?.kind || '').toLowerCase();
+    if (/bond|anleihe/.test(category) || /bond|anleihe/.test(kind)) return 'Anleihen';
+    if (category === 'gold' || kind === 'gold') return 'Gold';
+    if (category === 'equity' || kind.startsWith('aktien')) return 'Aktien';
+    return null;
+}
+
+/**
+ * WT-1b: Verb und Netto-Betrag eines Jahresplans für Karte, Ergebnis, Bärenblock und Wahl. Bis auf einen Fall wie
+ * `summarizeBalanceAction`: Ohne Aktien- oder Goldverkauf fällt sie auf „Handlung prüfen“. Ist der Beleg eindeutig,
+ * nennt das Verb hier die Anlageklassen der Verkaufszeilen („Anleihen verkaufen“), sonst den Kauf („Anleihen kaufen“).
+ * @param {import('../../typcheck/balance-ui.js').Action} action
+ * @param {import('../../typcheck/balance-ui.js').Summary} [summary] @returns {{verb: string, amount: number|null}}
+ */
+export function describePlanAction(action, summary = summarizeBalanceAction(action, action)) {
+    if (summary.verb !== 'Handlung prüfen') return { verb: summary.verb, amount: summary.amount ?? null };
+    const sales = (Array.isArray(action?.quellen) ? action.quellen : []).filter(source => Number(source?.brutto) > 0 && saleClassLabel(source));
+    const labels = [...new Set(sales.map(saleClassLabel))];
+    if (labels.length) {
+        const amount = sales.every(source => Number.isFinite(source.netto)) ? sales.reduce((sum, source) => sum + source.netto, 0) : null;
+        return { verb: `${labels.length > 1 ? `${labels.slice(0, -1).join(', ')} und ${labels.at(-1)}` : labels[0]} verkaufen`, amount };
+    }
+    const bonds = Number(action?.verwendungen?.bonds);
+    if (bonds > 0) return { verb: 'Anleihen kaufen', amount: bonds };
+    return { verb: summary.verb, amount: summary.amount ?? null };
+}
+
 /** Derselbe Kurzplan für Diagnoseanzeige und Copy; keinerlei Handelsableitung. */
 /** @param {import('../../typcheck/balance-ui.js').Summary} summary @param {(amount: number)=>string} formatCurrency @returns {string} */
 export function describeBalanceActionSummary(summary, formatCurrency) {

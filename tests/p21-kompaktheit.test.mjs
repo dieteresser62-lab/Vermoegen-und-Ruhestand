@@ -135,14 +135,13 @@ assertEqual(finalRule('.overview-metrics').display, 'grid', 'Drei Kennzahlen bes
 const balanceHtml = read('Balance.html'), balanceTree = tokenizeHTML(balanceHtml);
 const hero = balanceTree.elements.find(node => node.attrs.class?.includes('ov-hero'));
 const action = balanceTree.elements.find(node => node.attrs.class?.includes('ov-act'));
-assertEqual(hero.parent, action.parent, 'Budget und vollständige Handlung stehen im gemeinsamen Raster');
+assertEqual(hero.parent.parent, action.parent.parent, 'Budget und vollständige Handlung stehen im gemeinsamen Raster (BL-1: je eigene Spalte)');
 assert(action.children.some(node => node.attrs.id === 'balanceAnnualAction'), 'Jahresbeschluss bleibt in der Handlungskarte');
 assert(balanceTree.elements.some(node => node.attrs.class?.includes('balance-help-link') && node.attrs.href === 'Handbuch.html#balance' && !node.attrs.target
     && node.attrs['aria-label'] === 'Hilfe öffnen' && node.attrs['data-profile-handoff'] === ''), 'Hilfe-Symbol behält Ziel und geschützten Handoff');
 const balanceCss = read('css/balance.css');
 assert(balanceCss.includes('@container balance-page (max-width: 1180px)')
-    && balanceCss.includes('.balance-overview > .ov-hero, .balance-overview > .ov-act { grid-column: span 6; }')
-    && balanceCss.includes('.balance-overview > .ds-plan-card { grid-column: span 4; }'), 'Bei 1280 px bleiben Budget und Handlung nebeneinander');
+    && balanceCss.includes('.balance-overview-column { grid-column: span 6;'), 'Bei 1280 px bleiben Budget und Handlung nebeneinander');
 assert(balanceCss.includes('.balance-page .tab-panel { margin-top: var(--space-3); }'), 'Reiter-/Panelabstand verwendet den reduzierten Token');
 
 let overviewWrites = 0;
@@ -224,5 +223,5 @@ assert(managerCss.includes('.pv-plan-overview .pv-household-grid { grid-template
 const simulatorTree = tokenizeHTML(read('Simulator.html'));
 const resultAnswers = simulatorTree.elements.find(node => node.attrs.id === 'overviewMonteCarloAnswers');
 const mcOverview = simulatorTree.elements.find(node => node.attrs.id === 'overviewMonteCarlo');
-assert(resultAnswers.parent === mcOverview.parent && simulatorTree.elements.indexOf(resultAnswers) < simulatorTree.elements.indexOf(mcOverview), 'Beide vorhandenen MC-Kernantworten stehen oben vor den Deckungsdetails und Rechencontrols');
+assert(resultAnswers.parent === mcOverview.parent && simulatorTree.elements.indexOf(mcOverview) < simulatorTree.elements.indexOf(resultAnswers), 'SE-1: Kartenkopf mit Rechencontrols steht über den beiden MC-Kernantworten');
 assertEqual(simulatorTree.elements.filter(node => node.attrs.id === 'monteCarloAnswers').length, 1, 'Detailreiter behält seinen eindeutigen Antwort-Host');

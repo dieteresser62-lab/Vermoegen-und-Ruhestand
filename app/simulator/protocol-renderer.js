@@ -4,8 +4,8 @@ import { rowWealthParts, protocolWealthText } from './wealth-display.js';
 import { PROTOCOL_GROUPS, getProtocolColumns, readProtocolValue, formatProtocolValue,
     protocolRowData, protocolRowFlags, createProtocolPersonContext, translateProtocolText } from './protocol-columns.js';
 import { infoPopoverHtml } from '../shared/designsystem-info-popover.js';
-import { protocolCashflowBreakdown } from './protocol-cashflows.js';
-import { careFormForPerson, noCareAllowanceReason } from '../shared/care-benefits.js';
+import { protocolCashflowBreakdown, protocolCareNotes, protocolCareState } from './protocol-cashflows.js';
+import { noCareAllowanceReason } from '../shared/care-benefits.js';
 import { STRATEGY_OPTIONS } from '../../types/strategy-options.js';
 import { FAMILY_HOME_CONDITIONS, spouseTaxNote, inheritancePersonalAllowance } from '../profile/household-partnership.js';
 import { displayTradeAmount } from '../shared/transaction-display-text.js';
@@ -152,19 +152,17 @@ function cashflowInfo(column, entry, options) {
     const breakdown = protocolCashflowBreakdown(entry, options);
     const income = column.id === 'income-total';
     const line = (label, value, className = '') => `<span class="protocol-cashflow-line${className ? ` ${className}` : ''}"><span>${escape(label)}</span><span>${escape(formatProtocolValue(column, value, entry, options))}</span></span>`;
-    let content = (income ? breakdown.incomes : breakdown.expenses).map(item => line(item.label, item.amount)).join('');
+    let content = (income ? breakdown.incomes : breakdown.expenses).map(item => line(item.label, item.amount, item.detail ? 'protocol-cashflow-detail' : '')).join('');
     content += line('Summe', breakdown.totals[income ? 'einnahmen_gesamt' : 'ausgaben_gesamt'], 'protocol-cashflow-sum');
     if (income && breakdown.saved > 0) content += line('davon angelegt', breakdown.saved, 'protocol-cashflow-saved');
     if (income) {
         const row = protocolRowData(entry, options.source), inputs = options.inputs || {};
         for (const index of [0, 1]) {
             if (index === 1 && !inputs.partner?.aktiv) continue;
-            const today = index === 0 ? inputs.careToday : inputs.partner?.careToday;
-            const grade = row[`CareP${index + 1}_Active`] ? row[`CareP${index + 1}_Grade`]
-                : options.source === 'backtest' ? today?.grade : 0;
-            const fallback = row[`CareP${index + 1}_FamilyFallback`];
-            const reason = noCareAllowanceReason({ grade, preset: inputs.pflegeKostenStaffelPreset,
-                careForm: fallback ? 'home-support' : careFormForPerson(inputs, grade, index) });
+            const care = protocolCareState(entry, index, options), fallback = row[`CareP${index + 1}_FamilyFallback`];
+            // FR-72 Punkt 18: gespeicherte Jahresform; im Heim gilt der Heimgrund auch bei „Amtlich“.
+            const reason = noCareAllowanceReason({ grade: care?.grade, careForm: care?.form ?? undefined,
+                preset: care?.form === 'residential' ? undefined : inputs.pflegeKostenStaffelPreset });
             if (reason) content += `<span class="ds-help">${escape(options.personDisplayContext?.persons?.[index]?.name || inputs.simulationPeople?.[index]?.name || `Person ${index + 1}`)}: ${escape(reason)}</span>`;
             if (fallback) {
                 const other = 1 - index;
@@ -178,7 +176,8 @@ function cashflowInfo(column, entry, options) {
             }
         }
     }
-    if (!income) content += line('davon aus dem Vermögen bezahlt', breakdown.withdrawal, 'protocol-cashflow-withdrawal');
+    if (!income) content += line('davon aus dem Vermögen bezahlt', breakdown.withdrawal, 'protocol-cashflow-withdrawal') + protocolCareNotes(entry, options,
+        value => formatProtocolValue({ format: 'money' }, value)).map(note => `<span class="ds-help">${escape(note)}</span>`).join('');
     return protocolInfo(`${column.label}: Aufschlüsselung des Jahres`, '').replace('role="tooltip">', `role="tooltip">${content}`);
 }
 
@@ -439,7 +438,7 @@ export function protocolPersonPresentation(rows, index, column, options = {}) {
     if (context.careEnabled && raw[`CareP${person}_Active`]) {
         const grade = raw[`CareP${person}_Grade`];
         return { text: grade == null ? 'PG ?' : `PG ${grade}`, tone: 'care',
-            title: `${name}: ${grade == null ? 'Pflegegrad unbekannt' : `Pflegegrad ${grade}`}` };
+            title: `${name}: ${grade == null ? 'Pflegegrad unbekannt' : `Pflegegrad ${grade}`}${raw[`CareP${person}_HeimBestand`] ? ' · heute im Heim' : raw[`CareP${person}_HeimJahr`] ? ` · im Heim, Heimjahr ${raw[`CareP${person}_HeimJahr`]}` : ''}` };
     }
     return { text: '✓', tone: 'alive', title: `${name}: lebt` };
 }
@@ -493,7 +492,7 @@ export function renderProtocolTable(rows, options = {}) {
                     ? protocolInfo('Handlung und vollständige Begründung', protocolActionExplanation(entry, actionOptions, formatted)) : '';
                 const content = action
                     ? `${escape(protocolActionShortText(entry, actionOptions, formatted))}${actionInfo}${raw.inheritance ? inheritanceInfo(raw, entry, options) : ''}`
-                    : `${escape(formatted)}${cashflow ? cashflowInfo(column, entry, options) : ''}${column.id === 'inheritance-tax' ? inheritanceTaxInfo(entry, { ...options, rows: data }) : ''}${column.id === 'residence-tax' ? residenceTaxInfo(entry, options) : ''}${['total', 'total-with-homes'].includes(column.id) && formatted && formatted !== '—' ? protocolInfo('Aufteilung des Vermögens', protocolWealthText(entry, { source, moneyBasis: options.moneyBasis, withHomes: column.id === 'total-with-homes' })) : ''}${withdrawal && belowCar ? protocolInfo('Niedrige Entnahme', `Niedrige Entnahme: ${LOW_WITHDRAWAL_HINT}`) : ''}`;
+                    : `${escape(formatted)}${cashflow ? cashflowInfo(column, entry, actionOptions) : ''}${column.id === 'inheritance-tax' ? inheritanceTaxInfo(entry, { ...options, rows: data }) : ''}${column.id === 'residence-tax' ? residenceTaxInfo(entry, options) : ''}${['total', 'total-with-homes'].includes(column.id) && formatted && formatted !== '—' ? protocolInfo('Aufteilung des Vermögens', protocolWealthText(entry, { source, moneyBasis: options.moneyBasis, withHomes: column.id === 'total-with-homes' })) : ''}${withdrawal && belowCar ? protocolInfo('Niedrige Entnahme', `Niedrige Entnahme: ${LOW_WITHDRAWAL_HINT}`) : ''}`;
                 html += `<td class="${numeric.trim()}${tradeClass ? ` ${tradeClass}` : ''}${action ? ' protocol-action' : ''}${withdrawal ? ' protocol-withdrawal' : ''}${cashflow ? ' protocol-cashflow' : ''}${withdrawal && belowCar ? ' protocol-low-withdrawal' : ''}${groupStart(position) ? ' protocol-group-start' : ''}">${content}</td>`;
             }
         });

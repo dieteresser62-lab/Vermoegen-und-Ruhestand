@@ -5,6 +5,7 @@ import { PersistenceFacade, persistenceStorage } from '../shared/persistence-fac
 import { isValidLiquidityRunwayYears } from '../../types/liquidity-runway-contract.js';
 import { validateLongevitySettings } from '../simulator/dynamic-flex-longevity-contract.js';
 import { loadProfileRegistry } from './profile-registry.js';
+import { DEFAULT_EQUITY_COST_PCT } from '../shared/equity-cost-default.js';
 
 export const HOUSEHOLD_PLAN_KEY = 'household_plan_v1';
 /** @type {Readonly<import("../../typcheck/datenvertraege.js").PlanValues>} */
@@ -16,8 +17,32 @@ export const PLAN_DEFAULTS = Object.freeze({
     dynamicFlex: false, horizonMethod: 'survival_quantile', horizonYears: 30, survivalQuantile: 0.85,
     goGoActive: false, goGoMultiplier: 1.1, longevityMode: 'none', longevityQuantileShift: 0.05,
     jointAssessment: false, longevityRelativePct: 0.05, longevityBufferYears: 2, householdWithdrawalMode: 'tax_optimized',
-    cape: Object.freeze({ value: 0, asOf: null, source: null })
+    cape: Object.freeze({ value: 0, asOf: null, source: null }),
+    // FR-76 (Ergänzung 12.11.2026): Fondskosten Aktien-ETF in % pro Jahr; fehlt der Wert, gilt die Vorgabe beim Lesen.
+    equityCostPct: DEFAULT_EQUITY_COST_PCT
 });
+/** Planfelder, die in älteren Ständen fehlen dürfen; gelesen wird dann ihre Vorgabe, geschrieben wird nichts. */
+const OPTIONAL_PLAN_FIELDS = Object.freeze(['jointAssessment', 'liquidityCashMonths', 'equityCostPct']);
+/** Fehlende Lesevorgaben ergänzen, ohne gespeicherte Bytes zu ändern. */
+const withReadDefaults = values => ({ ...values,
+    liquidityCashMonths: values.liquidityCashMonths ?? PLAN_DEFAULTS.liquidityCashMonths,
+    equityCostPct: values.equityCostPct ?? PLAN_DEFAULTS.equityCostPct });
+/** FR-76: Fondskosten des Plans, ohne gespeicherten Wert die Vorgabe.
+ * @param {Partial<import("../../typcheck/datenvertraege.js").PlanValues>|null|undefined} values
+ * @returns {number} */
+export const planEquityCostPct = values => values?.equityCostPct ?? PLAN_DEFAULTS.equityCostPct;
+/** FR-76: Die Balance gibt die Fondskosten nur mit Dynamic Flex an die Engine; dort mindern sie die erwartete Rendite.
+ * Ohne Dynamic Flex oder mit 0 % bleibt die Eingabe unverändert (bytegleich). Ohne bestätigten Plan gilt die Vorgabe.
+ * @template {{dynamicFlex?: boolean, equityCostPct?: number}} T
+ * @param {T} input Balance-Eingabe mit wirksamem Dynamic-Flex-Schalter.
+ * @param {Partial<import("../../typcheck/datenvertraege.js").PlanValues>|null} values Planwerte oder null.
+ * @returns {T} Dieselbe Eingabe. */
+export function applyBalanceEquityCost(input, values) {
+    const cost = planEquityCostPct(values);
+    // Mit 0 % rechnet die Engine ohne Abzug; die Eingabe bleibt dann wie ohne Fondskosten.
+    if (input.dynamicFlex === true && cost > 0) input.equityCostPct = cost;
+    return input;
+}
 export const PLAN_FIELDS = Object.freeze(Object.keys(PLAN_DEFAULTS));
 export const PLAN_FIELD_PATHS = Object.freeze(PLAN_FIELDS.flatMap(key =>
     ['decumulation', 'cape'].includes(key) ? Object.keys(PLAN_DEFAULTS[key]).map(field => `${key}.${field}`) : [key]));
@@ -179,7 +204,7 @@ function exactKeys(value, keys, label) {
  * @returns Geprüfte Planwerte; ungültige Werte lösen einen Fehler aus.
  */
 export function assertPlanValues(values) {
-    exactKeys(values, PLAN_FIELDS.filter(key => !['jointAssessment', 'liquidityCashMonths'].includes(key) || Object.hasOwn(values || {}, key)), 'Plan');
+    exactKeys(values, PLAN_FIELDS.filter(key => !OPTIONAL_PLAN_FIELDS.includes(key) || Object.hasOwn(values || {}, key)), 'Plan');
     if (values.jointAssessment !== undefined && typeof values.jointAssessment !== 'boolean') throw new Error('Zusammenveranlagung muss eine Checkboxentscheidung sein.');
     const ranges = {
         floorBedarf: [0, Infinity], flexBedarf: [0, Infinity], minimumFlexAnnual: [0, Infinity],
@@ -196,6 +221,9 @@ export function assertPlanValues(values) {
     if (!Number.isInteger(cashMonths) || cashMonths < 0 || cashMonths > values.liquidityRunwayYears * 12
         || Object.hasOwn(values, 'liquidityCashMonths') && values.liquidityCashMonths === null) {
         throw new Error('liquidityCashMonths: ganze Monate zwischen 0 und Liquiditäts-Reichweite × 12 eingeben.');
+    }
+    if (Object.hasOwn(values, 'equityCostPct') && (!Number.isFinite(values.equityCostPct) || values.equityCostPct < 0 || values.equityCostPct > 5)) {
+        throw new Error('equityCostPct: Bitte Prozent zwischen 0 und 5 eingeben.');
     }
     if (values.minimumFlexAnnual > values.flexBedarf) throw new Error('Mindest-Flex darf den Flex-Bedarf nicht überschreiten. Bitte die Auswahl korrigieren.');
     for (const field of ['dynamicFlex', 'goGoActive']) if (typeof values[field] !== 'boolean') throw new Error(`${field} muss eine Checkboxentscheidung sein.`);
@@ -226,7 +254,7 @@ export function assertHouseholdPlanRecord(raw) {
         if (assertPlanScope(entry.scope).key !== key || typeof entry.updatedAt !== 'string' || !Number.isFinite(Date.parse(entry.updatedAt))) throw new Error('Ungültiger Planbereich oder Zeitstempel.');
         assertPlanValues(entry.values);
         // Nur die gelesene Projektion ergänzen; die gespeicherten Bytes bleiben erhalten.
-        entry.values.liquidityCashMonths ??= PLAN_DEFAULTS.liquidityCashMonths;
+        entry.values = withReadDefaults(entry.values);
     }
     return record;
 }
@@ -249,7 +277,7 @@ export function buildPlanRecord(raw, entries, { now = appNow } = {}) {
     if (raw != null) assertHouseholdPlanRecord(raw);
     // Validierte Lesevorgaben nicht in unberührte andere Planbereiche schreiben.
     const record = raw == null ? { version: 1, entries: {} } : typeof raw === 'string' ? JSON.parse(raw) : structuredClone(raw);
-    const comparable = values => values ? { ...values, liquidityCashMonths: values.liquidityCashMonths ?? PLAN_DEFAULTS.liquidityCashMonths } : null;
+    const comparable = values => values ? withReadDefaults(values) : null;
     let changed = false;
     for (const { scope, values } of entries) {
         assertPlanScope(scope); assertPlanValues(values);
@@ -266,9 +294,13 @@ export function buildPlanRecord(raw, entries, { now = appNow } = {}) {
  */
 export function projectPlanToBalance(values) {
     assertPlanValues(values);
-    const { cape, householdWithdrawalMode, jointAssessment, ...inputs } = structuredClone(values);
+    const { cape, householdWithdrawalMode, jointAssessment, equityCostPct, ...inputs } = structuredClone(values);
     inputs.liquidityCashMonths ??= PLAN_DEFAULTS.liquidityCashMonths;
-    return { ...inputs, ...(jointAssessment === true ? { jointAssessment: true } : {}), capeRatio: cape.value, marketCapeRatio: cape.value, entnahmeStrategie: inputs.decumulation.mode, ...inputs.decumulation, householdWithdrawalMode };
+    // FR-76: In der Balance mindern Fondskosten nur die erwartete Rendite des Dynamic Flex. Ohne Dynamic Flex
+    // fehlt der Wert, damit die Balance-Rechnung bytegleich bleibt.
+    const cost = equityCostPct ?? PLAN_DEFAULTS.equityCostPct;
+    const equityCost = values.dynamicFlex && cape.value > 0 && cost > 0 ? { equityCostPct: cost } : {};
+    return { ...inputs, ...(jointAssessment === true ? { jointAssessment: true } : {}), capeRatio: cape.value, marketCapeRatio: cape.value, entnahmeStrategie: inputs.decumulation.mode, ...inputs.decumulation, householdWithdrawalMode, ...equityCost };
 }
 /**
  * @param values Vorhandene Eingabe- oder Planwerte.
@@ -276,7 +308,16 @@ export function projectPlanToBalance(values) {
  */
 export function projectPlanToSimulator(values) {
     const { liquidityCashMonths, ...inputs } = projectPlanToBalance(values);
-    return { ...inputs, startFloorBedarf: values.floorBedarf, startFlexBedarf: values.flexBedarf };
+    // FR-76: Der Simulator zieht die Fondskosten immer von der Jahresrendite ab, mit Dynamic Flex auch von der Erwartung.
+    return { ...inputs, equityCostPct: planEquityCostPct(values), startFloorBedarf: values.floorBedarf, startFlexBedarf: values.flexBedarf };
+}
+/** Direkt aus Profildaten gebaute Simulatoreingaben rechnen wie seit GU-1 ohne Fondskosten (fehlend = 0).
+ * Die Simulatorseite übernimmt k aus dem Plan über ihren Planversuch.
+ * @param values Vorhandene Planwerte.
+ * @returns Simulator-Eingaben ohne `equityCostPct`. */
+export function projectPlanToSimulatorProfile(values) {
+    const { equityCostPct, ...inputs } = projectPlanToSimulator(values);
+    return inputs;
 }
 /** Patch ausschließlich im bestätigten Bereich; neue Bereiche gehören dem Umstellungskoordinator. */
 /** @param {P.PlanPatchOptions} [options] @returns {Promise<P.PlanEntry>} */

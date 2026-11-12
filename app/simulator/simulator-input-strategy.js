@@ -15,6 +15,7 @@ import {
     readValue
 } from './simulator-input-dom.js';
 import { LONGEVITY_DEFAULTS, normalizeLongevityMode } from './dynamic-flex-longevity-contract.js';
+import { DEFAULT_EQUITY_COST_PCT } from '../shared/equity-cost-default.js';
 import {
     LIQUIDITY_RUNWAY_CONTRACT_V1,
     resolveLiquidityRunwayYears
@@ -73,7 +74,11 @@ export function readBasePortfolioInputs(doc = globalThis.document) {
         goldFloorProzent: goldAktiv ? readNumber('goldFloorProzent', NaN, doc) : 0,
         rebalancingBand: goldAktiv ? readNumber('rebalancingBand', NaN, doc) : 25,
         goldSteuerfrei: goldAktiv && String(readValue('goldSteuerfrei', '', doc) || '').toLowerCase() === 'true',
-        stressPreset: readValue('stressPreset', 'NONE', doc) || 'NONE'
+        stressPreset: readValue('stressPreset', 'NONE', doc) || 'NONE',
+        // FR-76: Mit bestätigtem Plan überschreibt dessen Wert dieses Feld. Leeres Feld gilt als Vorgabe;
+        // ohne Feld (direkt gebaute Eingaben) bleibt es bei 0.
+        equityCostPct: doc?.getElementById?.('equityCostPct')
+            ? readBoundedNumber('equityCostPct', DEFAULT_EQUITY_COST_PCT, 0, 5, doc) : 0
     };
 }
 

@@ -1543,7 +1543,7 @@ console.log('--- Simulator Monte Carlo Tests Completed ---');
     const projection = projectMonteCarloOverview(results, 100, 9);
     assertEqual(projection.denominator, 7, 'MC-Übersicht behält den kanonischen Nenner');
     assertEqual(projection.covered, 6, 'Exakte Fallzahl bleibt neben gerundetem Raster erhalten');
-    assertEqual(projection.dots, 86, 'Nur das 100-Punkte-Raster rundet auf ganze Prozentpunkte');
+    assertEqual(projection.answers[0].coveragePct, 600 / 7, 'Deckungsbalken nutzt den ungerundeten Anteil (SE-1, ohne Punktraster)');
     assertEqual(projection.floorPct, 600 / 7, 'Raster verändert keine genaue Floor-Deckung');
     assert(projection.interval === results.outcomeInventory.floorCoverageEstimate.confidenceInterval95, 'Wilsonintervall stammt unverändert aus dem vorhandenen Inventar');
     assert(projection.finalOutcomes === results.finalOutcomes, 'P10, Median und P90 stammen unverändert aus finalOutcomes');
@@ -1551,7 +1551,7 @@ console.log('--- Simulator Monte Carlo Tests Completed ---');
         'MC-Übersicht zeigt ganze Euro aus dem bestehenden Viewmodel');
     assertEqual(JSON.stringify(results), before, 'MC-Ergebnisprojektion verändert keinen Aggregationswert');
     const technical = projectMonteCarloOverview({ ...results, outcomeInventory: { ...results.outcomeInventory, technical_error: 1, floorCoveragePct: null } }, 7, 1);
-    assert(technical.floorPct === null && technical.dots === null && technical.covered === null, 'Technische Fehler erfinden keinen Erfolgswert');
+    assert(technical.floorPct === null && technical.answers[0].coveragePct === null && technical.covered === null, 'Technische Fehler erfinden keinen Erfolgswert');
     assertEqual(projectMonteCarloOverview({}, 0, 0).floorPct, null, 'Fehlendes Ergebnis zeigt keine erfundene Deckung');
     assertEqual(projectMonteCarloOverview({ ...results, outcomeInventory: { ...results.outcomeInventory, floorCoverageEstimate: null } }, 7, 1).interval, null, 'Fehlendes Intervall bleibt fehlend');
 }

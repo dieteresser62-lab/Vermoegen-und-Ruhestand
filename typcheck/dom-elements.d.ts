@@ -7,6 +7,7 @@ export interface PageElements {
     'closeTrancheModalBtn': HTMLButtonElement;
     'copyCorruptPayloadBtn': HTMLButtonElement;
     'corruptPayloadPreview': HTMLElement;
+    'depotAddHomeBtn': HTMLButtonElement;
     'depotAddTrancheBtn': HTMLButtonElement;
     'managerBackLink': HTMLElement;
     'managerBirthApply': HTMLButtonElement;
@@ -20,7 +21,6 @@ export interface PageElements {
     'managerGoldStrategyWarning': HTMLElement;
     'managerHousehold': HTMLElement;
     'managerHouseholdPlan': HTMLElement;
-    'managerImmobilien': HTMLElement;
     'managerIncome': HTMLElement;
     'managerIncomeBody': HTMLElement;
     'managerPeopleStatus': HTMLElement;
@@ -31,6 +31,7 @@ export interface PageElements {
     'managerProfileRecovery': HTMLElement;
     'managerSectionNav': HTMLElement;
     'priceUpdateStatus': HTMLElement;
+    'profileCareResidentialSince': HTMLInputElement;
     'profileCareFormToday': HTMLSelectElement;
     'profileGeburtsdatum': HTMLInputElement;
     'profileGeschlecht': HTMLSelectElement;
@@ -165,6 +166,7 @@ export interface SimulatorElements {
     'pflegeRampUp': HTMLInputElement;
     'pflegeMaxFloor': HTMLInputElement;
     'pflegeRegionalZuschlag': HTMLInputElement;
+    'pflegeHeimEigeneAusgaben': HTMLInputElement;
     'pflegeKostenDrift': HTMLInputElement;
     'pflegeStufe1Form': HTMLSelectElement;
     'pflegeStufe1Zusatz': HTMLInputElement;

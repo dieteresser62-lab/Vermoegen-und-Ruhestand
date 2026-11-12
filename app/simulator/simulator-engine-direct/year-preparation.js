@@ -10,6 +10,8 @@ import { prepareGuardrailPlanInputs } from '../../shared/guardrail-history.js';
 import { normalizeHouseholdContext } from '../simulator-engine-direct-utils.js';
 import { calculateHouseholdPensionForYear } from '../simulator-household-pension.js';
 import { prepareSurvivorYear, resolveSurvivorFlexFactors } from '../simulator-survivor.js';
+import { calculateCareNeeds } from '../../shared/care-needs.js';
+import { simulatorPlannedExpenseYear } from '../../profile/household-planned-expenses.js';
 import { applyHealthBucketInterest } from '../simulator-health-bucket.js';
 import { calcCareCost, computeHouseholdFlexFactor, endCareForDeceased, resolveSimulatorCumulativeInflationFactor } from '../simulator-engine-helpers.js';
 import { SIMULATOR_TECHNICAL_ERROR_CODES, buildTechnicalErrorOutcome, validateRequiredYearReturns } from './outcomes.js';
@@ -72,9 +74,12 @@ export function prepareYear(context) {
     const engineBoundaryPortfolio = captureEngineBoundaryPortfolio(portfolio);
     const cumulativeInflationFactor = resolveSimulatorCumulativeInflationFactor(currentState);
     let healthBucketCoverage = /** @type {ReturnType<import('../../../typcheck/rechenkern-integration').ApplyHealthBucketCoverage>|null} */ (null), healthBucketInterest = /** @type {Pick<ReturnType<typeof applyHealthBucketInterest>,'startAmount'|'interest'>|null} */ (null);
+    // FR-73: Auch der Backtest kennt die heutige Heimpflege; der reguläre Hausverkauf (FR-53) greift dann wie in
+    // Monte Carlo (Gutachten PFA-1, Befund 1). Vererbung und Hinterbliebene bleiben ohne Lebensereignisse.
+    let fixedCareToday = false;
     if (householdContext === null && pflegeMeta === null) {
         const fixedCare = fixedCareTodayForYear(inputs, currentState, yearIndex);
-        if (fixedCare) ({ pflegeMeta, careFloorAddition, householdContext, temporaryFlexFactor } = fixedCare);
+        if (fixedCare) { ({ pflegeMeta, careFloorAddition, householdContext, temporaryFlexFactor } = fixedCare); fixedCareToday = true; }
     }
 
     const sampledYear = Number(yearData?.jahr);
@@ -101,13 +106,16 @@ export function prepareYear(context) {
     endResidenceRights(portfolio, inputs, currentState.survivor, homeHousehold);
     const homeSaleOptions = { portfolio, state: currentState, inputs, household: homeHousehold,
         yearIndex, inflationFactor: cumulativeInflationFactor };
-    let homeSaleLog = !beforeRuin && hasLifeEvents ? sellHomesForExternalCare(homeSaleOptions) : null;
+    let homeSaleLog = !beforeRuin && (hasLifeEvents || fixedCareToday) ? sellHomesForExternalCare(homeSaleOptions) : null;
     const startAssets = unmarried ? structuredClone(portfolio) : null;
     const survivorYear = /** @type {import('../../../typcheck/rechenkern-integration').PrepareSurvivorYear} */ (prepareSurvivorYear)(currentState, inputs, householdCtx, portfolio, yearIndex);
     if (survivorYear) inputs = survivorYear.inputs;
     // Auch gespeicherte Replay-Ereignisse können noch aktive Pflege Verstorbener enthalten.
     const careP1 = householdCtx.care?.p1;
     const careP2 = householdCtx.care?.p2;
+    // FR-62/FR-72 Punkt 14: Die Miete mittelt im Todesjahr den Zustand vor und nach dem Tod. Vor dem Tod
+    // zählt die Pflege der verstorbenen Person noch, auch nach endCareForDeceased (Gutachten HE-2, B1).
+    const rentHousehold = { ...householdCtx, care: { p1: careP1, p2: careP2 } };
     // Die Reserve prüft im Sterbejahr den Zustand vor dem Tod. Ihr Bedarf
     // bleibt auf die tatsächlich angesetzten halben Jahreskosten begrenzt.
     const healthBucketHousehold = survivorYear?.deathThisYear
@@ -131,11 +139,20 @@ export function prepareYear(context) {
     if (survivorFlex) temporaryFlexFactor = survivorFlex.flexFactor;
     const temporaryMinimumFlexFactor = survivorFlex?.minimumFlexFactor ?? temporaryFlexFactor;
     if (survivorYear?.deathThisYear && !p1Alive) lastState = { ...lastState, taxState: { lossCarry: 0 } };
-    let homeRent = homeRentForYear(portfolio, inputs, homeHousehold, cumulativeInflationFactor, currentState, yearIndex);
-    const floorWithoutRent = baseFloor * (survivorYear?.floorFactor ?? 1) + careFloorAddition;
+    let homeRent = homeRentForYear(portfolio, inputs, rentHousehold, cumulativeInflationFactor, currentState, yearIndex);
+    // FR-72 Punkt 0: verbleibender Grundbedarf, Pflegezusatz zu Hause und Heimposten getrennt.
+    const yearNeed = calculateCareNeeds({ inputs, baseFloor, careFloorAddition, priced: true,
+        inflationFactor: cumulativeInflationFactor, yearIndex, referenceDate: inputs.careReferenceDate,
+        household: { p1Alive, p2Alive, care: { p1: careP1, p2: careP2 } }, deathThisYear: survivorYear?.deathThisYear === true }).current;
+    // FR-43 (11.11.2026): Feste geplante Ausgaben wirken in ihren Monaten wie ein höherer Grundbedarf. Sie kommen
+    // nach Hinterbliebenenfaktor, Heimersatz und Pflege-Deckel dazu und werden deshalb nie gekürzt.
+    const fixedPlannedExpense = simulatorPlannedExpenseYear(inputs, yearIndex, cumulativeInflationFactor).fixed;
+    const floorWithoutRent = yearNeed.total + fixedPlannedExpense;
+    // FR-72 Punkt 9: Rücklagengrenze aus Pflegezusätzen und Heimkosten, ohne eigene Ausgaben.
+    const healthBucketCareNeed = careFloorAddition + yearNeed.residentialCosts;
     if (!homeSaleLog && inputs.home?.length) {
         const requiredFloorForPortfolio = () => {
-            const currentRent = homeRentForYear(portfolio, inputs, homeHousehold, cumulativeInflationFactor, currentState, yearIndex);
+            const currentRent = homeRentForYear(portfolio, inputs, rentHousehold, cumulativeInflationFactor, currentState, yearIndex);
             const thresholdPension = calculateHouseholdPensionForYear({ inputs, yearIndex, currentAnnualPension,
                 currentAnnualPension2, widowPensionP1, widowPensionP2, p1Alive, p2Alive,
                 widowBenefits: householdCtx.widowBenefits, deathThisYear: survivorYear?.deathThisYear === true,
@@ -145,13 +162,15 @@ export function prepareYear(context) {
                 deathThisYear: survivorYear?.deathThisYear === true });
             return Math.max(0, floorWithoutRent + currentRent - thresholdPension.pensionAnnual - (thresholdIncome?.total || 0));
         };
-        homeSaleLog = sellHomesForEmergency({ ...homeSaleOptions, beforeRuin: Boolean(beforeRuin), maxSales: beforeRuin || Infinity,
+        homeSaleLog = sellHomesForEmergency({ ...homeSaleOptions, household: rentHousehold, beforeRuin: Boolean(beforeRuin), maxSales: beforeRuin || Infinity,
             requiredFloor: requiredFloorForPortfolio(), requiredFloorForPortfolio });
-        homeRent = homeRentForYear(portfolio, inputs, homeHousehold, cumulativeInflationFactor, currentState, yearIndex);
+        homeRent = homeRentForYear(portfolio, inputs, rentHousehold, cumulativeInflationFactor, currentState, yearIndex);
     }
     const effectiveBaseFloor = floorWithoutRent + homeRent;
+    // FR-72 Punkt 10: Heimposten gehören vollständig zu den persönlichen Pflegekosten.
     const unmarriedShares = unmarried ? unmarriedYearShares(homeSaleLog?.immobilien_notverkauf ? portfolio : startAssets,
-        inputs, { p1: careP1, p2: careP2 }, survivorYear?.deathThisYear, householdCtx, careFloorAddition) : null;
+        inputs, { p1: careP1, p2: careP2 }, survivorYear?.deathThisYear, householdCtx,
+        careFloorAddition + yearNeed.residentialCosts + yearNeed.residentialOwnExpenses) : null;
     const plannedInflowLog = applyPlannedInflows(portfolio, inputs, yearIndex, cumulativeInflationFactor);
     const rentLog = portfolio.homeRent ? { wohnmiete: homeRent, wohnmiete_startjahr: portfolio.homeRent.startYear,
         wohnmiete_aktiv: portfolio.homeRent.active } : null;
@@ -164,6 +183,7 @@ export function prepareYear(context) {
         engineBoundaryPortfolio, cumulativeInflationFactor, healthBucketCoverage, healthBucketInterest, inputs,
         pflegeMeta, careFloorAddition, temporaryFlexFactor, householdCtx, p1Alive, p2Alive, widowBenefits,
         unmarried, homeHousehold, homeSaleLog, survivorYear, careP1, careP2, healthBucketHousehold,
-        temporaryMinimumFlexFactor, effectiveBaseFloor, unmarriedShares, inflowLog
+        temporaryMinimumFlexFactor, effectiveBaseFloor, unmarriedShares, inflowLog, yearNeed, healthBucketCareNeed,
+        fixedPlannedExpense
     } };
 }

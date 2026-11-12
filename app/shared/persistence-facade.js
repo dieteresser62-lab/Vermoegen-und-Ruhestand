@@ -1,4 +1,4 @@
-export { blockSyncWrites, hasSyncWriteBlocks, blockDocumentWrites, observeBeforeFlush, setProbelaufProtection } from './persistence-facade/state.js';
+export { blockSyncWrites, hasSyncWriteBlocks, blockDocumentWrites, holdWritesUntil, observeBeforeFlush, setProbelaufProtection } from './persistence-facade/state.js';
 export { configurePersistence, init, isInitialized } from './persistence-facade/initialization.js';
 export { withProbelaufOperation, flush } from './persistence-facade/writes.js';
 export { getItemSync, setItemSync, removeItemSync, keysSync, keySync, clearAllowedSync, clearSync } from './persistence-facade/cache.js';

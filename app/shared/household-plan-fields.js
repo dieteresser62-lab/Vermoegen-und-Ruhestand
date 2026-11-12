@@ -42,6 +42,10 @@ export const HOUSEHOLD_PLAN_GROUPS = [
     {
         "label": "Marktdaten",
         "hint": "aus dem Jahresabschluss"
+    },
+    {
+        "label": "Fondskosten",
+        "hint": ""
     }
 ];
 export const HOUSEHOLD_PLAN_FIELDS = [
@@ -295,6 +299,15 @@ export const HOUSEHOLD_PLAN_FIELDS = [
         "hint": "",
         "group": 4,
         "unit": "Jahre"
+    },
+    {
+        "path": "equityCostPct",
+        "label": "Laufende Kosten Aktien-ETF",
+        "hint": "pro Jahr",
+        "infoHint": "Fondskosten und Quellensteuer im Fonds. Die Vorgabe entspricht einem breiten Welt-ETF.",
+        "handbookAnchor": "haushalt-plan",
+        "group": 6,
+        "unit": "%"
     }
 ];
 /** Karten folgen den gemeinsamen Gruppen; Zusatzanzeigen sind keine Planfelder. */
@@ -387,6 +400,7 @@ export function assertHouseholdPlanInputValues(values, changedPaths) {
         if (value < 0) throw new Error(`${spec.label}: Bitte eine Zahl ab 0 eingeben.`);
         if (spec.unit === '€' && value > 10_000_000)
             throw new Error(`${spec.label}: Bitte höchstens 10.000.000 € pro Jahr eingeben.`);
+        if (path === 'equityCostPct' && value > 5) throw new Error(`${spec.label}: Bitte höchstens 5 % pro Jahr eingeben.`);
     }
     if (values.minimumFlexAnnual > values.flexBedarf)
         throw new Error('Mindest-Flex darf den Wunschbedarf (Flex) nicht überschreiten. Bitte die Eingabe korrigieren.');

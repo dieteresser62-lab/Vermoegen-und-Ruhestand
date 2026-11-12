@@ -1,4 +1,8 @@
-import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
+import { readLE1References } from './helpers/le-1-expectations.mjs';
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
+import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readEV1bReferences = value => readPFA1References(beforePFA1References(value));
+import { readEV1bReferences as beforePFA1References } from './helpers/ev-1b-expectations.mjs';
 const readMD2References = value => readEV1bReferences(readBeforeEV1bReferences(value));
 import { readMD2References as readBeforeEV1bReferences } from './helpers/md-2-expectations.mjs';
 import { readZG1References as readBeforeMD2References } from './helpers/zg-1-expectations.mjs';
@@ -30,6 +34,7 @@ import { runSweepChunk } from '../app/simulator/sweep-runner.js';
 import { rng } from '../app/simulator/simulator-utils.js';
 import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js';
 import { createStressReplayCaptureRequest } from '../app/simulator/stress-replay-path-materializer.js';
+import { DEFAULT_RESIDENTIAL_COMPONENTS, residentialMonthly } from '../app/shared/household-care-values.js';
 
 const readRNG1Hash = before => readQSCReferences(readAS1Hash(readEP1Hash(readBeforeEP1Hash(before))));
 const careInputs = () => ({ ...structuredClone(fixtureInputs), startAlter: 70,
@@ -183,7 +188,12 @@ const sweepConfig = { anzahlRuns: 4, maxDauer: 12, blockSize: 1, baseSeed: 91827
             const care = record.householdEvents[0].careMetaP1;
             if (record.continuation && care?.active) {
                 shadowCareYears++;
-                assertClose(care.zusatzFloorZiel, 4000 * factor * 1.035 ** record.yearIndex * 1.1,
+                // FR-72 (HE-2): im Heim Heimkosten statt Staffelzusatz, mit derselben Preisfortschreibung.
+                if (care.heimJahr >= 1) {
+                    assertEqual(care.zusatzFloorZiel, 0, 'Pflege nach Ruin: im Heim kein Staffelzusatz');
+                    assertClose(care.heimKosten, residentialMonthly(DEFAULT_RESIDENTIAL_COMPONENTS, care.heimJahr, { grade: care.grade })
+                        * 12 * factor * 1.035 ** record.yearIndex * 1.1, 1e-7, 'Heimkosten nach Ruin verwenden alle tatsächlich gezogenen Inflationsjahre');
+                } else assertClose(care.zusatzFloorZiel, 4000 * factor * 1.035 ** record.yearIndex * 1.1,
                     1e-7, 'Pflege nach Ruin verwendet alle tatsächlich gezogenen Inflationsjahre');
                 assertClose(care.log_floor_anchor, ruinInputs.startFloorBedarf * factor, 1e-7,
                     'Grundbedarfsanker bleibt auch nach Ruin auf derselben Jahresbasis');
@@ -219,7 +229,7 @@ for (const couple of [false, true]) {
     };
     for (const [mode, result] of Object.entries(outputs)) {
         const key = `${couple ? 'couple' : 'single'}-${mode}`;
-        assertEqual(createHash('sha256').update(JSON.stringify(withLegacyCareProvenance(result))).digest('hex'), readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(noCareHashes[key])))))))),
+        assertEqual(createHash('sha256').update(JSON.stringify(withLegacyCareProvenance(result))).digest('hex'), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(noCareHashes[key])))))))))),
             `${key}: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten`);
     }
 }

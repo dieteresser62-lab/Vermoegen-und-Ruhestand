@@ -1203,11 +1203,10 @@ html[data-suite-page="balance"] .balance-page .balance-head > .ds-page-actions {
 .balance-page .tab-panel[hidden] { display: none; }
 #balanceMessages { display: grid; gap: var(--space-3); margin-top: var(--space-2); }
 #balanceMessages > :empty { display: none; }
-.balance-overview { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); font-size: var(--balance-body); }
-.balance-overview > .ds-plan-card { grid-column: span 4; }
-.balance-overview > .ov-hero, .balance-overview > .ov-act { grid-column: span 6; }
-.balance-overview > .ov-hero, .balance-overview > .ov-act { align-self: start; }
-.balance-overview > [hidden] { display: none; }
+.balance-overview { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--space-4); align-items: start; font-size: var(--balance-body); }
+/* BL-1/LY-1: zwei unabhängig fließende Spalten; links Budget und Bedarf, rechts Handlung und darunter Reserven. */
+.balance-overview-column { grid-column: span 6; display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.balance-overview-column > [hidden] { display: none; }
 .balance-overview h3 { font: 500 var(--balance-h3)/1.25 var(--font-serif); margin: 0; }
 .balance-overview .ov-hero h3, .balance-overview .ov-act h3 { font: 400 var(--balance-help)/1.5 var(--font-sans); color: var(--text-muted); }
 .balance-hero-num { font: 500 var(--value-xl)/1.2 var(--font-serif); letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -1249,7 +1248,7 @@ html[data-suite-page="balance"] .balance-page .balance-head > .ds-page-actions {
     .balance-wrap { max-width: 2700px; padding: 22px 44px 72px; }
 }
 @container balance-page (max-width: 1180px) {
-    .balance-overview > .ds-plan-card { grid-column: 1 / -1; }
+    .balance-overview-column { grid-column: 1 / -1; }
     .balance-wrap { padding: var(--space-2) var(--space-4) 60px; }
     .balance-head h1 { font-size: var(--balance-h2); }
 }
@@ -1600,7 +1599,7 @@ html[data-suite-page="balance"] #navigationGuardDialog h2 { font-size: var(--bal
 .balance-annual-action ul { margin-block: 4px; padding-left: 20px; }
 
 /* Oberste Inhaltsfläche: vollständiger Jahresbeschluss und heutige Vorschau. */
-.balance-overview > .ds-plan-card { padding: var(--space-4); gap: var(--space-3); }
+.balance-overview-column > .ds-plan-card { padding: var(--space-4); gap: var(--space-3); }
 .balance-head-tools .balance-help-link { box-sizing: border-box; margin: 0; flex: none; text-decoration: none; width: 40px; height: 40px; min-width: 40px; min-height: 40px; padding: var(--space-2); }
 .balance-annual-action p { margin-block: var(--space-2); }
 .balance-annual-action h4 { margin-top: var(--space-2); }
@@ -1624,3 +1623,12 @@ html[data-suite-page="balance"] #navigationGuardDialog h2 { font-size: var(--bal
 
 .balance-preview-head > .balance-preview-heading { display: block; }
 .balance-preview-title-line { display: flex; align-items: center; gap: var(--space-2); }
+
+/* FR-77: Karte „Was zu tun ist“ ersetzt Handlungsanweisung, Budgetprüfung und Marktphase im Überblick. */
+.balance-overview .ov-act.todo-card { background: var(--surface); border-color: var(--border); }
+.balance-overview .ov-act.todo-card h3#h-ov-act { font: 500 22px/1.2 var(--font-serif); color: var(--text-main); }
+.todo-card .balance-annual-action { margin: 0; padding: 0; border: 0; }
+.todo-card .todo-bear-host { padding: 0; border: 0; background: transparent; }
+.balance-action-dialog [hidden] { display: none; }
+.balance-diagnosis-market { margin-bottom: var(--space-4); }
+.todo-preview-line #balanceActionAmount:not(:empty)::before { content: " · "; }

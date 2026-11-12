@@ -75,7 +75,7 @@ Diese Ordner trennen Speicher-, Rechen- und Oberflächenmodule nach Zuständigke
 | `Daten-Sicherung.html` | `app/data/data-page.js` | Sicherung, Restore und Speicherdiagnose |
 | `Handbuch.html` | `app/handbook/handbook.js` | Suche, Kapitel und Hilferückweg |
 
-`tranchen-manager-profiles.js` liefert Einkommensstufen, `tranchen-manager-renderer.js` gemeinsame Detailgruppen. `tranchen-manager-household-plan.js` bindet Zusammenveranlagung; `household-plan-comparison.js` prüft Quellen für Übersichtstabelle und Managerverweis.
+`tranchen-manager-profiles.js` liefert Einkommensstufen, `tranchen-manager-renderer.js` gemeinsame Detailgruppen. `tranchen-manager-immobilien.js` baut die aufklappbaren Immobiliengruppen der Anlageformen samt Editor; nach jeder Editoraktion zeichnet `renderPersonAssets` Kacheln, Anzahl und Tabelle aus derselben Immobilienliste neu. Betragsfelder behalten beim Neuaufbau ihren Eingabetext; umgewandelt wird erst beim Speichern. `tranchen-manager-household-plan.js` bindet Zusammenveranlagung; `household-plan-comparison.js` prüft Quellen für Übersichtstabelle und Managerverweis.
 
 Script-Tags binden Einstiege; Rahmen und Profilbereitschaft gehen Fachaktionen voraus. `app-clock.js` trennt Fach-/Testdatum von technischen Zeitstempeln und begrenzt jedes gesetzte Testdatum zentral auf den gleichen Kalendertag im Folgejahr der echten Systemzeit (29.02. → 28.02.). Dialogfelder, Datumssprünge und Zeitraffer verwenden diese Prüfung. Ein gespeichertes Datum außerhalb des Rahmens blockiert den Seitenstart vor Fachberechnungen; der vorhandene Weg zum Beenden bleibt erreichbar. Die Kalender-Untergrenze bleibt 01.01.0001; synthetische Kursintervalle enden am Testdatum.
 
@@ -99,26 +99,26 @@ Script-Tags binden Einstiege; Rahmen und Profilbereitschaft gehen Fachaktionen v
 | `balance/balance-play-execution.js` | `resolveTargetTagesgeld`, `liquidityInflowRouting`, `priceMoneyMarketTransfers`: gemeinsame Ziel-/Routing-/Steuerprojektion für Anzeige und Spielbuchung |
 | `balance/balance-flex-trace.js`, `balance-action-origin.js` | Diagnose und Beschlussherkunft lesend projizieren |
 | `balance/balance-annual-orchestrator.js`, `balance-annual-storage-commit.js` | Jahresauftrag, `evaluateAnnualDraft`, `prepareAnnualCommitRecords` und atomarer Jahresbatch |
-| `shared/annual-plan-editor.js`, `annual-care-editor.js` | private Entwürfe; Plan und Pflegewerte erst beim Jahresbatch bestätigen |
+| `shared/annual-plan-editor.js`, `annual-care-editor.js`, `care-prices.js` | private Entwürfe; Plan und Pflegewerte erst beim Jahresbatch bestätigen; Pflegepreise einmal aus der eingefrorenen Basis fortschreiben, auch für die Vorschau ohne Dialog |
 | `shared/tagesgeld-fields.js`, `overview/overview-month-confirmation.js`, `shared/annual-close-dialog.js` | lokale Cashfelder und Vorschau-Neuberechnung |
 | `overview/overview-storage.js` | Monatscash und Beleg gemeinsam speichern |
 | `balance/balance-expenses-import.js`, `balance-expenses-storage.js` | geprüfte CSV und Monats-/Personenzuordnung schreiben |
 
-`shared/close-dialog.js` besitzt den mittigen Abschlussrahmen mit fester Reiterleiste und Fußleiste. Die Reiter tragen `data-close-dialog-activate` und beim aktuellen Schritt `aria-current="step"`; `data-close-dialog-step` bleibt am zugehörigen Inhalt. Nur dieser Inhalt ist sichtbar und scrollt. Der aktuelle Weiterknopf liegt im Fuß; `nextDisabled` sperrt ihn bei offener Jahresmarktwahl. Besuchsmenge, `onNext` und Schreibbesitz bleiben erhalten. Der Jahresadapter ordnet Pflegewerte vor Marktdaten und hängt die Budgetprüfung an Marktdaten. Die offene Wahl steht schon vor dem ersten Besuch am Reiter. Ergebnisse verwenden zwei Spalten ohne Reiter; `probelauf-end-dialog.js` verwendet denselben Rahmen mit einspaltigem Inhalt.
+`shared/close-dialog.js` besitzt den mittigen Abschlussrahmen mit fester Reiterleiste und Fußleiste. Die Reiter tragen `data-close-dialog-activate` und beim aktuellen Schritt `aria-current="step"`; `data-close-dialog-step` bleibt am zugehörigen Inhalt. Nur dieser Inhalt ist sichtbar und scrollt. Der aktuelle Weiterknopf liegt im Fuß; `nextDisabled` sperrt ihn bei offener Jahresmarktwahl. Besuchsmenge, `onNext` und Schreibbesitz bleiben erhalten. Der Jahresadapter ordnet Pflegewerte vor Marktdaten. Bei verdecktem Bärenmarkt (`isHiddenBearMarket`) hängt er Block und Wahl in den Schritt „Plan“; Marktdaten zeigen nur fehlende Kurse (`hiddenBearCheckUnreliable`). Die offene Wahl steht schon vor dem ersten Besuch am Reiter „Plan“. Ergebnisse verwenden zwei Spalten ohne Reiter; `probelauf-end-dialog.js` verwendet denselben Rahmen mit einspaltigem Inhalt.
 
 `deriveYearEndMarketInputs` verschiebt für Vorschau und Jahresabschluss dieselben sechs Markteingaben. `prepareMarketPreview` wählt ausschließlich gespeicherte EUR-Schlusskurse von VWCE.DE bis zum Fachdatum, bei offenem Vorjahresabschluss höchstens bis Ende des Abschlussjahrs. Auch das Kursalter wird dann gegen dieses Jahresende gemessen. Das Bezugsjahresende folgt derselben Anlassprojektion wie die Balance. Der Kursrecord stammt aus dem aktiven Speicherbereich; im Spielbereich enthält er Spielkurse. Es gibt keinen Abruf und keinen neuen Speicherschlüssel.
 
 `projectMarketPreview` liefert gespeicherte Jahresmarktdaten, Regel- und Hochreferenzlesart mit Herkunft, Marktlage, Monatsbudget, Nettohauptaktion und strenger Bärengrenze. Die Hochreferenz ist das Maximum aus Regelhoch und höchstem gespeicherten VWCE.DE-Schluss seit dem Bezugsjahresende bis zum Vergleichskurs. `stored_ath` bezeichnet die Jahresmarktdaten, `stored_close` einen gespeicherten Schluss. `coverage.first/last` nennen den ersten und letzten gespeicherten Tag bis zum Kurs. Bei Gleichstand zählt das spätere Datum. Nur bei einem echt höheren gespeicherten Schluss ergibt das belegte Datum Tagesdifferenz / 365,2425 als `jahreSeitAth`. Bei gleichem Hochwert bleibt immer das Regelalter, auch bei `stored_ath` mit Datum. Die Engine erhält denselben Ausgangszustand für jede Rechnung. Ohne Kurs läuft nur die Basisrechnung.
 
-`comparison` hält pro Variante Grundbedarf, freigegebenen Flex, Jahres- und Monatsbudget aus der vorhandenen Budgetprojektion sowie Hauptaktion, Steuer und Reserve nach Aktion vor Auszahlung. Die Reserve folgt den fertigen Liquiditätsflüssen der Engine. Das Vergleichsjahresbudget entspricht dem gerundeten Monatsbudget mal zwölf. Liegt das Hochvariantenbudget unter dem Grundbedarf, meldet `changedParts` auch `floor`. `compareMarketBudgets` vergleicht Beträge auf ganze Euro: `same`, `budget_same_action_differs`, `budget_lower` oder `budget_higher`. Die gemeinsame Funktion `classifyMarketPreview` bestimmt ruhig (unter 5 % und `same`), Hinweis (ab 5 % und `same`), Warnung (verschiedene Folgen) oder nicht belastbar. Marktphasen allein bestimmen keine Warnung. Die Regelschwelle verwendet das gespeicherte Hoch vor der Fortschreibung; Restabstände beziehen sich auf den Stichtagskurs. `balance-market-history.js` zeichnet die gespeicherte Kurslinie als Inline-SVG mit Tokenfarben. Differenzen nennen Jahres-/Monatsbudget und geänderte Anteile (`floor`/`flex`). Fehlende Kurse, ein Schluss nicht nach dem Bezugsjahresende, mehr als zehn Kalendertage Kursalter, unabgefragte Werktage laut `queried`, unklarer Jahresstand oder Vorschaufehler ergeben `not_reliable` mit Grund. Abgefragte Feiertage und Wochenenden benötigen keinen Schlusskurs.
+`comparison` hält pro Variante Grundbedarf, freigegebenen Flex, Jahres- und Monatsbudget aus der vorhandenen Budgetprojektion sowie Hauptaktion, Steuer und Reserve nach Aktion vor Auszahlung. Die Reserve folgt den fertigen Liquiditätsflüssen der Engine. Das Vergleichsjahresbudget entspricht dem gerundeten Monatsbudget mal zwölf. Liegt das Hochvariantenbudget unter dem Grundbedarf, meldet `changedParts` auch `floor`. `compareMarketBudgets` vergleicht Beträge auf ganze Euro: `same`, `budget_same_action_differs`, `budget_lower` oder `budget_higher`. Die gemeinsame Funktion `classifyMarketPreview` bestimmt intern ruhig (unter 5 % und `same`), Hinweis (ab 5 % und `same`), Warnung (verschiedene Folgen) oder nicht belastbar; angezeigt wird davon seit FR-77 nichts mehr. Sichtbar entscheidet `isHiddenBearMarket`: Die Hochlesart liegt in einer Marktlage aus `FLEX_BUDGET.ACTIVE_REGIMES`, die Regellesart nicht. Die Regelschwelle verwendet das gespeicherte Hoch vor der Fortschreibung; Restabstände beziehen sich auf den Stichtagskurs. `balance-market-history.js` zeichnet die gespeicherte Kurslinie als Inline-SVG mit Tokenfarben. Differenzen nennen Jahres-/Monatsbudget und geänderte Anteile (`floor`/`flex`). Fehlende Kurse, ein Schluss nicht nach dem Bezugsjahresende, mehr als zehn Kalendertage Kursalter, unabgefragte Werktage laut `queried`, unklarer Jahresstand oder Vorschaufehler ergeben `not_reliable` mit Grund. Abgefragte Feiertage und Wochenenden benötigen keinen Schlusskurs.
 
-`balance-next-year-budget.js` bietet `projectNextYearBudget({storage, engineApi, now, annualInflation})` für die Balance-Anzeige. `balance-main.js` verwendet dessen `displayEvaluation` für Budgetkarte, Budgetprüfung und vorläufige Empfehlung. `payload.input` enthält dann Folgejahreswerte mit `referenceYear` des Zieljahrs; `payload.currentYear` enthält Eingaben, Ergebnis und Profilaktionen des laufenden Planjahrs für Bedarfskarten, Strategie, Reserven und Diagnose. Die Diagnose erhält auch ihre Aktionszusammenfassung aus dem laufenden Jahr. Eingabefelder, Speicherung und Übersicht verwenden weiter den laufenden Plan beziehungsweise die Jahresbasis. Der Aktionsrenderer erhält die Profilaktionen explizit aus demselben Entwurf. `captureAnnualRecords` und `annualRecordStorage` isolieren die Quellen. Die Anlassprojektion bestimmt das nächste Abschlussjahr; `computeAnnualPlanUpdate` schreibt Bedarf, Alter, Einkünfte und Budgetgedächtnis fort. `evaluateAnnualDraft` rechnet zweimal aus derselben Basis, die Hochvariante ändert nur `ath` und `jahreSeitAth`. Kurswahl und Vergleichszustände folgen der Marktprojektion. Fehler liefern gekapselt `not_reliable` mit Grund; die bisherige Vorschau bleibt unabhängig.
+`balance-next-year-budget.js` bietet `projectNextYearBudget({storage, engineApi, now, annualInflation})` für die Balance-Anzeige. `balance-main.js` verwendet dessen `displayEvaluation` für Budgetkarte, Jahreshochvergleich und Vorschauzeile. `payload.input` enthält dann Folgejahreswerte mit `referenceYear` des Zieljahrs; `payload.currentYear` enthält Eingaben, Ergebnis und Profilaktionen des laufenden Planjahrs für Bedarfskarten, Strategie, Reserven und Diagnose. Die Diagnose erhält auch ihre Aktionszusammenfassung aus dem laufenden Jahr. Eingabefelder, Speicherung und Übersicht verwenden weiter den laufenden Plan beziehungsweise die Jahresbasis. Der Aktionsrenderer erhält die Profilaktionen explizit aus demselben Entwurf. `captureAnnualRecords` und `annualRecordStorage` isolieren die Quellen. Die Anlassprojektion bestimmt das nächste Abschlussjahr; `computeAnnualPlanUpdate` schreibt Bedarf, Alter, Einkünfte und Budgetgedächtnis fort. `evaluateAnnualDraft` rechnet zweimal aus derselben Basis, die Hochvariante ändert nur `ath` und `jahreSeitAth`. Kurswahl und Vergleichszustände folgen der Marktprojektion. Fehler liefern gekapselt `not_reliable` mit Grund; die bisherige Vorschau bleibt unabhängig.
 
 Die Inflation folgt `resolvePlanOverviewRates` mit dem gespeicherten Simulator-Jahreswert oder dessen Reihenmittel. Vor einem offenen Abschluss hat ein passender vorbereiteter oder gespeicherter Jahreswert Vorrang. Es gibt keinen Abruf. CAPE und Vermögensbewertungen stammen aus dem aktuellen Speicherbereich. Für die strengen Abschlussvalidatoren erhalten Kurs und CAPE ausschließlich im privaten Entwurf einen angenommenen Jahresendstichtag; das Ergebnis nennt die tatsächlichen Quelldaten. Restentnahmen werden mangels eindeutiger Zahlungsabgrenzung nicht abgezogen. Die Varianten liefern Zieljahr, Bedarf, Budget, Hauptaktion, Steuer, Annahmen und die drei größten Änderungsbeträge. `components` unterscheidet ungerundete Inflation, Planrundung, laufende Einkünfte, geplante Zahlungsflüsse und Leitplanke/Budgetgedächtnis. Eine Marktwirkung stammt ausschließlich aus dem Budgetunterschied der Varianten. Diese Beträge sind keine additive Budgetzerlegung. Planposten nennen die offene Ausgabenreserve und angekündigte Einmaleinkünfte getrennt. Letztere mindern wie im Jahresabschluss die Reserve nicht. Die Bezugsbasis ist der laufende Jahresbeleg, ersatzweise die gespeicherte Jahresrechnung ohne Fortschreibung. Der Inflationsbetrag verwendet den heutigen Planbedarf als Ausgangsbasis und endet vor der Planrundung; bewusste Planänderungen bleiben davon getrennt. Laufende Belegeinkünfte folgen Budget minus Entnahme plus Sparanteil. Folgejahrseinkünfte stammen aus derselben Personenprojektion wie im Abschluss. [Node-Nachweis](../../tests/fj-1-next-year-budget.test.mjs) und `node scripts/measure-fj1.mjs` prüfen Parität, Schreibfreiheit und Laufzeit mit synthetischen Haushalten.
 
-`balance-market-preview-renderer.js` zeigt in Balance und Jahresabschluss dieselben vier Anzeigestufen. Ruhig verwendet `surface-sunken`, Hinweis `accent-soft`, jede abweichende Budget- oder Handlungsfolge `warn-soft`. Bei Hinweis und Warnung öffnet sich der Jahresverlauf; die kompakte Tabelle „Zwei Lesarten des Hochs“ markiert abweichende Zellen zusätzlich mit Wörtern. „Budget im Vergleich“ und „Markt und Umschichtung“ bleiben als Einzelheiten erreichbar. Aktualisierungen erhalten gewählte Klappenstellungen über die bestehenden Datenanker; der Jahresverlauf folgt bei einem Stufenwechsel der neuen Stufe. Gleiche Ergebnisse behalten ihre DOM-Knoten. Nicht belastbare Vergleiche zeigen Grund und Kurslink. In Balance bleiben Annahmen sichtbar und die bisherige Vorschau dient als Ersatz. Titel und Quellen nennen das Zieljahr und den tatsächlichen Stand. Die Grundzeile zeigt bis zu drei Änderungen ab einem Euro mit Wirkungsart, ohne Gesamtsumme. Zusatzzeilen verwenden die Beträge derselben fertigen Varianten. Die Bärengrenze der Jahresendregel stammt aus dem gespeicherten Hoch vor der Fortschreibung, die der Hochlesart aus deren Hoch; Restabstände beziehen sich auf den Stichtagskurs.
+`balance-market-preview-renderer.js` zeigt das Jahreshoch in Balance nur bei verdecktem Bärenmarkt, als Block „Bärenmarkt, den die Jahresregel nicht sieht“ aus `createHiddenBearBlock` (`shared/annual-todo-view.js`) in der Karte „Was zu tun ist“. Der Block nennt Abstand, Ende Vorjahr, Jahreshoch und heutigen Kurs, die Tabelle „Was das für ‹Jahr› heißt“ und zugeklappt „Kursverlauf ‹Jahr›“ (`data-market-history-details`). Aktualisierungen erhalten die Klappenstellung dieses Verlaufs; gleiche Ergebnisse behalten ihre DOM-Knoten. Die Zusatzzeile „Mit Hoch vom …“ beim Monatsbudget erscheint nur bei abweichendem Budget. Ohne verdeckten Bärenmarkt meldet `hiddenBearPriceProblem` zu alte (`stale`) oder fehlende und lückenhafte Kurse (`missing`) als eine Zeile mit Kurslink; in den ersten zehn Tagen nach dem Jahresende ohne neuen Kurs gibt es keine Zeile. Im Jahresabschluss zeigt `createAnnualMarketReadings` im Schritt „Marktdaten“ nur den Grund fehlender Kurse; Block und Wahl stehen im Schritt „Plan“. Titel und Quellen nennen das Zieljahr und den tatsächlichen Stand. Die Grundzeile „Warum anders als ‹Jahr›“ zeigt bis zu drei Änderungen ab einem Euro mit Wirkungsart, ohne Gesamtsumme.
 
-`balance-annual-market-preview.js` nutzt dieselbe Hochreferenz seit Ende des Vorjahrs und denselben Budgetvergleich mit der vorbereiteten Jahresendquote. Fachdatum für das Kursalter ist das Abschlussjahresende. Der Abrufkurs ersetzt als `quoteOverride` den gespeicherten Schluss seines Tags nur im Entwurf. Die Abdeckung nennt gespeicherte Tage; der Abruf schließt keine früheren Lücken. Im Marktdatenreiter rechnet der Vergleich mit den vorgeschlagenen Folgejahresbedarfen sowie den Tagesgeld- und Pflegewerten des Dialogs. `annual-market-choice.js` zeigt im Warnfall die beiden Lesarten ohne Vorauswahl. Die bestätigte Jahreshochwahl ergänzt `yearHigh` im Übergabevertrag und wird im privaten Jahresentwurf angewendet. Altbestand und Jahresendregel bleiben ohne Zusatzfeld gültig; Strategiekacheln, Provenienz und Übersicht behalten bis zum Abschluss die Jahresbasis.
+`balance-annual-market-preview.js` nutzt dieselbe Hochreferenz seit Ende des Vorjahrs und denselben Budgetvergleich mit der vorbereiteten Jahresendquote. Fachdatum für das Kursalter ist das Abschlussjahresende. Der Abrufkurs ersetzt als `quoteOverride` den gespeicherten Schluss seines Tags nur im Entwurf. Die Abdeckung nennt gespeicherte Tage; der Abruf schließt keine früheren Lücken. Im Marktdatenreiter rechnet der Vergleich mit den vorgeschlagenen Folgejahresbedarfen sowie den Tagesgeld- und Pflegewerten des Dialogs. `shared/annual-market-choice.js` zeigt bei verdecktem Bärenmarkt im Schritt „Plan“ die beiden Lesarten ohne Vorauswahl. Die bestätigte Jahreshochwahl ergänzt `yearHigh` im Übergabevertrag und wird im privaten Jahresentwurf angewendet. Altbestand und Jahresendregel bleiben ohne Zusatzfeld gültig; Strategiekacheln, Provenienz und Übersicht behalten bis zum Abschluss die Jahresbasis.
 
 `preview` beginnt mit bestätigtem Vorstate; `persist_inputs` schreibt nur Eingaben, `commit_period` den geprüften Periodenkandidaten. `readBalancePlanContext` bindet Fingerabdruck und Eingaben an denselben Bereich, dasselbe Jahr und dieselben Ausgabennachweise. `guardrail-history.js` setzt bei bewussten Planänderungen Leitplanken zurück, erhält aber Steuerstates. Nur der Jahresabschluss schreibt `annual_plan_record_v1`.
 
@@ -239,7 +239,10 @@ Die Teilmodule importieren einander direkt. Einzelprojektion und Haushaltsprojek
 | `simulator-engine-direct.js` | benannte Re-Exporte des direkten Jahreseinstiegs und der bisherigen Hilfen |
 | `simulator-year-portfolio.js`, `simulator-portfolio-tranches.js` | Renditen und Lotbuchung auf Kopien |
 | `simulator-fixed-income.js`, `simulator-household-pension.js`, `simulator-survivor.js` | jährliche Einkünfte und Hinterbliebenenprojektion |
-| `mc-life-events.js`, `simulator-engine-helpers.js`, `simulator-care-today.js` | Pflege-/Todesereignisse und Preisführung |
+| `mc-life-events.js`, `simulator-engine-helpers.js`, `simulator-care-today.js` | Pflege-/Todesereignisse, feste heutige Pflege und Preisabschluss |
+| `target-mortality.js`, `german-cohort-life-table.js` | FR-75: Zieltafel (Kohorte V2 je Geburtsjahr, Periodentafel ohne Geburtsjahr) und exakte Grundsterblichkeit ohne Pflege je Person; die Tafeldaten sind ein erzeugtes, abhängigkeitsfreies Modul |
+| `monte-carlo-duration.js` | FR-75: leeres Feld „Maximale Dauer“ = automatisch 110 − Alter der jüngsten Person; gespeicherte 35 gilt beim Lesen als automatisch |
+| `../shared/care-needs.js`, `../shared/care-cost-resolver.js`, `simulator-care-projection.js` | Reine Bedarfsbestandteile, lesende Preisvorgaben und Folgejahresbedarf für das Liquiditätsziel |
 | `simulator-home-sale.js`, `simulator-inheritance.js`, `simulator-residence-tax.js` | Verkäufe, Nachlass und Wohnrechtsteuer außerhalb des Enginebudgets |
 | `simulator-personal-tax.js`, `simulator-tax-recompute.js` | persönliche Jahresbücher und Steuerdeckung |
 | `simulator-forced-sale.js`, `simulator-health-bucket.js` | zusätzliche Deckungswege |
@@ -414,7 +417,11 @@ Eine fehlgeschlagene Eingabesicherung wird als Verlustgrund mit Ursache gemeldet
 
 BFCache sperrt das zurückgekehrte Dokument mit `blockDocumentWrites` bis zum Neustart: Formulare, wartende Flushes, Archiv-/Bestandswrites und Spielaktionen. Bleiben oder fehlgeschlagener Reload heben die Sperre nicht auf. `reload-required-notice.js` zeigt außerhalb des Statushosts den dauerhaften Hinweis mit „Jetzt neu laden“, ebenso beim Bereichswechsel. Der Knopf ruft `location.reload()` auf. Begonnene Adapterwrites behalten ihren Besitzer.
 
-`tranchen-startup-prices.js` reserviert den Startabruf; Abbruch gibt synchron frei. `started`/`cancelled`-Altmerker erlauben Wiederholung, bestätigte Berichte verhindern sie. Reservierungsidentität weist späte Fremdantworten ab.
+Im Browser arbeitet je Ursprung nur ein Tab. `app-tab-lock.js` startet im gemeinsamen Seitenstart `initializeProfilePage` (auch das Handbuch zählt wie jede Seite) und fragt die Web-Lock-Sperre `rs-app-tab` einmal an (`ifAvailable`). Ein Tab, der vorher selbst Besitzer war (Merker im sessionStorage), wartet bis zu 2 s auf die Freigabe seiner Vorgängerseite. Bis zur Entscheidung warten `init()` und dauerhafte Writes über `holdWritesUntil`. Ein weiterer Tab sperrt sich mit `blockDocumentWrites`, zeigt einen Seitendialog mit dem Knopf „Erneut versuchen“ (Seite neu laden), wartet nicht und wechselt nie selbst, und kommt über `init()` nicht hinaus: keine Bereichsauflösung, Reparatur oder Altdatenübernahme. Seine Writes scheitern sofort, ohne die gemeinsame Schreibsperre `rs-probelauf-operation` zu nehmen. Eine Übernahme gibt es nicht; eine laufende Speicherung samt Rücknahme endet so immer im eigenen Tab. Seitenwechsel im selben Tab erkennt der Merker `app-tab-owner` im `sessionStorage`. Die Folgeseite wartet höchstens zwei Sekunden auf die Freigabe, die ihre Vorgängerseite bei `pagehide` abgibt. Wartende Tabs bewerben sich nacheinander über `rs-app-tab-wait`; wer die Sperre bekommt, lässt einer Folgeseite des bisherigen Tabs zwei Sekunden lang den Vortritt. Ohne Web Locks oder `sessionStorage` und in der EXE bleibt das bisherige Verhalten.
+
+`probelauf-ui.js` startet die Erststartoption direkt mit `HANDBOOK_MUSTER_DATE` (23.10.2026). Der Startdialog bietet echte Kurse nur für Kopien; gespeicherte Beispiele mit `testDate: null` behalten ihren bisherigen Ablauf. Die allgemeinen Simulator-Knopfregeln gelten nur innerhalb von `.simulator-surface`, ohne zusätzliche Selektorspezifität. Gemeinsame Dialoge am `body` verwenden ihre Komponentenregeln.
+
+`tranchen-startup-prices.js` beendet leere Bestände vor Abruf, Timer und Sitzungsreservierung mit `empty` ohne Abrufzeit. Dieser neutrale Sitzungsbefund ersetzt alte Fehlerberichte und blockiert keinen späteren Start mit Depot; `overviewPriceLabel` und die Warnmarkierung bleiben ohne Depot neutral. Die automatischen Runden verwenden denselben Einstieg, der Manager prüft bereits seine Tranchenzahl. Mit Depot reserviert `tranchen-startup-prices.js` den Startabruf; Abbruch gibt synchron frei. `started`/`cancelled`-Altmerker erlauben Wiederholung, bestätigte Berichte verhindern sie. Reservierungsidentität weist späte Fremdantworten ab.
 
 ```mermaid
 sequenceDiagram
@@ -538,8 +545,9 @@ Annahmen A-01–A-13 und Risiken MR-01–MR-12 sind unter [Modellgrenzen](DATA_S
 | Wohnrecht, amtliche Faktoren, Härteausgleich und Jahreszahlung | `profile/household-partnership.js`; `shared/life-expectancy.js`, `bmf-lifetime-use-2026.js`; `simulator/simulator-home-sale.js`, `simulator-residence-tax.js` | `et-2-residence-tax.test.mjs`, `h-1-residence-tax.test.mjs`, `ar-1-festigung.test.mjs`, `ar-1b-regressions.test.mjs`, `qs-b-regressions.test.mjs`; `scripts/check-bmf-lifetime-use.mjs` ab Repositorywurzel vergleicht alle 202 PDF-Werte |
 | Pflege-Flex nach Tod | `simulator/simulator-survivor.js`: `resolveSurvivorFlexFactors`; Jahresvorbereitung in `simulator-engine-direct/year-preparation.js` | `care-death-year.test.mjs`, `survivor-needs.test.mjs` |
 | Rücklagenstatistik, negative Zinsen, Planübersicht-Pflegegeld | `simulator/mc-euro-metrics.js`, `mc-run-metrics.js`, `historical-backtest-runner.js`, `simulator-health-bucket.js`, `simulator-plan-overview.js` | `qs-d-regressions.test.mjs`, `plan-view-income.test.mjs` |
-| Heutige Pflege, Fortschritt, Partnerausfall, Preise | `shared/care-benefits.js`; `simulator/simulator-engine-helpers.js`, `simulator-care-today.js` | `care-today.test.mjs`, `pa-1-partner-care.test.mjs`, `pa-1b-regressions.test.mjs`, `care-price-continuation.test.mjs` |
-| Heim-/Notverkauf, Wohnmiete und Erlösnachlass | `simulator/simulator-home-sale.js`, `simulator-inheritance.js` | `simulator-emergency-home-sale.test.mjs`, `simulator-home-sale-inheritance.test.mjs` |
+| Heutige Pflege, Fortschritt, Partnerausfall, Preise | `shared/care-benefits.js`, `care-needs.js`, `care-cost-resolver.js`; `simulator/simulator-engine-helpers.js`, `simulator-care-today.js` | `pfa-1-care-needs.test.mjs`, `pfa-1-contracts.test.mjs`, `care-today.test.mjs`, `pa-1-partner-care.test.mjs`, `pa-1b-regressions.test.mjs`, `care-price-continuation.test.mjs` |
+| Heim-/Notverkauf, Wohnmiete und Erlösnachlass | `simulator/simulator-home-sale.js`, `simulator-inheritance.js` | `simulator-emergency-home-sale.test.mjs`, `simulator-home-sale-inheritance.test.mjs`, `he-4-heimpflege-rechnung.test.mjs` |
+| Heimpflege ersetzt den Grundbedarf, Heimkosten, Netto-Pflegekennzahl und Protokoll | `shared/household-care-values.js`; `simulator/simulator-residential-care.js`, `simulator-survivor.js` (`composeYearNeed`, `savedHomeFloorShares`), `simulator-care-log.js`, `protocol-cashflows.js` | `he-2-heimpflege.test.mjs`, `he-3-amtlich-ziehung.test.mjs`, `he-4-heimpflege-rechnung.test.mjs`, `he-4-heimpflege-anzeige.test.mjs` |
 | Kapitalsteuer und Partnerverrechnung | `engine/tax-settlement.mjs`, `engine/transactions/sale-engine.mjs` ab Repositorywurzel | `tax-settlement.test.mjs`, `transaction-tax.test.mjs`, `ff-d-regression.test.mjs` |
 
 ## Betrieb und Werkzeuge
@@ -574,7 +582,7 @@ Neue Exporte erhalten JSDoc-Typen für Parameter und Rückgaben. Hat eine Datei 
 
 `sync-dist.mjs` übernimmt Frontend, Engine und Leserquellen aus einem Commit. HEAD verlangt sauberen getrackten Baum ohne unversionierte Laufzeitdateien, auch ignorierte; `--rev` wählt den Commit. Rust/Tauri baut aus dem Arbeitsbaum. `__build-provenance.json` belegt `RuntimeBuildProvenanceV1`, Commit, Baumstatus und Provider; fehlende Herkunft bleibt unbekannt.
 
-`npm run build:desktop` synchronisiert `dist/` und baut die Entwicklerkennung `de.vermoegen-ruhestand.entwicklung`; `build:release` verwendet `tauri.release.conf.json`, `--no-bundle`, Produktivkennung `de.vermoegen-ruhestand.suite` und `VermoegenUndRuhestand.exe`. Kandidaten verwenden `.entwicklung.kandidat`, die alte App `com.dieter.ruhestandsapp`. Die Kennung bestimmt den Datenordner, nicht EXE-Name oder Ablageort. Die EXE ist ein lokales Artefakt.
+`npm run build:desktop` synchronisiert `dist/` und baut die Entwicklerkennung `de.vermoegen-ruhestand.entwicklung`; `build:release` verwendet `tauri.release.conf.json`, `--no-bundle`, Produktivkennung `de.vermoegen-ruhestand.suite` und `VermoegenUndRuhestand.exe`. Kandidaten verwenden `.entwicklung.kandidat`, die alte App `com.dieter.ruhestandsapp`. Die Kennung bestimmt den Datenordner, nicht EXE-Name oder Ablageort. Sie bestimmt auch die Startsperre: `single_instance.rs` öffnet vor dem Fensteraufbau eine Sperrdatei je Kennung im Temp-Ordner ohne Schreibfreigabe. Ein zweiter Start derselben Kennung weckt über 127.0.0.1 das offene Fenster und endet; Prüf- und Produktiv-EXE laufen nebeneinander. Die EXE ist ein lokales Artefakt.
 
 ### Lokale Leserseiten und Dokuwerkzeuge
 
@@ -818,14 +826,14 @@ Beschluss nach der Jahresrendite 2000. Dynamic Flex ist aus. Grundbedarf 30.000,
 
 Nach der Rente bleiben 2.400,00 € Grundbedarf und 30.000,00 € Wunsch-Flex offen. Die Marktphase heißt „Stabiler Höchststand“.
 
-Beim Beschluss stehen 705.281,19 € Depot und 90.000,00 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 795.281,19 €. Der Markt liegt 0,00 % unter seinem Hoch; der reale Vermögensrückgang beträgt 0,00 %.
+Beim Beschluss stehen 701.754,79 € Depot und 90.000,00 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 791.754,79 €. Der Markt liegt 0,00 % unter seinem Hoch; der reale Vermögensrückgang beträgt 0,00 %.
 
 | Bezugsgröße | Quote |
 | --- | ---: |
-| Quote für den Vermögensfaktor, Ersatz aus aktuellem ungekürztem Bedarf | 4,59 % |
-| Vorläufige Depotquote | 4,59 % |
-| Geschützte Geldvermögensquote | 1,24 % |
-| Geplante tatsächliche Geldvermögensquote | 4,07 % |
+| Quote für den Vermögensfaktor, Ersatz aus aktuellem ungekürztem Bedarf | 4,62 % |
+| Vorläufige Depotquote | 4,62 % |
+| Geschützte Geldvermögensquote | 1,25 % |
+| Geplante tatsächliche Geldvermögensquote | 4,09 % |
 
 | Stufe | Rate vorher | Rate nachher | € pro Monat | Grund |
 | --- | ---: | ---: | ---: | --- |
@@ -839,40 +847,40 @@ Beim Beschluss stehen 705.281,19 € Depot und 90.000,00 € freie Liquidität z
 | [B9 Mindest-Flex](JAHRESBUDGET.md#b9) | 100,00 % | 100,00 % | 2.500,00 | Offenes Ziel 7.500,00 €/Jahr; bereits gedeckt. |
 | [B10 Flex-Budget](JAHRESBUDGET.md#b10) | 100,00 % | 100,00 % | 2.500,00 | Ausgeschaltet; Jahresbudget 0 €. |
 | [B11 Letzte Änderungsgrenze](JAHRESBUDGET.md#b11) | 100,00 % | 100,00 % | 2.500,00 | Höchstens +12,00 / −12,00 Punkte zum Anker 100,00 %. |
-| [B12 Sicherheitsgrenze](JAHRESBUDGET.md#b12) | 100,00 % | 100,00 % | 2.500,00 | Keine schwere Flex-Notlage; geplante tatsächliche Quote 4,07 %. |
+| [B12 Sicherheitsgrenze](JAHRESBUDGET.md#b12) | 100,00 % | 100,00 % | 2.500,00 | Keine schwere Flex-Notlage; geplante tatsächliche Quote 4,09 %. |
 | [B13 Rundung](JAHRESBUDGET.md#b13) | 100,00 % | 100,00 % | 2.500,00 | Auf volle 100,00 € abgerundet; nächster Anker 100,00 %. |
 
 Die Vermögensentnahme beträgt 2.700,00 € im Monat. Mit Rente stehen dem Haushalt 5.000,00 € monatlich zur Verfügung.
 
 ### Max und Erika 2002
 
-Beschluss nach der Jahresrendite 2002. Dynamic Flex ist aus. Grundbedarf 30.997,80 €, Wunsch-Flex 30.997,80 €, Mindest-Flex 7.749,45 € und Rente 49.025,34 € sind Jahreswerte.
+Beschluss nach der Jahresrendite 2002. Dynamic Flex ist aus. Grundbedarf 30.997,80 €, Wunsch-Flex 30.997,80 €, Mindest-Flex 7.749,45 € und Rente 48.356,57 € sind Jahreswerte.
 
-Nach der Rente bleiben 0,00 € Grundbedarf und 12.970,26 € Wunsch-Flex offen. Die Marktphase heißt „Tiefer Bär“.
+Nach der Rente bleiben 0,00 € Grundbedarf und 13.639,03 € Wunsch-Flex offen. Die Marktphase heißt „Tiefer Bär“.
 
-Beim Beschluss stehen 399.925,13 € Depot und 97.510,04 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 497.435,17 €. Der Markt liegt 39,01 % unter seinem Hoch; der reale Vermögensrückgang beträgt 39,47 %.
+Beim Beschluss stehen 393.927,22 € Depot und 96.971,30 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 490.898,52 €. Der Markt liegt 39,61 % unter seinem Hoch; der reale Vermögensrückgang beträgt 39,99 %.
 
-Übernommen werden der kumulierte Inflationsfaktor 1,03326, die reale Vorjahresentnahme 21.915,10 €, der reale Höchststand 795.281,19 € und der Vorjahresanker 100,00 %. Das reale Depot beträgt 387.051,79 €, das reale aktive Geldvermögen 481.423,04 €.
+Übernommen werden der kumulierte Inflationsfaktor 1,03326, die reale Vorjahresentnahme 22.507,40 €, der reale Höchststand 791.754,79 € und der Vorjahresanker 100,00 %. Das reale Depot beträgt 381.246,95 €, das reale aktive Geldvermögen 475.096,80 €.
 
 | Bezugsgröße | Quote |
 | --- | ---: |
-| Quote für den Vermögensfaktor, aus realer Vorjahresentnahme und realem Depot | 5,66 % |
-| Vorläufige Depotquote | 3,24 % |
+| Quote für den Vermögensfaktor, aus realer Vorjahresentnahme und realem Depot | 5,90 % |
+| Vorläufige Depotquote | 3,46 % |
 | Geschützte Geldvermögensquote | 0,00 % |
-| Geplante tatsächliche Geldvermögensquote | 2,29 % |
+| Geplante tatsächliche Geldvermögensquote | 2,44 % |
 
 | Stufe | Rate vorher | Rate nachher | € pro Monat | Grund |
 | --- | ---: | ---: | ---: | --- |
-| [B0 Vorjahresanker](JAHRESBUDGET.md#b0) | 100,00 % | 100,00 % | 1.080,85 | Anker vor Rundung; ausgezahlte Vorjahresrate 98,01 %. |
-| [B1 Alarm](JAHRESBUDGET.md#b1) | 100,00 % | 90,00 % | 972,77 | Neuer Alarm; wirksamer Abzug bei Aktivierung 10,00 Punkte. |
-| [B8 Leitplanken](JAHRESBUDGET.md#b8) | 90,00 % | 90,00 % | 972,77 | Im Alarm ausgesetzt. |
-| [B9 Mindest-Flex](JAHRESBUDGET.md#b9) | 90,00 % | 90,00 % | 972,77 | Kein offener Mindest-Flex. |
-| [B10 Flex-Budget](JAHRESBUDGET.md#b10) | 90,00 % | 90,00 % | 972,77 | Ausgeschaltet; Jahresbudget 0 €. |
-| [B11 Letzte Änderungsgrenze](JAHRESBUDGET.md#b11) | 90,00 % | 90,00 % | 972,77 | Höchstens +12,00 / −10,00 Punkte zum Anker 100,00 %. |
-| [B12 Sicherheitsgrenze](JAHRESBUDGET.md#b12) | 90,00 % | 90,00 % | 972,77 | Keine schwere Flex-Notlage; geplante tatsächliche Quote 2,29 %. Sicherheitsgrenze 90,00 %. |
-| [B13 Rundung](JAHRESBUDGET.md#b13) | 90,00 % | 87,89 % | 950,00 | Auf volle 50,00 € abgerundet; nächster Anker 90,00 %. |
+| [B0 Vorjahresanker](JAHRESBUDGET.md#b0) | 100,00 % | 100,00 % | 1.136,59 | Anker vor Rundung; ausgezahlte Vorjahresrate 98,72 %. |
+| [B1 Alarm](JAHRESBUDGET.md#b1) | 100,00 % | 90,00 % | 1.022,93 | Neuer Alarm; wirksamer Abzug bei Aktivierung 10,00 Punkte. |
+| [B8 Leitplanken](JAHRESBUDGET.md#b8) | 90,00 % | 90,00 % | 1.022,93 | Im Alarm ausgesetzt. |
+| [B9 Mindest-Flex](JAHRESBUDGET.md#b9) | 90,00 % | 90,00 % | 1.022,93 | Kein offener Mindest-Flex. |
+| [B10 Flex-Budget](JAHRESBUDGET.md#b10) | 90,00 % | 90,00 % | 1.022,93 | Ausgeschaltet; Jahresbudget 0 €. |
+| [B11 Letzte Änderungsgrenze](JAHRESBUDGET.md#b11) | 90,00 % | 90,00 % | 1.022,93 | Höchstens +12,00 / −10,00 Punkte zum Anker 100,00 %. |
+| [B12 Sicherheitsgrenze](JAHRESBUDGET.md#b12) | 90,00 % | 90,00 % | 1.022,93 | Keine schwere Flex-Notlage; geplante tatsächliche Quote 2,44 %. Sicherheitsgrenze 90,00 %. |
+| [B13 Rundung](JAHRESBUDGET.md#b13) | 90,00 % | 87,98 % | 1.000,00 | Auf volle 50,00 € abgerundet; nächster Anker 90,00 %. |
 
-Die Vermögensentnahme beträgt 950,00 € im Monat. Mit Rente stehen dem Haushalt 5.035,45 € monatlich zur Verfügung.
+Die Vermögensentnahme beträgt 1.000,00 € im Monat. Mit Rente stehen dem Haushalt 5.029,71 € monatlich zur Verfügung.
 
 B2 bis B7 werden im Alarm übersprungen. B8 bleibt im Trace sichtbar, wird aber ausgesetzt.
 
@@ -882,27 +890,27 @@ Beschluss nach der Jahresrendite 2000. Dynamic Flex ist aus. Grundbedarf 36.000,
 
 Nach der Rente bleiben 2.400,00 € Grundbedarf und 12.000,00 € Wunsch-Flex offen. Die Marktphase heißt „Stabiler Höchststand“.
 
-Beim Beschluss stehen 523.462,42 € Depot und 40.000,00 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 563.462,42 €. Der Markt liegt 0,00 % unter seinem Hoch; der reale Vermögensrückgang beträgt 0,00 %.
+Beim Beschluss stehen 522.202,99 € Depot und 40.000,00 € freie Liquidität zur Verfügung. Das aktive Geldvermögen beträgt 562.202,99 €. Der Markt liegt 0,00 % unter seinem Hoch; der reale Vermögensrückgang beträgt 0,00 %.
 
 | Bezugsgröße | Quote |
 | --- | ---: |
-| Quote für den Vermögensfaktor, Ersatz aus aktuellem ungekürztem Bedarf | 2,75 % |
-| Vorläufige Depotquote | 2,75 % |
+| Quote für den Vermögensfaktor, Ersatz aus aktuellem ungekürztem Bedarf | 2,76 % |
+| Vorläufige Depotquote | 2,76 % |
 | Geschützte Geldvermögensquote | 1,49 % |
 | Geplante tatsächliche Geldvermögensquote | 2,56 % |
 
 | Stufe | Rate vorher | Rate nachher | € pro Monat | Grund |
 | --- | ---: | ---: | ---: | --- |
-| [B2 Rohziel](JAHRESBUDGET.md#b2) | 100,00 % | 100,00 % | 1.000,00 | ATH-Abstand 0,00 %; Vermögensfaktor 0,68. |
-| [B3 Glättung](JAHRESBUDGET.md#b3) | 100,00 % | 100,00 % | 1.000,00 | Anteil des Rohziels 55,52 %; Rest aus Vorjahresanker. |
-| [B4 Änderungsgrenze](JAHRESBUDGET.md#b4) | 100,00 % | 100,00 % | 1.000,00 | Höchstens +4,50 / −5,15 Punkte zum Anker 100,00 %. |
+| [B2 Rohziel](JAHRESBUDGET.md#b2) | 100,00 % | 100,00 % | 1.000,00 | ATH-Abstand 0,00 %; Vermögensfaktor 0,69. |
+| [B3 Glättung](JAHRESBUDGET.md#b3) | 100,00 % | 100,00 % | 1.000,00 | Anteil des Rohziels 55,22 %; Rest aus Vorjahresanker. |
+| [B4 Änderungsgrenze](JAHRESBUDGET.md#b4) | 100,00 % | 100,00 % | 1.000,00 | Höchstens +4,50 / −5,10 Punkte zum Anker 100,00 %. |
 | [B5 S-Kurve](JAHRESBUDGET.md#b5) | 100,00 % | 100,00 % | 1.000,00 | Keine Kürzung durch die S-Kurve. |
 | [B6 Bären-Obergrenze](JAHRESBUDGET.md#b6) | 100,00 % | 100,00 % | 1.000,00 | Kein tiefer Bär. |
 | [B7 Liquiditäts-Obergrenze](JAHRESBUDGET.md#b7) | 100,00 % | 100,00 % | 1.000,00 | Keine Liquiditätsgrenze unterschritten. |
 | [B8 Leitplanken](JAHRESBUDGET.md#b8) | 100,00 % | 100,00 % | 1.000,00 | `grund`: „Guardrails“; `kennzahlen.gewaehlteQuelle`: „Profil“. Rate unverändert. |
 | [B9 Mindest-Flex](JAHRESBUDGET.md#b9) | 100,00 % | 100,00 % | 1.000,00 | Offenes Ziel 6.000,00 €/Jahr; bereits gedeckt. |
 | [B10 Flex-Budget](JAHRESBUDGET.md#b10) | 100,00 % | 100,00 % | 1.000,00 | Ausgeschaltet; Jahresbudget 0 €. |
-| [B11 Letzte Änderungsgrenze](JAHRESBUDGET.md#b11) | 100,00 % | 100,00 % | 1.000,00 | Höchstens +12,00 / −12,80 Punkte zum Anker 100,00 %. |
+| [B11 Letzte Änderungsgrenze](JAHRESBUDGET.md#b11) | 100,00 % | 100,00 % | 1.000,00 | Höchstens +12,00 / −12,77 Punkte zum Anker 100,00 %. |
 | [B12 Sicherheitsgrenze](JAHRESBUDGET.md#b12) | 100,00 % | 100,00 % | 1.000,00 | Keine schwere Flex-Notlage; geplante tatsächliche Quote 2,56 %. |
 | [B13 Rundung](JAHRESBUDGET.md#b13) | 100,00 % | 100,00 % | 1.000,00 | Auf volle 50,00 € abgerundet; nächster Anker 100,00 %. |
 
@@ -910,11 +918,11 @@ Die Vermögensentnahme beträgt 1.200,00 € im Monat. Mit Rente stehen dem Haus
 
 ### Dynamic Flex mit greifender Haushaltsobergrenze
 
-Der synthetische Vergleichshaushalt hat 1.000.000,00 € Depot und 200.000,00 € Liquidität. Grundbedarf 24.000,00 €, Wunsch-Flex 30.000,00 €, Mindest-Flex 30.000,00 € und Rente 30.000,00 € gelten pro Jahr. Der Horizont beträgt 20 Jahre, das Alter 65 und 63 Jahre. Go-Go ist mit Faktor 1,20 angefordert. Inflation ist null; der Markt steht ohne Jahresgewinn am Höchststand. CAPE ist 25.
+Der synthetische Vergleichshaushalt hat 1.000.000,00 € Depot und 200.000,00 € Liquidität. Grundbedarf 24.000,00 €, Wunsch-Flex 30.000,00 €, Mindest-Flex 30.000,00 € und Rente 30.000,00 € gelten pro Jahr. Der Horizont beträgt 20 Jahre, das Alter 65 und 63 Jahre. Go-Go ist mit Faktor 1,20 angefordert. Inflation ist null; der Markt steht ohne Jahresgewinn am Höchststand. CAPE ist 25, die Fondskosten betragen 0,5 % pro Jahr.
 
-A2: Aktienrealrendite 6,50 % − 2,00 % = 4,50 %, Aktiengewicht 83,33 %, sichere Realrendite 0,50 % bei 16,67 % Gewicht. Daraus folgen 3,83 % Portfoliorealrendite, 7,2500 % Annuitätenfaktor und 86.999,91 € Annuität. A3 multipliziert sie mit 1,20 auf 104.399,89 €. Der Netto-Grundbedarf ist null.
+A2: Aktienrendite 6,50 %, nach 0,5 % Fondskosten 5,97 %. Abzüglich 2,00 % Inflation bleiben 3,97 % Aktienrealrendite, Aktiengewicht 83,33 %, sichere Realrendite 0,50 % bei 16,67 % Gewicht. Daraus folgen 3,39 % Portfoliorealrendite, 6,9660 % Annuitätenfaktor und 83.591,93 € Annuität. A3 multipliziert sie mit 1,20 auf 100.310,32 €. Der Netto-Grundbedarf ist null.
 
-A5 begrenzt den Depot-Flex von 104.399,89 € auf 54.000,00 € im Jahr. Die Haushaltsobergrenze beträgt 60.000,00 € einschließlich Rentenanteil.
+A5 begrenzt den Depot-Flex von 100.310,32 € auf 54.000,00 € im Jahr. Die Haushaltsobergrenze beträgt 60.000,00 € einschließlich Rentenanteil.
 
 | Bezugsgröße | Quote |
 | --- | ---: |
@@ -1013,15 +1021,15 @@ Die getrennte Auszahlungsverteilung weist Max Mustermann 24.000,00 € zu. Das T
 
 ### Max und Erika im Bärenjahr
 
-Unveränderte Musterprofile im historischen Lauf, Marktjahr 2002; der Simulator hat Renditen und Renten bereits angewandt. Die Grundversorgung ist durch Rente gedeckt. Der Bärenpfad schützt die vorhandene Liquidität und wartet; C3 als eigentlicher Auffüllverkauf wird hier nicht ausgelöst.
+Unveränderte Musterprofile im historischen Lauf mit 0,5 % Fondskosten auf Aktien, Marktjahr 2002; der Simulator hat Renditen und Renten bereits angewandt. Die Grundversorgung ist durch Rente gedeckt. Der Bärenpfad schützt die vorhandene Liquidität und wartet; C3 als eigentlicher Auffüllverkauf wird hier nicht ausgelöst.
 
 | Wert | Ergebnis |
 | --- | ---: |
-| Jahresentnahme | 11.400,00 € |
-| Liquiditätsziel | 64.900,00 € |
-| Freie Liquidität vorher | 97.510,04 € |
-| Deckung vorher / nachher | 150,25 % / 150,25 % |
-| Reichweite vorher / nachher, vor Auszahlung | 102,64 / 102,64 Monate |
+| Jahresentnahme | 12.000,00 € |
+| Liquiditätsziel | 68.200,00 € |
+| Freie Liquidität vorher | 96.971,30 € |
+| Deckung vorher / nachher | 142,19 % / 142,19 % |
+| Reichweite vorher / nachher, vor Auszahlung | 96,97 / 96,97 Monate |
 | Bruttoquellen / Steuer / Netto | 0,00 € / 0,00 € / 0,00 € |
 
 Engineaktion: „Tiefer Bär (Kein Handlungsbedarf)“, Typ NONE. Eine Zielunterdeckung allein würde im Bär ebenfalls keinen opportunistischen Verkauf auslösen.
@@ -1032,11 +1040,11 @@ Variante der Musterprofile: Die Goldwerte und ihre Einstandswerte sind verdreifa
 
 | Wert | Ergebnis |
 | --- | ---: |
-| Jahresentnahme | 69.000,00 € |
-| Liquiditätsziel | 345.000,00 € |
+| Jahresentnahme | 63.000,00 € |
+| Liquiditätsziel | 315.000,00 € |
 | Freie Liquidität vorher | 360.000,00 € |
-| Deckung vorher / nachher | 104,35 % / 105,01 % |
-| Reichweite vorher / nachher, vor Auszahlung | 62,61 / 63,01 Monate |
+| Deckung vorher / nachher | 114,29 % / 115,01 % |
+| Reichweite vorher / nachher, vor Auszahlung | 68,57 / 69,01 Monate |
 | Bruttoquellen / Steuer / Netto | 140.000,00 € / 0,00 € / 140.000,00 € |
 | Verwendung Liquidität | 2.291,26 € |
 | Verwendung Aktien | 137.708,74 € |
@@ -1051,14 +1059,14 @@ Variante derselben Musterprofile: Je Person kommen 300.000 € Tagesgeld hinzu; 
 
 | Wert | Ergebnis |
 | --- | ---: |
-| Jahresentnahme | 69.000,00 € |
-| Liquiditätsziel | 345.000,00 € |
+| Jahresentnahme | 63.000,00 € |
+| Liquiditätsziel | 315.000,00 € |
 | Freie Liquidität vorher | 660.000,00 € |
-| Deckung vorher / nachher | 191,30 % / 105,80 % |
-| Reichweite vorher / nachher, vor Auszahlung | 114,78 / 63,48 Monate |
-| Bruttoquellen / Steuer / Netto | 295.000,00 € / 0,00 € / 295.000,00 € |
+| Deckung vorher / nachher | 209,52 % / 107,94 % |
+| Reichweite vorher / nachher, vor Auszahlung | 125,71 / 64,76 Monate |
+| Bruttoquellen / Steuer / Netto | 320.000,00 € / 0,00 € / 320.000,00 € |
 | Verwendung Gold | 70.000,00 € |
-| Verwendung Aktien | 225.000,00 € |
+| Verwendung Aktien | 250.000,00 € |
 
 Enginepfad: „Runway-Überschuss investieren“. Das eingestellte Abschöpflimit beträgt 5 %; auch bei 0 % bleibt dieser Überschusskauf gleich.
 

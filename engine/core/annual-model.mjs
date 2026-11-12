@@ -161,11 +161,16 @@ export function _internal_calculateModel(input, lastState, { includeFlexTrace = 
     // 8. FR-30: Kürzungen senken das Ziel nicht; höhere geplante Auszahlungen
     // durch Dynamic Flex oder Go-Go müssen die gewählte Reichweite ebenfalls decken.
     // Der separate Brutto-Mindestpuffer bleibt in TransactionEngine erhalten.
+    // FR-73: Pflegevorschau ersetzt die laufende Basis; zusätzliche beschlossene Flex-Auszahlung
+    // bleibt mit Folgejahrespreisen gedeckt. Ohne Projektion gilt unverändert der bisherige Weg.
+    const projection = normalizedInput.careLiquidityProjection;
+    const projectedNeed = projection ? Math.max(0, projection.floor + projection.flex - projection.income)
+        + Math.max(0, plannedAnnualNetNeed - Math.max(0, normalizedInput.floorBedarf + normalizedInput.flexBedarf - renteJahr)) * projection.priceFactor : null;
     const targetLiquidityDetails = TransactionEngine.calculateTargetLiquidityDetails(
         profil,
         market,
-        Math.max(plannedAnnualNetNeed, 0, normalizedInput.floorBedarf + normalizedInput.flexBedarf - renteJahr),
-        normalizedInput
+        projectedNeed ?? Math.max(plannedAnnualNetNeed, 0, normalizedInput.floorBedarf + normalizedInput.flexBedarf - renteJahr),
+        projection ? { ...normalizedInput, floorBedarf: projection.floor, flexBedarf: projection.flex } : normalizedInput
     );
     // FR-44: Erst nach der Budgetentscheidung zusätzlich bereitstellen.
     const zielLiquiditaet = targetLiquidityDetails.targetLiquidity + (normalizedInput.plannedExpenseLiquidityReserve || 0);
@@ -175,23 +180,33 @@ export function _internal_calculateModel(input, lastState, { includeFlexTrace = 
     // - Depot-Verkauf zur Liquiditäts-Auffüllung
     // - Rebalancing (Aktien/Gold)
     // - Notfall-Verkäufe bei kritischem Runway
+    // TJ-2: Der Simulator kann im Todesjahr eine eigene Sicht für Kauf und Auffüllung vorgeben (Liquidität und
+    // Bestände, die nach dem Nachlass bei der überlebenden Person bleiben). Ausgaben, Ziel und Runway bleiben beim Haushalt.
+    const transactionInput = normalizedInput.transactionView
+        ? { ...normalizedInput, ...normalizedInput.transactionView } : normalizedInput;
+    const transactionLiquidity = transactionInput === normalizedInput ? aktuelleLiquiditaet
+        : /** @type {number} */ (transactionInput.aktuelleLiquiditaet);
+    const transactionDepot = transactionInput === normalizedInput ? depotwertGesamt
+        : transactionInput.depotwertAlt + transactionInput.depotwertNeu + (transactionInput.goldAktiv ? transactionInput.goldWert : 0);
+    const transactionMinGold = transactionInput === normalizedInput ? minGold : transactionInput.goldAktiv
+        ? (/** @type {number} */ (transactionInput.goldFloorProzent) / 100) * (transactionDepot + transactionLiquidity) : 0;
     let action = TransactionEngine.determineAction({
-        aktuelleLiquiditaet,
-        depotwertGesamt,
+        aktuelleLiquiditaet: transactionLiquidity,
+        depotwertGesamt: transactionDepot,
         zielLiquiditaet,
         market,
         spending: spendingResult,
         // FR-57: dieselbe beschlossene Einkommensgrenze wie Balance und Simulator.
         isSavingsYear: decidedFixedIncomeSurplus({ input: normalizedInput, spending: spendingResult,
             vpw: vpwDiagnostics || { enabled: vpwEffectiveSettings.effectiveDynamicFlex } }) > 0,
-        minGold,
+        minGold: transactionMinGold,
         profil,
-        input: normalizedInput
+        input: transactionInput
     });
     _assertPlannedActionContract(
         action,
-        normalizedInput,
-        aktuelleLiquiditaet,
+        transactionInput,
+        transactionLiquidity,
         'transaction_engine_output'
     );
     let threeBucketDiagnosis = null;
@@ -199,12 +214,12 @@ export function _internal_calculateModel(input, lastState, { includeFlexTrace = 
         normalizedInput.finalizeThreeBucketAction === true
         && normalizedInput.decumulation?.mode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE
     ) {
-        const detailedTranches = Array.isArray(normalizedInput.detailledTranches)
-            ? normalizedInput.detailledTranches
+        const detailedTranches = Array.isArray(transactionInput.detailledTranches)
+            ? transactionInput.detailledTranches
             : [];
         const finalized = finalizeThreeBucketAction({
             detailedTranches,
-            engineInput: normalizedInput,
+            engineInput: transactionInput,
             market,
             pendingAction: action,
             realReturnEq: market.realReturnEq,
@@ -217,8 +232,8 @@ export function _internal_calculateModel(input, lastState, { includeFlexTrace = 
 
     _assertPlannedActionContract(
         action,
-        normalizedInput,
-        aktuelleLiquiditaet,
+        transactionInput,
+        transactionLiquidity,
         'three_bucket_final'
     );
 

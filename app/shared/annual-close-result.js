@@ -1,12 +1,17 @@
 import { comparisonScopeMatches } from '../profile/household-plan-comparison.js';
 import { createPlannedPostsView } from '../balance/balance-planned-posts-renderer.js';
-import { formatAnnualNeed } from '../balance/balance-annual-preview.js';
+import { formatAnnualNeed, annualNeedRoundedUp } from '../balance/balance-annual-preview.js';
 import { formatDisplayNumber } from './designsystem-number-format.js';
 import { createCloseTiles } from './close-dialog.js';
 import { readAnnualPlanRecord } from '../profile/annual-plan-record.js';
 import { HOUSEHOLD_PLAN_FIELDS, formatHouseholdPlanValue } from './household-plan-fields.js';
 import { annualLiquidityInflowRouting } from '../balance/balance-play-execution.js';
 import { annualMarketChoiceLabel } from './annual-market-choice.js';
+import { createTodoResult } from './annual-todo-view.js';
+import { projectAnnualTodoPlan } from '../balance/annual-todo.js';
+import { annualPlanEntryProgress } from '../balance/annual-action-progress.js';
+import { loadProfileRegistry } from '../profile/profile-registry.js';
+import { persistenceStorage } from './persistence-facade.js';
 
 export const ANNUAL_ACTION_NOTICE = 'Für dieses Planjahr und diesen Umfang fehlt eine bestätigte Handlungsanweisung. Bitte den Jahresbeleg in der Sicherung prüfen.';
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 2 }) : '—';
@@ -143,7 +148,8 @@ export function createAnnualPlanResult({ doc, result, model, peoplePreview }) {
         const inflationDetail = Number.isFinite(inflation) ? `${inflation > 0 ? '+' : ''}${formatDisplayNumber(inflation, { fractionDigits: 2 })} % Inflation ${result.targetYear ?? result.year - 1}` : 'Inflationsanpassung nicht belegt';
         root.append(createCloseTiles({ doc, items: [
             { label: `Jahresausgaben ${result.targetYear ?? result.year - 1}${annual.complete ? '' : ' bisher'}`, value: money(annual.total), detail: `Budget ${money(budget)} · ${deviation}`, detailTone: difference > 0 ? 'warning' : '' },
-            { label: `Bedarf ${result.year}`, value: `${money(total)} im Jahr`, detail: inflationDetail + (result.adjustedFields?.some(id => ['floorBedarf', 'flexBedarf'].includes(id)) ? ' · Bedarf angepasst' : '') }
+            { label: `Bedarf ${result.year}`, value: `${money(total)} im Jahr`, detail: inflationDetail + (result.adjustedFields?.some(id => ['floorBedarf', 'flexBedarf'].includes(id)) ? ' · Bedarf angepasst'
+                : needs.some(need => annualNeedRoundedUp(need.before, need.after, inflation)) ? ' · aufgerundet auf volle 1.000 €' : '') }
         ] }));
     }
     const details = node('details', undefined, 'close-dialog-derivation'); details.dataset.annualPlanDerivation = '';
@@ -252,5 +258,36 @@ export function createAnnualExpenseStatus({ doc, model, targetYear }) {
     const needs = model.expenseNeeds;
     if (needs) root.append(createCloseTiles({ doc, items: ['floor', 'flex'].map(key => ({ label: `Jahresdurchschnitt ${key === 'floor' ? 'Floor' : 'Flex'} / Monat`, value: money(needs.avgMonthly?.[key]) })) }));
     if (difference !== null) root.append(node('p', difference === 0 ? 'Genau im Jahresbudget' : `${money(Math.abs(difference))} ${difference > 0 ? 'über' : 'unter'} dem Jahresbudget${budget > 0 ? ` · ${formatDisplayNumber(Math.abs(difference) / budget * 100, { fractionDigits: 1 })} %` : ''}`));
+    return root;
+}
+
+/** Umsetzungsstand des Plans für das abzuschließende Jahr (FR-77 Punkt 6), aus Beleg und bestätigten Verkäufen; nur gelesen.
+ * @param {{model?: any, year: number}} options */
+export function readAnnualClosePlanProgress({ model, year }) {
+    try {
+        const scope = model?.planComparison?.scope, ids = model?.scope?.ids || [];
+        if (!scope || !Number.isInteger(year)) return null;
+        const entry = readAnnualPlanRecord({ year, scope, storage: persistenceStorage });
+        const progress = annualPlanEntryProgress({ entry, year, registry: loadProfileRegistry().value, profileIds: ids });
+        return progress?.lines.length ? { ...progress, year } : null;
+    } catch { return null; }
+}
+
+/** Ergebnis des Jahresabschlusses: der neue Plan in derselben Form wie die Karte „Was zu tun ist“; die Belegdetails zugeklappt. */
+export function createAnnualTodoResult(doc, actionResult) {
+    const full = createAnnualActionResult({ doc, result: actionResult, compact: true });
+    if (!actionResult?.action) return full;
+    let routing = null;
+    try { routing = annualLiquidityInflowRouting(actionResult.action, actionResult.liquidityContext); } catch { routing = null; }
+    const context = actionResult.liquidityContext;
+    const plan = projectAnnualTodoPlan({ confirmed: { year: actionResult.year, action: actionResult.action, text: actionResult.text,
+        marketReading: actionResult.marketReading }, people: actionResult.people || [], routing,
+        cashMonths: context?.input?.liquidityCashMonths ?? context?.entries?.[0]?.input?.liquidityCashMonths ?? null });
+    if (!plan) return full;
+    const details = full.querySelector('[data-annual-action-details]');
+    // WT-1b: „zeigen“/„ausblenden“ hängt das Designsystem an (.ds-technical-details); die Beschriftung bleibt „Details“.
+    const summary = details?.querySelector('summary'); if (summary) summary.textContent = 'Details';
+    const root = createTodoResult(doc, plan, { details });
+    root.dataset.annualActionResult = '';
     return root;
 }

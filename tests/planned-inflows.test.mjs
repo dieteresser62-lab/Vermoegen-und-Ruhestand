@@ -1,6 +1,11 @@
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
+// LE-1 (FR-75) und KO-2 (Ergänzung FR-76) in einem Leser; Paare, die beide ändern, sind für den vereinten Stand gemessen.
+import { readLE1KO2References } from './helpers/le-1-ko-2-expectations.mjs';
+import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readEV1bReferences = value => readPFA1References(beforePFA1References(value));
 import { withoutExampleNeeds } from './helpers/ff-3-expectations.mjs';
 import { installRealClock } from './helpers/fixed-real-clock.mjs';
-import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
+import { readEV1bReferences as beforePFA1References } from './helpers/ev-1b-expectations.mjs';
 const readZG1References = value => readEV1bReferences(readBeforeEV1bReferences(value));
 import { readZG1References as readBeforeEV1bReferences } from './helpers/zg-1-expectations.mjs';
 import { readEV1References as readBeforeZG1References, ev1Evidence } from './helpers/ev-1-expectations.mjs';
@@ -246,7 +251,7 @@ try {
     for (const household of ['max-erika', 'renate', 'helga-werner', 'jan-lena']) {
         const records = legacyDemoIncomeRecords(withoutExampleNeeds(createMusterHaushaltRecords('2026-10-16', household)));
         if (household === 'renate') {
-            assertEqual(createHash('sha256').update(JSON.stringify(records)).digest('hex'), readQSCReferences(readVF2BReferences('d70f827e3e6290501c7dc596f1a1a750a886893725442d143c231b3f93d6d115')),
+            assertEqual(createHash('sha256').update(JSON.stringify(records)).digest('hex'), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences('d70f827e3e6290501c7dc596f1a1a750a886893725442d143c231b3f93d6d115')))),
                 'Renate: vollständige Musterrecords mit Personenzuordnung im Beleg');
             const receipt = JSON.parse(records.annual_plan_record_v1);
             for (const entry of Object.values(receipt.entries)) for (const outcome of [entry.recommended, entry.adopted])
@@ -254,9 +259,9 @@ try {
             records.annual_plan_record_v1 = JSON.stringify(receipt);
         }
         const payload = household === 'jan-lena' ? { balance: records.ruhestandsmodellValues_v29_guardrails, annual: records.annual_plan_record_v1 } : records;
-        assertEqual(createHash('sha256').update(JSON.stringify(payload)).digest('hex'), readQSCReferences(readVF2BReferences(readGL1References(household === 'renate'
+        assertEqual(createHash('sha256').update(JSON.stringify(payload)).digest('hex'), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(household === 'renate'
             ? '0e8bc1e8cfb45b6edac14057d6a6990e850331402a88f0c78896b26529d5ae20'
-            : readMU1Hash(readAN1Hash(readJB2Hash(readBK2Hash(expected.demoHashes[household]))))))),
+            : readMU1Hash(readAN1Hash(readJB2Hash(readBK2Hash(expected.demoHashes[household]))))))))),
             household + ': vollständige Musterreferenz; Renate mit 3 Töpfen nach FR-58');
     }
     for (const preset of ['Vorgabe', 'konservativ', 'ausgewogen', 'offensiv']) {
@@ -280,19 +285,19 @@ try {
         const legacyPayload = { rows: backtest(legacy).rows, path0: legacyChunk.runMeta.find(run => run.index === 0).logDataRows };
         assertEqual(carePathReferences.presets[preset].legacyPayload.beforeHistoricalSha256,
             afterCareDeathChange(readQSCReferences(readKG1Hash(reference.after))), `${preset}: historische Referenz mit alten Flex-Werten bleibt erhalten`);
-        assertEqual(createHash('sha256').update(JSON.stringify(legacyPayload)).digest('hex'), readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].legacyPayload.afterSha256)))))))), `${preset}: vollständiger PM-1c-Pfad mit alten Flex-Werten`);
+        assertEqual(createHash('sha256').update(JSON.stringify(legacyPayload)).digest('hex'), readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].legacyPayload.afterSha256)))))))))), `${preset}: vollständiger PM-1c-Pfad mit alten Flex-Werten`);
         assertEqual(JSON.stringify(payload.rows), JSON.stringify(legacyPayload.rows), `${preset}: Backtest-Jahreszeilen ohne Pflege bleiben gleich`);
         assertEqual(carePathReferences.presets[preset].payload.beforeHistoricalSha256,
             afterCareDeathChange(readQSCReferences(readKG1Hash(flexReference.after))), `${preset}: historische FR-39/FR-40-Vollreferenz bleibt erhalten`);
-        assertEqual(hash, readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].payload.afterSha256)))))))), `${preset}: vollständiger PM-1c-Backtest und MC-Pfad 0`);
+        assertEqual(hash, readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].payload.afterSha256)))))))))), `${preset}: vollständiger PM-1c-Backtest und MC-Pfad 0`);
         for (const [kind, actual] of [['payload', payload], ['legacyPayload', legacyPayload]]) {
             const ev1 = ev1Evidence.controls[preset][kind];
             const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-            assertEqual(digest(actual.rows), ev1.backtest, `${preset}/${kind}: EV-1 lässt sämtliche Backtestzeilen bytegleich`);
-            assertEqual(digest(actual.path0.slice(0, ev1.deathIndex)), ev1.beforeDeath, `${preset}/${kind}: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich`);
+            assertEqual(digest(actual.rows), readLE1KO2References(readGU1References(ev1.backtest)), `${preset}/${kind}: EV-1 lässt sämtliche Backtestzeilen bytegleich`);
+            assertEqual(digest(actual.path0.slice(0, ev1.deathIndex)), readLE1KO2References(readGU1References(readPFA1References(ev1.beforeDeath))), `${preset}/${kind}: EV-1 lässt alle Zeilen vor dem Erbfall bytegleich`);
             const reference = rng1Evidence.carePath[preset][kind];
-            assertEqual(createHash('sha256').update(JSON.stringify(actual.path0.slice(0, reference.prefixLength))).digest('hex'), readQSCReferences(readVF2BReferences(readGL1References(reference.prefixSha256))), `${preset}/${kind}: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen`);
-            assertEqual(createHash('sha256').update(JSON.stringify(actual.rows)).digest('hex'), readQSCReferences(readVF2BReferences(readGL1References(reference.backtestSha256))),
+            assertEqual(createHash('sha256').update(JSON.stringify(actual.path0.slice(0, reference.prefixLength))).digest('hex'), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(reference.prefixSha256))))), `${preset}/${kind}: alle Jahresfelder vor geänderter Pflegeziehung mit belegten NR-1-Anzeigeänderungen`);
+            assertEqual(createHash('sha256').update(JSON.stringify(actual.rows)).digest('hex'), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(reference.backtestSha256))))),
                 `${preset}/${kind}: alle Backtestzeilen mit belegten NR-1-Anzeigeänderungen`);
             const firstCare = actual.path0.find(row => row.CareP1_Active);
             assertEqual(firstCare.jahr, reference.firstCareYear, `${preset}/${kind}: neuer Pflegebeginn`);
@@ -321,7 +326,7 @@ try {
             runRange: { start: 0, count: 4 }, engine: EngineAPI });
         const healthyPayload = { rows: backtest(withoutCare).rows,
             path0: healthyChunk.runMeta.find(run => run.index === 0).logDataRows };
-        assertEqual(createHash('sha256').update(JSON.stringify(healthyPayload)).digest('hex'), readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(reference.withoutCare)))))))),
+        assertEqual(createHash('sha256').update(JSON.stringify(healthyPayload)).digest('hex'), readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(reference.withoutCare)))))))))),
             `${preset}: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten`);
         if (preset !== 'Vorgabe') trial.reset();
     }

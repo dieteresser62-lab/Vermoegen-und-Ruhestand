@@ -25,7 +25,7 @@ export function processingIsBlocked() {
 
 export function setManagerControlsBlocked(blocked) {
     state.partnership?.syncBlocked(blocked);
-    /** @type {NodeListOf<HTMLInputElement | HTMLSelectElement | HTMLButtonElement>} */ (byId('managerImmobilien')?.querySelectorAll?.('input, button'))?.forEach?.(element => { element.disabled = blocked; });
+    /** @type {NodeListOf<HTMLInputElement | HTMLButtonElement>} */ (byId('tranchenTable')?.querySelectorAll?.('.pv-home-table input, .pv-home-table button'))?.forEach?.(element => { element.disabled = blocked; });
     state.householdPlan?.syncBlocked(blocked);
     state.plannedExpenses?.syncBlocked(blocked);
     if (state.navigationLifecycle?.isBlocked()) { state.householdPlan?.pause(); state.plannedExpenses?.pause(); }
@@ -45,6 +45,7 @@ export function setManagerControlsBlocked(blocked) {
         'managerCashValue',
         'depotAddTrancheBtn',
         'depotOpenSaleEntryBtn',
+        'depotAddHomeBtn',
         'managePeopleBtn',
         'managerPersonName',
         'managerPersonCreateBtn',
@@ -75,7 +76,7 @@ export function setManagerControlsBlocked(blocked) {
     /** @type {NodeListOf<HTMLButtonElement>} */ (byId('reconciliationCashStatuses')?.querySelectorAll?.('[data-cash-action]'))?.forEach?.(element => {
         element.disabled = blocked;
     });
-    /** @type {NodeListOf<HTMLButtonElement>} */ (byId('tranchenTable')?.querySelectorAll?.('[data-history-toggle]'))?.forEach?.(element => { element.disabled = blocked; });
+    /** @type {NodeListOf<HTMLButtonElement>} */ (byId('tranchenTable')?.querySelectorAll?.('[data-history-toggle], [data-action="reload-prices"]'))?.forEach?.(element => { element.disabled = blocked; });
     /** @type {NodeListOf<HTMLButtonElement>} */ (byId('managerHousehold')?.querySelectorAll?.('[data-manager-people]'))?.forEach?.(element => { element.disabled = blocked; });
     /** @type {NodeListOf<HTMLButtonElement>} */ (byId('managerHousehold')?.querySelectorAll?.('[data-history-recovery]'))?.forEach?.(element => {
         // Belegbedingte Sperren bleiben nach Freigabe erhalten.

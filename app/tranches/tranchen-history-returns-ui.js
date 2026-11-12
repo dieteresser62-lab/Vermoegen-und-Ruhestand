@@ -28,6 +28,24 @@ const provisional = (value, coverage) => {
     if (coverage) return `<p class="history-note history-returns-provisional">${escapeHtml(coverageText(coverage))}</p>`;
     return value ? '<small class="history-note history-returns-provisional">vorläufig</small>' : '';
 };
+const marketNote = 'Markt ist die Wertänderung ohne Käufe und Verkäufe. Ausschüttungen und Handkorrekturen sind hier enthalten.';
+/** @param {{startValue: number; deposits: number; withdrawals: number; endValue: number}|null|undefined} balance
+ * @param {number|undefined} fallbackEnd
+ * @param {(label: string, value: string, amount?: number, extra?: string, markup?: boolean) => string} row
+ * @returns {string} */
+function balanceRows(balance, fallbackEnd, row) {
+    const marketLabel = 'Markt' + infoPopoverHtml('Erläuterung zu Markt', marketNote, { handbookAnchor: 'verlauf-depotkennzahlen' });
+    if (!balance) return row('Anfangsstand', '—') + row('Käufe', '—') + row('Verkäufe', '—') + row(marketLabel, '—', undefined, '', true)
+        + row('Endstand', money(fallbackEnd), undefined, 'history-return-end') + row('Veränderung', '—');
+    const start = Math.round(balance.startValue), buys = Math.round(balance.deposits), sells = Math.round(balance.withdrawals);
+    const end = balance.endValue === null ? null : Math.round(balance.endValue);
+    // Markt aus den gerundeten Zeilen; ohne bewerteten Endstand bleiben Markt und Endstand offen.
+    const market = end === null ? null : end - start - buys + sells;
+    return row('Anfangsstand', money(start)) + row('Käufe', '+' + money(buys)) + row('Verkäufe', (sells > 0 ? '−' : '') + money(sells))
+        + row(marketLabel, market === null ? '—' : signedMoney(market), market ?? undefined, '', true)
+        + row('Endstand', end === null ? 'noch nicht bewertet' : money(end), undefined, 'history-return-end')
+        + row('Veränderung', end === null ? '—' : signedMoney(end - start), end === null ? undefined : end - start);
+}
 const priceReturnNote = 'Kursrendite ohne Ausschüttungen; bei ausschüttenden Fonds zu niedrig';
 const title = (text, info = '') => `<div class="ds-card-title"><h2>${text}</h2>${info ? infoPopoverHtml('Erläuterung zu ' + text, info, { handbookAnchor: 'verlauf-depotkennzahlen' }) : ''}</div>`;
 
@@ -104,16 +122,19 @@ export function historyReturnGroupsMarkup(groups) {
 export function historyYearsMarkup(result) {
     const header = `<header>${title('Jahresübersicht')}</header>`;
     if (result.invalid || result.metrics.status === 'unavailable' && !result.coverage) return header + incomplete;
-    if (result.series.length < 2) return header + (result.coverage ? provisional(true, result.coverage) : unavailable);
+    // Die Depotbilanz braucht keine Renditebasis: Jahreskarten auch mit nur einem bewerteten Tag zeigen.
+    if (result.series.length < 2 && !result.years?.some(year => year.balance)) return header + (result.coverage ? provisional(true, result.coverage) : unavailable);
     return header + provisional(false, result.coverage) + `<div class="history-return-years">${result.years.map(year => {
         const m = year.metrics, startDate = historyDate(year.start), endDate = historyDate(year.end);
-        const note = [startDate.slice(5) !== '01-01' ? 'ab ' + shortDate(year.start) : '', endDate.slice(5) !== '12-31' ? 'bis ' + shortDate(year.end) : ''].filter(Boolean).join(' · ');
+        const baseDay = year.balance?.baseDay ?? null;
+        const note = [baseDay !== null ? 'ab ' + shortDate(baseDay) : startDate.slice(5) !== '01-01' ? 'ab ' + shortDate(year.start) : '', endDate.slice(5) !== '12-31' ? 'bis ' + shortDate(year.end) : ''].filter(Boolean).join(' · ');
         const end = result.series.findLast(p => p.day >= year.start && p.day <= year.end);
-        const row = (label, value, amount, extra = '') => `<dt>${label}</dt><dd class="${signClass(amount)} ${extra}">${escapeHtml(value)}</dd>`;
+        // Der Markt-Hinweis ist festes Markup aus infoPopoverHtml; Werte bleiben escaped.
+        const row = (label, value, amount, extra = '', markup = false) => `<dt>${markup ? label : escapeHtml(label)}</dt><dd class="${signClass(amount)} ${extra}">${escapeHtml(value)}</dd>`;
         return `<section class="history-return-year-card" aria-label="Anlagen ${year.year}"><div class="history-return-year-title"><h3>${year.year}</h3><span class="history-return-note">${note}</span></div><div class="history-return-spark">${renderHistorySparkline(year.points, { title: `Anlagenwert ${year.year}`, width: 300, height: 70, kind: 'course' })}</div><dl>`
-            + row('Endstand', money(end?.total), undefined, 'history-return-end')
-            + row('Veränderung', signedMoney(m.change), m.change)
-            + row('davon Käufe/Verkäufe', signedMoney(m.netFlows))
+            // Depotbilanz (Nutzerwunsch 08.11.2026): auf ganze Euro gerundet; Markt aus den gerundeten Werten,
+            // damit die sichtbare Rechnung Anfangsstand + Käufe − Verkäufe + Markt = Endstand aufgeht.
+            + balanceRows(year.balance, end?.total, row)
             + row('Rendite zeitgewichtet', percent(m.twr), m.twr) + '</dl></section>';
     }).join('')}</div>` + provisional(result.provisional && !result.coverage);
 }

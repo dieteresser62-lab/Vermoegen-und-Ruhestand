@@ -12,6 +12,10 @@ import { flushOwned, clearScheduledFlush } from './batch-flush.js';
  * @returns {Promise<T>}
  */
 export async function persistentWrite(execute, options = {}, needsProtection = () => true) {
+    // ES-1: erst nach der Tabentscheidung und vor jeder Sperre. ES-1b: Ein gesperrtes Dokument wartet nicht und scheitert
+    // sofort; es nimmt nie die gemeinsame Schreibsperre, um darin auf sein nie endendes init() zu warten.
+    if (storeState.writeGate && storeState.documentWriteBlock === null) await storeState.writeGate;
+    assertDocumentWritable();
     const run = async () => {
         if (!storeState.initialized && !storeState.adapterExplicitlyConfigured) await init();
         assertAreaWritable();

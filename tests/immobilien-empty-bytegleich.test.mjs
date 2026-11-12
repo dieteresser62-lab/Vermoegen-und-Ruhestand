@@ -1,5 +1,15 @@
+const readQSCReferences = value => readPFA1References(beforePFA1QSCReferences(value));
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
+import { withPreviousRunEvidence } from './helpers/le-1b-expectations.mjs';
+// LE-1 (FR-75) und KO-2 (Ergänzung FR-76) in einem Leser; Paare, die beide ändern, sind für den vereinten Stand gemessen.
+import { readLE1KO2References } from './helpers/le-1-ko-2-expectations.mjs';
+import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
+const readHE4References = value => readPFA1References(beforePFA1References(value));
 import { withoutExampleNeeds } from './helpers/ff-3-expectations.mjs';
-import { readEV1bReferences } from './helpers/ev-1b-expectations.mjs';
+import { readEV1bReferences as readBeforeHE2References } from './helpers/ev-1b-expectations.mjs';
+import { readHE2References } from './helpers/he-2-expectations.mjs';
+import { readHE4References as beforePFA1References } from './helpers/he-4-expectations.mjs';
+const readEV1bReferences = value => readHE4References(readHE2References(readBeforeHE2References(value)));
 const readMD2References = value => readEV1bReferences(readBeforeEV1bReferences(value));
 import { readMD2References as readBeforeEV1bReferences } from './helpers/md-2-expectations.mjs';
 import { readZG1References as readBeforeMD2References } from './helpers/zg-1-expectations.mjs';
@@ -7,7 +17,7 @@ const readZG1References = value => readMD2References(readBeforeMD2References(val
 import { readEV1References as readBeforeZG1References } from './helpers/ev-1-expectations.mjs';
 const readEV1References = value => readZG1References(readBeforeZG1References(value));
 import { previousLiquidityInput } from './helpers/lq-1b-expectations.mjs';
-import { readQSCReferences } from './helpers/qs-c-expectations.mjs';
+import { readQSCReferences as beforePFA1QSCReferences } from './helpers/qs-c-expectations.mjs';
 import { readVF2BReferences as readBeforePA1References } from './helpers/vf-2b-expectations.mjs';
 import { readPA1References } from './helpers/pa-1-expectations.mjs';
 const readVF2BReferences = value => readQSCReferences(readPA1References(readBeforePA1References(value)));
@@ -27,9 +37,9 @@ import { sealParityReplayLog } from '../app/simulator/parity-replay-contract.js'
 const readRNG1Hash = before => readQSCReferences(readAS1Hash(readEP1Hash(readBeforeEP1Hash(before))));
 const baseline = JSON.parse(readFileSync(new URL('./fixtures/up-1a-parity.json', import.meta.url)));
 const { inputs, historical, chunk } = await measure(0, baseline.count, { historicalSurvivor: true });
-assertEqual(hash(inputs), readQSCReferences(readVF2BReferences(readGL1References(baseline.inputsHash))), 'Ohne Immobilien: vollständige Eingaben bytegleich zum Ausgangsstand');
-assertEqual(hash(historical), readQSCReferences(readVF2BReferences(readGL1References(baseline.backtestHash))), 'Ohne Immobilien: vollständiger Backtest 2000–2025 bytegleich zum Ausgangsstand');
-assertEqual(hash(chunk), readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(baseline.monteCarloHash))))), 'Ohne Immobilien: vollständige 24 MC-Pfade mit Seed 12345 und belegter Ehe-Erbschaftsteuer');
+assertEqual(hash(inputs), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(baseline.inputsHash))))), 'Ohne Immobilien: vollständige Eingaben bytegleich zum Ausgangsstand');
+assertEqual(hash(historical), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(baseline.backtestHash))))), 'Ohne Immobilien: vollständiger Backtest 2000–2025 bytegleich zum Ausgangsstand');
+assertEqual(hash(withPreviousRunEvidence(chunk)), readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(baseline.monteCarloHash))))))), 'Ohne Immobilien: vollständige 24 MC-Pfade mit Seed 12345 und belegter Ehe-Erbschaftsteuer');
 const { durationMs, ...parity } = runParityScenarios({ source });
 assertEqual(parity.cases.length, baseline.parityCases, 'Paritätsbeleg enthält dieselben 208 Jahres- und Fortsetzungsfälle');
 assertEqual(parity.failed, false, 'Keine ungeklärten Paritätsabweichungen');
@@ -81,4 +91,4 @@ legacyDisplay.cases = legacyDisplay.cases.map(value => {
     if (value.replay?.log) value.replay.log = sealParityReplayLog(value.replay.log);
     return sealParityCase(value);
 });
-assertEqual(hash(legacyDisplay), readQSCReferences(readVF2BReferences(readGL1References(baseline.parityHash))), 'Ohne Immobilien: vollständiger Paritätsbeleg mit bisheriger Anzeigebasis bytegleich zum Ausgangsstand');
+assertEqual(hash(legacyDisplay), readLE1KO2References(readGU1References(readQSCReferences(readVF2BReferences(readGL1References(baseline.parityHash))))), 'Ohne Immobilien: vollständiger Paritätsbeleg mit bisheriger Anzeigebasis bytegleich zum Ausgangsstand');

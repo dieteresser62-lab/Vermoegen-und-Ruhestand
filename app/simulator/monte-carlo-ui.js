@@ -11,6 +11,7 @@ import { showSimulatorInputError } from './simulator-input-feedback.js';
 import { activateSimulatorTab } from './simulator-main-tabs.js';
 import { buildMonteCarloRunHint, renderMonteCarloRunHint, getMonteCarloHintMeasurement, monteCarloHintComparableKey } from './monte-carlo-run-hint.js';
 import { setFieldState } from '../shared/field-state.js';
+import { effectiveMonteCarloDurationValue, syncMonteCarloDurationDefault } from './monte-carlo-duration.js';
 import {
     MONTE_CARLO_PARAMETER_LIMITS,
     estimateMonteCarloResourcesV1,
@@ -60,7 +61,8 @@ export function syncMonteCarloRunControls(doc = globalThis.document, successful)
     if (canonical) canonical.textContent = label;
     const start = doc.getElementById('overviewRunMonteCarlo');
     if (start) {
-        start.textContent = label;
+        // Die Ergebniskarte nennt Monte-Carlo schon im Kopf (SE-1).
+        start.textContent = state.successful ? 'Neu rechnen' : label;
         start.disabled = state.busy || canonical?.disabled === true;
         start.hidden = state.busy;
     }
@@ -70,7 +72,7 @@ export function syncMonteCarloRunControls(doc = globalThis.document, successful)
     if (cancel) {
         cancel.hidden = !state.busy;
         cancel.disabled = !state.busy || state.cancelling;
-        cancel.textContent = state.cancelling ? 'Abbruch läuft …' : 'Monte-Carlo-Lauf abbrechen';
+        cancel.textContent = state.cancelling ? 'Abbruch läuft …' : 'Abbrechen';
     }
     const status = doc.getElementById('overviewMonteCarloRunStatus');
     if (status && status.textContent !== state.status) status.textContent = state.status;
@@ -106,7 +108,7 @@ export function setMonteCarloRunBusy(doc, busy) {
 export function renderMonteCarloRunControls() {
     return `<div class="sim-mc-actions">
         <button type="button" id="overviewRunMonteCarlo" class="ds-button ds-button-primary" data-mc-start>Monte-Carlo rechnen</button>
-        <button type="button" id="overviewCancelMonteCarlo" class="ds-button ds-button-secondary" data-mc-cancel hidden disabled>Monte-Carlo-Lauf abbrechen</button>
+        <button type="button" id="overviewCancelMonteCarlo" class="ds-button ds-button-secondary" data-mc-cancel hidden disabled>Abbrechen</button>
         <button type="button" id="overviewMonteCarloSettings" class="ds-text-link" data-simulator-tab="montecarlo">Einstellungen ändern</button>
     </div>
     <div id="overviewMonteCarloProgress" class="sim-mc-progress" role="progressbar" aria-label="Monte-Carlo-Fortschritt" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden><div id="overviewMonteCarloProgressBar"></div></div>
@@ -594,6 +596,8 @@ export function readMonteCarloParameters(inputs = null, { runsElementId = 'mcAnz
         : 'Sweep-Simulationen je Kombination';
     const anzahlElement = requireElement(runsElementId, runsDescription);
     const durationElement = requireElement('mcDauer', 'Simulationsdauer in Jahren');
+    // FR-75: Leeres Feld = automatisch bis Alter 110 der jüngsten Person (Vorgabe in der Normalisierung).
+    if (inputs) syncMonteCarloDurationDefault(document, inputs);
     const blockSizeElement = requireElement('mcBlockSize', 'Blocklaenge');
     const seedElement = requireElement('mcSeed', 'Zufalls-Seed');
     const rngModeElement = document.getElementById('rngMode');
@@ -635,8 +639,12 @@ export function initMonteCarloResourceControls() {
     const hintStart = doc.getElementById('mcRunHintStart');
     const hintReset = doc.getElementById('mcRunHintReset');
 
+    const readCurrentInputs = () => { try { return getCommonInputs(); } catch { return null; } };
     let previousSignature = `${String(runsElement.value ?? '')}:${String(durationElement.value ?? '')}`;
     const update = () => {
+        const currentInputs = readCurrentInputs();
+        if (currentInputs) syncMonteCarloDurationDefault(doc, currentInputs);
+        const years = effectiveMonteCarloDurationValue(durationElement);
         const nextSignature = `${String(runsElement.value ?? '')}:${String(durationElement.value ?? '')}`;
         if (confirmation && nextSignature !== previousSignature) confirmation.checked = false;
         previousSignature = nextSignature;
@@ -644,12 +652,13 @@ export function initMonteCarloResourceControls() {
         let comparableKey = null;
         if (measurement) {
             try {
-                comparableKey = monteCarloHintComparableKey(validateSimulatorInputs(getCommonInputs(), { horizonYears: Number(document.getElementById('mcDauer')?.value) }), readMonteCarloParameters(),
+                const validInputs = validateSimulatorInputs(currentInputs ?? getCommonInputs(), { horizonYears: Number(years) });
+                comparableKey = monteCarloHintComparableKey(validInputs, readMonteCarloParameters(validInputs),
                     normalizeMonteCarloResourceConfigV1({ workerCount: doc.getElementById('mcWorkerCount')?.value ?? '8', timeBudgetMs: doc.getElementById('mcWorkerBudget')?.value ?? '500' }),
                     doc.getElementById('useCapeSampling')?.checked === true);
             } catch { /* Ohne vergleichbare Eingaben bleibt die Schätzung unbekannt. */ }
         }
-        const model = buildMonteCarloRunHint({ runs: runsElement.value, years: durationElement.value,
+        const model = buildMonteCarloRunHint({ runs: runsElement.value, years,
             measurement, comparableKey, successRatio: comparableKey === measurement?.comparableKey ? measurement?.successRatio : null });
         if (hint) { hint.hidden = !model.visible; hint.dataset.severity = model.severe ? 'severe' : 'normal'; }
         if (hintContent) hintContent.innerHTML = renderMonteCarloRunHint(model);
@@ -657,7 +666,7 @@ export function initMonteCarloResourceControls() {
         try {
             updateMonteCarloResourceEstimate({
                 anzahl: runsElement.value,
-                maxDauer: durationElement.value
+                maxDauer: years
             });
         } catch {
             estimateElement.textContent = 'Kostenschätzung verfügbar, sobald Laufzahl und Dauer gültig sind.';
@@ -677,7 +686,7 @@ export function initMonteCarloResourceControls() {
     hintStart?.addEventListener('click', () => {
         const start = doc.getElementById('mcButton');
         if (!start || start.disabled || hintStart.disabled) return;
-        const model = buildMonteCarloRunHint({ runs: runsElement.value, years: durationElement.value });
+        const model = buildMonteCarloRunHint({ runs: runsElement.value, years: effectiveMonteCarloDurationValue(durationElement) });
         if (!model.visible || !model.valid) return;
         if (confirmation) confirmation.checked = true;
         start.click();

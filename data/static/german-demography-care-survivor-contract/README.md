@@ -25,13 +25,17 @@ Markierungswert abweichen.
 
 - Die Sterblichkeitsquelle ist eine Periodensterbetafel. Sie prognostiziert
   keine Kohorte und enthält keine angenommene künftige Verbesserung der
-  Sterblichkeit.
+  Sterblichkeit. Seit FR-75 ist sie nur noch Ziel der Pflegeabstimmung und
+  Rückfall ohne Geburtsjahr; Laufzeitziel ist die
+  [Kohortensterbetafel V2](../../historical/german-cohort-life-table/README.md)
+  (`mortality.target`). Die Grundsterblichkeit ohne Pflege wird je Person exakt
+  abgesenkt (`care.baseMortalityAdjustment`).
 - Destatis-Pflegequoten sind beobachtete Prävalenzen zu einem Stichtag. Sie
   dienen dem Offline-Abgleich und werden nie durch eine Dauer geteilt oder
   direkt als jährliche Eintritts- oder Fortschrittswahrscheinlichkeiten verwendet.
 - Pflegeeintritt nach Alter/Geschlecht, Fortschreiten und Sterblichkeitsfaktoren
-  sind per Simulation auf Destatis 2023 abgestimmte Modellannahmen (FR-41),
-  ohne externe Validierung. `scripts/calibrate-care-model.mjs` prüft eine
+  sind auf Destatis 2023 abgestimmte Modellannahmen (FR-41), seit FR-75 exakt
+  mit `scripts/retune-care-model.mjs` neu abgestimmt, ohne externe Validierung. `scripts/calibrate-care-model.mjs` prüft eine
   Kohorte ab 65 mit beobachtetem Startbestand (60–64 als Näherung: Männer
   4,25 %, Frauen 4,42 %; 22421-02!I46/I68) und den Laufzeithelfern.
   Startgrade folgen den Anteilen aller Alter aus 22421-01. Das Skript erzwingt

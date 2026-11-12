@@ -1,5 +1,5 @@
 import { readCareValues } from './household-care-values.js';
-import { CARE_VALUE_KEYS } from '../profile/profile-care.js';
+import { CARE_VALUE_KEYS, careTodayFromRecord } from '../profile/profile-care.js';
 import { careSettingsFromRecord } from './care-benefits.js';
 import { INCOME_KEYS, incomeFromRecord } from '../profile/profile-income.js';
 import { assertProfileIdentityRecords } from '../profile/profile-storage.js';
@@ -79,7 +79,7 @@ export function assessPersonData(entries, referenceYear, { deferred = false } = 
  * @param {boolean} [balance]
  * @returns Ergebnis der bestehenden Projektion.
  */
-function readPersonStatus({ storage = persistenceStorage, win = globalThis.window, referenceYear } = {}, balance = false) {
+function readPersonStatus({ storage = persistenceStorage, win = globalThis.window, referenceYear } = {}, balance = false, single = false) {
     if (win?.__personMigrationDeferred) return assessPersonData([], referenceYear, { deferred: true });
     const loaded = loadProfileRegistry(storage);
     if (['corrupt', 'unavailable'].includes(loaded.status)) return { ready: false, status: 'corrupt', error: loaded.error || new Error('Profilbestand nicht lesbar.'), message: 'Profilbestand nicht lesbar.' };
@@ -91,7 +91,7 @@ function readPersonStatus({ storage = persistenceStorage, win = globalThis.windo
     try { assertProfileIdentityRecords(loaded.value, current, active, loaded.raw); }
     catch (error) { return { ready: false, status: 'corrupt', error, message: error.message }; }
     const selectedIds = Object.keys(profiles).filter(id => profiles[id].meta?.belongsToHousehold !== false);
-    const singleProfile = balance && selectedIds.length === 0;
+    const singleProfile = single || balance && selectedIds.length === 0;
     const entries = Object.entries(profiles).filter(([id, p]) => singleProfile
         ? id === current : p.meta?.belongsToHousehold !== false).map(([id, profile]) => ({
         profileId: id, name: profile.meta?.name || id, data: { ...profile.data }
@@ -125,6 +125,14 @@ function readPersonStatus({ storage = persistenceStorage, win = globalThis.windo
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export function readHouseholdPersonStatus(options) { return readPersonStatus(options); }
+
+/** UR-1c: Nur die geöffnete Person als Einzelprofil mit ihren eigenen Pflegewerten, wie der Simulator sie allein rechnet.
+ * Für die Anzeige einer Person außerhalb des Haushalts; liest nur.
+ *
+ * @param options Optionen des Aufrufers.
+ * @returns Rückgabe wie {@link readBalancePersonStatus}, mit genau einem Eintrag.
+ */
+export function readSingleProfileStatus(options) { return readPersonStatus(options, true, true); }
 
 /** Balance: Auswahl bestimmt den Umfang; ohne Auswahl rechnet die geöffnete Person.
  *
@@ -163,14 +171,20 @@ export function projectParticipatingPerson(status, currentId) {
     if (!status.ready || status.status === 'demo') return null;
     const entry = status.entries.find(person => person.profileId === (status.calculationProfileId ?? currentId));
     if (!entry) throw new Error('Aktive Person ist im Rechenumfang nicht enthalten.');
-    return projectPerson(entry.data, status.referenceYear, balanceCareSettings(status));
+    return projectPerson(entry.data, status.referenceYear, balanceCareSettings(status, entry.profileId));
 }
 
-/**
+/** Gemeinsame Pflegeannahmen des Rechenumfangs; mit `profileId` kennt die Projektion die Pflege der
+ * Partnerperson und prüft den Angehörigenausfall wie der Simulator (FR-73 P6).
+ *
  * @param status Wert für den bestehenden Aufrufvertrag.
+ * @param {string} [profileId] Person, für die projiziert wird.
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
-export function balanceCareSettings(status) {
+export function balanceCareSettings(status, profileId) {
     const primary = status.entries?.[0];
-    return { ...careSettingsFromRecord(primary?.data), careValues: status.careValues };
+    const settings = { ...careSettingsFromRecord(primary?.data), careValues: status.careValues };
+    const partner = profileId && status.entries?.length === 2 ? status.entries.find(entry => entry.profileId !== profileId) : null;
+    const partnerCare = partner ? careTodayFromRecord(partner.data, settings) : null;
+    return { ...settings, partnerCare: partnerCare?.grade ? partnerCare : null };
 }

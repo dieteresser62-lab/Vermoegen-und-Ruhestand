@@ -1,5 +1,12 @@
+import { readGU1References } from './helpers/gu-1-expectations.mjs';
+// LE-1 (FR-75) und KO-2 (Ergänzung FR-76) in einem Leser; Paare, die beide ändern, sind für den vereinten Stand gemessen.
+import { readLE1KO2References } from './helpers/le-1-ko-2-expectations.mjs';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
+import { readPFA2References } from './helpers/pfa-2-expectations.mjs';
+import { readPFA3References } from './helpers/pfa-3-expectations.mjs';
+import { readPFA5References } from './helpers/pfa-5-expectations.mjs';
+import { readGA2References } from './helpers/ga-2-expectations.mjs';
 import { EngineAPI } from '../engine/index.mjs';
 import { createMusterHaushaltRecords, rebuildSyntheticPriceRecords } from '../app/demo/muster-haushalt.js';
 import { MUSTER_HAUSHALTE, musterVarianten, musterMarktverlauf } from '../app/demo/muster-haushalte.js';
@@ -19,11 +26,15 @@ const basis = JSON.parse(fs.readFileSync(new URL('./fixtures/ar-3-muster-basis.j
 let compared = 0;
 for (const household of MUSTER_HAUSHALTE) for (const variant of musterVarianten(household.id)) {
     const key = `${household.id}:${variant.id}`;
-    if (key === 'max-erika:kurssturz') continue;
+    if (key === 'max-erika:kurssturz' || key === 'max-erika:teilweise') continue;
     const start = createMusterHaushaltRecords('2026-11-04', household.id, variant.id);
-    assertEqual(hash(start), basis[key].start, `${key}: Startbestand bytegleich`);
-    assertEqual(hash(rebuildSyntheticPriceRecords(start, '2027-01-02')), basis[key].jump2027, `${key}: Datumssprung bytegleich`);
-    assertEqual(hash(createMusterHaushaltRecords('2026-01-02', household.id, variant.id)), basis[key].jan2026, `${key}: Januarbestand bytegleich`);
+    // FR-73: helga-werner:haus-pg3 rechnet die heutige Pflege selbst; seit PFA-3 trägt die Variante den Grundbedarf ohne Pflege (36.000 €),
+    // seit PFA-5 nennt ihr Jahresplanbeleg das Liquiditätsziel mit fortgeschriebenen Folgejahreseinkünften (124.700 € statt 129.600 €).
+    // GA-2: Sophie trägt den Ratenkredit als feste geplante Ausgabe.
+    const reference = value => readGA2References(readPFA5References(readPFA3References(readPFA2References(value))));
+    assertEqual(hash(start), readLE1KO2References(readGU1References(reference(basis[key].start))), `${key}: Startbestand bytegleich`);
+    assertEqual(hash(rebuildSyntheticPriceRecords(start, '2027-01-02')), readLE1KO2References(readGU1References(reference(basis[key].jump2027))), `${key}: Datumssprung bytegleich`);
+    assertEqual(hash(createMusterHaushaltRecords('2026-01-02', household.id, variant.id)), readLE1KO2References(readGU1References(reference(basis[key].jan2026))), `${key}: Januarbestand bytegleich`);
     compared++;
 }
 assertEqual(compared, Object.keys(basis).length, 'Jede bisherige Variante verglichen');
@@ -63,5 +74,5 @@ assertEqual(stage.stage, 'warning', 'Jahresabschluss 2026 verlangt die Wahl');
 
 // Steckbrief und Übung.
 const lesson = musterLesson('max-erika', 'kurssturz');
-assert(lesson.exercises.some(text => text.includes('Reiter Marktdaten')), 'Übung führt zur Wahl im Reiter Marktdaten');
+assert(lesson.exercises.some(text => text.includes('Reiter „Plan 2027“')), 'Übung führt zur Wahl im Schritt Plan (WT-1)');
 assert(lesson.note.includes('15.06.'), 'Hinweis nennt das Hochdatum');

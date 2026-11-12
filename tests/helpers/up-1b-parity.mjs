@@ -1,3 +1,4 @@
+import { withPreviousRunEvidence } from './le-1b-expectations.mjs';
 import { historicalSurvivorInput, historicalSurvivorNeeds } from './historical-survivor-inputs.mjs';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -9,7 +10,8 @@ export async function unmarriedParityEvidence(root) {
     const { runMonteCarloChunk } = await load('app/simulator/monte-carlo-runner.js');
     const { runSweepChunk } = await load('app/simulator/sweep-runner.js');
     const inputs = historicalSurvivorInput(await measurementInputs(0, 'max-erika'));
-    const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+    // LE-1b: Laufbeleg der Sterbetafel wie vor LE-1b; alle übrigen Bytes bleiben im Vergleich.
+    const hash = value => createHash('sha256').update(JSON.stringify(withPreviousRunEvidence(value))).digest('hex');
     const params = { ...parameters, anzahl: 12 };
     const request = { inputs: historicalSurvivorNeeds(inputs), monteCarloParams: params, widowOptions: inputs.widowOptions,
         useCapeSampling: false, logIndices: new Set(Array.from({ length: 12 }, (_, i) => i)), engine: EngineAPI };

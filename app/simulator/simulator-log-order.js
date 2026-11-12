@@ -40,7 +40,9 @@ pflege_zusatz_floor_delta pflege_flex_faktor pflege_kumuliert pflege_grade pfleg
 pflege_delta_flex WidowBenefitP1 WidowBenefitP2 NeedLiq GuardGold GuardEq GuardNote Person1Alive Person2Alive
 lossCarryEnd taxSavedByLossCarry pflege_floor_anchor pflege_maxfloor_anchor pflege_cap_zusatz CareP1_Active
 CareP1_Cost CareP1_Grade CareP1_GradeLabel CareP2_Active CareP2_Cost CareP2_Grade CareP2_GradeLabel
-CareP1_FamilyFallback CareP2_FamilyFallback threeBucket
+CareP1_FamilyFallback CareP2_FamilyFallback grundbedarf_zu_hause pflege_heimkosten pflege_heim_eigene_ausgaben
+CareP1_Form CareP1_HeimBestand CareP1_HeimJahr CareP1_HeimZuschuss CareP1_HeimKosten CareP1_HeimEigeneAusgaben
+CareP2_Form CareP2_HeimBestand CareP2_HeimJahr CareP2_HeimZuschuss CareP2_HeimKosten CareP2_HeimEigeneAusgaben threeBucket
 `.trim().split(/\s+/));
 
 /**

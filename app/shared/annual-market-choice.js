@@ -1,5 +1,4 @@
-/** Auswahl und Herkunftszeile im Jahresabschluss; der Dialog besitzt den Entwurf. */
-import { actionText } from '../balance/balance-market-preview-renderer.js';
+/** Auswahl und Herkunftszeile im Jahresabschluss; der Dialog besitzt den Entwurf. Die Auswahl steht im Schritt „Plan“ (FR-77). */
 import { classifyMarketPreview } from '../balance/balance-market-preview.js';
 import { formatDisplayNumber } from './designsystem-number-format.js';
 
@@ -9,18 +8,26 @@ export const marketChoiceDate = value => value?.split('-').reverse().join('.') |
 export const annualMarketChoiceLabel = reading => reading?.reading === 'year_high'
     ? `Plan mit dem Jahreshoch vom ${marketChoiceDate(reading.asOf)} (Wahl im Jahresabschluss)` : 'Plan nach der Jahresendregel';
 
-/** @param {Document} doc
+/** Wahl im Jahresabschluss, nur bei verdecktem Bärenmarkt und ohne Vorauswahl (FR-77 Punkt 5, FR-71).
+ * @param {Document} doc
  * @param {ReturnType<typeof import('../balance/balance-market-preview.js').projectMarketPreview>} view
- * @param {string|null} selection @param {(selection: string)=>void} onChoose */
-export function createAnnualMarketChoice(doc, view, selection, onChoose) {
+ * @param {string|null} selection @param {(selection: string)=>void} onChoose
+ * @param {{year_end?: {monthlyBudget: number|null, mainAction: {text: string, netAmount: number|null}}, year_high?: {monthlyBudget: number|null, mainAction: {text: string, netAmount: number|null}}}|null} [amounts]
+ * WT-1b: Beträge nach einer Planänderung im Schritt „Plan“; ohne sie gelten die Beträge der Marktvorschau. */
+export function createAnnualMarketChoice(doc, view, selection, onChoose, amounts = null) {
     const node = (tag, text = '', className = '') => { const el = doc.createElement(tag); el.textContent = text; el.className = className; return el; };
     const root = node('fieldset', '', 'annual-market-choice'); root.dataset.annualMarketChoice = '';
     const year = Number(view.yearEndDate.slice(0, 4)) + 2;
-    root.append(node('legend', `Welcher Plan gilt für ${year}?`));
+    root.append(node('legend', `Welcher Plan gilt für ${year}?`, 'ds-visually-hidden'));
     const comparison = view.comparison;
     const money = value => formatDisplayNumber(value, { fractionDigits: 0 }) + ' €';
-    const variants = /** @type {[string, typeof comparison.rule, typeof view.rule][]} */ ([['year_end', comparison.rule, view.rule], ['year_high', comparison.high, view.high]]);
-    for (const [id, variant, reading] of variants) {
+    const sale = variant => variant.mainAction.text === 'Nichts tun' || !Number.isFinite(variant.mainAction.netAmount) ? 'kein Verkauf'
+        : `${variant.mainAction.text} ${money(variant.mainAction.netAmount)}`;
+    const variants = /** @type {[string, typeof comparison.rule][]} */ ([['year_end', comparison.rule && amounts?.year_end ? { ...comparison.rule, ...amounts.year_end } : comparison.rule],
+        ['year_high', comparison.high && amounts?.year_high ? { ...comparison.high, ...amounts.year_high } : comparison.high]]);
+    const lower = amounts?.year_end && amounts?.year_high && Number.isFinite(amounts.year_end.monthlyBudget) && Number.isFinite(amounts.year_high.monthlyBudget)
+        ? /** @type {number} */ (amounts.year_high.monthlyBudget) < /** @type {number} */ (amounts.year_end.monthlyBudget) : (comparison.difference?.monthlyBudget || 0) < 0;
+    for (const [id, variant] of variants) {
         if (!variant) continue;
         const option = node('label', '', 'ds-card annual-market-option');
         const radio = /** @type {HTMLInputElement} */ (node('input'));
@@ -28,22 +35,17 @@ export function createAnnualMarketChoice(doc, view, selection, onChoose) {
         radio.className = 'ds-radio'; radio.dataset.annualMarketReading = String(id);
         radio.addEventListener('change', () => { if (radio.checked) onChoose(String(id)); });
         option.dataset.selected = String(selection === id);
-        option.append(radio, node('strong', id === 'year_end' ? 'Nach der Jahresendregel' : `Mit dem Jahreshoch vom ${marketChoiceDate(view.high.high.asOf)}`),
-            node('span', `${money(variant.monthlyBudget)} / Monat`, 'annual-market-option-budget'));
-        if (id === 'year_end' || (comparison.difference?.monthlyBudget || 0) < 0) option.append(node('span', id === 'year_end' ? 'bisherige Regel' : 'vorsichtiger', 'ds-badge'));
-        option.append(node('p', `„${reading.market.text}“: ${id === 'year_end'
-            ? `Ende ${year - 2} → Ende ${year - 1}: ${money(view.stored.index)} → ${money(view.rule.index)}. Hoch ${money(view.rule.high.value)}.`
-            : `${formatDisplayNumber(classifyMarketPreview(view).gapPct, { fractionDigits: 1 })} % unter dem Jahreshoch, ${formatDisplayNumber(reading.monthsSinceHigh, { fractionDigits: 1 })} Monate seit dem Hoch.`}`),
-            node('p', `Verkauf: ${actionText(variant)}.`));
-        if (id === 'year_high') option.append(node('p', `Das Hoch von ${money(view.high.high.value)} gilt danach auch für die Folgejahre.`));
+        option.append(radio, node('strong', id === 'year_end' ? 'Nach Kursen zum Jahresende' : `Mit dem Jahreshoch vom ${marketChoiceDate(view.high.high.asOf)}`));
+        if (id === 'year_high' && lower) option.append(node('span', ' · vorsichtiger', 'ds-source'));
+        option.append(node('span', `Monatsbudget ${money(variant.monthlyBudget)} · ${sale(variant)}`, 'annual-market-option-budget'));
         root.append(option);
     }
-    root.append(node('p', `Die App wählt nichts vor. Deine Wahl steht im Jahresprotokoll und an der Handlungsanweisung ${year}.`, 'ds-source'),
-        node('p', 'Die Beträge rechnen mit den vorgeschlagenen Bedarfswerten. Bedarf und Plan prüfst du im nächsten Reiter mit allen Einzelheiten.', 'ds-source'));
+    root.append(node('p', `Die App wählt nichts vor. Deine Wahl steht im Jahresbeleg und am Plan ${year}. Mit dem Jahreshoch gilt das Hoch von ${money(view.high.high.value)} auch für die Folgejahre.`, 'ds-source'));
     return root;
 }
 
-/** @param {Document} doc
+/** Seit WT-1 nicht mehr im Jahresabschluss genutzt; bleibt als Export erhalten (Exportprüfung).
+ * @param {Document} doc
  * @param {ReturnType<typeof import('../balance/balance-market-preview.js').projectMarketPreview>|import('../balance/balance-market-preview.js').UnavailableMarketPreview|null} view
  * @param {string|null} selection @param {()=>void} change */
 export function createAnnualMarketPlanNote(doc, view, selection, change) {

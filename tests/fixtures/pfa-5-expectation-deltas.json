@@ -1,0 +1,12 @@
+{
+  "basis": "54c841ad",
+  "reason": "FR-73 Paket 5 (Gutachten PFA-4, Befund 1): Das Liquiditätsziel der Balance nutzt die fortgeschriebenen Folgejahreseinkünfte. Im Beispiel Helga und Werner „Mit Haus, Werner Pflegegrad 3“ folgen beide Renten der Lohnentwicklung (Lohnannahme 2,5 %) und das Pflegegeld der Inflation; der Jahresplanbeleg nennt 124.700 € statt 129.600 € Zielliquidität. Alle übrigen Haushalte und Varianten bleiben bytegleich.",
+  "files": [
+    { "file": "tests/ar-3-kurssturz.test.mjs", "hashes": 3, "why": "Beispielvariante helga-werner:haus-pg3: Zielliquidität und Deckung im Jahresplanbeleg (annual_plan_record_v1)" }
+  ],
+  "hashes": {
+    "e891d780ab8bfb5100fdb9e5b45db8bf3d93dd2d787776bd4ffc5102c2b85d4a": "b1efab517c8d40140d250c5b89d934cd0563f868cb0e627e7be8c18728805861",
+    "a12fae20ad5de474d127810f2bdb799d231405a371708094eea152bd716ea168": "c69a2400a45d0d3acedfcff83687c9aab18d5834d1581af45cd4463b8b92c155",
+    "74ed6e51ebafb7fd371c2d1f6ace9ce80d5d5d22a62a5d557402bc30de7ddeb7": "9332996b50c5ba07c7162ab3e66d7628179f7fc3fb540a0045f09c832716d159"
+  }
+}

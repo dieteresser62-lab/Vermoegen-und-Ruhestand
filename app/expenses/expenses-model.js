@@ -2,6 +2,7 @@ import { projectExpenseNeeds, projectCategoryNeeds } from './expenses-needs.js';
 import { computeSpent, computeBudgetSpent, computeYearStats, hasExpenseImport } from '../balance/balance-expenses-metrics.js';
 export { hasExpenseImport } from '../balance/balance-expenses-metrics.js';
 import { readAnnualPlanRecord } from '../profile/annual-plan-record.js';
+import { monthlyBudgetsWithFixedExpenses } from '../balance/balance-planned-posts.js';
 import { overviewScope, readOverviewSummary, OVERVIEW_SUMMARY_KEY } from '../overview/overview-storage.js';
 
 /**
@@ -26,7 +27,11 @@ export function readExpensesBudget({ year, scope, receiptScope = scope, registry
         ? storage.getItem(key) : registry?.profiles?.[id]?.data?.[key] ?? null }));
     const record = /** @type {import("../../typcheck/profile-ui.js").ReadAnnualPlan} */ (readAnnualPlanRecord)({ year, scope: receiptScope, storage });
     if (record?.status === 'invalid') return { monthly: null, status: 'invalid' };
-    if (record) return { monthly: record.adopted.monthlyBudget, status: 'adopted' };
+    if (record) {
+        // FR-43: Feste geplante Ausgaben aus dem Beschluss verteilen das Jahresbudget auf ihre Monate.
+        const months = monthlyBudgetsWithFixedExpenses(record.adopted.monthlyBudget, record.adopted.plannedPosts, year);
+        return { monthly: record.adopted.monthlyBudget, status: 'adopted', ...(months ? { months } : {}) };
+    }
     const summaries = sources.map(source => readOverviewSummary(source.getItem(OVERVIEW_SUMMARY_KEY), year, scope));
     if (summaries.length && summaries.every(item => item && item.monthlyBudget >= 0
         && JSON.stringify(item) === JSON.stringify(summaries[0]))) return { monthly: summaries[0].monthlyBudget, status: 'provisional' };
@@ -62,7 +67,7 @@ export function projectExpenses({ store, year, people, personId = null, budget =
     const annualBudget = budget.monthly === null ? null : budget.monthly * 12;
     const forecastMonths = months.filter(month => month.complete && month.due).map(month => month.month);
     const stats = computeYearStats({ yearData, monthlyBudget: budget.monthly, annualBudget, forecastMonths });
-    const needs = personId ? null : projectExpenseNeeds({ yearData, profileIds: ids, forecastMonths, floorPlan: needsPlan?.floorBedarf, annualBudget });
+    const needs = personId ? null : projectExpenseNeeds({ yearData, profileIds: ids, forecastMonths, floorPlan: needsPlan?.floorBedarf, annualBudget, fixedMonths: needsPlan?.fixedExpenseMonths });
     const categoryNeeds = personId ? null : projectCategoryNeeds(yearData, ids);
     const hasData = months.some(month => Object.keys(month.profiles).length);
     const actualTotal = [...categoryTotals.values()].reduce((sum, amount) => sum + amount, 0);

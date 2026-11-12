@@ -90,9 +90,10 @@ export function readAnnualPlanRecord({ year, scope, storage = persistenceStorage
         if (!Number.isInteger(year)) throw new Error('Ungültiges Planjahr.');
         assertPlanScope(scope);
         const entry = assertAnnualPlanRecord(raw).entries[annualPlanEntryKey(/** @type {number} */ (year), /** @type {D.PlanScope} */ (scope))] ?? null;
-        // Fehlende Tagesgeldmonate nur lesend ergänzen; alte Belegbytes bleiben erhalten.
+        // Fehlende Tagesgeldmonate und Fondskosten nur lesend ergänzen; alte Belegbytes bleiben erhalten.
         for (const outcome of [entry?.adopted, entry?.recommended]) if (outcome?.snapshot?.plan) {
             outcome.snapshot.plan.liquidityCashMonths ??= PLAN_DEFAULTS.liquidityCashMonths;
+            outcome.snapshot.plan.equityCostPct ??= PLAN_DEFAULTS.equityCostPct;
         }
         return entry;
     } catch (error) { return { status: 'invalid', error, raw }; }

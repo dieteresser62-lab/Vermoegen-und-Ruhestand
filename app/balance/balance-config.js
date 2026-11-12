@@ -38,6 +38,7 @@ export const BALANCE_PRESENTATION_OUTPUT_IDS = Object.freeze({
     balanceMonthlySaving: 'balanceMonthlySaving',
     balanceIncomeSurplusNote: 'balanceIncomeSurplusNote',
     balancePlannedExpensesNote: 'balancePlannedExpensesNote',
+    balanceCareHint: 'balanceCareHint',
     balanceReserveCoverage: 'balanceReserveCoverage',
     balanceReserveRunway: 'balanceReserveRunway',
     balanceReserveValues: 'balanceReserveValues',

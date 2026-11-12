@@ -397,7 +397,7 @@ const { createPresentationTestDocument, validateManagerRente } = await import('.
     assertEqual(read.rentenbeginn, '2028-11-01', 'Produktiver Formularleser erhält Rentenbeginn ISO');
     bindManagerProfileControls(doc); syncManagerProfileControls(doc);
     const pension = doc.getElementById('profilePensionSegments'), church = doc.getElementById('profileChurchSegments');
-    assert(pension.children.some(button => button.textContent === 'Inflation' && button.getAttribute('aria-pressed') === 'true'), 'Vorhandenes cpi bleibt als erhaltene Wahl bedienbar');
+    assert(pension.children.some(button => button.textContent === 'wie Inflation' && button.getAttribute('aria-pressed') === 'true'), 'Vorhandenes cpi bleibt als erhaltene Wahl bedienbar');
     assert(church.children.some(button => button.dataset.value === '7.5'), 'Fremder Kirchensteuersatz bleibt auswählbar');
     assert(groups.fixed.hidden, 'Dormanter fester Satz ist bei Inflation verborgen');
     assertEqual(doc.getElementById('profileRentenanpassungPct').value, 3.125, 'Rendering löscht keinen dormanten Satz');

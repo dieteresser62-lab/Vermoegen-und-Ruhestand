@@ -14,21 +14,26 @@ const inputs = { ...structuredClone(fixtureInputs), survivorFloorPercent: 70, su
     pflegeGradeConfigs: Object.fromEntries([1, 2, 3, 4, 5].map(grade => [grade, { zusatz: grade * 2000, flexCut: 1 - grade * .2, mortalityFactor: 0 }])),
     pflegeMaxFloor: 100000, pflegeRampUp: 1, pflegeKostenDrift: 0, pflegeRegionalZuschlag: 0 };
 const widowOptions = normalizeWidowOptions(inputs.widowOptions);
-const monteCarloParams = { anzahl: 20, maxDauer: 12, methode: 'regime_markov', seed: 12345 };
-const chunk = await runMonteCarloChunk({ inputs, widowOptions, monteCarloParams, runRange: { start: 3, count: 1 }, logIndices: [3],
-    stressReplayCapture: createStressReplayCaptureRequest([3]), useCapeSampling: false, engine: EngineAPI });
+// LE-1 (FR-75): Mit der Kohortentafel trifft Lauf 51 das Muster (vorher Lauf 3 von 20): Tod von A in beidseitiger Pflege, B später im Heim.
+const monteCarloParams = { anzahl: 60, maxDauer: 12, methode: 'regime_markov', seed: 12345 };
+const chunk = await runMonteCarloChunk({ inputs, widowOptions, monteCarloParams, runRange: { start: 51, count: 1 }, logIndices: [51],
+    stressReplayCapture: createStressReplayCaptureRequest([51]), useCapeSampling: false, engine: EngineAPI });
 assertEqual(chunk.financialMetricsValid, true, 'Pflegepfad bleibt auswertbar');
 const meta = chunk.runMeta[0], rows = meta.logDataRows;
 const deathIndex = rows.findIndex((row, index) => index > 0 && rows[index - 1].CareP1_Active && rows[index - 1].CareP2_Active && row.Person1Alive === 0 && row.Person2Alive === 1);
 assert(deathIndex >= 1 && rows[deathIndex + 1]?.recordType === 'financial_year', 'Fester Seed: Muster A stirbt während beide Personen gepflegt werden; Muster B lebt weiter');
+// FR-72 (HE-2): Muster B kommt nach dem Tod mit Grad 4 ins Heim; der Grundbedarf zu Hause entfällt,
+// die Pflegekosten der Person umfassen dann Heimkosten und eigene Ausgaben.
+assert(rows.some(row => row.CareP2_HeimJahr >= 1), 'Fester Seed: Muster B lebt später im Heim');
 for (const row of rows.filter(row => row.recordType === 'financial_year')) {
-    assertClose(row.floor_brutto, inputs.startFloorBedarf * row.inflation_factor_cum * (row.jahr > rows[deathIndex].jahr ? .7 : row.jahr == rows[deathIndex].jahr ? .85 : 1) + row.CareP1_Cost + row.CareP2_Cost, 1e-7, 'Grundbedarf enthält die Jahrespflegekosten, im Sterbejahr anteilig');
+    const homeFactor = row.jahr > rows[deathIndex].jahr ? (row.CareP2_HeimJahr >= 1 ? 0 : .7) : row.jahr == rows[deathIndex].jahr ? .85 : 1;
+    assertClose(row.floor_brutto, inputs.startFloorBedarf * row.inflation_factor_cum * homeFactor + row.CareP1_Cost + row.CareP2_Cost, 1e-7, 'Grundbedarf enthält die Jahrespflegekosten, im Sterbejahr anteilig');
     assertClose(row.entscheidung.details.minimumFlexHouseholdFlexAnnual, row.flex_brutto_haushalt, 1e-7, 'Engine-Flexbasis entspricht dem Haushaltsflex im Log');
 }
 assert(rows[deathIndex].CareP1_Cost > 0, 'Sterbejahr enthält die halben Pflegekosten der verstorbenen Person');
 for (const row of rows.slice(deathIndex + 1)) {
     assertEqual(row.pflege_aktiv, Boolean(row.CareP2_Active), 'Haushaltspflege zeigt die überlebende Person');
-    assertEqual(row.pflege_zusatz_floor, row.CareP2_Cost, 'Haushaltspflege enthält nur Kosten der überlebenden Person');
+    assertEqual(row.pflege_zusatz_floor + (row.pflege_heimkosten ?? 0) + (row.pflege_heim_eigene_ausgaben ?? 0), row.CareP2_Cost, 'Haushaltspflege enthält nur Kosten der überlebenden Person');
     for (const key of ['CareP1_Cost', 'CareP1_Active']) {
         assertEqual(row[key], 0, `${key}: keine eingefrorenen Pflegewerte`);
     }

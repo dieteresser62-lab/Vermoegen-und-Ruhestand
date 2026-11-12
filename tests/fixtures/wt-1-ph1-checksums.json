@@ -1,0 +1,14 @@
+{
+  "max-erika": {
+    "balance": "9dc6402524b5858e812d34ecac99e289ba67e6e9f89259fde5f3fee28d584eaa",
+    "backtest": "7abc59a0650fad59880d577039284cf00dcce898e55b1e8519dd71ae1c057307",
+    "monteCarlo": "60cb585388733e2a0deeabf19a40199696cb93b5e185e27da93957be9650cd2a",
+    "overview": "1df2029263a104de626f3c029d12632892ba50c77454b5676aa3f3d705bf3365"
+  },
+  "renate": {
+    "balance": "5c150cb7fea0c00527b37cbc6ff2efe257ed006b9660ba8a223127aa7014dc16",
+    "backtest": "e7209b849297ac2ef9507580ae62292ce4edecc9c888a4dd03adf82e67b1328b",
+    "monteCarlo": "ebad4fd4e699d8f67596519d09b01270b2bbb567d736976d12eecbe7f4e1757b",
+    "overview": "c233a3a364c65e2728a78f0d4fbd991f9906937973403118c3ce437f0b81ac2b"
+  }
+}

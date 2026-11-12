@@ -25,6 +25,11 @@ import { setEuroMode } from '../app/simulator/euro-display.js';
     const sharedSale = saleRules.find(rule => rule.selector.includes('#scenarioLogOutput'));
     for (const host of ['simulationLog', 'scenarioLogOutput'])
         assert(sharedSale?.selector.includes(`#${host} .protocol-table td.backtest-trade-sale`), 'Neutraler Verkauf gilt in beiden Protokollhosts');
+    const backtestNowrap = parsed.filter(rule => rule.declarations['white-space'] === 'nowrap'
+        && rule.selector.split(',').some(part => /#simulationLog\s+\.protocol-table\s+td\s*$/.test(part.trim())));
+    assertEqual(backtestNowrap.length, 0, 'SE-2b: Backtest-Protokoll erzwingt nicht für alle Zellen nowrap (lange Handlungstexte liefen über die Nachbarspalten)');
+    assert(parsed.some(rule => rule.selector.includes('#simulationLog .protocol-table td.protocol-year') && rule.declarations['white-space'] === 'nowrap'),
+        'SE-2b: Jahr und Alter bleiben in einer Zeile');
     assert(parsed.filter(rule => rule.selector.includes('backtest-trade-buy')).every(rule => rule.declarations.color === 'var(--accent)'),
         'Kaufhervorhebung bleibt beim bisherigen Akzenttoken');
     const tokens = { ...variables(sources['css/tokens.css']), ...variables(css) };
@@ -215,8 +220,8 @@ try {
     assert(!html.includes('Endvermögen und Floor-Deckung') && html.includes('aria-label="Ergebnisse der Monte-Carlo-Analyse"'), 'Zusätzlicher MC-Abschnittstitel entfällt bei erhaltener zugänglicher Ergebnisbezeichnung');
     assert(css.includes('.sim-assumption-step h2, #tab-montecarlo h2 { border-bottom: 0; padding-bottom: 0; }')
         && css.includes('.sim-assumption-step h2::after, #tab-montecarlo h2::after { content: none; }'), 'Annahmen und MC-Karten setzen die alte Unterlinie lokal zurück');
-    assert(css.includes('.scenario-paths-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);')
-        && css.includes('.scenario-wealth-svg { height: 470px;'), 'Große Szenariofläche reserviert zwei Drittel und 470 px Höhe');
+    assert(css.includes('.scenario-paths-split { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);')
+        && css.includes('.scenario-wealth-svg { height: 470px;'), 'SE-2: Diagrammkarte und Auswahlkarte stehen 7/5 nebeneinander; Szenariofläche 470 px hoch');
     // Quelltextvertrag für Desktop: Browsermessungen sichern die echte Geometrie.
     const scenarioMinimumWidthValid = source => {
         const remaining = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(
@@ -235,23 +240,22 @@ try {
     ]) assert(regression !== css && !scenarioMinimumWidthValid(regression), 'R-01: Positive Desktop-Mindestbreite verletzt den Quelltextvertrag');
     assert(rules('simulator.css', css).some(rule => rule.selector === '.wealth-distribution-svg'
         && rule.declarations['min-width'] === '760px'), 'Verteilungsdiagramm behält seine bisherige Mindestbreite');
+    // SE-2: Die Auswahl steht in einer eigenen Karte; die Liste scrollt in einem Kasten fester Höchsthöhe.
     assert(css.includes('.scenario-selection-pane { position: relative; min-height: 0; }')
-        && css.includes('.scenario-list { flex: 1; min-height: 0; overflow-y: auto;'), 'Liste ist unabhängig auf Grafik samt Legende begrenzt');
-    // Der auto-hohe details-Inhaltsslot ist kein Bezug für eine Prozenthöhe.
-    const selectionBoundedOnDesktop = source => {
+        && css.includes('.scenario-list { flex: 1; min-height: 0; max-height: 300px; overflow-y: auto;'), 'Liste scrollt in einem eigenen begrenzten Kasten');
+    const selectionInOwnCard = source => {
         const declarations = selector => rules('simulator.css', source).find(rule => rule.selector === selector)?.declarations;
         const disclosure = declarations('#scenarioSelectionDisclosure');
         const content = declarations('.scenario-selection-content');
-        return disclosure?.position === 'absolute' && disclosure.inset === '0'
-            && content?.position === 'absolute' && content.inset === '0'
-            && content.display === 'flex' && content['flex-direction'] === 'column';
+        const list = declarations('.scenario-list');
+        return disclosure?.position === 'static' && content?.position === 'static'
+            && content.display === 'flex' && content['flex-direction'] === 'column' && list?.['max-height'] === '300px';
     };
-    assert(selectionBoundedOnDesktop(css), 'R-02: Desktop-Auswahl ist unabhängig von der Prozenthöhe im details-Inhaltsslot begrenzt');
+    assert(selectionInOwnCard(css), 'R-02: Auswahl fließt in ihrer Karte, die Liste ist auf 300 px begrenzt');
     for (const regression of [
-        css.replace('.scenario-selection-content { position: absolute; inset: 0;', '.scenario-selection-content { height: 100%;'),
-        css.replace('.scenario-selection-content { position: absolute; inset: 0;', '.scenario-selection-content { position: absolute;'),
-        css.replace('#scenarioSelectionDisclosure { position: absolute; inset: 0;', '#scenarioSelectionDisclosure { position: static; inset: 0;')
-    ]) assert(regression !== css && !selectionBoundedOnDesktop(regression), 'R-02: Prozenthöhe oder fehlende absolute Begrenzung verletzen den Quelltextvertrag');
+        css.replace('.scenario-list { flex: 1; min-height: 0; max-height: 300px;', '.scenario-list { flex: 1; min-height: 0;'),
+        css.replace('#scenarioSelectionDisclosure { position: static;', '#scenarioSelectionDisclosure { position: absolute;')
+    ]) assert(regression !== css && !selectionInOwnCard(regression), 'R-02: fehlende Listenbegrenzung oder absolute Auswahl verletzen den Quelltextvertrag');
     assert(/@media print\s*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\.scenario-selection-content\s*\{ position: static; inset: auto; height: auto; max-height: none; \}/.test(css),
         'R-02: Druckauswahl bleibt im normalen Fluss mit automatischer Höhe');
     assert(html.includes('aria-describedby="scenarioListHint"') && html.includes('Weitere Szenarien: in der Liste scrollen')
@@ -284,9 +288,9 @@ try {
     const tree = tokenizeHTML(['wealth', 'care', 'risk', 'sample'].map(activeGroup => renderScenarioList(entries, 'char_p50', 'real', { activeGroup })).join(''));
     const buttons = tree.elements.filter(node => node.tag === 'button');
     assertEqual(buttons.length, 31, 'Kaskadenfixture umfasst neun Vermögens-, fünf Pflege-, zwei Risikozeilen und 15 Stichprobenzeilen');
-    const oldPrefix = 'button:not([class*="ds-"]):not(.tab-btn)';
+    const oldPrefix = ':where(.simulator-surface) button:not([class*="ds-"]):not(.tab-btn)';
     const specificity = selector => {
-        const flat = selector.replace(/:not\(([^)]+)\)/g, '$1');
+        const flat = selector.replace(/:where\([^)]*\)\s*/g, '').replace(/:not\(([^)]+)\)/g, '$1');
         const attributes = flat.match(/\[[^\]]+\]/g) || [];
         const rest = flat.replace(/\[[^\]]+\]/g, '');
         return [(rest.match(/#[\w-]+/g) || []).length,
@@ -297,6 +301,8 @@ try {
     assertEqual(JSON.stringify(specificity('.scenario-list-item')), '[0,1,0]', 'Zeilenregel allein verliert gegen die Altregel');
     const matches = (selector, node, state) => {
         let eligible = true;
+        // Diese erzeugten Szenariozeilen und nativen Vergleichsknöpfe liegen im Simulator-Inhalt.
+        selector = selector.replace(/^:where\(\.simulator-surface\)\s*/, '');
         selector = selector.replace(/:not\(([^)]+)\)/g, (_, inner) => {
             const hit = inner === '[class*="ds-"]' ? (node.attrs.class || '').includes('ds-')
                 : matchesSelector({ elements: [node] }, inner);

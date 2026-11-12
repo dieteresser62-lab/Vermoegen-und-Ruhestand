@@ -1,5 +1,5 @@
 import { historyDay as d } from '../app/tranches/tranchen-history-store.js';
-import { historyDailyReturn, historyXirr, buildHistoryReturnSeries, historyReturnMetrics,
+import { historyDailyReturn, historyXirr, buildHistoryReturnSeries, historyReturnMetrics, historyYearBalance,
     historyMonthlyReturns, evaluateHistoryReturns, selectHistoryReturnMetrics } from '../app/tranches/tranchen-history-returns.js';
 import { historyRiskMarkup, historyMonthlyMarkup, historyYearsMarkup, renderManagerHistoryReturns } from '../app/tranches/tranchen-history-returns-ui.js';
 
@@ -64,7 +64,54 @@ near(evaluateHistoryReturns({ ...input, profileId: 'max' }).metrics.twr, 0.21, '
 near(selectHistoryReturnMetrics(household, 'year').twr, 0.21, 'Jahreswahl nutzt vorangehenden Schlussstand als Vergleich');
 assertEqual(household.years[0].year, 2026, 'Jahresübersicht neuestes Jahr links');
 assert(historyMonthlyMarkup(household).includes('(10,0)') && !historyMonthlyMarkup(household).includes(' open'), 'Teilmonate in Klammern, Klappen zunächst zu');
-assert(historyYearsMarkup(household).includes('davon Käufe/Verkäufe'), 'Jahresübersicht erklärt Flussanteil');
+const yearsHtml = historyYearsMarkup(household);
+for (const label of ['Anfangsstand', 'Käufe', 'Verkäufe', 'Markt', 'Endstand', 'Veränderung'])
+    assert(yearsHtml.includes(`<dt>${label}`), `Jahresübersicht zeigt ${label}`);
+assert(yearsHtml.includes('Ausschüttungen und Handkorrekturen'), 'Markt-Hinweis nennt Ausschüttungen und Handkorrekturen');
+assert(!yearsHtml.includes('davon Käufe/Verkäufe'), 'Flussanteil steht jetzt getrennt als Käufe und Verkäufe');
+for (const year of household.years) {
+    const b = year.balance;
+    assert(b, `Depotbilanz ${year.year} vorhanden`);
+    assert(Math.abs(b.startValue + b.deposits - b.withdrawals + b.market - b.endValue) < 1e-6, `Depotbilanz ${year.year}: Anfang + Käufe − Verkäufe + Markt = Ende`);
+}
+// Depotbilanz unabhängig von der Renditebasis (Gutachten DB1 Codex, Befunde 1–4); synthetische Zahlen.
+const day = text => d(text);
+const series = (from, values) => values.map((total, index) => ({ day: day(from) + index, total }));
+const bal = (points, events, from, to, heldBefore) => historyYearBalance(points, events, { start: day(from), end: day(to), heldAt: () => heldBefore });
+const pick = b => JSON.stringify([b.startValue, b.deposits, b.withdrawals, b.market, b.endValue]);
+assertEqual(pick(bal(series('2026-06-01', [100, 110, 120]), [{ kind: 'buy', day: day('2026-06-01'), amount: 100 }], '2026-06-01', '2026-12-31', false)),
+    JSON.stringify([0, 100, 0, 20, 120]), 'Depotbilanz: erster Kauf steht unter Käufe, Anfangsstand 0');
+const yearEnd = series('2023-12-28', [1000, 1000, 1000, 1500, 1500, 1500, 1500]);
+const lateBuy = [{ kind: 'buy', day: day('2023-12-31'), amount: 500 }];
+const prior = [{ day: day('2022-12-31'), total: 1000 }, ...yearEnd];
+assertEqual(pick(bal(prior, lateBuy, '2023-01-01', '2023-12-31', true)), JSON.stringify([1000, 500, 0, 0, 1500]), 'Depotbilanz: Kauf am 31.12. zählt im alten Jahr');
+assertEqual(pick(bal(prior, lateBuy, '2024-01-01', '2024-12-31', true)), JSON.stringify([1500, 0, 0, 0, 1500]), 'Depotbilanz: Anfangsstand ist der Schlussbestand des Vorjahres');
+assertEqual(pick(bal(series('2025-12-31', [100, 105, 110]), [{ kind: 'buy', day: day('2025-12-31'), amount: 100 }], '2025-12-31', '2025-12-31', false)),
+    JSON.stringify([0, 100, 0, 0, 100]), 'Depotbilanz: Jahr mit nur einem Tag');
+assertEqual(pick(bal(series('2026-01-01', [1000, 1600, 1350]), [{ kind: 'buy', day: day('2026-01-02'), amount: 500 }, { kind: 'sell', day: day('2026-01-03'), amount: 200 }], '2026-01-01', '2026-12-31', true)),
+    JSON.stringify([1000, 500, 200, 50, 1350]), 'Depotbilanz: Bestand vor Messbeginn ist Anfangsstand, Kauf und Verkauf danach');
+// Gutachten DB1B: echte Auswertung mit synthetischen Profilen und Kursen.
+const quotes = entries => ({ symbols: { TEST: { currency: 'EUR', days: entries.map(([text]) => d(text)), closes: entries.map(([, close]) => close),
+    queried: [[d(entries[0][0]), d(entries.at(-1)[0])]] } } });
+const yearOf = (result, year) => result.years.find(row => row.year === year);
+const startDay = evaluateHistoryReturns({ profiles: [{ id: 'a', currentCash: 0, lots: [lot('x', 'aktien_alt', '2026-06-01', 10)] }],
+    prices: quotes([['2026-06-01', 10], ['2026-06-02', 11], ['2026-06-03', 12]]), startDate: '2026-06-01', today: '2026-06-04' });
+assertEqual(pick(yearOf(startDay, 2026).balance), JSON.stringify([0, 100, 0, 20, 120]), 'Depotbilanz: erster Kauf genau am Verlaufsbeginn zählt als Kauf');
+const lateQuotes = evaluateHistoryReturns({ profiles: [{ id: 'a', currentCash: 0, lots: [lot('x', 'aktien_alt', '2025-12-31', 10)] }],
+    prices: quotes([['2026-01-02', 10], ['2026-01-05', 12]]), startDate: '2025-12-01', today: '2026-01-06' });
+assertEqual(pick(yearOf(lateQuotes, 2025).balance), JSON.stringify([0, 100, 0, null, null]), 'Depotbilanz: unbewerteter Endstand bleibt offen, kein erfundener Marktverlust');
+assertEqual(pick(yearOf(lateQuotes, 2026).balance), JSON.stringify([100, 0, 0, 20, 120]), 'Depotbilanz: Vorjahreskauf wird nicht zum Marktgewinn, Messbasis am ersten bewerteten Tag');
+assert(historyYearsMarkup(lateQuotes).includes('ab 02.01.'), 'Depotbilanz: Messbasis mit Datum „ab …“');
+assert(historyYearsMarkup(lateQuotes).includes('noch nicht bewertet'), 'Depotbilanz: offener Endstand wird benannt');
+const onePoint = evaluateHistoryReturns({ profiles: [{ id: 'a', currentCash: 0, lots: [lot('x', 'aktien_alt', '2025-12-31', 10)] }],
+    prices: quotes([['2025-12-31', 10]]), startDate: '2025-12-01', today: '2026-01-01' });
+assert(historyYearsMarkup(onePoint).includes('<dt>Anfangsstand'), 'Depotbilanz: Jahreskarte auch mit nur einem bewerteten Tag');
+const roundYear = { year: 2026, start: day('2026-01-01'), end: day('2026-12-31'), points: [], metrics: { twr: 0.1 },
+    balance: { startValue: 100.4, deposits: 10.4, withdrawals: 0, market: 0.41, endValue: 111.21 } };
+const rounded = historyYearsMarkup({ invalid: false, metrics: { status: 'complete' }, series: [{ day: day('2026-01-01'), total: 100.4 }, { day: day('2026-12-31'), total: 111.21 }],
+    years: [roundYear], coverage: null, provisional: false });
+const shown = [...rounded.matchAll(/<dd[^>]*>([^<]*)<\/dd>/g)].map(match => match[1].replace(/\s/g, ' '));
+assertEqual(shown.slice(0, 5).join(' | '), '100 € | +10 € | 0 € | +1 € | 111 €', 'Depotbilanz: gerundete Zeilen ergeben den Endstand (100 + 10 − 0 + 1 = 111)');
 assert(!historyMonthlyMarkup(household).includes('style='), 'Heatmap verwendet Klassen statt Inline-Stilen');
 const missing = evaluateHistoryReturns({ ...input, prices: { symbols: {} } });
 assertEqual(missing.metrics.status, 'unavailable', 'Ohne vollständig bewertbaren Tag bleiben Kennzahlen nicht bewertbar');

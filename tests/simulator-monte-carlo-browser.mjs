@@ -245,8 +245,12 @@ async function downloadRunExport(page) {
     return document;
 }
 
+// SE-2: Das Szenario-Protokoll samt Downloads steht zugeklappt.
+const openScenarioProtocol = page => page.evaluate(() => { document.getElementById('scenarioProtocolDisclosure').open = true; });
+
 async function downloadSelectedScenarioJson(page) {
     await page.locator('#mcViewTabLogs').click();
+    await openScenarioProtocol(page);
     assert(await page.locator('#mcViewPanelLogs').isVisible(),
         'Scenario export activates the dedicated log result view');
     const button = page.locator('#exportScenarioLogJson');
@@ -262,6 +266,7 @@ async function downloadSelectedScenarioJson(page) {
 }
 
 async function assertScenarioDownloadBytes(page, expected, label) {
+    await openScenarioProtocol(page);
     for (const [format, oracle] of [['Json', expected.json], ['Csv', expected.csv]]) {
         const pending = page.waitForEvent('download');
         await page.locator(`#exportScenarioLog${format}`).click();

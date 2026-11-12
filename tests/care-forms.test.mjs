@@ -73,7 +73,7 @@ syncManagerCareToday({ getElementById: id => dom[id] || null }, new MemoryWebSto
 assert(dom.profileCareAllowanceSummary.textContent.includes('kein Pflegegeld') && dom.profileCareAllowanceSummary.textContent.includes('Dienst'), 'Personenkarte erklärt fehlendes Pflegegeld');
 dom.profileCareFormToday.value = 'family';
 syncManagerCareToday({ getElementById: id => dom[id] || null }, new MemoryWebStorage());
-assert(dom.profileCareAllowanceSummary.textContent.includes('599 €/Monat als Einkunft'), 'Personenkarte nennt Pflegegeldbetrag');
+assert(dom.profileCareAllowanceSummary.textContent.replace(/\u00a0/g, ' ').includes('Pflegegeld 599 €/Monat kommt als Einkunft dazu'), 'Personenkarte nennt Pflegegeldbetrag');
 dom.profileCareGradeToday.value = '0';
 dom.profileCareFormToday.value = '';
 const displayedCare = () => careTodayFromRecord({ profile_care_grade_today: dom.profileCareGradeToday.value,

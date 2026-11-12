@@ -1833,11 +1833,12 @@ console.log('Test 42: A08-1 Sweep Witwenrenten-Offset');
             },
             widowOptions
         });
+        // LE-1 (FR-75): Seed 1 statt 4, damit P2 mit der Kohortentafel weiter im Jahr 2 stirbt.
         const request = buildSweepRequest('block', {
             anzahl: 1,
             maxDauer: 8,
             blockSize: 3,
-            seed: 4
+            seed: 1
         });
         return runSweepChunk({
             baseInputs,

@@ -13,6 +13,9 @@ import { createHistoricalBacktestContractProvider } from '../app/simulator/histo
 import { runHistoricalBacktest } from '../app/simulator/historical-backtest-runner.js';
 import { portfolioTotal } from '../app/simulator/simulator-results.js';
 import { prepareHistoricalDataOnce } from '../app/simulator/simulator-engine-helpers.js';
+import { DEFAULT_EQUITY_COST_PCT, netEquityReturn } from '../app/simulator/simulator-year-portfolio.js';
+/** Vorgabe der Fondskosten im Beispieltext, z. B. „0,5 %“. */
+export const EQUITY_COST_TEXT = `${String(DEFAULT_EQUITY_COST_PCT).replace('.', ',')} %`;
 import { calculateWealthAdjustedReductionFactor } from '../engine/planners/wealth-reduction.mjs';
 
 export function calculateBudgetExamples() {
@@ -42,7 +45,9 @@ export function calculateBudgetExamples() {
         renteAktiv: true, renteMonatlich: 2500, liquidityRunwayYears: 5,
         risikoprofil: 'sicherheits-dynamisch', endeVJ: 100, endeVJ_1: 100, endeVJ_2: 100,
         ath: 100, jahreSeitAth: 0, goGoActive: true, goGoMultiplier: 1.2,
-        aktuellesAlter: 65, partnerAlter: 63, horizonYears: 20, capeRatio: 25 };
+        aktuellesAlter: 65, partnerAlter: 63, horizonYears: 20, capeRatio: 25,
+        // FR-76: Wie die Balance mit Dynamic Flex mindern die Fondskosten die erwartete Aktienrendite.
+        equityCostPct: DEFAULT_EQUITY_COST_PCT };
     const curveCases = [false, true].map(dynamicFlex => {
         const input = { ...dynamicInput, minimumFlexAnnual: 30000, dynamicFlex };
         const result = measuredYear(input, null);
@@ -75,7 +80,8 @@ export function calculateBudgetExamples() {
             }, { referenceYear: 2026, planValues: plan })
         }));
         const combined = combineSimulatorProfiles(profiles, profiles[0].profileId, { planValues: plan });
-        const inputs = validateSimulatorInputs(combined.combined);
+        // FR-76: Wie im Simulator gilt die Vorgabe der Fondskosten; die Eingaben entstehen hier ohne das Feld der Seite.
+        const inputs = validateSimulatorInputs({ ...combined.combined, equityCostPct: DEFAULT_EQUITY_COST_PCT });
         const years = [];
         const result = runHistoricalBacktest({ inputs, period: { startYear: 2000, endYear: 2025 },
             historicalDataProvider: createHistoricalBacktestContractProvider(), initializePortfolio,
@@ -214,8 +220,8 @@ export function renderBudgetTechnicalExamples() {
         historicalExample('### Max und Erika 2002', max.years.find(y => y.year === 2002)), '',
         historicalExample('### Helga und Werner', helga.years.find(y => y.year === 2000)), '',
         '### Dynamic Flex mit greifender Haushaltsobergrenze', '',
-        `Der synthetische Vergleichshaushalt hat ${fmt(input.depotwertAlt)} € Depot und ${fmt(input.tagesgeld)} € Liquidität. Grundbedarf ${fmt(input.floorBedarf)} €, Wunsch-Flex ${fmt(input.flexBedarf)} €, Mindest-Flex ${fmt(input.minimumFlexAnnual)} € und Rente ${fmt(input.renteMonatlich * 12)} € gelten pro Jahr. Der Horizont beträgt ${input.horizonYears} Jahre, das Alter ${input.aktuellesAlter} und ${input.partnerAlter} Jahre. Go-Go ist mit Faktor ${fmt(input.goGoMultiplier)} angefordert. Inflation ist null; der Markt steht ohne Jahresgewinn am Höchststand. CAPE ist ${input.capeRatio}.`, '',
-        `A2: Aktienrealrendite ${fmt(vpw.expectedReturnCape * 100)} % − ${fmt(CONFIG.SPENDING_MODEL.DYNAMIC_FLEX.LONG_TERM_INFLATION * 100)} % = ${fmt((vpw.expectedReturnCape - CONFIG.SPENDING_MODEL.DYNAMIC_FLEX.LONG_TERM_INFLATION) * 100)} %, Aktiengewicht ${fmt(vpw.equityWeight * 100)} %, sichere Realrendite ${fmt(vpw.safeRealReturn * 100)} % bei ${fmt(vpw.safeWeight * 100)} % Gewicht. Daraus folgen ${fmt(vpw.expectedRealReturn * 100)} % Portfoliorealrendite, ${Number(vpw.vpwRate * 100).toLocaleString('de-DE', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} % Annuitätenfaktor und ${fmt(vpw.vpwTotal / vpw.goGoMultiplier)} € Annuität. A3 multipliziert sie mit ${fmt(vpw.goGoMultiplier)} auf ${fmt(vpw.vpwTotal)} €. Der Netto-Grundbedarf ist null.`, '',
+        `Der synthetische Vergleichshaushalt hat ${fmt(input.depotwertAlt)} € Depot und ${fmt(input.tagesgeld)} € Liquidität. Grundbedarf ${fmt(input.floorBedarf)} €, Wunsch-Flex ${fmt(input.flexBedarf)} €, Mindest-Flex ${fmt(input.minimumFlexAnnual)} € und Rente ${fmt(input.renteMonatlich * 12)} € gelten pro Jahr. Der Horizont beträgt ${input.horizonYears} Jahre, das Alter ${input.aktuellesAlter} und ${input.partnerAlter} Jahre. Go-Go ist mit Faktor ${fmt(input.goGoMultiplier)} angefordert. Inflation ist null; der Markt steht ohne Jahresgewinn am Höchststand. CAPE ist ${input.capeRatio}, die Fondskosten betragen ${EQUITY_COST_TEXT} pro Jahr.`, '',
+        `A2: Aktienrendite ${fmt(vpw.expectedReturnCape * 100)} %, nach ${EQUITY_COST_TEXT} Fondskosten ${fmt(netEquityReturn(vpw.expectedReturnCape, input.equityCostPct) * 100)} %. Abzüglich ${fmt(CONFIG.SPENDING_MODEL.DYNAMIC_FLEX.LONG_TERM_INFLATION * 100)} % Inflation bleiben ${fmt((netEquityReturn(vpw.expectedReturnCape, input.equityCostPct) - CONFIG.SPENDING_MODEL.DYNAMIC_FLEX.LONG_TERM_INFLATION) * 100)} % Aktienrealrendite, Aktiengewicht ${fmt(vpw.equityWeight * 100)} %, sichere Realrendite ${fmt(vpw.safeRealReturn * 100)} % bei ${fmt(vpw.safeWeight * 100)} % Gewicht. Daraus folgen ${fmt(vpw.expectedRealReturn * 100)} % Portfoliorealrendite, ${Number(vpw.vpwRate * 100).toLocaleString('de-DE', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} % Annuitätenfaktor und ${fmt(vpw.vpwTotal / vpw.goGoMultiplier)} € Annuität. A3 multipliziert sie mit ${fmt(vpw.goGoMultiplier)} auf ${fmt(vpw.vpwTotal)} €. Der Netto-Grundbedarf ist null.`, '',
         `A5 begrenzt den Depot-Flex von ${fmt(dynamic.vpw.dynamicFlexBeforeWishCap)} € auf ${fmt(dynamic.annualFlex)} € im Jahr. Die Haushaltsobergrenze beträgt ${fmt(dynamic.vpw.wishFlexCapAnnual)} € einschließlich Rentenanteil.`, '',
         quotaTable(dynamicResult), '',
         '| B5 im direkten Vergleich | Ohne Dynamic Flex | Mit Dynamic Flex und Go-Go |', '| --- | ---: | ---: |',
@@ -241,7 +247,7 @@ export function renderBudgetExamples() {
     return [
         '<a id="max-und-erika-im-normalen-jahr"></a>', '<a id="max-und-erika-2002"></a>',
         '### Max und Erika im Jahresvergleich', '',
-        'Synthetische Musterbestände vom 17.10.2026, historischer Lauf 2000–2025. Die Jahreszeile zeigt den Beschluss nach der Rendite, keine damalige Lebensgeschichte. Dynamic Flex ist aus. Alle Bedarfe und Renten gelten pro Jahr.', '',
+        `Synthetische Musterbestände vom 17.10.2026, historischer Lauf 2000–2025. Die Jahreszeile zeigt den Beschluss nach der Rendite, keine damalige Lebensgeschichte. Dynamic Flex ist aus. Aktien rechnen wie im Simulator mit ${EQUITY_COST_TEXT} Fondskosten pro Jahr. Alle Bedarfe und Renten gelten pro Jahr.`, '',
         '| Größe | Normaljahr 2000 | Bärenjahr 2002 |', '| --- | ---: | ---: |',
         row('Grundbedarf', y => y.input.floorBedarf), row('Wunsch-Flex', y => y.input.flexBedarf),
         row('Mindest-Flex', y => y.input.minimumFlexAnnual), row('Rente', pension),
@@ -253,7 +259,7 @@ export function renderBudgetExamples() {
         row('Haushaltsbudget pro Monat mit Rente', y => y.result.ui.spending.monatlicheEntnahme + pension(y) / 12), '',
         `2002 beginnt die Rate bei ${fmt(trace[0].rateVorher)} %. Alarm senkt auf ${fmt(trace.find(e => e.schritt === 'alarm').rateNachher)} %; Rundung ergibt ${fmt(trace.at(-1).rateNachher)} % und ${fmt(bear.result.ui.spending.monatlicheEntnahme)} € monatliche Entnahme. Der nächste Anker bleibt ${fmt(bear.result.newState.flexRateSmoothingReference)} %. Die Rente deckt das Minimum schon vollständig; die niedrige Depotrate bedeutet hier kein Unterschreiten des Mindest-Flex.`, '',
         '### Dynamic Flex mit greifender Haushaltsobergrenze', '',
-        `Synthetischer Jahresbeschluss, geprüft am 27.10.2026: ${fmt(dynamic.input.depotwertAlt)} € Depot, ${fmt(dynamic.input.tagesgeld)} € Liquidität, ${fmt(dynamic.input.floorBedarf)} € Grundbedarf, ${fmt(dynamic.input.flexBedarf)} € Wunsch- und Mindest-Flex, ${fmt(dynamic.input.renteMonatlich * 12)} € Jahresrente. Alter ${dynamic.input.aktuellesAlter}/${dynamic.input.partnerAlter}, Horizont ${dynamic.input.horizonYears} Jahre, CAPE ${dynamic.input.capeRatio}, Inflation null, Markt am Hoch. Go-Go-Faktor ${fmt(dynamic.input.goGoMultiplier)}.`, '',
+        `Synthetischer Jahresbeschluss, geprüft am 27.10.2026: ${fmt(dynamic.input.depotwertAlt)} € Depot, ${fmt(dynamic.input.tagesgeld)} € Liquidität, ${fmt(dynamic.input.floorBedarf)} € Grundbedarf, ${fmt(dynamic.input.flexBedarf)} € Wunsch- und Mindest-Flex, ${fmt(dynamic.input.renteMonatlich * 12)} € Jahresrente. Alter ${dynamic.input.aktuellesAlter}/${dynamic.input.partnerAlter}, Horizont ${dynamic.input.horizonYears} Jahre, CAPE ${dynamic.input.capeRatio}, Inflation null, Markt am Hoch. Go-Go-Faktor ${fmt(dynamic.input.goGoMultiplier)}, Fondskosten ${EQUITY_COST_TEXT} pro Jahr.`, '',
         '| Schritt | Ergebnis |', '| --- | ---: |',
         `| Portfoliorealrendite | ${fmt(dynamic.vpw.expectedRealReturn * 100)} % |`,
         `| Annuität vor Go-Go | ${fmt(dynamic.vpw.vpwTotal / dynamic.vpw.goGoMultiplier)} € |`,

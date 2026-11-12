@@ -17,9 +17,12 @@ import { replaceGenerated } from './jahresbudget-parameter.mjs';
 import { capturePH1B } from './ph1b-bilder.mjs';
 import { captureGV2 } from './gv2-kontakt.mjs';
 import { captureMH3 } from './mh3-bilder.mjs';
+import { captureWT1 } from './wt1-bilder.mjs';
+import { captureLY1 } from './ly1-bilder.mjs';
 import { captureFJ2 } from './fj2-bilder.mjs';
 import { captureBP2 } from './bp2-bilder.mjs';
 import { captureMH2 } from './mh2-bilder.mjs';
+import { captureSPK1 } from './spk1-bilder.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const viewport = { width: 1920, height: 1080 };
@@ -42,7 +45,7 @@ const captions = [
     'Max’ Vermögen lässt sich einzeln verfolgen.',
     'Erikas Vermögen ist einzeln sichtbar.',
     'Rendite und Risiko sowie Monatsrenditen zeigen Anlagen ohne Tagesgeld.',
-    'Die Jahresübersicht trennt Wertänderung, Käufe und Verkäufe sowie Rendite.',
+    'Die Jahresübersicht zeigt Anfangsstand, Käufe, Verkäufe, Markt und Endstand sowie die Rendite.',
     'Ausgaben zeigt Monats- und Jahreswerte.',
     'Überblick zeigt Beschluss, Vorschau und Reserven heute und nach Umsetzung.',
     'Bedarf & Strategie zeigt die Bedarfswerte; Alle Parameter fasst die Planwerte zusammen und ist zugeklappt.',
@@ -50,7 +53,7 @@ const captions = [
     'Ergebnis zeigt Backtest und MC.',
     'Die Planübersicht zeigt den gewählten Monat über den Jahreswerten.',
     'Was im Lauf auffällt zeigt drei Backtest-Karten und Jahreslinks; Weitere bleibt geschlossen.',
-    'Simulation, Zeitraum & Daten und Stresstest stehen in Einstellungen; Erweitert zeigt die technischen Optionen.',
+    'Simulation, Zeitraum & Daten und Stresstest stehen in Einstellungen; „Maximale Dauer“ ist leer und nennt die automatische Dauer; Erweitert zeigt die technischen Optionen.',
     'Überblick zeigt den Musterlauf.',
     'Die Verteilung macht die Streuung sichtbar.',
     'Pflege zeigt das Modellrisiko.',
@@ -61,7 +64,7 @@ const captions = [
     'Auto-Optimize zeigt die Sucheingaben.',
     'Der Datenstatus steht in Daten & Sicherung.',
     'Wiederherstellungspunkte sind nach Anlass gruppiert und zeigen je eine Grundzeile; einzeln löschbare Personenpunkte nennen „Bleibt, bis du ihn selbst löschst“.',
-    'Das Band zeigt Testdatum und Kursmodus; Ein Jahr durchspielen steht links von Spielbereich beenden.',
+    'Das Band kennzeichnet Spielkurse mit Testdatum; Ein Jahr durchspielen steht links von Spielbereich beenden.',
     'Eine Kopie ohne Datumssprung zeigt beim Beenden den Vergleich Echt / Spielbereich.',
     'Die Startseite zeigt die Aufgaben im aktuellen Handbuch.',
     'Die Übersicht bietet den Oktoberabschluss an.',
@@ -75,10 +78,10 @@ const captions = [
     'Der Reiter Ausgaben Dezember zeigt Personenkarten und die offene Kategorie-Tabelle.',
     'Der Reiter Budgetvergleich zeigt links Dezember und rechts das Jahr.',
     'Der Reiter Tagesgeld 31.12. zeigt die Jahresendstände nebeneinander.',
-    'Der Reiter Pflegewerte steht vor Marktdaten und zeigt Pflegegeld und Heim-Eigenanteil nebeneinander.',
-    'Der Reiter Marktdaten zeigt Jahreswerte und die abgestufte Budgetprüfung; bei verschiedenen Folgen ist eine ausdrückliche Wahl nötig.',
-    'Der Reiter Plan 2027 zeigt Bedarf links, Monatsbudget und Marktwahl rechts; „Wahl ändern“ führt zu Marktdaten.',
-    'Das Ergebnis zeigt links Handlung und Monatsbudget, rechts Kacheln und Herleitungen ohne Reiter.',
+    'Der Reiter Marktdaten zeigt die Jahreswerte; das Jahreshoch erscheint nur bei einem verdeckten Bärenmarkt, dann mit Wahl im Reiter Plan.',
+    'Der Reiter Pflegewerte zeigt Pflegegeld, Heim-Eigenanteil sowie Staffel, Deckel und eigene Ausgaben bereits fortgeschrieben.',
+    'Der Reiter Plan 2027 zeigt Bedarf links; rechts stehen der Stand des Plans 2026 und das Monatsbudget.',
+    'Das Ergebnis zeigt links „Was zu tun ist“ und das Monatsbudget, rechts Kacheln, den Stand des alten Plans und Herleitungen ohne Reiter.',
     'Sophie spart mit ihrem Gehalt an; die Rente beginnt im Januar 2038.',
     'Einkünfte geöffnet: Rente, feste und einmalige Einkunft mit einheitlichen Feldern.',
     'Einkünfte geschlossen: Die Zusammenfassung nennt Beträge und Zeiträume.',
@@ -97,7 +100,13 @@ const captions = [
     'Nicht verheiratet: Erbanteile und gesperrte Rentenfelder; Grundbedarf, Wunsch- und Mindest-Flex bleiben einstellbar.',
     'Verheiratet: Erika erbt 50 % von Max, Klasse I mit steuerfreiem Familienheim.',
     'Vergleich: Wunschbudget +300 €/Monat, 1.000 gepaarte Läufe je Plan bei Einstellung 10.000, Seed 12345.',
-    'Zielwertsuche: 1.000 gepaarte Läufe je Schritt, Endprobe mit 10.000 Läufen, Seed 12345; unbestätigter Fund wird gekennzeichnet.'
+    'Zielwertsuche: 1.000 gepaarte Läufe je Schritt, Endprobe mit 10.000 Läufen, Seed 12345; unbestätigter Fund wird gekennzeichnet.',
+    'Personen & Vermögen › Pflege: Annahmen für spätere Pflege, „Pflege im Heim“ aufgeklappt mit den drei Bestandteilen als Felder, die übrigen Zeilen zugeklappt mit ihren Werten.',
+    'Erfasste Vermögensstände aufgeklappt: Zeilenkopf mit Anzahl und letztem Datum, darunter die Tabelle im Kasten.',
+    'Erika übernimmt die Rentenanpassung von Max; der Grund steht unter der Rente.',
+    'Unter „Alle Parameter“ steht die Karte „Fondskosten“ mit „Laufende Kosten Aktien-ETF“ in % pro Jahr.',
+    'Max mit Rentenanpassung „wie Löhne“; darunter steht der Hinweis zur Lohnreihe.',
+    'Haushalt & Plan › Weitere Planwerte: Karte „Fondskosten“ mit „Laufende Kosten Aktien-ETF“, vorbelegt mit 0,5 % pro Jahr.'
 ];
 
 // Verlustfrei: nur den vorhandenen PNG-Datenstrom mit zlib Level 9 neu packen.
@@ -210,7 +219,7 @@ async function newProbelauf(browser, baseUrl, date, source = 'demo', householdId
         const dialog = page.locator('[data-probelauf-dialog]');
         await dialog.locator(`[data-probelauf-source="${source === 'demo' ? householdId : source}"]`).click();
         if (variantId !== 'grund') await dialog.locator(`[data-muster-variant="${variantId}"]`).click();
-        if (date !== realToday) {
+        if (source !== 'copy' || date !== realToday) {
             await dialog.getByLabel('Spielkurse', { exact: true }).check();
             await dialog.getByLabel('Testdatum', { exact: true }).fill(date);
         } else await dialog.getByLabel('Echte Kurse von heute', { exact: true }).check();
@@ -284,6 +293,7 @@ async function captureGV1(browser, baseUrl, goto) {
             await compose([overview, mc], output('simulator'));
             await tab(page, 'montecarlo');
             await page.locator('[data-mc-view="logs"]').click();
+            await openProtocols(page);
             const table = page.locator('#scenarioLogOutput');
             await table.evaluate(node => { node.scrollLeft = node.scrollWidth; node.scrollTop = 0; node.scrollIntoView({ block: 'start' }); });
             const info = table.locator('tbody tr').first().locator('.ds-info-button[aria-label="Aufteilung des Vermögens"]').last();
@@ -331,12 +341,14 @@ async function captureVF2L(browser, baseUrl, goto) {
                 }
                 if (!saleYear) throw new Error('VF-2l: kein Pfad mit Wohnungsverkauf gefunden.');
             }
+            await openProtocols(page);
             const headers = await page.locator('#scenarioLogOutput thead [data-protocol-column]').allTextContents();
             if (!headers.some(text => text.includes('Geldvermögen')) || headers.some(text => text.includes('Gesamtvermögen')) !== withHome
                 || await page.locator('#scenarioLogOutput thead [data-protocol-column="home-value"]').count() !== Number(withHome)) {
                 throw new Error('VF-2l: Jahresendspalten passen nicht zum Immobilienbestand.');
             }
             await page.evaluate(async () => document.fonts.ready);
+            await openProtocols(page);
             const output = page.locator('#scenarioLogOutput');
             await output.evaluate((node, year) => {
                 const table = node.querySelector('table');
@@ -397,6 +409,7 @@ async function captureET1(browser, baseUrl, goto) {
             if (deathYear) break;
         }
         if (!deathYear) throw new Error('ET-1: kein Protokoll mit Martins Tod gefunden.');
+        await openProtocols(page);
         const output = page.locator('#scenarioLogOutput');
         for (const id of ['total', 'home-value', 'total-with-homes']) await output.locator(`thead [data-protocol-column="${id}"]`).waitFor();
         await output.evaluate((node, year) => {
@@ -442,6 +455,7 @@ async function captureET2(browser, baseUrl, goto) {
             if (deathYear) break;
         }
         if (!deathYear) throw new Error('ET-2: kein Protokoll mit Martins Tod gefunden.');
+        await openProtocols(page);
         const output = page.locator('#scenarioLogOutput');
         for (const id of ['inheritance-tax', 'residence-tax']) await output.locator(`thead [data-protocol-column="${id}"]`).waitFor();
         await output.evaluate((node, year) => {
@@ -463,6 +477,10 @@ async function changeDate(page, date) {
     const dialog = page.locator('[data-probelauf-dialog]');
     await dialog.getByLabel('Testdatum').fill(date);
     await reloadDate(page, () => dialog.getByRole('button', { name: 'Datum übernehmen', exact: true }).click(), date);
+}
+// SE-2: Backtest- und Szenario-Protokoll stehen zugeklappt; Protokollbilder zeigen sie aufgeklappt.
+async function openProtocols(page) {
+    await page.evaluate(() => document.querySelectorAll('#backtestProtocolDisclosure, #scenarioProtocolDisclosure').forEach(node => { node.open = true; }));
 }
 async function tab(page, value) {
     await page.locator(`.tab-btn[data-tab="${value}"]`).click();
@@ -506,11 +524,11 @@ Führe im Repository \`npm run docs:bilder\` aus. Du brauchst die installierten 
 
 Das Werkzeug startet denselben lokalen Server wie \`npm run serve\`, ohne Kursproxy. Es nutzt einen freien Port und isolierte Browserkontexte für Ansichten, Monat, Jahr, Vergleich und Jahresbudget. Vorhandene Browserprofile werden nicht geöffnet. Kurse und Marktdaten stammen aus festen lokalen Stubs oder dem Spielbereich; externe Abrufe werden blockiert.
 
-Im Startdialog wählt das Werkzeug „Max und Erika“ und den Kursmodus „Testdatum wählen“, trägt das Datum ein und bestätigt mit „Spielbereich starten“. Die Ansichten verwenden den 20.10.2026. Für Oktober springt der Spielbereich vom 20.10. auf den 10.11.2026. Für den Jahresabschluss springt ein eigener Spielbereich vom 15.12.2026 auf den 02.01.2027. Der Simulator rechnet einmal 10.000 Monte-Carlo-Läufe mit Seed 12345; die Werkstatt zeigt Eingaben. Die Backtestaufnahme zeigt „Was im Lauf auffällt“ mit drei Karten und geschlossenem „Weitere“. Die Aufnahme aus Szenario-Logs zeigt „Pfade vergleichen“ mit P10, Median und P90. Die Aufnahme Vergleich verwendet eine eigene Mustersitzung mit Wunschbudget +300 €/Monat, 1.000 gepaarten Läufen je Plan bei Einstellung 10.000 und Seed 12345. Das Werkzeug rechnet außerdem eine einmalige Ausgabe, eine verschobene Rente und die Zielwertsuche mit beiden Grenzen (99 % Grundbedarfsdeckung, höchstens 10 % Läufe mit Jahren unter Mindest-Flex). Es schreibt die drei VG-1-Prüfbilder und ZW-1b-pruefbild.png unter auftrag/. Das Zielwertbild nutzt 1.000 Läufe je Schritt und eine Endprobe mit 10.000 Läufen, Seed 12345. Hält keine Endprobenstufe, zeigt es den schnellen Fund als unbestätigt.
+Im Startdialog wählt das Werkzeug „Max und Erika“ und den Kursmodus „Testdatum wählen“, trägt das Datum ein und bestätigt mit „Spielbereich starten“. Die Ansichten verwenden den 20.10.2026. Für Oktober springt der Spielbereich vom 20.10. auf den 10.11.2026. Für den Jahresabschluss springt ein eigener Spielbereich vom 15.12.2026 auf den 02.01.2027. Der Simulator rechnet einmal 10.000 Monte-Carlo-Läufe mit Seed 12345; die Werkstatt zeigt Eingaben. Die Backtestaufnahme zeigt „Was im Lauf auffällt“ mit drei Karten und geschlossenem „Weitere“. Die Aufnahme aus Szenario-Logs zeigt „Pfade vergleichen“ mit P10, Median und P90. Die Aufnahme Vergleich verwendet eine eigene Mustersitzung mit Wunschbudget +300 €/Monat, 1.000 gepaarten Läufen je Plan bei Einstellung 10.000 und Seed 12345. Das Werkzeug rechnet außerdem eine einmalige Ausgabe, eine verschobene Rente und die Zielwertsuche mit beiden Grenzen (98 % Grundbedarfsdeckung, höchstens 10 % Läufe mit Jahren unter Mindest-Flex). Es schreibt die drei VG-1-Prüfbilder und ZW-1b-pruefbild.png unter auftrag/. Das Zielwertbild nutzt 1.000 Läufe je Schritt und eine Endprobe mit 10.000 Läufen, Seed 12345. Hält keine Endprobenstufe, zeigt es den schnellen Fund als unbestätigt.
 
 Mit \`npm run docs:bilder -- --spielbereich\` erneuerst du Band und Vergleich und behältst die übrigen Aufnahmen. Das Band zeigt den Zeitraffer links von Spielbereich beenden. Bei Max und Erika prüft das Werkzeug danach die kurze Beenden-Bestätigung ohne Vergleich und Übernehmen. Für das Vergleichsbild legt es Max und Erika als erfundenen echten Bestand in einem frischen Browserkontext an, startet eine Kopie ohne Datumssprung und ändert Gold, Flex und Tagesgeld. Es öffnet keine Balance und wartet auf die frisch gerechnete Vorschau mit höherem Monatsbudget und Goldkauf.
 
-Mit \`npm run docs:bilder -- --verlauf\` erneuerst du die drei bisherigen Verlaufsaufnahmen und zwei Bilder der Depotkennzahlen. Rendite und Risiko sowie Monatsrenditen stehen in verlauf-kennzahlen; verlauf-jahresuebersicht zeigt die vollständigen Jahreskarten. Die drei neuen Karten sind zusammen höher als der Bildschirm und werden deshalb in zwei Ausschnitten aufgenommen.
+Mit \`npm run docs:bilder -- --verlauf\` erneuerst du die drei bisherigen Verlaufsaufnahmen, zwei Bilder der Depotkennzahlen und verlauf-vermoegensstaende mit aufgeklappten erfassten Ständen. Rendite und Risiko sowie Monatsrenditen stehen in verlauf-kennzahlen; verlauf-jahresuebersicht zeigt die vollständigen Jahreskarten. Die drei neuen Karten sind zusammen höher als der Bildschirm und werden deshalb in zwei Ausschnitten aufgenommen.
 
 Mit \`npm run docs:bilder -- --protokolle\` erneuerst du nur die vier Backtest- und Monte-Carlo-Protokollbilder. Auch der volle Bilderlauf verwendet dafür denselben Musterlauf in einer eigenen Sitzung. Er ergänzt bei Max eine Betriebsrente von 3.000 €/Monat und 50.000 € Rückzahlung sowie 2.500 € für ein Auto im Planjahr und rechnet 128 Monte-Carlo-Pfade mit Seed 12345. Die Backtest-Übersicht zeigt das geöffnete Einnahmen-ⓘ der ersten Jahreszeile. Die Monte-Carlo-Bilder verwenden einen weiteren Spielbereich mit Nicht verheiratet, geerbten Immobilien samt Steuergeld und geöffnetem Erbe-ⓘ mit positiver Steuer im Todesjahr. Dazu kommt jeweils die Detailansicht.
 
@@ -568,6 +586,29 @@ async function captureSavingsYear(session, goto) {
 }
 
 // GF-1: Synthetische Beträge bleiben ausschließlich im Bildwerkzeug.
+/** GU-1b [U5]: Fondskosten im Simulator und in Haushalt & Plan (KO-2) und Rentenanpassung „wie Löhne“ mit Hinweis. Ändert Max zuletzt auf „wie Löhne“,
+ * deshalb am Ende einer Sitzung aufrufen. */
+async function captureGU1B(session, goto, capture) {
+    const { page } = session;
+    await goto(session, 'Simulator.html'); await tab(page, 'annahmen');
+    await page.locator('#simPlanParameters').evaluate(details => { details.open = true; });
+    await page.locator('#equityCostPct').waitFor({ state: 'visible' });
+    await capture(session, 'simulator-fondskosten', 'Simulator · Alle Parameter · Fondskosten 0,5 % aus Haushalt & Plan', maskDate, 'masken', '.sim-parameter-card:has(#equityCostPct)', true);
+    await goto(session, 'depot-tranchen-manager.html');
+    // KO-2: Der Planwert selbst steht in Haushalt & Plan unter „Weitere Planwerte“.
+    await page.locator('#managerPlanTab').click();
+    await page.locator('#managerPlanMore').evaluate(details => { details.open = true; });
+    await page.locator('#managerPlan_equityCostPct').waitFor({ state: 'visible' });
+    await capture(session, 'personen-fondskosten', 'Haushalt & Plan · Weitere Planwerte · Fondskosten 0,5 %', maskDate, 'masken', '.household-plan-group:has(#managerPlan_equityCostPct)', true);
+    await page.locator('#managerPlanMore').evaluate(details => { details.open = false; });
+    await page.locator('#managerSectionNav [data-manager-profile="muster_a"]').click();
+    if (await page.locator('#managerIncomeToggle').getAttribute('aria-expanded') !== 'true') await page.locator('#managerIncomeToggle').click();
+    await page.locator('#profilePensionSegments [data-value="wage"]').click();
+    await page.locator('#profilePensionWageHint').waitFor({ state: 'visible' });
+    await poll(page, () => document.querySelector('#tranchePersistenceStatus')?.textContent === 'Profilwerte dauerhaft gespeichert.', null, 'Rentenanpassung wie Löhne speichern');
+    await capture(session, 'personen-rente-wie-loehne', 'Max · Einkünfte · Rentenanpassung „wie Löhne“ mit Hinweis', maskDate, 'masken', '#managerIncome', true);
+}
+
 async function captureGF1(browser, baseUrl, goto, capture) {
     const shot = async (page, name, selector) => {
         await page.evaluate(() => document.fonts.ready);
@@ -915,8 +956,10 @@ async function captureUK1(browser, baseUrl, goto) {
                 await page.locator('#home-mieteNetto').fill('650');
                 await page.locator('[data-home-action="save"]').click();
                 await poll(page, () => document.querySelector('#tranchePersistenceStatus')?.textContent === 'Profilwerte dauerhaft gespeichert.', null, 'UK-1 Immobilie speichern');
-                await page.locator('[data-home-open]').first().click();
-                await shot(`${id}-immobilien`, '#managerImmobilien');
+                // Immobilien stehen aufklappbar in der Tabelle der Anlageformen.
+                await page.locator('#tranchenTable [data-asset-group^="home"]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
+                await page.locator('[data-asset-group="homeRented"] [data-home-open]').first().click();
+                await shot(`${id}-immobilien`, '#tranchenTable [data-asset-group="homeRented"]');
                 await page.locator('[data-home-action="cancel"]').click();
                 await goto(session, 'Daten-Sicherung.html');
                 await page.locator('#dataStorageDetails > summary').click();
@@ -1096,6 +1139,7 @@ async function captureTB2(browser, baseUrl, goto) {
                 columns: PROTOCOL_COLUMNS.filter(column => ['year', 'action', 'neta', 'home-sale', 'inheritance-tax'].includes(column.id)) });
             bindInfoPopovers(document);
         });
+        await openProtocols(page);
         await page.locator('#scenarioLogOutput').evaluate(node => { node.hidden = false; node.scrollIntoView({ block: 'start' }); });
         const taxInfo = page.getByRole('button', { name: 'Erbschaftsteuer: vereinfachte Rechnung', exact: true }).last();
         await taxInfo.click();
@@ -1120,7 +1164,7 @@ async function main() {
     const partnershipOnly = process.argv.includes('--up1a') || pt1Only;
     const partnershipFiles = (pt1Only ? ['personen-haushalt-plan', 'partnerschaft-todesfall', 'partnerschaft-verheiratet'] : ['partnerschaft-todesfall', 'personen-immobilien', 'simulator-hinterbliebene', 'partnerschaft-verheiratet']).map(name => `docs/ui/${name}.png`);
     const careOnly = process.argv.includes('--pflegegrad') || partnershipOnly || inheritanceOnly;
-    if (careOnly && !inheritanceOnly) images.push(...JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8')).images.filter(item => partnershipOnly ? !partnershipFiles.includes(item.path) : item.path !== 'docs/ui/personen-pflegegrad.png'));
+    if (careOnly && !inheritanceOnly) images.push(...JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8')).images.filter(item => partnershipOnly ? !partnershipFiles.includes(item.path) : !['docs/ui/personen-pflegegrad.png', 'docs/ui/personen-pflege.png'].includes(item.path)));
     const hp1Protocols = process.argv.includes('--hp1-protokolle');
     const protocolOnly = process.argv.includes('--protokolle') || hp1Protocols;
     const protocolFiles = IMAGE_FILES.filter(file => file.includes('/protokoll-'));
@@ -1129,13 +1173,13 @@ async function main() {
     const sophieOnly = process.argv.includes('--sophie');
     const uiOnly = process.argv.includes('--ui1');
     const wealthOnly = process.argv.includes('--pv2');
-    const wealthFiles = ['personen-max', 'personen-erika', 'tagesgeld-bearbeiten', 'simulator-annahmen'].map(name => `docs/ui/${name}.png`);
+    const wealthFiles = ['personen-max', 'personen-erika', 'personen-erika-einkuenfte', 'tagesgeld-bearbeiten', 'simulator-annahmen'].map(name => `docs/ui/${name}.png`);
     if (wealthOnly) images.push(...JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8')).images.filter(item => !wealthFiles.includes(item.path)));
     const uiFiles = [...IMAGE_FILES.filter(file => /\/(einkuenfte-|geplante-ausgaben-|balance-geplante-posten|ausgaben-geplante-zuordnung)/.test(file)), 'docs/ui/personen-max.png', 'docs/ui/personen-erika.png'];
     if (protocolOnly) images.push(...JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8')).images.filter(item => !protocolFiles.includes(item.path)));
     if (uiOnly) images.push(...JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8')).images.filter(item => !uiFiles.includes(item.path)));
     if (sophieOnly) images.push(...JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8')).images.filter(item => item.path !== 'docs/ui/personen-sophie.png'));
-    if (historyOnly) images.push(...JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8')).images.filter(item => !/\/verlauf-(haushalt|max|erika|kennzahlen|jahresuebersicht)\.png$/.test(item.path)));
+    if (historyOnly) images.push(...JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8')).images.filter(item => !/\/verlauf-(haushalt|max|erika|kennzahlen|jahresuebersicht|vermoegensstaende)\.png$/.test(item.path)));
     if (comparisonOnly) images.push(...JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8')).images.filter(item => !['docs/ui/spielbereich-vergleich.png', 'docs/ui/probelauf-band.png'].includes(item.path)));
     const git = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });
     const commit = git.stdout?.trim();
@@ -1155,12 +1199,25 @@ async function main() {
         browser = await chromium.launch({ headless: true });
         await fs.mkdir(reviewRoot, { recursive: true });
         const fullRun = process.argv.length === 2;
+        if (process.argv.includes('--spk1-vorher') || process.argv.includes('--spk1')) {
+            await captureSPK1({ browser, baseUrl, newProbelauf, goto, tab, poll, reviewRoot,
+                before: process.argv.includes('--spk1-vorher') });
+            return;
+        }
         if (process.argv.includes('--fj2')) {
             await captureFJ2({ browser, baseUrl, newProbelauf, goto, tab, changeDate, poll, reviewRoot });
             return;
         }
         if (process.argv.includes('--bp2')) {
             await captureBP2({ browser, baseUrl, newProbelauf, goto, tab, changeDate, poll, reviewRoot });
+            return;
+        }
+        if (process.argv.includes('--wt1')) {
+            await captureWT1({ browser, baseUrl, newProbelauf, goto, tab, changeDate, poll, reviewRoot });
+            return;
+        }
+        if (process.argv.includes('--ly1')) {
+            await captureLY1({ browser, baseUrl, newProbelauf, goto, tab, poll, reviewRoot });
             return;
         }
         if (process.argv.includes('--mh3')) {
@@ -1188,7 +1245,7 @@ async function main() {
             try {
                 await goto(session, 'Balance.html'); await tab(session.page, 'overview');
                 await session.page.getByText('Ansparjahr: Einkünfte decken das Budget', { exact: true }).waitFor();
-                await session.page.locator('#balanceActionTitle').filter({ hasText: 'Vorgeschlagener Kauf · Aktien' }).waitFor();
+                await session.page.locator('#balanceActionTitle').filter({ hasText: 'Aktien kaufen' }).waitFor();
                 await session.page.evaluate(() => document.fonts.ready);
                 await session.page.locator('.balance-overview').screenshot({ path: path.join(reviewRoot, 'AS-1-pruefbild-balance.png'), animations: 'disabled' });
                 if (session.errors.length) throw new Error(session.errors.join('\n'));
@@ -1201,6 +1258,15 @@ async function main() {
         if (process.argv.includes('--tb2')) return await captureTB2(browser, baseUrl, goto);
         if (process.argv.includes('--tb1')) return await captureTB1(browser, baseUrl, goto);
         if (process.argv.includes('--zg5a')) return await captureZG5A(browser, baseUrl, goto);
+        // UR-1b: Erfasste Vermögensstände des Haushalts aufgeklappt, mit Zeilenkopf und Kasten; danach wieder zugeklappt.
+        async function captureWealthRecords(session, page) {
+            await page.locator('#managerHistorySwitch [data-manager-history-scope="household"]').click();
+            await page.locator('#managerWealthRecordsToggle').click();
+            await page.locator('#managerWealthTable table').waitFor({ state: 'visible' });
+            const rows = await page.locator('#managerWealthTable tbody tr').count();
+            await capture(session, 'verlauf-vermoegensstaende', `Erfasste Vermögensstände aufgeklappt · ${rows} ${rows === 1 ? 'Eintrag' : 'Einträge'}`, maskDate, 'masken', '#managerWealthRecords', true);
+            await page.locator('#managerWealthRecordsToggle').click();
+        }
         async function capture(session, name, state, date, group = 'masken', target = '#suiteMain', scroll = false) {
             if (hp1Protocols) {
                 const reviewName = { 'protokoll-backtest': 'protokoll-backtest', 'protokoll-monte-carlo': 'protokoll-erbe' }[name];
@@ -1236,6 +1302,11 @@ async function main() {
                 const monthly = await page.locator('#managerHistoryMonthly').boundingBox();
                 box.height = monthly.y + monthly.height - box.y;
             }
+            if (name === 'personen-pflege') {
+                // UR-1: Karte „Annahmen für spätere Pflege“ mit einer aufgeklappten Zeile; sie muss ganz ins Bild passen.
+                // Halbe Pixel aus scrollIntoView sind keine Überschreitung.
+                if (box.y < -1 || box.y + box.height + 8 > 1080) throw new Error(`Pflegewerte passen nicht ins Bild (${Math.ceil(box.y + box.height)} px).`);
+            }
             const x = Math.max(0, Math.floor(box.x) - 8), y = Math.max(0, Math.floor(box.y) - 8);
             const crop = { x, y, width: Math.min(1920 - x, Math.ceil(box.width) + 16),
                 height: Math.min(1080 - y, Math.ceil(box.height) + 16) };
@@ -1269,8 +1340,11 @@ async function main() {
                 return;
             }
         }
-        if (process.argv.includes('--gf1') || process.argv.includes('--bd1')) {
-            await (process.argv.includes('--bd1') ? captureBD1 : captureGF1)(browser, baseUrl, goto, capture);
+        if (process.argv.includes('--gf1') || process.argv.includes('--bd1') || process.argv.includes('--gu1b')) {
+            if (process.argv.includes('--gu1b')) {
+                const session = await newProbelauf(browser, baseUrl, maskDate);
+                try { await captureGU1B(session, goto, capture); } finally { await session.context.close(); }
+            } else await (process.argv.includes('--bd1') ? captureBD1 : captureGF1)(browser, baseUrl, goto, capture);
             const previous = JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8'));
             previous.images = previous.images.map(item => images.find(next => next.path === item.path) || item)
                 .concat(images.filter(next => !previous.images.some(item => item.path === next.path)));
@@ -1301,6 +1375,7 @@ async function main() {
                     await page.locator('#scenarioComparison [data-comparison-preset="default"]').click();
                     await page.locator('#scenarioComparison [data-scenario-id]').first().click();
                 }
+                await openProtocols(page);
                 const host = source === 'backtest' ? '#simulationLog' : '#scenarioLogOutput';
                 const toggle = page.locator(source === 'backtest' ? '#toggle-backtest-detail' : '#toggle-log-detail');
                 for (const detailed of [false, true]) {
@@ -1432,6 +1507,8 @@ async function main() {
                     if (value === 'logs') await page.locator('#scenarioComparison [data-comparison-preset="default"]').click();
                     await capture(session, `monte-carlo-${name}`, `Monte Carlo · ${name} · Real · 10.000 Läufe · Seed 12345`, maskDate,
                         'masken', value === 'logs' ? '#scenarioComparison' : '#tab-montecarlo', value === 'logs' ? '#scenarioComparison' : '.mc-view-nav');
+                    // SE-2: ganze Ansicht als Prüfbild gegen den Entwurf.
+                    if (['risk', 'logs'].includes(value)) await page.screenshot({ path: path.join(reviewRoot, `SE-2-pruefbild-${name}.png`), fullPage: true, animations: 'disabled' });
                 }
                 if (scenariosOnly) {
                     await page.locator('#scenarioList [data-scenario-id="char_typicalMarket"]').click();
@@ -1448,6 +1525,7 @@ async function main() {
                 await tab(page, 'backtesting');
                 await page.locator('#backtestAnalysis .backtest-analysis-more').evaluate(details => { details.open = false; });
                 await capture(session, 'simulator-backtest', 'Backtest · Kaufkraft des Startjahres · Was im Lauf auffällt', maskDate, 'masken', '#backtestAnalysis', true);
+                await page.screenshot({ path: path.join(reviewRoot, 'SE-2-pruefbild-backtest.png'), fullPage: true, animations: 'disabled' });
                 }
             } finally { await session.context.close(); }
         } else {
@@ -1584,6 +1662,7 @@ async function main() {
                 await session.page.locator('#managerHistorySwitch [data-manager-history-scope="household"]').click();
                 await capture(session, 'verlauf-kennzahlen', 'Depotkennzahlen Haushalt · alle Anlageformen zugeklappt', maskDate, 'masken', '#managerHistoryReturns', true);
                 await capture(session, 'verlauf-jahresuebersicht', 'Jahresübersicht der Anlagen · Haushalt', maskDate, 'masken', '#managerHistoryYears', true);
+                await captureWealthRecords(session, session.page);
             } finally { await session.context.close(); }
         }
         if (!protocolOnly && !comparisonOnly && !historyOnly && !sophieOnly && !uiOnly) {
@@ -1626,6 +1705,7 @@ async function main() {
             await page.locator('#managerHistorySwitch [data-manager-history-scope="household"]').click();
             await capture(masks, 'verlauf-kennzahlen', 'Depotkennzahlen Haushalt · alle Anlageformen zugeklappt', maskDate, 'masken', '#managerHistoryReturns', true);
             await capture(masks, 'verlauf-jahresuebersicht', 'Jahresübersicht der Anlagen · Haushalt', maskDate, 'masken', '#managerHistoryYears', true);
+            await captureWealthRecords(masks, page);
             await goto(masks, 'Ausgaben.html');
             await page.locator('#expensesTable table').waitFor();
             await capture(masks, 'ausgaben', 'Ausgaben 2026', maskDate);
@@ -1646,7 +1726,7 @@ async function main() {
             await page.locator('#mcAnzahl').fill('10000'); await page.locator('#mcSeed').fill(String(seed));
             await page.locator('#mcSeed').blur();
             await page.locator('#mcAdvancedDisclosure > summary').click();
-            await capture(masks, 'monte-carlo-einstellungen', 'Monte-Carlo · Einstellungen und Erweitert geöffnet · 10.000 Läufe · Seed 12345', maskDate,
+            await capture(masks, 'monte-carlo-einstellungen', 'Monte-Carlo · Einstellungen und Erweitert geöffnet · 10.000 Läufe · Seed 12345 · Dauer automatisch', maskDate,
                 'masken', '#mcSetupDisclosure', true);
             await page.locator('#mcSettingsToggle').click();
             await tab(page, 'montecarlo');
@@ -1695,7 +1775,7 @@ async function main() {
                         await decisionPage.locator('#decisionMonths').fill('12');
                     }
                     if (kind === 'target') {
-                        await decisionPage.locator('#decisionTargetCoverage').fill('99');
+                        await decisionPage.locator('#decisionTargetCoverage').fill('98');
                         await decisionPage.locator('#decisionTargetAffected').fill('10');
                     }
                     current = `Vergleich ${name} rechnen`; console.log(current);
@@ -1717,7 +1797,7 @@ async function main() {
                     if (kind === 'target') {
                         if (!await decisionPage.locator('[data-decision-trial]').isVisible()) throw new Error('Zielwertsuche ohne gefundenen Betrag.');
                         await capture(decisionSession, 'monte-carlo-zielwert',
-                            'Zielwertsuche · Ziele 99/10 · Suche mit 1.000 Läufen je Schritt · Endprobe mit 10.000 Läufen · Seed 12345', maskDate,
+                            'Zielwertsuche · Ziele 98/10 · Suche mit 1.000 Läufen je Schritt · Endprobe mit 10.000 Läufen · Seed 12345', maskDate,
                             'masken', '#decisionComparison', true);
                     }
                 }
@@ -1951,6 +2031,11 @@ async function main() {
                 await capture(session, 'personen-max', 'Max · Einkünfte mit 50.000 € Rückzahlung', maskDate, 'masken', '#managerIncome', true);
                 await page.locator('#managerSectionNav [data-manager-profile="muster_b"]').click();
                 await capture(session, 'personen-erika', 'Erika · Personendetails geschlossen und Vermögenskarte mit Tagesgeld', maskDate, 'masken', '#managerPersonPanel', '#personendaten');
+                // UR-1b: Erikas Einkünfte zeigen die vom Hauptprofil übernommene Rentenanpassung mit Grund.
+                await page.locator('#managerIncomeToggle').click();
+                await page.locator('#profilePensionAdoptedReason').waitFor({ state: 'visible' });
+                await capture(session, 'personen-erika-einkuenfte', 'Erika · Einkünfte mit übernommener Rentenanpassung', maskDate, 'masken', '#managerIncome', true);
+                await page.locator('#managerIncomeToggle').click();
                 for (const width of [1920, 2560, 1280]) {
                     await page.setViewportSize({ width, height: width === 2560 ? 1440 : 1080 });
                     await page.locator('#managerDepotTitle').scrollIntoViewIfNeeded();
@@ -1965,6 +2050,7 @@ async function main() {
                 await tab(page, 'annahmen');
                 await page.locator('#simPlanParameters').evaluate(details => { details.open = false; });
                 await capture(session, 'simulator-annahmen', 'Monatszeile und Jahrestabelle', maskDate, 'masken', '#simPlanOverview', true);
+                if (!wealthOnly) await captureGU1B(session, goto, capture);
             } finally { await session.context.close(); }
         }
         }
@@ -1998,7 +2084,8 @@ async function main() {
                 await page.setViewportSize({ width: 1280, height: 1080 });
                 await page.screenshot({ path: path.join(reviewRoot, 'PG-1b-pruefbild-person-1280.png'), animations: 'disabled' });
                 const widths = await page.locator('.pv-person-disclosure .pv-person-group').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().width));
-                if (widths.length !== 3 || Math.max(...widths) - Math.min(...widths) > 1) throw new Error('Personenkarte braucht drei gleich breite Spalten.');
+                // UR-1: Person und Steuern als zwei gleich breite Spalten, Pflege als Band darunter.
+                if (widths.length !== 2 || Math.max(...widths) - Math.min(...widths) > 1) throw new Error('Personenkarte braucht zwei gleich breite Spalten.');
                 await page.setViewportSize({ width: 2560, height: 1440 });
                 await page.screenshot({ path: '/tmp/pg-1-person-2560.png', animations: 'disabled' });
                 await page.setViewportSize(viewport);
@@ -2015,17 +2102,33 @@ async function main() {
                 await page.locator('#simCareTodaySummary').scrollIntoViewIfNeeded();
                 await page.screenshot({ path: '/tmp/pg-1-simulator-2560.png', animations: 'disabled' });
                 await page.setViewportSize(viewport);
-                await page.locator('#pflegePanelContainer').evaluate(node => { node.closest('details').open = true; });
-                await page.locator('#pflegeKostenStaffelPreset').selectOption('custom');
-                await page.locator('.sim-care-table').scrollIntoViewIfNeeded();
+                // PFA-10: Die Pflegewerte stehen in Personen & Vermögen › Pflege; der Simulator zeigt sie nur noch an.
+                await page.locator('#simCareValuesSummary').scrollIntoViewIfNeeded();
+                if (!await page.locator('#simCareValuesSummary a[href="depot-tranchen-manager.html#pflege"]').isVisible()) throw new Error('Simulator braucht den Link zu Personen & Vermögen › Pflege.');
+                await goto(session, 'depot-tranchen-manager.html');
+                await page.locator('#managerCareTab').click();
+                await page.locator('#managerCarePanel').waitFor({ state: 'visible' });
+                await poll(page, () => document.querySelector('#managerCareToday')?.textContent.includes('Grad 2'), null, 'Pflege heute im Bereich Pflege');
+                await page.screenshot({ path: path.join(reviewRoot, 'UR-1-pruefbild-pflege-zu.png'), animations: 'disabled' });
+                // UR-2: Das Handbuchbild zeigt die Felder; dafür ist „Pflege im Heim“ mit den drei Bestandteilen aufgeklappt.
+                await page.locator('#managerCareRowHeimToggle').click();
+                await page.locator('#managerCareHeimCare').waitFor({ state: 'visible' });
+                await capture(session, 'personen-pflege', 'Personen & Vermögen › Pflege · Annahmen mit aufgeklapptem „Pflege im Heim“', maskDate, 'masken', '#managerCarePanel .pv-care-card:has(#managerCareRowHomeBody)', true);
+                await page.locator('#managerCareRowHeimToggle').click();
+                await page.locator('#managerCareRowHomeToggle').click();
+                await page.locator('#managerCareCost3').waitFor({ state: 'visible' });
                 await page.screenshot({ path: path.join(reviewRoot, 'VF-2c-pruefbild-staffel.png'), animations: 'disabled' });
                 await page.screenshot({ path: path.join(reviewRoot, 'PG-1b-pruefbild-staffel.png'), animations: 'disabled' });
-                await page.locator('#pflegeKostenStaffelPreset').selectOption('amtlich');
-                if (await page.locator('#pflegeStufe2Form').isVisible()) throw new Error('Amtlicher Durchschnitt darf keine Pflegeform zeigen.');
-                await page.locator('#pflegeKostenStaffelPreset').selectOption('custom');
+                const saved = () => poll(page, () => document.querySelector('#managerCareStatus')?.textContent === 'Gespeichert', null, 'Pflegewerte speichern');
+                await page.locator('#managerCarePreset [data-care-preset="amtlich"]').click(); await saved();
+                if (await page.locator('#managerCareForm2').isVisible()) throw new Error('Amtlicher Durchschnitt darf keine Pflegeform zeigen.');
+                await page.locator('#managerCarePreset [data-care-preset="custom"]').click(); await saved();
                 for (const [index, amount] of [6000, 12000, 18000, 32000, 60000].entries()) {
-                    await page.locator(`#pflegeStufe${index + 1}Zusatz`).fill(String(amount));
+                    // FR-72: Zeilen „im Heim“ ruhen mit „Heimkosten“ und lassen sich nicht füllen.
+                    const field = page.locator(`#managerCareCost${index + 1}`);
+                    if (await field.isEnabled()) { await field.fill(String(amount)); await field.press('Enter'); await saved(); }
                 }
+                await goto(session, 'Simulator.html');
                 await tab(page, 'montecarlo');
                 await page.locator('#mcSettingsToggle').click();
                 await page.locator('#mcAnzahl').fill('128');
@@ -2038,6 +2141,7 @@ async function main() {
                 await page.locator('[data-mc-view="logs"]').click();
                 await page.locator('#scenarioComparison [data-comparison-preset="default"]').click();
                 await page.locator('#scenarioComparison [data-scenario-id]').first().click();
+                await openProtocols(page);
                 const row = page.locator('#scenarioLogOutput tbody tr').first();
                 await row.getByRole('button', { name: 'Einnahmen: Aufschlüsselung des Jahres', exact: true }).click();
                 await row.locator('.ds-info[data-visible="true"] .ds-info-pop').getByText('Pflegegeld Max', { exact: true }).waitFor({ state: 'visible' });
@@ -2100,7 +2204,8 @@ async function main() {
                     }
                     await page.setViewportSize(viewport);
                     await page.locator('#managerSectionNav [data-manager-profile="muster_a"]').click();
-                    await page.locator('[data-home-open]').nth(1).click();
+                    await page.locator('#tranchenTable [data-asset-group^="home"]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
+                    await page.locator('[data-asset-group="homeRented"] [data-home-open]').first().click();
                     await capture(session, 'personen-immobilien', 'Max · zwei Immobilien · vermietete Wohnung geöffnet', maskDate, 'masken', '.pv-depot', true);
                     await page.screenshot({ path: path.join(reviewRoot, 'UP-1a-pruefbild-person.png'), animations: 'disabled' });
                     for (const width of [1280, 2560]) {
@@ -2169,6 +2274,7 @@ async function main() {
                     if (await page.locator('#scenarioLogOutput tbody tr').filter({ hasText: 'aus geerbtem Steuergeld' }).count()) { found = true; break; }
                 }
                 if (!found) throw new Error('Kein gerechnetes Todesjahr im Musterlauf.');
+                await openProtocols(page);
                 const toggle = page.locator('#toggle-log-detail');
                 if (await toggle.isChecked()) await toggle.locator('..').click();
                 const info = page.locator('#scenarioLogOutput tbody tr').filter({ hasText: 'aus geerbtem Steuergeld' }).first().getByRole('button', { name: 'Erbe: Aufschlüsselung des Todesjahres', exact: true });

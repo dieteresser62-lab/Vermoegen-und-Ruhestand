@@ -13,6 +13,7 @@ import { buildNextMarketDataHist } from './simulator-year-portfolio.js';
 import { sumBondBucketValuation } from '../../engine/transactions/three-bucket-logic.mjs';
 import { beginPersonalTaxYear, settlePersonalTaxYear, beginAggregateTaxYear, settleAggregateTaxYear } from './simulator-personal-tax.js';
 import { applyUnmarriedInheritance } from './simulator-inheritance.js';
+import { deathYearCashShare, deathYearCashLimit } from './simulator-death-year-cash.js';
 import { finishSurvivorYear, survivorLiquidityTarget } from './simulator-survivor.js';
 import {
     applyHealthBucketInterest,
@@ -169,21 +170,27 @@ export function simulateAccumulationYear({
     const taxAction = {};
     const taxState = {};
     const ueberschuss = liquiditaet - zielLiquiditaet;
+    // TJ-1: Im Todesjahr zahlt nur die überlebende Person, mit dem, was ihr nach dem Nachlass bleibt.
+    const deathYearLimit = deathYearCashLimit({ portfolio, transition: survivorYear, bookings: () => [], requested: ueberschuss,
+        share: deathYearCashShare({ inputs, transition: survivorYear, hasLifeEvents: hasInheritance }) });
+    const survivorFunding = deathYearLimit && [{ profileId: deathYearLimit.survivorProfileId, withdrawalAmount: deathYearLimit.capacity }];
+    const anlage = deathYearLimit ? Math.min(ueberschuss, deathYearLimit.capacity) : ueberschuss;
 
     let kaufAktTotal = 0;
     let kaufGldTotal = 0;
 
-    if (ueberschuss > 500) {
+    if (anlage > 500) {
         const goldZielProzent = inputs.goldAktiv ? (inputs.goldZielProzent || 0) : 0;
         const equityValue = sumDepot({ depotTranchesAktien: portfolio.depotTranchesAktien });
         const goldValue = sumDepot({ depotTranchesGold: portfolio.depotTranchesGold });
         const totalWealth = equityValue + goldValue + liquiditaet;
         const goldTarget = totalWealth * (goldZielProzent / 100);
-        const goldBetrag = inputs.goldAktiv ? Math.min(ueberschuss, Math.max(0, goldTarget - goldValue)) : 0;
-        const aktienBetrag = Math.max(0, ueberschuss - goldBetrag);
+        const goldBetrag = inputs.goldAktiv ? Math.min(anlage, Math.max(0, goldTarget - goldValue)) : 0;
+        const aktienBetrag = Math.max(0, anlage - goldBetrag);
 
-        const funding = debitPersonalLiquidity(portfolio, goldBetrag + aktienBetrag,
-            personalWithdrawalPlan(personalProfiles(portfolio, inputs), goldBetrag + aktienBetrag, inputs.householdWithdrawalMode));
+        const funding = debitPersonalLiquidity(portfolio, goldBetrag + aktienBetrag, survivorFunding
+            ? { mode: inputs.householdWithdrawalMode, items: survivorFunding }
+            : personalWithdrawalPlan(personalProfiles(portfolio, inputs), goldBetrag + aktienBetrag, inputs.householdWithdrawalMode));
         for (const row of funding.items) {
             const share = row.amount / (goldBetrag + aktienBetrag);
             if (goldBetrag > 0) buyGold(portfolio, goldBetrag * share, row.profileId);
