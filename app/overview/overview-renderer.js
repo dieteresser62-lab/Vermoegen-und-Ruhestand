@@ -2,7 +2,7 @@ import { propertyParts, wealthInfo, wealthDetail, wealthAllocation, allocationNa
 import { householdImmobilienValue } from '../profile/profile-immobilien.js';
 import { expensesDestination, expensesHref } from '../shared/expenses-navigation.js';
 import { requestProbelaufStart } from '../shared/probelauf-ui.js';
-import { householdPlanComparisonHtml, projectHouseholdPlanComparison } from '../profile/household-plan-comparison.js';
+import { householdPlanComparisonHtml, projectHouseholdPlanComparison, roundedHouseholdPlanComparison } from '../profile/household-plan-comparison.js';
 import { projectBalanceActionOrigin } from '../balance/balance-action-origin.js';
 import { deriveBalanceNextSteps } from '../balance/balance-next-steps.js';
 import { renderOverviewHistory } from './overview-history.js';
@@ -17,8 +17,11 @@ import { renderProbelaufPriceInfo } from '../shared/probelauf-price-ui.js';
 import { bindInfoPopovers, infoPopoverHtml } from '../shared/designsystem-info-popover.js';
 import { getStorageArea } from '../shared/persistence-area-storage.js';
 import { isPlayArea } from '../shared/household-registry.js';
+import { displayMonthlyDown } from '../shared/display-rounding.js';
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 }) : '—';
+/** FR-78: Monatsbudget abgerundet nach der Monatsstaffel; das Modell bleibt genau. */
+const budgetMoney = value => money(displayMonthlyDown(value));
 const displayDate = date => date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 // Jahresgrenzstände sind eine andere Quelle als die Tageskurve. Schema 1
@@ -118,9 +121,10 @@ export function renderOverview(doc, model) {
     }).join('');
     const summary = model.summary;
     const preview = Object.hasOwn(model, 'previewSummary') ? model.previewSummary : model.planComparison?.recordStatus === 'valid' ? null : summary;
-    const planView = model.planComparison || projectHouseholdPlanComparison({ year: model.year, scope: null, preview });
     // Kennzahlen verwenden denselben Vergleich wie die vollständige Planansicht.
-    // Kein zusätzlicher Speicherleser und keine eigene Budgetberechnung.
+    // Kein zusätzlicher Speicherleser und keine eigene Budgetberechnung; FR-78 rundet nur die Anzeigefassung.
+    const planView = roundedHouseholdPlanComparison(model.planComparison || projectHouseholdPlanComparison({ year: model.year, scope: null, preview }),
+        { planBudget: model.planComparison?.recordStatus === 'valid' ? summary?.monthlyBudget : null, previewSummary: preview });
     const budgetRow = planView.rows.find(row => row.label === 'Monatsbudget');
     const fixed = planView.recordStatus === 'valid';
     const hasPreview = ['current', 'stale'].includes(planView.previewStatus);
@@ -156,7 +160,7 @@ export function renderOverview(doc, model) {
     if (empty) { empty.hidden = Boolean(comparisonHost); empty.textContent = planView.notice; }
     // Bestehende Anker bleiben für alte Direktverweise; sichtbar ist der gemeinsame Vergleich.
     set('overviewWithdrawal', summary ? (model.actionOrigin?.confirmed ? 'Beschlossener Plan: ' : 'Vorschau: ') + money(summary.monthlyWithdrawal) : '');
-    set('overviewPlanBudget', summary ? `Monatsbudget mit festen Einkünften: ${money(summary.monthlyBudget)}` : '');
+    set('overviewPlanBudget', summary ? `Monatsbudget mit festen Einkünften: ${budgetMoney(summary.monthlyBudget)}` : '');
     set('overviewPlanAction', preview ? `Vorschau: ${preview.action?.verb || 'Handlung prüfen'} · vorläufig` : '');
     set('overviewPlanNote', summary?.action?.note || '');
     set('overviewLiquidity', summary ? overviewLiquidityText(summary) : '');
@@ -230,7 +234,7 @@ export function renderOverviewYear(doc, model) {
     const budgetStatus = provisional ? 'provisional' : 'adopted';
     const budgetName = provisional ? 'Vorläufiges Monatsbudget' : 'Monatsbudget';
     const staleBudget = provisional && annual.budgetPreviewStatus !== 'current';
-    set('overviewYearBudget', annual.budget === null ? '' : `${budgetName} ${money(annual.budget)} · ${annual.year}${staleBudget ? ' · Vorschau veraltet' : ''}`);
+    set('overviewYearBudget', annual.budget === null ? '' : `${budgetName} ${budgetMoney(annual.budget)} · ${annual.year}${staleBudget ? ' · Vorschau veraltet' : ''}`);
     const budgetLabel = doc.getElementById('overviewYearBudget'); if (budgetLabel) budgetLabel.hidden = annual.budget === null;
     const legend = doc.getElementById('overviewYearLegend');
     if (legend) legend.innerHTML = [
@@ -247,7 +251,7 @@ export function renderOverviewYear(doc, model) {
         + (Number.isFinite(comparison?.percent) ? ' · ' + formatDisplayNumber(comparison.percent, { unit: 'percent', fractionDigits: 1 }) : '');
     const expensePeriod = annual.lastMonth ? `01.01.${annual.year} bis ${displayDate(new Date(annual.year, annual.lastMonth, 0))}` : `Noch kein abgeschlossener Monat ${annual.year}`;
     const sumDetail = annual.budget === null ? 'noch ohne Budget' : annual.budgetPercent === null
-        ? `${budgetName} ${money(annual.budget)}`
+        ? `${budgetName} ${budgetMoney(annual.budget)}`
         : `${Math.round(annual.budgetPercent)} % des ${annual.retrospective ? 'Jahresbudgets' : 'Budgets bis Vormonat'}`;
     const highest = annual.highest ? `Höchster: ${calendarMonth(annual.year, annual.highest.month)} · ${money(annual.highest.spent)}` : 'Kein importierter Monat';
     const rows = annual.retrospective ? [

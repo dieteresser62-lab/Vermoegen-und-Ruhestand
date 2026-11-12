@@ -91,7 +91,7 @@ for (const type of ['NONE', 'TRANSACTION']) {
     const text = node => dialogElements(node).map(el => clean(el.textContent || '')).join(' ');
     assert(!details.open && text(details).includes('Empfehlung 30.750 € → beschlossen 32.000 €'), 'Geschlossene Herleitung zeigt Empfehlung und beschlossenen Bedarf aus dem passenden Beleg');
     assert(text(section.querySelector('.annual-result-plan-source')).includes('im Abschluss bewusst angepasst'), 'Bewusste Anpassung steht direkt unter der Leitzahl');
-    assert(text(section).includes('467,50 € darüber') && text(section).includes('0,8 %') && text(section).includes('56.600,00 € im Jahr'), 'Zwei Kacheln verwenden Jahresvergleich und beschlossenen Bedarf');
+    assert(text(section).includes('467,50 € darüber') && text(section).includes('0,8 %') && text(section).includes('56.600 € im Jahr'), 'Zwei Kacheln verwenden Jahresvergleich und beschlossenen Bedarf (beschlossener Planwert genau, RD-1c)');
     assertEqual(section.querySelectorAll('.annual-result-monthly-budget').length, 1, 'Nur das Monatsbudget ist Leitzahl');
     assertEqual(JSON.stringify({ model, record }), before, 'Beleganzeige schreibt und verändert keine Quelldaten');
 }

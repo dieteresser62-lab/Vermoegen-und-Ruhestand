@@ -5,9 +5,20 @@ import { readReconciliationHistory, projectReconciliationCashStatuses } from '..
 import { confirmedHistorySales } from '../tranches/tranchen-history-model.js';
 import { PROFILE_TRANCHES_KEY } from '../profile/profile-state.js';
 import { PROFILE_WEALTH_LOTS_KEY } from '../profile/profile-wealth-history.js';
+import { CONFIG as ENGINE_CONFIG } from '../../engine/config.mjs';
 
-/** Ab diesem Anteil des Planbetrags gilt eine Zeile als erledigt; der Rest ist dann 0. */
+/** Ungenutzt seit RD-1 (FR-77 Punkt 2 geändert: Erledigt-Grenze nach Rundungsstaffel); bleibt als Export erhalten. */
 export const ANNUAL_ACTION_DONE_SHARE = 0.98;
+
+/** FR-77 Punkt 2 (geändert 12.11.2026): Eine Planzeile ist erledigt, wenn höchstens eine halbe Rundungsstufe des Planbetrags
+ * fehlt. Stufe nach der Engine-Staffel `QUANTIZATION_TIERS` (< 10.000 € → 1.000 €, < 50.000 € → 5.000 €, < 200.000 € → 10.000 €,
+ * darüber 25.000 €). Mehr verkauft ist ebenfalls erledigt; ohne Verkauf ist nichts erledigt. @param {number} plan Planbetrag netto @returns {number} */
+export function annualActionDoneThreshold(plan) {
+    const tiers = ENGINE_CONFIG.ANTI_PSEUDO_ACCURACY.QUANTIZATION_TIERS;
+    const amount = Math.abs(plan);
+    const step = (tiers.find(tier => amount < tier.limit) || tiers[tiers.length - 1]).step;
+    return plan - step / 2;
+}
 
 const CLASS_BY_TYPE = Object.fromEntries(Object.entries(TRANCHE_CATEGORY_TYPES).flatMap(([category, types]) => types.map(type => [type, category])));
 const finite = Number.isFinite;
@@ -92,12 +103,13 @@ export function projectAnnualActionProgress({ action, year, decidedOn = null, sa
     }
     for (const group of groups.values()) {
         const plan = group.lines.reduce((sum, line) => sum + line.planNet, 0);
-        const allDone = group.sold >= ANNUAL_ACTION_DONE_SHARE * plan;
+        // RD-1c: erledigt nur mit einem Verkauf (verkauft > 0); bei 0 bleibt die Zeile offen, auch bei Plänen bis 500 €.
+        const allDone = group.sold > 0 && group.sold >= annualActionDoneThreshold(plan);
         let rest = group.sold;
         for (const line of group.lines) {
             line.soldNet = Math.min(rest, line.planNet);
             rest -= line.soldNet;
-            line.restNet = allDone || line.soldNet >= ANNUAL_ACTION_DONE_SHARE * line.planNet ? 0 : line.planNet - line.soldNet;
+            line.restNet = allDone || line.soldNet > 0 && line.soldNet >= annualActionDoneThreshold(line.planNet) ? 0 : line.planNet - line.soldNet;
             line.creditPendingNet = group.sold > 0 ? group.pending * line.soldNet / group.sold : 0;
             line.status = line.restNet === 0 ? 'erledigt' : line.soldNet > 0 ? 'teilweise' : 'offen';
             line.lastSaleAt = line.soldNet > 0 ? group.lastSaleAt : null;

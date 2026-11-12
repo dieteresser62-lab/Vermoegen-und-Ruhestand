@@ -66,7 +66,7 @@ Die Breitskala beginnt bei 2300 px nutzbarer Inhaltsbreite, nach Leiste und Inne
 
 Deutsch anzeigen, Eingaben getrennt parsen. Dezimalkomma, Tausenderpunkte und geschütztes Leerzeichen vor Einheiten; Ratio-/Prozentwert-Skalierung nicht verwechseln. Null, fehlend mit Grund, nicht anwendbar und fachlich erlaubtes Unendlich bleiben getrennt. Rohwerte erst nach Summen und Differenzen formatieren.
 
-Reguläre sichtbare Balance-Geldbeträge, Handlungsdialog und dessen bestehender Druck zeigen ganze Euro. Diagnosekopie, andere Kopierwege, technische Details, Exporte und Eingaben behalten ihre genaue Präzision. Die getrennte Handlungstextprojektion bleibt centgenau. Formattertexte niemals zurückparsen; SVG-Geometrie nicht lokalisieren.
+Reguläre sichtbare Balance-Geldbeträge, Handlungsdialog und dessen bestehender Druck zeigen ganze Euro. Berechnete Beträge in Balance-Überblick, Jahresabschluss und Übersicht laufen vorher durch `app/shared/display-rounding.js`: aufrunden, was gebraucht wird, abrunden, was verfügbar ist ([Gerundete Anzeige](HANDLUNGSANWEISUNG.md#gerundete-anzeige)). Diagnosekopie, andere Kopierwege, technische Details, Exporte und Eingaben behalten ihre genaue Präzision. Die getrennte Handlungstextprojektion bleibt centgenau. Formattertexte niemals zurückparsen; SVG-Geometrie nicht lokalisieren.
 
 ## Bausteine
 

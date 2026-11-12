@@ -24,6 +24,7 @@ import { projectAnnualPreview } from '../app/balance/balance-annual-preview.js';
 import { createAnnualTodoResult } from '../app/shared/annual-close-result.js';
 import { createDialogFixture, prepareCloseFixture } from './close-dialog.test.mjs?fixture';
 import { captureCashPeople } from '../app/profile/profile-cash-update.js';
+import { displayMonthlyDown } from '../app/shared/display-rounding.js';
 import { initTranchenManagerPage, startTranchenManagerPage, openManagerOverviewTarget } from '../app/tranches/tranchen-manager-page.js';
 import { PersistenceFacade } from '../app/shared/persistence-facade.js';
 import { createTranchenPageDom, createLocalStorageMock, installGlobals, MockElement, addManagerDialogDom } from './tranchen-manager-page.test.mjs';
@@ -60,40 +61,40 @@ function planDone(records, cash) {
     assertEqual(cashRefillMonthlyBase({ zielLiquiditaet: 96000, input: { liquidityRunwayYears: 5 } }), 1600, 'Soll 1: Renate 96.000 € ÷ 60 = 1.600 €');
     const maxErika = async erika => renderCard(planDone(createMusterHaushaltRecords('2026-10-23', 'max-erika'), { muster_a: 5000, muster_b: erika }));
     const at15000 = await maxErika(10000);
-    assert(at15000.reserveTarget.includes('Ziel: 60 Monate Entnahme = 162.000 €, davon 12 Monate im Tagesgeld'), `Soll 1: Reservekarte mit derselben Basis (${at15000.reserveTarget})`);
+    assert(at15000.reserveTarget.includes('Ziel: 60 Monate Entnahme = 165.000 €, davon 12 Monate im Tagesgeld'), `Soll 1: Reservekarte mit derselben Basis, 162.000 € aufgerundet (FR-78) (${at15000.reserveTarget})`);
     assert(at15000.card.includes('Alle Verkäufe aus dem Plan 2026 sind eingetragen'), 'Soll 1: Plan erledigt');
-    assert(at15000.refill.includes('Dein Tagesgeld reicht noch für 5 Monate Entnahme (15.000 €). Ziel sind 12 Monate (32.400 €).')
-        && at15000.refill.includes('17.400 €vom Geldmarkt aufs Tagesgeld umschichten'), `Soll 1: Max und Erika 15.000 € → Hinweis 17.400 € (${at15000.refill})`);
+    assert(at15000.refill.includes('Dein Tagesgeld reicht noch für 5 Monate Entnahme (15.000 €). Ziel sind 12 Monate (32.500 €).')
+        && at15000.refill.includes('18.000 €vom Geldmarkt aufs Tagesgeld umschichten'), `Soll 1: Max und Erika 15.000 € → Hinweis 17.400 €, angezeigt 18.000 € (FR-78) (${at15000.refill})`);
     const at16200 = await maxErika(11200);
     assertEqual(at16200.refill, '', 'Soll 1: Max und Erika 16.200 € (genau 6 Monate) → kein Hinweis');
     const at13500 = await maxErika(8500);
-    assert(at13500.refill.includes('18.900 €vom Geldmarkt') && at13500.refill.includes('Ziel sind 12 Monate (32.400 €)'), `Soll 1: Max und Erika 13.500 € → 18.900 €, „Ziel sind 12 Monate“ (${at13500.refill})`);
+    assert(at13500.refill.includes('19.000 €vom Geldmarkt') && at13500.refill.includes('Ziel sind 12 Monate (32.500 €)'), `Soll 1: Max und Erika 13.500 € → 18.900 €, angezeigt 19.000 €, „Ziel sind 12 Monate“ (${at13500.refill})`);
     const renate = await renderCard(planDone(createMusterHaushaltRecords('2026-10-23', 'renate'), { muster_renate: 9000 }));
-    assert(renate.reserveTarget.includes('= 96.000 €, davon 12 Monate im Tagesgeld'), 'Soll 1: Renate Reserveziel 96.000 €');
-    assert(renate.refill.includes('10.200 €vom Geldmarkt') && renate.refill.includes('(9.000 €). Ziel sind 12 Monate (19.200 €).'), `Soll 1: Renate 9.000 € → Hinweis 10.200 € (${renate.refill})`);
+    assert(renate.reserveTarget.includes('= 100.000 €, davon 12 Monate im Tagesgeld'), 'Soll 1: Renate Reserveziel 96.000 €, angezeigt 100.000 €');
+    assert(renate.refill.includes('11.000 €vom Geldmarkt') && renate.refill.includes('(9.000 €). Ziel sind 12 Monate (20.000 €).'), `Soll 1: Renate 9.000 € → Hinweis 10.200 €, angezeigt 11.000 € (Ziel 19.200 € → 20.000 €) (${renate.refill})`);
 
     // Soll 4 (P3-5): zwei Personen, je Person Betrag und Knopf; die Summe liegt nie über dem Haushaltsziel.
     const both = await renderCard(planDone(createMusterHaushaltRecords('2026-10-23', 'max-erika'), { muster_a: 1000, muster_b: 12500 }));
-    assert(both.refill.includes('18.900 €vom Geldmarkt') && both.refill.includes('Max4.000 €Umschichtung eintragen') && both.refill.includes('Erika14.900 €Umschichtung eintragen'),
-        `Soll 4: je Person Betrag und Knopf (${both.refill})`);
+    assert(both.refill.includes('19.000 €vom Geldmarkt') && both.refill.includes('Max4.000 €Umschichtung eintragen') && both.refill.includes('Erika15.000 €Umschichtung eintragen'),
+        `Soll 4: je Person Betrag und Knopf (18.900 € und 14.900 € aufgerundet) (${both.refill})`);
     const links = walk(both.doc.getElementById('balanceCashRefill')).filter(node => node.tagName?.toLowerCase() === 'a').map(node => node.getAttribute('href'));
     assertEqual(links.length, 2, 'Soll 4: zwei Knöpfe „Umschichtung eintragen“');
     assert(links[0].includes('person=muster_a&tranche=') && links[1].includes('person=muster_b&tranche=') && links.every(link => link.endsWith('#verkauf')), `Soll 4: Knöpfe öffnen den Verkaufsdialog der jeweiligen Person (${links.join(' ')})`);
     const over = await renderCard(planDone(createMusterHaushaltRecords('2026-10-23', 'max-erika'), { muster_a: 12000, muster_b: 1500 }));
-    assert(over.refill.includes('(13.500 €). Ziel sind 12 Monate (32.400 €).18.900 €vom Geldmarkt'), `Soll 4: Max über dem eigenen Ziel → höchstens bis zum Haushaltsziel (${over.refill})`);
+    assert(over.refill.includes('(13.500 €). Ziel sind 12 Monate (32.500 €).19.000 €vom Geldmarkt'), `Soll 4: Max über dem eigenen Ziel → höchstens bis zum Haushaltsziel (angezeigt aufgerundet) (${over.refill})`);
     const capped = projectCashRefill({ people: [{ profileId: 'a', name: 'A', tagesgeld: 1000, geldmarkt: 30000, target: 8000 },
         { profileId: 'b', name: 'B', tagesgeld: 2000, geldmarkt: 60000, target: 27400 }], monthlyBase: 2700, cashMonths: 12, planOpen: false });
     assertClose(capped.amount, 32400 - 3000, 1e-6, 'Soll 4: Summe der Personen genau bis zum Haushaltsziel');
     assertClose(capped.tagesgeld + capped.rows.reduce((sum, row) => sum + row.amount, 0), 32400, 1e-6, 'Soll 4: danach Haushalt genau am Ziel, nicht darüber');
     assertEqual(capped.rows.length, 2, 'Soll 4: beide Personen im Hinweis');
     const view = text(createCashRefill(new MockDocument(), capped));
-    assert(view.includes('A6.352 €') && view.includes('B23.048 €'), `Soll 4: im selben Verhältnis gekürzt (${view})`);
+    assert(view.includes('A6.500 €') && view.includes('B24.000 €'), `Soll 4: im selben Verhältnis gekürzt (6.352 € und 23.048 € aufgerundet) (${view})`);
 }
 
 // Soll 2 (P2-2): Verb bei Anleiheverkäufen wie die Diagnose, nie „Handlung prüfen“ bei eindeutigem Beleg.
 {
     const renate = await renderCard(createMusterHaushaltRecords('2026-10-23', 'renate'));
-    assert(renate.card.includes('Anleihen verkaufen44.448 €netto'), `Soll 2: Renate „Anleihen verkaufen · 44.448 €“ (${renate.card.slice(0, 200)})`);
+    assert(renate.card.includes('Anleihen verkaufen45.000 €netto'), `Soll 2: Renate „Anleihen verkaufen · 44.448 €“, angezeigt 45.000 € (${renate.card.slice(0, 200)})`);
     for (const variant of ['grund', 'haus-pg3']) {
         const helga = await renderCard(createMusterHaushaltRecords('2026-10-23', 'helga-werner', variant));
         assert(helga.card.includes('Anleihen verkaufen') && !helga.card.includes('Handlung prüfen'), `Soll 2: Helga und Werner (${variant}) mit passendem Verb`);
@@ -103,11 +104,11 @@ function planDone(records, cash) {
     assertEqual(main.text, 'Anleihen verkaufen', 'Soll 2: Bärenblock und Wahl nehmen dasselbe Verb');
     assertEqual(Math.round(main.netAmount), 44448, 'Soll 2: mit Netto-Betrag');
     const result = text(createTodoResult(new MockDocument(), projectAnnualTodoPlan({ confirmed: { year: 2026, action }, people: [{ id: 'muster_renate', name: 'Renate' }] })));
-    assert(result.includes('Anleihen verkaufen44.448 €netto') && !result.includes('Handlung prüfen'), 'Soll 2: Ergebnis im Jahresabschluss mit demselben Verb');
+    assert(result.includes('Anleihen verkaufen45.000 €netto') && !result.includes('Handlung prüfen'), 'Soll 2: Ergebnis im Jahresabschluss mit demselben Verb (44.448 € aufgerundet)');
     const variant = monthlyBudget => ({ monthlyBudget, mainAction: main });
     const choice = text(createAnnualMarketChoice(new MockDocument(), { yearEndDate: '2025-12-31', high: { high: { value: 165.79, asOf: '2026-08-12' } },
         comparison: { rule: variant(3000), high: variant(2900), difference: { monthlyBudget: -100 } } }, null, () => {}));
-    assert(choice.includes('Anleihen verkaufen 44.448 €') && !choice.includes('Handlung prüfen'), 'Soll 2: Wahl mit Verb und Betrag');
+    assert(choice.includes('Anleihen verkaufen 45.000 €') && !choice.includes('Handlung prüfen'), 'Soll 2: Wahl mit Verb und Betrag (44.448 € aufgerundet)');
     assertEqual(describePlanAction({ type: 'TRANSACTION', quellen: [], verwendungen: { bonds: 5000 } }).verb, 'Anleihen kaufen', 'Soll 2: reiner Anleihekauf');
 }
 
@@ -236,7 +237,8 @@ const bearView = (() => {
     for (let turn = 0; turn < 50 && option('year_high') === before; turn++) await settle();
     const changed = calls.filter(call => call.opts.adoptedPlanPatch && call.opts.yearHigh).at(-1);
     assert(changed, 'Soll 8: Wahl rechnet mit den geänderten Planwerten');
-    const money = value => `${Math.round(value).toLocaleString('de-DE')} €`;
+    // FR-78: Wahl und Zusammenfassung zeigen das Monatsbudget abgerundet nach der Monatsstaffel.
+    const money = value => `${Math.round(displayMonthlyDown(value)).toLocaleString('de-DE')} €`;
     assert(option('year_high') !== before && option('year_high').includes(`Monatsbudget ${money(changed.result.adopted.monthlyBudget)}`), `Soll 8: Betrag der Wahl neu (${before} → ${option('year_high')})`);
     assertEqual(summaryBudget(), 'Monatsbudget 2027 · nach deiner Wahl', 'Soll 8: auch nach der Änderung offen');
     const radio = all().find(node => node.dataset?.annualMarketReading === 'year_high'); radio.checked = true; await radio.fire('change');
@@ -260,7 +262,7 @@ const bearView = (() => {
 // Nachtrag 11 und 12 (Bildabnahme): „Details“ ohne doppeltes „zeigen“, Stand des alten Plans ohne „Erledigt“.
 {
     const note = text(createPlanProgressNote(new MockDocument(), { year: 2026, status: 'offen', soldNet: 0, planNet: 89312 }, true));
-    assertEqual(note, 'Plan 2026 · nicht umgesetzt0 € von 89.312 € verkauft. Der neue Plan ersetzt ihn.', 'Nachtrag 12: kein „Erledigt“ bei nicht umgesetztem Plan');
+    assertEqual(note, 'Plan 2026 · nicht umgesetzt0 € von 90.000 € verkauft. Der neue Plan ersetzt ihn.', 'Nachtrag 12: kein „Erledigt“ bei nicht umgesetztem Plan (ohne Planzeilen: Plan 89.312 € aufgerundet)');
     const { doc } = createDialogFixture();
     const action = beleg(createMusterHaushaltRecords('2026-10-23', 'renate')).adopted.action;
     const root = createAnnualTodoResult(doc, { year: 2027, action, text: 'Anleihen verkaufen', people: [{ id: 'muster_renate', name: 'Renate' }] });
@@ -280,6 +282,6 @@ const bearView = (() => {
     let shown = null;
     try { shown = await renderCard(records); } finally { console.warn = warn; }
     assertEqual(warned, 1, 'Befund 11: Aufbereitung des Belegs wirft, der Rückfall greift');
-    assert(shown.values.includes('nach Umsetzung179.185 €'), `Befund 11: Reserven mit der Neuberechnung (${shown.values})`);
-    assert(shown.card.includes('Aktien verkaufen89.312 €'), 'Befund 11: Karte zeigt weiter den Beleg');
+    assert(shown.values.includes('nach Umsetzung180.500 €'), `Befund 11: Reserven mit der Neuberechnung (179.185 €, angezeigt 180.500 €, nicht 179.500 € aus dem Beleg) (${shown.values})`);
+    assert(shown.card.includes('Aktien verkaufen89.500 €'), 'Befund 11: Karte zeigt weiter den Beleg (Summe der angezeigten Zeilen 89.500 €)');
 }

@@ -2658,17 +2658,17 @@ async function runBalanceSmoke(browser, baseUrl) {
         assert(overview.texts[id] === expected, `#${id} zeigt ganze Euro bei unverändertem Fachwert`);
     }
     for (const [label, expected] of [
-        [HOUSEHOLD_PLAN_FIELDS.find(field => field.path === 'floorBedarf').label.split(' (')[0], '1.500\u00a0€ / Monat'],
-        [HOUSEHOLD_PLAN_FIELDS.find(field => field.path === 'flexBedarf').label.split(' (')[0], '1.001\u00a0€ / Monat']
+        [HOUSEHOLD_PLAN_FIELDS.find(field => field.path === 'floorBedarf').label.split(' (')[0], '1.550\u00a0€ / Monat'],
+        [HOUSEHOLD_PLAN_FIELDS.find(field => field.path === 'flexBedarf').label.split(' (')[0], '1.050\u00a0€ / Monat']
     ]) {
         const matchingRows = Object.entries(overview.need).filter(([name]) => name === label || name.startsWith(label + ' ('));
-        assert(matchingRows.length === 1 && matchingRows[0][1] === expected, `${label} zeigt im echten DOM ganze Euro`);
+        assert(matchingRows.length === 1 && matchingRows[0][1] === expected, `${label} zeigt im echten DOM ganze Euro, aufgerundet nach der Monatsstaffel (FR-78)`);
     }
     assert(overview.texts.balanceNeedProfiles === '', 'Dein Bedarf zeigt ohne Profilbedarfsdaten kein Vermögen');
     assert(overview.texts.balanceReserveValues.includes('9.000\u00a0€'), 'Freie Liquidität zeigt im echten DOM ganze Euro');
     assert(overview.reserve['Gold-Bestand'] === '301\u00a0€', 'Gold-Bestand zeigt im echten DOM ganze Euro');
-    assert(overview.texts.balanceMonthlyBudget === '2.001\u00a0€', 'Großes Monatsbudget bleibt trotz Cent-Eingang ganzzahlig');
-    assert(overview.texts.balanceNeedTotal === '2.501\u00a0€' && overview.texts.balanceReserveTarget.includes('36 Monate'), 'Bedarf und Reserveziel nennen ihre Kennzahl und Planmonate');
+    assert(overview.texts.balanceMonthlyBudget === '2.000\u00a0€', 'Großes Monatsbudget bleibt trotz Cent-Eingang ganzzahlig, abgerundet (FR-78)');
+    assert(overview.texts.balanceNeedTotal === '2.600\u00a0€' && overview.texts.balanceReserveTarget.includes('36 Monate'), 'Bedarf (aufgerundet, FR-78) und Reserveziel nennen ihre Kennzahl und Planmonate');
 
     // Echte Diagnoseprojektion in einem vorübergehenden sichtbaren Host.
     for (const currentGoldValue of [0, 1234.56]) {

@@ -18,7 +18,7 @@ import { projectBalanceFlexTrace } from '../app/balance/balance-flex-trace.js';
 import { UIRenderer, initUIRenderer } from '../app/balance/balance-renderer.js';
 import { ActionRenderer } from '../app/balance/balance-renderer-action.js';
 import { currentYearActionSource, projectBalanceReserves } from '../app/balance/balance-reserves.js';
-import { projectAnnualActionProgress, remainingAnnualAction, withAnnualActionProgress, ANNUAL_ACTION_DONE_SHARE } from '../app/balance/annual-action-progress.js';
+import { projectAnnualActionProgress, remainingAnnualAction, withAnnualActionProgress, annualActionDoneThreshold } from '../app/balance/annual-action-progress.js';
 import { summarizeBalanceAction, describeBalanceActionSummary } from '../app/balance/balance-action-summary.js';
 import { projectOverviewFromRecords } from '../app/overview/overview-model.js';
 import { projectBalanceActionOrigin } from '../app/balance/balance-action-origin.js';
@@ -116,37 +116,37 @@ const ERIKA = { profileId: 'muster_b', trancheId: 'muster_b_lot_2', net: 79950, 
     assertEqual(a1.progress.status, 'offen', 'A1: Nicht umgesetzt, Plan offen');
     assertEqual(a1.view.before.liquidity, 90000, 'A1: heute 90.000 €');
     assertClose(a1.view.after.liquidity, 179312.50, 0.01, 'A1: nach Umsetzung 179.312,50 €');
-    assert(a1.card.values.includes('nach Umsetzung179.312 €'), 'A1: Reservekarte zeigt 179.312 € nach Umsetzung');
+    assert(a1.card.values.includes('nach Umsetzung179.500 €'), 'A1: Reservekarte zeigt nach Umsetzung 90.000 + angezeigter Plan 89.500 = 179.500 € (Ergänzung 2 FR-78)');
     assert(a1.diagnosis.includes('89.312 € netto'), 'A1: Diagnose nennt den ganzen Beleg, 89.312 € netto');
     // A4: Die persönlichen Tagesgeldziele kommen aus den Personeneinträgen des laufenden Jahres.
     assertEqual(a1.view.targets.map(row => `${row.name} ${row.target}`).join(' · '), 'Max 5000 · Erika 27400', 'A4: Tagesgeldziele Max 5.000 € und Erika 27.400 €');
-    assertEqual(a1.card.targets, 'Tagesgeldziel: Max 5.000 € · Erika 27.400 € · Summe 32.400 €', 'A4: Die Zeile mit den persönlichen Tagesgeldzielen steht wieder da');
+    assertEqual(a1.card.targets, 'Tagesgeldziel: Max 5.000 € · Erika 27.500 € · Summe 32.500 €', 'A4: Die Zeile mit den persönlichen Tagesgeldzielen steht wieder da (Ziele aufgerundet, FR-78)');
 
     const a2 = await maxErika([MAX, ERIKA]);
     assertEqual(a2.progress.status, 'erledigt', 'A2: Beide Zeilen erledigt');
     assertEqual(a2.progress.restNet, 0, 'A2: Offener Rest 0 €');
     assertClose(a2.view.before.liquidity, 179312.50, 0.01, 'A2: heute 179.312,50 €');
     assertClose(a2.view.after.liquidity, 179312.50, 0.01, 'A2: nach Umsetzung 179.312,50 €, nicht 268.625 €');
-    assert(a2.card.values.includes('nach Umsetzung179.313 €') && !a2.card.values.includes('268.625'), 'A2: Reservekarte zählt den Erlös nicht doppelt');
+    assert(a2.card.values.includes('nach Umsetzung179.313 €') && !a2.card.values.includes('268.'), 'A2: Reservekarte zählt den Erlös nicht doppelt (umgesetzt: nach Umsetzung = heute, genau)');
     assert(!a2.diagnosis.includes('netto'), 'A2: Diagnose nennt keinen offenen Verkauf mehr');
-    assertEqual(a2.card.targets, 'Tagesgeldziel: Max 5.000 € · Erika 27.400 € · Summe 32.400 €', 'A4: Tagesgeldziele auch nach der Umsetzung');
+    assertEqual(a2.card.targets, 'Tagesgeldziel: Max 5.000 € · Erika 27.500 € · Summe 32.500 €', 'A4: Tagesgeldziele auch nach der Umsetzung');
 
-    // Max hat seine Zeile verkauft (9.362,50 € von 9.362,92 €, über 98 %); offen bleibt Erikas Zeile.
+    // Max hat seine Zeile verkauft (9.362,50 € von 9.362,92 €, über der Grenze Plan − ½ Stufe = 8.862,92 €); offen bleibt Erikas Zeile.
     const a3 = await maxErika([MAX]);
     assertEqual(a3.progress.lines.map(line => line.status).join(' · '), 'erledigt · offen', 'A3: Max erledigt, Erika offen');
     assertEqual(a3.progress.status, 'teilweise', 'A3: Plan teilweise umgesetzt');
     assertClose(a3.view.before.liquidity, 99362.50, 0.01, 'A3: heute 99.362,50 €');
     assertClose(a3.progress.restNet, 79950, 0.5, 'A3: offener Rest 79.950 €');
-    assertClose(a3.view.after.liquidity, 179312.50, 0.5, 'A3: nach Umsetzung 179.312,50 € (Beleg-Cent von Max fällt unter die 98-%-Regel)');
-    assert(a3.card.values.includes('nach Umsetzung179.312 €'), 'A3: Reservekarte zeigt 179.312 € nach Umsetzung');
+    assertClose(a3.view.after.liquidity, 179312.50, 0.5, 'A3: nach Umsetzung 179.312,50 € (Beleg-Cent von Max fällt unter die Erledigt-Grenze)');
+    assert(a3.card.values.includes('nach Umsetzung179.363 €'), 'A3: Reservekarte zeigt heute 99.362,50 € + angezeigter Rest 80.000 € = 179.363 €');
     assert(a3.diagnosis.includes('79.950 € netto'), 'A3: Diagnose nennt den offenen Rest 79.950 € netto');
 
     // Planversuch: Die Karte rechnet wie vor GU-1 mit der Neuberechnung (89.185,46 € netto zu heutigen Kursen).
     const trial = await maxErika([], { trial: true });
-    assert(trial.card.values.includes('nach Umsetzung179.185 €'), 'A: Im Planversuch rechnet die Karte mit der Neuberechnung, nicht mit dem Beleg');
+    assert(trial.card.values.includes('nach Umsetzung180.500 €'), 'A: Im Planversuch rechnet die Karte mit der Neuberechnung (179.185 €, angezeigt 180.500 €), nicht mit dem Beleg (179.500 €)');
 }
 
-// FR-77 Punkt 2 an der reinen Funktion: Person und Anlageklasse, Beschlusstag, Planjahr, 98 %, Gutschrift offen.
+// FR-77 Punkt 2 an der reinen Funktion: Person und Anlageklasse, Beschlusstag, Planjahr, Erledigt-Grenze, Gutschrift offen.
 {
     const action = { quellen: [{ kind: 'aktien_neu', category: 'equity', sourceProfileId: 'a', brutto: 10500, steuer: 500, netto: 10000 },
         { kind: 'gold', category: 'gold', sourceProfileId: 'a', brutto: 4000, steuer: 0, netto: 4000 },
@@ -155,15 +155,16 @@ const ERIKA = { profileId: 'muster_b', trancheId: 'muster_b_lot_2', net: 79950, 
         verwendungen: { liquiditaet: 20000, gold: 0 }, nettoErlös: 20000, steuer: 500, bruttoVerkaufGesamt: 20500 };
     const sale = (profileId, assetClass, netProceeds, executedAt = '2026-03-01', creditPending = false) => ({ profileId, trancheId: 'x', executedAt, netProceeds, assetClass, creditPending });
     const progress = sales => projectAnnualActionProgress({ action, year: 2026, decidedOn: '2026-01-05', sales });
-    assertEqual(ANNUAL_ACTION_DONE_SHARE, 0.98, 'FR-77: Ab 98 % gilt eine Zeile als erledigt');
+    // RD-1 (FR-77 Punkt 2 geändert): erledigt ab Plan − ½ Stufe nach QUANTIZATION_TIERS statt ab 98 %.
+    assertEqual(`${annualActionDoneThreshold(10000)} · ${annualActionDoneThreshold(4000)}`, '7500 · 3500', 'FR-77: Grenze 10.000 € − 2.500 € und 4.000 € − 500 €');
     assertEqual(progress([]).lines.length, 3, 'FR-77: Drei Planzeilen, die interne Umschichtung ist keine');
     const partial = progress([sale('a', 'equity', 4000), sale('b', 'gold', 6000), sale('a', 'equity', 3000, '2026-01-04'), sale('a', 'equity', 3000, '2025-12-30')]);
     assertEqual(partial.lines.map(line => line.status).join(' · '), 'teilweise · offen · offen', 'FR-77: Nur dieselbe Person, Anlageklasse, ab Beschluss und im Planjahr');
     assertEqual(partial.lines[0].restNet, 6000, 'FR-77: Rest = Plan − verkauft');
-    const done = progress([sale('a', 'equity', 9800, '2026-01-05', true), sale('a', 'gold', 3919.99), sale('b', 'equity', 7000)]);
-    assertEqual(done.lines.map(line => line.status).join(' · '), 'erledigt · teilweise · erledigt', 'FR-77: 98 % genau erledigt, knapp darunter teilweise');
-    assertEqual(done.lines[0].creditPendingNet, 9800, 'FR-77: Verkauf ohne Gutschrift bleibt für „Gutschrift nachtragen“ erkennbar');
-    assertClose(done.restNet, 80.01, 1e-9, 'FR-77: Offener Rest nur aus der Goldzeile');
+    const done = progress([sale('a', 'equity', 7500, '2026-01-05', true), sale('a', 'gold', 3499.99), sale('b', 'equity', 7000)]);
+    assertEqual(done.lines.map(line => line.status).join(' · '), 'erledigt · teilweise · erledigt', 'FR-77: genau auf der Grenze erledigt, knapp darunter teilweise, mehr verkauft erledigt');
+    assertEqual(done.lines[0].creditPendingNet, 7500, 'FR-77: Verkauf ohne Gutschrift bleibt für „Gutschrift nachtragen“ erkennbar');
+    assertClose(done.restNet, 500.01, 1e-9, 'FR-77: Offener Rest nur aus der Goldzeile');
     const rest = remainingAnnualAction(action, partial);
     assertEqual(rest.quellen.map(source => source.netto).join(' · '), '6000 · 4000 · 6000 · 1000', 'Offener Rest: Quellen anteilig, interne Umschichtung unverändert');
     assertEqual(rest.quellen[0].steuer, 300, 'Offener Rest: Steuer der Zeile anteilig');

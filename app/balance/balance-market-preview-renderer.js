@@ -2,6 +2,7 @@
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { isHiddenBearMarket, hiddenBearCheckUnreliable, hiddenBearPriceProblem } from './balance-market-preview.js';
 import { createHiddenBearBlock } from '../shared/annual-todo-view.js';
+import { displayMonthlyDown } from '../shared/display-rounding.js';
 
 /** @typedef {ReturnType<typeof import('./balance-market-preview.js').projectMarketPreview>} MarketPreview */
 /** @typedef {MarketPreview|import('./balance-market-preview.js').UnavailableMarketPreview} Preview */
@@ -171,6 +172,9 @@ export function renderBalanceMarketPreview(doc, view, projection = null) {
     const { comparison } = hidden;
     if (budget && ['budget_lower', 'budget_higher'].includes(comparison.state) && comparison.high && comparison.difference) {
         budget.hidden = false;
-        budget.append(make(doc, 'span', highLabel(hidden)), make(doc, 'strong', `${money(comparison.high.monthlyBudget)} · ${number(comparison.difference.monthlyBudget, 0, true)} € im Monat`));
+        // FR-78: Monatsbudget abgerundet; der Unterschied ergibt sich aus den gezeigten Beträgen.
+        const shownHigh = displayMonthlyDown(comparison.high.monthlyBudget), shownRule = displayMonthlyDown(comparison.rule?.monthlyBudget);
+        const shownDifference = Number.isFinite(shownHigh) && Number.isFinite(shownRule) ? shownHigh - shownRule : comparison.difference.monthlyBudget;
+        budget.append(make(doc, 'span', highLabel(hidden)), make(doc, 'strong', `${money(shownHigh)} · ${number(shownDifference, 0, true)} € im Monat`));
     }
 }

@@ -1,6 +1,7 @@
 /** Auswahl und Herkunftszeile im Jahresabschluss; der Dialog besitzt den Entwurf. Die Auswahl steht im Schritt „Plan“ (FR-77). */
 import { classifyMarketPreview } from '../balance/balance-market-preview.js';
 import { formatDisplayNumber } from './designsystem-number-format.js';
+import { displayMonthlyDown, displayActionAmount } from './display-rounding.js';
 
 /** @param {string|null} value */
 export const marketChoiceDate = value => value?.split('-').reverse().join('.') || 'Datum nicht belegt';
@@ -21,10 +22,15 @@ export function createAnnualMarketChoice(doc, view, selection, onChoose, amounts
     root.append(node('legend', `Welcher Plan gilt für ${year}?`, 'ds-visually-hidden'));
     const comparison = view.comparison;
     const money = value => formatDisplayNumber(value, { fractionDigits: 0 }) + ' €';
-    const sale = variant => variant.mainAction.text === 'Nichts tun' || !Number.isFinite(variant.mainAction.netAmount) ? 'kein Verkauf'
-        : `${variant.mainAction.text} ${money(variant.mainAction.netAmount)}`;
+    // FR-78: Verkauf auf, Kauf ab, Monatsbudget ab; der Kurs des Hochs bleibt genau.
+    const sale = (variant, exact = false) => variant.mainAction.text === 'Nichts tun' || !Number.isFinite(variant.mainAction.netAmount) ? 'kein Verkauf'
+        : `${variant.mainAction.text} ${money(exact ? variant.mainAction.netAmount : displayActionAmount(variant.mainAction.text, variant.mainAction.netAmount))}`;
     const variants = /** @type {[string, typeof comparison.rule][]} */ ([['year_end', comparison.rule && amounts?.year_end ? { ...comparison.rule, ...amounts.year_end } : comparison.rule],
         ['year_high', comparison.high && amounts?.year_high ? { ...comparison.high, ...amounts.year_high } : comparison.high]]);
+    const line = (variant, exact = false) => `Monatsbudget ${money(exact ? variant.monthlyBudget : displayMonthlyDown(variant.monthlyBudget))} · ${sale(variant, exact)}`;
+    // RD-1c: Sähen beide Optionen gerundet gleich aus, obwohl sie sich unterscheiden, zeigt die Wahl beide genau.
+    const [first, second] = variants.map(([, variant]) => variant);
+    const exact = Boolean(first && second && line(first) === line(second) && line(first, true) !== line(second, true));
     const lower = amounts?.year_end && amounts?.year_high && Number.isFinite(amounts.year_end.monthlyBudget) && Number.isFinite(amounts.year_high.monthlyBudget)
         ? /** @type {number} */ (amounts.year_high.monthlyBudget) < /** @type {number} */ (amounts.year_end.monthlyBudget) : (comparison.difference?.monthlyBudget || 0) < 0;
     for (const [id, variant] of variants) {
@@ -37,7 +43,7 @@ export function createAnnualMarketChoice(doc, view, selection, onChoose, amounts
         option.dataset.selected = String(selection === id);
         option.append(radio, node('strong', id === 'year_end' ? 'Nach Kursen zum Jahresende' : `Mit dem Jahreshoch vom ${marketChoiceDate(view.high.high.asOf)}`));
         if (id === 'year_high' && lower) option.append(node('span', ' · vorsichtiger', 'ds-source'));
-        option.append(node('span', `Monatsbudget ${money(variant.monthlyBudget)} · ${sale(variant)}`, 'annual-market-option-budget'));
+        option.append(node('span', line(variant, exact), 'annual-market-option-budget'));
         root.append(option);
     }
     root.append(node('p', `Die App wählt nichts vor. Deine Wahl steht im Jahresbeleg und am Plan ${year}. Mit dem Jahreshoch gilt das Hoch von ${money(view.high.high.value)} auch für die Folgejahre.`, 'ds-source'));

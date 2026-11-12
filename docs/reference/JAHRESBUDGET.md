@@ -92,7 +92,7 @@ Die Kurve zeigt den Basisdeckel bei vollem Vermögensfaktor vor Wunschschutz. Mi
 
 ### Rundung
 
-Die App rundet die Monatsentnahme ab und rechnet sie wieder aufs Jahr hoch. Der offene Grundbedarf bleibt die Untergrenze. Die ausgezahlte Flex-Rate sinkt dadurch; der nächste Ratenanker bewahrt den Wert vor Rundung. Das verhindert, dass Rundungsreste jedes Jahr eine neue Kürzung erzeugen.
+Die App rundet die Monatsentnahme ab und rechnet sie wieder aufs Jahr hoch. Der offene Grundbedarf bleibt die Untergrenze. Die ausgezahlte Flex-Rate sinkt dadurch; der nächste Ratenanker bewahrt den Wert vor Rundung. Das verhindert, dass Rundungsreste jedes Jahr eine neue Kürzung erzeugen. Davon getrennt rundet die Anzeige das Monatsbudget nur fürs Lesen ab; das Jahr steht dann als gerundeter Monatswert × 12 ([Gerundete Anzeige](HANDLUNGSANWEISUNG.md#gerundete-anzeige)).
 
 ## Jahresgedächtnis
 

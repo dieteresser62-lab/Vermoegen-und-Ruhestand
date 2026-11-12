@@ -11,9 +11,18 @@ Stand 12. November 2026.
 - Gespeicherte Rentenanpassungen bleiben, wie sie sind. Wer „wie Löhne“ eingestellt hat, rechnet weiter damit und sieht dazu einen Hinweis.
 - Ergebnisse, die vor dieser Fassung gerechnet wurden, zeigt die Übersicht einmal als veraltet. Ein Backtest ohne Dynamic Flex bleibt gültig.
 
+### Gerundete Anzeige
+
+- Beträge, die die App berechnet, stehen gerundet da: unter 10.000 € auf 500 €, unter 25.000 € auf 1.000 €, unter 50.000 € auf 2.500 €, unter 200.000 € auf 5.000 €, unter 1 Mio. € auf 10.000 €, darüber auf 25.000 €. Monatswerte runden auf 50, 100 oder 250 €.
+- Was du brauchst oder ausgibst, wird aufgerundet: Bedarf, Ziele, Verkäufe, Steuer, „Tagesgeld auffüllen“. Was dir zur Verfügung steht, wird abgerundet: Budget, Flex, Käufe, Liquidität nach Umsetzung. Der Jahreswert ist der gerundete Monatswert mal 12.
+- Genau bleiben Einkünfte, Kontostände, eingetragene Verkäufe, beschlossene Planwerte und deine Eingaben, dazu „Details & Drucken“, Diagnose, Ausgaben-Check, Simulator und alle Exporte. Gerechnet wird weiter genau.
+- Summen, Stände „nach Umsetzung“ und Differenzen entstehen aus den angezeigten Beträgen und gehen deshalb auf. Die Budgetzeile nennt Einkünfte und Entnahme ohne Summe, weil die Einkünfte genau bleiben.
+- Das gilt im Balance-Überblick, in „Was zu tun ist“, „Deine Reserven“, im Jahresabschluss und in der Übersicht.
+
 ### Balance
 
 - Die Karte „Was zu tun ist“ ersetzt im Überblick Handlungsanweisung, Budgetprüfung und Marktphase. Sie zeigt oben den Plan aus dem Jahresabschluss mit Stand je Zeile: „Offen“, „Teilweise erledigt“ oder „Erledigt“. Der Stand kommt aus den eingetragenen Verkäufen seit dem Beschluss.
+- Eine Planzeile gilt als erledigt, sobald etwas verkauft ist und höchstens eine halbe Rundungsstufe fehlt; mehr verkaufen zählt auch. Vorher galt eine feste Grenze von 98 %.
 - „Verkauf eintragen“ öffnet den Verkaufsdialog mit der Tranche der Planzeile. Fehlt zu einem Verkauf die Gutschrift aufs Tagesgeld, steht dort „Gutschrift nachtragen“.
 - Deckt das Tagesgeld weniger als sechs Monate Entnahme und ist kein Planverkauf offen, schlägt die Karte „Tagesgeld auffüllen“ vor, bei Paaren je Person.
 - Unten in der Karte steht zugeklappt „Vorschau auf den Plan ‹Jahr›“: der Plan, den der nächste Jahresabschluss beschließen würde.

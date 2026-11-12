@@ -60,10 +60,12 @@ export function projectAnnualTodoPlan({ confirmed, people = [], routing = null, 
     const open = rows.find(row => row.status !== 'erledigt') || null;
     const uses = Object.entries(action.verwendungen || {}).filter(([, amount]) => finite(amount) && amount > 0);
     const months = Number.isInteger(cashMonths) && cashMonths > 0 ? cashMonths : 12;
-    /** @type {{label: string, amount: number}[]} */
+    // RD-1e: `purchase` kennzeichnet Käufe (Gold, Aktien, Anleihen); die Anzeige rundet sie ab.
+    const PURCHASE_KEYS = ['gold', 'aktien', 'bonds'];
+    /** @type {{label: string, amount: number, purchase?: boolean}[]} */
     const destinations = [];
     for (const [key, amount] of uses) {
-        if (key !== 'liquiditaet') { destinations.push({ label: USE_NAMES[key] || `In ${key}`, amount }); continue; }
+        if (key !== 'liquiditaet') { destinations.push({ label: USE_NAMES[key] || `In ${key}`, amount, purchase: PURCHASE_KEYS.includes(key) }); continue; }
         if (routing && finite(routing.tagesgeld) && finite(routing.geldmarkt)) {
             if (routing.geldmarkt > 0.5) destinations.push({ label: `Aufs Tagesgeld, bis es ${months} Monate Entnahme deckt`, amount: routing.tagesgeld },
                 { label: 'Der Rest in den Geldmarkt', amount: routing.geldmarkt });
@@ -71,7 +73,7 @@ export function projectAnnualTodoPlan({ confirmed, people = [], routing = null, 
         } else destinations.push({ label: 'Aufs Tagesgeld bis zum Tagesgeldziel, der Rest in den Geldmarkt', amount });
     }
     // Käufe tragen im Beleg keine Person (Verwendungen des Haushalts); ihr Stand ist ohne Raten nicht ableitbar.
-    const purchases = uses.filter(([key]) => key !== 'liquiditaet' && key !== 'cash').map(([key, amount]) => ({ label: USE_NAMES[key] || `In ${key}`, amount }));
+    const purchases = uses.filter(([key]) => key !== 'liquiditaet' && key !== 'cash').map(([key, amount]) => ({ label: USE_NAMES[key] || `In ${key}`, amount, purchase: PURCHASE_KEYS.includes(key) }));
     const credits = (progress?.creditPendingSales || []).map((/** @type {any} */ sale) => ({ profileId: sale.profileId, date: todoDate(sale.executedAt),
         amount: sale.netProceeds, who: people.find(entry => entry.id === sale.profileId)?.name || null }));
     const securities = [...new Set(rows.filter(row => row.restNet > 0).map(row => row.security))];

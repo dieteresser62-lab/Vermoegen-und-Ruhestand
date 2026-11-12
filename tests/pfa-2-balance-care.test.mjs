@@ -123,9 +123,9 @@ assert(married.calculation.profiles.every(entry => !entry.personalCareNeed), 'U 
         const rows = () => outputs.balanceNeedRows.children.flatMap(group => group.className === 'household-plan-group' ? group.children.slice(1) : [group]);
         const row = label => rows().find(line => line.children[0].textContent.startsWith(label));
         const amount = line => line.children[1].children.length ? line.children[1].children.map(node => node.textContent).join('') : line.children[1].textContent;
-        for (const [result, label, expected, floor] of [[D, 'Heim Werner', '2.611 € / Monat', '2.250 € / Monat'], [A, 'Pflege Werner', '1.500 € / Monat', '3.000 € / Monat']]) {
+        for (const [result, label, expected, floor] of [[D, 'Heim Werner', '2.700 € / Monat', '2.300 € / Monat'], [A, 'Pflege Werner', '1.500 € / Monat', '3.000 € / Monat']]) {
             renderer.renderPlanCards({ ...result.engine.ui, input: result.input, careNeeds: result.care });
-            assertEqual(amount(row(label)), expected, `Monatsbudget zeigt „${label}“`);
+            assertEqual(amount(row(label)), expected, `Monatsbudget zeigt „${label}“ (Bedarf aufgerundet, FR-78)`);
             assertEqual(amount(row(householdPlanFieldSpec('floorBedarf').label)), floor, `Monatsbudget zeigt den Grundbedarf zu Hause (${label})`);
             assert(!row('Pflege Helga') && !row('Heim Helga'), 'Keine Zeile für Personen ohne Pflegegrad');
         }

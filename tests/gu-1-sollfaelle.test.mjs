@@ -174,7 +174,7 @@ P.resetPersistenceForTests(); setAppTestDate(null);
         UIRenderer.render({ ...buildBalanceRendererPayload(projected.modelResult, { ...projected.inputData, referenceYear: next.targetYear }), nextYearBudget: next,
             currentYear: current, profileActionResults: entriesOf(projected.profilverbundRuns) });
         const text = id => doc.getElementById(id).textContent.replaceAll(' ', ' ');
-        assert(text('balanceReserveValues').includes('nach Umsetzung179.312 €'), 'S4: Reservekarte zeigt 179.312 € nach Umsetzung');
+        assert(text('balanceReserveValues').includes('nach Umsetzung179.500 €'), 'S4: Reservekarte zeigt nach Umsetzung 90.000 + 89.500 = 179.500 € (Ergänzung 2 FR-78)');
         assertEqual(text('balanceBudgetCut'), 'Dein Haushalts-Flex ist voll finanziert.', 'S3: Keine Warnung „zu … % finanziert“ aus der Rundung');
     } finally { Object.assign(globalThis, saved); }
     P.resetPersistenceForTests(); setAppTestDate(null);

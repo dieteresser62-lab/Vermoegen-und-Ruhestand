@@ -11,6 +11,7 @@ import { createManualAnnualQuote } from './annual-marketdata.js';
 import { appNow } from './app-clock.js';
 import { bindHouseholdPlanDynamicFlex } from './household-plan-dynamic-flex.js';
 import { createPlannedPostsView } from '../balance/balance-planned-posts-renderer.js';
+import { displayMonthlyDown } from './display-rounding.js';
 
 /** Rechnet ausschließlich in privatem Speicher, mit Engine auf Abruf.
  *
@@ -148,6 +149,8 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
     const details = create('div'); details.dataset.planDynamicDetails = ''; details.hidden = true;
     groups[4].append(presets);
     const money = value => Math.round(value + Number.EPSILON * Math.abs(value)).toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+    // FR-78: Das Monatsbudget des Folgejahrs abgerundet (Monatsstaffel); die Entnahme ist schon nach der Engine-Staffel gerundet.
+    const planMoney = (/** @type {number} */ value, /** @type {string} */ key) => money(key === 'monthlyBudget' ? displayMonthlyDown(value) : value);
     refreshSuggestions = () => {
         if (!initialized || !getPreview) return;
         const state = draft.read(), preview = getPreview();
@@ -176,7 +179,7 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
     // WT-1b (Entwurf 5): Solange die Wahl zum Jahreshoch offen ist, hängen Budget und Entnahme an ihr („nach deiner Wahl“).
     const renderPlanAmounts = (/** @type {any} */ adopted) => {
         const note = budgetNote();
-        for (const key of ['monthlyBudget', 'monthlyWithdrawal']) summaryCells.get(key).value.textContent = note || (adopted ? money(adopted[key]) : '—');
+        for (const key of ['monthlyBudget', 'monthlyWithdrawal']) summaryCells.get(key).value.textContent = note || (adopted ? planMoney(adopted[key], key) : '—');
     };
     const draft = createAnnualPlanDraft({ evaluate, notify: state => {
         for (const [path, field] of fields) {
@@ -188,8 +191,8 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
         badge.hidden = !state.dirty; discard.disabled = !state.dirty || !initialized;
         if (state.dirty && (!getPreview || [...fields.keys()].some(path => !ANNUAL_NEED_PATHS.includes(path) && !Object.is(getPlanField(state.values, path), getPlanField(baseValues, path))))) { panel.hidden = false; toggle.setAttribute('aria-expanded', 'true'); }
         for (const [index, key] of ['monthlyWithdrawal', 'monthlyBudget'].entries()) {
-            adoptedCells[index].textContent = state.valid ? money(state.result.adopted[key]) : '—';
-            if (state.valid) recommendedCells[index].textContent = money(state.result.recommended[key]);
+            adoptedCells[index].textContent = state.valid ? planMoney(state.result.adopted[key], key) : '—';
+            if (state.valid) recommendedCells[index].textContent = planMoney(state.result.recommended[key], key);
         }
         if (getPreview) {
             const preview = getPreview(), adopted = state.valid ? state.result.adopted : null;

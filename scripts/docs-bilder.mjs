@@ -18,6 +18,7 @@ import { capturePH1B } from './ph1b-bilder.mjs';
 import { captureGV2 } from './gv2-kontakt.mjs';
 import { captureMH3 } from './mh3-bilder.mjs';
 import { captureWT1 } from './wt1-bilder.mjs';
+import { captureRD1 } from './rd1-bilder.mjs';
 import { captureLY1 } from './ly1-bilder.mjs';
 import { captureFJ2 } from './fj2-bilder.mjs';
 import { captureBP2 } from './bp2-bilder.mjs';
@@ -1214,6 +1215,10 @@ async function main() {
         }
         if (process.argv.includes('--wt1')) {
             await captureWT1({ browser, baseUrl, newProbelauf, goto, tab, changeDate, poll, reviewRoot });
+            return;
+        }
+        if (process.argv.includes('--rd1')) {
+            await captureRD1({ browser, baseUrl, newProbelauf, goto, tab, changeDate, poll, importExample, reviewRoot });
             return;
         }
         if (process.argv.includes('--ly1')) {

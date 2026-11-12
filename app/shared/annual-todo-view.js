@@ -3,6 +3,7 @@
 import { formatDisplayNumber } from './designsystem-number-format.js';
 import { saleEntryHref, todoDate, annualPlanStatusText, stockTrancheId } from '../balance/annual-todo.js';
 import { createMarketHistory } from '../balance/balance-market-history.js';
+import { displayUp, displayMonthlyDown, displayDown, displayActionAmount } from './display-rounding.js';
 
 /** @param {string|null|undefined} value */
 const marketChoiceDate = value => value?.split('-').reverse().join('.') || 'Datum nicht belegt';
@@ -13,6 +14,34 @@ const marketChoiceDate = value => value?.split('-').reverse().join('.') || 'Datu
 
 /** @param {number|null|undefined} value */
 export const todoMoney = value => Number.isFinite(value) ? `${formatDisplayNumber(/** @type {number} */ (value), { fractionDigits: 0 })} €` : '—';
+/** FR-78: Verkaufs- und Umschichtungsbeträge, Ziele und Steuer einer Empfehlung, aufgerundet (Käufe: `displayActionAmount`, ab). Genau bleiben Verkaufserlöse,
+ * Kontostände und alles in „Details & Drucken“. @param {number|null|undefined} value */
+const upMoney = value => todoMoney(displayUp(value));
+/** FR-78: Monatsbudget, abgerundet nach der Monatsstaffel. @param {number|null|undefined} value */
+const budgetMoney = value => todoMoney(displayMonthlyDown(value));
+/** Ergänzung 2 FR-78: Summen aus den angezeigten Beträgen. Plan = Summe der angezeigten Zeilen, ohne Zeilen der gerundete Betrag.
+ * @param {{rows: {planNet: number}[], amount?: number|null}} plan @returns {number|null} */
+const shownPlan = plan => plan.rows.length ? plan.rows.reduce((sum, row) => sum + displayUp(row.planNet), 0)
+    : Number.isFinite(plan.amount) ? displayActionAmount(/** @type {any} */ (plan).verb, plan.amount) : null;
+/** Offener Rest = Summe der angezeigten offenen Reste. @param {{rows: {restNet: number}[]}} plan */
+const shownRest = plan => plan.rows.filter(row => row.restNet > 0).reduce((sum, row) => sum + displayUp(row.restNet), 0);
+/** Aufteilung eines angezeigten Gesamtbetrags. Käufe (`purchase`) stehen in jedem Status abgerundet, unter der kleinsten Stufe in
+ * ganzen Euro (RD-1e); die übrigen Teile mit `round` (Verkaufserlös auf). Den Unterschied zum Gesamtbetrag nimmt der letzte Teil, der
+ * kein Kauf ist, wenn er dabei nahe am genauen Wert bleibt (nicht unter seinem abgerundeten, nicht über seinem aufgerundeten Wert, über 0).
+ * RD-1f: Mit Kaufanteil entfällt die obere Schranke; der Rest ist dann angezeigter Verkauf minus die übrigen Teile, solange er über 0 liegt.
+ * @param {{amount: number, purchase?: boolean}[]} entries genaue Teile @param {number|null} total angezeigter Gesamtbetrag
+ * @param {(value: number)=>number} [round] @returns {number[]} */
+function shownParts(entries, total, round = displayUp) {
+    const rounded = entries.map(entry => entry.purchase ? displayActionAmount(' kaufen', entry.amount) : round(entry.amount));
+    if (!Number.isFinite(total) || !entries.length) return rounded;
+    if (entries.length === 1) return [/** @type {number} */ (total)];
+    const restIndex = entries.map((entry, index) => entry.purchase ? -1 : index).filter(index => index >= 0).at(-1);
+    if (restIndex === undefined) return rounded;
+    const rest = /** @type {number} */ (total) - rounded.reduce((sum, amount, index) => index === restIndex ? sum : sum + amount, 0);
+    const exact = entries[restIndex].amount;
+    const fits = entries.some(entry => entry.purchase) ? rest > 0 : rest > 0 && rest >= displayDown(exact) && rest <= displayUp(exact);
+    return fits ? rounded.map((amount, index) => index === restIndex ? rest : amount) : rounded;
+}
 /** Beträge mit Cent für „Details & Drucken“ (WT-1b). @param {number|null|undefined} value */
 const centMoney = value => Number.isFinite(value) ? `${formatDisplayNumber(/** @type {number} */ (value), { fractionDigits: 2 })} €` : '—';
 /** WT-1b: Satz zur Umsetzung, bei Plänen ohne Verkaufszeile neutral. @param {{rows: any[], purchases: any[]}} plan */
@@ -40,7 +69,7 @@ function statusChip(doc, status, short = false) {
     return chip;
 }
 
-/** Hauptzeile mit Verb und Netto-Betrag. @param {Document} doc @param {string} verb @param {number|null} amount @param {string} note */
+/** Hauptzeile mit Verb und angezeigtem Netto-Betrag (FR-78). @param {Document} doc @param {string} verb @param {number|null} amount @param {string} note */
 function mainLine(doc, verb, amount, note) {
     const line = make(doc, 'div', undefined, 'todo-main');
     line.append(make(doc, 'span', verb, 'todo-main-verb'));
@@ -81,19 +110,21 @@ function rowState(doc, row) {
     const cell = make(doc, 'span', undefined, 'todo-row-state');
     cell.append(statusChip(doc, row.status, true));
     const date = todoDate(row.lastSaleAt);
-    if (row.status === 'teilweise') cell.append(make(doc, 'span', ` ${todoMoney(row.soldNet)}${date ? ` am ${date}` : ''} · ${todoMoney(row.restNet)} offen`, 'ds-source'));
+    if (row.status === 'teilweise') cell.append(make(doc, 'span', ` ${todoMoney(row.soldNet)}${date ? ` am ${date}` : ''} · ${upMoney(row.restNet)} offen`, 'ds-source'));
     else if (row.status === 'erledigt' && date) cell.append(make(doc, 'span', ` am ${date}`, 'ds-source'));
     return cell;
 }
 
-/** „Wohin das Geld geht“. @param {Document} doc @param {TodoPlan['destinations']} destinations @param {boolean} [withHeading]
- * @param {(value: number)=>string} [money] */
-function destinationsBlock(doc, destinations, withHeading = true, money = todoMoney) {
+/** „Wohin das Geld geht“. Ohne eigenes Format (`money`) zeigt der Block die Aufteilung des angezeigten Betrags `total`.
+ * @param {Document} doc @param {TodoPlan['destinations']} destinations @param {boolean} [withHeading]
+ * @param {((value: number)=>string)|null} [money] @param {number|null} [total] */
+function destinationsBlock(doc, destinations, withHeading = true, money = null, total = null, round = displayUp) {
     const block = make(doc, 'div', undefined, 'todo-destinations');
     if (withHeading) block.append(make(doc, 'div', 'Wohin das Geld geht', 'ds-source'));
-    for (const entry of destinations) {
+    const parts = money ? null : shownParts(destinations, total, round);
+    for (const [index, entry] of destinations.entries()) {
         const row = make(doc, 'div', undefined, 'todo-destination');
-        row.append(make(doc, 'span', entry.label), make(doc, 'span', money(entry.amount), 'todo-destination-amount'));
+        row.append(make(doc, 'span', entry.label), make(doc, 'span', money ? money(entry.amount) : todoMoney(parts?.[index]), 'todo-destination-amount'));
         block.append(row);
     }
     return block;
@@ -115,7 +146,7 @@ export function createTodoPlan(doc, plan, { detailsButton = true } = {}) {
         const status = make(doc, 'div', undefined, 'todo-status');
         const head = make(doc, 'div', undefined, 'todo-status-head');
         head.append(statusChip(doc, plan.status), make(doc, 'span', plan.status === 'offen' ? 'Noch kein Verkauf eingetragen.'
-            : plan.status === 'teilweise' ? `${todoMoney(plan.soldNet)} von ${todoMoney(plan.planNet)} verkauft`
+            : plan.status === 'teilweise' ? `${todoMoney(plan.soldNet)} von ${todoMoney(shownPlan(plan))} verkauft`
                 : `Alle Verkäufe aus dem Plan ${plan.year} sind eingetragen${plan.lastSaleDate ? `, zuletzt am ${plan.lastSaleDate}` : ''}.`, 'todo-status-text'));
         status.append(head);
         if (plan.status === 'teilweise') {
@@ -127,11 +158,11 @@ export function createTodoPlan(doc, plan, { detailsButton = true } = {}) {
         root.append(status);
     }
     if (plan.nothing) root.append(mainLine(doc, 'Nichts tun', null, plan.text && plan.text !== 'Nichts tun' ? plan.text.replace(/^Nichts tun – /, '') : ''));
-    else if (plan.status === 'teilweise') root.append(mainLine(doc, 'Noch offen', plan.restNet, `${plan.openSecurities.join(', ') || 'Wertpapiere'}, netto`));
-    else if (plan.status !== 'erledigt') root.append(mainLine(doc, plan.verb, plan.status ? plan.planNet : plan.amount,
-        plan.status ? plan.tax >= 0.5 ? `netto, Steuer ${todoMoney(plan.tax)} schon abgezogen` : 'netto' : ''));
+    else if (plan.status === 'teilweise') root.append(mainLine(doc, 'Noch offen', shownRest(plan), `${plan.openSecurities.join(', ') || 'Wertpapiere'}, netto`));
+    else if (plan.status !== 'erledigt') root.append(mainLine(doc, plan.verb, shownPlan(plan),
+        plan.status ? plan.tax >= 0.5 ? `netto, Steuer ${upMoney(plan.tax)} schon abgezogen` : 'netto' : ''));
     if (plan.rows.length) root.append(table(doc, ['Wer', 'Wertpapier', 'Betrag netto', 'Stand'],
-        plan.rows.map(row => [row.who, row.security, todoMoney(row.planNet), rowState(doc, row)]), `Plan ${plan.year} je Person`));
+        plan.rows.map(row => [row.who, row.security, upMoney(row.planNet), rowState(doc, row)]), `Plan ${plan.year} je Person`));
     for (const credit of plan.credits) {
         const note = make(doc, 'div', undefined, 'todo-credit'); note.dataset.todoCredit = '';
         const link = make(doc, 'a', 'Tagesgeld nachtragen →');
@@ -141,8 +172,8 @@ export function createTodoPlan(doc, plan, { detailsButton = true } = {}) {
             make(doc, 'p', `Zum Verkauf vom ${credit.date}${credit.who ? ` (${credit.who})` : ''} fehlt die Gutschrift auf dem Tagesgeld (${todoMoney(credit.amount)}). Bis du sie nachträgst, zeigt die App dein Vermögen zu niedrig.`), link);
         root.append(note);
     }
-    if (plan.destinations.length && (plan.status === 'offen' || plan.status === null) && !plan.nothing) root.append(destinationsBlock(doc, plan.destinations));
-    else if (plan.purchases.length && !plan.nothing) root.append(destinationsBlock(doc, plan.purchases));
+    if (plan.destinations.length && (plan.status === 'offen' || plan.status === null) && !plan.nothing) root.append(destinationsBlock(doc, plan.destinations, true, null, shownPlan(plan), plan.rows.length ? displayUp : displayDown));
+    else if (plan.purchases.length && !plan.nothing) root.append(destinationsBlock(doc, plan.purchases, true, null, plan.rows.length ? null : shownPlan(plan), displayDown));
     // Nachtrag WT-1: Käufe haben im Beleg keine Person; ihr Stand ist ohne neue Speicherfelder nicht sicher ableitbar.
     if (plan.purchases.length && !plan.nothing) root.append(make(doc, 'p', 'Käufe verfolgt die App nicht – trag sie im Vermögen ein.', 'ds-source todo-purchase-note'));
     const actions = make(doc, 'div', undefined, 'todo-actions');
@@ -176,9 +207,9 @@ export function createTodoResult(doc, plan, { details = null } = {}) {
     if (plan.marketReading?.reading === 'year_high') root.append(make(doc, 'p', `Gewählt: mit dem Jahreshoch vom ${marketChoiceDate(plan.marketReading.asOf)} (vorsichtiger).`, 'ds-source todo-decided'));
     else if (plan.marketReading?.reading === 'year_end') root.append(make(doc, 'p', 'Gewählt: nach Kursen zum Jahresende.', 'ds-source todo-decided'));
     if (plan.nothing) root.append(mainLine(doc, 'Nichts tun', null, plan.text && plan.text !== 'Nichts tun' ? plan.text.replace(/^Nichts tun – /, '') : ''));
-    else root.append(mainLine(doc, plan.verb, plan.rows.length ? plan.planNet : plan.amount, plan.rows.length ? 'netto' : ''));
-    if (plan.rows.length) root.append(table(doc, [], plan.rows.map(row => [`${row.who} · ${row.security}`, todoMoney(row.planNet)]), `Plan ${plan.year} je Person`));
-    if (plan.destinations.length && !plan.nothing) root.append(destinationsBlock(doc, plan.destinations, false));
+    else root.append(mainLine(doc, plan.verb, shownPlan(plan), plan.rows.length ? 'netto' : ''));
+    if (plan.rows.length) root.append(table(doc, [], plan.rows.map(row => [`${row.who} · ${row.security}`, upMoney(row.planNet)]), `Plan ${plan.year} je Person`));
+    if (plan.destinations.length && !plan.nothing) root.append(destinationsBlock(doc, plan.destinations, false, null, shownPlan(plan), plan.rows.length ? displayUp : displayDown));
     // WT-1b: Käufe haben keinen Stand; der Satz nennt den Stand nur bei Verkaufszeilen.
     root.append(make(doc, 'p', plan.rows.length ? 'Den Stand verfolgst du in der Balance unter „Was zu tun ist“. Die App bucht nichts.' : decisionText(plan), 'ds-source'));
     if (details) root.append(details);
@@ -191,10 +222,13 @@ export function createCashRefill(doc, refill) {
     root.append(make(doc, 'strong', 'Tagesgeld auffüllen'),
         // WT-1c (Befund 2): Gilt die eiserne Reserve als Ziel, nennt der Satz sie statt der Monate Entnahme.
         make(doc, 'p', refill.ironReserve
-            ? `Dein Tagesgeld (${todoMoney(refill.tagesgeld)}) liegt unter der eisernen Reserve von ${todoMoney(refill.target)}.`
-            : `Dein Tagesgeld reicht noch für ${refill.months} ${refill.months === 1 ? 'Monat' : 'Monate'} Entnahme (${todoMoney(refill.tagesgeld)}). Ziel sind ${refill.targetMonths} Monate (${todoMoney(refill.target)}).`));
+            ? `Dein Tagesgeld (${todoMoney(refill.tagesgeld)}) liegt unter der eisernen Reserve von ${upMoney(refill.target)}.`
+            : `Dein Tagesgeld reicht noch für ${refill.months} ${refill.months === 1 ? 'Monat' : 'Monate'} Entnahme (${todoMoney(refill.tagesgeld)}). Ziel sind ${refill.targetMonths} Monate (${upMoney(refill.target)}).`));
+    // Ergänzung 2 FR-78: Mit Personenzeilen ist der Betrag die Summe der angezeigten Personenbeträge.
+    const perPerson = refill.rows.length > 1 || refill.household && refill.rows.length;
+    const total = perPerson ? refill.rows.reduce((sum, row) => sum + displayUp(row.amount), 0) : displayUp(refill.amount);
     const line = make(doc, 'div', undefined, 'todo-main todo-refill-amount');
-    line.append(make(doc, 'span', todoMoney(refill.amount), 'todo-main-amount'), make(doc, 'span', 'vom Geldmarkt aufs Tagesgeld umschichten'));
+    line.append(make(doc, 'span', todoMoney(total), 'todo-main-amount'), make(doc, 'span', 'vom Geldmarkt aufs Tagesgeld umschichten'));
     root.append(line);
     root.append(make(doc, 'p', 'Kein Aktienverkauf. Die Steuer auf den Geldmarkt zeigt dir der Dialog.', 'ds-source'));
     const entry = (/** @type {CashRefill['rows'][number]} */ row, /** @type {string} */ label) => {
@@ -205,11 +239,11 @@ export function createCashRefill(doc, refill) {
     };
     // WT-1b: Bei zwei Personen nennt der Hinweis je Person den Betrag und hat je Person einen Knopf.
     // WT-1c (Befund 4): im Haushalt auch, wenn nur eine Person umschichten muss.
-    if (refill.rows.length > 1 || refill.household && refill.rows.length) {
+    if (perPerson) {
         for (const row of refill.rows) {
             const line = make(doc, 'div', undefined, 'todo-destination todo-refill-person'); line.dataset.todoRefillPerson = row.profileId || '';
             const name = row.name || 'Person';
-            line.append(make(doc, 'span', name), make(doc, 'span', todoMoney(row.amount), 'todo-destination-amount'), entry(row, name));
+            line.append(make(doc, 'span', name), make(doc, 'span', upMoney(row.amount), 'todo-destination-amount'), entry(row, name));
             root.append(line);
         }
         return root;
@@ -248,18 +282,19 @@ export function createHiddenBearBlock(doc, view, { annual = false, choice = null
         const rule = view.comparison.rule, highVariant = view.comparison.high;
         if (rule && highVariant) {
             root.append(make(doc, 'h5', `Was das für ${year + 1} heißt`, 'todo-bear-subtitle'));
-            const delta = (highVariant.monthlyBudget ?? 0) - (rule.monthlyBudget ?? 0);
-            const budget = make(doc, 'span', todoMoney(highVariant.monthlyBudget));
+            // FR-78: Monatsbudgets abgerundet; der Unterschied ergibt sich aus den gezeigten Beträgen.
+            const delta = (displayMonthlyDown(highVariant.monthlyBudget) ?? 0) - (displayMonthlyDown(rule.monthlyBudget) ?? 0);
+            const budget = make(doc, 'span', budgetMoney(highVariant.monthlyBudget));
             if (Math.round(delta) !== 0) budget.append(make(doc, 'small', ` (${delta < 0 ? '−' : '+'}${todoMoney(Math.abs(delta))})`, 'todo-bear-gap'));
             // WT-1b: Die Zeile heißt nur dann „Verkauf im Januar“, wenn keine der beiden Varianten kauft.
             const verbs = [rule, highVariant].map(variant => variant.mainAction.text).filter(text => text !== 'Nichts tun');
             const buys = verbs.filter(text => / kaufen$/.test(text)).length, sells = verbs.length - buys;
             const rowLabel = buys && sells ? 'Handlung im Januar' : buys ? 'Kauf im Januar' : 'Verkauf im Januar';
             const sale = (/** @type {typeof rule} */ variant) => variant.mainAction.text === 'Nichts tun' ? buys && sells ? 'nichts' : buys ? 'kein Kauf' : 'kein Verkauf'
-                : `${variant.mainAction.text}${Number.isFinite(variant.mainAction.netAmount) ? ` · ${todoMoney(variant.mainAction.netAmount)}` : ''}`;
+                : `${variant.mainAction.text}${Number.isFinite(variant.mainAction.netAmount) ? ` · ${todoMoney(displayActionAmount(variant.mainAction.text, variant.mainAction.netAmount))}` : ''}`;
             const comparison = table(doc, ['', 'Kurse zum Jahresende', 'Mit dem Jahreshoch'], [
                 ['Marktlage', 'kein Bärenmarkt', 'Bärenmarkt'],
-                [`Monatsbudget ${year + 1}`, todoMoney(rule.monthlyBudget), budget],
+                [`Monatsbudget ${year + 1}`, budgetMoney(rule.monthlyBudget), budget],
                 [rowLabel, sale(rule), sale(highVariant)]], `Was das für ${year + 1} heißt`);
             comparison.className = `${comparison.className} todo-bear-table`;
             root.append(comparison);
@@ -275,7 +310,7 @@ export function createHiddenBearBlock(doc, view, { annual = false, choice = null
 }
 
 /** Jahresabschluss, Schritt „Plan“: wie viel vom alten Plan umgesetzt wurde (FR-77 Punkt 6). `result` ist die Kurzform im Ergebnis.
- * @param {Document} doc @param {{year: number, status: string|null, soldNet: number, planNet: number}} progress @param {boolean} [result] */
+ * @param {Document} doc @param {{year: number, status: string|null, soldNet: number, planNet: number, lines?: {planNet: number}[]}} progress @param {boolean} [result] */
 export function createPlanProgressNote(doc, progress, result = false) {
     const root = make(doc, 'div', undefined, 'todo-progress-note'); root.dataset.annualPlanProgress = progress.status || 'offen';
     const head = make(doc, 'div', undefined, 'todo-status-head');
@@ -287,7 +322,8 @@ export function createPlanProgressNote(doc, progress, result = false) {
         chip.dataset.todoStatus = status;
         head.append(chip, make(doc, 'strong', `Plan ${progress.year}`));
     }
-    root.append(head, make(doc, 'p', `${todoMoney(progress.soldNet)} von ${todoMoney(progress.planNet)} verkauft. ${result
+    const plan = progress.lines?.length ? progress.lines.reduce((sum, line) => sum + displayUp(line.planNet), 0) : displayUp(progress.planNet);
+    root.append(head, make(doc, 'p', `${todoMoney(progress.soldNet)} von ${todoMoney(plan)} verkauft. ${result
         ? 'Der neue Plan ersetzt ihn.' : `Der Plan ${progress.year + 1} rechnet mit deinem Bestand vom 31.12.`}`));
     return root;
 }

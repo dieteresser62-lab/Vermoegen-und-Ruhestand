@@ -15,7 +15,7 @@ import { expensesHref } from '../shared/expenses-navigation.js';
 import { projectExpenses, readExpensesBudget } from '../expenses/expenses-model.js';
 import { loadExpensesStoreResult } from './balance-expenses-storage.js';
 import { appNow } from '../shared/app-clock.js';
-import { projectBalanceReserves } from './balance-reserves.js';
+import { projectBalanceReserves, displayedReserves } from './balance-reserves.js';
 import { withAnnualActionProgress } from './annual-action-progress.js';
 import { projectAnnualTodoPlan, projectCashRefill, cashRefillPeople, cashRefillMonthlyBase, cashRefillIronReserve } from './annual-todo.js';
 import { createTodoPlan, createCashRefill, createPlanDetails } from '../shared/annual-todo-view.js';
@@ -27,6 +27,7 @@ import { bindCareHintDone, renderCareHint } from '../shared/care-hint.js';
 import { loadProfileRegistry } from '../profile/profile-registry.js';
 import { personReferenceYear, projectPerson, describePersonDates } from '../profile/profile-person-data.js';
 import { readBalancePersonStatus } from '../shared/person-data-status.js';
+import { displayUp, displayMonthlyUp, displayMonthlyDown, displayActionAmount } from '../shared/display-rounding.js';
 /**
  * Module: Balance Renderer Summary
  * Purpose: Renders the high-level summary KPIs (Runway, Liquidity Coverage) and Market Status.
@@ -49,6 +50,29 @@ import { createDiagnosisInfo } from './balance-diagnosis-guardrails.js';
  */
 export function formatCurrency(value) {
     return UIUtils.formatCurrency(value);
+}
+
+/** Ergänzung 2 FR-78: Bedarf gesamt im Monat. Bilden die Bedarfszeilen den Bedarf genau, ist er die Summe der angezeigten Zeilen.
+ * @param {any} ui laufendes Jahr @returns {{exact: number|null, shown: number|null}} */
+export function shownMonthlyNeed(ui = {}) {
+    const input = ui.input || {}, care = ui.careNeeds, finite = Number.isFinite;
+    const { grossNeed, householdFlex } = projectBalanceFlexTrace(ui);
+    const parts = [finite(input.floorBedarf) ? (care ? care.current.homeFloor : input.floorBedarf) / 12 : null,
+        ...(care?.persons || []).filter(person => person.grade > 0).map(person => person.residentialCosts > 0 || person.form === 'residential'
+            ? (person.residentialCosts + person.residentialOwnExpenses) / 12 : person.homeCareAddition / 12),
+        care && fixedPlannedTotal(input.plannedPosts) > 0 ? fixedPlannedTotal(input.plannedPosts) / 12 : null, householdFlex].filter(finite);
+    const shown = parts.length && finite(grossNeed) && Math.abs(parts.reduce((sum, part) => sum + part, 0) - grossNeed) < 0.5
+        ? parts.reduce((sum, part) => sum + displayMonthlyUp(part), 0) : displayMonthlyUp(grossNeed);
+    return { exact: finite(grossNeed) ? grossNeed : null, shown };
+}
+
+/** Angezeigtes Monatsbudget: immer abgerundet (Nutzerregel „Alles was zur Verfügung steht, wird abgerundet“). RD-1d: Regel 4 hebt
+ * das Budget nie an; Budget und Bedarf stehen in getrennten Karten. @param {any} overviewUi @returns {number|null} */
+export function shownMonthlyBudget(overviewUi = {}) {
+    const { budget } = projectBalanceFlexTrace(overviewUi);
+    if (!Number.isFinite(budget)) return null;
+    const flow = projectBalanceMonthlyFlow(overviewUi);
+    return displayMonthlyDown(flow ? flow.euros.budget : /** @type {number} */ (budget));
 }
 
 /**
@@ -178,17 +202,19 @@ export class SummaryRenderer {
         const { householdFlexRate } = projection;
         const flexRate = formatDisplayNumber(householdFlexRate, { unit: 'percent', ...(householdFlexRate > 100 ? { fractionDigits: 0 } : {}) });
         const flow = projectBalanceMonthlyFlow(ui);
+        // FR-78: Monatsbudget abgerundet nach der Monatsstaffel; das Jahr ist der gerundete Monatswert × 12.
         const displayBudget = flow ? flow.euros.budget : budget;
-        set('balanceMonthlyBudget', displayBudget === null ? '—' : currency(displayBudget));
+        const shownBudget = shownMonthlyBudget(ui);
+        set('balanceMonthlyBudget', displayBudget === null ? '—' : currency(shownBudget));
         if (budget !== null) {
             const unit = document.createElement('span'); unit.className = 'balance-unit'; unit.textContent = '€';
-            outputs.balanceMonthlyBudget.replaceChildren(document.createTextNode(currency(displayBudget).slice(0, -1)), unit);
+            outputs.balanceMonthlyBudget.replaceChildren(document.createTextNode(currency(shownBudget).slice(0, -1)), unit);
         }
-        set('balanceAnnualBudget', budget === null ? 'Noch keine gültige Berechnung.' : `${currency(ui.nextYearBudget?.rule?.annualBudget ?? budget * 12)} im Jahr`);
+        set('balanceAnnualBudget', budget === null ? 'Noch keine gültige Berechnung.' : `${currency(shownBudget * 12)} im Jahr`);
         const status = readBalancePersonStatus({ referenceYear: input.referenceYear });
         const setFlow = (key, text) => { const host = this.getPresentationOutput(key); if (host) host.textContent = text; };
         set('balanceMonthlyIncome', flow ? currency(flow.euros.income) : '—');
-        setFlow('balanceFlowBudget', flow ? currency(flow.euros.budget) : '—');
+        setFlow('balanceFlowBudget', flow ? currency(shownBudget) : '—');
         setFlow('balanceFlowNeed', '');
         /** @type {(host: HTMLElement, flow: ReturnType<typeof projectBalanceMonthlyFlow>, cut: number, format: (value: number)=>string)=>void} */ (renderMonthlyFlowBar)(this.getPresentationOutput('balanceBudgetBar'), flow, cut, currency);
         const incomeDetails = balanceIncomeDetails(status);
@@ -301,32 +327,37 @@ export class SummaryRenderer {
         const annualInflation = readBalanceInflationSource({ scope: readBalanceHouseholdPlan().scope });
         // FR-73 Punkt 5: Grundbedarf zu Hause und je Person „Pflege“ oder „Heim“, zusammen der nicht kürzbare Bedarf.
         const care = ui.careNeeds;
+        // FR-78: Bedarf aufgerundet, Finanzierter Flex und Dynamik-Grenze abgerundet (Monatsstaffel).
+        const need = value => currency(displayMonthlyUp(value)), available = value => currency(displayMonthlyDown(value));
         const careRows = (care?.persons || []).filter(person => person.grade > 0).map(person => person.residentialCosts > 0 || person.form === 'residential'
-            ? [`Heim ${person.name}`, currency((person.residentialCosts + person.residentialOwnExpenses) / 12), '€ / Monat',
-                `Heimkosten ${currency(person.residentialCosts / 12)} und eigene Ausgaben ${currency(person.residentialOwnExpenses / 12)} im Monat · Heimjahr ${person.heimJahr}`
+            ? [`Heim ${person.name}`, need((person.residentialCosts + person.residentialOwnExpenses) / 12), '€ / Monat',
+                `Heimkosten ${need(person.residentialCosts / 12)} und eigene Ausgaben ${need(person.residentialOwnExpenses / 12)} im Monat · Heimjahr ${person.heimJahr}`
                 + (person.residentialSince ? ` (seit ${person.residentialSince.slice(5)}/${person.residentialSince.slice(0, 4)})` : ' (ohne „seit“)') + ` · Zuschuss der Kasse ${formatDisplayNumber(person.subsidy * 100, { fractionDigits: 0 })} %`, 'Plan']
-            : [`Pflege ${person.name}`, currency(person.homeCareAddition / 12), '€ / Monat',
+            : [`Pflege ${person.name}`, need(person.homeCareAddition / 12), '€ / Monat',
                 // Argon FR73A B4: das ⓘ nennt, womit gerechnet wurde – amtlicher Durchschnitt, eigener Wert oder Staffel.
                 `Pflegegrad ${person.grade} zu Hause: ${care.preset === 'amtlich' ? 'Beim amtlichen Durchschnitt gilt die Netto-Konvention (0 € Zusatz, kein Pflegegeld).' : `${Number.isFinite(person.homeCostsMonthly) ? 'eigener Wert „Pflegekosten heute über die Kasse hinaus“' : 'Staffelbetrag des Grads'}, höchstens bis zum Deckel „Maximaler Pflege-Floor“.`}`, 'Plan']);
         // FR-73 Punkt 10: Hinweis bei Pflegegrad heute unter den Bedarfszeilen; „Erledigt“ schreibt den Haushaltsrecord (einmal gebunden).
         const careHint = this.getPresentationOutput('balanceCareHint');
         if (careHint) { renderCareHint(careHint, overviewUi.careHint ?? ui.careHint ?? null); bindCareHintDone(careHint); }
+        const shownNeed = shownMonthlyNeed(ui).shown;
         rows('balanceNeedRows', [
-            [householdPlanFieldSpec('floorBedarf').label, finite(input.floorBedarf) ? currency((care ? care.current.homeFloor : input.floorBedarf) / 12) : null, '€ / Monat',
+            [householdPlanFieldSpec('floorBedarf').label, finite(input.floorBedarf) ? need((care ? care.current.homeFloor : input.floorBedarf) / 12) : null, '€ / Monat',
                 [care && care.current.homeFloorFactor < 1 ? `Grundbedarf zu Hause: ${formatDisplayNumber(care.current.homeFloorFactor * 100, { fractionDigits: 0 })} % des Plans, weil nicht alle zu Hause leben` : null,
-                    !care && fixedPlannedTotal(input.plannedPosts) > 0 ? `enthält feste geplante Ausgaben von ${currency(fixedPlannedTotal(input.plannedPosts) / 12)} im Monatsmittel` : null].filter(Boolean).join(' · ') || null, 'Plan'],
+                    !care && fixedPlannedTotal(input.plannedPosts) > 0 ? `enthält feste geplante Ausgaben von ${need(fixedPlannedTotal(input.plannedPosts) / 12)} im Monatsmittel` : null].filter(Boolean).join(' · ') || null, 'Plan'],
             ...careRows,
             // FR-43: Mit Pflege zeigt der Grundbedarf nur den Anteil zu Hause; die festen Ausgaben stehen in eigener Zeile.
-            ...(care && fixedPlannedTotal(input.plannedPosts) > 0 ? [['Feste geplante Ausgaben', currency(fixedPlannedTotal(input.plannedPosts) / 12), '€ / Monat',
+            ...(care && fixedPlannedTotal(input.plannedPosts) > 0 ? [['Feste geplante Ausgaben', need(fixedPlannedTotal(input.plannedPosts) / 12), '€ / Monat',
                 'im Monatsmittel, gehören zum Grundbedarf und werden nie gekürzt', 'Plan']] : []),
-            [householdPlanFieldSpec('flexBedarf').label, householdFlex === null ? null : currency(householdFlex), '€ / Monat',
-                dynamic && finite(input.flexBedarf) ? `Dynamik erlaubt bis ${currency(input.flexBedarf * 2 / 12)}/Monat` : null, 'Plan'],
-            ['Finanzierter Haushalts-Flex', financedHouseholdFlex === null ? null : currency(financedHouseholdFlex),
+            [householdPlanFieldSpec('flexBedarf').label, householdFlex === null ? null : need(householdFlex), '€ / Monat',
+                dynamic && finite(input.flexBedarf) ? `Dynamik erlaubt bis ${available(input.flexBedarf * 2 / 12)}/Monat` : null, 'Plan'],
+            // RD-1c (Regel 4): Erreicht der finanzierte Flex den Wunschbedarf genau, steht er nicht unter dem angezeigten Wunschbedarf.
+            ['Finanzierter Haushalts-Flex', financedHouseholdFlex === null ? null : finite(householdFlex) && financedHouseholdFlex >= householdFlex - 0.5
+                ? currency(Math.max(displayMonthlyDown(financedHouseholdFlex), displayMonthlyUp(householdFlex))) : available(financedHouseholdFlex),
                 '€ / Monat', 'einschließlich Rentenanteil', 'Dieses Jahr'],
             ['Haushalts-Flex finanziert', dynamic && finite(householdFlexRate) ? flexRate : null, null, null, 'Dieses Jahr'],
             [`Inflation · ${annualInflation.year ?? 'Jahr nicht belegt'}`,  finite(input.inflation) ? formatDisplayNumber(input.inflation, { unit: 'percent' }) : null, null, [annualInflation.source, inflationNote].filter(Boolean).join(' · '), 'Dieses Jahr']
         ]);
-        set('balanceNeedTotal', currency(grossNeed));
+        set('balanceNeedTotal', currency(shownNeed));
         const floor = input.floorBedarf;
         const pension = input.renteAktiv ? input.renteMonatlich * 12 : 0;
         set('balanceFloorCoverage', finite(floor) && finite(pension)
@@ -440,11 +471,16 @@ export class SummaryRenderer {
             if (!plan) continue;
             const doc = host.ownerDocument || globalThis.document;
             const origin = doc.createElement('span'); origin.className = 'ds-source'; origin.textContent = comparison.planLabel;
-            const value = doc.createElement('strong'); value.textContent = UIUtils.formatBalanceCurrency(plan[field]);
+            // FR-78: Plan und Vorschau abgerundet wie das Monatsbudget; die Differenz ergibt sich aus den gezeigten Beträgen.
+            const shownPlan = displayMonthlyDown(plan[field]), shownAmount = Number.isFinite(amount) ? shownMonthlyBudget(ui) : null;
+            const value = doc.createElement('strong'); value.textContent = UIUtils.formatBalanceCurrency(shownPlan);
             const delta = doc.createElement('span'); delta.className = 'ds-source';
-            const diff = Number.isFinite(amount) && Number.isFinite(plan[field]) ? amount - plan[field] : null;
+            const diff = Number.isFinite(shownAmount) && Number.isFinite(shownPlan) ? shownAmount - shownPlan : null;
             delta.textContent = diff === null ? 'Differenz nicht verfügbar'
                 : `Differenz ${diff < 0 ? '−' : diff > 0 ? '+' : ''}${UIUtils.formatBalanceCurrency(Math.abs(diff))}`;
+            // Ergänzung 2 FR-78: „Warum anders als …“ nur, wenn die angezeigte Differenz nicht 0 ist.
+            const reasons = this.getPresentationOutput('balanceBudgetReasons') || doc.getElementById?.('balanceBudgetReasons');
+            if (reasons && diff === 0) reasons.hidden = true;
             host.append(origin, value, delta);
         }
         const withdrawalPlan = this.getPresentationOutput('balanceWithdrawalPlan');
@@ -567,6 +603,19 @@ export class SummaryRenderer {
         const set = (key, value) => { const host = get(key); if (host) host.textContent = value; };
         const money = UIUtils.formatBalanceCurrency;
         const make = (tag, text, cls) => { const node = doc.createElement(tag); node.textContent = text; if (cls) node.className = cls; return node; };
+        // Ergänzung 2 FR-78: Folgewerte aus angezeigten Beträgen. Der Zufluss ist die Summe der angezeigten offenen Planzeilen,
+        // wenn die Änderung genau diesem Rest entspricht; Tagesgeldziel = Summe der angezeigten Personenziele.
+        const targets = view.targets.filter(row => Number.isFinite(row.target));
+        const exactTarget = targets.length ? targets.reduce((sum, row) => sum + row.target, 0) : null;
+        const openRows = (this.todoPlan?.rows || []).filter(row => row.restNet > 0);
+        const delta = view.after && Number.isFinite(view.before.liquidity) ? view.after.liquidity - view.before.liquidity : NaN;
+        // RD-1c: Ein Kauf ohne Planzeilen fließt mit dem angezeigten (abgerundeten) Betrag ab.
+        const purchase = !this.todoPlan?.rows?.length && this.todoPlan?.purchases?.length && Number.isFinite(this.todoPlan.amount)
+            && Math.abs(delta + this.todoPlan.amount) < 1 ? -displayActionAmount(this.todoPlan.verb, this.todoPlan.amount) : null;
+        const inflow = openRows.length && Math.abs(delta - openRows.reduce((sum, row) => sum + row.restNet, 0)) < 1
+            ? openRows.reduce((sum, row) => sum + displayUp(row.restNet), 0) : purchase;
+        const shown = displayedReserves(view, { cashTarget: exactTarget, shownCashTarget: targets.length ? targets.reduce((sum, row) => sum + displayUp(row.target), 0) : null,
+            inflow, liquidityTarget: view.target });
         const values = get('balanceReserveValues');
         if (values) {
             values.replaceChildren();
@@ -576,14 +625,15 @@ export class SummaryRenderer {
                 return block;
             };
             values.append(value('Liquidität heute', view.before.liquidity));
-            if (view.after) values.append(make('span', '→', 'balance-reserve-arrow'), value('nach Umsetzung', view.after.liquidity, true));
+            // FR-78: „heute“ ist ein Kontostand und bleibt genau; „nach Umsetzung“ entsteht aus den angezeigten Beträgen und kann über dem genauen Wert liegen.
+            if (view.after) values.append(make('span', '→', 'balance-reserve-arrow'), value('nach Umsetzung', shown.after.liquidity, true));
         }
         const parts = get('balanceReserveParts');
         if (parts) {
             parts.replaceChildren(); parts.setAttribute('data-proposal', String(Boolean(view.after)));
             for (const [label, key] of [['Tagesgeld', 'tagesgeld'], ['Geldmarkt', 'geldmarkt']]) {
                 parts.append(make('span', label, 'ds-source'), make('strong', money(view.before[key])));
-                if (view.after) parts.append(make('span', '→', 'ds-source'), make('strong', money(view.after[key])));
+                if (view.after) parts.append(make('span', '→', 'ds-source'), make('strong', money(shown.after[key])));
             }
         }
         // WT-1 (Gutachten GU1B-FABLE Befund 2): Ein eingetragener Verkauf mit offener Gutschrift fehlt heute im Tagesgeld und gilt
@@ -596,10 +646,10 @@ export class SummaryRenderer {
         }
         const months = Number.isFinite(input.liquidityRunwayYears) ? input.liquidityRunwayYears * 12 : null;
         const number = value => formatDisplayNumber(value, { fractionDigits: 0 });
-        set('balanceReserveTarget', `Ziel: ${number(months)} Monate Entnahme = ${money(view.target)}, davon ${number(input.liquidityCashMonths)} Monate im Tagesgeld`);
-        const targets = view.targets.filter(row => Number.isFinite(row.target));
+        // FR-78: Ziele werden aufgerundet; die Summe der Tagesgeldziele ist die Summe der angezeigten Ziele.
+        set('balanceReserveTarget', `Ziel: ${number(months)} Monate Entnahme = ${money(displayUp(view.target))}, davon ${number(input.liquidityCashMonths)} Monate im Tagesgeld`);
         set('balancePersonalCashTargets', targets.length > 1
-            ? `Tagesgeldziel: ${targets.map(row => `${row.name || 'Person'} ${money(row.target)}`).join(' · ')} · Summe ${money(targets.reduce((sum, row) => sum + row.target, 0))}` : '');
+            ? `Tagesgeldziel: ${targets.map(row => `${row.name || 'Person'} ${money(displayUp(row.target))}`).join(' · ')} · Summe ${money(targets.reduce((sum, row) => sum + displayUp(row.target), 0))}` : '');
         const coverage = amount => Number.isFinite(amount) && view.target > 0 ? amount / view.target * 100 : null;
         const today = coverage(view.before.liquidity), after = view.after ? coverage(view.after.liquidity) : null;
         const pct = value => formatDisplayNumber(value, { unit: 'percent', fractionDigits: 0 });

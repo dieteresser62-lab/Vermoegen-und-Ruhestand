@@ -12,9 +12,11 @@ import { projectAnnualTodoPlan } from '../balance/annual-todo.js';
 import { annualPlanEntryProgress } from '../balance/annual-action-progress.js';
 import { loadProfileRegistry } from '../profile/profile-registry.js';
 import { persistenceStorage } from './persistence-facade.js';
+import { displayMonthlyDown } from './display-rounding.js';
 
 export const ANNUAL_ACTION_NOTICE = 'Für dieses Planjahr und diesen Umfang fehlt eine bestätigte Handlungsanweisung. Bitte den Jahresbeleg in der Sicherung prüfen.';
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 2 }) : '—';
+const wholeMoney = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 }) : '—';
 const names = { aktien_alt: 'Aktien (Altbestand)', aktien_neu: 'Aktien (Neubestand)', aktien: 'Aktien', gold: 'Gold',
     anleihe: 'Anleihen', bonds: 'Anleihen', geldmarkt: 'Geldmarkt', liquiditaet: 'Liquidität', cash: 'Tagesgeld' };
 
@@ -135,7 +137,8 @@ export function createAnnualPlanResult({ doc, result, model, peoplePreview }) {
     const root = doc.createElement('section'); root.dataset.annualPlanResult = '';
     if (model) {
         const lead = node('div', undefined, 'ds-kpi close-dialog-tile annual-result-budget');
-        lead.append(node('span', `Monatsbudget ${result.year}`, 'close-dialog-tile-label'), node('strong', money(model.summary?.monthlyBudget), 'annual-result-monthly-budget'),
+        // FR-78: Monatsbudget abgerundet (Monatsstaffel), ohne Cent; der Beleg behält den genauen Wert.
+        lead.append(node('span', `Monatsbudget ${result.year}`, 'close-dialog-tile-label'), node('strong', wholeMoney(displayMonthlyDown(model.summary?.monthlyBudget)), 'annual-result-monthly-budget'),
             node('span', `${result.planLabel || `Plan ${result.year} · Festschreibung nicht belegt`}${result.adjustedFields?.length ? ' · im Abschluss bewusst angepasst' : ''}`, 'annual-result-plan-source'));
         root.append(lead);
         if (result.monthlySaving > 0) lead.append(node('span', `${money(result.monthlySaving)} im Monat angelegt · aufs Tagesgeld, dann nach den Regeln der App`, 'annual-result-plan-source'));
@@ -148,7 +151,8 @@ export function createAnnualPlanResult({ doc, result, model, peoplePreview }) {
         const inflationDetail = Number.isFinite(inflation) ? `${inflation > 0 ? '+' : ''}${formatDisplayNumber(inflation, { fractionDigits: 2 })} % Inflation ${result.targetYear ?? result.year - 1}` : 'Inflationsanpassung nicht belegt';
         root.append(createCloseTiles({ doc, items: [
             { label: `Jahresausgaben ${result.targetYear ?? result.year - 1}${annual.complete ? '' : ' bisher'}`, value: money(annual.total), detail: `Budget ${money(budget)} · ${deviation}`, detailTone: difference > 0 ? 'warning' : '' },
-            { label: `Bedarf ${result.year}`, value: `${money(total)} im Jahr`, detail: inflationDetail + (result.adjustedFields?.some(id => ['floorBedarf', 'flexBedarf'].includes(id)) ? ' · Bedarf angepasst'
+            // RD-1c: Der beschlossene Bedarf ist ein Planwert des Belegs und bleibt genau (keine Monatsregel).
+            { label: `Bedarf ${result.year}`, value: `${wholeMoney(total)} im Jahr`, detail: inflationDetail + (result.adjustedFields?.some(id => ['floorBedarf', 'flexBedarf'].includes(id)) ? ' · Bedarf angepasst'
                 : needs.some(need => annualNeedRoundedUp(need.before, need.after, inflation)) ? ' · aufgerundet auf volle 1.000 €' : '') }
         ] }));
     }

@@ -19,7 +19,9 @@ for (const date of ['2026-10-23', '2031-06-15']) for (const { id } of MUSTER_HAU
     assertEqual(n.wealth, n.cash + n.depot + n.bonds + n.gold, `${id}: Geldvermögen enthält jede Anlageklasse einmal`);
     assertEqual(n.totalNeed, plan.floorBedarf + plan.flexBedarf, `${id}: Gesamtbedarf gleich Grundbedarf plus Wunschbedarf`);
     assert(brief.situation && brief.question && brief.observe && brief.exercises.length >= 1
-        && brief.exercises.length <= (['max-erika', 'helga-werner', 'renate'].includes(id) ? 4 : ['martin-petra', 'sophie'].includes(id) ? 3 : 2) && brief.restart, `${id}: vollständiger Steckbrief mit Neustartweg`);
+        && brief.exercises.length <= (id === 'max-erika' ? 5 : ['helga-werner', 'renate'].includes(id) ? 4 : ['martin-petra', 'sophie'].includes(id) ? 3 : 2) && brief.restart, `${id}: vollständiger Steckbrief mit Neustartweg`);
+    // RD-1: Max und Erika haben eine Übungszeile zur gerundeten Anzeige (FR-78).
+    if (id === 'max-erika') assert(brief.exercises.some(text => text.includes('165.000 €') && text.includes('Details & Drucken')), 'Max und Erika: Übungszeile zur gerundeten Anzeige');
     if (id === 'martin-petra') assert(brief.exercises.some(text => text.includes('Todesjahrzeile') && text.includes('Herkunft')),
         'Martin und Petra: Übungszeile zur Finanzierung der Erbschaftsteuer');
     const html = musterSteckbriefHtml(brief);

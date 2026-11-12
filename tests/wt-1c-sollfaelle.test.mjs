@@ -1,6 +1,7 @@
 // WT-1c (Gutachten WT1B-FABLE Befunde 1–4 und 6): Kurszeile im Januar, eiserne Reserve, Wahl nach Tagesgeldänderung,
 // Name bei einer Umschichtung. Über den echten Renderer bzw. den echten Abschlussdialog, nur synthetische Beispieldaten.
 import { EngineAPI } from '../engine/index.mjs';
+import { displayMonthlyDown } from '../app/shared/display-rounding.js';
 import { MockDocument } from './helpers/balance-page-fixture.mjs';
 import { renderCard, editRegistry, clean } from './helpers/wt-1-balance-render.mjs';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
@@ -97,13 +98,13 @@ const withMoneyMarket = (id, cash) => editRegistry(createMusterHaushaltRecords('
 {
     const low = await renderCard(withMoneyMarket('martin-petra', { muster_martin: 300, muster_petra: 300 }));
     assert(text(low.doc.getElementById('balancePersonalCashTargets')).includes('Summe 8.000 €'), 'Soll 2: Reservekarte Martin und Petra mit Tagesgeldziel 8.000 €');
-    assert(low.refill.includes('Dein Tagesgeld (600 €) liegt unter der eisernen Reserve von 8.000 €.') && low.refill.includes('7.400 €vom Geldmarkt')
-        && low.refill.includes('Martin3.700 €') && low.refill.includes('Petra3.700 €'), `Soll 2: Martin und Petra 600 € → bis zur eisernen Reserve 8.000 € (${low.refill})`);
+    assert(low.refill.includes('Dein Tagesgeld (600 €) liegt unter der eisernen Reserve von 8.000 €.') && low.refill.includes('8.000 €vom Geldmarkt')
+        && low.refill.includes('Martin4.000 €') && low.refill.includes('Petra4.000 €'), `Soll 2: Martin und Petra 600 € → bis zur eisernen Reserve 8.000 € (je 3.700 € aufgerundet auf 4.000 €, Betrag = Summe der angezeigten Personenbeträge, Ergänzung 2 FR-78) (${low.refill})`);
     const mid = await renderCard(withMoneyMarket('martin-petra', { muster_martin: 2000, muster_petra: 2000 }));
     assert(mid.refill.includes('4.000 €vom Geldmarkt'), `Soll 2: 4.000 € unter der Reserve → Hinweis 4.000 € (${mid.refill})`);
     assertEqual((await renderCard(withMoneyMarket('martin-petra', { muster_martin: 4000, muster_petra: 4000 }))).refill, '', 'Soll 2: genau an der eisernen Reserve → kein Hinweis');
     const sophie = await renderCard(withMoneyMarket('sophie', { muster_sophie: 300 }));
-    assert(sophie.refill.includes('liegt unter der eisernen Reserve von 5.600 €') && sophie.refill.includes('5.300 €vom Geldmarkt'), `Soll 2: Sophie bis 5.600 € (${sophie.refill})`);
+    assert(sophie.refill.includes('liegt unter der eisernen Reserve von 6.000 €') && sophie.refill.includes('5.500 €vom Geldmarkt'), `Soll 2: Sophie bis 5.600 € (Reserve 5.600 € und 5.300 € aufgerundet) (${sophie.refill})`);
     // Ohne vorherrschende Reserve rechnet der Hinweis wie in WT-1b (Max und Erika, Tagesgeld 15.000 €).
     const people = [{ profileId: 'a', name: 'A', tagesgeld: 5000, geldmarkt: 36000, target: 16200 }, { profileId: 'b', name: 'B', tagesgeld: 10000, geldmarkt: 24000, target: 16200 }];
     const normal = projectCashRefill({ people, monthlyBase: 2700, cashMonths: 12, planOpen: false, ironReserve: 12000 });
@@ -190,7 +191,7 @@ try {
     const changed = choiceCalls().at(-1);
     assert(choiceCalls().length > countBefore, 'Soll 3: Tagesgeldänderung rechnet die Wahl neu');
     assert(changed && Object.values(changed.opts.cash || {}).some(value => JSON.stringify(value).includes('1000')), 'Soll 3: mit dem neuen Tagesgeld');
-    const money = value => `${Math.round(value).toLocaleString('de-DE')} €`;
+    const money = value => `${Math.round(displayMonthlyDown(value)).toLocaleString('de-DE')} €`; // FR-78: Monatsbudget abgerundet
     assert(option('year_end').includes(money(Math.round(changed.result.adopted.monthlyBudget))), `Soll 3: Wahl zeigt den neu gerechneten Betrag (${option('year_end')})`);
     binding.close(true); await pending.catch(() => null);
 } finally { setAppTestDate(null); }

@@ -5,6 +5,7 @@ import { summarizeBalanceAction, describeBalanceActionSummary } from '../balance
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { escapeHtml } from '../shared/security-utils.js';
 import { infoPopoverHtml } from '../shared/designsystem-info-popover.js';
+import { displayUp, displayMonthlyDown, displayActionAmount } from '../shared/display-rounding.js';
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 }) : '—';
 const number = value => formatDisplayNumber(value, { fractionDigits: 1 });
@@ -82,6 +83,48 @@ export function projectHouseholdPlanComparison({ year, scope, storage, preview =
         previewLabel: 'Vorschau heute', previewStatus: !today ? 'missing' : stale ? 'stale' : 'current',
         previewNotice: !today ? 'Noch nicht gerechnet' : `${stale ? 'Vorschau noch nicht mit dem aktuellen Plan gerechnet · ' : ''}Gerechnet am ${new Date(today.createdAt).toLocaleString('de-DE')}`,
         rows };
+}
+
+/** FR-78: Anzeigefassung des Vergleichs für die Übersicht. Monatsbudget abgerundet (Monatsstaffel), Beträge der
+ * Handlungsanweisung aufgerundet; Δ ergibt sich aus den gezeigten Budgets. `view` (Teil des Modells) bleibt genau und unverändert;
+ * die Einzelbeträge im Beleg bleiben genau.
+ * @param {ReturnType<typeof projectHouseholdPlanComparison>} view
+ * @param {{planBudget?: number|null, previewSummary?: {monthlyBudget?: number, action?: any}|null}} [raw] ungerundete Quellen derselben Zeilen
+ * @returns {ReturnType<typeof projectHouseholdPlanComparison>} */
+export function roundedHouseholdPlanComparison(view, { planBudget = null, previewSummary = null } = {}) {
+    const up = (/** @type {number} */ value) => money(displayUp(value));
+    // Hauptbetrag: Verkauf auf, Kauf ab (RD-1c); Zusatzbeträge (Umschichtung) auf.
+    const describe = (/** @type {any} */ summary) => describeBalanceActionSummary(summary, value => value === summary.amount ? money(displayActionAmount(summary.verb, value)) : up(value));
+    // Nur eine Quelle, die genau den Text der Zeile ergibt, gehört zu ihr; sonst bleibt die Zeile, wie sie ist.
+    const rounded = (/** @type {unknown} */ raw, /** @type {string} */ text) => typeof raw === 'number' && money(raw) === text ? displayMonthlyDown(raw) : null;
+    const rows = view.rows.map(row => {
+        if (row.label === 'Monatsbudget') {
+            const plan = rounded(planBudget, row.plan), preview = rounded(previewSummary?.monthlyBudget, row.preview);
+            const both = Number.isFinite(plan) && Number.isFinite(preview);
+            return { ...row, plan: Number.isFinite(plan) ? money(plan) : row.plan, preview: Number.isFinite(preview) ? money(preview) : row.preview,
+                delta: row.delta === '—' || !both ? row.delta : `${preview - plan > 0 ? '+' : ''}${money(preview - plan)}` };
+        }
+        if (row.label === 'Handlungsanweisung') {
+            const action = view.confirmedAction?.action;
+            let plan = row.plan;
+            if (row.plan !== '—' && action) {
+                // Ergänzung 2 FR-78: Verkaufsbetrag = Summe der angezeigten Planzeilen wie in „Was zu tun ist“.
+                const summary = summarizeBalanceAction(action, action);
+                const lines = (Array.isArray(action.quellen) ? action.quellen : []).filter((/** @type {any} */ source) => !source.internalCashRebalance
+                    && !['liquiditaet', 'cash'].includes(source.kind) && source.source !== 'Liquidität' && source.netto > 0);
+                const exact = lines.reduce((/** @type {number} */ sum, /** @type {any} */ source) => sum + source.netto, 0);
+                const shown = lines.length && Number.isFinite(summary.amount) && Math.abs(exact - summary.amount) < 1
+                    ? lines.reduce((/** @type {number} */ sum, /** @type {any} */ source) => sum + displayUp(source.netto), 0) : null;
+                plan = shown === null ? describe(summary)
+                    : describeBalanceActionSummary({ ...summary, amount: shown }, value => value === shown ? money(value) : up(value));
+            }
+            const preview = row.preview !== '—' && previewSummary?.action ? describe(previewSummary.action) : row.preview;
+            // RD-1c: Bleibt der angezeigte Text gleich, markiert die Übersicht nichts als „geändert“.
+            return { ...row, plan, preview, delta: row.delta === 'geändert' && plan === preview ? 'unverändert' : row.delta };
+        }
+        return row;
+    });
+    return { ...view, rows };
 }
 
 /** Vollständige, escaped Vergleichstabelle für die Übersicht. */

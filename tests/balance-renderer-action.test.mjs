@@ -139,7 +139,7 @@ global.document = {
             try { renderer.renderAction(action); } catch (error) { renderError = error; }
             assertEqual(renderError, null, `renderAction wirft nicht bei Profilaktion ${String(invalidAction)}`);
             assertEqual(outputs.balanceActionTitle.textContent, 'Aktien verkaufen', 'Ungültiges Profil ersetzt nicht das Verb der Gesamtaktion');
-            assertEqual(collectText(outputs.balanceActionAmount), '1.201\u00a0€ netto', 'Kurzkarte behält den Betrag der Gesamtaktion');
+            assertEqual(collectText(outputs.balanceActionAmount), '1.500\u00a0€ netto', 'Kurzkarte behält den Betrag der Gesamtaktion (1.201 € aufgerundet, FR-78)');
             const detail = renderer.getActionCopyText();
             assert(detail.includes(action.title), 'Vollständiger Titel der Gesamtaktion wird im Detail gerendert');
             assert(detail.includes('Aktien (alt)') && detail.includes('1.250,75'), 'Detail enthält die centgenaue Quelle der Gesamtaktion');
@@ -392,26 +392,26 @@ console.log('✅ Balance renderer action tests passed');
         title: 'Vollständiger bisheriger Titel', quellen, verwendungen,
         nettoErlös: quellen.reduce((sum, q) => sum + q.netto, 0), steuer: quellen.reduce((sum, q) => sum + q.steuer, 0) });
     const cases = [
-        [transaction([source('aktien_alt', 1234.56, 10.25)], { liquiditaet: 1234.56 }), 'Aktien verkaufen', '1.235\u00a0€ netto', 'Liquidität aufzufüllen'],
-        [transaction([source('aktien_neu', 1500), source('gold', 200)]), 'Aktien verkaufen', '1.700\u00a0€ netto', 'Goldbestand anzupassen'],
-        [transaction([source('gold', 300.25)], { liquiditaet: 300.25 }), 'Gold verkaufen', '300\u00a0€ netto', 'Goldbestand anzupassen'],
-        [transaction([source('liquiditaet', 400.75)], { gold: 400.75 }), 'Gold kaufen', '401\u00a0€', 'Goldbestand anzupassen'],
-        [transaction([source('gold', 600)], { gold: 400 }), 'Gold verkaufen', '600\u00a0€ netto', 'Goldbestand anzupassen'],
-        [transaction([source('liquiditaet', 1700.65)], { geldmarkt: 1700.65 }), 'Umschichten', '1.701\u00a0€', 'Tagesgeld und Geldmarkt'],
-        [transaction([source('geldmarkt', 800.25)], { liquiditaet: 800.25 }), 'Umschichten', '800\u00a0€', 'Tagesgeld und Geldmarkt'],
+        [transaction([source('aktien_alt', 1234.56, 10.25)], { liquiditaet: 1234.56 }), 'Aktien verkaufen', '1.500\u00a0€ netto', 'Liquidität aufzufüllen'],
+        [transaction([source('aktien_neu', 1500), source('gold', 200)]), 'Aktien verkaufen', '2.000\u00a0€ netto', 'Goldbestand anzupassen'],
+        [transaction([source('gold', 300.25)], { liquiditaet: 300.25 }), 'Gold verkaufen', '500\u00a0€ netto', 'Goldbestand anzupassen'],
+        [transaction([source('liquiditaet', 400.75)], { gold: 400.75 }), 'Gold kaufen', '400\u00a0€', 'Goldbestand anzupassen'],
+        [transaction([source('gold', 600)], { gold: 400 }), 'Gold verkaufen', '1.000\u00a0€ netto', 'Goldbestand anzupassen'],
+        [transaction([source('liquiditaet', 1700.65)], { geldmarkt: 1700.65 }), 'Umschichten', '2.000\u00a0€', 'Tagesgeld und Geldmarkt', '1.701\u00a0€'],
+        [transaction([source('geldmarkt', 800.25)], { liquiditaet: 800.25 }), 'Umschichten', '1.000\u00a0€', 'Tagesgeld und Geldmarkt', '800\u00a0€'],
         [transaction([source('anleihe', 456.78)]), 'Handlung prüfen', '', 'Details prüfen'],
-        [transaction([source('liquiditaet', 789.12)], { aktien: 789.12 }), 'Aktien kaufen', '789\u00a0€', 'Aktienbestand anzupassen'],
+        [transaction([source('liquiditaet', 789.12)], { aktien: 789.12 }), 'Aktien kaufen', '500\u00a0€', 'Aktienbestand anzupassen'],
         [{ type: 'NONE', title: 'Technischer Titel ohne Marktbeleg' }, 'Nichts tun', '', 'Keine Transaktion empfohlen']
     ];
-    for (const [action, verb, amount, note] of cases) {
+    for (const [action, verb, amount, note, transfer] of cases) {
         const before = JSON.stringify(action);
         renderer.renderAction(action);
         // WT-1 (FR-77 Punkt 4): Die zugeklappte Vorschauzeile nennt die Hauptaktion mit ihrem Verb.
         assertEqual(outputs.balanceActionTitle.textContent, verb, 'Vorschlag aus tatsächlichen Strömen');
-        assertEqual(collectText(outputs.balanceActionAmount), amount, 'Nur Kartenbetrag wird auf ganze Euro formatiert');
+        assertEqual(collectText(outputs.balanceActionAmount), amount, 'Nur Kartenbetrag wird auf ganze Euro formatiert, gerundet nach der Anzeigestaffel (Verkauf auf, Kauf ab, FR-78/RD-1c)');
         assert(outputs.balanceActionNote.textContent.includes(note), 'Alltagssatz aus Verwendung oder Nichtstun');
         assert(!outputs.balanceActionNote.textContent.includes('Bärenmarkt'), 'Ohne Beleg wird kein Bärenmarktgrund erfunden');
-        assertEqual(routingText(outputs.balanceActionTransfer), verb === 'Umschichten' ? `interne Umschichtung ${amount}` : '', 'Folgerendern zeigt nur die aktuelle Umschichtung');
+        assertEqual(routingText(outputs.balanceActionTransfer), verb === 'Umschichten' ? `interne Umschichtung ${transfer}` : '', 'Folgerendern zeigt nur die aktuelle Umschichtung (genau, nicht Teil der Karte)');
         const detail = renderer.getActionCopyText();
         assertEqual(collectText(host).includes('Woher das Geld kommt'), verb !== 'Nichts tun', 'Nichtstun besitzt keine Quellentabelle');
         assertEqual(collectText(host).includes('· Verkäufe'), (action.quellen || []).some(q => q.brutto > 0 && !['liquiditaet', 'geldmarkt'].includes(q.kind)), 'Verkaufskennzeichnung folgt den tatsächlichen Quellen');
@@ -433,7 +433,7 @@ console.log('✅ Balance renderer action tests passed');
     const purchaseSummary = renderer.renderAction(purchase, { tagesgeld: 50000, geldmarktEtf: 0 }, { monatlicheEntnahme: 1000 });
     assertEqual(purchaseSummary.verb, 'Aktien kaufen', 'Aktienkauf aus Liquidität erhält sein eigenes Kurzverb');
     assertEqual(purchaseSummary.amount, 1789.12, 'Aktienkaufbetrag ist exakt die Aktienverwendung ohne Cashtransfer');
-    assertEqual(collectText(outputs.balanceActionAmount), '1.789\u00a0€', 'Aktienkaufkarte formatiert ausschließlich die Aktienverwendung');
+    assertEqual(collectText(outputs.balanceActionAmount), '1.500\u00a0€', 'Aktienkaufkarte formatiert ausschließlich die Aktienverwendung (Kauf 1.789 € abgerundet, RD-1c)');
     assertEqual(routingText(outputs.balanceActionTransfer), 'interne Umschichtung · Tagesgeld → Geldmarkt 35.000\u00a0€', 'Cashtransfer bleibt neben dem Aktienkauf separat');
     const bucketSummary = renderer.renderAction(purchase, { tagesgeld: 50000, geldmarktEtf: 0, decumulation: { mode: '3_bucket_jilge' } }, { monatlicheEntnahme: 1000 });
     assertEqual(bucketSummary.extraTransfer, 35000, 'Drei Töpfe erhält die interne Cashumschichtung neben dem Handel');
@@ -453,7 +453,7 @@ console.log('✅ Balance renderer action tests passed');
     globalThis.window = {};
     const sale = transaction([source('aktien_alt', 2300.75)], { liquiditaet: 2300.75 });
     renderer.renderAction(sale, { tagesgeld: 50000, geldmarktEtf: 0 }, { monatlicheEntnahme: 1000 });
-    assertEqual(collectText(outputs.balanceActionAmount), '2.301\u00a0€ netto', 'Zusatztransfer ist nicht Verkaufsnetto');
+    assertEqual(collectText(outputs.balanceActionAmount), '2.500\u00a0€ netto', 'Zusatztransfer ist nicht Verkaufsnetto (2.301 € aufgerundet, FR-78)');
     assertEqual(routingText(outputs.balanceActionTransfer), 'in den Geldmarkt · Rest der Reserve 2.301\u00a0€ · interne Umschichtung · Tagesgeld → Geldmarkt 35.000\u00a0€', 'Bereits integrierter Zusatztransfer zählt einmal');
     assert(collectText(host).includes('Vollständiger bisheriger Titel & Geldmarkt-Opt.'), 'Integrierter bisheriger Titel bleibt vollständig');
     renderer.renderAction(transaction([source('aktien_neu', 2000), source('geldmarkt', 500)], { liquiditaet: 2500 }));
@@ -467,7 +467,7 @@ console.log('✅ Balance renderer action tests passed');
     for (const aggregate of [transaction([], {}), transaction([source('aktien_alt', 9999)], { liquiditaet: 9999 })]) {
         renderer.renderAction(aggregate, { tagesgeld: 100000, geldmarktEtf: 0 }, { monatlicheEntnahme: 1000 });
         assertEqual(outputs.balanceActionTitle.textContent, 'Aktien verkaufen', 'Materielle Profile statt leerer oder voller Gesamtaktion');
-        assertEqual(collectText(outputs.balanceActionAmount), '1.301\u00a0€ netto', 'Profilnettosumme ohne doppelte Gesamtaktion oder Cashquelle');
+        assertEqual(collectText(outputs.balanceActionAmount), '1.500\u00a0€ netto', 'Profilnettosumme ohne doppelte Gesamtaktion oder Cashquelle (1.301 € aufgerundet, FR-78)');
         assertEqual(routingText(outputs.balanceActionTransfer), 'Profil B · interne Umschichtung 201\u00a0€', 'Nur tatsächlich im Profilplan angezeigter Transfer');
         const detail = renderer.getActionCopyText();
         assert(detail.includes('Profil A') && detail.includes('Profil B') && detail.includes('1.000,25') && detail.includes('300,50'), 'Haushaltsdetails behalten Profilzeilen und Cent');

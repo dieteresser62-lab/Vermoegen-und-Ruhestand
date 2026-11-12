@@ -39,8 +39,8 @@ const texts = () => dialogElements(host).map(node => node.textContent).join(' ')
 renderer.renderAnnualAction(origin);
 // WT-1 (FR-77): Die Karte „Was zu tun ist“ zeigt den Beleg mit Verb, Netto, Tabelle und Verwendung; Brutto und Steuer stehen im Dialog.
 assert(texts().includes('Beschlossen im Jahresabschluss am 02.01.2026.') && texts().includes('Aktien verkaufen') && texts().includes('1.000 €')
-    && texts().includes('In Gold') && texts().includes('600 €') && texts().includes('Aufs Tagesgeld bis zum Tagesgeldziel, der Rest in den Geldmarkt') && texts().includes('400 €'),
-    'Plan zeigt Verb, Netto-Betrag und unveränderte Verwendungen aus dem Beleg');
+    && texts().includes('In Gold 500 €') && texts().includes('Aufs Tagesgeld bis zum Tagesgeldziel, der Rest in den Geldmarkt 500 €'),
+    'Plan zeigt Verb, Netto-Betrag und unveränderte Verwendungen aus dem Beleg (Kauf Gold 600 € abgerundet, Tagesgeld als Rest 1.000 − 500, RD-1e)');
 assert(renderer.planDetails.text.includes('Summe | 1.234,00 € | 234,00 € | 1.000,00 €'), 'Details & Drucken zeigt Brutto, Steuer und Netto des Belegs centgenau');
 assert(!texts().includes('festgeschrieben') && !texts().includes('Heutige materielle Vorschau'), 'Karte ohne Fachwort, Beschluss nicht durch Vorschau ersetzt');
 // BA-1b: Die kompakte Karte und die exakten Bankangaben stammen aus demselben Beleg.
@@ -50,7 +50,7 @@ detailed.confirmed.action.quellen[0] = { ...detailed.confirmed.action.quellen[0]
     name: 'Muster Aktien-ETF', isin: 'DE000TEST123', netto: 1000.49 };
 const detailedBytes = JSON.stringify(detailed);
 renderer.renderAnnualAction(detailed);
-assert(texts().includes('Max') && texts().includes('Muster Aktien-ETF') && texts().includes('1.000 €'), 'Planzeile nennt Person, Wertpapier und ganze Euro');
+assert(texts().includes('Max') && texts().includes('Muster Aktien-ETF') && texts().includes('1.500 €'), 'Planzeile nennt Person, Wertpapier und ganze Euro (1.000,49 € aufgerundet, FR-78)');
 assert(!texts().includes('DE000TEST123') && !texts().includes('1.000,49'), 'ISIN und Cent stehen nicht auf der Karte');
 assert(renderer.planDetails.text.includes('Max | Muster Aktien-ETF · DE000TEST123'), 'Details & Drucken nennt Person, Wertpapier und ISIN');
 // WT-1b (Gutachten WT1-FABLE Befund 4): die in WT-1 gestrichene Prüfung wieder aufgenommen.

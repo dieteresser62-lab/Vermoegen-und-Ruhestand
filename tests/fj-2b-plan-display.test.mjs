@@ -1,4 +1,5 @@
 import { EngineAPI } from '../engine/index.mjs';
+import { displayMonthlyDown } from '../app/shared/display-rounding.js';
 import { PersistenceFacade as P, persistenceStorage as storage } from '../app/shared/persistence-facade.js';
 import { buildBalanceEngineInputFromStorage } from '../app/balance/balance-input-storage.js';
 import { UIRenderer } from '../app/balance/balance-renderer.js';
@@ -55,7 +56,7 @@ try {
         assertEqual(current.input.endeVJ, result.modelResult.input.endeVJ, mode + ': Marktanzeige bleibt bei der bisherigen Vorschau im laufenden Jahr');
         assertEqual(fields(), beforeFields, mode + ': Vorschau verändert kein Eingabefeld');
         const floorRow = get('balanceNeedRows').children[0].children.find(node => node.children[0]?.textContent.startsWith('Grundbedarf'));
-        assert(floorRow?.textContent.includes(UIUtils.formatBalanceCurrency(31000 / 12).slice(0, -1)), mode + ': Bedarfskarte zeigt 31000 pro Jahr als Monatswert');
+        assert(floorRow?.textContent.includes(UIUtils.formatBalanceCurrency(2600).slice(0, -1)), mode + ': Bedarfskarte zeigt 31000 pro Jahr als Monatswert (2.583,33 € aufgerundet 2.600 €, FR-78)');
         const planText = texts(planIds), diagnosisText = texts(diagnosisIds);
         const annualWithdrawal = result.modelResult.diagnosis.keyParams.jahresentnahme;
         assert(Number.isFinite(annualWithdrawal), mode + ': laufende Diagnose enthält Jahresentnahme');
@@ -68,7 +69,9 @@ try {
             assertEqual(payload.input.floorBedarf, 32000, mode + ': Projektionsinput schreibt 31000 mit 2 % und Abschlussrundung fort');
             assertEqual(payload.nextYearBudget.current.needBeforeIndexation, 31000 + values.flexBedarf, mode + ': Projektion basiert auf übernommenem Plan');
             assertEqual(get('balanceActionPreviewTitle').textContent, 'Vorschau auf den Plan 2027', mode + ': Vorschauzeile verwendet Folgejahr');
-            assertEqual(get('balanceMonthlyBudget').textContent, UIUtils.formatBalanceCurrency(payload.nextYearBudget.rule.monthlyBudget), mode + ': Budgetkarte zeigt Folgejahresbudget');
+            // FR-78/RD-1d: Das Budget wird immer nur abgerundet.
+            assertEqual(get('balanceMonthlyBudget').textContent, UIUtils.formatBalanceCurrency(displayMonthlyDown(payload.nextYearBudget.rule.monthlyBudget)), mode + ': Budgetkarte zeigt Folgejahresbudget, nur abgerundet (FR-78)');
+            if (mode === 'standard' && household === 'max-erika') assertEqual(get('balanceMonthlyBudget').textContent, UIUtils.formatBalanceCurrency(5000), 'Max und Erika: Budget 5.100 € → 5.000 €, nicht angehoben');
             const projectedAction = json(UIRenderer.getActionSummary());
             render.call(UIRenderer, { ...payload, currentYear: undefined });
             assertEqual(json(UIRenderer.getActionSummary()), projectedAction, mode + ': Empfehlung bleibt vollständig bei der Projektion');

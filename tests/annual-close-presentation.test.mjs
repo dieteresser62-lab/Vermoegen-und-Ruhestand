@@ -73,8 +73,8 @@ assert(doc.getElementById('annualCloseBtn').hidden, 'Vorbereitung hat weiterhin 
 const plan = root.querySelector('[data-annual-plan-editor]');
 const summary = plan.querySelector('[data-annual-plan-summary]');
 assertEqual(plan.children[0], plan.querySelector('[data-annual-needs-review]'), 'Bedarfsvergleich steht vor den Monatswerten');
-assert(text(summary).includes('5.150 €') && text(summary).includes('3.100 €') && text(summary).includes('1.950 €'),
-    'Zusammenfassung verwendet berechnetes Budget, anteilige Renten und geplante Vermögensentnahme');
+assert(text(summary).includes('5.000 €') && text(summary).includes('3.100 €') && text(summary).includes('1.950 €'),
+    'Zusammenfassung verwendet berechnetes Budget (5.150 € abgerundet, FR-78), anteilige Renten und geplante Vermögensentnahme');
 assert(text(summary).includes('100 €') && text(summary).includes('Davon sonstige Einkünfte'), 'Sonstige Einkünfte werden getrennt von Renten benannt');
 assertEqual(planCalls.at(-1).values.a, 10000, 'QS-F 1: Dialog übergibt persönliche Tagesgeldstände an die Vorschau');
 const callCount = planCalls.length;

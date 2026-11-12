@@ -16,6 +16,7 @@ import { planScope } from '../app/profile/household-plan.js';
 import { projectOverviewFromRecords } from '../app/overview/overview-model.js';
 import { resolveManagerTarget } from '../app/tranches/tranchen-manager-page.js';
 import { UIUtils } from '../app/balance/balance-utils.js';
+import { displayUp } from '../app/shared/display-rounding.js';
 import { renderCard, withPurchases, clean as renderedText } from './helpers/wt-1-balance-render.mjs';
 
 const clean = text => String(text).replaceAll(' ', ' ').replaceAll(' ', ' ');
@@ -40,12 +41,12 @@ const text = node => clean(node.textContent);
     assertEqual(plan.planNet, 89312, 'S1: Plan 89.312 € netto');
     assertEqual(plan.decidedOn, '02.01.2026', 'S1: Beschlussdatum');
     const doc = new MockDocument(), card = createTodoPlan(doc, plan), cardText = text(card);
-    assert(cardText.includes('Teilweise erledigt39.938 € von 89.312 € verkauft'), 'S1: Kopf „39.938 € von 89.312 € verkauft“');
-    assert(cardText.includes('Noch offen49.312 €Muster Aktien-ETF, netto'), 'S1: Hauptzeile mit offenem Rest (Erika 79.950 − 30.638 €)');
+    assert(cardText.includes('Teilweise erledigt39.938 € von 89.500 € verkauft'), 'S1: Kopf „39.938 € von 89.312 € verkauft“ (Plan aufgerundet, Verkauf genau, FR-78)');
+    assert(cardText.includes('Noch offen50.000 €Muster Aktien-ETF, netto'), 'S1: Hauptzeile mit offenem Rest (Erika 79.950 − 30.638 € = 49.312 €, aufgerundet)');
     assert(cardText.includes('ErledigtMax') === false && cardText.includes('Max · ') === false, 'S1: Tabelle mit eigener Spalte „Wer“');
     assert(cardText.includes('WerWertpapierBetrag nettoStand'), 'S1: Tabelle Wer / Wertpapier / Betrag netto / Stand');
     assert(cardText.includes('Erledigt am 12.03.2026'), 'S1: Max erledigt am 12.03.2026');
-    assert(cardText.includes('Teilweise 30.638 € am 02.09.2026 · 49.312 € offen'), 'S1: Erika teilweise mit Datum und Rest');
+    assert(cardText.includes('Teilweise 30.638 € am 02.09.2026 · 50.000 € offen'), 'S1: Erika teilweise mit Datum und Rest (49.312 € aufgerundet)');
     assert(cardText.includes('Gutschrift nachtragen') && cardText.includes('Zum Verkauf vom 02.09.2026 (Erika) fehlt die Gutschrift auf dem Tagesgeld (30.638 €)'), 'S1: Gutschrift nachtragen mit Betrag');
     assert(cardText.includes('Verkauf eintragen') && cardText.includes('Details & Drucken'), 'S1: Knöpfe Verkauf eintragen und Details & Drucken');
     for (const word of ['festgeschrieben', 'Liquidität', 'Regime', 'Jahresendregel', 'Lesart']) assert(!cardText.includes(word), `S1: kein Fachwort „${word}“ auf der Karte`);
@@ -56,19 +57,19 @@ const text = node => clean(node.textContent);
     const open = projectAnnualTodoPlan({ confirmed: { year: 2026, committedAt: '2026-01-02T11:00:00.000Z', action,
         progress: projectAnnualActionProgress({ action, year: 2026, decidedOn: '2026-01-02', sales: [] }) }, people: [] });
     const openText = text(createTodoPlan(new MockDocument(), open));
-    assert(openText.includes('OffenNoch kein Verkauf eingetragen.') && openText.includes('Aktien verkaufen89.312 €netto, Steuer 827 € schon abgezogen'), 'S1: offen mit Verb und Netto-Betrag');
+    assert(openText.includes('OffenNoch kein Verkauf eingetragen.') && openText.includes('Aktien verkaufen89.500 €netto, Steuer 1.000 € schon abgezogen'), 'S1: offen mit Verb und Netto-Betrag (Summe der angezeigten Zeilen 9.500 + 80.000, Steuer 827 € aufgerundet)');
     assert(openText.includes('Wohin das Geld geht') && openText.includes('Beschlossen im Jahresabschluss am 02.01.2026.'), 'S1: offen mit „Wohin das Geld geht“ und Beschlusszeile');
     const done = projectAnnualTodoPlan({ confirmed: { year: 2026, committedAt: '2026-01-02T11:00:00.000Z', action,
         progress: projectAnnualActionProgress({ action, year: 2026, decidedOn: '2026-01-02', sales: [sale('max', 9300, '2026-03-12'), sale('erika', 79500, '2026-09-02')] }) }, people: [] });
     const doneText = text(createTodoPlan(new MockDocument(), done));
     assert(doneText.includes('Alle Verkäufe aus dem Plan 2026 sind eingetragen, zuletzt am 02.09.2026.') && !doneText.includes('Verkauf eintragen'), 'S1: erledigt ohne Verkaufsknopf');
     const note = text(createPlanProgressNote(new MockDocument(), { ...progress, year: 2026 }));
-    assert(note.includes('Teilweise umgesetztPlan 2026') && note.includes('39.938 € von 89.312 € verkauft. Der Plan 2027 rechnet mit deinem Bestand vom 31.12.'), 'S1: Jahresabschluss, Schritt Plan');
+    assert(note.includes('Teilweise umgesetztPlan 2026') && note.includes('39.938 € von 89.500 € verkauft. Der Plan 2027 rechnet mit deinem Bestand vom 31.12.'), 'S1: Jahresabschluss, Schritt Plan (Plan aufgerundet)');
     assert(text(createPlanProgressNote(new MockDocument(), { ...progress, year: 2026 }, true)).includes('Plan 2026 · teilweise umgesetzt'), 'S1: Ergebnis nennt den Stand des alten Plans');
     const result = text(createTodoResult(new MockDocument(), projectAnnualTodoPlan({ confirmed: { year: 2027, action,
         marketReading: { reading: 'year_high', asOf: '2026-08-12' } }, people: [], routing: { tagesgeld: 32400, geldmarkt: 56912 }, cashMonths: 12 })));
     assert(result.includes('Was zu tun istPlan 2027') && result.includes('Gewählt: mit dem Jahreshoch vom 12.08.2026 (vorsichtiger).'), 'S1: Ergebnis im selben Baustein');
-    assert(result.includes('Aufs Tagesgeld, bis es 12 Monate Entnahme deckt32.400 €') && result.includes('Der Rest in den Geldmarkt56.912 €'), 'S1: Ergebnis mit Aufteilung');
+    assert(result.includes('Aufs Tagesgeld, bis es 12 Monate Entnahme deckt32.500 €') && result.includes('Der Rest in den Geldmarkt57.000 €'), 'S1: Ergebnis mit Aufteilung (32.500 € und der Rest des angezeigten Plans 89.500 − 32.500 = 57.000 €)');
 }
 
 // S2 C: Ziel 12 × 2.700 = 32.400 €. Tagesgeld 13.500 € (5 Monate), Geldmarkt 60.000 €, Plan erledigt → 18.900 €.
@@ -78,8 +79,8 @@ const text = node => clean(node.textContent);
     const hint = projectCashRefill({ people: person(13500, 60000), monthlyBase: 2700, planOpen: false });
     assertEqual(hint.amount, 18900, 'S2: Hinweis 18.900 €');
     const hintText = text(createCashRefill(new MockDocument(), hint));
-    assert(hintText.includes('Dein Tagesgeld reicht noch für 5 Monate Entnahme (13.500 €). Ziel sind 12 Monate (32.400 €).'), 'S2: Satz mit Monaten und Ziel');
-    assert(hintText.includes('18.900 €vom Geldmarkt aufs Tagesgeld umschichten') && hintText.includes('Umschichtung eintragen'), 'S2: Betrag und Knopf');
+    assert(hintText.includes('Dein Tagesgeld reicht noch für 5 Monate Entnahme (13.500 €). Ziel sind 12 Monate (32.500 €).'), 'S2: Satz mit Monaten und Ziel (Ziel 32.400 € aufgerundet)');
+    assert(hintText.includes('19.000 €vom Geldmarkt aufs Tagesgeld umschichten') && hintText.includes('Umschichtung eintragen'), 'S2: Betrag und Knopf (18.900 € aufgerundet)');
     assertEqual(saleEntryHref(hint.saleTarget), 'depot-tranchen-manager.html?person=p&tranche=p_lot_3#verkauf', 'S2: Knopf öffnet den Verkaufsdialog für den Geldmarkt');
     assertEqual(projectCashRefill({ people: person(16200, 60000), monthlyBase: 2700, planOpen: false }), null, 'S2: genau 6 Monate → kein Hinweis');
     assertEqual(projectCashRefill({ people: person(13500, 60000), monthlyBase: 2700, planOpen: true }), null, 'S2: offener Planverkauf → kein Hinweis');
@@ -174,14 +175,14 @@ const bearView = (() => {
     // wie vor GU-1 legt den Überschuss über dem Tagesgeldziel neu an; „nach Umsetzung“ ist heute minus dieser neuen Empfehlung.
     const rich = await renderCard(withPurchases(createMusterHaushaltRecords('2026-10-23', 'sophie'), [{ profileId: 'muster_sophie', amount: 9400 }], { muster_sophie: 30000 }));
     assert(rich.values.startsWith(`Liquidität heute${money(20600)}`) && !rich.values.includes(money(11200))
-        && (rich.verb === 'Nichts tun' ? !rich.values.includes('nach Umsetzung') : rich.values.includes(`nach Umsetzung${money(20600 - rich.amount)}`)),
+        && (rich.verb === 'Nichts tun' ? !rich.values.includes('nach Umsetzung') : rich.values.includes(`nach Umsetzung${money(displayUp(20600 - rich.amount))}`)), // Ergänzung 2 FR-78: Tagesgeld genau am Ziel 5.600 € → angezeigtes Ziel
         `Nachtrag: Sophie mit 30.000 € und 9.400 € gekauft: Belegkauf nicht doppelt (${rich.values}, ${rich.verb} ${rich.amount})`);
 }
 
 // Soll 7 [A5]: Beispiel „Plan teilweise umgesetzt“ zeigt den Stand über den echten Balance-Renderer.
 {
     const example = await renderCard(createMusterHaushaltRecords('2026-10-23', 'max-erika', 'teilweise'));
-    assert(example.card.includes('Teilweise erledigt') && example.card.includes('39.744 € von 89.312 € verkauft'), `Beispiel: Teilweise erledigt (${example.card.slice(0, 160)})`);
+    assert(example.card.includes('Teilweise erledigt') && example.card.includes('39.744 € von 89.500 € verkauft'), `Beispiel: Teilweise erledigt (Plan 89.312 € aufgerundet) (${example.card.slice(0, 160)})`);
     assert(example.card.includes('Gutschrift nachtragen') && example.card.includes('Zum Verkauf vom 02.09.2026 (Erika)'), 'Beispiel: Gutschrift nachtragen für Erikas Verkauf');
     assert(example.card.includes('ErledigtMax') === false && example.card.includes('Erledigt am 12.03.2026'), 'Beispiel: Max erledigt am 12.03.2026');
     assert(example.credit.includes('Ohne die offene Gutschrift von'), 'Nachtrag Punkt 3: Reserven nennen den Grund für das niedrigere „nach Umsetzung“');

@@ -48,7 +48,7 @@ try {
     assertEqual(outputs.balanceFloorCoverage.textContent, 'Grundbedarf zu 92 % durch Renten gedeckt.', 'Grundbedarf-Satz nennt Rentendeckung');
     assert(goldRow.hidden && outputs.balanceReserveRows.children.length === 0, 'Gold aus ohne Bestand entfernt beide Goldzeilen');
     assert(!text(outputs.balanceReserveValues).includes('→') && outputs.balanceReserveAfterBar.hidden, 'Ohne Vorschlag nur heute und eine Deckungsmarke');
-    assert(text(outputs.balanceReserveTarget).includes('60 Monate Entnahme = 162.000') && text(outputs.balanceReserveTarget).includes('12 Monate im Tagesgeld'), 'Reserveziel zeigt Planmonate und Betrag');
+    assert(text(outputs.balanceReserveTarget).includes('60 Monate Entnahme = 165.000') && text(outputs.balanceReserveTarget).includes('12 Monate im Tagesgeld'), 'Reserveziel zeigt Planmonate und Betrag (162.000 € aufgerundet, FR-78)');
     renderer.renderPlanCards({ ...ui, input: { ...input, renteMonatlich: 3000 } });
     assertEqual(outputs.balanceFloorCoverage.textContent, 'Grundbedarf durch Renten gedeckt.', 'Vollständige Rentendeckung bleibt ein Satz');
     for (const gold of [{ goldAktiv: true, goldWert: 0 }, { goldAktiv: false, goldWert: 1000 }]) {
@@ -59,14 +59,14 @@ try {
         { name: 'Max', input, action: { quellen: [], verwendungen: {} }, tagesgeldTarget: 2400 },
         { name: 'Erika', input, action: { quellen: [], verwendungen: {} }, tagesgeldTarget: 30000 }
     ]);
-    assert(text(outputs.balancePersonalCashTargets).includes('Max 2.400') && text(outputs.balancePersonalCashTargets).includes('Erika 30.000')
-        && text(outputs.balancePersonalCashTargets).includes('Summe 32.400'), 'Persönliche Tagesgeldziele mit Summe bleiben ohne Vorschlag sichtbar');
+    assert(text(outputs.balancePersonalCashTargets).includes('Max 2.500') && text(outputs.balancePersonalCashTargets).includes('Erika 30.000')
+        && text(outputs.balancePersonalCashTargets).includes('Summe 32.500'), 'Persönliche Tagesgeldziele mit Summe bleiben ohne Vorschlag sichtbar (2.400 € und 32.400 € aufgerundet, FR-78)');
     assert(outputs.balanceReserveAfterBar.hidden, 'Tagesgeldziele allein erzeugen keinen Nachherwert');
     const entries = [{ name: 'Max', input: { ...input, personalTagesgeldTarget: 32400 }, action: { quellen: [{ kind: 'aktien_neu', brutto: 90000, steuer: 869, netto: 89131 }], verwendungen: { liquiditaet: 89131 }, liquidityInflowToMoneyMarket: 86731 } }];
     const bytes = JSON.stringify({ ui, entries });
     renderer.renderReserves(ui, entries);
-    assert(text(outputs.balanceReserveValues).includes('179.131') && text(outputs.balanceReserveValues).includes('→'), 'Reservehauptzahl zeigt heute und nach Umsetzung');
-    assert(text(outputs.balanceReserveParts).includes('32.400') && text(outputs.balanceReserveParts).includes('146.731'), 'Reservezeilen übernehmen Tagesgeld und Geldmarkt der Aktion');
+    assert(text(outputs.balanceReserveValues).includes('182.500') && text(outputs.balanceReserveValues).includes('→'), 'Reservehauptzahl zeigt heute und nach Umsetzung (Summe der angezeigten Töpfe 32.500 + 150.000, Ergänzung 2 FR-78)');
+    assert(/30\.000\s€\s→\s32\.500\s€/.test(text(outputs.balanceReserveParts)) && text(outputs.balanceReserveParts).includes('150.000'), 'Reservezeilen übernehmen Tagesgeld und Geldmarkt der Aktion (Tagesgeld auf dem angezeigten Ziel 32.500 €, Geldmarkt 60.000 + aufgerundet 90.000, Ergänzung 2 FR-78)');
     assertClose(parseFloat(outputs.balanceReserveCoverage.children[1].style.left), 100 / 120 * 100, .001, 'Zielbeschriftung steht bei 83,33 Prozent der Balkenbreite');
     assertEqual(outputs.balanceReserveCoverage.children[1].style.left, outputs.balanceReserveGoalMark.style.left, 'Zielmarke und Beschriftung teilen denselben Breitenanteil');
     renderer.renderReserves({ ...ui, input: { ...input, tagesgeld: 500000 } }, entries);

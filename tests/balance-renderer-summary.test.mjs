@@ -142,11 +142,11 @@ console.log('--- Balance Renderer Summary Tests ---');
             return amount?.children.length ? amount.children.map(node => node.textContent).join('') : amount?.textContent;
         };
         for (const [label, expected] of [
-            [householdPlanFieldSpec('floorBedarf').label, '1.500\u00a0€ / Monat'],
-            [householdPlanFieldSpec('flexBedarf').label, '1.001\u00a0€ / Monat']
-        ]) assertEqual(rowValue(outputs.balanceNeedRows, label), expected, `${label}: benachbarte Bedarfszeile zeigt ganze Euro`);
-        assertEqual(outputs.balanceNeedTotal.textContent, '2.501\u00a0€', 'Bedarf gesamt steht als Kennzahl über den Zeilen');
-        assertEqual(outputs.balanceMonthlyBudget.children.map(node => node.textContent).join(''), '2.001\u00a0€', 'Großes Monatsbudget 2000,50 bleibt in ganzen Euro');
+            [householdPlanFieldSpec('floorBedarf').label, '1.550\u00a0€ / Monat'],
+            [householdPlanFieldSpec('flexBedarf').label, '1.050\u00a0€ / Monat']
+        ]) assertEqual(rowValue(outputs.balanceNeedRows, label), expected, `${label}: benachbarte Bedarfszeile zeigt ganze Euro, aufgerundet nach der Monatsstaffel (FR-78)`);
+        assertEqual(outputs.balanceNeedTotal.textContent, '2.600\u00a0€', 'Bedarf gesamt steht als Kennzahl über den Zeilen (2.500,81 € aufgerundet, FR-78)');
+        assertEqual(outputs.balanceMonthlyBudget.children.map(node => node.textContent).join(''), '2.000\u00a0€', 'Großes Monatsbudget 2000,50 in ganzen Euro, abgerundet (FR-78)');
 
     } finally { globalThis.document = previousDocument; }
 }
@@ -480,7 +480,7 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
         assertEqual(outputs.balanceBudgetPreview.textContent, 'Vorschau heute · 09.10.2026', 'Vorschau und fachliches Datum stehen direkt beim Monatsbudget');
         assertEqual(outputs.balanceBudgetPlan.children[0].textContent, 'Plan 2026 · festgeschrieben am 02.01.2026', 'Beschlussdatum stammt aus dem echten Planbeleg');
         assertEqual(outputs.balanceBudgetPlan.children[1].textContent, '5.000\u00a0€', 'Gültiges Planbudget bleibt neben der Vorschau');
-        assertEqual(outputs.balanceBudgetPlan.children[2].textContent, 'Differenz −50\u00a0€', 'Budgetkopf behält seine Differenz');
+        assertEqual(outputs.balanceBudgetPlan.children[2].textContent, 'Differenz −100\u00a0€', 'Budgetkopf behält seine Differenz (aus den gezeigten Beträgen: 4.950 € abgerundet 4.900 € − 5.000 €, FR-78)');
         assertEqual(outputs.balanceWithdrawalPlan.textContent, 'Plan 2026 aus dem Vermögen: 1.900\u00a0€/Monat', 'Entnahmekasten zeigt den kompakten gültigen Planwert');
         assertEqual(JSON.stringify({ model, ui }), before, 'Planvergleich verändert weder Vorschau noch festgeschriebenen Beleg');
         renderer.renderBudgetOrigin({ ...model, summary: { ...model.summary, year: 2025 } }, ui);

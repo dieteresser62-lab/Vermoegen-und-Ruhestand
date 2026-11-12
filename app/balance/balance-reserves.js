@@ -1,5 +1,6 @@
 import { remainingAnnualAction, annualActionPlanLines } from './annual-action-progress.js';
 import { resolveTargetTagesgeld, withProfileLiquidityTargets } from './balance-play-execution.js';
+import { displayUp, displayDown, displayRoundingStep } from '../shared/display-rounding.js';
 /** @import { projectAnnualActionProgress } from './annual-action-progress.js' */
 /** Lesende Bestandsprojektion der fertig vorbereiteten Buchungszeilen, vor Auszahlung. */
 /** @param {import('../../typcheck/balance-ui.js').Ui} ui @param {import('../../typcheck/balance-ui.js').ActionEntry[]} [entries]
@@ -42,6 +43,57 @@ export function projectBalanceReserves(ui, entries = [], { targetEntries = null,
     return { before: { ...before, liquidity }, after, targets: targetEntries ? targetEntries.map(entry => ({ name: entry.name, target: entry.tagesgeldTarget }))
         : entries.map(entry => ({ name: entry.name, target: entry.tagesgeldTarget ?? entry.cashSplit?.zielTagesgeld ?? entry.input?.personalTagesgeldTarget })),
     target: ui.zielLiquiditaet };
+}
+
+/** Ergänzung 2 FR-78 und RD-1c: angezeigte Reservewerte, die in sich aufgehen. Heute bleibt genau (Kontostand). Nach Umsetzung
+ * entsteht aus den angezeigten Beträgen und kann deshalb über dem genauen Wert liegen:
+ * - Ein Topf ohne Änderung bleibt wie heute; eine Änderung unter einer halben Stufe bleibt genau.
+ * - Zufluss aufgerundet, bei echter Lücke zum Tagesgeldziel abgerundet; Abfluss aufgerundet, nie unter 0, wenn der genaue Stand es nicht ist.
+ * - Geht der ganze angezeigte Zufluss (`inflow`, z. B. Summe der Planzeilen oder minus der angezeigte Kauf) in einen Topf, steht
+ *   dort heute + Zufluss; sonst nimmt der Geldmarkt den Rest, solange er nahe am genauen Wert bleibt.
+ * - Regel 4: Erreicht ein Stand sein Ziel genau gerechnet (Tagesgeld, Liquidität), steht er nicht unter dem angezeigten Ziel.
+ * Die Liquidität ist die Summe der angezeigten Töpfe (ohne Pflegevorsorge). Nur Anzeige; gerechnet wird mit `view`.
+ * @param {import('../../typcheck/balance-ui.js').Reserves} view
+ * @param {{cashTarget?: number|null, shownCashTarget?: number|null, inflow?: number|null, liquidityTarget?: number|null}} [options]
+ * `cashTarget` genaues Tagesgeldziel, `shownCashTarget` das angezeigte (Summe der angezeigten Personenziele), `inflow` angezeigter
+ * Zufluss (mit Vorzeichen) zur Liquidität, `liquidityTarget` genaues Liquiditätsziel. */
+export function displayedReserves(view, { cashTarget = null, shownCashTarget = null, inflow = null, liquidityTarget = null } = {}) {
+    const before = view.before, after = view.after, finite = Number.isFinite;
+    if (!after || ![before.tagesgeld, before.geldmarkt, after.tagesgeld, after.geldmarkt].every(finite)) return { before, after, cashTarget: displayUp(cashTarget) };
+    const still = (/** @type {number} */ delta) => Math.abs(delta) < 0.5;
+    /** @param {number} delta @param {boolean|null} gap echte Lücke zum Ziel */
+    const shownChange = (delta, gap = null) => {
+        const size = Math.abs(delta);
+        if (still(delta)) return 0;
+        if (size < displayRoundingStep(size) / 2) return delta;
+        return delta > 0 ? gap ? displayDown(size) : displayUp(size) : -displayUp(size);
+    };
+    const floorAtZero = (/** @type {number} */ shown, /** @type {number} */ exact) => exact >= 0 && shown < 0 ? 0 : shown;
+    const dTg = after.tagesgeld - before.tagesgeld, dGm = after.geldmarkt - before.geldmarkt;
+    const target = finite(shownCashTarget) ? /** @type {number} */ (shownCashTarget) : finite(cashTarget) ? displayUp(cashTarget) : null;
+    const reached = finite(cashTarget) ? after.tagesgeld >= /** @type {number} */ (cashTarget) - 0.5 : null;
+    let tagesgeld = still(dTg) ? before.tagesgeld : finite(inflow) && still(dGm) ? before.tagesgeld + /** @type {number} */ (inflow)
+        : before.tagesgeld + shownChange(dTg, reached === false);
+    if (!still(dTg) && target !== null) {
+        if (reached && tagesgeld < target) tagesgeld = target;
+        if (reached === false && tagesgeld >= target) tagesgeld = Math.min(before.tagesgeld + shownChange(dTg, true), after.tagesgeld);
+    }
+    tagesgeld = floorAtZero(tagesgeld, after.tagesgeld);
+    let geldmarkt = still(dGm) ? before.geldmarkt : before.geldmarkt + shownChange(dGm);
+    if (!still(dGm) && finite(inflow)) {
+        const rest = still(dTg) ? before.geldmarkt + /** @type {number} */ (inflow) : before.geldmarkt + /** @type {number} */ (inflow) - (tagesgeld - before.tagesgeld);
+        if (Math.sign(rest - before.geldmarkt) === Math.sign(dGm) && Math.abs(rest - after.geldmarkt) <= displayRoundingStep(Math.abs(dGm))) geldmarkt = rest;
+    }
+    geldmarkt = floorAtZero(geldmarkt, after.geldmarkt);
+    const care = finite(before.liquidity) ? before.tagesgeld + before.geldmarkt - /** @type {number} */ (before.liquidity) : 0;
+    let liquidity = tagesgeld + geldmarkt - care;
+    // Regel 4 auch für das Liquiditätsziel: Der Ausgleich geht in einen Topf, der sich ohnehin ändert.
+    const shownLiquidityTarget = finite(liquidityTarget) ? displayUp(liquidityTarget) : null;
+    if (shownLiquidityTarget !== null && finite(after.liquidity) && after.liquidity >= /** @type {number} */ (liquidityTarget) - 0.5 && liquidity < shownLiquidityTarget) {
+        const lift = shownLiquidityTarget - liquidity;
+        if (!still(dGm)) { geldmarkt += lift; liquidity += lift; } else if (!still(dTg)) { tagesgeld += lift; liquidity += lift; }
+    }
+    return { before, after: { tagesgeld, geldmarkt, liquidity }, cashTarget: target };
 }
 
 /** S6 und GU-1b: Aktion für Reserven „nach Umsetzung“ und Diagnose im laufenden Jahr. Eine festgeschriebene Handlungsanweisung

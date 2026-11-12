@@ -1,4 +1,5 @@
 import { prepareCloseFixture } from './close-dialog.test.mjs?fixture';
+import { displayMonthlyDown } from '../app/shared/display-rounding.js';
 import { installAnnualLocks } from './helpers/balance-storage-fixtures.mjs';
 import { commitAnnualPlanUpdate } from '../app/balance/balance-annual-storage-commit.js';
 import { HOUSEHOLD_PLAN_KEY, buildPlanRecord, PLAN_DEFAULTS, readBalanceHouseholdPlan } from '../app/profile/household-plan.js';
@@ -330,7 +331,7 @@ try {
             assertEqual(snapshots.size, 2, 'Protokoll in C erzeugt keinen weiteren Snapshot');
         }
         const text = dialogElements(doc.getElementById('balanceAnnualClose')).map(node => node.textContent).join(' ');
-        assert(text.includes('Max') && text.includes('Erika') && text.includes(formatDisplayNumber(session.model.summary.monthlyWithdrawal, { unit: 'currency', fractionDigits: 2 })) && text.includes(formatDisplayNumber(session.model.summary.monthlyBudget, { unit: 'currency', fractionDigits: 2 })), 'Ergebnis C nennt Haushalt und bestätigte Planwerte');
+        assert(text.includes('Max') && text.includes('Erika') && text.includes(formatDisplayNumber(session.model.summary.monthlyWithdrawal, { unit: 'currency', fractionDigits: 2 })) && text.includes(formatDisplayNumber(displayMonthlyDown(session.model.summary.monthlyBudget), { unit: 'currency', fractionDigits: 0 })), 'Ergebnis C nennt Haushalt und bestätigte Planwerte (Monatsbudget abgerundet, FR-78)');
         await doc.getElementById('annualConfirmBtn').fire('click');
         assertEqual(monthSaves, savesBeforeDone, 'Fertig startet keinen erneuten Monats-Save');
         assert(!resultHost.open, 'Fertig schließt bestehenden Host');

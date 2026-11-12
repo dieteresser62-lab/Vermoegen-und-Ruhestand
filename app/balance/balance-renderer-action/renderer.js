@@ -7,6 +7,7 @@ import { persistenceStorage } from '../../shared/persistence-facade.js';
 import { detailsMethods } from './details.js';
 import { cashRebalanceMethods } from './cash-rebalance.js';
 import { transactionMethods } from './transaction.js';
+import { displayActionAmount } from '../../shared/display-rounding.js';
 
 /** Renderer für Handlungsempfehlungen; Zustand bleibt auf derselben Instanz. */
 export class ActionRenderer {
@@ -68,7 +69,8 @@ export class ActionRenderer {
             outputs.balanceActionAmount.textContent = '';
             if (summary.amount !== null) {
                 const unit = document.createElement('span'); unit.className = 'balance-action-unit'; unit.textContent = summary.amountUnit;
-                outputs.balanceActionAmount.replaceChildren(document.createTextNode(UIUtils.formatBalanceCurrency(summary.amount).slice(0, -1)), unit);
+                // FR-78: Betrag der Vorschau gerundet (Verkauf auf, Kauf ab, RD-1c); „Details der Vorschau“ bleibt genau.
+                outputs.balanceActionAmount.replaceChildren(document.createTextNode(UIUtils.formatBalanceCurrency(displayActionAmount(summary.verb, summary.amount)).slice(0, -1)), unit);
             }
         }
         const purpose = outputs.balanceActionPurpose || outputs.balanceActionNote;
