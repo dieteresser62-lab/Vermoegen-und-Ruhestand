@@ -381,7 +381,7 @@ try {
             assertEqual(UIReader.planFormSource.scopeKey, plan.scope.key, 'Wiederöffnung setzt Baseline für bestätigten Bereich');
             assertEqual(plan.entry.values.floorBedarf, 31000, 'Wiederöffnung bestätigt die Simulatorwahl');
             assert(seen.some(input => input.floorBedarf === 31000), 'Produktive Basisrechnung verwendet bestätigten Floor');
-            assertEqual(seen.at(-1).floorBedarf, 32000, 'Produktive Folgejahresprojektion schreibt bestätigten Floor fort');
+            assertEqual(seen.at(-1).floorBedarf, 31620, 'Produktive Folgejahresprojektion schreibt bestätigten Floor genau fort');
             const preview = calls.at(-1);
             assert(preview.result.ok && preview.mode === 'preview', 'Wiederöffnung verwendet erfolgreiche produktive Vorschau');
             assertEqual(preview.before, preview.after, 'Wiederöffnungsvorschau führt keinen weiteren Planpatch aus');

@@ -1,5 +1,6 @@
 /** @import {CareMeta,SimulatorInputs} from '../../typcheck/rechenkern' */
 /** Reine Pflegebedarfsrechnung: keine Uhr, Zufallsziehung, Speicherung oder Zähleränderung. */
+import { simulatorCareDriftFactor } from './care-cost-drift.js';
 import { DEFAULT_CARE_VALUES, residentialComponents, residentialMonthly, residentialSubsidyRate } from './household-care-values.js';
 import { careFormForPerson, careAllowanceAnnual, applyPartnerCareFallback } from './care-benefits.js';
 /** Punkt 3: eigene Ausgaben im Heim, €/Monat je Person (G-V). */
@@ -63,7 +64,8 @@ export function replacesHomeFloor(care) {
 export function residentialAnnualCosts(care, inputs, { inflationFactor, yearIndex, heimJahr }) {
     const careValues = /** @type {typeof DEFAULT_CARE_VALUES} */ (inputs.careValues ?? DEFAULT_CARE_VALUES);
     const components = residentialComponents(careValues.residential);
-    const carePriceFactor = inflationFactor * Math.pow(1 + (Number(inputs.pflegeKostenDrift) || 0), yearIndex);
+    // FR-73 Punkt 8 geändert: Kostenanstieg je Kalenderjahr (Index 0 = `pflegeKostenStartJahr`).
+    const carePriceFactor = inflationFactor * simulatorCareDriftFactor(inputs, yearIndex);
     const regionalMultiplier = 1 + Math.max(0, Number(inputs.pflegeRegionalZuschlag) || 0);
     const grade = Number(care.grade) || 2;
     return {
@@ -332,7 +334,7 @@ export function initialResidentialYear(since, referenceDate, firstYear = null, r
  * den Staffelbetrag, auch mit 0 €; er folgt Inflation und Kostenanstieg, nicht dem Regionalzuschlag. */
 export function homeCareAnnualCosts(care, inputs, { baseFloor, inflationFactor = 1, yearIndex = 0,
     floorFactor = 1, gradeConfig = inputs.pflegeGradeConfigs?.[care?.grade] || {} }) {
-    const price = inflationFactor * Math.pow(1 + (inputs.pflegeKostenDrift || 0), yearIndex);
+    const price = inflationFactor * simulatorCareDriftFactor(inputs, yearIndex);
     const anchor = baseFloor * floorFactor;
     const maximum = inputs.pflegeMaxFloor * price;
     const cap = Math.max(0, maximum - anchor);

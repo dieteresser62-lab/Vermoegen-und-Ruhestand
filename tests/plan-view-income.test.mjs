@@ -1,4 +1,7 @@
-import { readLE1References } from './helpers/le-1-expectations.mjs';
+import { readTRG1References } from './helpers/trg-1-expectations.mjs';
+import { readLE1References as readBeforeGN2References } from './helpers/le-1-expectations.mjs';
+import { readGN2References } from './helpers/gn-2-expectations.mjs';
+const readLE1References = value => readGN2References(readBeforeGN2References(value));
 import { withPreviousRunEvidence } from './helpers/le-1b-expectations.mjs';
 const readQSCReferences = value => readPFA1References(beforePFA1QSCReferences(value));
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
@@ -38,6 +41,7 @@ import { buildAccessibleBacktestTableHtml } from '../app/simulator/historical-ba
 import { measure, hash } from './helpers/ek-1b-measurement.mjs';
 import { canonicalizeHistoricalContractValue } from '../app/simulator/historical-backtest-contract.js';
 
+import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const readRNG1Hash = before => readQSCReferences(readAS1Hash(readEP1Hash(readBeforeEP1Hash(before))));
 const same = (actual, expected, label) => assertEqual(canonicalizeHistoricalContractValue(actual), canonicalizeHistoricalContractValue(expected), label);
 const rates = resolvePlanOverviewRates();
@@ -111,7 +115,7 @@ const baseline = JSON.parse(fs.readFileSync(new URL('./fixtures/pv-1-parity.json
 const { inputs: measuredInputs, historical, chunk } = await measure(baseline.salary, baseline.count, { historicalSurvivor: true });
 assertEqual(hash(measuredInputs), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readAN1Hash(baseline.inputsHash))))), 'Messinputs bytegleich zur Basis');
 assertEqual(hash(historical), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(readAS1Hash(readAN1Hash(readNR1Hash(baseline.backtestHash))))))), 'Vollständiges Backtestergebnis mit belegten NR-1-Anzeigeänderungen');
-assertEqual(hash(withPreviousRunEvidence(chunk)), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readRNG1Hash(readPG1bHash(readAN1Hash(readNR1Hash(baseline.monteCarloHash))))))))), 'Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen');
+assertEqual(hash(withPreviousRunEvidence(chunk)), readFI1References(readTRG1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readRNG1Hash(readPG1bHash(readAN1Hash(readNR1Hash(baseline.monteCarloHash))))))))))), 'Vollständiger MC-Chunk mit festem Seed und belegten NR-1-Anzeigeänderungen');
 const forExport = { ...historical, request: { ...historical.request, engine: captureHistoricalBacktestEngineProvenance(EngineAPI,
     { schemaVersion: 'RuntimeBuildProvenanceV1', sourceCommit: 'a'.repeat(40), sourceTreeStatus: 'clean', provider: 'synthetic_fixture' }) } };
 const oldHistorical = { ...forExport, rows: historical.rows.map(entry => ({ ...entry, row: strip(entry.row) })) };

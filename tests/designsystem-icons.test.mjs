@@ -104,7 +104,7 @@ for (const [html, loader, expected] of [
     [index.replace('<span>Handbuch</span>', '<span>📖 Handbuch</span>'), frame, 'Emoji']
 ]) assert(handbookIconErrors(html, loader).includes(expected), `Gegenprobe erkennt ${expected}`);
 
-for (const name of ['house', 'scale', 'chart-no-axes-combined', 'wallet', 'landmark', 'panel-left-close', 'panel-left']) {
+for (const name of ['house', 'scale', 'chart-no-axes-combined', 'wallet', 'receipt-text', 'landmark', 'panel-left-close', 'panel-left']) {
     const source = fs.readFileSync(new URL(`../assets/icons/lucide/${name}.svg`, import.meta.url), 'utf8');
     const icon = await createDesignsystemIcon(name, documentAdapter(), { fetch: async () => response(source) });
     assertEqual(icon.getAttribute('data-designsystem-icon'), name, 'Rahmensymbol kommt aus der freigegebenen lokalen Quelle');

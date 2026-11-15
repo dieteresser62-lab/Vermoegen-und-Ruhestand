@@ -134,7 +134,7 @@ try {
     for (const kind of ['tranche', 'cash-confirm', 'cash-correct']) {
         const { doc, guard, backend } = await setup({ sale: kind === 'cash-correct' ? createCashSale() : undefined });
         if (kind === 'tranche') {
-            await doc.getElementById('depotAddTrancheBtn').click();
+            openCreateTrancheModal(doc, doc.getElementById('depotAddTrancheBtn')); // VK-2: der Knopf öffnet den geführten Kauf
             doc.getElementById('name').value = 'Synthetischer ungespeicherter Name';
         } else {
             openCash(doc, kind === 'cash-correct');
@@ -265,19 +265,12 @@ try {
     }
 
     console.log('Managerwrites halten Mutation, Flush, Rückschreiben und Retry zusammen');
-    for (const kind of ['tranche', 'cash-confirm', 'cash-correct', 'reconcile', 'profile']) {
+    // FR-79: Den Verkauf schreibt der gemeinsame Haushaltsschreiber (vk-1-sollfaelle); der alte Abgleichdialog entfällt.
+    for (const kind of ['tranche', 'cash-confirm', 'cash-correct', 'profile']) {
         const { doc, guard, raw, registryRaw, adapter } = await setup({ sale: kind === 'cash-correct' ? createCashSale() : undefined });
         let pending;
         if (kind === 'tranche') fillEdit(doc);
         if (kind.startsWith('cash')) openCash(doc, kind === 'cash-correct');
-        if (kind === 'reconcile') {
-            for (const [id, value] of Object.entries({ reconcileActionId: 'guard-sale', reconcileTrancheId: lot.trancheId,
-                reconcileExecutedAt: '2026-07-14', reconcileSharesSold: '1', reconcileGrossProceeds: '120', reconcileFees: '0' })) {
-                if (!doc.getElementById(id)) doc.register(new MockElement(id, 'input'));
-                doc.getElementById(id).value = value;
-            }
-            submit(doc, 'reconciliationForm');
-        }
         const calls = holdFlushes({ cashAdapter: kind.startsWith('cash') ? adapter : null });
         let firstMutation = true;
         persistenceStorage.setItem = (key, value) => {
@@ -290,12 +283,11 @@ try {
         };
         if (kind === 'tranche') pending = submit(doc, 'trancheForm');
         else if (kind.startsWith('cash')) pending = submit(doc, 'cashPostingForm');
-        else if (kind === 'reconcile') pending = doc.getElementById('reconciliationConfirmBtn').click();
         else if (kind === 'delete') pending = deleteFirstTranche(doc);
         else {
             const input = doc.getElementById('profileTagesgeld'); input.value = '100'; input.listeners.change[0]();
         }
-        if (['reconcile', 'delete'].includes(kind)) await respondPageDialog(doc);
+        if (kind === 'delete') await respondPageDialog(doc);
         await waitFor(() => calls.length === 1, `${kind}: Write erreicht Flush`);
         persistenceStorage.setItem = originalSetItem;
         await assertBlocked(doc, guard, kind === 'tranche' ? 'tranche' : 'cash');
@@ -328,7 +320,7 @@ try {
             const modal = doc.getElementById(kind === 'tranche' ? 'trancheModal' : 'cashPostingModal');
             assertEqual(modal.classList.contains('active'), false, 'Erfolgreicher Retry schließt intern nach Writeende');
         }
-        if (kind === 'reconcile' || kind.startsWith('cash')) {
+        if (kind.startsWith('cash')) {
             const actions = JSON.parse(persistenceStorage.getItem('rs_profiles_v1')).trancheReconciliation.actions;
             assertEqual(actions.length, 2, 'Retry hängt dieselbe Action-ID genau einmal an');
         }
@@ -339,12 +331,12 @@ try {
         const { doc, guard, backend, adapter } = await setup({ lots: kind === 'tranche' ? [] : [lot], sale: kind === 'cash-correct' ? createCashSale() : undefined });
         const tranche = kind === 'tranche';
         if (tranche) {
-            await doc.getElementById('depotAddTrancheBtn').click();
+            openCreateTrancheModal(doc, doc.getElementById('depotAddTrancheBtn')); // VK-2: der Knopf öffnet den geführten Kauf
             for (const [id, value] of Object.entries({ name: 'Ursprünglich', shares: '2', purchasePrice: '100', currentPrice: '110', tqf: '0.3' })) doc.getElementById(id).value = value;
         } else openCash(doc, kind === 'cash-correct');
         const formId = tranche ? 'trancheForm' : 'cashPostingForm';
         const retryId = tranche ? 'retryTrancheDialogSaveBtn' : 'retryCashPostingSaveBtn';
-        const field = doc.getElementById(tranche ? 'notes' : 'cashPostingBalance');
+        const field = doc.getElementById(tranche ? 'name' : 'cashPostingBalance');
         const calls = holdFlushes({ durable: true, cashAdapter: tranche ? null : adapter });
         const first = submit(doc, formId);
         await waitFor(() => calls.length === 1, 'Erster Auftrag erreicht Write');
@@ -390,7 +382,7 @@ try {
                 const lots = JSON.parse(persistenceStorage.getItem('depot_tranchen'));
                 assertEqual(lots.length, 1, 'Folgesubmit dupliziert bestätigte Neuanlage nicht');
                 assertEqual(lots[0].trancheId, id, 'Folgesubmit bearbeitet bestätigte ID');
-                assertEqual(lots[0].notes, 'Spätere Notiz', 'Bewusster Folgesubmit bestätigt spätere Eingabe');
+                assertEqual(lots[0].name, 'Spätere Notiz', 'Bewusster Folgesubmit bestätigt spätere Eingabe');
             } else {
                 assertEqual(doc.getElementById('cashPostingSubmitBtn').disabled, true,
                     'Bestätigter Cashauftrag ist vom unbestätigten Entwurf getrennt und nicht erneut submitbar');

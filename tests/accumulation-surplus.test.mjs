@@ -92,7 +92,8 @@ try {
     outputs.liquiditaetBalken.classList = { add() {} };
     const ui = { ...result.ui, input, liquiditaet: { ...result.ui.liquiditaet, deckungVorher: 300, deckungNachher: 300 } };
     summary.renderPlanCards(ui); summary.renderReserves({ ...ui, zielLiquiditaet: (input.tagesgeld + input.geldmarktEtf) / 3 });
-    assert(/Danach 300\s% des Ziels/.test(outputs.balanceActionCoverage.textContent), 'AS-1: Nachherdeckung über 100 Prozent ohne Nachkommastelle');
+    // GN-2b (Gemini 3): Der Satz „Danach … des Ziels“ hatte kein Element auf der Seite und entfällt; die Deckung steht in „Deine Reserven“.
+    assertEqual(outputs.balanceActionCoverage.textContent, '', 'AS-1: kein Satz zur Nachherdeckung mehr');
     const text = node => [node.textContent, ...(node.children || []).map(text)].join(' ');
     const comparison = text(outputs.balanceReserveCoverage);
     assert(/300\s%/.test(comparison) && !comparison.includes('300,0'), 'AS-1: Deckungsvergleich zeigt keine Nachkommastelle über 100 Prozent');

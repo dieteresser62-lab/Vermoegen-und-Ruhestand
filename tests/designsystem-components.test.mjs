@@ -25,7 +25,7 @@ reject('index.html', s => s.replace('</body>', '<input data-field-state="success
 reject('css/components.css', s => s.replace('data-field-state="error"', 'data-field-state="failure"'), 'Ungültiger Zustandswert');
 reject('css/components.css', s => s + '\n.ds-note { opacity: .5; }', 'Text-/Elterndeckkraft');
 reject('css/overview.css', s => s.replace('.overview-person {', '.overview-person { opacity: .7;'), 'Text-/Elterndeckkraft');
-reject('Handbuch.html', s => s.replace('.step-content p {', '.step-content p { opacity: .7;'), 'Text-/Elterndeckkraft');
+reject('css/handbuch.css', s => s.replace('.step-content p {', '.step-content p { opacity: .7;'), 'Text-/Elterndeckkraft');
 reject('Handbuch.html', s => s.replace('<body>', '<body style="color: #777">'), 'Inline-Textfarbe');
 reject('css/components.css', s => s.replace('solid var(--ring-color)', 'solid transparent'), 'Fokusring');
 reject('index.html', s => s.replace('href="css/components.css"', 'href="css/fonts.css"'), 'Komponenten-Ladefolge');

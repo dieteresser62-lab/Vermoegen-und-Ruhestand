@@ -10,7 +10,6 @@ for (const [path, before, after] of [
     ['css/balance.css', '.form-column {\n    min-width: 0;', '.form-column {'],
     ['css/overview.css', 'grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);', 'grid-template-columns: 320px 1fr;'],
     ['css/balance.css', 'max-width: 100%; overflow-x: auto;', 'max-width: 100%; overflow-x: visible;'],
-    ['depot-tranchen-manager.html', '<span id="reconcileTrancheId-fulltext" class="ds-selection-text"></span>', '<span title="Nur Tooltip"></span>'],
     ['css/components.css', 'white-space: normal;', 'white-space: nowrap;'],
     ['depot-tranchen-manager.html', 'id="managerWealthTable" class="ds-table-scroll ds-table-box" tabindex="0"', 'id="managerWealthTable" class="ds-table-scroll ds-table-box"'],
     ['Ausgaben.html', 'id="expensesHistoryChart" class="expenses-table-region" tabindex="0"', 'id="expensesHistoryChart" class="expenses-table-region"'],
@@ -204,30 +203,12 @@ try {
     equalSelection(profiles);
     assertEqual(selectionDoc.getElementById('profileSelect-fulltext').textContent, profiles.selectedOptions[0].textContent, 'Expliziter Produktrefresh zeigt unmittelbar das ausgewählte Profil');
 
-    const form = selectionDoc.body.appendChild(selectionDoc.createElement('form')); form.id = 'reconciliationForm';
-    const tranche = addField(selectionDoc, 'reconcileTrancheId', 'lot-b', [['', 'Tranche über ID auswählen'], ['lot-b', 'Vorherige Tranche']], form);
-    valueVariant.syncSelectionText(tranche);
-    let resets = 0;
-    const reset = form.reset.bind(form);
-    form.reset = () => { resets++; reset(); };
-    const state = { tranchen: [{ trancheId: 'lot-b', name: 'Aktualisierte Tranche' }], reconciliationStatus: '', reconciliationError: '', reconciliationPreview: {} };
-    const paths = ['clearReconciliationPreview', 'renderReconciliationState', 'renderReconciliationOptions'];
-    const bodies = paths.map(name => functionSource('app/tranches/tranchen-manager-page/' + (name === 'clearReconciliationPreview' ? 'reconciliation' : 'reconciliation-view') + '.js', name)).join('\n');
-    const clear = new Function('state', 'byId', 'syncSelectionText', 'ensureReconciliationCashControls', 'syncInitialCashStatusControls', 'localIsoDate', 'processingIsBlocked', 'renderReconciliationPreview', 'renderReconciliationCashStatuses', 'setReconciliationStatus', 'managerInputSignature', 'RECONCILIATION_INPUT_IDS', `${bodies}\nreturn clearReconciliationPreview;`)(
-        state, id => selectionDoc.getElementById(id), valueVariant.syncSelectionText,
-        () => null, () => {}, () => '2026-10-04', () => false, () => {}, () => {}, () => {}, () => '', []);
-    clear({ resetForm: true });
-    assertEqual(resets, 1, 'Vollständige Produktkette setzt das Abgleichformular tatsächlich zurück');
-    assertEqual(tranche.value, '', 'Reset hinterlässt die native leere Platzhalterauswahl');
-    assertEqual(tranche.selectedIndex, 0, 'Reset und Optionsrendern erhalten Platzhalterindex');
-    equalSelection(tranche);
-    assertEqual(selectionDoc.getElementById('reconcileTrancheId-fulltext').textContent, tranche.selectedOptions[0].textContent, 'Explizite Reset-/Renderkette zeigt unmittelbar den Platzhaltervolltext');
-    assertEqual(state.reconciliationPreview, null, 'Vorhandener Previewzustand wird zurückgesetzt');
+    // FR-79: Die Tranchenwahl des alten Verkaufsdialogs entfällt; der geführte Verkauf nennt die Tranche in Klartext.
 } finally { if (originalDocument === undefined) delete globalThis.document; else globalThis.document = originalDocument; }
 
 // Manager-Modalresets sind angebunden; Simulator-Strategiefelder behalten ihren ID-Vertrag.
 const managerHtml = source('depot-tranchen-manager.html');
-const trancheForm = managerHtml.match(/<form id="trancheForm">([\s\S]*?)<\/form>/)[1];
+const trancheForm = managerHtml.match(/<form id="trancheForm"[^>]*>([\s\S]*?)<\/form>/)[1];
 assertEqual([...trancheForm.matchAll(/<select[^>]*id="([^"]+)"/g)].map(m => m[1]).sort().join(','), 'category,type', 'Tranche-Reset trifft nur category/type');
 assert(sources['css/components.css'].includes('.ds-selection-text[hidden] { display: none; }'), 'Passende Modal-Kurztexte bleiben ohne sichtbare Wiederholung');
 const managerSources = ['tranchen-manager-page/startup.js', 'tranchen-manager-modal.js', 'tranchen-manager-renderer.js'].map(p => source(`app/tranches/${p}`)).join('\n');

@@ -31,6 +31,9 @@ export const state = {
     pendingCommit: null,
     profileCommitInFlight: false,
     profileEditingField: null,
+    /** VN-3: Personendaten während eines anderen Autosaves geändert; speichern, sobald die Sperre endet. */
+    profileResaveWanted: false,
+    /** @type {(() => void)|null} */ resumeProfileSave: null,
     pendingProfileValues: null,
     profileSaveTimer: null,
     quoteBatchId: 0,
@@ -43,12 +46,13 @@ export const state = {
     taxMigrationWarning: '',
     rawRevealed: false,
     reconciliationPreview: null,
-    pendingReconciliation: null,
     reconciliationStatus: '',
     reconciliationError: '',
     /** @type {ReadonlyArray<ReturnType<typeof projectReconciliationCashStatuses>[number]>} */
     reconciliationCashStatuses: [],
     cashStatusError: '',
+    /** @type {{date: string, amount: number}[]} */
+    openDebits: [],
     registryDisplayRaw: undefined,
     cashPostingInFlight: false,
     pendingCashPosting: null,
@@ -69,18 +73,8 @@ export const QUOTE_BATCH_CONCURRENCY = 3;
 
 export const QUOTE_BATCH_TIMEOUT_MS = 12000;
 
-export const RECONCILIATION_INPUT_IDS = [
-    'reconcileActionId',
-    'reconcileTrancheId',
-    'reconcileExecutedAt',
-    'reconcileSharesSold',
-    'reconcileGrossProceeds',
-    'reconcileFees',
-    'reconcileRecommendedShares',
-    'reconcileRecommendedGross',
-    'reconcileCashStatus',
-    'reconcileInitialCashBalance'
-];
+/** FR-79: Der alte Verkaufsdialog mit eigenen Feldern entfällt; der geführte Verkauf prüft seine Eingaben selbst. */
+export const RECONCILIATION_INPUT_IDS = /** @type {string[]} */ ([]);
 
 export const PROFILE_INPUT_IDS = [
     'profileImmobilien',

@@ -3,7 +3,8 @@
 import { formatDisplayNumber } from './designsystem-number-format.js';
 import { saleEntryHref, todoDate, annualPlanStatusText, stockTrancheId } from '../balance/annual-todo.js';
 import { createMarketHistory } from '../balance/balance-market-history.js';
-import { displayUp, displayMonthlyDown, displayDown, displayActionAmount } from './display-rounding.js';
+import { displayUp, displayMonthlyDown, displayDown, displayActionAmount, displayedBuyTotal } from './display-rounding.js';
+import { BANK_ORDER_DATE_MISSING_HINT } from '../../types/sale-fifo.js';
 
 /** @param {string|null|undefined} value */
 const marketChoiceDate = value => value?.split('-').reverse().join('.') || 'Datum nicht belegt';
@@ -19,12 +20,39 @@ export const todoMoney = value => Number.isFinite(value) ? `${formatDisplayNumbe
 const upMoney = value => todoMoney(displayUp(value));
 /** FR-78: Monatsbudget, abgerundet nach der Monatsstaffel. @param {number|null|undefined} value */
 const budgetMoney = value => todoMoney(displayMonthlyDown(value));
+const shownBuyPlan = displayedBuyTotal;
 /** Ergänzung 2 FR-78: Summen aus den angezeigten Beträgen. Plan = Summe der angezeigten Zeilen, ohne Zeilen der gerundete Betrag.
+ * VK-3d P4: Ein reiner Kaufplan mit Zeilen je Person nimmt deren Summe.
  * @param {{rows: {planNet: number}[], amount?: number|null}} plan @returns {number|null} */
 const shownPlan = plan => plan.rows.length ? plan.rows.reduce((sum, row) => sum + displayUp(row.planNet), 0)
-    : Number.isFinite(plan.amount) ? displayActionAmount(/** @type {any} */ (plan).verb, plan.amount) : null;
-/** Offener Rest = Summe der angezeigten offenen Reste. @param {{rows: {restNet: number}[]}} plan */
-const shownRest = plan => plan.rows.filter(row => row.restNet > 0).reduce((sum, row) => sum + displayUp(row.restNet), 0);
+    : /** @type {any} */ (plan).buyFlow?.lines?.length ? shownBuyPlan(/** @type {any} */ (plan).buyFlow.lines)
+        : Number.isFinite(plan.amount) ? displayActionAmount(/** @type {any} */ (plan).verb, plan.amount) : null;
+/** VN-1 Punkt 4 (FR-78 Ergänzung 3): Plan, verkauft bzw. gekauft und offen einer Karte auf den Euro. Je Zeile werden Plan und Erledigtes
+ * auf den Euro gerundet, offen ist ihr Unterschied (erledigte Zeilen 0). So geht Plan − verkauft = offen sichtbar auf, in der Standzeile,
+ * in den Zeilen und im Jahresabschluss. Nur die Handlungszeile bleibt gerundet („ca.“).
+ * @param {{plan: number, done: number, open: number}[]} rows genaue Werte je Zeile */
+export function euroProgress(rows) {
+    // VN-2 (Codex F03, Gemini 3.3): Erledigte Zeilen mit Fehlbetrag oder bewusst belassenem Rest zählen als „weniger als geplant“,
+    // ein Überkauf bzw. Mehrverkauf als „mehr als geplant“. So geht Plan = erledigt + offen + weniger − mehr immer auf.
+    const parts = rows.map(row => {
+        const plan = Math.round(row.plan), done = Math.round(row.done);
+        const open = row.open > 0 ? Math.max(0, plan - done) : 0;
+        return { plan, done, open, less: row.open > 0 ? 0 : Math.max(0, plan - done), more: Math.max(0, done - plan) };
+    });
+    const total = (/** @type {'plan'|'done'|'open'|'less'|'more'} */ key) => parts.reduce((sum, row) => sum + row[key], 0);
+    return { parts, plan: total('plan'), done: total('done'), open: total('open'), less: total('less'), more: total('more') };
+}
+/** Ausgleichsposten der Standzeile („ · 5.000 € weniger als geplant“). @param {{less: number, more: number}} progress */
+// VN-4 (Abnahme ST-4): Steht ein Ausgleichsposten da, nennt die Zeile auch den offenen Rest; sonst ist Plan = erledigt + offen + weniger − mehr
+// nicht ablesbar (Überkauf in einer Zeile, andere Zeile offen).
+export const progressBalanceText = (/** @type {{open?: number, less: number, more: number}} */ progress) => [
+    (progress.open ?? 0) > 0 && (progress.less > 0 || progress.more > 0) ? ` · ${todoMoney(/** @type {number} */ (progress.open))} offen` : '',
+    progress.less > 0 ? ` · ${todoMoney(progress.less)} weniger als geplant` : '',
+    progress.more > 0 ? ` · ${todoMoney(progress.more)} mehr als geplant` : ''].join('');
+/** @param {{planNet: number, soldNet: number, restNet: number}[]} rows */
+const saleProgress = rows => euroProgress(rows.map(row => ({ plan: row.planNet, done: row.soldNet, open: row.restNet })));
+/** @param {{amount: number, bought: number, restAmount: number}[]} lines */
+const buyProgress = lines => euroProgress(lines.map(line => ({ plan: line.amount, done: line.bought, open: line.restAmount })));
 /** Aufteilung eines angezeigten Gesamtbetrags. Käufe (`purchase`) stehen in jedem Status abgerundet, unter der kleinsten Stufe in
  * ganzen Euro (RD-1e); die übrigen Teile mit `round` (Verkaufserlös auf). Den Unterschied zum Gesamtbetrag nimmt der letzte Teil, der
  * kein Kauf ist, wenn er dabei nahe am genauen Wert bleibt (nicht unter seinem abgerundeten, nicht über seinem aufgerundeten Wert, über 0).
@@ -69,11 +97,12 @@ function statusChip(doc, status, short = false) {
     return chip;
 }
 
-/** Hauptzeile mit Verb und angezeigtem Netto-Betrag (FR-78). @param {Document} doc @param {string} verb @param {number|null} amount @param {string} note */
-function mainLine(doc, verb, amount, note) {
+/** Hauptzeile mit Verb und angezeigtem Netto-Betrag (FR-78). `approx`: gerundeter Betrag mit „ca.“ (VN-1 Punkt 4).
+ * @param {Document} doc @param {string} verb @param {number|null} amount @param {string} note @param {boolean} [approx] */
+function mainLine(doc, verb, amount, note, approx = false) {
     const line = make(doc, 'div', undefined, 'todo-main');
     line.append(make(doc, 'span', verb, 'todo-main-verb'));
-    if (amount !== null && Number.isFinite(amount)) line.append(make(doc, 'span', todoMoney(amount), 'todo-main-amount'));
+    if (amount !== null && Number.isFinite(amount)) line.append(make(doc, 'span', `${approx ? 'ca. ' : ''}${todoMoney(amount)}`, 'todo-main-amount'));
     if (note) line.append(make(doc, 'span', note, 'ds-source todo-main-note'));
     return line;
 }
@@ -105,13 +134,37 @@ function table(doc, headings, rows, label) {
     element.append(body); box.append(element); return box;
 }
 
-/** Stand je Zeile: „offen“, „Teilweise 30.638 € am … · 49.312 € offen“, „Erledigt am …“. @param {Document} doc @param {TodoPlan['rows'][number]} row */
-function rowState(doc, row) {
+/** Stand je Zeile: „offen“, „Teilweise 30.638 € am … · 49.312 € offen“, „Erledigt am …“, bei Rest „Erledigt am … · 5.050 € weniger als geplant“.
+ * @param {Document} doc @param {TodoPlan['rows'][number]} row @param {boolean} [revoke] Knopf „Rest doch verkaufen“ */
+function rowState(doc, row, revoke = false) {
     const cell = make(doc, 'span', undefined, 'todo-row-state');
     cell.append(statusChip(doc, row.status, true));
+    // FR-79 Punkt 11: bewusst weniger verkauft; „Rest doch verkaufen“ nimmt die Entscheidung zurück (nur in der Balance).
+    if (/** @type {any} */ (row).keptInDepot) {
+        cell.append(make(doc, 'span', ' · Rest bleibt im Depot', 'ds-source'));
+        if (revoke) {
+            const button = make(doc, 'button', 'Rest doch verkaufen', 'sale-flow-link todo-row-revoke'); button.setAttribute('type', 'button');
+            button.dataset.saleFlowRevoke = /** @type {any} */ (row).key || ''; cell.append(make(doc, 'br'), button);
+        }
+        return cell;
+    }
     const date = todoDate(row.lastSaleAt);
-    if (row.status === 'teilweise') cell.append(make(doc, 'span', ` ${todoMoney(row.soldNet)}${date ? ` am ${date}` : ''} · ${upMoney(row.restNet)} offen`, 'ds-source'));
-    else if (row.status === 'erledigt' && date) cell.append(make(doc, 'span', ` am ${date}`, 'ds-source'));
+    const shown = saleProgress([row]);
+    if (row.status === 'teilweise') {
+        cell.append(make(doc, 'span', ` ${todoMoney(shown.done)}${date ? ` am ${date}` : ''} · ${todoMoney(shown.open)} offen`, 'ds-source'));
+        // Gutachten VK-1 P3-2: „Rest bleibt im Depot“ lässt sich hier nachholen (derselbe Schreibweg wie „Rest doch verkaufen“).
+        if (revoke) {
+            const button = make(doc, 'button', 'Rest bleibt im Depot', 'sale-flow-link todo-row-keep'); button.setAttribute('type', 'button');
+            button.dataset.saleFlowKeep = /** @type {any} */ (row).key || ''; cell.append(make(doc, 'br'), button);
+        }
+    }
+    else if (row.status === 'erledigt') {
+        // Ergänzung 3 FR-78: Erledigt nach der Rundungsstaffel, aber weniger verkauft als geplant → fehlenden Betrag auf den Euro nennen.
+        const missing = shown.plan - shown.done;
+        // VN-3 (Gemini Befund 4): ein Mehrverkauf je Zeile steht ebenso da wie in der Standzeile.
+        const rest = !Number.isFinite(missing) ? '' : missing >= 1 ? ` · ${todoMoney(missing)} weniger als geplant` : missing <= -1 ? ` · ${todoMoney(-missing)} mehr als geplant` : '';
+        if (date || rest) cell.append(make(doc, 'span', `${date ? ` am ${date}` : ''}${rest}`, 'ds-source'));
+    }
     return cell;
 }
 
@@ -131,13 +184,18 @@ function destinationsBlock(doc, destinations, withHeading = true, money = null, 
 }
 
 /** Karte „Was zu tun ist“: Plan mit Status. `actions` steuert die Knöpfe (nur in der Balance).
+ * `plan.flow` (nur Balance) ist der Stand des geführten Verkaufs aus `projectSaleFlowCard`; die Balance bindet den Startknopf.
  * @param {Document} doc @param {TodoPlan} plan @param {{detailsButton?: boolean}} [options] */
 export function createTodoPlan(doc, plan, { detailsButton = true } = {}) {
+    const flow = /** @type {any} */ (plan).flow || null;
     const root = make(doc, 'div', undefined, 'todo-plan');
     root.dataset.todoPlan = plan.status || 'none';
     if (plan.status !== 'erledigt' && plan.decidedOn) {
         root.append(make(doc, 'p', `Beschlossen im Jahresabschluss am ${plan.decidedOn}. ${decisionText(plan)}`, 'ds-source todo-decided'));
     }
+    // VK-3d P11 (TRG-1c P2-03): Modus des Belegs „Eine Person trägt · <Name>“ auch in der Karte, wie in „Details & Drucken“.
+    const carrierText = /** @type {any} */ (plan).carrierText;
+    if (carrierText) { const line = make(doc, 'p', carrierText, 'ds-source todo-decided'); line.dataset.todoCarrierMode = ''; root.append(line); }
     if (plan.marketReading?.reading === 'year_high') {
         const chosen = make(doc, 'p', `Plan mit dem Jahreshoch vom ${marketChoiceDate(plan.marketReading.asOf)} (Wahl im Jahresabschluss)`, 'ds-source todo-decided');
         chosen.dataset.annualMarketChoiceLabel = ''; root.append(chosen);
@@ -145,11 +203,15 @@ export function createTodoPlan(doc, plan, { detailsButton = true } = {}) {
     if (plan.status) {
         const status = make(doc, 'div', undefined, 'todo-status');
         const head = make(doc, 'div', undefined, 'todo-status-head');
-        head.append(statusChip(doc, plan.status), make(doc, 'span', plan.status === 'offen' ? 'Noch kein Verkauf eingetragen.'
-            : plan.status === 'teilweise' ? `${todoMoney(plan.soldNet)} von ${todoMoney(shownPlan(plan))} verkauft`
-                : `Alle Verkäufe aus dem Plan ${plan.year} sind eingetragen${plan.lastSaleDate ? `, zuletzt am ${plan.lastSaleDate}` : ''}.`, 'todo-status-text'));
+        const missingCredit = flow?.allEntered && flow.pendingNames.length;
+        if (missingCredit) {
+            const chip = make(doc, 'span', 'Gutschrift fehlt', 'ds-plan-chip todo-chip todo-chip-teilweise ds-chip-warning'); chip.dataset.todoStatus = 'gutschrift';
+            head.append(chip, make(doc, 'span', `${plan.rows.length === 2 ? 'Beide Verkäufe' : 'Alle Verkäufe'} eingetragen · die Gutschrift von ${flow.pendingNames.join(' und ')} steht noch aus`, 'todo-status-text'));
+        } else head.append(statusChip(doc, plan.status), make(doc, 'span', plan.status === 'offen' ? 'Noch kein Verkauf eingetragen.'
+            : plan.status === 'teilweise' ? `${todoMoney(saleProgress(plan.rows).done)} von ${todoMoney(saleProgress(plan.rows).plan)} verkauft${progressBalanceText(saleProgress(plan.rows))}`
+                : `Alle Verkäufe aus dem Plan ${plan.year} sind eingetragen${plan.lastSaleDate ? `, zuletzt am ${plan.lastSaleDate}` : ''}${progressBalanceText(saleProgress(plan.rows))}.`, 'todo-status-text'));
         status.append(head);
-        if (plan.status === 'teilweise') {
+        if (plan.status === 'teilweise' || missingCredit) {
             const bar = make(doc, 'div', undefined, 'todo-progress'), fill = make(doc, 'i');
             const share = Math.round(plan.share * 100);
             bar.setAttribute('role', 'img'); bar.setAttribute('aria-label', `${share} Prozent erledigt`);
@@ -158,31 +220,46 @@ export function createTodoPlan(doc, plan, { detailsButton = true } = {}) {
         root.append(status);
     }
     if (plan.nothing) root.append(mainLine(doc, 'Nichts tun', null, plan.text && plan.text !== 'Nichts tun' ? plan.text.replace(/^Nichts tun – /, '') : ''));
-    else if (plan.status === 'teilweise') root.append(mainLine(doc, 'Noch offen', shownRest(plan), `${plan.openSecurities.join(', ') || 'Wertpapiere'}, netto`));
+    else if (plan.status === 'teilweise') root.append(mainLine(doc, 'Noch offen', saleProgress(plan.rows).open, `${plan.openSecurities.join(', ') || 'Wertpapiere'}, netto`));
     else if (plan.status !== 'erledigt') root.append(mainLine(doc, plan.verb, shownPlan(plan),
-        plan.status ? plan.tax >= 0.5 ? `netto, Steuer ${upMoney(plan.tax)} schon abgezogen` : 'netto' : ''));
+        // GH-1 Punkt 2 (FR-78 Ergänzung 5): Die gerundete Steuer ist ein ungefährer Wert („ca.“), Rundung nach der Staffel (Ergänzung 4).
+        plan.status ? plan.tax >= 0.5 ? `netto, Steuer ca. ${upMoney(plan.tax)} schon abgezogen` : 'netto' : '', true));
+    // VN-1 Punkt 4: Die Zeilen nennen den Plan auf den Euro, wie Standzeile und Ablauf.
     if (plan.rows.length) root.append(table(doc, ['Wer', 'Wertpapier', 'Betrag netto', 'Stand'],
-        plan.rows.map(row => [row.who, row.security, upMoney(row.planNet), rowState(doc, row)]), `Plan ${plan.year} je Person`));
+        plan.rows.map(row => [row.who, securityCell(doc, row), todoMoney(saleProgress([row]).plan), rowState(doc, row, Boolean(flow))]), `Plan ${plan.year} je Person`));
     for (const credit of plan.credits) {
         const note = make(doc, 'div', undefined, 'todo-credit'); note.dataset.todoCredit = '';
-        const link = make(doc, 'a', 'Tagesgeld nachtragen →');
-        link.setAttribute('href', credit.profileId ? `depot-tranchen-manager.html?person=${encodeURIComponent(credit.profileId)}#reconciliationCashStatuses` : 'depot-tranchen-manager.html');
-        link.setAttribute('data-profile-handoff', '');
+        // FR-79: Die Gutschrift trägst du im geführten Verkauf ein (Schritt 4); Ergänzung 1 Punkt 4: Hinweis mit Betrag und Richtung.
+        const entry = make(doc, 'button', 'Gutschrift eintragen', 'ds-button ds-button-secondary'); entry.setAttribute('type', 'button');
+        entry.dataset.saleFlowStart = '4';
         note.append(make(doc, 'strong', 'Gutschrift nachtragen'),
-            make(doc, 'p', `Zum Verkauf vom ${credit.date}${credit.who ? ` (${credit.who})` : ''} fehlt die Gutschrift auf dem Tagesgeld (${todoMoney(credit.amount)}). Bis du sie nachträgst, zeigt die App dein Vermögen zu niedrig.`), link);
+            make(doc, 'p', `Zum Verkauf vom ${credit.date}${credit.who ? ` (${credit.who})` : ''} fehlt die Gutschrift auf dem Tagesgeld (${todoMoney(credit.amount)}). Gutschrift unterwegs: Vermögen um ${centMoney(credit.amount)} zu niedrig, bis du sie einträgst.`));
+        if (flow) note.append(entry);
         root.append(note);
     }
+    const buyFlow = /** @type {any} */ (plan).buyFlow || null;
     if (plan.destinations.length && (plan.status === 'offen' || plan.status === null) && !plan.nothing) root.append(destinationsBlock(doc, plan.destinations, true, null, shownPlan(plan), plan.rows.length ? displayUp : displayDown));
     else if (plan.purchases.length && !plan.nothing) root.append(destinationsBlock(doc, plan.purchases, true, null, plan.rows.length ? null : shownPlan(plan), displayDown));
-    // Nachtrag WT-1: Käufe haben im Beleg keine Person; ihr Stand ist ohne neue Speicherfelder nicht sicher ableitbar.
-    if (plan.purchases.length && !plan.nothing) root.append(make(doc, 'p', 'Käufe verfolgt die App nicht – trag sie im Vermögen ein.', 'ds-source todo-purchase-note'));
+    // VK-2 (FR-79 Punkt 7): Käufe aus dem Plan mit Stand je Person wie die Verkäufe; „Käufe verfolgt die App nicht“ entfällt.
+    if (buyFlow && !plan.nothing) root.append(buyFlowBlock(doc, buyFlow));
+    if (flow?.buys?.length) root.append(moneyMarketBlock(doc, flow.buys));
+    if (flow?.unreadable?.length) root.append(make(doc, 'p', `Das Tagesgeld von ${flow.unreadable.join(' und ')} ist nicht lesbar. In Schritt 5 siehst du, was zu tun ist.`, 'ds-note ds-note-warning todo-flow-unreadable'));
     const actions = make(doc, 'div', undefined, 'todo-actions');
-    if (plan.status === 'offen' || plan.status === 'teilweise') {
-        const sale = make(doc, 'a', 'Verkauf eintragen', 'ds-button ds-button-primary');
-        sale.setAttribute('href', saleEntryHref(plan.saleTarget)); sale.setAttribute('data-profile-handoff', ''); sale.dataset.todoSaleEntry = '';
+    const resume = flow && flow.next && flow.started;
+    if (resume) root.append(flowSteps(doc, flow));
+    if (plan.status === 'offen' || plan.status === 'teilweise' || resume) {
+        // FR-79 Punkt 2: „Verkauf starten“ öffnet den geführten Verkauf in der Balance; nach einer Unterbrechung „Weiter mit Schritt n“.
+        const sale = make(doc, 'button', resume ? `Weiter mit Schritt ${flow.next}` : 'Verkauf starten', 'ds-button ds-button-primary');
+        sale.setAttribute('type', 'button'); sale.dataset.todoSaleEntry = ''; sale.dataset.saleFlowStart = String(resume ? flow.next : 1);
         actions.append(sale);
     }
-    if (!plan.rows.length && plan.purchases.length && !plan.nothing) {
+    if (buyFlow && !plan.nothing && (!buyFlow.allEntered || buyFlow.next)) {
+        // VK-2: „Kauf starten“ öffnet den geführten Kauf in der Balance; nach einer Unterbrechung „Weiter mit Schritt n“, auch neben Verkaufszeilen.
+        const resumeBuy = buyFlow.started && buyFlow.next;
+        const buy = make(doc, 'button', resumeBuy ? `Kauf: weiter mit Schritt ${buyFlow.next}` : 'Kauf starten', plan.rows.length ? 'ds-button ds-button-secondary' : 'ds-button ds-button-primary');
+        buy.setAttribute('type', 'button'); buy.dataset.todoPurchaseEntry = ''; buy.dataset.buyFlowStart = String(resumeBuy ? buyFlow.next : 1);
+        actions.append(buy);
+    } else if (!plan.rows.length && plan.purchases.length && !plan.nothing && !buyFlow) {
         const buy = make(doc, 'a', 'Kauf eintragen', 'ds-button ds-button-primary');
         buy.setAttribute('href', 'depot-tranchen-manager.html'); buy.setAttribute('data-profile-handoff', ''); buy.dataset.todoPurchaseEntry = '';
         actions.append(buy);
@@ -193,6 +270,112 @@ export function createTodoPlan(doc, plan, { detailsButton = true } = {}) {
         actions.append(details);
     }
     if (actions.children.length) root.append(actions);
+    if (resume) root.append(make(doc, 'p', 'Der Stand kommt aus dem, was eingetragen ist.', 'ds-source todo-flow-note'));
+    return root;
+}
+
+/** Wertpapier einer Planzeile mit Bestand und ISIN (FR-79 Punkt 2). @param {Document} doc @param {any} row */
+function securityCell(doc, row) {
+    const cell = make(doc, 'span', undefined, 'todo-security');
+    cell.append(make(doc, 'span', row.security));
+    if (row.securityDetail) cell.append(make(doc, 'small', row.securityDetail, 'ds-source todo-security-detail'));
+    return cell;
+}
+
+/** Stand der fünf Schritte des geführten Verkaufs (Ergänzung 1 FR-79 Punkt 7). @param {Document} doc @param {any} flow */
+function flowSteps(doc, flow) {
+    // VN-1 Punkt 10: kompakte Chips wie die Schrittkacheln im Dialog (Kreis mit ✓ oder Nummer, aktueller Schritt hervorgehoben), ohne Listennummern.
+    const list = make(doc, 'ol', undefined, 'todo-flow-steps'); list.dataset.todoFlowSteps = '';
+    list.setAttribute('aria-label', 'Schritte');
+    for (const [index, step] of flow.steps.entries()) {
+        const current = index + 1 === flow.next;
+        const item = make(doc, 'li', undefined, `todo-flow-step${step.done ? ' todo-flow-step-done' : ''}${current ? ' todo-flow-step-current' : ''}`);
+        if (current) item.setAttribute('aria-current', 'step');
+        const symbol = make(doc, 'span', step.done ? '✓' : String(index + 1), 'todo-flow-step-symbol'); symbol.setAttribute('aria-hidden', 'true');
+        item.append(symbol, make(doc, 'span', step.title, 'todo-flow-step-name'));
+        if (step.done) item.setAttribute('aria-label', `${step.title} · erledigt`);
+        list.append(item);
+    }
+    return list;
+}
+
+/** VK-2 (FR-79 Punkt 7): Käufe aus dem Plan je Person mit Stand, offener Abbuchung („Abbuchung unterwegs“) und „Rest doch kaufen“.
+ * @param {Document} doc @param {any} buyFlow Stand aus `projectBuyFlowCard` */
+function buyFlowBlock(doc, buyFlow) {
+    const root = make(doc, 'div', undefined, 'todo-buy-flow'); root.dataset.todoBuyFlow = '';
+    const head = make(doc, 'div', undefined, 'todo-status-head');
+    const status = buyFlow.allEntered ? 'erledigt' : buyFlow.bought > 0 ? 'teilweise' : 'offen';
+    head.append(statusChip(doc, status), make(doc, 'span', status === 'offen' ? 'Noch kein Kauf eingetragen.'
+        : status === 'teilweise' ? `${todoMoney(buyProgress(buyFlow.lines).done)} von ${todoMoney(buyProgress(buyFlow.lines).plan)} gekauft${progressBalanceText(buyProgress(buyFlow.lines))}`
+            : `Alle Käufe aus dem Plan sind eingetragen${progressBalanceText(buyProgress(buyFlow.lines))}.`, 'todo-status-text'));
+    root.append(make(doc, 'strong', 'Käufe aus dem Plan'), head);
+    if (status === 'teilweise') {
+        const bar = make(doc, 'div', undefined, 'todo-progress'), fill = make(doc, 'i');
+        const share = Math.round(Math.min(1, buyFlow.bought / buyFlow.plan) * 100);
+        bar.setAttribute('role', 'img'); bar.setAttribute('aria-label', `${share} Prozent gekauft`); fill.style.width = `${share}%`; bar.append(fill); root.append(bar);
+    }
+    root.append(table(doc, ['Wer', 'Anlage', 'Betrag', 'Stand'], buyFlow.lines.map((/** @type {any} */ line) => {
+        const cell = make(doc, 'span', undefined, 'todo-row-state');
+        cell.append(statusChip(doc, line.status, true));
+        if (line.keptCash) {
+            cell.append(make(doc, 'span', ' · Rest bleibt auf dem Tagesgeld', 'ds-source'));
+            const revoke = make(doc, 'button', 'Rest doch kaufen', 'sale-flow-link todo-row-revoke'); revoke.setAttribute('type', 'button'); revoke.dataset.buyFlowRevoke = line.key;
+            cell.append(make(doc, 'br'), revoke);
+        } else if (line.status === 'teilweise') cell.append(make(doc, 'span', ` ${todoMoney(buyProgress([line]).done)} gekauft · ${todoMoney(buyProgress([line]).open)} offen`, 'ds-source'));
+        // VN-4 (ABS1 P3): Ein Überkauf oder Fehlbetrag je Zeile steht wie bei den Verkaufszeilen da.
+        else if (line.status === 'erledigt' && progressBalanceText(buyProgress([line]))) cell.append(make(doc, 'span', progressBalanceText(buyProgress([line])), 'ds-source'));
+        return [line.name, { equity: 'Aktien', gold: 'Gold', bonds: 'Anleihen', money_market: 'Geldmarkt' }[/** @type {string} */ (line.assetClass)] || line.assetClass,
+            todoMoney(buyProgress([line]).plan), cell];
+    }), 'Käufe aus dem Plan je Person'));
+    for (const debit of buyFlow.pending) {
+        const note = make(doc, 'div', undefined, 'todo-credit'); note.dataset.todoDebit = '';
+        const entry = make(doc, 'button', 'Abbuchung eintragen', 'ds-button ds-button-secondary'); entry.setAttribute('type', 'button'); entry.dataset.buyFlowStart = '4';
+        note.append(make(doc, 'strong', 'Abbuchung nachtragen'),
+            make(doc, 'p', `Zum Kauf vom ${debit.date}${debit.who ? ` (${debit.who})` : ''} fehlt die Abbuchung vom Tagesgeld. Abbuchung unterwegs: Vermögen um ${centMoney(debit.amount)} zu hoch, bis du sie einträgst.`), entry);
+        root.append(note);
+    }
+    if (buyFlow.started && buyFlow.next) root.append(flowSteps(doc, buyFlow));
+    return root;
+}
+
+/** VK-2b P2-2: offene Abbuchungen ohne passende Planzeile (Kauf ohne Plan, „Geldmarkt kaufen“) mit „Abbuchung eintragen“.
+ * @param {Document} doc @param {{date: string, amount: number, who: string}[]} debits @param {string[]} ids */
+export function createOpenDebitsNote(doc, debits, ids) {
+    const root = make(doc, 'div', undefined, 'todo-open-debits'); root.dataset.todoOpenDebits = '';
+    for (const debit of debits) {
+        const note = make(doc, 'div', undefined, 'todo-credit'); note.dataset.todoDebit = '';
+        note.append(make(doc, 'strong', 'Abbuchung nachtragen'),
+            make(doc, 'p', `Zum Kauf vom ${debit.date}${debit.who ? ` (${debit.who})` : ''} fehlt die Abbuchung vom Tagesgeld. Abbuchung unterwegs: Vermögen um ${centMoney(debit.amount)} zu hoch, bis du sie einträgst.`));
+        root.append(note);
+    }
+    const entry = make(doc, 'button', 'Abbuchung eintragen', 'ds-button ds-button-secondary'); entry.setAttribute('type', 'button'); entry.dataset.buyDebitOpen = ids.join(',');
+    root.append(entry);
+    return root;
+}
+
+/** Ergänzung 1 FR-79 Punkt 6: Geldmarktkauf aus dem Verkaufserlös als eigene Zeile, je Person mit Knopf zu „Kauf eintragen“.
+ * @param {Document} doc @param {{profileId: string, name: string, amount: number, href: string}[]} buys */
+function moneyMarketBlock(doc, buys) {
+    const root = make(doc, 'div', undefined, 'todo-refill todo-money-market'); root.dataset.todoMoneyMarket = '';
+    const total = buys.reduce((sum, buy) => sum + displayActionAmount(' kaufen', buy.amount), 0);
+    root.append(make(doc, 'strong', 'Geldmarkt kaufen'));
+    const line = make(doc, 'div', undefined, 'todo-main todo-refill-amount');
+    line.append(make(doc, 'span', todoMoney(total), 'todo-main-amount'), make(doc, 'span', 'aus dem Verkaufserlös in den Geldmarkt-ETF'));
+    root.append(line);
+    for (const buy of buys) {
+        const row = make(doc, 'div', undefined, 'todo-destination todo-refill-person'); row.dataset.todoMoneyMarketPerson = buy.profileId;
+        // VK-2: „Geldmarkt kaufen“ öffnet den geführten Kauf mit Person, Geldmarkt-ETF und Betrag (ersetzt die Übergangslösung aus VK-1).
+        const link = make(doc, 'button', 'Kauf starten', 'ds-button ds-button-secondary'); link.setAttribute('type', 'button');
+        link.dataset.buyFlowMoney = buy.profileId; link.dataset.buyFlowAmount = String(Math.round(buy.amount * 100) / 100);
+        link.setAttribute('aria-label', `Geldmarktkauf für ${buy.name} starten`);
+        row.append(make(doc, 'span', buy.name), make(doc, 'span', todoMoney(displayActionAmount(' kaufen', buy.amount)), 'todo-destination-amount'), link);
+        root.append(row);
+    }
+    // Gutachten VK-1 P2-4: Einstieg in Schritt 5, damit „Lieber alles auf dem Tagesgeld lassen“ erreichbar bleibt.
+    const distribute = make(doc, 'button', 'Geld verteilen', 'sale-flow-link todo-money-market-step'); distribute.setAttribute('type', 'button');
+    distribute.dataset.saleFlowStart = '5';
+    const hint = make(doc, 'p', 'Lieber alles auf dem Tagesgeld lassen? ', 'ds-source');
+    hint.append(distribute); root.append(hint);
     return root;
 }
 
@@ -207,8 +390,9 @@ export function createTodoResult(doc, plan, { details = null } = {}) {
     if (plan.marketReading?.reading === 'year_high') root.append(make(doc, 'p', `Gewählt: mit dem Jahreshoch vom ${marketChoiceDate(plan.marketReading.asOf)} (vorsichtiger).`, 'ds-source todo-decided'));
     else if (plan.marketReading?.reading === 'year_end') root.append(make(doc, 'p', 'Gewählt: nach Kursen zum Jahresende.', 'ds-source todo-decided'));
     if (plan.nothing) root.append(mainLine(doc, 'Nichts tun', null, plan.text && plan.text !== 'Nichts tun' ? plan.text.replace(/^Nichts tun – /, '') : ''));
-    else root.append(mainLine(doc, plan.verb, shownPlan(plan), plan.rows.length ? 'netto' : ''));
-    if (plan.rows.length) root.append(table(doc, [], plan.rows.map(row => [`${row.who} · ${row.security}`, upMoney(row.planNet)]), `Plan ${plan.year} je Person`));
+    // VN-2 P5 / DS-1 Punkt 7: wie die Karte – Handlungszeile gerundet mit „ca.“, Zeilen je Person auf den Euro.
+    else root.append(mainLine(doc, plan.verb, shownPlan(plan), plan.rows.length ? 'netto' : '', true));
+    if (plan.rows.length) root.append(table(doc, [], plan.rows.map(row => [`${row.who} · ${row.security}`, todoMoney(saleProgress([row]).plan)]), `Plan ${plan.year} je Person`));
     if (plan.destinations.length && !plan.nothing) root.append(destinationsBlock(doc, plan.destinations, false, null, shownPlan(plan), plan.rows.length ? displayUp : displayDown));
     // WT-1b: Käufe haben keinen Stand; der Satz nennt den Stand nur bei Verkaufszeilen.
     root.append(make(doc, 'p', plan.rows.length ? 'Den Stand verfolgst du in der Balance unter „Was zu tun ist“. Die App bucht nichts.' : decisionText(plan), 'ds-source'));
@@ -221,7 +405,10 @@ export function createCashRefill(doc, refill) {
     const root = make(doc, 'div', undefined, 'todo-refill'); root.dataset.todoCashRefill = '';
     root.append(make(doc, 'strong', 'Tagesgeld auffüllen'),
         // WT-1c (Befund 2): Gilt die eiserne Reserve als Ziel, nennt der Satz sie statt der Monate Entnahme.
-        make(doc, 'p', refill.ironReserve
+        // RK-3 Punkt 3: Bei „Eine Person trägt“ zählt nur das eigene Ziel der tragenden Person.
+        make(doc, 'p', refill.carrierNames?.length
+            ? `Tagesgeld von ${refill.carrierNames.join(' und ')} (${todoMoney(refill.tagesgeld)}) liegt unter dem eigenen Ziel von ${upMoney(refill.target)}.`
+            : refill.ironReserve
             ? `Dein Tagesgeld (${todoMoney(refill.tagesgeld)}) liegt unter der eisernen Reserve von ${upMoney(refill.target)}.`
             : `Dein Tagesgeld reicht noch für ${refill.months} ${refill.months === 1 ? 'Monat' : 'Monate'} Entnahme (${todoMoney(refill.tagesgeld)}). Ziel sind ${refill.targetMonths} Monate (${upMoney(refill.target)}).`));
     // Ergänzung 2 FR-78: Mit Personenzeilen ist der Betrag die Summe der angezeigten Personenbeträge.
@@ -250,6 +437,20 @@ export function createCashRefill(doc, refill) {
     }
     const actions = make(doc, 'div', undefined, 'todo-actions'); actions.append(entry(refill.rows[0], '')); root.append(actions);
     return root;
+}
+
+/** RK-2 (Ergänzung 1 FR-80): Hinweis statt Auftrag, wenn bei „Eine Person trägt“ das Tagesgeld der anderen Person unter ihrem Ziel
+ * liegt. Wortlaut vorläufig (Bestätigung des Nutzers steht aus); nur hier ändern. @param {string} name */
+export const HELD_BELOW_TARGET_TEXT = name => `${name} · Tagesgeld unter dem persönlichen Ziel. Bei „Eine Person trägt“ gibt es dafür keinen Auftrag; die Umschichtung entscheidest du selbst.`;
+
+/** Je Person ein Hinweis in „Was zu tun ist“ (dort, wo sonst „Tagesgeld auffüllen“ stünde).
+ * @param {Document} doc @param {{profileId?: string|null, name?: string|null}[]} people aus `heldBelowCashTarget` @returns {HTMLElement[]} */
+export function createHeldCashNotes(doc, people) {
+    return (people || []).map(person => {
+        const note = make(doc, 'p', HELD_BELOW_TARGET_TEXT(person.name || 'Die andere Person'), 'ds-note todo-held-note');
+        note.dataset.todoHeldNote = person.profileId || '';
+        return note;
+    });
 }
 
 /** Verdeckter Bärenmarkt (FR-77 Punkt 5): Abstand, drei Kurse, Folgen und Hinweis auf die Wahl. In der Balance mit
@@ -310,21 +511,40 @@ export function createHiddenBearBlock(doc, view, { annual = false, choice = null
 }
 
 /** Jahresabschluss, Schritt „Plan“: wie viel vom alten Plan umgesetzt wurde (FR-77 Punkt 6). `result` ist die Kurzform im Ergebnis.
- * @param {Document} doc @param {{year: number, status: string|null, soldNet: number, planNet: number, lines?: {planNet: number}[]}} progress @param {boolean} [result] */
+ * @param {Document} doc @param {{year: number, status: string|null, soldNet: number, planNet: number, creditPendingNet?: number, lines?: {planNet: number, keptInDepot?: boolean}[]}} progress @param {boolean} [result] */
 export function createPlanProgressNote(doc, progress, result = false) {
     const root = make(doc, 'div', undefined, 'todo-progress-note'); root.dataset.annualPlanProgress = progress.status || 'offen';
     const head = make(doc, 'div', undefined, 'todo-status-head');
-    if (result) head.append(make(doc, 'strong', `Plan ${progress.year} · ${annualPlanStatusText(progress.status)}`));
+    // FR-79 Punkt 11: Eine Zeile mit „Rest bleibt im Depot“ gilt als umgesetzt, der Rest bewusst im Depot.
+    // VK-2b P2-4: Reine Kaufpläne zeigen den Stand der Käufe; bei Verkauf und Kauf stehen beide Zeilen.
+    const buy = /** @type {any} */ (progress).buy || null, sales = Boolean(progress.lines?.length) || !buy;
+    // VN-4 (ABS1 P3): Bei Verkauf und Kauf richtet sich der Status nach beiden Teilen (wie Karte und Details).
+    const both = sales && buy ? [progress.status || 'offen', buy.status || 'offen'] : null;
+    const overall = both ? both.every(item => item === 'erledigt') ? 'erledigt' : both.every(item => item === 'offen') ? 'offen' : 'teilweise'
+        : sales ? progress.status : buy.status;
+    const kept = sales ? overall === 'erledigt' && Boolean(progress.lines?.some(line => /** @type {any} */ (line).keptInDepot))
+        : buy.status === 'erledigt' && buy.kept;
+    if (result) head.append(make(doc, 'strong', `Plan ${progress.year} · ${kept ? `umgesetzt, Rest bewusst ${sales ? 'im Depot' : 'auf dem Tagesgeld'}` : annualPlanStatusText(overall)}`));
     else {
-        const status = progress.status === 'erledigt' || progress.status === 'teilweise' ? progress.status : 'offen';
+        const status = overall === 'erledigt' || overall === 'teilweise' ? overall : 'offen';
         const chip = make(doc, 'span', status === 'erledigt' ? 'Umgesetzt' : status === 'teilweise' ? 'Teilweise umgesetzt' : 'Nicht umgesetzt',
             `ds-plan-chip todo-chip todo-chip-${status}${status === 'erledigt' ? ' ds-chip-success' : ''}`);
         chip.dataset.todoStatus = status;
         head.append(chip, make(doc, 'strong', `Plan ${progress.year}`));
     }
-    const plan = progress.lines?.length ? progress.lines.reduce((sum, line) => sum + displayUp(line.planNet), 0) : displayUp(progress.planNet);
-    root.append(head, make(doc, 'p', `${todoMoney(progress.soldNet)} von ${todoMoney(plan)} verkauft. ${result
+    // VN-1 Punkt 4: dieselben Beträge auf den Euro wie die Standzeile der Karte.
+    const sold = progress.lines?.length ? saleProgress(/** @type {any[]} */ (progress.lines)) : { done: Math.round(progress.soldNet), plan: Math.round(progress.planNet) };
+    const bought = buy ? buy.lines?.length ? buyProgress(buy.lines) : { done: Math.round(buy.bought), plan: Math.round(buy.plan) } : null;
+    const balance = (/** @type {any} */ value) => 'less' in value ? progressBalanceText(value) : '';
+    const soldText = sales ? `${todoMoney(sold.done)} von ${todoMoney(sold.plan)} verkauft${balance(sold)}${kept && !result ? ', umgesetzt, Rest bewusst im Depot' : ''}. ` : '';
+    const boughtText = bought ? `${todoMoney(bought.done)} von ${todoMoney(bought.plan)} gekauft${balance(bought)}${!sales && kept && !result ? ', umgesetzt, Rest bewusst auf dem Tagesgeld' : ''}. ` : '';
+    root.append(head, make(doc, 'p', `${soldText}${boughtText}${result
         ? 'Der neue Plan ersetzt ihn.' : `Der Plan ${progress.year + 1} rechnet mit deinem Bestand vom 31.12.`}`));
+    // Ergänzung 1 FR-79 Punkt 4: Geld unterwegs, solange eine Gutschrift fehlt.
+    const pending = Number(/** @type {any} */ (progress).creditPendingNet) || 0;
+    if (pending >= 0.005) root.append(make(doc, 'p', `Gutschrift unterwegs: Vermögen um ${centMoney(pending)} zu niedrig. Trag die Gutschrift in der Balance unter „Was zu tun ist“ ein.`, 'ds-note ds-note-warning todo-underway'));
+    const debit = Number(/** @type {any} */ (progress).debitPendingNet) || 0;
+    if (debit >= 0.005) root.append(make(doc, 'p', `Abbuchung unterwegs: Vermögen um ${centMoney(debit)} zu hoch. Trag die Abbuchung in der Balance unter „Was zu tun ist“ ein.`, 'ds-note ds-note-warning todo-underway'));
     return root;
 }
 
@@ -338,21 +558,46 @@ export function createPlanDetails(doc, plan, action, people = []) {
     root.append(title);
     const lead = plan.decidedOn ? `Beschlossen im Jahresabschluss am ${plan.decidedOn}. ${decisionText(plan)}` : 'Die App bucht nichts.';
     root.append(make(doc, 'p', lead, 'ds-source')); texts.push(lead);
+    // TRG-1c Punkt 5: Modus „Eine Person trägt“ mit tragender Person und Rückgriff aus dem Beleg.
+    const carrier = /** @type {any} */ (plan).carrier;
+    // TR-2 Befund 3: Der Modus des Belegs steht auch beim Vorgabemodus da („Entnahme: Steueroptimiert“).
+    const decidedModeText = /** @type {any} */ (plan).decidedModeText;
+    if (!carrier?.carrierId && decidedModeText) { const mode = `Entnahme: ${decidedModeText}`; root.append(make(doc, 'p', mode, 'ds-source')); texts.push(mode); }
+    if (carrier?.carrierId) {
+        const mode = `Entnahme: Eine Person trägt · ${carrier.carrierName || people.find(person => person.id === carrier.carrierId)?.name || 'tragende Person'}`;
+        root.append(make(doc, 'p', mode, 'ds-source')); texts.push(mode);
+        if (carrier.attacked?.length) {
+            const note = carrierNoteText({ ...carrier, attacked: carrier.attacked.map((/** @type {any} */ row) => ({ ...row, name: row.name || people.find(person => person.id === row.profileId)?.name })) });
+            root.append(make(doc, 'p', note, 'ds-note ds-note-warning todo-carrier-note')); texts.push(note);
+        }
+    }
     const sources = (Array.isArray(action?.quellen) ? action.quellen : []).filter((/** @type {any} */ source) => source.brutto > 0 && !source.internalCashRebalance);
-    const purchase = (/** @type {any} */ source) => {
-        const date = typeof source?.purchaseDate === 'string' ? source.purchaseDate : '';
+    const purchaseDate = (/** @type {any} */ lot, /** @type {string} */ none) => {
+        const date = typeof lot?.purchaseDate === 'string' ? lot.purchaseDate : '';
         const full = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date), month = /^(\d{4})-(\d{2})$/.exec(date);
-        return full ? `Kauf ${full[3]}.${full[2]}.${full[1]}` : month ? `Kauf ${month[2]}/${month[1]}` : '—';
+        return full ? `Kauf ${full[3]}.${full[2]}.${full[1]}` : month ? `Kauf ${month[2]}/${month[1]}` : none;
     };
+    // RK-3 Punkt 2 (FR-82): Verkauft die Bank heute andere Tranchen derselben ISIN als der Beleg nennt, stehen diese da (wie Dialog und Abrechnung).
+    const bankTranches = /** @type {Map<any, {tranches: any[], tax: number|null, rest: boolean}>|undefined} */ (/** @type {any} */ (plan).bankTranches);
+    const purchase = (/** @type {any} */ source) => bankTranches?.get(source)?.tranches.length
+        ? bankTranches.get(source)?.tranches.map(lot => purchaseDate(lot, 'Kauf ohne Datum')).join(' + ') : purchaseDate(source, '—');
+    // RK-4 (FR-82): Brutto, Steuer und Netto bleiben die des Beschlusses; ein Satz nennt die Steuer mit der Bankreihenfolge wie der Dialog.
+    const bankTaxNotes = /** @type {string[]} */ ([]);
     if (sources.length) {
         const rows = sources.map((/** @type {any} */ source) => {
             const row = plan.rows.find(entry => entry.trancheId && entry.trancheId === stockTrancheId(source.trancheId, entry.profileId)) || null;
             const who = row?.who || source.sourceProfileName || people.find(person => person.id === source.sourceProfileId)?.name
                 || (people.length === 1 ? people[0].name : '—');
-            const state = row ? row.status === 'erledigt' ? 'erledigt' : row.status === 'teilweise' ? `teilweise · ${todoMoney(row.restNet)} offen` : 'offen' : '—';
             const cash = ['liquiditaet', 'cash'].includes(source.kind) || source.source === 'Liquidität';
+            // VN-3 (Fable P2-3): Käufe aus dem Tagesgeld zeigen den Stand der Kaufzeilen dieser Person wie die Karte.
+            const buyLines = cash ? (/** @type {any} */ (plan).buyFlow?.lines || []).filter((/** @type {any} */ line) => line.profileId === source.sourceProfileId) : [];
+            const state = row ? row.status === 'erledigt' ? 'erledigt' : row.status === 'teilweise' ? `teilweise · ${todoMoney(saleProgress([row]).open)} offen` : 'offen'
+                : buyLines.length ? buyLines.every((/** @type {any} */ line) => line.status === 'erledigt') ? 'erledigt'
+                    : buyProgress(buyLines).done > 0 ? `teilweise · ${todoMoney(buyProgress(buyLines).open)} offen` : 'offen' : '—';
             // WT-1b: Wertpapier mit ISIN und Beträge mit Cent, wie im Beleg (Handbuch „Details & Drucken“).
             const security = [source.name || source.kind || 'Wertpapier', source.isin && source.isin !== source.name ? source.isin : null].filter(Boolean).join(' · ');
+            const bank = cash ? null : bankTranches?.get(source);
+            if (bank && Number.isFinite(bank.tax)) bankTaxNotes.push(`${who}: Steuer laut Beschluss ${centMoney(source.steuer)}, mit der Bankreihenfolge ca. ${todoMoney(bank.tax)}${bank.rest ? ' für den offenen Rest' : ''}.`);
             return [who, cash ? 'aus dem Tagesgeld' : security, cash ? '—' : purchase(source), centMoney(source.brutto), centMoney(source.steuer), centMoney(source.netto), state];
         });
         const sum = (/** @type {string} */ field) => sources.reduce((/** @type {number} */ total, /** @type {any} */ source) => total + (Number.isFinite(source[field]) ? source[field] : 0), 0);
@@ -371,6 +616,12 @@ export function createPlanDetails(doc, plan, action, people = []) {
         element.append(body); box.append(element);
         root.append(make(doc, 'h3', 'Woher das Geld kommt'), box);
         texts.splice(2, 0, 'Woher das Geld kommt', headings.join(' | '));
+        for (const note of bankTaxNotes) { root.append(make(doc, 'p', note, 'ds-source')); texts.push(note); }
+        // FR-82: Fehlt einer Tranche derselben ISIN das Kaufdatum, ist die Reihenfolge der Bank nur geschätzt.
+        if (/** @type {any} */ (plan).bankOrderGuessed) {
+            const hint = `${BANK_ORDER_DATE_MISSING_HINT}.`;
+            root.append(make(doc, 'p', hint, 'ds-source')); texts.push(hint);
+        }
     }
     if (plan.destinations.length) {
         root.append(make(doc, 'h3', 'Wohin das Geld geht'), destinationsBlock(doc, plan.destinations, false, centMoney));
@@ -378,9 +629,27 @@ export function createPlanDetails(doc, plan, action, people = []) {
     }
     if (plan.status) {
         const state = plan.status === 'offen' ? 'Noch kein Verkauf eingetragen.' : plan.status === 'teilweise'
-            ? `${todoMoney(plan.soldNet)} von ${todoMoney(plan.planNet)} verkauft.` : 'Alle Verkäufe aus dem Plan sind eingetragen.';
+            // VN-2 P4: dieselbe Rechnung auf den Euro wie die Karte (Plan − verkauft = offen).
+            ? `${todoMoney(saleProgress(plan.rows).done)} von ${todoMoney(saleProgress(plan.rows).plan)} verkauft${progressBalanceText(saleProgress(plan.rows))}.`
+            : `Alle Verkäufe aus dem Plan sind eingetragen${progressBalanceText(saleProgress(plan.rows))}.`;
         root.append(make(doc, 'p', `Stand: ${state}`)); texts.push(`Stand: ${state}`);
+    }
+    // VN-3 (Fable P2-3, Codex F03): Standzeile der Käufe mit derselben Gleichung wie Karte und Jahresabschluss.
+    const buyFlow = /** @type {any} */ (plan).buyFlow;
+    if (buyFlow?.lines?.length) {
+        const progress = buyProgress(buyFlow.lines), status = buyFlow.allEntered ? 'erledigt' : buyFlow.bought > 0 ? 'teilweise' : 'offen';
+        const state = status === 'offen' ? 'Noch kein Kauf eingetragen.' : status === 'teilweise'
+            ? `${todoMoney(progress.done)} von ${todoMoney(progress.plan)} gekauft${progressBalanceText(progress)}.` : `Alle Käufe aus dem Plan sind eingetragen${progressBalanceText(progress)}.`;
+        const line = `${plan.status ? 'Stand der Käufe' : 'Stand'}: ${state}`;
+        root.append(make(doc, 'p', line)); texts.push(line);
     }
     if (action?.type === 'NONE') { root.append(make(doc, 'p', plan.text || 'Nichts tun')); texts.push(plan.text || 'Nichts tun'); }
     return { root, text: texts.filter(Boolean).join('\n') };
+}
+
+/** FR-80 Punkt 3: Hinweis, wenn bei „Eine Person trägt“ das Vermögen der anderen Person angegriffen wird.
+ * @param {{carrierName?: string, attacked?: {name?: string, profileId: string}[]}} distribution @returns {string} */
+export function carrierNoteText(distribution) {
+    const names = (distribution.attacked || []).map(row => row.name || row.profileId);
+    return `Vermögen von ${names.join(' und ')} wird angegriffen: ${distribution.carrierName ? `Das Vermögen von ${distribution.carrierName}` : 'Das Vermögen der tragenden Person'} reicht für den gemeinsamen Anteil nicht mehr.`;
 }

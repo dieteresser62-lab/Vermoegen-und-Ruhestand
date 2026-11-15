@@ -10,6 +10,7 @@ import { effectiveRunAssumptions, simulatorRunAssumptions as heads } from './sim
 import { getCommonInputs } from './simulator-portfolio.js';
 import { readMonteCarloParameters, renderMonteCarloRunControls, syncMonteCarloRunControls } from './monte-carlo-ui.js';
 import { buildSummaryData, buildMonteCarloAnswers, projectMinimumFlexDisplay } from './results-metrics.js';
+import { runLabel, stressLabel } from './simulator-assumption-lines.js';
 import { info, renderMonteCarloAnswers } from './results-renderers.js';
 import { revealAssumptionControl } from './simulator-assumptions-ui.js';
 import { invalidateBacktestForHousehold, renderInvalidatedBacktestStatus } from './simulator-backtest.js';
@@ -144,15 +145,15 @@ export function projectBacktestOverview(result, moneyBasis = 'nominal') {
  * @param [inputs] Wirksame Simulationseingaben.
  * @returns Ergebnis der Operation.
  */
-export function projectMonteCarloOverview(results, totalRuns, failCount, inputs = {}) {
+export function projectMonteCarloOverview(results, totalRuns, failCount, inputs = {}, durationYears = null) {
     const inventory = results?.outcomeInventory;
     const summary = /** @type {BuildSummaryData} */ (buildSummaryData)({ results, totalRuns, failCount });
     const valid = inventory?.schemaVersion === 'MonteCarloOutcomeInventoryV1'
         && Number.isFinite(inventory.floorCoveragePct) && !inventory.technical_error;
-    return { valid, answers: buildMonteCarloAnswers({ results, totalRuns, failCount, inputs }), floorPct: valid ? inventory.floorCoveragePct : null,
+    return { valid, answers: buildMonteCarloAnswers({ results, totalRuns, failCount, inputs, durationYears }), floorPct: valid ? inventory.floorCoveragePct : null,
         // Die Ergebniskarte zeigt je Euro-Basis dieselben Antworten wie der Monte-Carlo-Reiter (SE-1).
         moneyViews: Object.fromEntries(['nominal', 'real'].map(moneyBasis => [moneyBasis,
-            { answers: buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBasis, inputs }) }])),
+            { answers: buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBasis, inputs, durationYears }) }])),
         floorDisplay: valid ? summary[0].displayValue : '—',
         countText: valid ? summary[0].countText : '',
         covered: valid ? inventory.all_dead + inventory.horizon_exhausted : null,
@@ -288,7 +289,7 @@ function renderRunHead(kind, state) {
     const personIds = (state.last.values.personDataContext?.persons || []).map(person => person.profileId).join(',');
     const inflows = plannedInflowsSummary(inputs.plannedInflows);
     const care = typeof inputs.pflegefallLogikAktivieren === 'boolean' ? inputs.pflegefallLogikAktivieren
-        ? `${inputs.pflegeModellTyp ?? 'aktiv'} · ${inputs.pflegeMinDauer ?? '—'}–${inputs.pflegeMaxDauer ?? '—'} Jahre` : 'aus' : '';
+        ? `${inputs.pflegeModellTyp ? runLabel('careModel', inputs.pflegeModellTyp) : 'aktiv'} · ${inputs.pflegeMinDauer ?? '—'}–${inputs.pflegeMaxDauer ?? '—'} Jahre` : 'aus' : '';
     const monthlyPension = inputs.partner?.aktiv
         ? `${money((inputs.renteMonatlich ?? 0) + (inputs.partner.monatsrente ?? 0))} (Haushalt)`
         : money(inputs.renteMonatlich);
@@ -296,14 +297,14 @@ function renderRunHead(kind, state) {
         + (state.last.values.planDataContext?.deviationApplied ? '<p class="ds-source">mit Abweichung vom Plan</p>' : '')
         + renderPersonDataNotice(state.last.values.personDataContext)
         + (meta.household ? field('Gerechnet für', meta.household) : '')
-        + (kind === 'backtest' ? field('Zeitraum', `${settings.startYear}–${settings.endYear}`) : field('Läufe', `${Number.isFinite(Number(settings.anzahl)) ? integer(Number(settings.anzahl)) : settings.anzahl} · ${settings.maxDauer} Jahre · ${settings.methode}`))
+        + (kind === 'backtest' ? field('Zeitraum', `${settings.startYear}–${settings.endYear}`) : field('Läufe', `${Number.isFinite(Number(settings.anzahl)) ? integer(Number(settings.anzahl)) : settings.anzahl} · ${settings.maxDauer} Jahre · ${runLabel('methode', settings.methode)}`))
         + field('Startvermögen', money(inputs.startVermoegen)) + field('Floor / Flex pro Jahr', `${money(inputs.startFloorBedarf)} / ${money(inputs.startFlexBedarf)}`)
         + (inflows ? field('Einmalige Einkünfte', `${money(inflows.amount)} (${inflows.from === inflows.to ? inflows.from : `${inflows.from}–${inflows.to}`})`) : '')
         + field('Mindest-Flex', money(inputs.minimumFlexAnnual)) + field('Rente monatlich', monthlyPension)
-        + field('Strategie · Runway', `${inputs.decumulation?.mode ?? 'Standard'} · ${inputs.liquidityRunwayYears ?? '—'} Jahre`)
+        + field('Strategie · Runway', `${runLabel('decumulation', inputs.decumulation?.mode ?? 'standard')} · ${inputs.liquidityRunwayYears ?? '—'} Jahre`)
         + (care || Number.isFinite(reserve) ? field(Number.isFinite(reserve) ? care ? 'Pflegereserve · Pflege' : 'Pflegereserve' : 'Pflege',
             [Number.isFinite(reserve) ? money(reserve) : '', care].filter(Boolean).join(' · ')) : '')
-        + (kind === 'montecarlo' ? field('Stress / Tail-Risk', `${inputs.stressPreset ?? 'NONE'} / ${inputs.tailRiskEnabled ? 'aktiv' : 'aus'}`) : '')
+        + (kind === 'montecarlo' ? field('Stress / Tail-Risk', `${stressLabel(inputs.stressPreset)} / ${inputs.tailRiskEnabled ? 'aktiv' : 'aus'}`) : '')
         + (meta.startedAt ? field('Lauf gestartet', new Date(meta.startedAt).toLocaleTimeString('de-DE')) : '') + '</section>';
 }
 

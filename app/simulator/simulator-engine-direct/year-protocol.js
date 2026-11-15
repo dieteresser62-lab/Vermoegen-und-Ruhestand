@@ -24,7 +24,7 @@ export function completeYear(context) {
         careP2, survivorYear, temporaryFlexFactor, inputs, widowBenefits, widowPensionP1, widowPensionP2,
         p1Alive, p2Alive, guardReason, isBadYear, equityPreserved, unmetLiquidity, healthBucketCoverage,
         healthBucketInterest, healthBucketDiagnostics, stressReplayTransactionCapture, regularSaleDiagnostic,
-        payoutFallback, balanceTrace, fixedIncome, executedPurchases, yearNeed
+        payoutFallback, balanceTrace, fixedIncome, executedPurchases, yearNeed, personalFlexCutNominal, personalFlexCutTotal
     } = context;
 
     // Verkäufe erst nach der finalen Jahressteuer zusammenfassen.
@@ -80,7 +80,10 @@ export function completeYear(context) {
         incomeLog,
         inflowLog,
         expenseLog,
-        personalPayout,
+        // FR-80 Punkt 3 (TRG-1b, P3-4): Verkauf bei der anderen Person steht im Protokoll-Hinweis wie ein Rückgriff in der Auszahlung.
+        // TRG-1c Punkt 1: ebenso, wenn die andere Person einen Teil der Steuer der tragenden Person zahlt.
+        personalPayout: withReserveShort(withCarrierAttacked(personalPayout, [...(/** @type {any} */ (actionResult).carrierAttacked || []), ...(/** @type {any} */ (actionResult).carrierTaxAttacked || [])]),
+            /** @type {any} */ (actionResult).carrierReserveShort),
         portfolio,
         liquiditaet,
         spendingResult,
@@ -94,6 +97,10 @@ export function completeYear(context) {
         initialLiqStart,
         jahresEntnahmePlan,
         jahresEntnahmeEffektiv,
+        // FR-81 (Nachtrag 1): Der Engine-Anker bleibt bei einer persönlichen Flex-Kürzung unverändert. RK-3 Punkt 4: festes Feld
+        // statt Spread, sonst läuft das ganze Objekt im langsamen generischen Pfad (PE-1/MP-1).
+        personalFlexCutNominal: Math.max(0, personalFlexCutNominal || 0),
+        personalFlexCutTotal: Math.max(0, personalFlexCutTotal || 0),
         liqBeforePayout,
         liqAfterPayout,
         portfolioTotalBeforePayout,
@@ -185,4 +192,17 @@ export function completeYear(context) {
     }
     return finishSurvivorYear(yearResult, survivorYear, pensionResult);
 
+}
+
+/** Hinweise „Vermögen von … wird angegriffen“ aus Aktion und Steuer zur Auszahlung hinzufügen (je Person einmal).
+ * @param {any} personalPayout @param {{profileId: string, amount: number}[]} rows */
+function withCarrierAttacked(personalPayout, rows) {
+    const extra = rows.filter((row, index) => rows.findIndex(item => item.profileId === row.profileId) === index
+        && !personalPayout?.attacked?.some((/** @type {{profileId: string}} */ item) => item.profileId === row.profileId));
+    return extra.length ? { ...personalPayout, attacked: [...(personalPayout?.attacked || []), ...extra] } : personalPayout;
+}
+
+/** VN-3: Hinweis „Reserve von … unter Ziel“ zur Auszahlung hinzufügen. @param {any} personalPayout @param {any} short */
+function withReserveShort(personalPayout, short) {
+    return short ? { ...personalPayout, carrierReserveShort: short } : personalPayout;
 }

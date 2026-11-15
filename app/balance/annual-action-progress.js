@@ -6,6 +6,7 @@ import { confirmedHistorySales } from '../tranches/tranchen-history-model.js';
 import { PROFILE_TRANCHES_KEY } from '../profile/profile-state.js';
 import { PROFILE_WEALTH_LOTS_KEY } from '../profile/profile-wealth-history.js';
 import { CONFIG as ENGINE_CONFIG } from '../../engine/config.mjs';
+import { readAnnualPlanResolutions, annualPlanLineKey, KEEP_IN_DEPOT } from '../profile/annual-plan-resolutions.js';
 
 /** Ungenutzt seit RD-1 (FR-77 Punkt 2 geändert: Erledigt-Grenze nach Rundungsstaffel); bleibt als Export erhalten. */
 export const ANNUAL_ACTION_DONE_SHARE = 0.98;
@@ -46,8 +47,9 @@ const planSource = source => source && typeof source === 'object' && !source.int
 export function annualActionPlanLines(action, defaultProfileId = null) {
     return (Array.isArray(action?.quellen) ? action.quellen : []).flatMap((source, index) => {
         const planNet = planSource(source) ? sourceNet(source) : NaN;
-        return planNet > 0 ? [{ index, profileId: source.sourceProfileId ?? defaultProfileId, profileName: source.sourceProfileName ?? null,
-            assetClass: annualActionAssetClass(source), trancheId: source.trancheId ?? null, security: source.name ?? null, planNet }] : [];
+        return planNet > 0 ? [{ index, key: annualPlanLineKey({ trancheId: source.trancheId ?? null, index }), profileId: source.sourceProfileId ?? defaultProfileId,
+            profileName: source.sourceProfileName ?? null, assetClass: annualActionAssetClass(source), trancheId: source.trancheId ?? null,
+            security: source.name ?? null, planNet }] : [];
     });
 }
 
@@ -68,7 +70,7 @@ export function readAnnualActionSales(registry, profileIds = []) {
     }));
     const pending = new Set(projectReconciliationCashStatuses(registry).filter(status => status.isPending).map(status => status.targetActionId));
     return confirmedHistorySales(/** @type {any[]} */ ([...readReconciliationHistory(registry)])).filter(sale => ids.has(sale.profileId)).map(sale => ({
-        profileId: sale.profileId, trancheId: sale.trancheId, executedAt: sale.executedAt,
+        actionId: sale.actionId, profileId: sale.profileId, trancheId: sale.trancheId, executedAt: sale.executedAt,
         netProceeds: /** @type {any} */ (sale.actual)?.netProceeds, assetClass: classes.get(sale.profileId)?.get(sale.trancheId) ?? null,
         creditPending: pending.has(sale.actionId) }));
 }
@@ -76,11 +78,14 @@ export function readAnnualActionSales(registry, profileIds = []) {
 /**
  * Umsetzungsstand je Planzeile. Gezählt werden bestätigte Verkäufe derselben Person und Anlageklasse ab dem Beschlusstag
  * im Planjahr, netto. Mehrere Zeilen derselben Person und Klasse füllen sich in Belegreihenfolge.
- * @param {{action: any, year: number, decidedOn?: string|null, sales?: ReturnType<typeof readAnnualActionSales>, defaultProfileId?: string|null}} options
+ * FR-79 Punkt 11: Eine Zeile mit der Entscheidung „Rest bleibt im Depot“ (`resolutions`) ist erledigt (`keptInDepot`), auch über der
+ * Erledigt-Grenze; die ausdrückliche Entscheidung hat Vorrang (Ergänzung 1 Punkt 5).
+ * @param {{action: any, year: number, decidedOn?: string|null, sales?: ReturnType<typeof readAnnualActionSales>, defaultProfileId?: string|null,
+ * resolutions?: Record<string, {decision: string, reason?: string, decidedAt?: string}>}} options
  */
-export function projectAnnualActionProgress({ action, year, decidedOn = null, sales = [], defaultProfileId = null }) {
+export function projectAnnualActionProgress({ action, year, decidedOn = null, sales = [], defaultProfileId = null, resolutions = {} }) {
     const lines = annualActionPlanLines(action, defaultProfileId).map(line => ({ ...line, soldNet: 0, restNet: line.planNet, creditPendingNet: 0,
-        status: 'offen', lastSaleAt: /** @type {string|null} */ (null) }));
+        status: 'offen', lastSaleAt: /** @type {string|null} */ (null), keptInDepot: false, keptReason: /** @type {string|null} */ (null) }));
     const key = (profileId, assetClass) => JSON.stringify([profileId, assetClass]);
     const counted = sales.filter(sale => finite(sale.netProceeds) && sale.netProceeds > 0 && sale.assetClass
         && typeof sale.executedAt === 'string' && sale.executedAt.slice(0, 4) === String(year) && (!decidedOn || sale.executedAt >= decidedOn));
@@ -98,7 +103,7 @@ export function projectAnnualActionProgress({ action, year, decidedOn = null, sa
         if (!group.lastSaleAt || sale.executedAt > group.lastSaleAt) group.lastSaleAt = sale.executedAt;
         if (sale.creditPending) {
             group.pending += sale.netProceeds;
-            pendingSales.push({ profileId: sale.profileId, executedAt: sale.executedAt, netProceeds: sale.netProceeds });
+            pendingSales.push({ actionId: sale.actionId, profileId: sale.profileId, executedAt: sale.executedAt, netProceeds: sale.netProceeds });
         }
     }
     for (const group of groups.values()) {
@@ -106,14 +111,21 @@ export function projectAnnualActionProgress({ action, year, decidedOn = null, sa
         // RD-1c: erledigt nur mit einem Verkauf (verkauft > 0); bei 0 bleibt die Zeile offen, auch bei Plänen bis 500 €.
         const allDone = group.sold > 0 && group.sold >= annualActionDoneThreshold(plan);
         let rest = group.sold;
-        for (const line of group.lines) {
-            line.soldNet = Math.min(rest, line.planNet);
+        group.lines.forEach((line, index) => {
+            // VN-4 (ABS1 P2): Ein Mehrverkauf bleibt bei der letzten Zeile der Gruppe stehen (wie der Überkauf beim Kauf), damit Karte,
+            // Details und Jahresabschluss ihn als „mehr als geplant“ zeigen. Der offene Rest rechnet weiter je Zeile.
+            line.soldNet = index === group.lines.length - 1 ? Math.max(0, rest) : Math.min(rest, line.planNet);
             rest -= line.soldNet;
             line.restNet = allDone || line.soldNet > 0 && line.soldNet >= annualActionDoneThreshold(line.planNet) ? 0 : line.planNet - line.soldNet;
             line.creditPendingNet = group.sold > 0 ? group.pending * line.soldNet / group.sold : 0;
             line.status = line.restNet === 0 ? 'erledigt' : line.soldNet > 0 ? 'teilweise' : 'offen';
             line.lastSaleAt = line.soldNet > 0 ? group.lastSaleAt : null;
-        }
+        });
+    }
+    for (const line of lines) {
+        const decision = resolutions?.[line.key];
+        if (decision?.decision !== KEEP_IN_DEPOT || line.status === 'erledigt' && line.soldNet >= line.planNet - 0.005) continue;
+        line.keptInDepot = true; line.keptReason = decision.reason ?? null; line.restNet = 0; line.status = 'erledigt';
     }
     const total = field => lines.reduce((sum, line) => sum + line[field], 0);
     const planNet = total('planNet'), soldNet = total('soldNet'), restNet = total('restNet');
@@ -153,26 +165,30 @@ export function remainingAnnualAction(action, progress) {
 }
 
 /** Herkunft mit Umsetzungsstand am Beleg (`confirmed.progress`). Ist der Verlauf nicht lesbar, bleibt der Stand leer
- * und Reserven rechnen mit dem ganzen Beleg. @param {any} origin @param {()=>any} readRegistry @param {string[]} [profileIds] */
-export function withAnnualActionProgress(origin, readRegistry, profileIds = []) {
+ * und Reserven rechnen mit dem ganzen Beleg. Entscheidungen „Rest bleibt im Depot“ liest `readResolutions` (Vorgabe: Speicher).
+ * @param {any} origin @param {()=>any} readRegistry @param {string[]} [profileIds]
+ * @param {(year: number, ids: string[]) => {lines: Record<string, any>}} [readResolutions] */
+export function withAnnualActionProgress(origin, readRegistry, profileIds = [], readResolutions = (year, ids) => readAnnualPlanResolutions({ year, ids })) {
     const confirmed = origin?.confirmed;
     if (!confirmed?.action) return origin;
     let progress = null;
     try {
         progress = projectAnnualActionProgress({ action: confirmed.action, year: confirmed.year, decidedOn: annualActionDecisionDay(confirmed.committedAt),
-            sales: readAnnualActionSales(readRegistry(), profileIds), defaultProfileId: profileIds.length === 1 ? profileIds[0] : null });
+            sales: readAnnualActionSales(readRegistry(), profileIds), defaultProfileId: profileIds.length === 1 ? profileIds[0] : null,
+            resolutions: profileIds.length ? readResolutions(confirmed.year, profileIds).lines : {} });
     } catch { progress = null; }
     return { ...origin, confirmed: { ...confirmed, progress } };
 }
 
 /** Umsetzungsstand eines gespeicherten Jahresbelegs (Jahresabschluss, Schritt „Plan“): derselbe Weg wie in der Balance.
- * @param {{entry: any, year: number, registry: any, profileIds?: string[]}} options Beleg aus `readAnnualPlanRecord`.
+ * @param {{entry: any, year: number, registry: any, profileIds?: string[], resolutions?: Record<string, any>|null}} options Beleg aus `readAnnualPlanRecord`.
  * @returns {ReturnType<typeof projectAnnualActionProgress>|null} */
-export function annualPlanEntryProgress({ entry, year, registry, profileIds = [] }) {
+export function annualPlanEntryProgress({ entry, year, registry, profileIds = [], resolutions = null }) {
     const action = entry && !entry.status ? entry.adopted?.action : null;
     if (!action) return null;
     try {
         return projectAnnualActionProgress({ action, year, decidedOn: annualActionDecisionDay(entry.committedAt),
-            sales: readAnnualActionSales(registry, profileIds), defaultProfileId: profileIds.length === 1 ? profileIds[0] : null });
+            sales: readAnnualActionSales(registry, profileIds), defaultProfileId: profileIds.length === 1 ? profileIds[0] : null,
+            resolutions: resolutions ?? (profileIds.length ? readAnnualPlanResolutions({ year, ids: profileIds }).lines : {}) });
     } catch { return null; }
 }

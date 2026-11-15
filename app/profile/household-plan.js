@@ -6,6 +6,7 @@ import { isValidLiquidityRunwayYears } from '../../types/liquidity-runway-contra
 import { validateLongevitySettings } from '../simulator/dynamic-flex-longevity-contract.js';
 import { loadProfileRegistry } from './profile-registry.js';
 import { DEFAULT_EQUITY_COST_PCT } from '../shared/equity-cost-default.js';
+import { isWithdrawalMode } from './household-withdrawal-mode.js';
 
 export const HOUSEHOLD_PLAN_KEY = 'household_plan_v1';
 /** @type {Readonly<import("../../typcheck/datenvertraege.js").PlanValues>} */
@@ -230,7 +231,8 @@ export function assertPlanValues(values) {
     if (!['mean', 'survival_quantile'].includes(values.horizonMethod)) throw new Error('Ungültige Horizont-Methode.');
     const longevity = validateLongevitySettings(values);
     if (!longevity.valid) throw new Error(longevity.errors.map(error => error.message).join(' '));
-    if (!['tax_optimized', 'proportional', 'runway_first'].includes(values.householdWithdrawalMode)) throw new Error('Ungültiger Haushaltsentnahmemodus.');
+    // FR-80: „Eine Person trägt“ als `one_carries:<Person>`; alte Werte bleiben gültig.
+    if (!isWithdrawalMode(values.householdWithdrawalMode)) throw new Error('Ungültiger Haushaltsentnahmemodus.');
     exactKeys(values.decumulation, Object.keys(PLAN_DEFAULTS.decumulation), 'Strategie');
     if (!['standard', '3_bucket_jilge'].includes(values.decumulation.mode)) throw new Error('Ungültige Entnahmestrategie.');
     for (const field of ['bondTargetFactor', 'drawdownTrigger', 'bondRefillThreshold']) {

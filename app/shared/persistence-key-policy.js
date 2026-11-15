@@ -79,6 +79,8 @@ const EXACT_KEYS = new Set([
     'household_care_hint_v1',
     'household_partnership_v1',
     'annual_plan_record_v1',
+    // FR-79 Punkt 11: Entscheidungen zum Jahresplan („Rest bleibt im Depot“), je Planjahr und Haushalt.
+    'annual_plan_resolutions_v1',
     'household_simulator_needs_warning_ack_v1',
     'featureFlags',
     ...Object.values(LEGACY_MIGRATION_MARKER_KEYS),
@@ -95,6 +97,8 @@ const SNAPSHOT_CAPTURE_EXACT_KEYS = new Set([
     'household_care_hint_v1',
     'household_partnership_v1',
     'annual_plan_record_v1',
+    // FR-79 Punkt 11: Entscheidungen zum Jahresplan („Rest bleibt im Depot“), je Planjahr und Haushalt.
+    'annual_plan_resolutions_v1',
     CONFIG.STORAGE.LS_KEY,
     CONFIG.STORAGE.MIGRATION_FLAG,
     PROFILE_STORAGE_KEYS.registry,
@@ -232,6 +236,10 @@ export function isAllowedSnapshotRestoreLiveKey(key, options = {}) {
     if (PROFILE_SELECTOR_KEYS.has(normalized) || isProfileScopedFixedKey(normalized)) {
         return registryHasProfile(options.currentRegistry, options.snapshotActiveProfileId);
     }
+
+    // Gutachten VK-1 P2-04: Die Entscheidungen zum Jahresplan beziehen sich auf die Verkaufsbelege des Haushalts (Registry-Verlauf).
+    // Die Standard-Wiederherstellung einer Person behält diesen Verlauf, also auch die Entscheidungen; nur die volle Wiederherstellung setzt beide zurück.
+    if (normalized === 'annual_plan_resolutions_v1') return false;
 
     return isSnapshotGlobalDomainKey(normalized);
 }

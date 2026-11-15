@@ -97,6 +97,8 @@ export function projectBalanceCareNeeds({ status, storage, values, referenceYear
         ...reference, survivorFloorPercent: floorPercent,
         ...(official ? { pflegeKostenStaffelPreset: 'amtlich' } : {}), pflegeGradeConfigs, pflegeMaxFloor: prices.maximumFloor,
         pflegeRampUp: 5, pflegeModellTyp: 'chronisch', pflegeKostenDrift: prices.driftPercent / 100,
+        // FR-73 Punkt 8 geändert: Index 0 ist das Planjahr, die Hochrechnung ins Folgejahr nimmt dessen Rate.
+        pflegeKostenDriftBis: prices.driftUntilYear, pflegeKostenDriftDanach: prices.driftAfterPercent / 100, pflegeKostenStartJahr: planYear,
         pflegeRegionalZuschlag: Math.max(0, number('sim_pflegeRegionalZuschlag', 0)) / 100,
         pflegeHeimEigeneAusgaben: prices.ownExpensesMonthly, careValues: settings.careValues };
     const household = { p1Alive: true, p2Alive: couple, care: { p1: careMetaToday(persons[0].care), p2: couple ? careMetaToday(persons[1].care) : null } };

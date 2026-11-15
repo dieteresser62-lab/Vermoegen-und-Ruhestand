@@ -202,7 +202,7 @@ try {
         await trial.adopt(() => ['flexBedarf']); renderBalancePlanTrial(doc, { project: true });
         const adopted = update({ mode: 'preview' }); await adopted.overviewPersistence; await P.flush();
         assertEqual(readBalanceHouseholdPlan().entry.values.flexBedarf, 24000, count + ': übernommener Bedarf bleibt im gespeicherten Plan');
-        assertEqual(seen.at(-1).flexBedarf, 25000, count + ': übernommener Bedarf in regulärer Folgejahresprojektion fortgeschrieben');
+        assertEqual(seen.at(-1).flexBedarf, 24300, count + ': übernommener Bedarf in regulärer Folgejahresprojektion genau fortgeschrieben');
         assert(bytes() !== before && !trial.read().active, count + ': nur bewusste Übernahme aktualisiert Plan und Summary');
         trial.start(); trial.update({ flexBedarf: 29000 }); renderBalancePlanTrial(doc, { project: true });
         const pendingState = StorageManager.loadState();

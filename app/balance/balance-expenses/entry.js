@@ -1,3 +1,4 @@
+import { bindDialogBackdrop } from '../../shared/dialog-backdrop.js';
 import { bindBalanceYearSegments } from '../balance-presentation-controls.js';
 import { EXPENSES_STORE_STATUS, loadExpensesStoreResult, setExpensesActiveYear, resolveExpensesInitialYear } from '../balance-expenses-storage.js';
 import { context, state } from './context.js';
@@ -40,9 +41,8 @@ function bindEvents() {
         context.dom.expenses.detailClose.addEventListener('click', () => context.dom.expenses.detailDialog.close());
     }
     if (context.dom?.expenses?.detailDialog) {
-        context.dom.expenses.detailDialog.addEventListener('click', (event) => {
-            if (event.target === context.dom.expenses.detailDialog) context.dom.expenses.detailDialog.close();
-        });
+        const dialog = context.dom.expenses.detailDialog;
+        bindDialogBackdrop(dialog, () => dialog.close());
     }
 }
 

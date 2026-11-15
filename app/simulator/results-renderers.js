@@ -49,6 +49,8 @@ function renderCoverageBody(hostId, answer, index) {
         <div class="sim-coverage-bar" role="img" aria-label="${escape(`${answer.value} der Läufe gedeckt`)}"><span style="width:${width}%"></span></div>`
         : `<p class="sim-hero-amount">${escape(answer.value)}</p><p>${escape(answer.text)}</p>${answer.technicalRuns ? `<p>Finanziell nicht auswertbar · technische Läufe: ${escape(answer.technicalRuns)}</p>` : ''}`}
         ${line ? `<p class="ds-help">${escape(line)}</p>` : ''}
+        ${answer.assumptions ? [answer.assumptions.line, answer.assumptions.careShare, answer.assumptions.wageHint].filter(Boolean)
+            .map(text => `<p class="ds-help sim-coverage-assumptions">${escape(text)}</p>`).join('') : ''}
         ${end ? `<div class="sim-end-wealth"><div class="sim-card-heading"><p class="sim-answer-metric-label">${escape(end.label)}</p>${end.partsTooltip ? info(`${hostId}Parts${index + 1}`, 'Aufteilung der Perzentile', end.partsTooltip) : ''}</div>
             <div class="sim-end-wealth-values">${end.values.map(item => `<div><p class="ds-help">${escape(item.label)}</p><p class="sim-answer-metric-value">${escape(item.value)}</p></div>`).join('')}</div>
             ${end.parts ? `<p class="ds-help">${escape(end.parts)}</p>` : ''}<p class="ds-help sim-price-basis">${escape(end.basis)}</p></div>` : ''}`;

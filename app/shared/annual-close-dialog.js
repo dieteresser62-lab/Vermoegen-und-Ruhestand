@@ -153,13 +153,17 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
         });
         return current;
     };
+    /** Kurs von Hand mit Komma oder Punkt („160,4“ und „160.4“ → 160,4; „1.234,56“ → 1234,56). */
+    const handPriceValue = () => { const text = handPrice.value.trim(); return text.includes(',') ? text.replaceAll('.', '').replace(',', '.') : text; };
     const makeHandPrice = () => {
         handGroup = node('section', undefined, 'annualHandPriceGroup'); handGroup.id = 'annualHandPriceGroup'; handGroup.className = 'ds-field';
         const label = node('label', 'ETF-Schlusskurs von Hand'); label.setAttribute('for', 'annualHandPrice');
-        handPrice = node('input', undefined, 'annualHandPrice'); handPrice.id = 'annualHandPrice'; handPrice.type = 'number'; handPrice.min = '0.5'; handPrice.max = '100000'; handPrice.step = '0.01'; handPrice.value = '';
-        handPrice.className = 'ds-input'; handPrice.dataset.annualTransient = ''; handPrice.setAttribute('aria-describedby', 'annualHandPriceHelp');
+        // VN-3 (Gemini Befund 8, DS-1 Punkt 4): Kursfeld wie die übrigen Kursfelder – Text mit Dezimaltastatur im €-Rahmen.
+        handPrice = node('input', undefined, 'annualHandPrice'); handPrice.id = 'annualHandPrice'; handPrice.type = 'text'; handPrice.setAttribute('inputmode', 'decimal'); handPrice.setAttribute('lang', 'de'); handPrice.value = '';
+        handPrice.className = 'ds-input'; handPrice.dataset.annualTransient = ''; handPrice.setAttribute('data-money-input', ''); handPrice.setAttribute('aria-describedby', 'annualHandPriceHelp');
         const help = node('p', 'Optional – ersetzt nur den ETF-Schlusskurs, wenn der Abruf fehlt.'); help.id = 'annualHandPriceHelp';
-        handGroup.append(label, handPrice, help);
+        const frame = node('span'); frame.className = 'ds-unit-frame'; frame.append(handPrice, node('span', '€'));
+        handGroup.append(label, frame, help);
         return handGroup;
     };
     /** @param {import("../../typcheck/shared-annual.js").PreparationOptions} [options] */
@@ -520,7 +524,7 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
             if (confirmButton.disabled) return;
             try {
                 if (handPrice.validity?.badInput) throw new Error('Bitte einen gültigen ETF-Schlusskurs eingeben.');
-                const options = manualAllowed.has('etf') && handPrice.value.trim() ? validatePrice(handPrice.value.trim()) : {};
+                const options = manualAllowed.has('etf') && handPrice.value.trim() ? validatePrice(handPriceValue()) : {};
                 if (cash) options.cash = /** @type {import("../../typcheck/speicher-integration.js").Cash} */ (cash.read());
                 options.careValues = careEditor.accept();
                 options.careToday = careEditor.read().careToday;
@@ -641,7 +645,7 @@ export function createAnnualCloseDialog({ getLastUpdateResults = () => null, get
             body.append(makeHandPrice(), node('p', 'Nach Bestätigung wird der Wiederherstellungspunkt geladen. Nach dem geschützten Reload wird dieselbe Jahresperiode einmalig mit diesem Kurs fortgesetzt.', 'annualRetryNotice'));
             retryAction = async () => {
                 if (retryPending) return;
-                try { const options = results.validatePrice(handPrice.value); retryPending = true; current.setBusy(true); await results.retry(options); }
+                try { const options = results.validatePrice(handPriceValue()); retryPending = true; current.setBusy(true); await results.retry(options); }
                 catch (error) { current.setStatus(error.message); }
                 finally { retryPending = false; current.setBusy(false); }
             };

@@ -1,4 +1,4 @@
-import { displayDecimalInput } from './tranchen-manager-decimal-input.js';
+import { displayDecimalInput, readDecimalInput } from './tranchen-manager-decimal-input.js';
 import { PARTNERSHIP_KEY, readPartnership, inheritancePreview, inheritancePercent, inheritsHomeAndTax, FAMILY_HOME_CONDITIONS, hasTestament, testamentRule, testamentDescription, residenceAnnualValue, hasInheritanceHomes, maritalPropertyRegime, maritalPropertyLabel, spouseTaxNote } from '../profile/household-partnership.js';
 import { persistenceStorage, PersistenceFacade } from '../shared/persistence-facade.js';
 import { escapeHtml as esc } from '../shared/security-utils.js';
@@ -13,7 +13,7 @@ const states = new WeakMap();
 const money = value => `${value.toLocaleString('de-DE', { maximumFractionDigits: 0 })}\u00a0€`;
 const percent = value => value.toLocaleString('de-DE', { maximumFractionDigits: 2 });
 function getState(doc) {
-    if (!states.has(doc)) states.set(doc, { draft: null, raw: null, people: [], writing: null, notify: () => {}, blocked: () => false });
+    if (!states.has(doc)) states.set(doc, { draft: null, raw: null, people: [], writing: null, notify: () => {}, blocked: () => false, fieldsBlocked: () => false });
     return states.get(doc);
 }
 function preview(person, value, partnership, partner) {
@@ -84,6 +84,9 @@ function paint(doc) {
     const regime = doc.getElementById('managerMaritalPropertyRegime');
     if (regime) { regime.value = maritalPropertyRegime(state.draft); doc.getElementById('managerMaritalPropertyField').hidden = unmarried; }
     const total = people.reduce((sum, person) => sum + person.assets, 0);
+    // VN-4: Ein Neuaufbau (Auswahl, Häkchen) behält den Fokus auf demselben Bedienelement.
+    const focused = body.contains?.(doc.activeElement) ? doc.activeElement : null;
+    const focusKey = focused?.id ? `#${focused.id}` : focused?.dataset?.inheritanceHome ? `[data-inheritance-home="${focused.dataset.inheritanceHome}"]` : '';
     body.innerHTML = `<div class="pv-inheritance-grid">${people.map((person, index) => {
         const partner = people[1 - index], homeValue = (person.values.immobilien || []).reduce((sum, home) => sum + home.wert, 0);
         const share = inheritancePercent(state.draft, person.id);
@@ -97,6 +100,7 @@ function paint(doc) {
         input.value = value === undefined ? '' : displayDecimalInput(String(value), input);
     });
     bindInfoPopovers(doc);
+    if (focusKey) body.querySelector?.(focusKey)?.focus?.();
 }
 /** @param doc Dokument mit Partnerschaftsfeldern.
  * @param {ReturnType<typeof import("./tranchen-manager-profiles.js").projectManagerProfiles>} projection
@@ -121,6 +125,7 @@ export function renderManagerPartnership(doc, projection) {
  * @returns Zustand und Speichersteuerung oder null ohne Formular. */
 export function bindManagerPartnership(doc, options = {}) {
     const state = getState(doc); Object.assign(state, options);
+    if (!options.fieldsBlocked) state.fieldsBlocked = () => state.blocked();
     const host = doc.getElementById('managerPartnership');
     if (!host) return null;
     if (state.bound) return state;
@@ -134,7 +139,7 @@ export function bindManagerPartnership(doc, options = {}) {
     const status = text => { doc.getElementById('managerPartnershipStatus').textContent = text; };
     async function save() {
         if (state.writing || !state.dirty || state.invalid || state.blocked()) return;
-        const value = readPartnership(state.draft), raw = JSON.stringify(value), expected = state.raw;
+        const value = readPartnership(state.draft), raw = JSON.stringify(value), expected = state.raw, edits = state.edits || 0;
         state.writing = Promise.resolve().then(() => state.runOperation(async operation => {
             await PersistenceFacade.replaceRecordsTransactional({ [PARTNERSHIP_KEY]: raw }, {
                 probelaufDomainWrite: true, allowKey: key => key === PARTNERSHIP_KEY,
@@ -143,14 +148,15 @@ export function bindManagerPartnership(doc, options = {}) {
                 postValidate: records => { readPartnership(records[PARTNERSHIP_KEY]); return true; }
             });
         }));
-        state.saveFailed = false; status('Wird gespeichert …'); state.syncBlocked(state.blocked()); state.notify();
-        try { await state.writing; state.raw = raw; state.dirty = false; status('Gespeichert'); }
+        state.saveFailed = false; status('Wird gespeichert …'); state.syncBlocked(state.blocked(), state.fieldsBlocked()); state.notify();
+        // VN-3: Eingaben während des Speicherns bleiben offen und speichern beim nächsten Verlassen des Felds.
+        try { await state.writing; state.raw = raw; state.dirty = (state.edits || 0) !== edits; status(state.dirty ? 'Wird beim Verlassen des Feldes gespeichert' : 'Gespeichert'); }
         catch (error) {
             state.saveFailed = true;
             if (error.code === 'rollback_failed') PersistenceFacade.blockSyncWrites?.([PARTNERSHIP_KEY], 'Partnerschaft und Rücknahme unbestätigt. Bitte neu laden und die Sicherung prüfen.');
             status(`Nicht gespeichert: ${error.message} Bitte erneut versuchen.`);
         }
-        finally { state.writing = null; state.notify(); state.syncBlocked(state.blocked()); }
+        finally { state.writing = null; state.notify(); state.syncBlocked(state.blocked(), state.fieldsBlocked()); }
     }
     host.addEventListener('click', event => {
         const button = event.target.closest('[data-partnership]');
@@ -171,6 +177,17 @@ export function bindManagerPartnership(doc, options = {}) {
             paint(doc); state.notify(); void save(); return;
         }
         const testamentInput = event.target.closest('[data-testament]');
+        // VN-4 (ABS1 P1/P2): Das Verlassen eines Textfelds baut nichts neu – sonst verschwindet das Feld, das gerade den Fokus bekommt.
+        // Die Eingabe steht schon im Entwurf (input); nur ein zurückgehaltener Wert wird nachgetragen, „mindestens“ formatiert sich am Ort.
+        // Gespeichert wird beim Verlassen (focusout). Auswahlfelder ändern die Felder (Steuer auf das Wohnrecht) und bauen neu auf.
+        if (testamentInput?.dataset?.testament && testamentInput.tagName !== 'SELECT') {
+            if (applied.get(testamentInput) !== testamentInput.value && !state.fieldsBlocked()) updateTestament(testamentInput);
+            if (testamentInput.dataset.testament === 'minimum' && testamentInput.getAttribute?.('aria-invalid') !== 'true') {
+                const minimum = testamentRule(state.draft, testamentInput.closest('[data-testament-person]').dataset.testamentPerson).minimum;
+                if (minimum !== undefined) applied.set(testamentInput, testamentInput.value = displayDecimalInput(String(minimum), testamentInput));
+            }
+            return;
+        }
         if (testamentInput?.dataset?.testament && !state.writing && !state.blocked()) { updateTestament(testamentInput); if (!state.invalid) { paint(doc); void save(); } return; }
         const input = event.target.closest('[data-inheritance-home]');
         if (!input || state.writing || state.blocked()) return;
@@ -183,7 +200,9 @@ export function bindManagerPartnership(doc, options = {}) {
         const stand = event.target.closest('[data-testament-person]').querySelector('[data-testament="minimumStand"]');
         stand.disabled = event.target.value.trim() === ''; stand.closest('.pv-inheritance-share').hidden = stand.disabled;
     });
+    const applied = new WeakMap();
     function updateTestament(input) {
+        applied.set(input, input.value);
         const section = input.closest('[data-testament-person]'), id = section.dataset.testamentPerson;
         const person = state.people.find(person => person.id === id);
         try {
@@ -206,31 +225,40 @@ export function bindManagerPartnership(doc, options = {}) {
         } catch (error) {
             input.setAttribute('aria-invalid', 'true'); section.querySelector('[data-testament-error]').textContent = error.message;
         }
-        state.dirty = true; state.invalid = Boolean(host.querySelector('[aria-invalid="true"]')); state.saveFailed = false;
+        state.dirty = true; state.edits = (state.edits || 0) + 1; state.invalid = Boolean(host.querySelector('[aria-invalid="true"]')); state.saveFailed = false;
         status(state.invalid ? 'Bitte die markierten Testamentangaben prüfen.' : 'Wird beim Verlassen des Feldes gespeichert');
-        state.syncBlocked(state.blocked()); state.notify();
+        state.syncBlocked(state.blocked(), state.fieldsBlocked()); state.notify();
     }
     host.addEventListener('input', event => {
         const testamentInput = event.target.closest('[data-testament]');
-        if (testamentInput?.dataset?.testament && !state.writing && !state.blocked()) { updateTestament(testamentInput); return; }
-        const input = event.target.closest('[data-inheritance-person]'); if (!input || state.writing || state.blocked()) return;
-        const id = input.dataset.inheritancePerson, raw = input.value.trim(), value = Number(raw.replace(',', '.'));
+        // VN-3 (Gemini Befund 5): Textfelder bleiben während eines Autosaves bedienbar; die Eingabe geht in den Entwurf.
+        if (testamentInput?.dataset?.testament && !state.fieldsBlocked()) { updateTestament(testamentInput); return; }
+        const input = event.target.closest('[data-inheritance-person]'); if (!input || state.fieldsBlocked()) return;
+        const id = input.dataset.inheritancePerson, raw = input.value.trim(), value = readDecimalInput(raw, input);
         const valid = raw !== '' && Number.isFinite(value) && value >= 0 && value <= 100;
         input.setAttribute('aria-invalid', String(!valid));
         host.querySelector(`[data-inheritance-error="${id}"]`).textContent = valid ? '' : 'Bitte 0 bis 100 Prozent eingeben.';
-        state.invalid = Boolean(host.querySelector('[aria-invalid="true"]')); state.dirty = true;
+        state.invalid = Boolean(host.querySelector('[aria-invalid="true"]')); state.dirty = true; state.edits = (state.edits || 0) + 1;
         if (valid) { const key = state.draft.status === 'married' ? 'marriedInheritance' : 'inheritance'; (state.draft[key] ||= {})[id] = value; host.querySelector(`[data-inheritance-preview="${id}"]`).innerHTML = preview(state.people.find(person => person.id === id), value, state.draft, state.people.find(person => person.id !== id)); bindInfoPopovers(doc); paintSummary(doc, state); }
         state.saveFailed = false;
-        status(valid ? 'Wird beim Verlassen des Feldes gespeichert' : 'Bitte den markierten Anteil prüfen.'); state.syncBlocked(state.blocked()); state.notify();
+        status(valid ? 'Wird beim Verlassen des Feldes gespeichert' : 'Bitte den markierten Anteil prüfen.'); state.syncBlocked(state.blocked(), state.fieldsBlocked()); state.notify();
     });
     host.addEventListener('focusout', event => { if (event.target.matches('[data-inheritance-person], [data-testament]')) void save(); });
     host.addEventListener('keydown', event => { if (event.key === 'Enter' && event.target.matches('[data-inheritance-person], [data-testament]')) { event.preventDefault(); void save(); } });
     state.read = () => ({ dirty: Boolean(state.dirty), writing: Boolean(state.writing), draft: state.draft });
     state.flush = async () => { if (state.writing) { try { await state.writing; } catch { /* Der Editor erhält Entwurf und Fehlermeldung. */ } } else await save(); return !state.dirty; };
-    state.syncBlocked = blocked => {
-        host.querySelectorAll('[data-partnership], [data-marital-property], [data-inheritance-person], [data-inheritance-home], [data-testament], #managerMaritalPropertyRegime, #managerPartnershipRetry').forEach(input => { input.disabled = blocked || Boolean(state.writing) || (input.dataset?.testament === 'minimumStand' && testamentRule(state.draft, input.closest('[data-testament-person]').dataset.testamentPerson).minimum === undefined); });
+    // VN-3 (Gemini Befund 5): Während eines Autosaves (auch des eigenen) bleiben die Textfelder bedienbar – das Feld in Bearbeitung und
+    // das Ziel eines Tab-Wechsels. Knöpfe, Auswahl und Häkchen speichern sofort und bleiben deshalb gesperrt, solange gespeichert wird.
+    state.syncBlocked = (blocked, fieldsBlocked = blocked) => {
+        host.querySelectorAll('[data-partnership], [data-marital-property], [data-inheritance-person], [data-inheritance-home], [data-testament], #managerMaritalPropertyRegime, #managerPartnershipRetry').forEach(input => {
+            const text = input.matches('[data-inheritance-person], [data-testament]');
+            input.disabled = (text ? fieldsBlocked : blocked || Boolean(state.writing)) && input !== doc.activeElement
+                || (input.dataset?.testament === 'minimumStand' && testamentRule(state.draft, input.closest('[data-testament-person]').dataset.testamentPerson).minimum === undefined);
+        });
         doc.getElementById('managerPartnershipRetry').hidden = !state.saveFailed || !state.dirty || Boolean(state.invalid);
     };
-    state.discard = () => { if (state.writing) return; state.dirty = false; state.invalid = false; state.saveFailed = false; state.draft = readPartnership(state.raw); paint(doc); state.syncBlocked(state.blocked()); };
+    // VN-3: Nach dem Ende einer Sperre speichert ein offener Entwurf, sobald kein Textfeld der Partnerschaft mehr in Bearbeitung ist.
+    state.resume = () => { if (state.dirty && !state.writing && !state.invalid && !doc.activeElement?.matches?.('#managerPartnership [data-inheritance-person], #managerPartnership [data-testament]')) void save(); };
+    state.discard = () => { if (state.writing) return; state.dirty = false; state.invalid = false; state.saveFailed = false; state.draft = readPartnership(state.raw); paint(doc); state.syncBlocked(state.blocked(), state.fieldsBlocked()); };
     return state;
 }

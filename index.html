@@ -41,7 +41,7 @@
                 </button>
                 <a href="index.html" data-profile-handoff aria-current="page" aria-label="Übersicht" title="Übersicht"><span data-suite-icon="house" aria-hidden="true"></span><span>Übersicht</span></a>
                 <a href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false" aria-label="Personen &amp; Vermögen – Rente, Depot, Gold" title="Personen &amp; Vermögen"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Personen &amp; Vermögen<small class="ds-navigation-subtitle">Rente, Depot, Gold</small></span></a>
-                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
+                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="receipt-text" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
                 <a href="Balance.html" data-profile-handoff aria-label="Balance – Jahresplanung" title="Balance"><span data-suite-icon="scale" aria-hidden="true"></span><span>Balance<small class="ds-navigation-subtitle">Jahresplanung</small></span></a>
                 <a href="Simulator.html" data-profile-handoff aria-label="Simulator" title="Simulator"><span data-suite-icon="chart-no-axes-combined" aria-hidden="true"></span><span>Simulator</span></a>
                 <a href="Handbuch.html" data-profile-handoff aria-label="Handbuch" title="Handbuch"><span data-suite-icon="book-open" aria-hidden="true"></span><span>Handbuch</span></a>
@@ -163,7 +163,7 @@
     </div>
     <script type="module" src="app/overview/overview-main.js"></script>
 
-    <div id="devTools" style="display:none; position:fixed; bottom:10px; right:10px; background:var(--text-main); color:var(--surface); padding:10px; border-radius:5px; z-index:9999;">
+    <div id="devTools" class="overview-dev-tools" hidden>
         <label>
             <input type="checkbox" class="ds-checkbox" id="telemetryToggle" />
             Worker Telemetry
@@ -175,7 +175,7 @@
             const devTools = document.getElementById('devTools');
             const toggle = document.getElementById('telemetryToggle');
             if (devTools && toggle) {
-                devTools.style.display = 'block';
+                devTools.hidden = false;
                 toggle.checked = localStorage.getItem('enableWorkerTelemetry') === 'true';
                 toggle.addEventListener('change', e => {
                     localStorage.setItem('enableWorkerTelemetry', e.target.checked);

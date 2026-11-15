@@ -53,32 +53,58 @@ const preview = { targetYear: 2026, planningYear: 2027, inflation: { rate: 2.5 }
 const annual = { needsReview: needs };
 assert(annualNeedsTiles(preview, annual)[0].detail.includes('Floor 33.000 € · Flex 12.000 €'), 'FF-2: Jahreskachel zeigt hochgerechnete Ist-Aufteilung');
 assert(annualNeedsTiles(preview, annual)[1].detail.includes('Flex nach Regeln 18.000 €'), 'FF-2: Jahresbedarf vergleicht freigegebenen Flex');
-same(annualNeedSuggestions(preview, annual, 'floorBedarf', 30750).fromActual, 34000, 'Ist mit Inflation auf volle Tausender aufgerundet');
-same([30750, 32595, 27675, 7688, 25000, 0].map(roundAnnualSuggestion), [31000, 33000, 28000, 8000, 25000, 0], 'Rundungsbeispiele einschließlich glatter Werte');
+same(annualNeedSuggestions(preview, annual, 'floorBedarf', 30750).fromActual, 33825, 'GN-1: Ist mit Inflation genau in ganzen Euro');
+same([30750, 32595, 27675, 7688, 25000, 0].map(roundAnnualSuggestion), [32500, 35000, 30000, 8000, 25000, 0], 'Rundungsbeispiele nach Anzeigestaffel einschließlich glatter Werte');
+// Ergänzung 4 FR-78 (GN-1 Nachtrag 1): Stufe 250 € unter 5.000 €.
+same([3217, 826.73, 210, 4999, 5001, 9362, 3075].map(roundAnnualSuggestion), [3250, 1000, 250, 5000, 5500, 9500, 3250], 'GN-1: Sollfälle der Anzeigestaffel mit 250 €');
 same(annualNeedSuggestions(preview, {}, 'floorBedarf', 30750).fromActual, null, 'Ohne Aufteilung kein Ist-Vorschlag');
 const base = { ...structuredClone(PLAN_DEFAULTS), floorBedarf: 30750, flexBedarf: 24600, minimumFlexAnnual: 7687.5 };
 const patches = [], evaluate = async patch => { patches.push(patch); return { adopted: { monthlyBudget: 4000, monthlyWithdrawal: 1000 }, recommended: { monthlyBudget: 4000, monthlyWithdrawal: 1000 } }; };
 const editor = createAnnualPlanEditor({ doc, listen: (el, type, fn) => el.addEventListener(type, fn), getPreview: () => preview, getAnnualExpenses: () => annual, evaluate });
 doc.body.append(editor.root); await editor.setBase(base);
 same(editor.accept(), undefined, 'Planvorschläge stehen lassen erzeugt keinen Anpassungspatch');
-same(editor.read().values.minimumFlexAnnual, 8000, 'Mindest-Flex gehört aufgerundet zur Empfehlung');
+same(editor.read().values.minimumFlexAnnual, 7688, 'GN-1: Mindest-Flex gehört genau (ganze Euro) zur Empfehlung');
+// GN-1 (FR-68 Punkt 7): Feld zeigt den gewählten Vorschlag glatt, gespeichert wird genau; Fokus ohne Änderung ändert nichts.
+const flexField = doc.getElementById('annualPlan_flexBedarf');
+assert(flexField.value.includes('25.000'), 'GN-1: Feld „dein Wert“ zeigt den gewählten Vorschlag glatt (25.000 €)');
+same(editor.read().values.flexBedarf, 24600, 'GN-1: Gespeichert würde der genaue Vorschlag 24.600 €');
+await flexField.fire('focus'); await flexField.fire('blur');
+for (let i = 0; i < 20; i++) await Promise.resolve();
+same(editor.read().values.flexBedarf, 24600, 'GN-1: Fokus ohne Änderung lässt den genauen Wert stehen');
+assert(flexField.value.includes('25.000') && editor.accept() === undefined, 'GN-1: Nach dem Fokus weiter glatt angezeigt und keine Anpassung');
+// GN-2b (Fable P3-2): Neue Basis im offenen Dialog (etwa korrigierte Inflation) → Feld zeigt den neuen glatten Betrag.
+await editor.setBase({ ...base, flexBedarf: 26500 });
+for (let i = 0; i < 20; i++) await Promise.resolve();
+assert(flexField.value.includes('27.500') && editor.read().values.flexBedarf === 26500, `GN-2b: neue Basis 26.500 € → Feld 27.500 €, Entwurf genau (${flexField.value})`);
+await editor.setBase(base);
+for (let i = 0; i < 20; i++) await Promise.resolve();
 const planButton = editor.root.querySelector('[data-annual-need-suggestion="floorBedarf:plan"]');
 const actualButton = editor.root.querySelector('[data-annual-need-suggestion="floorBedarf:actual"]');
 same(planButton.getAttribute('aria-pressed'), 'true', 'Planvorschlag vorausgewählt');
-assert(planButton.textContent.includes('Plan 2026 + Inflation') && planButton.textContent.includes('31.000'), 'FF-2: Wortlaut und aufgerundeter Planvorschlag');
+assert(planButton.textContent.includes('Plan 2026 + Inflation') && planButton.textContent.includes('32.500'), 'FF-2: Wortlaut und aufgerundeter Planvorschlag');
 const flexPlan = editor.root.querySelector('[data-annual-need-suggestion="flexBedarf:plan"]');
 const flexActual = editor.root.querySelector('[data-annual-need-suggestion="flexBedarf:actual"]');
 same(flexPlan.getAttribute('aria-pressed'), 'true', 'Flex-Plan mit Inflation ebenfalls vorausgewählt');
 assert(flexPlan.textContent.includes('25.000') && flexActual.textContent.includes('Ist 2026 + Inflation') && flexActual.textContent.includes('13.000'), 'FF-2: beide Flex-Vorschläge auf volle Tausender aufgerundet');
 await actualButton.fire('click');
 for (let i = 0; i < 20; i++) await Promise.resolve();
-same(editor.accept().floorBedarf, 34000, 'Klick übernimmt ausschließlich den gewählten Ist-Vorschlag');
+same(editor.accept().floorBedarf, 33825, 'Klick übernimmt ausschließlich den gewählten Ist-Vorschlag (genau)');
 same(actualButton.getAttribute('aria-pressed'), 'true', 'Ist-Auswahl sichtbar markiert');
 const field = doc.getElementById('annualPlan_floorBedarf'); field.value = '35321'; await field.fire('input');
 for (let i = 0; i < 20; i++) await Promise.resolve();
 same([planButton.getAttribute('aria-pressed'), actualButton.getAttribute('aria-pressed')], ['false', 'false'], 'Eigene Eingabe hebt beide Auswahlen auf');
 same(editor.accept().floorBedarf, 35321, 'Eigene Eingabe bleibt ohne Tausenderrundung frei');
 assert(!Object.hasOwn(editor.accept(), 'minimumFlexAnnual'), 'FF-2: Empfohlener Mindest-Flex ist keine bewusste Anpassung');
+// GN-1: Von Hand genau den angezeigten Betrag getippt → gespeichert wird dieser Betrag.
+await flexField.fire('focus');
+// GN-2b (Fable P3-1): Ein Eingabe-Ereignis ohne Textänderung lässt den genauen Vorschlag stehen.
+await flexField.fire('input');
+for (let i = 0; i < 20; i++) await Promise.resolve();
+same(editor.read().values.flexBedarf, 24600, 'GN-2b: Eingabe ohne Textänderung behält 24.600 €');
+// Tippen über Zwischenstände: der getippte Wert gilt genau, auch wenn er wie der angezeigte aussieht.
+flexField.value = '2500'; await flexField.fire('input'); flexField.value = '25000'; await flexField.fire('input');
+for (let i = 0; i < 20; i++) await Promise.resolve();
+same(editor.accept().flexBedarf, 25000, 'GN-1: Von Hand getippte 25.000 € gelten genau so');
 editor.dispose();
 const scope = planScope('household', ['a', 'b']);
 const records = { [CONFIG.STORAGE.LS_KEY]: JSON.stringify({ annualPeriodMetadata: { lastCommittedPeriod: 'calendar-year:2025' } }), balance_expenses_v1: JSON.stringify({ version: 1, activeYear: 2026, ...store }), [HOUSEHOLD_PLAN_KEY]: buildPlanRecord(null, [{ scope, values: { ...structuredClone(PLAN_DEFAULTS), floorBedarf: 30000 } }]).raw };

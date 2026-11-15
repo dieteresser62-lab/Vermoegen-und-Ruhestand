@@ -1,0 +1,606 @@
+/* Personen & Vermögen: Seitenstile (DS-1, vorher eingebettet in depot-tranchen-manager.html). Gelten nur auf dieser Seite
+   (`.personen-vermoegen-page`) und nicht in Dialogen; geführter Kauf und Verkauf sehen so überall gleich aus (VN-1 Punkt 6).
+   Schriftgrößen aus den Designsystem-Stufen (tokens.css). */
+/* VN-1 Punkt 6: Die Altstile dieser Seite gelten nur im Seitenhauptbereich, nicht in Dialogen (<dialog>); geführter Kauf und
+   Verkauf sehen so auf allen Seiten gleich aus (Designsystem). :where hält die Spezifität wie bisher. */
+/* VN-4 Punkt 6: Designsystem-Knöpfe (primär, sekundär, Gefahr) behalten ihren Innenabstand wie auf Balance und Übersicht. */
+:where(.personen-vermoegen-page) *:where(:not(dialog, dialog *, .ds-button-secondary, .ds-button-primary, .ds-button-danger)) {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body:where(.personen-vermoegen-page) {
+    font-family: var(--font-sans);
+    color: var(--text-main);
+    background: var(--page);
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    container: manager / inline-size;
+    width: 100%;
+    min-width: 0;
+    max-width: 1400px;
+    margin: 0 auto;
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    padding: 30px;
+}
+
+:where(.personen-vermoegen-page) h1:where(:not(dialog, dialog *)) {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    color: var(--text-main);
+    margin-bottom: 10px;
+    font-size: var(--balance-h2);
+}
+
+.subtitle {
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    font-size: var(--text-dense);
+}
+
+.hint {
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    font-size: var(--text-dense);
+}
+
+.persistence-panel {
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface-sunken);
+}
+
+.persistence-status {
+    color: var(--text-main);
+    font-size: var(--text-dense);
+    font-weight: 600;
+}
+
+.persistence-status[data-kind="error"] {
+    color: var(--bad);
+}
+
+.persistence-status[data-kind="pending"] {
+    color: var(--warn);
+}
+
+.recovery-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 14px;
+}
+
+.recovery-actions[hidden],
+.recovery-actions button[hidden],
+.raw-payload[hidden] {
+    display: none;
+}
+
+.recovery-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    background: var(--text-main);
+    color: var(--surface);
+    text-decoration: none;
+    font-size: var(--text-dense);
+    font-weight: 500;
+}
+
+.raw-payload {
+    flex-basis: 100%;
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding: 12px;
+    border-radius: 6px;
+    background: var(--surface-sunken);
+    color: var(--text-main);
+    font: var(--text-dense)/1.4 var(--font-sans);
+    user-select: text;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.api-key {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.api-key label {
+    font-size: var(--text-dense);
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.api-key input {
+    font-family: var(--font-sans);
+    padding: 8px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    min-width: 260px;
+    font-size: var(--text-base);
+}
+
+.api-key small {
+    color: var(--text-muted);
+    font-size: var(--text-dense);
+}
+
+/* VN-4 Punkt 6 (Abnahme LZDS-6): Altstil nicht für primäre, sekundäre und Gefahr-Knöpfe des Designsystems; sie sehen aus wie auf Balance und Übersicht. */
+:where(.personen-vermoegen-page) button:where(:not(dialog, dialog *, .ds-button-secondary, .ds-button-primary, .ds-button-danger)) {
+    font-family: var(--font-sans);
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: var(--text-dense);
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+:where(.personen-vermoegen-page) button:where(:not(dialog, dialog *, .ds-button-secondary, .ds-button-primary, .ds-button-danger)):hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card);
+}
+
+:where(.personen-vermoegen-page) button:where(:not(dialog, dialog *, .ds-button-secondary, .ds-button-primary, .ds-button-danger)):focus-visible,
+:where(.personen-vermoegen-page) a:where(:not(dialog, dialog *)):focus-visible,
+:where(.personen-vermoegen-page) [tabindex="0"]:where(:not(dialog, dialog *)):focus-visible {
+    outline: var(--ring-width) solid var(--ring-color);
+    outline-offset: var(--ring-offset);
+}
+
+:where(.personen-vermoegen-page) button:where(:not(dialog, dialog *, .ds-button-secondary, .ds-button-primary, .ds-button-danger)):disabled {
+    cursor: not-allowed;
+    color: var(--text-muted);
+    background: var(--surface-sunken);
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-primary {
+    background: var(--text-main);
+    color: var(--surface);
+}
+
+.btn-success {
+    background: var(--good);
+    color: var(--surface);
+}
+
+.btn-danger {
+    background: var(--bad);
+    color: var(--surface);
+}
+
+.btn-secondary {
+    background: var(--text-main);
+    color: var(--surface);
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.profile-values {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+#activeProfileName { overflow-wrap: anywhere; }
+
+.profile-values h3 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    grid-column: 1 / -1;
+    font-size: var(--text-base);
+    color: var(--text-main);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin: 0;
+}
+
+.profile-validation-status {
+    grid-column: 1 / -1;
+    color: var(--bad);
+    font-weight: 600;
+    font-size: var(--text-dense);
+}
+
+.profile-validation-status[hidden] {
+    display: none;
+}
+
+.profile-values small {
+    color: var(--text-muted);
+    font-size: var(--text-dense);
+}
+
+.reconciliation-panel {
+    min-width: 0;
+    margin-bottom: 24px;
+    padding: 18px;
+    border: 2px solid var(--border-strong);
+    border-radius: 10px;
+    background: var(--surface-sunken);
+}
+
+.reconciliation-panel h2 {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: var(--text-main);
+    font-size: var(--text-lg);
+}
+
+.reconciliation-intro {
+    margin-bottom: 16px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.reconciliation-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+}
+
+.reconciliation-form-grid .form-group {
+    margin-bottom: 0;
+}
+
+.reconciliation-recommendation,
+.reconciliation-actions,
+.reconciliation-status,
+.reconciliation-preview {
+    grid-column: 1 / -1;
+}
+
+.reconciliation-recommendation {
+    padding: 10px 0;
+}
+
+.reconciliation-recommendation summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.reconciliation-recommendation-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.reconciliation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.reconciliation-status {
+    min-height: 20px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.reconciliation-status[data-kind="error"] {
+    color: var(--bad);
+}
+
+.reconciliation-status[data-kind="ok"] {
+    color: var(--good);
+}
+
+.reconciliation-preview {
+    margin-top: 4px;
+    padding: 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface);
+}
+
+.reconciliation-preview[hidden],
+.reconciliation-actions button[hidden] {
+    display: none;
+}
+
+.reconciliation-preview pre {
+    margin: 0 0 14px;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    color: var(--text-main);
+    font: var(--text-dense)/1.55 inherit;
+}
+
+.gold-row,
+.health-bucket-row {
+    min-width: 0;
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+}
+
+@container manager (max-width: 980px) {
+    .gold-row,
+    .health-bucket-row {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+    }
+}
+
+.stat-card {
+    background: var(--surface-sunken);
+    color: var(--text-main);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+}
+
+.stat-label {
+    font-size: var(--text-dense);
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: var(--balance-kpi);
+    font-weight: bold;
+}
+
+:where(.personen-vermoegen-page) table:where(:not(dialog, dialog *)) {
+    width: 100%;
+    min-width: 1080px;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+#tranchenTable {
+    min-width: 0;
+}
+
+@container manager (max-width: 60rem) {
+    .stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
+}
+
+.table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+:where(.personen-vermoegen-page) th:where(:not(dialog, dialog *)), :where(.personen-vermoegen-page) td:where(:not(dialog, dialog *)) {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+:where(.personen-vermoegen-page) th:where(:not(dialog, dialog *)) {
+    background: var(--surface-sunken);
+    font-weight: 600;
+    color: var(--text-main);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+:where(.personen-vermoegen-page) tr:where(:not(dialog, dialog *)):hover {
+    background: var(--surface-sunken);
+}
+
+.tranche-row td {
+    font-size: var(--text-dense);
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: var(--text-dense);
+    font-weight: 600;
+}
+
+.badge-alt {
+    background: var(--surface-sunken);
+    color: var(--text-muted);
+}
+
+.badge-neu {
+    background: var(--surface-sunken);
+    color: var(--text-muted);
+}
+
+.badge-geldmarkt {
+    background: var(--surface-sunken);
+    color: var(--text-muted);
+}
+
+.badge-gold {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.classification-category {
+    display: inline-block;
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.badge-steuerfrei {
+    background: var(--surface-sunken);
+    color: var(--text-muted);
+}
+
+.positive {
+    color: var(--good);
+    font-weight: 600;
+}
+
+.negative {
+    color: var(--bad);
+    font-weight: 600;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: color-mix(in srgb, var(--text-main) 50%, transparent);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--surface);
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.form-error {
+    margin: 12px 0 18px;
+    padding: 12px;
+    border: 1px solid var(--bad);
+    border-radius: 6px;
+    background: var(--bad-soft);
+    color: var(--bad);
+    font-weight: 600;
+}
+
+.form-error[hidden] {
+    display: none;
+}
+
+:where(.personen-vermoegen-page) [aria-invalid="true"]:where(:not(dialog, dialog *)) {
+    border-color: var(--bad) !important;
+    box-shadow: 0 0 0 3px var(--bad) !important;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    font-size: var(--text-dense);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: var(--ring-width) solid var(--ring-color);
+    outline-offset: var(--ring-offset);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent);
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 30px;
+}
+
+.table-actions {
+    white-space: nowrap;
+}
+
+.icon-action {
+    padding: 6px 10px;
+    font-size: var(--text-dense);
+    margin-right: 5px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state-icon {
+    font-size: var(--value-xl);
+    margin-bottom: 15px;
+}
+
+.code-block {
+    background: var(--surface-sunken);
+    color: var(--text-main);
+    padding: 15px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: var(--font-sans);
+    font-size: var(--text-dense);
+    margin-top: 10px;
+}

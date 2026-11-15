@@ -35,7 +35,7 @@ assertEqual(view.closingYear, 2026, 'Nächster Abschluss ist 2026');
 assertEqual(view.targetYear, 2027, 'Zieljahr ist das Folgeplanjahr');
 assertEqual(view.rule.targetYear, 2027, 'Regel nennt Zieljahr');
 assertEqual(view.high.targetYear, 2027, 'Hochreferenz nennt Zieljahr');
-assertEqual(view.rule.floor, 31000, 'Grundbedarf übernimmt die gerundete Jahresempfehlung');
+assertEqual(view.rule.floor, 30600, 'Grundbedarf übernimmt die genaue Jahresempfehlung');
 assertEqual(view.rule.monthlyBudget, 5100, 'Budget enthält Inflationsfortschreibung');
 assertEqual(view.rule.annualIncome - view.current.annualIncome, 9600, 'Erikas Rentenbeginn Juli zählt sechs Monatsrenten');
 assertEqual(view.rule.ageByPerson.muster_a, 68, 'Alter des Folgejahres statt heutiger Jahresbasis');

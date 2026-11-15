@@ -886,7 +886,7 @@ console.log('Regression R-01/R-02: gültige Formularkorrektur und editierbare De
         assertEqual(JSON.stringify(binding.appState.pendingInputMetadata), '{}', 'Produktive Projektion verwirft ausstehende Eingabemetadaten');
         assertEqual(JSON.parse(persistenceStorage.getItem(EXPENSES_STORAGE_KEY)).activeYear, 2027, 'Jahresdienst schreibt gespeichertes Ausgabenjahr ohne Ansichts-DOM fort');
         assertEqual(UIReader.readAllInputs().endeVJ, 160.2, 'Produktiver Reader zeigt den bestätigten Kurs');
-        assertEqual(UIReader.readAllInputs().floorBedarf, 31000, 'Produktiver Reader zeigt den aufgerundeten Planvorschlag');
+        assertEqual(UIReader.readAllInputs().floorBedarf, 30642, 'Produktiver Reader zeigt den genauen Planvorschlag (GN-1)');
         assertEqual(binding.appState.diagnosisData.keyParams.marketDataProvenance.targetYear, 2026, 'Produktive bestätigte Vorschau rendert die Jahresprovenienz');
         assert(window.__profilverbundActionResults?.length === 2, 'Produktive bestätigte Vorschau veröffentlicht beide bestätigten Profilaktionen');
         assertEqual(confirmedEngineCalls, engineCallsAtCommit, 'Bestätigte Vorschau verwendet das Commit-Ergebnis ohne zusätzliche Enginerechnung');

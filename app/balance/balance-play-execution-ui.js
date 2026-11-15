@@ -33,10 +33,15 @@ function requestPlayCredit(batch, { doc, signal, onConfirm }) {
         let saving = false;
         for (const person of batch.people.filter(person => person.saleIds.length)) {
             const text = doc.createElement('p'); text.textContent = `${person.name}: ${money(person.net)} Gutschrift, ${money(person.purchaseTotal)} Käufe.`;
-            const label = doc.createElement('label'); label.textContent = `Tagesgeld ${person.name} nach Gutschrift (€)`;
-            const field = doc.createElement('input'); field.type = 'text'; field.inputMode = 'decimal'; field.dataset.playCreditPerson = person.profileId;
+            // VN-3 (Gemini Befund 6, DS-1 Punkt 4): Eurofeld im Einheitenrahmen, nach dem Verlassen mit zwei Nachkommastellen.
+            const label = doc.createElement('label'); label.className = 'ds-field';
+            const caption = doc.createElement('span'); caption.textContent = `Tagesgeld ${person.name} nach Gutschrift`;
+            const frame = doc.createElement('span'); frame.className = 'ds-unit-frame'; const unit = doc.createElement('span'); unit.textContent = '€';
+            const field = doc.createElement('input'); field.type = 'text'; field.inputMode = 'decimal'; field.className = 'ds-input'; field.dataset.playCreditPerson = person.profileId;
+            field.setAttribute('data-money-input', ''); field.setAttribute('lang', 'de');
             field.value = formatDisplayNumber(person.finalCash, { fractionDigits: 2 });
-            label.appendChild(field); dialog.append(text, label); fields.set(person.profileId, field); controls.push(field);
+            listen(field, 'change', () => { try { field.value = formatDisplayNumber(parseMonthlyCashInput(field.value), { fractionDigits: 2 }); } catch { /* Ungültiges bleibt stehen; die Bestätigung meldet es. */ } });
+            frame.append(field, unit); label.append(caption, frame); dialog.append(text, label); fields.set(person.profileId, field); controls.push(field);
         }
         const status = doc.createElement('p'); status.setAttribute('role', 'status');
         const actions = doc.createElement('div'); actions.className = 'ds-actions';

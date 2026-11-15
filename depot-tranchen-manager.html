@@ -7,660 +7,7 @@
     <link rel="stylesheet" href="css/tokens.css">
     <link rel="stylesheet" href="css/fonts.css">
     <link rel="stylesheet" href="css/components.css">
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: var(--font-sans);
-            color: var(--text-main);
-            background: var(--page);
-            padding: 20px;
-            min-height: 100vh;
-        }
-
-        .container {
-            container: manager / inline-size;
-            width: 100%;
-            min-width: 0;
-            max-width: 1400px;
-            margin: 0 auto;
-            background: var(--surface);
-            border-radius: 12px;
-            box-shadow: var(--shadow-card);
-            padding: 30px;
-        }
-
-        h1 {
-            font-family: var(--font-serif);
-            font-weight: 500;
-            color: var(--text-main);
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-
-        .subtitle {
-            color: var(--text-muted);
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-
-        .hint {
-            color: var(--text-muted);
-            margin-bottom: 20px;
-            font-size: var(--text-dense);
-        }
-
-        .persistence-panel {
-            margin-bottom: 20px;
-            padding: 14px 16px;
-            border: 1px solid var(--border-strong);
-            border-radius: 8px;
-            background: var(--surface-sunken);
-        }
-
-        .persistence-status {
-            color: var(--text-main);
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .persistence-status[data-kind="error"] {
-            color: var(--bad);
-        }
-
-        .persistence-status[data-kind="pending"] {
-            color: var(--warn);
-        }
-
-        .recovery-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-top: 14px;
-        }
-
-        .recovery-actions[hidden],
-        .recovery-actions button[hidden],
-        .raw-payload[hidden] {
-            display: none;
-        }
-
-        .recovery-link {
-            display: inline-flex;
-            align-items: center;
-            min-height: 38px;
-            padding: 8px 14px;
-            border-radius: 6px;
-            background: var(--text-main);
-            color: var(--surface);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .raw-payload {
-            flex-basis: 100%;
-            max-height: 220px;
-            overflow: auto;
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
-            padding: 12px;
-            border-radius: 6px;
-            background: var(--surface-sunken);
-            color: var(--text-main);
-            font: var(--text-dense)/1.4 var(--font-sans);
-            user-select: text;
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .api-key {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: 15px;
-        }
-
-        .api-key label {
-            font-size: var(--text-dense);
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-
-        .api-key input {
-            font-family: var(--font-sans);
-            padding: 8px 10px;
-            border: 1px solid var(--border-strong);
-            border-radius: 6px;
-            min-width: 260px;
-            font-size: var(--text-base);
-        }
-
-        .api-key small {
-            color: var(--text-muted);
-            font-size: var(--text-dense);
-        }
-
-        button {
-            font-family: var(--font-sans);
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-card);
-        }
-
-        button:focus-visible,
-        a:focus-visible,
-        [tabindex="0"]:focus-visible {
-            outline: var(--ring-width) solid var(--ring-color);
-            outline-offset: var(--ring-offset);
-        }
-
-        button:disabled {
-            cursor: not-allowed;
-            color: var(--text-muted);
-            background: var(--surface-sunken);
-            transform: none;
-            box-shadow: none;
-        }
-
-        .btn-primary {
-            background: var(--text-main);
-            color: var(--surface);
-        }
-
-        .btn-success {
-            background: var(--good);
-            color: var(--surface);
-        }
-
-        .btn-danger {
-            background: var(--bad);
-            color: var(--surface);
-        }
-
-        .btn-secondary {
-            background: var(--text-main);
-            color: var(--surface);
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        .profile-values {
-            min-width: 0;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 12px;
-            background: var(--surface-sunken);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 16px;
-            margin-bottom: 20px;
-        }
-
-        #activeProfileName { overflow-wrap: anywhere; }
-
-        .profile-values h3 {
-            font-family: var(--font-serif);
-            font-weight: 500;
-            grid-column: 1 / -1;
-            font-size: 16px;
-            color: var(--text-main);
-            display: flex;
-            align-items: baseline;
-            gap: 6px;
-            margin: 0;
-        }
-
-        .profile-validation-status {
-            grid-column: 1 / -1;
-            color: var(--bad);
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .profile-validation-status[hidden] {
-            display: none;
-        }
-
-        .profile-values small {
-            color: var(--text-muted);
-            font-size: var(--text-dense);
-        }
-
-        .reconciliation-panel {
-            min-width: 0;
-            margin-bottom: 24px;
-            padding: 18px;
-            border: 2px solid var(--border-strong);
-            border-radius: 10px;
-            background: var(--surface-sunken);
-        }
-
-        .reconciliation-panel h2 {
-            font-family: var(--font-serif);
-            font-weight: 500;
-            margin-bottom: 8px;
-            color: var(--text-main);
-            font-size: 20px;
-        }
-
-        .reconciliation-intro {
-            margin-bottom: 16px;
-            color: var(--text-muted);
-            line-height: 1.5;
-        }
-
-        .reconciliation-form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 12px;
-        }
-
-        .reconciliation-form-grid .form-group {
-            margin-bottom: 0;
-        }
-
-        .reconciliation-recommendation,
-        .reconciliation-actions,
-        .reconciliation-status,
-        .reconciliation-preview {
-            grid-column: 1 / -1;
-        }
-
-        .reconciliation-recommendation {
-            padding: 10px 0;
-        }
-
-        .reconciliation-recommendation summary {
-            cursor: pointer;
-            color: var(--accent);
-            font-weight: 600;
-        }
-
-        .reconciliation-recommendation-fields {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 12px;
-            margin-top: 12px;
-        }
-
-        .reconciliation-actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 4px;
-        }
-
-        .reconciliation-status {
-            min-height: 20px;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-
-        .reconciliation-status[data-kind="error"] {
-            color: var(--bad);
-        }
-
-        .reconciliation-status[data-kind="ok"] {
-            color: var(--good);
-        }
-
-        .reconciliation-preview {
-            margin-top: 4px;
-            padding: 14px;
-            border: 1px solid var(--border-strong);
-            border-radius: 8px;
-            background: var(--surface);
-        }
-
-        .reconciliation-preview[hidden],
-        .reconciliation-actions button[hidden] {
-            display: none;
-        }
-
-        .reconciliation-preview pre {
-            margin: 0 0 14px;
-            overflow-wrap: anywhere;
-            white-space: pre-wrap;
-            color: var(--text-main);
-            font: 14px/1.55 inherit;
-        }
-
-        .gold-row,
-        .health-bucket-row {
-            min-width: 0;
-            grid-column: 1 / -1;
-            display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 12px;
-        }
-
-        @container manager (max-width: 980px) {
-            .gold-row,
-            .health-bucket-row {
-                grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
-            }
-        }
-
-        .stat-card {
-            background: var(--surface-sunken);
-            color: var(--text-main);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: var(--shadow-card);
-        }
-
-        .stat-label {
-            font-size: var(--text-dense);
-            color: var(--text-muted);
-            margin-bottom: 5px;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-        }
-
-        table {
-            width: 100%;
-            min-width: 1080px;
-            border-collapse: collapse;
-            margin: 0;
-        }
-
-        #tranchenTable {
-            min-width: 0;
-        }
-
-        @container manager (max-width: 60rem) {
-            .stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); }
-        }
-
-        .table-scroll {
-            max-width: 100%;
-            overflow-x: auto;
-            overscroll-behavior-inline: contain;
-            margin-bottom: 20px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-        }
-
-        .visually-hidden {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid var(--border);
-        }
-
-        th {
-            background: var(--surface-sunken);
-            font-weight: 600;
-            color: var(--text-main);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        tr:hover {
-            background: var(--surface-sunken);
-        }
-
-        .tranche-row td {
-            font-size: 14px;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: var(--text-dense);
-            font-weight: 600;
-        }
-
-        .badge-alt {
-            background: var(--surface-sunken);
-            color: var(--text-muted);
-        }
-
-        .badge-neu {
-            background: var(--surface-sunken);
-            color: var(--text-muted);
-        }
-
-        .badge-geldmarkt {
-            background: var(--surface-sunken);
-            color: var(--text-muted);
-        }
-
-        .badge-gold {
-            background: var(--accent-soft);
-            color: var(--accent);
-        }
-
-        .classification-category {
-            display: inline-block;
-            margin-bottom: 4px;
-            font-weight: 600;
-        }
-
-        .badge-steuerfrei {
-            background: var(--surface-sunken);
-            color: var(--text-muted);
-        }
-
-        .positive {
-            color: var(--good);
-            font-weight: 600;
-        }
-
-        .negative {
-            color: var(--bad);
-            font-weight: 600;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: color-mix(in srgb, var(--text-main) 50%, transparent);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: var(--surface);
-            padding: 30px;
-            border-radius: 12px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .form-error {
-            margin: 12px 0 18px;
-            padding: 12px;
-            border: 1px solid var(--bad);
-            border-radius: 6px;
-            background: var(--bad-soft);
-            color: var(--bad);
-            font-weight: 600;
-        }
-
-        .form-error[hidden] {
-            display: none;
-        }
-
-        [aria-invalid="true"] {
-            border-color: var(--bad) !important;
-            box-shadow: 0 0 0 3px var(--bad) !important;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: var(--text-main);
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border-strong);
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: var(--ring-width) solid var(--ring-color);
-            outline-offset: var(--ring-offset);
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent);
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            margin-top: 30px;
-        }
-
-        .delete-btn {
-            background: var(--bad);
-            color: var(--surface);
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: var(--text-dense);
-        }
-
-        .delete-btn:hover {
-            background: var(--bad);
-        }
-
-        .table-actions {
-            white-space: nowrap;
-        }
-
-        .icon-action {
-            padding: 6px 10px;
-            font-size: var(--text-dense);
-            margin-right: 5px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-muted);
-        }
-
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-        }
-
-        .code-block {
-            background: var(--surface-sunken);
-            color: var(--text-main);
-            padding: 15px;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-family: var(--font-sans);
-            font-size: var(--text-dense);
-            margin-top: 10px;
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 8px;
-            }
-
-            .container {
-                padding: 16px;
-                border-radius: 8px;
-            }
-
-            h1 {
-                font-family: var(--font-serif);
-                font-weight: 500;
-                font-size: 23px;
-            }
-
-            .controls,
-            .form-actions {
-                align-items: stretch;
-                flex-direction: column;
-            }
-
-            .profile-values,
-            .gold-row,
-            .health-bucket-row {
-                grid-template-columns: minmax(0, 1fr);
-            }
-
-            .stat-card {
-                padding: 16px;
-            }
-
-            .modal-content {
-                width: calc(100% - 16px);
-                padding: 18px;
-                max-height: calc(100vh - 16px);
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/personen-vermoegen-seite.css">
     <link rel="stylesheet" href="css/suite-frame.css">
     <link rel="stylesheet" href="css/personen-vermoegen.css">
     <link rel="stylesheet" href="css/wealth-history.css">
@@ -683,7 +30,7 @@
                 </button>
                 <a href="index.html" data-profile-handoff id="managerBackLink" aria-label="Übersicht" title="Übersicht"><span data-suite-icon="house" aria-hidden="true"></span><span>Übersicht</span></a>
                 <a href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false" aria-current="page" aria-label="Personen &amp; Vermögen – Rente, Depot, Gold" title="Personen &amp; Vermögen"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Personen &amp; Vermögen<small class="ds-navigation-subtitle">Rente, Depot, Gold</small></span></a>
-                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
+                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="receipt-text" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
                 <a href="Balance.html" data-profile-handoff aria-label="Balance – Jahresplanung" title="Balance"><span data-suite-icon="scale" aria-hidden="true"></span><span>Balance<small class="ds-navigation-subtitle">Jahresplanung</small></span></a>
                 <a href="Simulator.html" data-profile-handoff aria-label="Simulator" title="Simulator"><span data-suite-icon="chart-no-axes-combined" aria-hidden="true"></span><span>Simulator</span></a>
                 <a href="Handbuch.html" data-profile-handoff aria-label="Handbuch" title="Handbuch"><span data-suite-icon="book-open" aria-hidden="true"></span><span>Handbuch</span></a>
@@ -789,7 +136,7 @@
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_maxSkimPctOfEq">Max. Abschöpfen<small>vom Aktienwert in guten Jahren</small></label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_maxSkimPctOfEq" data-manager-plan-field="maxSkimPctOfEq" disabled></div>
                     <div class="pv-plan-field household-plan-field"><label for="managerPlan_maxBearRefillPctOfEq">Max. Auffüllen im Bärenmarkt</label><input class="ds-input" type="text" inputmode="decimal" id="managerPlan_maxBearRefillPctOfEq" data-manager-plan-field="maxBearRefillPctOfEq" disabled></div>
                     <div id="managerPlanGoldWarning" hidden></div>
-                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_householdWithdrawalMode">Verteilung im Haushalt<small class="ds-explanation">wer entnimmt zuerst <span class="ds-info"><button type="button" class="ds-info-button ds-button" aria-label="Erläuterung zur Verteilung im Haushalt" aria-describedby="managerWithdrawalModeInfo" aria-controls="managerWithdrawalModeInfo" aria-expanded="false">i</button><span id="managerWithdrawalModeInfo" class="ds-info-pop" role="tooltip">wer entnimmt zuerst · Reichweite zuerst</span></span></small></label><select class="ds-select" id="managerPlan_householdWithdrawalMode" data-manager-plan-field="householdWithdrawalMode" disabled><option value="tax_optimized">Steueroptimiert</option><option value="proportional">Anteilig</option><option value="runway_first">Reichweite zuerst</option></select></div>
+                    <div class="pv-plan-field household-plan-field"><label for="managerPlan_householdWithdrawalMode">Verteilung im Haushalt<small class="ds-explanation">wer entnimmt zuerst <span class="ds-info"><button type="button" class="ds-info-button ds-button" aria-label="Erläuterung zur Verteilung im Haushalt" aria-describedby="managerWithdrawalModeInfo" aria-controls="managerWithdrawalModeInfo" aria-expanded="false">i</button><span id="managerWithdrawalModeInfo" class="ds-info-pop" role="tooltip">wer entnimmt zuerst · Reichweite zuerst · Eine Person trägt: Verkäufe, Entnahmen und Steuer nur aus ihrem Vermögen. Bei Unverheirateten können Zahlungen über die gemeinsame Haushaltsführung hinaus Schenkungen sein (Freibetrag 20.000 € in zehn Jahren).</span></span></small></label><select class="ds-select" id="managerPlan_householdWithdrawalMode" data-manager-plan-field="householdWithdrawalMode" disabled><option value="tax_optimized">Steueroptimiert</option><option value="proportional">Anteilig</option><option value="runway_first">Reichweite zuerst</option></select></div>
 
                     <div class="pv-plan-used household-plan-used"><span>Balance</span><span>Simulator</span></div></section>
                 <section class="pv-plan-group household-plan-group"><h3>Dynamik <small>nur mit CAPE</small></h3><p class="pv-plan-note household-plan-note">Der Horizont wird aus der Lebenserwartung ermittelt.</p>
@@ -844,12 +191,12 @@
 <div class="pv-person-group"><h4>Person</h4><div class="form-group" data-person-field="profileGeburtsdatum"><label for="profileGeburtsdatum">Geburtsdatum</label><input id="profileGeburtsdatum" type="text" class="ds-input" placeholder="TT.MM.JJJJ" aria-describedby="profilePersonDateStatus"></div><p id="profilePersonDateStatus" class="ds-help ds-explanation"></p>
 <div class="form-group" data-person-field="profileGeschlecht"><label for="profileGeschlecht">Geschlecht</label><select id="profileGeschlecht" class="ds-select" aria-describedby="profileGenderStatus"><option value="m">Männlich</option><option value="w">Weiblich</option><option value="d">Divers</option></select><p id="profileGenderStatus" class="ds-help" role="status"></p><button type="button" id="profileGenderConfirm" class="ds-button ds-button-quiet ds-text-link">Auswahl bestätigen</button></div>
 </div><div class="pv-person-group pv-person-taxes"><h4>Steuern</h4><div class="form-group" data-person-field="profileKirchensteuerPct"><label for="profileKirchensteuerPct">Kirchensteuer (%)</label><input id="profileKirchensteuerPct" type="hidden" class="ds-input" placeholder="0" inputmode="decimal" lang="de"><div id="profileChurchSegments" class="pv-person-segments" role="group" aria-label="Kirchensteuer"></div></div>
-<div class="form-group" data-person-field="profileSparerPauschbetrag"><label for="profileSparerPauschbetrag">Sparer-Pauschbetrag (€ pro Person)</label><input id="profileSparerPauschbetrag" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de" data-money-input></div>
-<div class="form-group" data-person-field="profileRenteSteuerquotePct" hidden><label for="profileRenteSteuerquotePct">Steuerquote der Rente (%)</label><input id="profileRenteSteuerquotePct" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de" disabled></div>
+<div class="form-group" data-person-field="profileSparerPauschbetrag"><label for="profileSparerPauschbetrag">Sparer-Pauschbetrag pro Person</label><span class="ds-unit-frame"><input id="profileSparerPauschbetrag" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de" data-money-input><span>€</span></span></div>
+<div class="form-group" data-person-field="profileRenteSteuerquotePct" hidden><label for="profileRenteSteuerquotePct">Steuerquote der Rente</label><span class="ds-unit-frame"><input id="profileRenteSteuerquotePct" type="text" class="ds-input" placeholder="0" inputmode="decimal" lang="de" disabled><span>%</span></span></div>
 </div></div><section class="pv-person-care pv-care-band" aria-labelledby="profileCareBandTitle"><div class="pv-care-band-head"><div class="pv-label-help"><h4 id="profileCareBandTitle">Pflege heute</h4><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Wie die App Pflege rechnet" aria-describedby="profileCareCostsHelp">ⓘ</button><span id="profileCareCostsHelp" class="ds-info-pop" role="tooltip">Grundbedarf und Flex beschreiben den Haushalt ohne Pflege. Die Kosten des heutigen Grads rechnet die App selbst: zu Hause die Staffel oder deinen eigenen Wert, im Heim Heimkosten und eigene Ausgaben. Ohne eigene Wahl gilt bei Grad 4–5 „im Heim“.</span></span></div><a id="profileCareHouseholdLink" class="ds-text-link" href="#pflege">Haushaltswerte im Reiter Pflege →</a></div>
 <div class="pv-care-current"><div class="form-group"><div class="pv-label-help"><label id="profileCareGradeLabel" for="profileCareGradeToday">Pflegegrad</label><span class="ds-info"><button type="button" id="profileCareBenefitsButton" class="ds-button ds-info-button" aria-label="Leistungen je Grad" aria-describedby="profileCareBenefitsInfo">ⓘ</button><span id="profileCareBenefitsInfo" class="ds-info-pop pv-care-benefits" role="tooltip"><strong>Was die Pflegekasse zahlt · Stand 2026</strong><span class="ds-table-box"><table class="ds-table"><thead><tr><th>Grad</th><th>Pflegegeld<br>€/Monat</th><th>Pflegesachleistung<br>€/Monat</th><th>Entlastungsbetrag<br>€/Monat</th><th>Verhinderungs- und Kurzzeitpflege<br>gemeinsam €/Jahr</th><th>Vollstationär<br>€/Monat</th></tr></thead><tbody id="profileCareBenefitsRows"></tbody></table></span><span>Pflegegeld zählt bei Angehörigenpflege als Einkunft. Externe Unterstützung und Heimpflege haben andere Leistungen; die Kosten darüber hinaus rechnet die App selbst.</span><a href="Handbuch.html#pflege">Mehr im Handbuch</a><a id="profileCareBenefitsSource" class="ds-text-link" target="_blank" rel="noopener noreferrer">Bundesgesundheitsministerium · Übersicht 2026</a></span></span></div><select id="profileCareGradeToday" class="ds-select"><option value="0">keiner</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></div>
 <div id="profileCareFormField" class="form-group"><div class="pv-label-help"><label for="profileCareFormToday">Pflegeform</label></div><select id="profileCareFormToday" class="ds-select"><option value="family">zu Hause durch Angehörige</option><option value="home-support">zu Hause mit externer Unterstützung</option><option value="residential">im Heim</option></select></div>
-<div id="profileCareTodayFields" class="pv-care-today" hidden><div id="profileCareResidentialSinceField" class="form-group" hidden><div class="pv-label-help"><label for="profileCareResidentialSince">Im Heim seit <span class="pv-optional">optional</span></label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Im Heim seit erläutern" aria-describedby="profileCareResidentialSinceHelp">ⓘ</button><span id="profileCareResidentialSinceHelp" class="ds-info-pop" role="tooltip">Monat und Jahr. Daraus zählt die App das Heimjahr. Leer beginnt der Simulator vorsichtig mit Heimjahr 1.</span></span></div><input id="profileCareResidentialSince" type="month" class="ds-input" aria-describedby="profileCareResidentialSinceHelp"></div><div id="profileCareHomeCostsField" class="form-group" hidden><div class="pv-label-help"><label for="profileCareHomeCostsMonthly">Kosten über die Kasse hinaus <span class="pv-optional">optional</span></label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Kosten über die Kasse hinaus erläutern" aria-describedby="profileCareHomeCostsHelp">ⓘ</button><span id="profileCareHomeCostsHelp" class="ds-info-pop" role="tooltip">Leer rechnet die App mit dem Staffelbetrag des Grads; auch 0 € gilt.</span></span></div><div class="ds-unit-frame"><input id="profileCareHomeCostsMonthly" type="text" class="ds-input" placeholder="Staffelwert" inputmode="decimal" lang="de" aria-describedby="profileCareHomeCostsHelp" data-money-input><span>€/Monat</span></div></div><div class="form-group"><div class="pv-label-help"><label for="profileCareProgression">Angenommener Verlauf</label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Angenommenen Verlauf erläutern" aria-describedby="profileCareProgressionInfo">ⓘ</button><span id="profileCareProgressionInfo" class="ds-info-pop" role="tooltip">„langsamer“ halbiert ab dem heutigen Grad die Wahrscheinlichkeit, in einen höheren Grad zu wechseln, „deutlich langsamer“ viertelt sie. Die Übersterblichkeit ist nur im heutigen Grad vermindert. Annahme für Vergleichsrechnungen, kein medizinisches Modell.</span></span></div><select id="profileCareProgression" class="ds-select"><option value="usual">üblich</option><option value="slower">langsamer</option><option value="much_slower">deutlich langsamer</option></select></div>
+<div id="profileCareTodayFields" class="pv-care-today" hidden><div id="profileCareResidentialSinceField" class="form-group" hidden><div class="pv-label-help"><label for="profileCareResidentialSince">Im Heim seit <span class="pv-optional">optional</span></label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Im Heim seit erläutern" aria-describedby="profileCareResidentialSinceHelp">ⓘ</button><span id="profileCareResidentialSinceHelp" class="ds-info-pop" role="tooltip">Monat und Jahr. Daraus zählt die App das Heimjahr. Leer beginnt der Simulator vorsichtig mit Heimjahr 1.</span></span></div><input id="profileCareResidentialSince" type="month" class="ds-input" aria-describedby="profileCareResidentialSinceHelp"></div><div id="profileCareHomeCostsField" class="form-group" hidden><div class="pv-label-help"><label for="profileCareHomeCostsMonthly">Kosten über die Kasse hinaus <span class="pv-optional">optional</span></label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Kosten über die Kasse hinaus erläutern" aria-describedby="profileCareHomeCostsHelp">ⓘ</button><span id="profileCareHomeCostsHelp" class="ds-info-pop" role="tooltip">Leer rechnet die App mit dem Staffelbetrag des Grads; auch 0 € gilt.</span></span></div><div class="ds-unit-frame"><input id="profileCareHomeCostsMonthly" type="text" class="ds-input" placeholder="Staffelwert" inputmode="decimal" lang="de" aria-describedby="profileCareHomeCostsHelp" data-money-input><span>€/Monat</span></div></div><div class="form-group"><div class="pv-label-help"><label for="profileCareProgression">Angenommener Verlauf</label><span class="ds-info"><button type="button" class="ds-button ds-info-button" aria-label="Angenommenen Verlauf erläutern" aria-describedby="profileCareProgressionInfo">ⓘ</button><span id="profileCareProgressionInfo" class="ds-info-pop" role="tooltip">„langsamer“ halbiert ab dem heutigen Grad die Wahrscheinlichkeit, in einen höheren Grad zu wechseln, „deutlich langsamer“ viertelt sie. Die Übersterblichkeit ist nur im heutigen Grad vermindert. Annahme für Vergleichsrechnungen, kein medizinisches Modell. Der übliche Verlauf ist an Hochaltrigen geeicht; bei jungen Pflegebedürftigen mit langsamem Verlauf wähle „langsamer“.</span></span></div><select id="profileCareProgression" class="ds-select"><option value="usual">üblich</option><option value="slower">langsamer</option><option value="much_slower">deutlich langsamer</option></select></div>
 </div><p id="profileCareNone" class="ds-help">Kein Pflegegrad heute. Spätere Pflege rechnet der Simulator mit den Haushaltswerten aus dem Reiter Pflege.</p></div>
 <p id="profileCareAllowanceSummary" class="pv-care-result" hidden></p>
 <div id="profileCareHint" class="ds-note" data-care-hint hidden></div>
@@ -985,8 +332,8 @@
         </section>
 
         <section class="reconciliation-panel ds-card pv-sales" aria-labelledby="reconciliationTitle">
-            <h2 id="reconciliationTitle">Verkäufe &amp; Cashstatus</h2>
-            <p><strong>Tagesgeld wird immer von Hand nachgeführt.</strong> Verkäufe und Cashnachweise bleiben getrennte Schritte.</p>
+            <h2 id="reconciliationTitle">Verkäufe und Gutschriften</h2>
+            <p>Das Tagesgeld führst du von Hand nach. Kommt eine Gutschrift später, trägst du sie hier ein, sobald sie auf dem Tagesgeld ist.</p>
             <div id="reconciliationStatus" class="reconciliation-status" role="status" aria-live="polite"></div>
             <div id="reconciliationCashStatuses" aria-live="polite"></div>
         </section>
@@ -1070,7 +417,7 @@
                 </div></div>
                 <div class="pv-care-row" data-care-row="Rise"><button id="managerCareRowRiseToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerCareRowRiseBody" data-care-row-toggle="Rise"><span><strong id="managerCareRowRiseTitle">Kostenanstieg und Zuschlag</strong><span id="managerCareRowRiseSummary" class="ds-help"></span></span><span id="managerCareRowRiseAction" class="pv-disclosure-action">▸ zeigen</span></button>
                 <div id="managerCareRowRiseBody" class="pv-card-body pv-care-row-body" role="region" aria-labelledby="managerCareRowRiseToggle" hidden>
-                <div class="pv-care-fields"><div class="ds-field"><label for="managerCareDrift">Kostenanstieg über der Inflation</label><div class="ds-unit-frame"><input id="managerCareDrift" class="ds-input" type="text" inputmode="decimal" lang="de" data-care-field="pflegeKostenDrift"><span>% p.a.</span></div><small class="ds-help">Gilt für Staffel, Deckel und Heim.</small></div>
+                <div class="pv-care-fields"><div class="ds-field"><label for="managerCareDrift">Kostenanstieg über der Inflation</label><div class="ds-unit-frame"><input id="managerCareDrift" class="ds-input" type="text" inputmode="decimal" lang="de" data-care-field="pflegeKostenDrift"><span>% p.a.</span></div><small class="ds-help">Gilt für Staffel, Deckel und Heim.</small></div><div class="ds-field"><label for="managerCareDriftUntil">Zusätzl. Kostenanstieg bis</label><input id="managerCareDriftUntil" class="ds-input" type="text" inputmode="numeric" data-care-field="pflegeKostenDriftBis"><small class="ds-help">Letztes Jahr mit diesem Anstieg (Vorgabe 2035).</small></div><div class="ds-field"><label for="managerCareDriftAfter">danach</label><div class="ds-unit-frame"><input id="managerCareDriftAfter" class="ds-input" type="text" inputmode="decimal" lang="de" data-care-field="pflegeKostenDriftDanach"><span>% p.a.</span></div><small class="ds-help">Über der Inflation, ab dem Folgejahr (Vorgabe 2 %).</small></div>
                 <div class="ds-field"><label for="managerCareRegional">Regionaler Zuschlag</label><div class="ds-unit-frame"><input id="managerCareRegional" class="ds-input" type="text" inputmode="decimal" lang="de" data-care-field="pflegeRegionalZuschlag"><span>%</span></div><small class="ds-help">Erhöht Zusatz zu Hause und Heimkosten, etwa in teuren Städten.</small></div></div>
                 </div></div>
                 <div class="pv-care-row" data-care-row="Allowance"><button id="managerCareRowAllowanceToggle" type="button" class="pv-card-summary ds-button" aria-expanded="false" aria-controls="managerCareRowAllowanceBody" data-care-row-toggle="Allowance"><span><strong id="managerCareRowAllowanceTitle">Pflegegeld der Kasse</strong><span id="managerCareRowAllowanceSummary" class="ds-help"></span></span><span id="managerCareRowAllowanceAction" class="pv-disclosure-action">▸ zeigen</span></button>
@@ -1085,84 +432,6 @@
         </div>
     </div>
 
-    <div class="modal" id="saleModal" role="dialog" aria-modal="true" aria-labelledby="saleModalTitle" aria-describedby="saleDescription" aria-hidden="true">
-        <div class="modal-content ds-card pv-tranche-dialog" role="document">
-            <header class="pv-dialog-header"><div><p id="saleProfileName" class="pv-eyebrow"></p><h2 id="saleModalTitle">Verkauf eintragen</h2>
-                <p id="saleDescription">Erfasst eine tatsächliche Broker-Ausführung. Das Tagesgeld wird nicht automatisch verändert.</p></div>
-                <button type="button" id="dismissSaleModalBtn" class="ds-button ds-button-secondary" aria-label="Verkaufsdialog schließen">Schließen</button>
-            </header>
-            <ol class="pv-sale-progress" aria-label="Verkaufsschritte"><li id="saleProgress1">1 · Ausführung</li><li id="saleProgress2">2 · Cash</li><li id="saleProgress3">3 · Vorschau</li></ol>
-            <div id="saleStatus" class="ds-note" role="status" aria-live="polite"></div>
-            <form id="reconciliationForm" novalidate>
-                <fieldset id="saleStep1" class="pv-sale-step"><legend>Ausführung beim Broker</legend><div class="pv-dialog-fields">
-                <div class="form-group">
-                    <label for="reconcileActionId">Ausführungs-Kennung *</label>
-                    <input id="reconcileActionId" type="text" maxlength="128" autocomplete="off" required
-                        placeholder="z. B. Broker-Order-ID" class="ds-input">
-                    <small>Dieselbe ID verhindert eine doppelte Anwendung nach Reload oder Retry.</small>
-                </div>
-                <div class="form-group">
-                    <label for="reconcileTrancheId">Tranche *</label>
-                    <select id="reconcileTrancheId" required class="ds-select" aria-describedby="reconcileTrancheId-fulltext">
-                        <option value="">Keine Tranche verfügbar</option>
-                    </select>
-                    <span id="reconcileTrancheId-fulltext" class="ds-selection-text"></span>
-                </div>
-                <div class="form-group">
-                    <label for="reconcileExecutedAt">Ausführungstag *</label>
-                    <input id="reconcileExecutedAt" type="date" required class="ds-input">
-                </div>
-                <div class="form-group">
-                    <label for="reconcileSharesSold">Tatsächlich verkaufte Stücke *</label>
-                    <input id="reconcileSharesSold" type="text" required class="ds-input" inputmode="decimal" lang="de">
-                </div>
-                <div class="form-group">
-                    <label for="reconcileGrossProceeds">Tatsächlicher Bruttoerlös (€) *</label>
-                    <input id="reconcileGrossProceeds" type="text" required class="ds-input" inputmode="decimal" lang="de" data-money-input>
-                </div>
-                <div class="form-group">
-                    <label for="reconcileFees">Tatsächliche Kosten (€) *</label>
-                    <input id="reconcileFees" type="text" value="0" required class="ds-input" inputmode="decimal" lang="de" data-money-input>
-                </div>
-                <details class="reconciliation-recommendation ds-technical-details">
-                    <summary>Optionale Empfehlung</summary>
-                    <div class="reconciliation-recommendation-fields">
-                        <div class="form-group">
-                            <label for="reconcileRecommendedShares">Empfohlene Stückzahl</label>
-                            <input id="reconcileRecommendedShares" type="text" class="ds-input" inputmode="decimal" lang="de">
-                        </div>
-                        <div class="form-group">
-                            <label for="reconcileRecommendedGross">Empfohlener Bruttoerlös (€)</label>
-                            <input id="reconcileRecommendedGross" type="text" class="ds-input" inputmode="decimal" lang="de" data-money-input>
-                        </div>
-                    </div>
-                </details>
-                </div></fieldset>
-                <fieldset id="saleStep2" class="pv-sale-step" hidden><legend>Cash nach dem Verkauf</legend>
-                    <div id="reconciliationCashChoice" class="reconciliation-cash-choice">
-                        <div class="form-group"><label for="reconcileCashStatus">Ist der Nettoerlös bereits im Tagesgeld enthalten?</label>
-                            <select id="reconcileCashStatus" class="ds-select"><option value="pending_manual_posting">Nein – manuell offen halten</option><option value="confirmed_already_reflected">Ja – schon enthalten</option></select>
-                            <small>Keine automatische Cashbuchung. Offene Verkäufe bleiben sichtbar, bis Sie den Cashstand bestätigen.</small>
-                        </div>
-                        <div id="reconcileInitialCashBalanceGroup" class="form-group" hidden><label for="reconcileInitialCashBalance">Bestätigter Cashstand nach Berücksichtigung (€) *</label><input id="reconcileInitialCashBalance" type="text" class="ds-input" inputmode="decimal" lang="de" data-money-input><small>Der Stand wird mit Nettoerlös und Nachweiszeitpunkt dokumentiert.</small></div>
-                    </div>
-                </fieldset>
-                <fieldset id="saleStep3" class="pv-sale-step" hidden><legend>Schreibfreie Vorschau</legend>
-                <div id="reconciliationPreview" class="reconciliation-preview" hidden>
-                    <pre id="reconciliationPreviewContent"></pre>
-                    <div class="reconciliation-actions">
-                        <button id="reconciliationCancelBtn" type="button" class="btn-secondary ds-button ds-button-secondary" hidden>Abbrechen – nichts ändern</button>
-                        <button id="reconciliationConfirmBtn" type="button" class="btn-danger ds-button ds-button-danger" hidden>Dauerhafte Bestandsänderung bestätigen</button>
-                    </div>
-                </div>
-                </fieldset>
-                <footer class="pv-dialog-footer">
-                    <button id="saleCancelBtn" type="button" class="ds-button ds-button-secondary">Abbrechen – nichts ändern</button>
-                    <div class="reconciliation-actions"><button id="saleBackBtn" type="button" class="ds-button ds-button-secondary" hidden>Zurück</button><button id="saleNextBtn" type="button" class="ds-button ds-button-primary">Weiter</button><button id="reconciliationPreviewBtn" type="submit" class="ds-button ds-button-primary" hidden>Schreibfreie Vorschau</button><button id="retrySaleSaveBtn" type="button" class="ds-button ds-button-secondary" hidden>Speichern erneut versuchen</button></div>
-                </footer>
-            </form>
-        </div>
-    </div>
     <div class="modal" id="managerPeopleModal" role="dialog" aria-modal="true" aria-labelledby="managerPeopleTitle" aria-hidden="true">
         <div class="modal-content ds-card pv-people-dialog" role="document">
             <header class="pv-dialog-header"><div><h2 id="managerPeopleTitle">Personen verwalten</h2><p>Hier verwaltest du die Personen und ihre Zugehörigkeit zum Haushalt. <span id="managerPeopleCreateHint">Nach dem Anlegen siehst du die neue Person; ihre Werte pflegst du im jeweiligen Reiter.</span></p></div><button id="dismissPeopleModalBtn" type="button" class="ds-button ds-button-secondary" aria-label="Personenverwaltung schließen">Schließen</button></header>
@@ -1174,98 +443,86 @@
 
     <!-- Modal für Tranche hinzufügen/bearbeiten -->
     <div class="modal" id="trancheModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="trancheModalDescription trancheFormError" aria-hidden="true">
-        <div class="modal-content ds-card pv-tranche-dialog" role="document">
-            <header class="pv-dialog-header"><div><h2 id="modalTitle">Kauf eintragen</h2>
-                <p id="trancheModalDescription">Legt eine neue Tranche an. Pflichtfelder sind markiert. Das Tagesgeld wird nicht automatisch verringert.</p></div>
+        <div class="modal-content ds-card pv-tranche-dialog" role="document" tabindex="-1">
+            <header class="pv-dialog-header pv-detail-header"><div class="pv-detail-head">
+                <p id="trancheDetailEyebrow" class="pv-detail-eyebrow">Tranche</p>
+                <div class="pv-detail-title"><h2 id="modalTitle">Tranche im Detail</h2></div>
+                <div class="pv-detail-meta"><span id="trancheModalDescription"></span><span id="trancheQuoteText"></span><button type="button" id="trancheQuoteRecheckBtn" class="ds-button ds-mini-button">Kurs abrufen</button></div></div>
                 <button type="button" id="dismissTrancheModalBtn" class="ds-button ds-button-secondary ds-icon-button" aria-label="Tranchendialog schließen"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
             </header>
-            <div id="trancheFormError" class="form-error ds-note ds-note-error" role="alert" aria-live="assertive" hidden></div>
-            <div class="reconciliation-actions">
-                <button id="retryTrancheDialogSaveBtn" class="btn-secondary ds-button ds-button-secondary" type="button" hidden>Speichern erneut versuchen</button>
+            <div class="pv-detail-scroll">
+            <div id="trancheDetailKpis" class="pv-detail-kpis ds-kpi-strip"></div>
+            <div id="trancheStockWarning" class="ds-banner ds-banner-warning" hidden><span id="trancheStockWarningText"></span><button type="button" id="trancheStockCheckBtn" class="ds-button ds-button-secondary">Prüfen</button></div>
+            <section id="trancheTaxExplain" class="pv-detail-panel ds-hint" hidden><h3>So entsteht die Steuer, wenn du heute alles verkaufst</h3><p id="trancheTaxText"></p><small>Nicht eingerechnet: Sparer-Pauschbetrag, Kirchensteuer und schon versteuerte Vorabpauschalen.</small></section>
+            <div id="trancheFormError" class="form-error ds-note ds-note-error" role="alert" hidden></div>
+            <div class="reconciliation-actions"><button id="retryTrancheDialogSaveBtn" class="ds-button ds-button-secondary" type="button" hidden>Speichern erneut versuchen</button></div>
+            <div id="trancheDetailActions" class="pv-detail-actions">
+                <button type="button" id="trancheDetailSaleBtn" class="ds-button ds-button-primary">Verkauf eintragen</button>
             </div>
-            <form id="trancheForm">
-                <div class="pv-dialog-classification"><div class="form-group">
-                    <label for="category">Anlageform *</label>
-                    <div id="trancheCategoryChoices" class="ds-segment pv-tranche-choices" role="group" aria-label="Anlageform">
-                        <button type="button" class="ds-button" data-tranche-category="equity" aria-pressed="true">Aktien</button>
-                        <button type="button" class="ds-button" data-tranche-category="bonds" aria-pressed="false">Anleihen</button>
-                        <button type="button" class="ds-button" data-tranche-category="gold" aria-pressed="false">Gold</button>
-                        <button type="button" class="ds-button" data-tranche-category="money_market" aria-pressed="false">Geldmarkt</button>
-                    </div>
-                    <select id="category" required class="ds-select" hidden>
-                        <option value="equity">Aktien / ETFs</option>
-                        <option value="bonds">Anleihen</option>
-                        <option value="gold">Gold</option>
-                        <option value="money_market">Geldmarkt</option>
-                    </select>
-                </div><div class="form-group">
-                    <label for="type">Bestand / Typ *</label>
-                    <div id="trancheTypeChoices" class="ds-segment pv-tranche-choices" role="group" aria-label="Bestand / Typ">
-                        <button type="button" class="ds-button" data-tranche-type="aktien_alt" aria-pressed="false">Altbestand</button>
-                        <button type="button" class="ds-button" data-tranche-type="aktien_neu" aria-pressed="true">Neubestand</button>
-                        <button type="button" class="ds-button" data-tranche-type="anleihe" aria-pressed="false" hidden>Anleihe</button>
-                        <button type="button" class="ds-button" data-tranche-type="gold" aria-pressed="false" hidden>Gold-ETC</button>
-                        <button type="button" class="ds-button" data-tranche-type="geldmarkt" aria-pressed="false" hidden>Geldmarkt-ETF</button>
-                    </div>
-                    <select id="type" required class="ds-select" hidden>
-                        <option value="aktien_alt">Altbestand</option>
-                        <option value="aktien_neu">Neubestand</option>
-                        <option value="anleihe">Anleihe</option>
-                        <option value="geldmarkt">Geldmarkt-ETF</option>
-                        <option value="gold">Gold-ETC</option>
-                    </select>
-                </div></div>
-                <div class="pv-dialog-fields"><div class="form-group pv-form-name">
-                    <label for="name">Name / Bezeichnung *</label>
-                    <input type="text" id="name" required class="ds-input">
-                </div><div class="form-group">
-                    <label for="purchaseDate">Kaufdatum</label>
-                    <input type="date" id="purchaseDate" class="ds-input">
-                </div><div class="form-group">
-                    <label for="isin">ISIN</label>
-                    <input type="text" id="isin" placeholder="z.B. DE0007164600" class="ds-input">
-                </div><div class="form-group">
-                    <label for="ticker">Ticker / Symbol</label>
-                    <input type="text" id="ticker" placeholder="z.B. SAP.DE oder VWCE.DE" class="ds-input">
-                    <small style="color: var(--text-muted); display: block; margin-top: 5px;">
-                        Für den Kursabruf: Ticker mit Börsenkürzel, z. B. .DE, .L oder .MI.
-                    </small>
-                </div><div class="form-group">
-                    <label for="shares">Anzahl Stücke *</label>
-                    <input type="text" id="shares" required class="ds-input" inputmode="decimal" lang="de">
-                </div><div class="form-group">
-                    <label for="purchasePrice">Kaufpreis pro Stück (€) *</label>
-                    <input type="text" id="purchasePrice" required class="ds-input" inputmode="decimal" lang="de" data-money-input>
-                </div><div class="form-group">
-                    <label for="currentPrice">Aktueller Kurs (€)</label>
-                    <input type="text" id="currentPrice" placeholder="Leer = Kaufpreis" class="ds-input" inputmode="decimal" lang="de" data-money-input>
-                </div><div class="form-group">
-                    <label for="tqf">Teilfreistellung *</label>
-                    <input type="text" id="tqf" value="0" required class="ds-input" inputmode="decimal" lang="de">
-                    <small style="color: var(--text-muted); display: block; margin-top: 5px;">
-                        Aktienfonds: 0,30 · Einzelaktien, Geldmarkt, Anleihen: 0. Steuerfreiheit separat bestätigen.
-                    </small>
-                </div></div>
-                <div class="form-group pv-tax-choice">
-                    <label for="taxExempt">
-                        <input type="checkbox" id="taxExempt" class="ds-checkbox">
-                        Diese Tranche ist im heutigen Startzustand vollständig steuerfrei
-                    </label>
-                    <small style="color: var(--text-muted); display: block; margin-top: 5px;">
-                        Wird nicht aus Name, Notiz, Kaufdatum oder Alt-/Neubestand abgeleitet.
-                    </small>
-                </div><div class="form-group">
-                    <label for="notes">Notizen</label>
-                    <input type="text" id="notes" placeholder="Freie Notiz ohne automatische Steuerwirkung" class="ds-input">
+            <section id="trancheSharesGroup" class="pv-detail-panel pv-detail-correction" hidden>
+                <h3>Stückzahl korrigieren</h3><p id="trancheCorrectionIntro" class="ds-field-reason"></p>
+                <div class="pv-detail-correction-fields">
+                    <div class="ds-field"><label for="shares">Stück laut Depotauszug</label><span class="ds-unit-frame"><input type="text" id="shares" form="trancheForm" class="ds-input" inputmode="decimal" lang="de"><span>Stück</span></span></div>
+                    <div class="ds-field"><span id="trancheCorrectionReasonLabel">Was ist passiert?</span>
+                        <div id="trancheCorrectionReasons" class="ds-segment" role="group" aria-labelledby="trancheCorrectionReasonLabel"><button type="button" class="ds-button" data-correction="difference" aria-pressed="true">Weicht vom Depotauszug ab</button><button type="button" class="ds-button" data-correction="split" aria-pressed="false">Aktiensplit</button></div>
+                        <span id="trancheCorrectionReason" class="ds-field-reason"></span></div>
                 </div>
-                <div class="pv-dialog-footer">
-                    <p id="trancheFormPreview" class="pv-form-preview" aria-live="polite">Einstand und Marktwert erscheinen nach gültiger Eingabe.</p>
-                    <div class="form-actions">
-                        <button type="button" id="closeTrancheModalBtn" class="btn-secondary ds-button ds-button-secondary">Abbrechen</button>
-                        <button type="submit" id="saveTrancheBtn" class="btn-primary ds-button ds-button-primary">Tranche speichern</button>
-                    </div>
-                </div>
+                <p id="trancheCorrectionPreview" class="ds-hint" aria-live="polite"></p>
+                <div class="pv-detail-actions"><button type="button" id="trancheCorrectionCancelBtn" class="ds-button ds-button-secondary">Abbrechen</button><button type="button" id="trancheCorrectionSaveBtn" class="ds-button ds-button-primary">Stückzahl speichern</button></div>
+            </section>
+            <div class="pv-detail-columns">
+                <section class="pv-detail-panel" aria-labelledby="trancheHistoryTitle"><h3 id="trancheHistoryTitle">Verlauf dieser Tranche</h3><ol id="trancheHistoryList" class="pv-detail-timeline"></ol></section>
+                <section class="pv-detail-panel ds-field"><label for="notes">Notiz</label><textarea id="notes" rows="4" placeholder="Freie Notiz, ohne Wirkung auf die Rechnung" class="ds-input"></textarea><span id="trancheNoteStatus" class="ds-field-reason" aria-live="polite"></span></section>
+            </div>
+            <button type="button" id="trancheDetailsToggle" class="ds-button ds-disclosure-toggle" aria-expanded="false" aria-controls="trancheDetailsFields"><span class="pv-detail-disclosure-text">Angaben zum Wertpapier <span class="ds-field-reason">Name, ISIN, Kursabruf, Anlageform, Steuerart und Kauf. Nur ändern, wenn etwas falsch eingetragen ist.</span></span><span class="pv-disclosure-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></svg></span></button>
+            <form id="trancheForm" class="pv-detail-form">
+            <div id="trancheDetailsFields" hidden>
+                <fieldset class="pv-detail-group"><legend>Wertpapier</legend><div class="ds-field-grid">
+                    <div class="ds-field"><label for="name">Name</label><input type="text" id="name" required class="ds-input"></div>
+                    <div class="ds-field"><label for="isin">ISIN</label><input type="text" id="isin" class="ds-input"></div>
+                    <div class="ds-field"><label for="ticker">Kürzel für den Kurs</label><input type="text" id="ticker" class="ds-input"><button type="button" id="trancheTickerCheckBtn" class="ds-button ds-mini-button">Kürzel prüfen</button><span id="trancheTickerReason" class="ds-field-reason"></span></div>
+                    <div id="trancheManualPriceGroup" class="ds-field" hidden><label for="currentPrice">Kurs von Hand je Stück</label><span class="ds-unit-frame"><input type="text" id="currentPrice" class="ds-input" inputmode="decimal" lang="de" data-money-input><span>€</span></span><span class="ds-field-reason">Kurs von Hand gibt es nur, wenn der Kursdienst das Kürzel nicht kennt.</span></div>
+                </div></fieldset>
+                <fieldset class="pv-detail-group"><legend>Art und Steuer</legend><div class="ds-field-grid">
+                    <div class="ds-field"><label for="category">Anlageform</label>                                <div id="trancheCategoryChoices" class="ds-segment pv-tranche-choices" role="group" aria-label="Anlageform">
+                                    <button type="button" class="ds-button ds-button-secondary" data-tranche-category="equity" aria-pressed="true">Aktien</button>
+                                    <button type="button" class="ds-button ds-button-secondary" data-tranche-category="bonds" aria-pressed="false">Anleihen</button>
+                                    <button type="button" class="ds-button ds-button-secondary" data-tranche-category="gold" aria-pressed="false">Gold</button>
+                                    <button type="button" class="ds-button ds-button-secondary" data-tranche-category="money_market" aria-pressed="false">Geldmarkt</button>
+                                </div>
+                                <select id="category" required class="ds-select" hidden>
+                                    <option value="equity">Aktien / ETFs</option>
+                                    <option value="bonds">Anleihen</option>
+                                    <option value="gold">Gold</option>
+                                    <option value="money_market">Geldmarkt</option>
+                                </select></div>
+                    <div class="ds-field"><label id="trancheTqfLabel" for="trancheTqfSelect">Wie wird der Gewinn besteuert?</label><div id="trancheTqfChoices"></div><p id="trancheTqfFixed" class="ds-field-reason" hidden>Voll steuerpflichtig (0 % steuerfrei).</p><input type="hidden" id="tqf" class="ds-input" value="0"><span id="trancheTqfReason" class="ds-field-reason">Steht im Factsheet des Fonds.</span></div>
+                    <div id="trancheStockGroup" class="ds-field"><label for="type">Bestand</label>                                <div id="trancheTypeChoices" class="ds-segment pv-tranche-choices" role="group" aria-label="Bestand">
+                                    <button type="button" class="ds-button ds-button-secondary" data-tranche-type="aktien_alt" aria-pressed="false">Altbestand</button>
+                                    <button type="button" class="ds-button ds-button-secondary" data-tranche-type="aktien_neu" aria-pressed="true">Neubestand</button>
+                                    <button type="button" class="ds-button ds-button-secondary" data-tranche-type="anleihe" aria-pressed="false" hidden>Anleihe</button>
+                                    <button type="button" class="ds-button ds-button-secondary" data-tranche-type="gold" aria-pressed="false" hidden>Gold-ETC</button>
+                                    <button type="button" class="ds-button ds-button-secondary" data-tranche-type="geldmarkt" aria-pressed="false" hidden>Geldmarkt-ETF</button>
+                                </div>
+                                <select id="type" required class="ds-select" hidden>
+                                    <option value="aktien_alt">Altbestand</option>
+                                    <option value="aktien_neu">Neubestand</option>
+                                    <option value="anleihe">Anleihe</option>
+                                    <option value="geldmarkt">Geldmarkt-ETF</option>
+                                    <option value="gold">Gold-ETC</option>
+                                </select><p id="trancheStockReadOnly" class="ds-hint" hidden></p><p id="trancheStockReason" class="ds-field-reason"></p><button type="button" id="trancheStockAdoptBtn" class="ds-button ds-mini-button" hidden>Bestand aus dem Kaufdatum übernehmen</button></div>
+                    <div class="ds-field pv-tax-choice"><label for="taxExempt"><input type="checkbox" id="taxExempt" class="ds-input ds-checkbox"><span>Ganz steuerfrei (nur wenn du es sicher weißt)</span></label></div>
+                </div></fieldset>
+                <fieldset class="pv-detail-group"><legend>Kauf</legend><div class="ds-field-grid">
+                    <div class="ds-field"><label for="purchaseDate">Kaufdatum</label><input type="date" id="purchaseDate" class="ds-input"></div>
+                    <div class="ds-field"><label for="purchasePrice">Kaufpreis je Stück, mit Gebühren</label><span class="ds-unit-frame"><input type="text" id="purchasePrice" required class="ds-input" inputmode="decimal" lang="de" data-money-input><span>€</span></span></div>
+                    <p id="trancheSharesNote" class="ds-field-reason">Die Stückzahl änderst du oben an der Kachel „Stück“.</p>
+                </div></fieldset>
+                <p id="trancheFormPreview" class="pv-form-preview" hidden></p>
+                <div class="pv-dialog-footer pv-detail-footer"><div><button type="button" id="deleteTrancheDialogBtn" class="ds-button ds-button-quiet pv-detail-delete-link">Tranche löschen …</button><p id="trancheDeleteReason" class="ds-field-reason" hidden></p></div><div class="form-actions"><button type="button" id="closeTrancheModalBtn" class="ds-button ds-button-secondary">Abbrechen</button><button type="submit" id="saveTrancheBtn" class="ds-button ds-button-primary">Angaben speichern</button></div></div>
+            </div>
             </form>
+            </div>
         </div>
     </div>
 

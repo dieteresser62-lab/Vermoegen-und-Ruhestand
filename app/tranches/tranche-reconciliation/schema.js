@@ -6,6 +6,10 @@ export const TRANCHE_RECONCILIATION_REGISTRY_FIELD = 'trancheReconciliation';
 
 export const RECONCILIATION_EVENT_TYPES = Object.freeze({
     SALE: 'sale_reconciled',
+    // VK-2 (FR-79 Punkt 7, Regelprüfung VKR Abschnitt 2 Punkt 1): Kauf als eigenes Ereignis im Abgleich.
+    BUY: 'buy_reconciled',
+    // VK-3 (Nachtrag 2): Storno eines Kaufbelegs, wenn die Tranche ohne Verkauf gelöscht wird („Kauf rückgängig“).
+    BUY_CANCELLATION: 'buy_cancelled',
     CASH_CONFIRMATION: 'cash_posting_confirmed',
     CASH_CORRECTION: 'cash_posting_corrected'
 });

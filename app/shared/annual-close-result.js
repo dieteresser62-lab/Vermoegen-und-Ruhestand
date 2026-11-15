@@ -1,3 +1,6 @@
+import { pendingDebitTotal } from '../tranches/sale-underway.js';
+import { buyFlowPlanFromConfirmed, projectBuyFlowCard } from '../tranches/buy-flow-dialog.js';
+import { annualPlanEntryMode } from '../profile/annual-plan-record.js';
 import { comparisonScopeMatches } from '../profile/household-plan-comparison.js';
 import { createPlannedPostsView } from '../balance/balance-planned-posts-renderer.js';
 import { formatAnnualNeed, annualNeedRoundedUp } from '../balance/balance-annual-preview.js';
@@ -13,6 +16,7 @@ import { annualPlanEntryProgress } from '../balance/annual-action-progress.js';
 import { loadProfileRegistry } from '../profile/profile-registry.js';
 import { persistenceStorage } from './persistence-facade.js';
 import { displayMonthlyDown } from './display-rounding.js';
+import { roundAnnualSuggestion } from './annual-needs-review.js';
 
 export const ANNUAL_ACTION_NOTICE = 'Für dieses Planjahr und diesen Umfang fehlt eine bestätigte Handlungsanweisung. Bitte den Jahresbeleg in der Sicherung prüfen.';
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 2 }) : '—';
@@ -146,12 +150,15 @@ export function createAnnualPlanResult({ doc, result, model, peoplePreview }) {
         const difference = annual.complete && Number.isFinite(annual.total) && Number.isFinite(budget) ? annual.total - budget : null;
         const deviation = difference === null ? 'Vergleich unvollständig' : difference === 0 ? 'genau im Budget'
             : `${money(Math.abs(difference))} ${difference > 0 ? 'darüber' : 'darunter'}${budget > 0 ? ` · ${formatDisplayNumber(Math.abs(difference) / budget * 100, { fractionDigits: 1 })} %` : ''}`;
-        const needs = result.needs || [], total = needs.length === 2 && needs.every(need => Number.isFinite(need.after)) ? needs.reduce((sum, need) => sum + need.after, 0) : null;
+        // FR-68 Punkt 7: Der Bedarf steht als Summe der angezeigten Teile: Vorschläge aufgerundet nach der Anzeigestaffel, von Hand
+        // geänderte Werte (`adjustedFields`) genau (GN-2b, Fable P3-6). Der Beleg bleibt genau.
+        const adjustedNeeds = result.adjustedFields || [];
+        const needs = result.needs || [], total = needs.length === 2 && needs.every(need => Number.isFinite(need.after))
+            ? needs.reduce((sum, need) => sum + (adjustedNeeds.includes(need.id) ? need.after : roundAnnualSuggestion(need.after)), 0) : null;
         const inflation = result.inflation?.rate;
         const inflationDetail = Number.isFinite(inflation) ? `${inflation > 0 ? '+' : ''}${formatDisplayNumber(inflation, { fractionDigits: 2 })} % Inflation ${result.targetYear ?? result.year - 1}` : 'Inflationsanpassung nicht belegt';
         root.append(createCloseTiles({ doc, items: [
             { label: `Jahresausgaben ${result.targetYear ?? result.year - 1}${annual.complete ? '' : ' bisher'}`, value: money(annual.total), detail: `Budget ${money(budget)} · ${deviation}`, detailTone: difference > 0 ? 'warning' : '' },
-            // RD-1c: Der beschlossene Bedarf ist ein Planwert des Belegs und bleibt genau (keine Monatsregel).
             { label: `Bedarf ${result.year}`, value: `${wholeMoney(total)} im Jahr`, detail: inflationDetail + (result.adjustedFields?.some(id => ['floorBedarf', 'flexBedarf'].includes(id)) ? ' · Bedarf angepasst'
                 : needs.some(need => annualNeedRoundedUp(need.before, need.after, inflation)) ? ' · aufgerundet auf volle 1.000 €' : '') }
         ] }));
@@ -265,6 +272,20 @@ export function createAnnualExpenseStatus({ doc, model, targetYear }) {
     return root;
 }
 
+/** Stand der Käufe aus dem Beleg (wie die Karte „Was zu tun ist“). @param {any} entry @param {number} year @param {string[]} ids @param {any} registry */
+export function annualCloseBuyProgress(entry, year, ids, registry) {
+    const action = entry && !entry.status ? entry.adopted?.action : null;
+    if (!action) return null;
+    const plan = buyFlowPlanFromConfirmed({ action, year, committedAt: entry.committedAt }, ids, registry, annualPlanEntryMode(entry));
+    if (!plan) return null;
+    const card = projectBuyFlowCard({ plan, registry });
+    return { status: card.allEntered ? 'erledigt' : card.bought > 0 ? 'teilweise' : 'offen', bought: card.bought, plan: card.plan,
+        // VK-3d P4: Zeilenbeträge für „von … gekauft“ (Summe der angezeigten Zeilen wie in der Karte).
+        // VN-3 (Fable P2-3, Codex F03): mit gekauft und offen je Zeile, damit „von … gekauft“ und der Ausgleichsposten wie in der Karte aufgehen.
+        lines: card.lines.map((/** @type {any} */ line) => ({ amount: line.amount, bought: line.bought, restAmount: line.restAmount })),
+        kept: card.lines.some((/** @type {any} */ line) => line.keptCash) };
+}
+
 /** Umsetzungsstand des Plans für das abzuschließende Jahr (FR-77 Punkt 6), aus Beleg und bestätigten Verkäufen; nur gelesen.
  * @param {{model?: any, year: number}} options */
 export function readAnnualClosePlanProgress({ model, year }) {
@@ -272,8 +293,14 @@ export function readAnnualClosePlanProgress({ model, year }) {
         const scope = model?.planComparison?.scope, ids = model?.scope?.ids || [];
         if (!scope || !Number.isInteger(year)) return null;
         const entry = readAnnualPlanRecord({ year, scope, storage: persistenceStorage });
-        const progress = annualPlanEntryProgress({ entry, year, registry: loadProfileRegistry().value, profileIds: ids });
-        return progress?.lines.length ? { ...progress, year } : null;
+        const registry = loadProfileRegistry().value;
+        const progress = annualPlanEntryProgress({ entry, year, registry, profileIds: ids });
+        // VK-2b P2-4 (Gemini P2-1, Fable P3-2): Stand der Käufe und offene Abbuchungen auch bei reinen Kaufplänen.
+        const buy = annualCloseBuyProgress(entry, year, ids, registry);
+        // VK-2 (Ergänzung 1 FR-79 Punkt 4): offene Abbuchungen aus Käufen nennt der Schritt „Plan“ wie offene Gutschriften.
+        const debitPendingNet = pendingDebitTotal(registry, ids);
+        if (!progress?.lines.length && !buy && !(debitPendingNet >= 0.005)) return null;
+        return { ...(progress?.lines.length ? progress : { status: null, soldNet: 0, planNet: 0, lines: [] }), year, debitPendingNet, buy };
     } catch { return null; }
 }
 

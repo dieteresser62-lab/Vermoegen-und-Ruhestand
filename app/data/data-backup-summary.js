@@ -2,9 +2,31 @@
 import { readOverviewSummaries, readMonthProvision, overviewScope } from '../overview/overview-storage.js';
 import { assertCashHistory } from '../profile/profile-wealth-history.js';
 import { normalizeTrancheCollection } from '../../types/tranche-contract.js';
+import { HOUSEHOLD_PLAN_KEY } from '../profile/household-plan.js';
+import { PLANNED_EXPENSES_KEY } from '../profile/household-planned-expenses.js';
+import { PARTNERSHIP_KEY } from '../profile/household-partnership.js';
+import { HOUSEHOLD_CARE_VALUES_KEY } from '../shared/household-care-values.js';
+import { CARE_HINT_KEY } from '../shared/household-care-hint.js';
+import { PROFILE_VALUE_KEYS, PROFILE_HEALTH_BUCKET_KEY } from '../profile/profile-state.js';
+import { CARE_VALUE_KEYS } from '../profile/profile-care.js';
 
 export const DATA_BACKUP_SUMMARY_KEY = 'rs_data_backup_summary_v1';
 const categories = ['months', 'cash', 'tranches'];
+/** GH-1 Punkt 5 (F-06): Version 2 prüft zusätzlich Haushalts- und Planwerte je Bereich als eine Signatur. Version 1 bleibt lesbar; ihr fehlen
+ * diese Bereiche, sie gelten dann als „seit der letzten Sicherung nicht feststellbar“. */
+export const BACKUP_SUMMARY_AREAS = Object.freeze(['plan', 'income', 'partnership', 'care']);
+const V = PROFILE_VALUE_KEYS;
+const incomeKeys = [V.einkuenfte, V.einkuenfteMigration, V.renteBezeichnung, V.renteAktiv, V.renteMonatlich, V.sonstigeEinkuenfte,
+    V.rentenbeginn, V.rentenanpassungArt, V.rentenanpassungPct, V.renteSteuerquotePct, V.plannedInflows];
+const careKeys = [...Object.values(CARE_VALUE_KEYS), PROFILE_HEALTH_BUCKET_KEY];
+/** Gespeicherte Schlüssel je Bereich: im Haushalt und je Person (Livewerte der aktiven Person gelten). */
+const AREA_KEYS = Object.freeze({
+    plan: { household: [HOUSEHOLD_PLAN_KEY, PLANNED_EXPENSES_KEY], profile: [V.immobilien, V.alter, V.geburtsdatum, V.geschlecht, V.kirchensteuerPct,
+        V.sparerPauschbetrag, V.goldAktiv, V.goldZiel, V.goldFloor, V.goldSteuerfrei, V.goldRebalBand] },
+    income: { household: [], profile: incomeKeys },
+    partnership: { household: [PARTNERSHIP_KEY], profile: [] },
+    care: { household: [HOUSEHOLD_CARE_VALUES_KEY, CARE_HINT_KEY], profile: careKeys }
+});
 const forbidden = new Set(['__proto__', 'constructor', 'prototype']);
 function object(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Ungültige Sicherungsvergleichsbasis.');
@@ -20,8 +42,13 @@ function exact(value, keys) {
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
 export function assertBackupSummary(value) {
-    exact(value, ['version', 'exportedAt', 'profiles']);
-    if (value.version !== 1 || typeof value.exportedAt !== 'string' || !Number.isFinite(Date.parse(value.exportedAt))
+    object(value);
+    exact(value, value.version === 2 ? ['version', 'exportedAt', 'profiles', 'areas'] : ['version', 'exportedAt', 'profiles']);
+    if (value.version === 2) {
+        exact(value.areas, BACKUP_SUMMARY_AREAS);
+        if (BACKUP_SUMMARY_AREAS.some(area => typeof value.areas[area] !== 'string' || !/^[a-f0-9]{64}$/.test(value.areas[area]))) throw new Error('Ungültige Vergleichssignatur.');
+    }
+    if (![1, 2].includes(value.version) || typeof value.exportedAt !== 'string' || !Number.isFinite(Date.parse(value.exportedAt))
         || new Date(value.exportedAt).toISOString() !== value.exportedAt) throw new Error('Ungültige Vergleichsversion oder Sicherungszeit.');
     object(value.profiles);
     for (const [id, profile] of Object.entries(value.profiles)) {
@@ -54,13 +81,14 @@ export function backupProfileData(records) {
     const registry = records.rs_profiles_v1 ? JSON.parse(records.rs_profiles_v1) : { profiles: {} };
     const profiles = Object.fromEntries(Object.entries(registry.profiles).map(([id, profile]) => [id, { ...profile.data }]));
     const active = records.rs_active_profile || records.rs_current_profile;
-    const fields = ['overview_month_provision_v1', 'profile_cash_history_v1', 'depot_tranchen'];
+    const ledger = ['overview_month_provision_v1', 'profile_cash_history_v1', 'depot_tranchen'];
+    const fields = [...ledger, ...new Set(Object.values(AREA_KEYS).flatMap(area => area.profile))];
     // Livefelder sind für das aktive Profil maßgeblich, auch ihre Entfernung.
     if (profiles[active]) for (const key of fields) {
         delete profiles[active][key];
         if (Object.hasOwn(records, key)) profiles[active][key] = records[key];
     }
-    if (!Object.keys(profiles).length && fields.some(key => records[key] !== undefined)) profiles.live = records;
+    if (!Object.keys(profiles).length && ledger.some(key => records[key] !== undefined)) profiles.live = records;
     return profiles;
 }
 /**
@@ -94,7 +122,15 @@ export async function buildBackupSummary(records, exportedAt) {
         }
         profiles[id] = profile;
     }
-    return assertBackupSummary({ version: 1, exportedAt, profiles });
+    const people = backupProfileData(records);
+    const pick = (/** @type {Record<string, unknown>} */ source, /** @type {string[]} */ keys) => Object.fromEntries(keys.filter(key => source?.[key] !== undefined).map(key => [key, source[key]]));
+    const areas = Object.create(null);
+    for (const area of BACKUP_SUMMARY_AREAS) {
+        const { household, profile } = AREA_KEYS[/** @type {keyof typeof AREA_KEYS} */ (area)];
+        areas[area] = await signature({ household: pick(records, household),
+            profiles: Object.fromEntries(Object.entries(people).map(([id, data]) => [id, pick(data, profile)])) });
+    }
+    return assertBackupSummary({ version: 2, exportedAt, profiles, areas });
 }
 /**
  * @param basis Wert für den bestehenden Aufrufvertrag.
@@ -118,5 +154,8 @@ export function compareBackupSummaries(basis, current, lastBackup) {
             for (const key of Object.keys(after)) if (!Object.hasOwn(before, key)) changes[category].added++;
         }
     }
+    // GH-1 Punkt 5: Bereiche je Signatur; eine Basis der Version 1 kennt sie nicht („unknown“ statt Entwarnung).
+    if (current.version === 2) /** @type {any} */ (changes).areas = Object.fromEntries(BACKUP_SUMMARY_AREAS.map(area => [area,
+        basis.version !== 2 ? 'unknown' : basis.areas[area] === current.areas[area] ? 'unchanged' : 'changed']));
     return changes;
 }

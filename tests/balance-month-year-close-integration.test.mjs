@@ -143,7 +143,7 @@ try {
         const household = loadProfilverbundProfiles();
         const actual = aggregateProfilverbundInputs(household, { floorBedarf: UIUtils.parseCurrency(inputs.floorBedarf.value), flexBedarf: UIUtils.parseCurrency(inputs.flexBedarf.value) });
         assertEqual(preview.needs.find(need => need.id === 'floorBedarf').after, 10250, 'Inflationsprojektion bleibt ungerundet');
-        assertEqual(actual.totalFloor, 11000, 'Verbindlicher Floor übernimmt den aufgerundeten Jahresvorschlag');
+        assertEqual(actual.totalFloor, 10250, 'Verbindlicher Floor übernimmt den genauen Jahresvorschlag');
         for (const person of preview.people) {
             assertEqual(person.startAlter, household.find(row => row.profileId === person.id).inputs.aktuellesAlter, person.name + ': Januaralter entspricht Jahrespfad');
             assertEqual(person.budgetPensionMonthly, household.find(row => row.profileId === person.id).inputs.renteMonatlich, person.name + ': Rente entspricht Jahrespfad');

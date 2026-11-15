@@ -4,6 +4,39 @@ import { candidateTaxTerms, addRawAggregate, previewHouseholdTax, rawAggregateFo
 import { stableCandidateComparison, appendCandidateSelection, sourceFromCandidate, buildAssetBlueprint, buildAssetCandidates } from './candidates.js';
 import { resolveLiquidityRunwayYears } from '../../../types/liquidity-runway-contract.js';
 import { allocateLiquiditySources } from './liquidity.js';
+import { activeCarrier } from '../household-withdrawal-mode.js';
+import { applyIsinFifo, isinFifoGroup, olderInIsinGroup } from '../../../types/sale-fifo.js';
+
+/** FR-82: Gruppe (Person, ISIN) eines Kandidaten für die Bankreihenfolge. @param {any} candidate */
+const candidateFifoGroup = candidate => isinFifoGroup(candidate, candidate.sourceProfileId);
+/** RK-3 Punkt 4: Gruppen nur einmal je Kandidatenliste bilden (die Bisektion ruft die Auswahl bis zu 80-mal mit derselben Liste);
+ * `null` heißt: keine Person hat zwei Tranchen derselben ISIN. */
+const fifoByCandidates = new WeakMap();
+const candidateFifoOlder = candidates => {
+    if (!fifoByCandidates.has(candidates)) fifoByCandidates.set(candidates, olderInIsinGroup(candidates, candidate => candidate, candidateFifoGroup));
+    return fifoByCandidates.get(candidates);
+};
+
+/** FR-80: Verkäufe bei „Eine Person trägt“ zuerst aus den Tranchen der tragenden Person (steueroptimiert). TRG-1b (P3-4): Hält sie
+ * die Anlageklasse nicht oder nicht genug davon, verkauft sie aus einer anderen Klasse, die sie hält (nicht aus Anleihen), bevor die
+ * andere Person angegriffen wird; den Rest trägt die andere Person, ebenfalls steueroptimiert (Hinweis über `nonCarrierSales`).
+ * Ohne tragende Person wie steueroptimiert. Bereits gewählte Beträge (`selected`) mindern die freie Menge je Tranche. */
+function selectCarrierFirstGross(candidates, profiles, mode, grossTarget, selected, rawByProfile, all = candidates) {
+    const carrierId = activeCarrier(mode, profiles);
+    const left = list => list.map(candidate => ({ ...candidate, capacity: Math.max(0, candidate.capacity - (selected.get(candidate.key)?.gross || 0)) }))
+        .filter(candidate => candidate.capacity > EPSILON);
+    let rest = grossTarget;
+    const take = list => {
+        const amount = Math.min(rest, Math.max(0, sum(list.map(candidate => candidate.capacity))));
+        if (amount > EPSILON) { selectTaxOptimizedGross(list, amount, selected, rawByProfile); rest -= amount; }
+    };
+    take(left(candidates.filter(candidate => candidate.sourceProfileId === carrierId)));
+    const bonds = candidates.some(candidate => candidate.bucket === 'bonds');
+    if (rest > EPSILON && !bonds) take(left(all.filter(candidate => candidate.sourceProfileId === carrierId
+        && candidate.bucket !== 'bonds' && !candidates.includes(candidate))));
+    if (rest > EPSILON) take(left(candidates.filter(candidate => candidate.sourceProfileId !== carrierId)));
+}
+const carries = mode => String(mode).startsWith('one_carries');
 
 function selectTaxOptimizedGross(candidates, grossTarget, selected, rawByProfile) {
     let remaining = grossTarget;
@@ -13,6 +46,9 @@ function selectTaxOptimizedGross(candidates, grossTarget, selected, rawByProfile
     const usedByIndex = new Array(count).fill(0);
     const rawByIndex = new Array(count);
     for (let index = 0; index < count; index += 1) rawByIndex[index] = rawByProfile.get(candidates[index].sourceProfileId);
+    // FR-82: Je (Person, ISIN) ist nur die älteste Tranche mit freier Menge Kandidat; die nächste rückt erst nach ihrem Verbrauch nach.
+    const older = candidateFifoOlder(candidates);
+    const blocked = (/** @type {number} */ index) => older[index].some(other => candidates[other].capacity - usedByIndex[other] > EPSILON);
     while (remaining > EPSILON) {
         // Lineare Minimumsuche mit demselben Vergleich wie die frühere Sortierung
         // (Satz zuerst, dann stabile Kandidatenordnung): liefert dasselbe erste Element.
@@ -20,7 +56,7 @@ function selectTaxOptimizedGross(candidates, grossTarget, selected, rawByProfile
         for (let index = 0; index < count; index += 1) {
             const candidate = candidates[index];
             const capacityLeft = candidate.capacity - usedByIndex[index];
-            if (capacityLeft <= EPSILON) continue;
+            if (capacityLeft <= EPSILON || (older && older[index].length && blocked(index))) continue;
             // Grenzsatz wie marginalTaxDescriptor, ohne Zwischenobjekt.
             let rate = 0, boundary = Number.POSITIVE_INFINITY;
             if (!(candidate.taxableRatio <= 0)) {
@@ -105,12 +141,14 @@ function allocateGrossByProfile(grossTarget, candidates, profiles, mode) {
 
 function selectWeightedGross(candidates, profiles, grossTarget, mode, selected, rawByProfile) {
     const allocations = allocateGrossByProfile(grossTarget, candidates, profiles, mode);
+    const fifo = candidateFifoOlder(candidates) !== null;
     profiles.forEach(profile => {
         let remaining = allocations.get(profile.profileId) || 0;
-        const ordered = candidates
+        const sorted = candidates
             .filter(candidate => candidate.sourceProfileId === profile.profileId)
             .slice()
             .sort(stableCandidateComparison);
+        const ordered = fifo ? applyIsinFifo(sorted, candidate => candidate, candidateFifoGroup) : sorted;
         ordered.forEach(candidate => {
             if (remaining <= EPSILON) return;
             const gross = Math.min(remaining, candidate.capacity);
@@ -143,7 +181,9 @@ function selectAssetSourcesAtScale({ candidates, blueprint, profiles, mode, scal
     blueprint.order.forEach(bucket => {
         const bucketCandidates = byBucket.get(bucket);
         const grossTarget = (blueprint.grossByBucket.get(bucket) || 0) * scale;
-        if (mode === 'tax_optimized') {
+        if (carries(mode)) {
+            selectCarrierFirstGross(bucketCandidates, profiles, mode, grossTarget, selected, rawByProfile, candidates);
+        } else if (mode === 'tax_optimized') {
             selectTaxOptimizedGross(bucketCandidates, grossTarget, selected, rawByProfile);
         } else {
             selectWeightedGross(bucketCandidates, profiles, grossTarget, mode, selected, rawByProfile);
@@ -166,6 +206,11 @@ function selectAssetSourcesAtScale({ candidates, blueprint, profiles, mode, scal
 
 /** Only the previously infeasible plan enters this funding path. */
 function coverAttributionGap({ maxPlan, maxScale, candidates, profiles, mode, targetNet, cashSources }) {
+    // TRG-1c Punkt 2 (FR-80 Punkte 2 und 3): Bei „Eine Person trägt“ zuerst Tagesgeld und weitere Verkäufe der tragenden Person,
+    // erst danach Tagesgeld und Verkäufe der anderen Person (Reihenfolge dort wie steueroptimiert; Hinweis über `nonCarrierSales`
+    // bzw. die Auszahlungsverteilung). Ohne tragende Person unverändert.
+    const carrierId = carries(mode) ? activeCarrier(mode, profiles) : null;
+    if (carrierId) return coverCarrierGap({ maxPlan, maxScale, candidates, profiles, mode, targetNet, cashSources, carrierId });
     // Use uncommitted Tagesgeld first. Money market stays in the ordinary
     // liquidity/payout path, where its disposal is recorded in the annual tax book.
     const cashProfiles = profiles.map(profile => ({ ...profile, inputs: { ...profile.inputs,
@@ -196,7 +241,9 @@ function coverAttributionGap({ maxPlan, maxScale, candidates, profiles, mode, ta
             const selected = new Map(maxPlan.selected);
             const rawByProfile = new Map(profiles.map(profile => [profile.profileId,
                 rawAggregateForSources(maxPlan.sources.filter(source => source.sourceProfileId === profile.profileId))]));
-            if (mode === 'tax_optimized') {
+            if (carries(mode)) {
+                selectCarrierFirstGross(remainingCandidates, profiles, mode, gross, selected, rawByProfile);
+            } else if (mode === 'tax_optimized') {
                 selectTaxOptimizedGross(remainingCandidates, gross, selected, rawByProfile);
             } else {
                 selectWeightedGross(remainingCandidates, profiles, gross, mode, selected, rawByProfile);
@@ -219,6 +266,53 @@ function coverAttributionGap({ maxPlan, maxScale, candidates, profiles, mode, ta
     return { sources: plan.sources, scale: maxScale, extraCash,
         fundingGap: targetNet - maxPlan.net,
         shortfall: Math.max(0, targetNet - plan.net - cashNet) };
+}
+
+/** TRG-1c Punkt 2: Lücke bei „Eine Person trägt“ in zwei Stufen (tragende Person, dann die andere), je Stufe erst Tagesgeld, dann Verkäufe. */
+function coverCarrierGap({ maxPlan, maxScale, candidates, profiles, mode, targetNet, cashSources, carrierId }) {
+    const freeCash = profile => Math.floor(Math.max(0, finiteNumber(profile.inputs?.tagesgeld)
+        - sum(cashSources.filter(source => source.sourceProfileId === profile.profileId).map(source => source.brutto))) * 100) / 100;
+    let base = { selected: new Map(maxPlan.selected), sources: maxPlan.sources, net: maxPlan.net };
+    const extraCash = [];
+    let cashNet = 0;
+    for (const own of [true, false]) {
+        const stageProfiles = profiles.filter(profile => (profile.profileId === carrierId) === own);
+        const cashProfiles = stageProfiles.map(profile => ({ ...profile, inputs: { ...profile.inputs, tagesgeld: freeCash(profile), geldmarktEtf: 0 } }));
+        const cashToUse = Math.max(0, Math.min(targetNet - base.net - cashNet, sum(cashProfiles.map(profile => profile.inputs.tagesgeld))));
+        if (cashToUse > EPSILON) {
+            const extra = allocateLiquiditySources(Math.ceil(cashToUse * 100) / 100, cashProfiles, 'tax_optimized');
+            if (extra.length) { const last = extra.at(-1); last.brutto -= sum(extra.map(source => source.brutto)) - cashToUse; last.netto = last.brutto; }
+            extraCash.push(...extra);
+            cashNet += sum(extra.map(source => source.netto));
+        }
+        const remainingTarget = targetNet - cashNet;
+        if (base.net >= remainingTarget - EPSILON) continue;
+        const stageCandidates = candidates.filter(candidate => (candidate.sourceProfileId === carrierId) === own).map(candidate => ({ ...candidate,
+            capacity: Math.max(0, candidate.capacity - (base.selected.get(candidate.key)?.gross || 0)) })).filter(candidate => candidate.capacity > EPSILON);
+        if (!stageCandidates.length) continue;
+        const capacity = sum(stageCandidates.map(candidate => candidate.capacity));
+        const from = base;
+        const selectAdditional = gross => {
+            const selected = new Map(from.selected);
+            const rawByProfile = new Map(profiles.map(profile => [profile.profileId,
+                rawAggregateForSources(from.sources.filter(source => source.sourceProfileId === profile.profileId))]));
+            selectTaxOptimizedGross(stageCandidates, gross, selected, rawByProfile);
+            const sources = [...selected.values()].map(entry => sourceFromCandidate(entry.candidate, entry.gross));
+            return { selected, sources, net: sum(sources.map(source => source.brutto)) - previewHouseholdTax(profiles, rawByProfile) };
+        };
+        let plan = selectAdditional(capacity);
+        if (plan.net >= remainingTarget) {
+            let lower = 0, upper = capacity;
+            for (let iteration = 0; iteration < 80; iteration += 1) {
+                const middle = (lower + upper) / 2;
+                if (selectAdditional(middle).net < remainingTarget) lower = middle; else upper = middle;
+            }
+            plan = selectAdditional(upper);
+        }
+        base = plan;
+    }
+    return { sources: base.sources, scale: maxScale, extraCash, fundingGap: targetNet - maxPlan.net,
+        shortfall: Math.max(0, targetNet - base.net - cashNet) };
 }
 
 export function planAssetSources(plannedSources, profiles, mode, targetNet, cashSources) {

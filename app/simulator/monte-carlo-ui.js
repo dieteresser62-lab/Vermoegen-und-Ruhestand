@@ -762,10 +762,15 @@ export function initMonteCarloStartYearControls() {
         const mode = modeElement.value || 'UNIFORM';
         if (filterRow) filterRow.style.display = mode === 'FILTER' ? 'block' : 'none';
         if (halfLifeRow) halfLifeRow.style.display = mode === 'RECENCY' ? 'block' : 'none';
-        if (capeWarning) {
-            const capeActive = capeToggle?.checked === true;
-            capeWarning.style.display = capeActive && mode !== 'UNIFORM' ? 'block' : 'none';
+        // GH-1 Punkt 4 (F-04): „Startjahre nach CAPE“ überstimmt Daten-Gewichtung, Startjahr und Halbwertszeit (`ignoredOptions`);
+        // die Felder sind dann sichtbar ausgegraut, ein Satz sagt warum.
+        const capeActive = capeToggle?.checked === true;
+        for (const field of [modeElement, filterInput, halfLifeInput]) {
+            if (!field) continue;
+            /** @type {HTMLInputElement|HTMLSelectElement} */ (field).disabled = capeActive;
+            field.closest?.('.household-plan-field')?.classList?.toggle?.('mc-field-overruled', capeActive);
         }
+        if (capeWarning) capeWarning.style.display = capeActive ? 'block' : 'none';
     };
 
     if (filterInput && filterValue) {

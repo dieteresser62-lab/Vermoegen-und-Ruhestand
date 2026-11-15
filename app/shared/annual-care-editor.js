@@ -1,5 +1,5 @@
 import { createCareValuesDraft, readCareValues, residentialComponents, residentialMonthly } from './household-care-values.js';
-import { projectCareValuesForYear, resolveCarePrices } from './care-prices.js';
+import { careDriftPercentForYear, projectCareValuesForYear, resolveCarePrices } from './care-prices.js';
 import { annualCareProfileId, careSettingsStorage, sharesHouseholdCareValues } from './care-profile-settings.js';
 import { persistenceStorage } from './persistence-facade.js';
 import { parseHouseholdPlanNumber } from './household-plan-fields.js';
@@ -31,7 +31,8 @@ export function createAnnualCareEditor({ doc, targetYear, listen, storage = pers
     // Eingefrorene Ausgangsbasis: der gespeicherte Record; jede Fortschreibung rechnet von hier aus.
     const original = readCareValues(storage);
     // Der Kostenanstieg kommt mit den Preisen: markiert aus dem Record, sonst Altbestand über den Resolver (PFA-2 B6).
-    const basePrices = resolveCarePrices(original, legacy, { shared }), driftPercent = basePrices.driftPercent;
+    // FR-73 Punkt 8 geändert: die Rate des neuen Planjahrs (Schritt J → J+1).
+    const basePrices = resolveCarePrices(original, legacy, { shared }), driftPercent = careDriftPercentForYear(basePrices, planningYear);
     const official = legacy.getItem('sim_pflegeKostenStaffelPreset') === 'amtlich';
     let inflationRate = /** @type {number|null} */ (null);
     /** Vorschlag für das neue Planjahr; ohne Inflation die unveränderte Basis mit ergänztem Preisblock. */

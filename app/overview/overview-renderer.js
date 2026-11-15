@@ -17,7 +17,21 @@ import { renderProbelaufPriceInfo } from '../shared/probelauf-price-ui.js';
 import { bindInfoPopovers, infoPopoverHtml } from '../shared/designsystem-info-popover.js';
 import { getStorageArea } from '../shared/persistence-area-storage.js';
 import { isPlayArea } from '../shared/household-registry.js';
-import { displayMonthlyDown } from '../shared/display-rounding.js';
+import { displayMonthlyDown, displayedWithdrawal } from '../shared/display-rounding.js';
+import { displayedCoverage } from '../balance/balance-reserves.js';
+
+/** GH-1 Punkt 6: Beginnt die Rente erst in der Zukunft, steht „ab MM/JJJJ“ statt des Monatsbetrags als laufend (Erika: „1.600 € Rente ab 07/2027“).
+ * Der Beginn kommt aus dem vorhandenen Personenstatus („Rente ab TT.MM.JJJJ …“), damit das Übersichtsmodell unverändert bleibt.
+ * @param {any} person @param {Date} now @returns {string} */
+export function pensionDetail(person, now) {
+    const parts = /^Rente ab (\d{2})\.(\d{2})\.(\d{4})/.exec(String(person?.personDates?.pensionStatus || ''));
+    const start = parts ? `${parts[3]}-${parts[2]}-${parts[1]}` : '';
+    const today = now instanceof Date && Number.isFinite(now.getTime())
+        ? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}` : '';
+    const amount = money(person.values.renteMonatlich);
+    // VK-3c (Gemini, Randhinweis): Im Beginnmonat gilt die Rente als laufend (Beginnmonat zählt vollständig, wie in Personen & Vermögen).
+    return /^\d{4}-\d{2}-\d{2}$/.test(start) && today && start.slice(0, 7) > today.slice(0, 7) ? `${amount} Rente ab ${start.slice(5, 7)}/${start.slice(0, 4)}` : `${amount} Rente / Monat`;
+}
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 }) : '—';
 /** FR-78: Monatsbudget abgerundet nach der Monatsstaffel; das Modell bleibt genau. */
@@ -116,15 +130,15 @@ export function renderOverview(doc, model) {
         const details = [];
         if (Number.isFinite(person.personDates?.todayAge)) details.push(`${person.personDates.todayAge} Jahre`);
         if (person.personDates?.todayAgeStatus === 'fallback') details.push('Altalter, Geburtsdatum fehlt');
-        if (Number.isFinite(person.values?.renteMonatlich)) details.push(`${money(person.values.renteMonatlich)} Rente / Monat`);
+        if (Number.isFinite(person.values?.renteMonatlich)) details.push(pensionDetail(person, model.now));
         return `<div class="overview-person" data-overview-person="${escapeHtml(person.id)}"><span class="overview-avatar" aria-hidden="true">${escapeHtml(initials)}</span><div>${escapeHtml(person.name)}<small>${escapeHtml(details.join(' · '))}</small></div><div class="overview-person-amount"><strong>${person.valid ? escapeHtml(money(person.assets + homes.total)) : 'Bestand unvollständig'}</strong>${person.valid ? wealthInfo(person.allocation, homes) : ''}</div>${homes.present ? `<small class="overview-person-detail">${escapeHtml(wealthDetail(person.assets, homes))}</small>` : ''}</div>`;
     }).join('');
     const summary = model.summary;
     const preview = Object.hasOwn(model, 'previewSummary') ? model.previewSummary : model.planComparison?.recordStatus === 'valid' ? null : summary;
     // Kennzahlen verwenden denselben Vergleich wie die vollständige Planansicht.
     // Kein zusätzlicher Speicherleser und keine eigene Budgetberechnung; FR-78 rundet nur die Anzeigefassung.
-    const planView = roundedHouseholdPlanComparison(model.planComparison || projectHouseholdPlanComparison({ year: model.year, scope: null, preview }),
-        { planBudget: model.planComparison?.recordStatus === 'valid' ? summary?.monthlyBudget : null, previewSummary: preview });
+    const coverages = overviewCoverages(model);
+    const planView = overviewPlanView(model, coverages);
     const budgetRow = planView.rows.find(row => row.label === 'Monatsbudget');
     const fixed = planView.recordStatus === 'valid';
     const hasPreview = ['current', 'stale'].includes(planView.previewStatus);
@@ -149,21 +163,17 @@ export function renderOverview(doc, model) {
     set('overviewPlanTitle', 'Dein Plan');
     set('overviewPlanStatus', planView.recordStatus === 'valid' ? 'festgeschrieben' : '');
     const badge = doc.getElementById('overviewPlanStatus'); if (badge) badge.hidden = planView.recordStatus !== 'valid';
-    const comparisonHost = doc.getElementById('overviewPlanComparison');
-    if (comparisonHost) {
-        const origin = model.actionOrigin || projectBalanceActionOrigin({ comparison: planView, year: model.now.getFullYear(), scope: model.scope });
-        comparisonHost.innerHTML = householdPlanComparisonHtml(planView) + actionOriginHtml(origin);
-        bindInfoPopovers(doc, { root: comparisonHost });
-    }
+    const comparisonHost = renderOverviewComparison(doc, model, planView);
     const rows = doc.getElementById('overviewPlanRows'); if (rows) rows.hidden = true;
     const empty = doc.getElementById('overviewPlanEmpty');
     if (empty) { empty.hidden = Boolean(comparisonHost); empty.textContent = planView.notice; }
     // Bestehende Anker bleiben für alte Direktverweise; sichtbar ist der gemeinsame Vergleich.
-    set('overviewWithdrawal', summary ? (model.actionOrigin?.confirmed ? 'Beschlossener Plan: ' : 'Vorschau: ') + money(summary.monthlyWithdrawal) : '');
+    // Ergänzung 3 FR-78: Neben dem abgerundeten Monatsbudget steht die Entnahme als angezeigtes Budget − Einkünfte.
+    set('overviewWithdrawal', summary ? (model.actionOrigin?.confirmed ? 'Beschlossener Plan: ' : 'Vorschau: ') + money(displayedWithdrawal(summary.monthlyWithdrawal, summary.monthlyBudget)) : '');
     set('overviewPlanBudget', summary ? `Monatsbudget mit festen Einkünften: ${budgetMoney(summary.monthlyBudget)}` : '');
     set('overviewPlanAction', preview ? `Vorschau: ${preview.action?.verb || 'Handlung prüfen'} · vorläufig` : '');
     set('overviewPlanNote', summary?.action?.note || '');
-    set('overviewLiquidity', summary ? overviewLiquidityText(summary) : '');
+    set('overviewLiquidity', overviewLiquidityLine(model, coverages));
     set('overviewLiquidityNote', summary ? 'Rechenergebnis vorher / nachher; keine Ausführung unterstellt' : '');
     set('overviewMarket', summary?.marketPhase || '');
     set('overviewPlanTime', summary ? `Gerechnet am ${new Date(summary.createdAt).toLocaleString('de-DE')}` : '');
@@ -299,18 +309,69 @@ function renderFocusCompleted(steps, row, open) {
     return `<details class="overview-completed" data-overview-completed=""${open ? ' open' : ''}><summary>Erledigt (${steps.length})</summary>${steps.map(row).join('')}</details>`;
 }
 
+/** Vergleichstabelle samt Herkunftshinweis. @param {any} doc @param {any} model @param {ReturnType<typeof overviewPlanView>} planView */
+function renderOverviewComparison(doc, model, planView) {
+    const comparisonHost = doc.getElementById('overviewPlanComparison');
+    if (comparisonHost) {
+        const origin = model.actionOrigin || projectBalanceActionOrigin({ comparison: planView, year: model.now.getFullYear(), scope: model.scope });
+        comparisonHost.innerHTML = householdPlanComparisonHtml(planView) + actionOriginHtml(origin);
+        bindInfoPopovers(doc, { root: comparisonHost });
+    }
+    return comparisonHost;
+}
+
+/** @param {any} model @param {ReturnType<typeof overviewCoverages>} coverages @returns {string} */
+function overviewLiquidityLine(model, coverages) {
+    const summary = model.summary;
+    return summary ? overviewLiquidityText(summary, model.planComparison?.recordStatus === 'valid' ? coverages.plan : coverages.preview) : '';
+}
+
+/** GN-2e: Nach dem Laden der Deckung nur die Stellen neu zeichnen, die sie zeigen. Ein ganzer Neuaufbau nähme dem Hauptknopf
+ * und offenen Dialogen den Fokus. @param {any} doc @param {any} model */
+export function renderOverviewCoverage(doc, model) {
+    if (!model?.available) return;
+    const coverages = overviewCoverages(model);
+    renderOverviewComparison(doc, model, overviewPlanView(model, coverages));
+    const liquidity = doc.getElementById('overviewLiquidity'); if (liquidity) liquidity.textContent = overviewLiquidityLine(model, coverages);
+}
+
+/** Sichtbare Tabelle „Beschlossener Plan / Vorschau heute“ der Übersicht. GN-2b (Fable P2-1): Deckung und Budgetzeile aus
+ * angezeigten Beträgen wie in der Balance. @param {any} model @param {ReturnType<typeof overviewCoverages>} [coverages] */
+export function overviewPlanView(model, coverages = overviewCoverages(model)) {
+    const summary = model.summary, fixedPlan = model.planComparison?.recordStatus === 'valid';
+    const preview = Object.hasOwn(model, 'previewSummary') ? model.previewSummary : fixedPlan ? null : summary;
+    return roundedHouseholdPlanComparison(model.planComparison || projectHouseholdPlanComparison({ year: model.year, scope: null, preview }),
+        { planBudget: fixedPlan ? summary?.monthlyBudget : null, planWithdrawal: fixedPlan ? summary?.monthlyWithdrawal : null, previewSummary: preview,
+            // Ohne Handlung ändert sich nichts: „nachher“ ist dann die Deckung heute, wie in der Reservekarte.
+            planCoverage: coverages.plan ? coverages.plan.after ?? coverages.plan.today : null,
+            previewCoverage: coverages.preview ? coverages.preview.after ?? coverages.preview.today : null });
+}
+
+/** Die eine Deckungsgröße der Übersicht (GN-2c): genau die Rechnung von „Deine Reserven“ (`balanceReserveCoverages`), die
+ * `createOverviewReserves` je Datenstand in `model.reserveCoverages` legt. Plan nur mit gültigem Beleg; nie die heutige Vorschau.
+ * Solange nichts gerechnet ist, bleiben beide Spalten offen.
+ * @param {any} model @returns {{plan: {today: number|null, after: number|null}|null, preview: {today: number|null, after: number|null}|null}} */
+export function overviewCoverages(model) {
+    const shown = model?.reserveCoverages;
+    return { plan: model?.planComparison?.recordStatus === 'valid' ? shown?.plan ?? null : null, preview: shown?.preview ?? null };
+}
+
 /**
  * @param summary Gespeicherte Balance-Zusammenfassung.
+ * @param {{today: number|null, after: number|null}|null} [shown] Deckung aus angezeigten Beträgen (`overviewCoverages`).
  * @returns Beschriftung der belegten Liquiditätsdeckung.
  */
-export function overviewLiquidityText(summary) {
-    const pct = value => formatDisplayNumber(value, { unit: 'percent', fractionDigits: 1 });
-    const before = summary.liquidityBefore, after = summary.liquidityAfter;
-    if (Number.isFinite(before)) {
-        if (Number.isFinite(after) && (Math.abs(before - after) > .1 || summary.actionBasis?.material)) return `${pct(before)} heute · ${pct(after)} nach Umsetzung`;
+export function overviewLiquidityText(summary, shown = null) {
+    // Ergänzung 3 FR-78: ganze Prozent wie in der Balance; ohne Beleg die genaue Deckung, nie unter 100 %, wenn sie erreicht ist.
+    const pct = value => formatDisplayNumber(value, { unit: 'percent', fractionDigits: 0 });
+    const exact = value => Number.isFinite(value) ? displayedCoverage(value, 100, value, 100) : value;
+    const before = Number.isFinite(shown?.today) ? shown.today : exact(summary.liquidityBefore);
+    const after = Number.isFinite(shown?.after) ? shown.after : exact(summary.liquidityAfter);
+    if (Number.isFinite(summary.liquidityBefore)) {
+        if (Number.isFinite(summary.liquidityAfter) && (Math.abs(summary.liquidityBefore - summary.liquidityAfter) > .1 || summary.actionBasis?.material)) return `${pct(before)} heute · ${pct(after)} nach Umsetzung`;
         return `${pct(before)} des Ziels`;
     }
-    const planned = Number.isFinite(after) ? after : summary.liquidityCoverage;
+    const planned = Number.isFinite(after) ? after : exact(summary.liquidityCoverage);
     return Number.isFinite(planned) ? `Heute unbekannt · ${pct(planned)} nach Umsetzung` : 'Noch nicht verfügbar';
 }
 

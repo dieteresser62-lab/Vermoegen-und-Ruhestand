@@ -1,4 +1,6 @@
-import { readLE1References } from './helpers/le-1-expectations.mjs';
+import { readLE1References as readBeforeGN2References } from './helpers/le-1-expectations.mjs';
+import { readGN2References } from './helpers/gn-2-expectations.mjs';
+const readLE1References = value => readGN2References(readBeforeGN2References(value));
 // GU-1 (Gutachten 11.11.2026, FR-74, FR-76, S5–S7): von Hand hergeleitete Sollfälle als dauerhafte Node-Tests.
 // Nur synthetische Daten: Beispielhaushalte und erfundene Personenwerte.
 import { createHash } from 'node:crypto';
@@ -17,6 +19,7 @@ import { runMonteCarloChunk } from '../app/simulator/monte-carlo-runner.js';
 import { annualData } from '../app/simulator/simulator-data.js';
 import { withPreviousRunEvidence } from './helpers/le-1b-expectations.mjs';
 
+import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const memory = data => ({ getItem: key => data[key] ?? null });
 
@@ -97,7 +100,7 @@ for (const id of Object.keys(BASE)) {
         return { mc, historical };
     };
     const zero = await run({ ...current, equityCostPct: 0, rentAdjMode: 'wage', renteIndexierungsart: 'wage' });
-    assertEqual(hash(withPreviousRunEvidence(zero.mc)), readLE1References(BASE[id].mc), `S2: ${id} Monte Carlo mit k = 0 bytegleich zu b1ef8ff6 (Laufbeleg der Sterbetafel wie vor LE-1b)`);
+    assertEqual(hash(withPreviousRunEvidence(zero.mc)), readFI1References(readLE1References(BASE[id].mc)), `S2: ${id} Monte Carlo mit k = 0 bytegleich zu b1ef8ff6 (Laufbeleg der Sterbetafel wie vor LE-1b)`);
     assertEqual(hash(zero.historical), readLE1References(BASE[id].backtest), `S2: ${id} Backtest mit k = 0 bytegleich zu b1ef8ff6`);
     if (id === 'renate') {
         const withCost = await run({ ...current, rentAdjMode: 'wage', renteIndexierungsart: 'wage' });
@@ -140,14 +143,14 @@ P.resetPersistenceForTests(); setAppTestDate(null);
     const next = projectNextYearBudget({ storage, engineApi: api, now });
     const projected = next.displayEvaluation;
     const rounding = next.rule.components.find(item => item.kind === 'rounding');
-    assertEqual(rounding.amount, 800, 'S3: Ausgangslage „Rundung der Planwerte +800 € Bedarf“');
+    assertEqual(rounding.amount, 0, 'S3 (GN-1): Genau gespeicherte Planwerte, keine Rundung der Planwerte mehr');
     const projectedUi = { ...projected.modelResult.ui, input: projected.inputData };
     // GU-1b: Die Regel hängt an der Ursache im Engine-Trace, nicht mehr am Rundungsposten der Projektion.
     assertEqual(projectBalanceFlexTrace(projectedUi).cut, 0, 'S3: Auch ohne Projektion ist die Rundung keine Kürzung');
     const trace = projectBalanceFlexTrace({ ...projectedUi, nextYearBudget: next });
     assertEqual(trace.cut, 0, 'S3: Rundung der Planwerte ist keine Kürzung');
     const gap = projectBalanceFlexTrace({ ...projectedUi, input: { ...projected.inputData, flexBedarf: projected.inputData.flexBedarf + 6000 }, nextYearBudget: next });
-    assertClose(gap.cut, 500 + 800 / 12, 1e-6, 'S3: Künstliche echte Lücke von 500 € im Monat meldet den vollen Unterschied zum Plan');
+    assertClose(gap.cut, 500, 1e-6, 'S3: Künstliche echte Lücke von 500 € im Monat meldet den vollen Unterschied zum Plan');
     assert(gap.householdFlexRate < 100, 'S3: Echte Lücke meldet weiter eine Finanzierungsquote unter 100 %');
 
     const entriesOf = runs => runs?.map(run => ({ profileId: run.profileId, name: run.name, action: run.ui.action, input: run.input, spending: run.ui.spending, targetLiquidity: run.ui.zielLiquiditaet })) || null;

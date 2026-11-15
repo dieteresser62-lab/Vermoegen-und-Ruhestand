@@ -36,7 +36,7 @@ Nur die Planübersicht nutzt ohne eigenen Inflations- oder Lohnwert das arithmet
 
 ### Deckung und Ruin
 
-„Floor“ bedeutet Grundbedarf. Die Floor-Deckungsquote zählt Monte-Carlo-Läufe ohne modellierten Ruin bis zu ihrem jeweiligen Ende: Tod aller Personen oder gewählter Horizont. Der Nenner sind alle angeforderten Läufe. Schon ein technischer Fehler sperrt die Gesamtquote; ein solcher Fehler ist kein schlechter Marktpfad. 100,0 % erscheint nur bei Erfolg in sämtlichen Läufen. Ein angezeigtes Unsicherheitsintervall beschreibt die begrenzte Laufstichprobe innerhalb des Modells.
+„Floor“ bedeutet Grundbedarf. Die Floor-Deckungsquote zählt Monte-Carlo-Läufe ohne modellierten Ruin bis zu ihrem jeweiligen Ende: Tod aller Personen oder gewählter Horizont. Der Nenner sind alle angeforderten Läufe. Schon ein technischer Fehler sperrt die Gesamtquote; ein solcher Fehler ist kein schlechter Marktpfad. 100,0 % erscheint nur bei Erfolg in sämtlichen Läufen. Ein angezeigtes Unsicherheitsintervall beschreibt die begrenzte Laufstichprobe innerhalb des Modells. Unter der Quote steht, womit gerechnet wurde: Rentenanpassung, Fondskosten, Anstieg der Pflegekosten über der Inflation und Lebensdauer nach der Sterbetafel des Jahrgangs (Destatis), simuliert bis Alter 110 der jüngsten Person oder über die selbst gewählte Dauer. Der Pflegekostenanstieg steht auch da, wenn nur ein Pflegegrad heute gerechnet wird. Bei „wie Löhne“ folgt der Hinweis aus Personen & Vermögen. Ein Satz nennt, wie viele der Läufe mit Ruin oder aufgebrauchtem Depot einen Pflegefall hatten. Die Kennzahl „Ø Laufzeit“ zählt bis zum Tod oder bis das Geld nicht mehr reicht. „Gesamtvermögen zu Beginn“ zählt Anleihen einmal, auch wenn sie im Depotwert stecken.
 
 ```mermaid
 flowchart TD

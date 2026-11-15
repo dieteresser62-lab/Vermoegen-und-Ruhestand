@@ -7,6 +7,24 @@ const aliases = Object.freeze({ IE00BK5BQT80: 'VWCE.DE', IE00B3RBWM25: 'VWRL.DE'
  * @param value Zu verarbeitender Wert.
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
+/** VK-2 (Nachtrag 3): Trefferliste der synthetischen Suche im Spielbereich. Sie kennt die Wertpapiere der Musterhaushalte (ISIN, Kürzel
+ * oder Teil des Namens, auch mit Leerzeichen); für IE00BK5BQT80 gibt es zusätzlich einen Treffer in anderer Währung. Unbekannt → leer. */
+const SYNTHETIC_CATALOG = Object.freeze([
+    { isin: 'IE00BK5BQT80', symbol: 'VWCE.DE', name: 'Muster Aktien-ETF', exchange: 'Xetra', type: 'ETF' },
+    { isin: 'IE00BK5BQT80', symbol: 'VWRA.L', name: 'Muster Aktien-ETF (USD)', exchange: 'London', type: 'ETF', currency: 'USD' },
+    { isin: 'IE00B3RBWM25', symbol: 'VWRL.DE', name: 'Muster Aktien-ETF Ausschüttend', exchange: 'Xetra', type: 'ETF' },
+    { isin: 'LU0290358497', symbol: 'XEON.DE', name: 'Muster Geldmarkt', exchange: 'Xetra', type: 'ETF', assetClass: 'money_market' },
+    { isin: 'IE00B4WXJJ64', symbol: 'EUNH.DE', name: 'iShares Core € Govt Bond ETF', exchange: 'Xetra', type: 'ETF', assetClass: 'bonds' },
+    { isin: 'DE000A0S9GB0', symbol: '4GLD.DE', name: 'Xetra-Gold ETC', exchange: 'Xetra', type: 'ETC', assetClass: 'gold' }
+]);
+/** @param {string} query @returns {{isin: string, symbol: string, name: string, exchange: string, type: string, currency?: string, assetClass?: string}[]} */
+export function syntheticSearch(query) {
+    const text = String(query ?? '').trim().toUpperCase();
+    if (!text) return [];
+    return SYNTHETIC_CATALOG.filter(entry => entry.isin === text || entry.symbol === text || entry.symbol.split('.')[0] === text
+        || text.length >= 3 && entry.name.toUpperCase().includes(text)).map(entry => ({ ...entry }));
+}
+
 export function syntheticSymbol(value) {
     const symbol = String(value ?? '').trim().toUpperCase();
     if (!/^[A-Z0-9.^=-]{1,32}$/.test(symbol)) throw new Error('Ungültige Instrumentkennung im Spielbereich.');

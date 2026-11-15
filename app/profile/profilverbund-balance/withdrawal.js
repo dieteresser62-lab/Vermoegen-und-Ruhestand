@@ -1,7 +1,8 @@
-import { computeTaxRate, computeProfitRatio, selectTranchesForSale } from './tax.js';
+import { computeTaxRate, calculateTaxPerEuro, selectTranchesForSale } from './tax.js';
 import { resolveTrancheSplitTotals } from './tranches.js';
 import { resolveLiquidityRunwayYears } from '../../../types/liquidity-runway-contract.js';
 import { profileAssetTotal, profileLiquidity } from './values.js';
+import { activeCarrier } from '../household-withdrawal-mode.js';
 
 // Berechne Entnahmeverteilung nach Modus
 export function calculateWithdrawalDistribution(profileInputs, aggregated, mode = 'tax_optimized') {
@@ -15,10 +16,9 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
     // Pro Profil alle Kennzahlen vorbereiten, die für Verteilung & Steuer-Schätzung nötig sind.
     const entries = list.map(entry => {
         const inputs = entry.inputs || {};
-        // Steuersatz einmal je Profil: calculateTaxPerEuro = Gewinnquote * computeTaxRate (reine Funktion).
+        // FR-80 Punkt 8: Steuer je Euro je Tranche wie die Tranchenwahl (Teilfreistellung, „ganz steuerfrei“), nach Marktwert gewichtet.
         const taxRate = computeTaxRate(inputs);
-        const taxPerEuro = computeProfitRatio((inputs.depotwertAlt || 0) + (inputs.depotwertNeu || 0),
-            (inputs.costBasisAlt || 0) + (inputs.costBasisNeu || 0)) * taxRate;
+        const taxPerEuro = calculateTaxPerEuro(inputs, entry.tranches);
         // Weiter alle Tranchen prüfen, auch bei explizitem Geldmarktwert:
         // Ein Klassifikationsfehler muss wie bisher an dieser Grenze werfen.
         const derivedMoneyMarket = resolveTrancheSplitTotals(entry.tranches || []).moneyValue || 0;
@@ -51,8 +51,15 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
     const commonCents = Math.max(0, grossCents - personalCents.reduce((sum, value) => sum + value, 0));
     let remainingCents = commonCents;
     let allocations = [];
+    // FR-80: Bei „Eine Person trägt“ übernimmt die tragende Person den gemeinsamen Anteil. Fehlt sie (gestorben, nicht im
+    // Haushalt), endet der Modus und es gilt „steueroptimiert“.
+    const carrierId = activeCarrier(mode, entries);
+    const kind = carrierId ? 'one_carries' : String(mode).startsWith('one_carries') ? 'tax_optimized' : mode;
 
-    if (mode === 'tax_optimized') {
+    if (kind === 'one_carries') {
+        allocations = entries.map(entry => ({ entry, amountCents: entry.profileId === carrierId ? commonCents : 0 }));
+        remainingCents = 0;
+    } else if (kind === 'tax_optimized') {
         // FR-27: Haushaltsliquidität in Personenreihenfolge, je Person TG vor MM.
         allocations = entries.map(entry => {
             const maxShareCents = Math.max(0, Math.round(entry.liquidity * 100));
@@ -92,6 +99,7 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
 
     allocations.forEach((item, index) => { item.amountCents += personalCents[entries.indexOf(item.entry)] ?? personalCents[index] ?? 0; });
     creditPersonalIncome(allocations, entries, incomeCents, totalNeedCents);
+    if (kind === 'one_carries') return finishWithdrawalItems(allocations, totalNeedCents, carryingRemainder(allocations, totalNeedCents, carrierId), mode, carrierId);
     // Erst Liquidität für den Plan, dann übrige Haushaltsliquidität, zuletzt Verkäufe.
     const originalAmounts = allocations.map(item => item.amountCents);
     for (const item of allocations) item.amountCents = Math.min(item.amountCents,
@@ -103,7 +111,7 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
         item.amountCents += take;
         remainingCents -= take;
     }
-    if (mode === 'tax_optimized') {
+    if (kind === 'tax_optimized') {
         const saleOrder = allocations.slice().sort((a, b) =>
             a.entry.taxPerEuro - b.entry.taxPerEuro
             || String(a.entry.profileId).localeCompare(String(b.entry.profileId)));
@@ -132,6 +140,36 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
         }
     }
 
+    return finishWithdrawalItems(allocations, totalNeedCents, { remainingCents, attacked: [] }, mode, null);
+}
+
+/** FR-80 Punkte 2, 3 und 7: Jede Person zahlt ihren Anteil zuerst aus eigenem Vermögen (Liquidität, dann eigene Verkäufe); persönliche
+ * Pflegekosten bleiben bei der Person (FR-72 Punkt 10). Was eine andere Person nicht tragen kann, übernimmt die tragende Person. Reicht
+ * deren Vermögen nicht, greift der Plan auf das Vermögen der anderen zu, Reihenfolge wie steueroptimiert (Liquidität in
+ * Haushaltsreihenfolge, dann Verkäufe nach Steuer je Euro). Diese Personen stehen in `attacked`. */
+/** @param {{entry: any, amountCents: number}[]} allocations @param {number} totalNeedCents @param {string} carrierId */
+function carryingRemainder(allocations, totalNeedCents, carrierId) {
+    const assetsCents = item => Math.max(0, Math.round(item.entry.assets * 100));
+    const own = allocations.map(item => item.amountCents);
+    for (const item of allocations) item.amountCents = Math.min(item.amountCents, assetsCents(item));
+    let remainingCents = totalNeedCents - allocations.reduce((sum, item) => sum + item.amountCents, 0);
+    const carrier = allocations.find(item => item.entry.profileId === carrierId);
+    const take = (item, available) => { const cents = Math.max(0, Math.min(remainingCents, available)); item.amountCents += cents; remainingCents -= cents; };
+    if (carrier) take(carrier, assetsCents(carrier) - carrier.amountCents);
+    const others = allocations.filter(item => item !== carrier);
+    for (const item of others) take(item, Math.round(item.entry.liquidity * 100) - item.amountCents);
+    for (const item of others.slice().sort((a, b) => a.entry.taxPerEuro - b.entry.taxPerEuro
+        || String(a.entry.profileId).localeCompare(String(b.entry.profileId)))) take(item, assetsCents(item) - item.amountCents);
+    const attacked = others.filter(item => item.amountCents > own[allocations.indexOf(item)] + 0.5)
+        .map(item => ({ profileId: item.entry.profileId, name: item.entry.name, amount: (item.amountCents - own[allocations.indexOf(item)]) / 100 }));
+    return { remainingCents, attacked };
+}
+
+/** Auszahlung je Person: Tagesgeld, dann Geldmarkt, Verkauf nur für den Rest; Steuer aus der Tranchenwahl.
+ * @param {{entry: any, amountCents: number}[]} allocations @param {number} totalNeedCents
+ * @param {{remainingCents: number, attacked: {profileId: string, name: string, amount: number}[]}} rest @param {string} mode @param {string|null} carrierId */
+function finishWithdrawalItems(allocations, totalNeedCents, { remainingCents, attacked }, mode, carrierId) {
+    const totalNeed = totalNeedCents / 100;
     let totalTaxEstimate = 0;
     const items = allocations.map(({ entry, amountCents }) => {
         const amount = amountCents / 100;
@@ -169,7 +207,8 @@ export function calculateWithdrawalDistribution(profileInputs, aggregated, mode 
         };
     });
 
-    return { items, totalNeed, remaining: remainingCents / 100, totalTaxEstimate, mode };
+    return { items, totalNeed, remaining: remainingCents / 100, totalTaxEstimate, mode,
+        ...(carrierId ? { carrierId, attacked, carrierName: allocations.find(item => item.entry.profileId === carrierId)?.entry.name || carrierId } : {}) };
 }
 
 /** Eigene Einkünfte mindern den Bruttoanteil der jeweiligen Person. Übersteigen sie ihn, hilft der Überschuss
@@ -203,5 +242,10 @@ export function reconcileWithdrawalLiquidity(plan, accounts) {
         amounts[i] += extra; rest -= extra;
     }
     if (plan.items.every((item, i) => Math.abs(item.withdrawalAmount - amounts[i]) <= 1e-8)) return plan;
-    return { ...plan, items: plan.items.map((item, i) => ({ ...item, withdrawalAmount: amounts[i] })) };
+    // FR-80 Punkt 3 (TRG-1b, P1-1): Bei „Eine Person trägt“ ist jede Verschiebung zur anderen Person ein Rückgriff und steht im Hinweis.
+    const attacked = plan.carrierId ? plan.items.flatMap((item, i) => item.profileId !== plan.carrierId && amounts[i] - item.withdrawalAmount > 0.5
+        && !plan.attacked?.some(row => row.profileId === item.profileId)
+        ? [{ profileId: item.profileId, name: item.name, amount: amounts[i] - item.withdrawalAmount }] : []) : [];
+    return { ...plan, items: plan.items.map((item, i) => ({ ...item, withdrawalAmount: amounts[i] })),
+        ...(attacked.length ? { attacked: [...(plan.attacked || []), ...attacked] } : {}) };
 }

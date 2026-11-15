@@ -51,6 +51,9 @@ export function assertCarePrices(prices) {
         && Number.isFinite(prices.maximumFloor) && prices.maximumFloor >= 0
         && Number.isFinite(prices.ownExpensesMonthly) && prices.ownExpensesMonthly >= 0
         && (prices.driftPercent === undefined || Number.isFinite(prices.driftPercent) && prices.driftPercent >= 0)
+        // FR-73 Punkt 8 geändert: optional Wechseljahr (letztes Jahr der ersten Rate) und zweite Rate; fehlend = Altbestand.
+        && (prices.driftUntilYear === undefined || Number.isInteger(prices.driftUntilYear) && prices.driftUntilYear >= 1900 && prices.driftUntilYear <= 9999)
+        && (prices.driftAfterPercent === undefined || Number.isFinite(prices.driftAfterPercent) && prices.driftAfterPercent >= 0)
         && CARE_PRICE_ORIGINS.includes(prices.origin)
         && Number.isInteger(prices.priceYear) && prices.priceYear >= 1900 && prices.priceYear <= 9999;
     if (!valid) throw new Error('Die gespeicherten Pflegepreise sind ungültig.');

@@ -4,43 +4,33 @@ import { tokenizeHTML } from './funktionsinventar-contract.mjs';
 // Bestand vor Slice 1: Ausnahmen sind an Quelle, Selektor und Deklaration gebunden.
 export const PRIORITY_EXCEPTIONS = [
   [
-    "Simulator.html",
+    "simulator.css",
     ".log-export-buttons button",
     "width: auto !important"
   ],
   [
-    "Simulator.html",
+    "simulator.css",
     ".log-export-buttons button",
     "min-width: 0 !important"
   ],
   [
-    "Simulator.html",
+    "simulator.css",
     ".log-export-buttons button",
     "flex: 0 0 auto !important"
   ],
   [
-    "Simulator.html",
+    "simulator.css",
     ".ao-preset-btn:hover",
     "border-color: var(--secondary-color) !important"
   ],
   [
-    "Simulator.html",
-    ".form-grid, .form-grid-three-col, .form-grid-four-col, .form-grid-compact",
-    "grid-template-columns: minmax(0, 1fr) !important"
-  ],
-  [
-    "Simulator.html",
-    ".care-sections, .care-section-grid, .care-duration-group, .care-grade-row",
-    "grid-template-columns: minmax(0, 1fr) !important"
-  ],
-  [
-    "depot-tranchen-manager.html",
-    "[aria-invalid=\"true\"]",
+    "css/personen-vermoegen-seite.css",
+    ":where(.personen-vermoegen-page) [aria-invalid=\"true\"]:where(:not(dialog, dialog *))",
     "border-color: var(--bad) !important"
   ],
   [
-    "depot-tranchen-manager.html",
-    "[aria-invalid=\"true\"]",
+    "css/personen-vermoegen-seite.css",
+    ":where(.personen-vermoegen-page) [aria-invalid=\"true\"]:where(:not(dialog, dialog *))",
     "box-shadow: 0 0 0 3px var(--bad) !important"
   ],
   [
@@ -199,7 +189,7 @@ export const SIMULATOR_FIELD_RENDERERS = ['monte-carlo-ui', 'simulator-main-3buc
 export const SIMULATOR_RESULT_RENDERERS = ['results-renderers', 'simulator-results', 'stress-replay-renderer', 'simulator-result-overview'].map(name => `app/simulator/${name}.js`);
 export const TOOL_RENDERERS = ['auto-optimize-renderer', 'auto_optimize_ui', 'simulator-heatmap', 'simulator-main-sweep-selftest', 'simulator-main-sweep-ui', 'simulator-optimizer', 'simulator-portfolio-chart', 'simulator-sweep', 'simulator-ui-pflege', 'simulator-visualization'].map(name => `app/simulator/${name}.js`);
 export const MANAGER_RENDERERS = ['app/profile/profile-asset-values.js', 'app/profile/profile-recovery-ui.js', ...['depot-tranchen-status', 'tranchen-manager-modal', 'tranchen-manager-page/state', 'tranchen-manager-page/helpers', 'tranchen-manager-page/controls', 'tranchen-manager-page/persistence-status', 'tranchen-manager-page/rendering', 'tranchen-manager-page/history', 'tranchen-manager-page/reconciliation-view', 'tranchen-manager-page/reconciliation', 'tranchen-manager-page/cash-posting', 'tranchen-manager-page/profile-values', 'tranchen-manager-page/tranches', 'tranchen-manager-page/quotes', 'tranchen-manager-page/recovery', 'tranchen-manager-page/bindings', 'tranchen-manager-page/people', 'tranchen-manager-page/views', 'tranchen-manager-page/startup', 'tranchen-manager-profiles', 'tranchen-manager-renderer', 'tranchen-manager-sale-dialog'].map(name => `app/tranches/${name}.js`)];
-export const SOURCE_PATHS = [...new Set([...PAGES, 'css/daten-sicherung.css', 'app/data/data-renderer.js', 'app/balance/balance-storage.js', 'app/balance/balance-reader.js', 'app/profile/profilverbund-balance-ui.js', 'app/shared/security-utils.js', 'app/simulator/simulator-backtest.js', 'app/simulator/simulator-main-init.js', 'app/profile/profile-manager.js', 'app/profile/profile-manager-bindings.js', 'app/profile/profile-recovery-ui.js', 'app/tranches/tranchen-manager-profiles.js', 'app/tranches/tranchen-startup-prices.js', 'css/personen-vermoegen.css', 'css/overview.css', 'app/overview/overview-renderer.js', 'app/shared/designsystem-selection-text.js', 'app/shared/designsystem-number-format.js', 'app/balance/balance-wealth-history-renderer.js', 'app/balance/balance-wealth-history-metrics.js', 'app/balance/balance-expenses-history-renderer.js', 'css/suite-frame.css', 'css/tokens.css', 'css/fonts.css', 'css/balance.css', 'simulator.css', 'app/balance/balance-main.js', 'app/shared/designsystem-icons.js', 'css/components.css', 'app/shared/field-state.js', 'app/shared/designsystem-chart-colors.js', ...BALANCE_RENDERERS, ...SIMULATOR_FIELD_RENDERERS, ...SIMULATOR_RESULT_RENDERERS, ...TOOL_RENDERERS, ...MANAGER_RENDERERS])];
+export const SOURCE_PATHS = [...new Set([...PAGES, 'css/daten-sicherung.css', 'app/data/data-renderer.js', 'app/balance/balance-storage.js', 'app/balance/balance-reader.js', 'app/profile/profilverbund-balance-ui.js', 'app/shared/security-utils.js', 'app/simulator/simulator-backtest.js', 'app/simulator/simulator-main-init.js', 'app/profile/profile-manager.js', 'app/profile/profile-manager-bindings.js', 'app/profile/profile-recovery-ui.js', 'app/tranches/tranchen-manager-profiles.js', 'app/tranches/tranchen-startup-prices.js', 'css/personen-vermoegen.css', 'css/personen-vermoegen-seite.css', 'css/handbuch.css', 'css/overview.css', 'app/overview/overview-renderer.js', 'app/shared/designsystem-selection-text.js', 'app/shared/designsystem-number-format.js', 'app/balance/balance-wealth-history-renderer.js', 'app/balance/balance-wealth-history-metrics.js', 'app/balance/balance-expenses-history-renderer.js', 'css/suite-frame.css', 'css/tokens.css', 'css/fonts.css', 'css/balance.css', 'simulator.css', 'app/balance/balance-main.js', 'app/shared/designsystem-icons.js', 'css/components.css', 'app/shared/field-state.js', 'app/shared/designsystem-chart-colors.js', ...BALANCE_RENDERERS, ...SIMULATOR_FIELD_RENDERERS, ...SIMULATOR_RESULT_RENDERERS, ...TOOL_RENDERERS, ...MANAGER_RENDERERS])];
 export const COLORS = {
     page: '#f1f2ee', surface: '#ffffff', 'surface-sunken': '#f4f5f1',
     'text-main': '#1d2830', 'text-muted': '#56626a', accent: '#7a5a1f',
@@ -219,9 +209,9 @@ export const FOUNDATION_ROLES = {
     'css/balance.css': { body: ['text-main', 'page'], '#btnJahresUpdate': ['text-main', 'surface'], '.btn.ds-button-primary': ['surface', 'text-main'], '.tranchen-warning': ['warn', null] },
     'simulator.css': { body: ['text-main', 'page'], '.panel': [null, 'surface'], fieldset: [null, 'surface-sunken'], ':where(.simulator-surface) button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item)': ['surface', 'text-main'], ':where(.simulator-surface) button:not([class*="ds-"]):not(.tab-btn):not(.scenario-list-item):not(.household-switch-button):not(.household-menu-item):disabled': ['text-muted', 'surface-sunken'], '.tranchen-warning': ['warn', null] },
     'css/overview.css': { '.overview-page': ['text-main', null], '.overview-pill': ['text-main', 'surface'] },
-    'Handbuch.html': { body: ['text-main', 'page'], '.hb-article': [null, 'surface'], '.hb-search': [null, 'surface'], '.step-number': ['surface', 'text-main'] },
+    'css/handbuch.css': { ':where(html[data-suite-page="handbook"]) body': ['text-main', 'page'], '.hb-article': [null, 'surface'], '.hb-search': [null, 'surface'], '.step-number': ['surface', 'text-main'] },
     'css/suite-frame.css': { '.suite-header': [null, 'surface'], '.suite-brand': ['text-main', null], '.suite-navigation': [null, 'surface'], '.suite-navigation a': ['text-main', null], '.suite-navigation a[aria-current="page"]': [null, 'surface-sunken'], '.suite-navigation-status': ['bad', 'surface'] },
-    'depot-tranchen-manager.html': { body: ['text-main', 'page'], '.container': [null, 'surface'], '.stat-card': ['text-main', 'surface-sunken'], '.stat-label': ['text-muted', null], '.btn-primary': ['surface', 'text-main'], '.btn-success': ['surface', 'good'], '.btn-danger': ['surface', 'bad'], '.btn-secondary': ['surface', 'text-main'], 'button:disabled': ['text-muted', 'surface-sunken'] }
+    'css/personen-vermoegen-seite.css': { 'body:where(.personen-vermoegen-page)': ['text-main', 'page'], '.container': [null, 'surface'], '.stat-card': ['text-main', 'surface-sunken'], '.stat-label': ['text-muted', null], '.btn-primary': ['surface', 'text-main'], '.btn-success': ['surface', 'good'], '.btn-danger': ['surface', 'bad'], '.btn-secondary': ['surface', 'text-main'], ':where(.personen-vermoegen-page) button:where(:not(dialog, dialog *, .ds-button-secondary, .ds-button-primary, .ds-button-danger)):disabled': ['text-muted', 'surface-sunken'] }
 };
 const PARENT_SELECTORS = ['html', 'body', '*', '.main-layout', '.form-column', '.container', '.hero', '.page-header', '.apps-grid', '.overview-heading p'];
 const withoutComments = source => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
@@ -272,7 +262,7 @@ export function validateComponents(sources) {
             check(new RegExp(`${name}\\.setAttribute\\(['"]aria-label['"],\\s*['"][^'"]*\\S[^'"]*['"]\\)`).test(source) || new RegExp(`${name}\\.ariaLabel\\s*=\\s*['"][^'"]*\\S[^'"]*['"]`).test(source), `Namenlose Symboltaste: ${path} ${name}`);
         }
     }
-    for (const path of ['css/components.css', 'css/overview.css', 'index.html', 'Handbuch.html']) {
+    for (const path of ['css/components.css', 'css/overview.css', 'index.html', 'Handbuch.html', 'css/handbuch.css']) {
         for (const rule of rules(path, sources[path])) {
             check(rule.declarations.opacity === undefined || Number(rule.declarations.opacity) === 1, `Text-/Elterndeckkraft: ${path} ${rule.selector}`);
             if (rule.declarations.color) {
@@ -770,7 +760,7 @@ export function validateTools(sources, fragments = []) {
         for (const rule of rules(path, sources[path])) {
             if (!/(?:chart-|heatmap-|backtest-|wealth-|expenses-year-bar|ds-tool|ao-)/.test(rule.selector)) continue;
             for (const [property, value] of rule.entries) {
-                if (/^(?:color|fill|stroke|background(?:-color)?|border-color|border-left-color)$/.test(property) && !/^(?:var\(--[\w-]+\)|none|inherit|currentColor|transparent)$/.test(value)) errors.push(`Grafikfarbe ohne Token: ${rule.selector}`);
+                if (/^(?:color|fill|stroke|background(?:-color)?|border-color|border-left-color)$/.test(property) && !/^(?:var\(--[\w-]+\)|none|inherit|currentColor|transparent)$/.test(value.replace(/\s*!important$/, ''))) errors.push(`Grafikfarbe ohne Token: ${rule.selector}`);
                 if ((property === 'color' || property === 'fill' && /(?:text|label)/.test(rule.selector)) && TEXT_ONLY_FORBIDDEN.test(value)) errors.push(`Grafik-Serientext: ${rule.selector}`);
                 if (property === 'opacity' && Number(value) !== 1 && rule.selector !== '.chart-svg .area-band') errors.push(`Grafik-Textdeckkraft: ${rule.selector}`);
             }
@@ -816,7 +806,7 @@ export function validateManagerRente(field) {
 }
 export function validateManager(sources, fragments = []) {
     const errors = [];
-    for (const path of ['depot-tranchen-manager.html', ...MANAGER_RENDERERS]) {
+    for (const path of ['depot-tranchen-manager.html', 'css/personen-vermoegen-seite.css', ...MANAGER_RENDERERS]) {
         const source = withoutComments(sources[path]);
         if (/(?<!&)#[\da-f]{3,8}\b|rgba?\(\s*\d|hsl\(\s*\d|(?:color|background(?:-color)?)\s*:\s*(?:white|black|red|green)\b/i.test(source)) errors.push(`Manager-Altpalette: ${path}`);
         if (/\.style\.opacity\s*=|(?:^|[;"'])\s*opacity\s*:/.test(source)) errors.push(`Manager-Textdeckkraft: ${path}`);
@@ -845,7 +835,7 @@ export function validateDataLayout(sources) {
             if (rule.selector === '.overview-grid') check(!/\b\d+(?:\.\d+)?px\b/.test(rule.declarations['grid-template-columns'] || ''), `Feste Seitenspalte: ${path}`);
         }
     }
-    for (const [path, container] of [['css/balance.css', 'balance-form'], ['depot-tranchen-manager.html', 'manager']]) {
+    for (const [path, container] of [['css/balance.css', 'balance-form'], ['css/personen-vermoegen-seite.css', 'manager']]) {
         check(sources[path].includes(`container: ${container} / inline-size;`) && sources[path].includes(`@container ${container}`), `Containerregel fehlt: ${container}`);
         for (const rule of rules(path, sources[path])) {
             if (/^(html|body)$/.test(rule.selector)) check(!/hidden|clip/.test(rule.declarations['overflow-x'] || rule.declarations.overflow || ''), `Globales Abschneiden: ${path}`);
@@ -858,7 +848,7 @@ export function validateDataLayout(sources) {
     }
     check(has('css/balance.css', '.wealth-scroll', 'overflow-x', 'auto'), 'Verlauf ohne Scrollkapsel');
     check(has('css/balance.css', '.expenses-table-wrap', 'overflow', 'auto'), 'Ausgaben ohne Scrollkapsel');
-    check(has('depot-tranchen-manager.html', '.table-scroll', 'overflow-x', 'auto'), 'Manager ohne Scrollkapsel');
+    check(has('css/personen-vermoegen-seite.css', '.table-scroll', 'overflow-x', 'auto'), 'Manager ohne Scrollkapsel');
     for (const id of ['managerWealthTable', 'expensesHistoryChart', 'expensesHistoryTable']) {
         const tag = sources[id.startsWith('expenses') ? 'Ausgaben.html' : 'depot-tranchen-manager.html'].match(new RegExp(`<div[^>]*id="${id}"[^>]*>`))?.[0] || '';
         check( /class="[^"]*\b(?:ds-table-scroll|expenses-table-region)\b/.test(tag) && tag.includes('tabindex="0"') && tag.includes('role="region"') && tag.includes('aria-label='), `Unbedienbare Verlaufskapsel: ${id}`);
@@ -902,13 +892,10 @@ export function validateDataLayout(sources) {
     check(has('css/balance.css', '.balance-page .expenses-table thead th', 'overflow-wrap', 'anywhere'), 'Profilname der Importmatrix wird abgeschnitten');
     check(!sources['Balance.html'].includes('id="expensesImportCard"') && /<select id="expensesYearSelect"[^>]* hidden/.test(sources['Ausgaben.html']), 'Jahresbrücke nicht verborgen oder zweiter Importweg erhalten');
     check(sources['css/overview.css'].includes('@container suite-content'), 'Übersicht misst den vorhandenen Rahmencontainer');
-    for (const [path, id] of [['depot-tranchen-manager.html', 'reconcileTrancheId']]) {
-        check(sources[path].includes(`<span id="${id}-fulltext" class="ds-selection-text">`), `Sichtbarer Auswahlvolltext fehlt: ${id}`);
-    }
     check(has('css/components.css', '.ds-selection-text', 'white-space', 'normal') && has('css/components.css', '.ds-selection-text', 'overflow-wrap', 'anywhere') && has('css/components.css', '.ds-selection-text', 'display', 'block'), 'Auswahlvolltext nicht sichtbar umbrechend');
     check(sources['app/tranches/tranchen-manager-page/startup.js'].includes('observeSelectionText(document.body)'), 'Managerauswahlen ohne vollständigen Anschluss');
     check(has('css/components.css', '.ds-selection-text[hidden]', 'display', 'none'), 'Passende Kurztexte werden sichtbar wiederholt');
-    for (const path of ['app/profile/profile-manager.js', 'app/tranches/tranchen-manager-page/reconciliation-view.js']) check(sources[path].includes('syncSelectionText(select'), `Optionsrefresh ohne Volltext: ${path}`);
+    for (const path of ['app/profile/profile-manager.js']) check(sources[path].includes('syncSelectionText(select'), `Optionsrefresh ohne Volltext: ${path}`);
     return errors;
 }
 
@@ -1067,7 +1054,7 @@ export function validatePersonenVermoegenLayout(sources) {
     }
     if (!within(node('managerHousehold'), planPanel) || within(node('managerHousehold'), personPanel)) errors.push('Personenseite: Haushaltskarten außerhalb des Planpanels');
     if (/from\s+['"][^'"]*profile-manager\.js/.test(MANAGER_RENDERERS.map(path => sources[path]).join('\n'))) errors.push('Personenseite: Startseitenbootstrap importiert');
-    for (const id of ['managerDepotTitle', 'managerDepotProfileName', 'trancheModalDescription', 'trancheFormPreview', 'dismissTrancheModalBtn', 'saveTrancheBtn', 'saleModal', 'saleStep1', 'saleStep2', 'saleStep3', 'saleBackBtn', 'saleNextBtn', 'retrySaleSaveBtn', 'managerPeopleModal', 'managePeopleBtn', 'managerPeopleList', 'managerPersonName']) {
+    for (const id of ['managerDepotTitle', 'managerDepotProfileName', 'trancheModalDescription', 'trancheFormPreview', 'dismissTrancheModalBtn', 'saveTrancheBtn', 'managerPeopleModal', 'managePeopleBtn', 'managerPeopleList', 'managerPersonName']) {
         if (!html.includes(`id="${id}"`)) errors.push(`Personenseite: Depot-/Dialoghost fehlt: ${id}`);
     }
     for (const id of ['category', 'type']) {

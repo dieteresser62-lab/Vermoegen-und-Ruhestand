@@ -17,17 +17,18 @@ import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
 import { exportProfilesBundle, importProfilesBundle } from '../app/profile/profile-bundle-io.js';
 import { buildFullPersistenceBackup, normalizeFullPersistenceBackup, validatePersistenceDomainRecords } from '../app/shared/persistence-backup.js';
 
+import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const controls = JSON.parse(readFileSync(new URL('./fixtures/zg-1-byte-controls.json', import.meta.url)));
 for (const status of ['married', 'unmarried']) {
     const { inputs, state } = inheritanceCase(status);
-    assertEqual(hash(deathYear(inputs, state)), readEV1bReferences(controls[status]), `${status}: vollständiges Todesjahr bytegleich zum Ausgangsstand`);
+    assertEqual(hash(deathYear(inputs, state)), readFI1References(readEV1bReferences(controls[status])), `${status}: vollständiges Todesjahr bytegleich zum Ausgangsstand`);
 }
 const married = { status: 'married', maritalPropertyRegime: 'community' };
 const zg1bControls = JSON.parse(readFileSync(new URL('./fixtures/zg-1b-byte-controls.json', import.meta.url)));
 for (const kind of Object.keys(zg1bControls.hashes)) {
     const { inputs, state } = zg1bControlCase(kind);
-    assertEqual(hash(deathYear(inputs, state)), zg1bControls.hashes[kind], `ZG-1b ${kind}: vollständiges Todesjahr bytegleich`);
+    assertEqual(hash(deathYear(inputs, state)), readFI1References(zg1bControls.hashes[kind]), `ZG-1b ${kind}: vollständiges Todesjahr bytegleich`);
 }
 function estate({ regime = 'community', deceased = 2200000, survivor = 400000, factor = 2, percent = 100, rule, homes = [], inflows = [] } = {}) {
     const inputs = { partnership: { schemaVersion: 1, status: 'married', maritalPropertyRegime: regime, inheritance: {},

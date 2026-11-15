@@ -464,7 +464,7 @@ try {
             dynamicFlex: matching === 'active', goGoMultiplier: matching === false ? 1.17 : 1.1 };
         sample.records[HOUSEHOLD_PLAN_KEY] = buildPlanRecord(sample.records[HOUSEHOLD_PLAN_KEY], [{ scope: sample.scope, values }]).raw;
         const f = await overviewAnnualFixture({ sample }), before = await storageEvidence(f), gates = [];
-        const baselineNeed = Object.fromEntries(['floorBedarf', 'flexBedarf', 'minimumFlexAnnual'].map(path => [path, Math.ceil(values[path] * (1 + annualTestMarketData.inflation.rate / 100) / 1000) * 1000]));
+        const baselineNeed = Object.fromEntries(['floorBedarf', 'flexBedarf', 'minimumFlexAnnual'].map(path => [path, Math.round(values[path] * (1 + annualTestMarketData.inflation.rate / 100))]));
         const userPatch = patch => Object.fromEntries(Object.entries(patch || {}).filter(([path, value]) => baselineNeed[path] !== value));
         let binding;
         const dialog = createAnnualCloseDialog({ document: f.doc, getModel: () => f.model,
@@ -682,7 +682,9 @@ try {
         assertEqual(JSON.stringify(calls), JSON.stringify({ inflation: manual ? 2 : 1, etf: manual ? 2 : 1, cape: manual ? 2 : 1 }), 'Öffnen und ausdrücklicher Retry bereiten jeweils die bestehenden drei Abrufe vor');
         if (!manual) for (const id of ['annualHandInflation', 'annualHandPrice', 'annualHandCape']) {
             const input = f.doc.getElementById(id);
-            assert(input.disabled && input.parent.hidden, 'Erfolgreicher automatischer Pflichtwert bietet keine Handersetzung an');
+            // VN-3 (Gemini Befund 8): Das Kursfeld sitzt im €-Rahmen; ausgeblendet wird wie bisher seine Feldgruppe.
+            const group = input.parent.className === 'ds-unit-frame' ? input.parent.parent : input.parent;
+            assert(input.disabled && group.hidden, 'Erfolgreicher automatischer Pflichtwert bietet keine Handersetzung an');
         }
         assertEqual(row('market').dataset.state, 'done', 'Vollständige automatische oder manuelle Marktdaten sind bereit');
         assert(!manual || dialogElements(row('market')).some(node => node.textContent.includes('Manuelle Ergänzung')), 'Handwerte zeigen ihre Herkunft');
@@ -737,7 +739,9 @@ try {
         invalid.value = '999999'; await invalid.fire('input');
         await annualUntil(() => root.querySelector('[data-annual-plan-status]').textContent.includes('Mindest-Flex'));
         assert(f.doc.getElementById('annualConfirmBtn').disabled, 'Ungültige Planwerte sperren sichtbar');
-        invalid.value = '8000'; await invalid.fire('input'); await prepareCloseFixture(globalThis.document); await annualUntil(() => !f.doc.getElementById('annualConfirmBtn').disabled);
+        // GN-1: Zurück auf die genaue Empfehlung (Mindest-Flex × Inflation, ganze Euro); ein getippter glatter Betrag wäre eine bewusste Anpassung.
+        const storedMinimum = Object.values(JSON.parse(JSON.parse(before)[HOUSEHOLD_PLAN_KEY]).entries)[0].values.minimumFlexAnnual;
+        invalid.value = String(Math.round(storedMinimum * (1 + annualTestMarketData.inflation.rate / 100))); await invalid.fire('input'); await prepareCloseFixture(globalThis.document); await annualUntil(() => !f.doc.getElementById('annualConfirmBtn').disabled);
         if (action !== 'adjust') {
             await root.querySelector('[data-annual-plan-discard]').fire('click'); await prepareCloseFixture(globalThis.document); await annualUntil(() => !f.doc.getElementById('annualConfirmBtn').disabled);
             assert(field.value !== '21000', 'Verwerfen stellt den ursprünglichen Planwert wieder her');

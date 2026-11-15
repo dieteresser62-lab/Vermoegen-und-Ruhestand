@@ -36,6 +36,7 @@ import { normalizeWidowOptions } from '../app/simulator/simulator-sweep-utils.js
 import { createStressReplayCaptureRequest } from '../app/simulator/stress-replay-path-materializer.js';
 import { DEFAULT_RESIDENTIAL_COMPONENTS, residentialMonthly } from '../app/shared/household-care-values.js';
 
+import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const readRNG1Hash = before => readQSCReferences(readAS1Hash(readEP1Hash(readBeforeEP1Hash(before))));
 const careInputs = () => ({ ...structuredClone(fixtureInputs), startAlter: 70,
     startFloorBedarf: 24000, startFlexBedarf: 12000,
@@ -229,7 +230,7 @@ for (const couple of [false, true]) {
     };
     for (const [mode, result] of Object.entries(outputs)) {
         const key = `${couple ? 'couple' : 'single'}-${mode}`;
-        assertEqual(createHash('sha256').update(JSON.stringify(withLegacyCareProvenance(result))).digest('hex'), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(noCareHashes[key])))))))))),
+        assertEqual(createHash('sha256').update(JSON.stringify(withLegacyCareProvenance(result))).digest('hex'), readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(noCareHashes[key]))))))))))),
             `${key}: vollständige Ausgabe ohne Pflege, nur vier FR-41-Herkunftsfelder zurückgeführt, samt KG-1-Texten`);
     }
 }

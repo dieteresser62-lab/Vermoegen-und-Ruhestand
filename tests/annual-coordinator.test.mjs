@@ -198,7 +198,7 @@ try {
         assertEqual(preparations, 1, origin + ': genau eine bestätigte Vorbereitung');
         const after = await env.persistence.readPersistedRecords();
         assertEqual(JSON.parse(after[CONFIG.STORAGE.LS_KEY]).lastState.cumulativeInflationFactor, 1 * 1.0214, origin + ': Inflation genau einmal');
-        assertEqual(JSON.parse(after.household_plan_v1).entries[sample.scope.key].values.floorBedarf, 31000, origin + ': einmal fortgeschriebener Bedarf als aufgerundete Empfehlung');
+        assertEqual(JSON.parse(after.household_plan_v1).entries[sample.scope.key].values.floorBedarf, 30642, origin + ': einmal fortgeschriebener Bedarf als genaue Empfehlung (30.000 × 1,0214)');
         assertEqual(env.batches.filter(batch => batch.upserts.some(([key]) => key === 'annual_plan_record_v1')).length, 1, origin + ': genau ein Fachbatch');
         assertEqual((await env.create().close()).status, 'already_committed', origin + ': neue Instanz bleibt idempotent');
         assertEqual((await service.close()).status, 'already_committed', origin + ': weiterer Aufruf bleibt idempotent');

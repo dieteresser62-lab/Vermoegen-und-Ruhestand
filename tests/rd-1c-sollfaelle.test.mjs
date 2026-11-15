@@ -31,27 +31,28 @@ const read = (shown, id) => clean(shown.doc.getElementById(id).textContent);
     entry.adopted.action.quellen.push({ ...lot, name: 'Resttranche', brutto: 400, steuer: 0, netto: 400 });
     records[ANNUAL_PLAN_RECORD_KEY] = JSON.stringify(record);
     const shown = await renderCard(records);
-    assert(shown.card.includes('Resttranche500 €offen') && !shown.card.includes('Erledigt'), `Erledigt: Resttranche 400 € ohne Verkauf steht offen (${shown.card.slice(0, 400)})`);
+    assert(/Resttranche[^€]*400 €offen/.test(shown.card) && !shown.card.includes('Erledigt'), `Erledigt: Resttranche 400 € ohne Verkauf steht offen (${shown.card.slice(0, 400)})`);
 }
 
 // 2 (P2-2): Käufe aus der Liquidität abgerundet; die angezeigten Beträge unterschreiten die eiserne Reserve nicht.
 const martinPetra = await renderCard(createMusterHaushaltRecords(DATE, 'martin-petra'));
 {
-    assert(martinPetra.card.includes('Aktien kaufen120.000 €') && martinPetra.card.includes('In Aktien120.000 €'),
-        `Kauf: Martin und Petra genau 122.000 €, angezeigt 120.000 € (${martinPetra.card.slice(0, 220)})`);
-    assertEqual(read(martinPetra, 'balanceReserveParts'), 'Tagesgeld130.000 €→10.000 €Geldmarkt0 €→0 €', 'Kauf: Tagesgeld 130.000 − 120.000 = 10.000 €');
+    // VK-3d P4: Der Kopf ist die Summe der Zeilen je Person (100.000 + 22.000 €), nicht mehr der abgerundete Gesamtbetrag (120.000 €).
+    assert(martinPetra.card.includes('Aktien kaufenca. 122.000 €') && martinPetra.card.includes('In Aktien122.000 €'),
+        `Kauf: Martin und Petra genau 122.000 €, angezeigt als Summe der Zeilen 122.000 € (${martinPetra.card.slice(0, 220)})`);
+    assertEqual(read(martinPetra, 'balanceReserveParts'), 'Tagesgeld130.000 €→8.000 €Geldmarkt0 €→0 €', 'Kauf: Tagesgeld 130.000 − 122.000 = 8.000 €');
     assert(read(martinPetra, 'balanceReserveTarget').includes('= 8.000 €') && read(martinPetra, 'balancePersonalCashTargets').endsWith('Summe 8.000 €'),
-        'Kauf: 10.000 € liegen über der eisernen Reserve 8.000 €');
+        'Kauf: 8.000 € unterschreiten die eiserne Reserve 8.000 € nicht');
     assertEqual(read(martinPetra, 'balanceActionAmount'), '120.000 €', 'Kauf: Vorschauzeile abgerundet (genau 121.600 €)');
     const sophie = await renderCard(createMusterHaushaltRecords(DATE, 'sophie'));
-    assert(sophie.card.includes('Aktien kaufen9.000 €') && read(sophie, 'balanceReserveParts') === 'Tagesgeld15.000 €→6.000 €Geldmarkt0 €→0 €',
+    assert(sophie.card.includes('Aktien kaufenca. 9.000 €') && read(sophie, 'balanceReserveParts') === 'Tagesgeld15.000 €→6.000 €Geldmarkt0 €→0 €',
         'Kauf: Sophie 9.400 → 9.000 €, Tagesgeld 15.000 − 9.000 = 6.000 € = angezeigtes Ziel');
     // 3 (P2-3): Finanzierter Flex gleich dem angezeigten Wunschbedarf, wenn er ihn genau erreicht. Das Budget wird nur abgerundet (RD-1d).
     const rows = read(sophie, 'balanceNeedRows');
     assert(rows.includes('Wunschbedarf (Flex)700 € / Monat') && rows.includes('einschließlich Rentenanteil700 € / Monat'),
         `Flex: Sophie genau 667 € und 667 € → beide 700 € (${rows})`);
     // RD-1d: Das Budget wird immer nur abgerundet; Regel 4 hebt es nie an (kein Paar Budget ↔ Bedarf).
-    assertEqual(`${read(sophie, 'balanceMonthlyBudget')} · ${read(sophie, 'balanceAnnualBudget')}`, '2.900 € · 34.800 € im Jahr', 'Budget: Sophie 2.967 € → 2.900 €, Jahr 34.800 €, nur abgerundet');
+    assertEqual(`${read(sophie, 'balanceMonthlyBudget')} · ${read(sophie, 'balanceAnnualBudget')}`, '2.800 € · 33.600 € im Jahr', 'Budget: Sophie 2.850 € → 2.800 €, Jahr 33.600 €, nur abgerundet (GN-1)');
 }
 
 // 4 (P3 displayedReserves): Regel 4 nur bei erreichtem Ziel; nie negativ; ohne Änderung wie heute.
@@ -76,7 +77,7 @@ const martinPetra = await renderCard(createMusterHaushaltRecords(DATE, 'martin-p
 {
     const text = clean(createAnnualPlanResult({ doc: new MockDocument(), model: { summary: { monthlyBudget: 5100 }, annual: {} },
         result: { year: 2027, targetYear: 2026, planLabel: 'Plan 2027', needs: [{ id: 'floorBedarf', after: 31000 }, { id: 'flexBedarf', after: 31000 }], inflation: { rate: 2 } } }).textContent);
-    assert(text.includes('62.000 € im Jahr'), `Jahresabschluss: beschlossener Bedarf 62.000 € = 31.000 + 31.000 € (${text.slice(0, 300)})`);
+    assert(text.includes('65.000 € im Jahr'), `Jahresabschluss (GN-1): Bedarf 65.000 € = 32.500 + 32.500 € (angezeigte Teile) (${text.slice(0, 300)})`);
 }
 
 // 6 (P3 Wahl und Übersicht): gleich aussehende Optionen genau; „geändert“ nur bei geändertem Text.
@@ -122,7 +123,7 @@ const martinPetra = await renderCard(createMusterHaushaltRecords(DATE, 'martin-p
         return { records, action };
     };
     const open = await renderCard(withGold(undefined, liquidity => ({ gold: 10300, liquiditaet: liquidity - 10300 })).records);
-    assert(open.card.includes('Aktien verkaufen89.500 €') && open.card.includes('In Gold10.000 €') && open.card.includes('der Rest in den Geldmarkt79.500 €'),
+    assert(open.card.includes('Aktien verkaufenca. 89.500 €') && open.card.includes('In Gold10.000 €') && open.card.includes('der Rest in den Geldmarkt79.500 €'),
         `Kaufanteil offen: Gold 10.300 → 10.000 €, Rest 89.500 − 10.000 = 79.500 € (${open.card.slice(0, 420)})`);
     const partial = await renderCard(withGold('teilweise', liquidity => ({ gold: 10300, liquiditaet: liquidity - 10300 })).records);
     assert(partial.card.includes('In Gold10.000 €'), `Kaufanteil teilweise: Gold 10.300 → 10.000 € (${partial.card.slice(0, 420)})`);
@@ -132,14 +133,14 @@ const martinPetra = await renderCard(createMusterHaushaltRecords(DATE, 'martin-p
     const { createTodoResult } = await import('../app/shared/annual-todo-view.js');
     const result = clean(createTodoResult(new MockDocument(), projectAnnualTodoPlan({ confirmed: { year: 2027, action }, people })).textContent);
     assert(result.includes('In Gold10.000 €'), `Kaufanteil im Jahresabschluss: Gold 10.300 → 10.000 € (${result.slice(0, 300)})`);
-    // Kleiner Kaufanteil (Sophie: Aktien 9.100 € und Gold 300 €): Gold steht in ganzen Euro, nicht als 0 €.
+    // Kleiner Kaufanteil (Sophie: Aktien 9.100 € und Gold 300 €): Gold steht nicht als 0 €; seit Ergänzung 4 FR-78 abgerundet auf 250 €.
     const records = createMusterHaushaltRecords(DATE, 'sophie');
     const record = JSON.parse(records[ANNUAL_PLAN_RECORD_KEY]), sophieAction = Object.values(record.entries)[0].adopted.action;
     sophieAction.verwendungen = { ...sophieAction.verwendungen, aktien: 9100, gold: 300 };
     records[ANNUAL_PLAN_RECORD_KEY] = JSON.stringify(record);
     const sophie = await renderCard(records);
-    assert(sophie.card.includes('In Aktien9.000 €') && sophie.card.includes('In Gold300 €') && !sophie.card.includes('In Gold0 €'),
-        `Kleiner Kaufanteil: Gold 300 € statt 0 € (${sophie.card.slice(0, 300)})`);
+    assert(sophie.card.includes('In Aktien9.000 €') && sophie.card.includes('In Gold250 €') && !sophie.card.includes('In Gold0 €'),
+        `Kleiner Kaufanteil: Gold 300 € → 250 € statt 0 € (${sophie.card.slice(0, 300)})`);
 }
 
 // RD-1f (P2-E1): Mit Kaufanteil ist der Rest angezeigter Verkauf minus die übrigen Teile; die Anteile ergeben den Verkauf.
@@ -147,14 +148,15 @@ const martinPetra = await renderCard(createMusterHaushaltRecords(DATE, 'martin-p
     const { projectAnnualTodoPlan } = await import('../app/balance/annual-todo.js');
     const { createTodoResult } = await import('../app/shared/annual-todo-view.js');
     const people = [{ id: 'muster_a', name: 'Max' }, { id: 'muster_b', name: 'Erika' }];
-    for (const [gold, rest] of [[14900, '75.500'], [10300, '79.500'], [300, '89.200']]) {
+    for (const [gold, rest] of [[14900, '75.500'], [10300, '79.500'], [300, '89.250']]) {
         const records = createMusterHaushaltRecords(DATE, 'max-erika');
         const record = JSON.parse(records[ANNUAL_PLAN_RECORD_KEY]), action = Object.values(record.entries)[0].adopted.action;
         action.verwendungen = { gold, liquiditaet: action.verwendungen.liquiditaet - gold };
         records[ANNUAL_PLAN_RECORD_KEY] = JSON.stringify(record);
-        const goldShown = gold === 300 ? '300' : (Math.floor(gold / 1000) * 1000).toLocaleString('de-DE');
+        // Ergänzung 4 FR-78: 300 € → 250 € (Stufe 250 € unter 5.000 €).
+        const goldShown = gold === 300 ? '250' : (Math.floor(gold / 1000) * 1000).toLocaleString('de-DE');
         const card = (await renderCard(records)).card;
-        assert(card.includes('Aktien verkaufen89.500 €') && card.includes(`In Gold${goldShown} €`) && card.includes(`der Rest in den Geldmarkt${rest} €`),
+        assert(card.includes('Aktien verkaufenca. 89.500 €') && card.includes(`In Gold${goldShown} €`) && card.includes(`der Rest in den Geldmarkt${rest} €`),
             `Anteile Karte: Gold ${gold} → ${goldShown} € + ${rest} € = 89.500 € (${card.slice(0, 420)})`);
         const result = clean(createTodoResult(new MockDocument(), projectAnnualTodoPlan({ confirmed: { year: 2027, action }, people })).textContent);
         assert(result.includes(`In Gold${goldShown} €`) && result.includes(`der Rest in den Geldmarkt${rest} €`), `Anteile Jahresabschluss: Gold ${gold} → ${goldShown} € + ${rest} €`);

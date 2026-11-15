@@ -2,7 +2,6 @@ import { balanceCareSettings } from '../shared/person-data-status.js';
 import { readBalanceHouseholdPlan } from '../profile/household-plan.js';
 import { prepareAnnualNeeds } from './balance-annual-inflation.js';
 import { UIUtils } from './balance-utils.js';
-import { roundAnnualSuggestion } from '../shared/annual-needs-review.js';
 import { projectPerson, projectPersonPension } from '../profile/profile-person-data.js';
 import { readBalancePersonStatus } from '../shared/person-data-status.js';
 import { readProfilePersonFromStorage } from '../profile/profile-state.js';
@@ -52,13 +51,14 @@ export function projectAnnualPreview({ targetYear, inputs, inflation, entries, c
  * @param options2 Optionen und Abhängigkeiten.
  * @returns Ergebnis der bestehenden Operation.
  */
-/** S7: Der neue Bedarf ist die auf volle 1.000 € aufgerundete Inflationsfortschreibung des alten.
+/** S7: Belege vor GN-1 (12.11.2026) speicherten die auf volle 1.000 € aufgerundete Inflationsfortschreibung. Seitdem wird genau
+ * gespeichert (FR-68 Punkt 7); die Prüfung erkennt nur noch diese alten Belege, damit ihre Herleitung die Rundung weiter nennt.
  * @param {number} before Bedarf vorher. @param {number} after Bedarf nachher. @param {number} [rate] Inflation in %.
  * @returns {boolean} */
 export function annualNeedRoundedUp(before, after, rate) {
     if (![before, after, rate].every(Number.isFinite)) return false;
     const projected = before * (1 + rate / 100);
-    return after > projected + 0.005 && after === roundAnnualSuggestion(projected);
+    return after > projected + 0.5 && after === Math.ceil(projected / 1000) * 1000;
 }
 
 /** @param {{id: string, before: number, after: number}} need @param {{inflation?: Partial<import('../../typcheck/balance-ui.js').InflationResult>, targetYear?: number, adjustedFields?: string[]}} [options] @returns {string} */

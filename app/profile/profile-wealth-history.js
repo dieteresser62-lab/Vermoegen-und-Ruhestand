@@ -149,9 +149,10 @@ export function captureSaleWealthLots(raw, beforeTranches, afterTranches, tranch
  * @param trancheId Kennung der betroffenen Tranche.
  * @param kind Gewählte Art der Korrektur.
  * @param date Lokaler Kalendertag.
+ * @param {{allowMissingPurchaseDate?: boolean}} [options] Stückzahlkorrektur ohne Kaufdatum (nur „Tranche im Detail“).
  * @returns Korrigierte Stammdaten oder null ohne passenden Korrekturfall.
  */
-export function correctWealthLot(copies, current, trancheId, kind, date = localHistoryDate()) {
+export function correctWealthLot(copies, current, trancheId, kind, date = localHistoryDate(), { allowMissingPurchaseDate = false } = {}) {
     assertWealthLots(copies); historyDay(date);
     const merged = mergeWealthLots(copies, current);
     const lot = merged.find(copy => copy.tranche.trancheId === trancheId);
@@ -159,7 +160,9 @@ export function correctWealthLot(copies, current, trancheId, kind, date = localH
     if (!lot || lot.status !== 'unknown') return null;
     const next = structuredClone(copies);
     if (kind === 'correct' && live) {
-        historyDay(live.purchaseDate);
+        // Die Verlaufsreparatur verlangt ein Kaufdatum. VK-3b (Gutachten VK3 Befund 2): Die Stückzahlkorrektur in „Tranche im Detail“ gilt
+        // auch für Bestandstranchen ohne Kaufdatum („Kaufdatum fehlt“); dort wird nur ein vorhandenes Datum geprüft.
+        if (live.purchaseDate || !allowMissingPurchaseDate) historyDay(live.purchaseDate);
         next.lots[trancheId] = { tranche: { ...live }, remainingShares: live.shares, status: 'present',
             capturedAt: lot.capturedAt, manualCorrectionAt: date };
     } else if (kind === 'discard' && !live) delete next.lots[trancheId];

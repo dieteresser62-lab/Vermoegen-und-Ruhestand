@@ -50,8 +50,9 @@ detailed.confirmed.action.quellen[0] = { ...detailed.confirmed.action.quellen[0]
     name: 'Muster Aktien-ETF', isin: 'DE000TEST123', netto: 1000.49 };
 const detailedBytes = JSON.stringify(detailed);
 renderer.renderAnnualAction(detailed);
-assert(texts().includes('Max') && texts().includes('Muster Aktien-ETF') && texts().includes('1.500 €'), 'Planzeile nennt Person, Wertpapier und ganze Euro (1.000,49 € aufgerundet, FR-78)');
-assert(!texts().includes('DE000TEST123') && !texts().includes('1.000,49'), 'ISIN und Cent stehen nicht auf der Karte');
+assert(texts().includes('Max') && texts().includes('Muster Aktien-ETF') && texts().includes('1.250 €'), 'Planzeile nennt Person, Wertpapier und ganze Euro (1.000,49 € aufgerundet, FR-78, Stufe 250 €)');
+// FR-79 Punkt 2: Die Karte nennt je Planzeile das Wertpapier mit Bestand und ISIN; Cent bleiben in „Details & Drucken“.
+assert(texts().includes('DE000TEST123') && !texts().includes('1.000,49'), 'ISIN auf der Karte (FR-79), Cent nicht');
 assert(renderer.planDetails.text.includes('Max | Muster Aktien-ETF · DE000TEST123'), 'Details & Drucken nennt Person, Wertpapier und ISIN');
 // WT-1b (Gutachten WT1-FABLE Befund 4): die in WT-1 gestrichene Prüfung wieder aufgenommen.
 assert(renderer.planDetails.text.includes('DE000TEST123') && renderer.planDetails.text.includes('1.000,49 €'), 'Details erhalten ISIN und Cent-Netto');

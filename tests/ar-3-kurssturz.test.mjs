@@ -26,7 +26,9 @@ const basis = JSON.parse(fs.readFileSync(new URL('./fixtures/ar-3-muster-basis.j
 let compared = 0;
 for (const household of MUSTER_HAUSHALTE) for (const variant of musterVarianten(household.id)) {
     const key = `${household.id}:${variant.id}`;
-    if (key === 'max-erika:kurssturz' || key === 'max-erika:teilweise') continue;
+    // TRG-1: „Martin trägt“ ist jünger als die AR-3-Basis.
+    // FI-1: „Nachkäufe desselben ETF“ ist neu und hat keinen Ausgangsstand vor AR-3.
+    if (key === 'max-erika:kurssturz' || key === 'max-erika:teilweise' || key === 'martin-petra:traegt' || key === 'max-erika:nachkauf') continue;
     const start = createMusterHaushaltRecords('2026-11-04', household.id, variant.id);
     // FR-73: helga-werner:haus-pg3 rechnet die heutige Pflege selbst; seit PFA-3 trägt die Variante den Grundbedarf ohne Pflege (36.000 €),
     // seit PFA-5 nennt ihr Jahresplanbeleg das Liquiditätsziel mit fortgeschriebenen Folgejahreseinkünften (124.700 € statt 129.600 €).

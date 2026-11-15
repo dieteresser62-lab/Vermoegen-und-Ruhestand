@@ -151,7 +151,10 @@ export function refreshAssumptionFillStatus(doc = globalThis.document) {
         const amount = Number(/** @type {HTMLInputElement} */ (doc.getElementById('pflegeMaxFloor'))?.value);
         const drift = Number(/** @type {HTMLInputElement} */ (doc.getElementById('pflegeKostenDrift'))?.value);
         const number = value => Number.isFinite(value) ? value.toLocaleString('de-DE') : '—';
-        const text = active ? `${model} · Deckel zu Hause ${number(amount)} € pro Jahr je Person · Kostenanstieg Inflation + ${number(drift)} %`
+        const until = Number(/** @type {HTMLInputElement} */ (doc.getElementById('pflegeKostenDriftBis'))?.value);
+        const after = Number(/** @type {HTMLInputElement} */ (doc.getElementById('pflegeKostenDriftDanach'))?.value);
+        const rise = Number.isFinite(after) && Number.isFinite(until) && after !== drift ? `Inflation + ${number(drift)} % bis ${until}, danach + ${number(after)} %` : `Inflation + ${number(drift)} %`;
+        const text = active ? `${model} · Deckel zu Hause ${number(amount)} € pro Jahr je Person · Kostenanstieg ${rise}`
             : doc.getElementById('simCareTodaySummary')?.hidden === false
                 ? 'Zufällige Pflegeeintritte ausgeschaltet. Pflegegrad heute wird weiter gerechnet.'
                 : 'Pflegefälle werden nicht gerechnet.';

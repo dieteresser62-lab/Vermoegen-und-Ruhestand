@@ -12,22 +12,36 @@ export function materialProfileActions(entries) {
     return Array.isArray(entries) && entries.some(entry => hasMeaningfulFlow(entry?.action)) ? entries : null;
 }
 
-/** @param {import('../../typcheck/balance-ui.js').Action} action @param {import('../../typcheck/balance-ui.js').Action} uiAction @param {import('../../typcheck/balance-ui.js').ActionEntry[]} [profileEntries] @returns {import('../../typcheck/balance-ui.js').Summary} */
-export function summarizeBalanceAction(action, uiAction, profileEntries = null) {
+const positive = value => Number.isFinite(value) && value > 0 ? value : 0;
+/** Dargestellte Aktionen und ihre Verwendungen ohne internen Liquiditätsausgleich (gemeinsam für Zusammenfassung und Kaufsumme). */
+function displayedUses(uiAction, profileEntries) {
     const profiles = materialProfileActions(profileEntries);
     // Der Detailrenderer ersetzt die Gesamtaktion durch materielle Profilaktionen.
     // Der in uiAction integrierte Gesamttransfer darf dann nicht zusätzlich zählen.
     const actions = profiles ? profiles.map(entry => entry?.action || {}) : [uiAction];
-    const sources = actions.flatMap(item => Array.isArray(item.quellen) ? item.quellen : []);
-    const positive = value => Number.isFinite(value) && value > 0 ? value : 0;
-    const cash = q => ['liquiditaet', 'geldmarkt'].includes(q.kind) || q.source === 'Liquidität';
-    const external = sources.filter(q => !cash(q) && positive(q.brutto) > 0);
     const uses = key => actions.reduce((sum, item) => {
         const transfer = item.internalCashRebalance;
         const internal = key === 'liquiditaet' && transfer?.to === 'Tagesgeld' ? transfer.netto
             : key === 'geldmarkt' && transfer?.to === 'Geldmarkt-ETF' ? transfer.amount : 0;
         return sum + positive((item.verwendungen?.[key] || 0) - internal);
     }, 0);
+    return { profiles, actions, uses };
+}
+
+/** GN-2d Nachtrag 1: gesamter Kauf der dargestellten Handlung (Gold + Aktien + Anleihen), nicht nur der Betrag der Hauptzeile.
+ * Eigene Funktion, damit die Zusammenfassung (Übersicht, Prüfsummen) unverändert bleibt.
+ * @param {import('../../typcheck/balance-ui.js').Action} uiAction @param {import('../../typcheck/balance-ui.js').ActionEntry[]} [profileEntries] @returns {number} */
+export function balancePurchaseTotal(uiAction, profileEntries = null) {
+    const { uses } = displayedUses(uiAction || {}, profileEntries);
+    return uses('gold') + uses('aktien') + uses('bonds');
+}
+
+/** @param {import('../../typcheck/balance-ui.js').Action} action @param {import('../../typcheck/balance-ui.js').Action} uiAction @param {import('../../typcheck/balance-ui.js').ActionEntry[]} [profileEntries] @returns {import('../../typcheck/balance-ui.js').Summary} */
+export function summarizeBalanceAction(action, uiAction, profileEntries = null) {
+    const { profiles, actions, uses } = displayedUses(uiAction, profileEntries);
+    const sources = actions.flatMap(item => Array.isArray(item.quellen) ? item.quellen : []);
+    const cash = q => ['liquiditaet', 'geldmarkt'].includes(q.kind) || q.source === 'Liquidität';
+    const external = sources.filter(q => !cash(q) && positive(q.brutto) > 0);
     const externalPurchase = uses('gold') + uses('aktien') + uses('bonds');
     // Transfers pro dargestellter Aktion zählen: Cash verschiedener Profile
     // darf nicht nachträglich zu einer erfundenen Umschichtung gepaart werden.

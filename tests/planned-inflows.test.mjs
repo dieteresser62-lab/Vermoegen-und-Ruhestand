@@ -68,6 +68,7 @@ import { renderProtocolTable } from '../app/simulator/protocol-renderer.js';
 import { playFixture } from './helpers/probelauf-area-fixture.mjs';
 import { simulatorDocument } from './simulator-page-fixture.mjs';
 
+import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const readRNG1Hash = before => readQSCReferences(readAS1Hash(readEP1Hash(readBeforeEP1Hash(before))));
 const incomeEntries = rows => rows.map((row, index) => ({ id: `test-${index + 1}`, monat: `${row.year}-01`, betrag: row.amount, bezeichnung: row.label || '' }));
 const same = (a, b, message) => assertEqual(JSON.stringify(a), JSON.stringify(b), message);
@@ -285,11 +286,11 @@ try {
         const legacyPayload = { rows: backtest(legacy).rows, path0: legacyChunk.runMeta.find(run => run.index === 0).logDataRows };
         assertEqual(carePathReferences.presets[preset].legacyPayload.beforeHistoricalSha256,
             afterCareDeathChange(readQSCReferences(readKG1Hash(reference.after))), `${preset}: historische Referenz mit alten Flex-Werten bleibt erhalten`);
-        assertEqual(createHash('sha256').update(JSON.stringify(legacyPayload)).digest('hex'), readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].legacyPayload.afterSha256)))))))))), `${preset}: vollständiger PM-1c-Pfad mit alten Flex-Werten`);
+        assertEqual(createHash('sha256').update(JSON.stringify(legacyPayload)).digest('hex'), readFI1References(readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].legacyPayload.afterSha256))))))))))), `${preset}: vollständiger PM-1c-Pfad mit alten Flex-Werten`);
         assertEqual(JSON.stringify(payload.rows), JSON.stringify(legacyPayload.rows), `${preset}: Backtest-Jahreszeilen ohne Pflege bleiben gleich`);
         assertEqual(carePathReferences.presets[preset].payload.beforeHistoricalSha256,
             afterCareDeathChange(readQSCReferences(readKG1Hash(flexReference.after))), `${preset}: historische FR-39/FR-40-Vollreferenz bleibt erhalten`);
-        assertEqual(hash, readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].payload.afterSha256)))))))))), `${preset}: vollständiger PM-1c-Backtest und MC-Pfad 0`);
+        assertEqual(hash, readFI1References(readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readPG1bHash(readAN1Hash(readEK1dHash(carePathReferences.presets[preset].payload.afterSha256))))))))))), `${preset}: vollständiger PM-1c-Backtest und MC-Pfad 0`);
         for (const [kind, actual] of [['payload', payload], ['legacyPayload', legacyPayload]]) {
             const ev1 = ev1Evidence.controls[preset][kind];
             const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -326,7 +327,7 @@ try {
             runRange: { start: 0, count: 4 }, engine: EngineAPI });
         const healthyPayload = { rows: backtest(withoutCare).rows,
             path0: healthyChunk.runMeta.find(run => run.index === 0).logDataRows };
-        assertEqual(createHash('sha256').update(JSON.stringify(healthyPayload)).digest('hex'), readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(reference.withoutCare)))))))))),
+        assertEqual(createHash('sha256').update(JSON.stringify(healthyPayload)).digest('hex'), readFI1References(readLE1KO2References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References(readRNG1Hash(readAN1Hash(readEK1dHash(readKG1Hash(reference.withoutCare))))))))))),
             `${preset}: Backtest und MC-Pfad ohne Pflege auf Basis samt belegten KG-1-Texten`);
         if (preset !== 'Vorgabe') trial.reset();
     }

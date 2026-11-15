@@ -56,6 +56,9 @@ export function _normalizeEngineInput(rawInput) {
         ? 35
         : Number(input.rebalancingBand);
     delete input.rebalBand;
+    // GH-1 Punkt 8 (Gutachten 13.11., F-02): Fehlt der Gold-Mindestanteil bei aktivem Gold, gilt 0 (Vorgabe wie bei rebalancingBand);
+    // vorher entstand NaN. Gültige Eingaben bleiben unverändert.
+    if (input.goldAktiv && input.goldFloorProzent == null) input.goldFloorProzent = 0;
     input.maxSkimPctOfEq = normalizeNum(input.maxSkimPctOfEq, 0);
     input.maxBearRefillPctOfEq = normalizeNum(input.maxBearRefillPctOfEq, 0);
 

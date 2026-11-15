@@ -1,6 +1,6 @@
 // @ts-check
 import { fail, RECONCILIATION_CASH_STATUSES, RECONCILIATION_EVENT_TYPES, TRANCHE_RECONCILIATION_REGISTRY_FIELD, TRANCHE_RECONCILIATION_SCHEMA_VERSION } from './schema.js';
-import { readEventType, normalizeSaleHistoryRecord, normalizeConfirmationHistoryRecord, normalizeCorrectionHistoryRecord } from './history-records.js';
+import { readEventType, normalizeSaleHistoryRecord, normalizeConfirmationHistoryRecord, normalizeCorrectionHistoryRecord, normalizeBuyHistoryRecord, normalizeBuyCancellationRecord } from './history-records.js';
 import { sameEuroCent, normalizeRequiredId, cloneJson } from './validation.js';
 
 export function parseRegistry(raw) {
@@ -74,10 +74,18 @@ function createSaleCashProjection(sale) {
     };
 }
 
+/** VK-2: Abbuchungsstand eines Kaufs; dieselbe Form wie beim Verkauf, Betrag negativ (Geld geht vom Tagesgeld ab). */
+function createBuyCashProjection(buy) {
+    const pending = buy.cashStatus === RECONCILIATION_CASH_STATUSES.PENDING;
+    return { ...createSaleCashProjection({ ...buy, actual: { netProceeds: -buy.actual.netCashDebited }, cashStatus: buy.cashStatus }),
+        kind: 'buy', buyRecord: buy, ...(pending ? { statusLabel: 'Offen – Abbuchung noch nicht im Tagesgeld' }
+            : { statusLabel: 'Abbuchung bestätigt – bereits im Tagesgeld berücksichtigt', evidenceEventType: RECONCILIATION_EVENT_TYPES.BUY }) };
+}
+
 function validateAndProjectHistory(registryOrRaw) {
     const registry = parseRegistry(registryOrRaw);
     const history = registry[TRANCHE_RECONCILIATION_REGISTRY_FIELD];
-    if (history === undefined) return { actions: [], cashStates: new Map() };
+    if (history === undefined) return { actions: [], cashStates: new Map(), buyStates: new Map() };
     if (!history || typeof history !== 'object' || Array.isArray(history)
         || history.schemaVersion !== TRANCHE_RECONCILIATION_SCHEMA_VERSION
         || !Array.isArray(history.actions)) {
@@ -85,6 +93,8 @@ function validateAndProjectHistory(registryOrRaw) {
     }
     const seen = new Set();
     const cashStates = new Map();
+    const buyStates = new Map();
+    const cancelledBuys = new Set();
     const actions = history.actions.map((record, index) => {
         if (!record || typeof record !== 'object' || Array.isArray(record)) {
             fail('RECONCILIATION_HISTORY_INVALID', `Reconcile-Eintrag ${index + 1} ist ungültig.`);
@@ -92,6 +102,8 @@ function validateAndProjectHistory(registryOrRaw) {
         const type = readEventType(record, index);
         const projected = type.eventType === RECONCILIATION_EVENT_TYPES.SALE
             ? normalizeSaleHistoryRecord(record, type)
+            : type.eventType === RECONCILIATION_EVENT_TYPES.BUY ? normalizeBuyHistoryRecord(record)
+            : type.eventType === RECONCILIATION_EVENT_TYPES.BUY_CANCELLATION ? normalizeBuyCancellationRecord(record)
             : type.eventType === RECONCILIATION_EVENT_TYPES.CASH_CONFIRMATION
                 ? normalizeConfirmationHistoryRecord(record)
                 : normalizeCorrectionHistoryRecord(record);
@@ -105,8 +117,27 @@ function validateAndProjectHistory(registryOrRaw) {
             cashStates.set(actionId, createSaleCashProjection(projected));
             return projected;
         }
+        if (projected.eventType === RECONCILIATION_EVENT_TYPES.BUY) {
+            buyStates.set(actionId, createBuyCashProjection(projected));
+            return projected;
+        }
+        // VK-3: Storno eines Kaufs; danach zählt er nicht mehr (keine offene Abbuchung, kein Stand der Käufe).
+        if (projected.eventType === RECONCILIATION_EVENT_TYPES.BUY_CANCELLATION) {
+            const buy = buyStates.get(projected.targetActionId);
+            if (!buy || buy.profileId !== projected.profileId || buy.trancheId !== projected.trancheId) {
+                fail('RECONCILIATION_CASH_TARGET_INVALID', `Storno verweist nicht auf einen vorherigen Kauf ${projected.targetActionId}.`, { field: 'targetActionId' });
+            }
+            buyStates.delete(projected.targetActionId);
+            cancelledBuys.add(projected.targetActionId);
+            return projected;
+        }
 
-        const sale = cashStates.get(projected.targetActionId);
+        // VK-2: Folgeereignisse können auch die Abbuchung eines Kaufs bestätigen oder korrigieren.
+        if (cancelledBuys.has(projected.targetActionId)) {
+            fail('RECONCILIATION_CASH_TARGET_INVALID', `${projected.eventType} verweist auf einen stornierten Kauf ${projected.targetActionId}.`, { field: 'targetActionId' });
+        }
+        const states = buyStates.has(projected.targetActionId) ? buyStates : cashStates;
+        const sale = states.get(projected.targetActionId);
         if (!sale) {
             fail(
                 'RECONCILIATION_CASH_TARGET_INVALID',
@@ -137,7 +168,7 @@ function validateAndProjectHistory(registryOrRaw) {
                     { field: 'targetActionId' }
                 );
             }
-            cashStates.set(projected.targetActionId, {
+            states.set(projected.targetActionId, {
                 ...sale,
                 cashStatus: RECONCILIATION_CASH_STATUSES.MANUALLY_CONFIRMED,
                 cashBalanceAfterPostingEur: projected.cashBalanceAfterPostingEur,
@@ -170,7 +201,7 @@ function validateAndProjectHistory(registryOrRaw) {
                 { field: 'correctsActionId' }
             );
         }
-        cashStates.set(projected.targetActionId, {
+        states.set(projected.targetActionId, {
             ...sale,
             cashStatus: RECONCILIATION_CASH_STATUSES.CORRECTED,
             cashBalanceAfterPostingEur: projected.cashBalanceAfterPostingEur,
@@ -183,7 +214,7 @@ function validateAndProjectHistory(registryOrRaw) {
         });
         return projected;
     });
-    return { actions, cashStates };
+    return { actions, cashStates, buyStates };
 }
 
 export function readReconciliationHistory(registryOrRaw) {
@@ -199,6 +230,14 @@ export function projectReconciliationCashStatuses(registryOrRaw, profileId = nul
     return Object.freeze([...cashStates.values()]
         .filter(status => normalizedProfileId === null || status.profileId === normalizedProfileId)
         .map(status => Object.freeze({ ...status, saleRecord: Object.freeze(cloneJson(status.saleRecord)) })));
+}
+
+/** VK-2: Abbuchungsstände der Käufe (getrennt von den Gutschriften der Verkäufe, damit „Gutschrift nachtragen“ nur Verkäufe meint).
+ * @param {unknown} registryOrRaw @param {string|null} [profileId] */
+export function projectBuyCashStatuses(registryOrRaw, profileId = null) {
+    const { buyStates } = validateAndProjectHistory(registryOrRaw);
+    return Object.freeze([...buyStates.values()].filter(status => profileId === null || status.profileId === profileId)
+        .map(status => Object.freeze({ ...status, saleRecord: Object.freeze(cloneJson(status.saleRecord)), buyRecord: Object.freeze(cloneJson(status.buyRecord)) })));
 }
 
 export function registryWithAuditRecord(registryOrRaw, auditRecord) {

@@ -8,6 +8,8 @@ export const isMoneyInput = field => /^(?:home-(?:wert|mieteNetto|ortsueblicheMi
 const displays = new WeakMap();
 // UR-2b: Kursfelder behalten den Punkt als Dezimalzeichen (Kurse mit drei Nachkommastellen).
 const PRICE_INPUTS = new Set(['purchasePrice', 'currentPrice']);
+/** „100000.00“ → „100000“, „16785.10“ → „16785.1“ (kanonischer Text ohne Nachkommanullen). @param {string} text */
+const withoutTrailingZeros = text => { const zeros = /^([^eE]*\.\d*?)0+$/.exec(text); return zeros ? zeros[1].replace(/\.$/, '') : text; };
 const GROUPED = /^([+-]?)([1-9]\d{0,2}(?:\.\d{3})+)(?:,(\d*))?$/;
 
 /** UR-2b: Betragsfelder lesen deutsche Gruppierung: Punkte vor genau drei Ziffern sind Tausenderpunkte, das Komma ist das
@@ -34,11 +36,24 @@ export function canonicalDecimalInput(raw, field = null) {
     if (!text) return '';
     if (isMoneyInput(field) && !PRICE_INPUTS.has(field.id)) {
         const grouped = canonicalGroupedMoney(text);
-        if (grouped !== null) return grouped;
+        // VN-4: Eine Cent-Anzeige („10.120,00“ nach dem Verlassen) ist derselbe Wert wie „10120“, keine neue Eingabe.
+        if (grouped !== null) return withoutTrailingZeros(grouped);
     }
+    // VK-3b (Gutachten VK3 Befund 5, Fable P3-5): Kursfelder lesen Tausenderpunkt mit Dezimalkomma wie die Betragsfelder („1.234,57“);
+    // ein Punkt ohne Komma bleibt dort Dezimalpunkt (UR-2b).
+    if (PRICE_INPUTS.has(/** @type {any} */ (field)?.id) && text.includes(',') && GROUPED.test(text)) return /** @type {string} */ (canonicalGroupedMoney(text));
     if (!/^[+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:[eE][+-]?\d+)?$/.test(text)) return 'NaN';
     const canonical = text.replace(',', '.');
-    return Number.isFinite(Number(canonical)) ? canonical : 'NaN';
+    return Number.isFinite(Number(canonical)) ? isMoneyInput(field) && !PRICE_INPUTS.has(/** @type {any} */ (field)?.id) ? withoutTrailingZeros(canonical) : canonical : 'NaN';
+}
+
+/** Eurobetrag wie die Betragsfelder der App (UR-2b, `canonicalGroupedMoney`), ohne Feldbindung; leer oder ungültig ergibt NaN.
+ * Genutzt vom geführten Verkauf (Gebühren, Steuern, Gutschrift, Tagesgeld). @param {unknown} raw @returns {number} */
+export function readMoneyText(raw) {
+    const text = String(raw ?? '').trim();
+    if (!text) return Number.NaN;
+    const grouped = canonicalGroupedMoney(text);
+    return grouped === null ? readDecimalInput(text) : Number(grouped);
 }
 
 /** @param {unknown} raw
@@ -57,7 +72,7 @@ export function readDecimalInput(raw, field = null) {
 export function displayDecimalInput(value, field = null, { editing = false } = {}) {
     const canonical = canonicalDecimalInput(value);
     let text = String(value ?? '').replace('.', ',');
-    if (isMoneyInput(field) && !editing && canonical !== '' && canonical !== 'NaN') {
+    if ((isMoneyInput(field) || field?.id === 'shares') && !editing && canonical !== '' && canonical !== 'NaN') {
         text = text.replace(/^([+-]?)(\d+)/, (_, sign, integer) => sign + integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.'));
         displays.set(field, { text, canonical });
     } else if (field) displays.delete(field);
@@ -90,8 +105,12 @@ export function bindDecimalInputDisplay(doc = document) {
     });
     doc.addEventListener('focusout', event => {
         const field = event.target;
-        if (!isEditableDecimalInput(field) || field.hasAttribute?.('data-manager-plan-field')) return;
-        const canonical = canonicalDecimalInput(field.value, field);
+        // VN-3 (Fable P3-1): Felder der geführten Abläufe formatiert der Dialog selbst (Stück „1.000“ bliebe sonst „1,000“).
+        if (!isEditableDecimalInput(field) || field.hasAttribute?.('data-manager-plan-field') || field.closest?.('.sale-flow-dialog')) return;
+        // Stück wie readMoneyText lesen, aber als Text formatieren: keine Rundung langer Bruchstücke.
+        const canonical = field.id === 'shares'
+            ? canonicalGroupedMoney(field.value.trim()) ?? canonicalDecimalInput(field.value)
+            : canonicalDecimalInput(field.value, field);
         if (canonical === '' || canonical === 'NaN') return;
         field.value = displayDecimalInput(canonical, field);
     });

@@ -4,7 +4,7 @@ import { careSettingsStorage, isCareSettingKey, sharesHouseholdCareValues } from
 import { resolveCarePrices } from '../shared/care-prices.js';
 import { readCareValues } from '../shared/household-care-values.js';
 import { normalizeCareForm } from '../shared/care-benefits.js';
-import { CARE_PRICE_FIELD_IDS, carePriceValue, normalizePflegeKostenPreset, writeCarePriceField } from '../shared/care-price-fields.js';
+import { CARE_PRICE_FIELD_IDS, carePriceValue, normalizePflegeKostenPreset, writeCarePriceField, validCareDriftYear } from '../shared/care-price-fields.js';
 // PFA-10: Der Schreibweg der Pflegewerte liegt gemeinsam mit Personen & Vermögen › Pflege in `care-price-fields.js`.
 export { writeCarePriceField };
 import { updateSimulatorPlanTrial, renderSimulatorPlanTrial, getSimulatorPlanTrial } from './simulator-plan-trial.js';
@@ -15,7 +15,7 @@ import { SUPPORTED_PFLEGE_GRADES } from './simulator-data.js';
 import { updateStartPortfolioDisplay } from './simulator-portfolio.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { MONTE_CARLO_PARAMETER_LIMITS } from './monte-carlo-parameters.js';
-import { readStoredMonteCarloDuration } from './monte-carlo-duration.js';
+import { readStoredMonteCarloDuration, writeMonteCarloDurationMarker, MONTE_CARLO_DURATION_EXPLICIT_KEY } from './monte-carlo-duration.js';
 import { migrateStoredCareFlex } from './simulator-care-flex-persistence.js';
 import {
     HOUSEHOLD_SIMULATOR_NEED_FIELD_IDS,
@@ -53,7 +53,7 @@ export function initInputPersistence() {
         'dynamicFlex', 'horizonMethod', 'horizonYears', 'survivalQuantile', 'goGoActive', 'goGoMultiplier',
         'longevityMode', 'longevityQuantileShift', 'longevityRelativePct', 'longevityBufferYears',
         'pflegefallLogikAktivieren', 'pflegeModellTyp', ...CARE_GRADE_FIELD_IDS,
-        'pflegeMaxFloor', 'pflegeRampUp', 'pflegeMinDauer', 'pflegeMaxDauer', 'pflegeKostenDrift',
+        'pflegeMaxFloor', 'pflegeRampUp', 'pflegeMinDauer', 'pflegeMaxDauer', 'pflegeKostenDrift', 'pflegeKostenDriftBis', 'pflegeKostenDriftDanach',
         'pflegeRegionalZuschlag', 'pflegeHeimEigeneAusgaben', 'pflegeKostenStaffelPreset',
         'liquidityRunwayYears', 'maxSkimPctOfEq', 'maxBearRefillPctOfEq', 'equityCostPct',
         'entnahmeStrategie', 'bondTargetFactor', 'drawdownTrigger', 'bondRefillThreshold',
@@ -88,7 +88,8 @@ export function initInputPersistence() {
                 : CARE_PRICE_FIELD_IDS.has(id) ? String(carePriceValue(id, carePrices))
                     : resolveCareSetting(storageKey, fieldStorage.getItem(storageKey));
             // FR-75: Die alte Vorgabe 35 gilt beim Lesen als automatische Dauer; nichts wird geschrieben.
-            const storedVal = id === 'mcDauer' ? readStoredMonteCarloDuration(rawStoredVal) : rawStoredVal;
+            // GH-1 Punkt 11: eine bewusst eingetragene 35 bleibt nach dem Neuladen stehen.
+            const storedVal = id === 'mcDauer' ? readStoredMonteCarloDuration(rawStoredVal, fieldStorage.getItem(MONTE_CARLO_DURATION_EXPLICIT_KEY) === 'true') : rawStoredVal;
             if (id === 'mcAnzahl' && (storedVal === null || storedVal === '')) {
                 element.value = String(MONTE_CARLO_PARAMETER_LIMITS.runs.default);
             }
@@ -166,9 +167,12 @@ export function initInputPersistence() {
                             // Planverlust bleiben Preset und Darstellung seitenlokal.
                         } else if (element.type === 'checkbox') {
                             fieldStorage.setItem(storageKey, element.checked);
-                        } else if (element.type !== 'radio') {
-                            fieldStorage.setItem(storageKey, element.value);
+                        } else if (element.type !== 'radio' && !(id === 'pflegeKostenDriftBis' && !validCareDriftYear(element.value))) {
+                            // GN-2b: Preisblock vor dem `sim_`-Wert, damit er vom bisherigen wirksamen Verlauf ausgeht.
+                            // GN-2c (Gemini P3-2): Ein ungültiges Jahr schreibt weder Preisblock noch `sim_`-Wert.
                             if (CARE_PRICE_FIELD_IDS.has(id)) writeCarePriceField(id, element.value);
+                            if (id === 'mcDauer') writeMonteCarloDurationMarker(fieldStorage, element.value);
+                            fieldStorage.setItem(storageKey, element.value);
                         }
                     }
                 } catch (error) {

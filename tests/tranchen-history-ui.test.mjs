@@ -48,7 +48,7 @@ assert(projectTrancheHistory({ ...tranche, ticker: '' }, context, 'a').message.i
 assertEqual(projectTrancheHistory({ ...tranche, purchaseDate: '2026-01-02' }, { ...context, events: [] }, 'a').course.range.startDate, '2026-01-02', 'Kauf nach Beginn bestimmt eigenes Startdatum');
 const table = buildTranchenTableHtml([tranche], { context, profileId: 'a', expandedId: 'synthetic' });
 assert(table.includes('aria-expanded="true"') && table.includes('aria-controls="tranche-history-synthetic"') && table.includes('colspan="12"'), 'Detailzeile besitzt zugänglichen Knopf und vollständige Spaltenbreite');
-assert(table.includes('data-action="edit-tranche"') && table.includes('data-action="delete-tranche"'), 'Bestehende Zeilenaktionen bleiben separat erhalten');
+assert(table.includes('data-action="edit-tranche"') && !table.includes('data-action="delete-tranche"'), 'Zeile mit „Tranche im Detail“, ohne Papierkorb (VN-1 Punkt 8)');
 
 const map = new Map([[WEALTH_HISTORY_START_KEY, '{"version":1,"startDate":"2026-01-01"}'], [DAILY_PRICES_KEY, 'unveränderte Kursbytes']]);
 const storage = { getItem: key => map.get(key) ?? null, setItem: (key, value) => map.set(key, value), removeItem: key => map.delete(key) };

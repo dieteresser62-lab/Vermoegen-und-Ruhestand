@@ -33,7 +33,7 @@ if (selected >= 0) {
         console.log(`${probes.length} reproduzierte Gegenproben: ${destination}`);
     }
 } else {
-    const run = runParityScenarios();
+    const run = runParityScenarios({ carrierCase: true });
     for (const scenario of run.scenarios) console.log(scenario.console);
     const output = process.argv.indexOf('--ausgabe');
     const { destination, summary } = writeParityRun(run, [], output >= 0 ? process.argv[output + 1] : undefined);

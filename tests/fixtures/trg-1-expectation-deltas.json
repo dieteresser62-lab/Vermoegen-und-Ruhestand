@@ -1,0 +1,9 @@
+{
+  "note": "TRG-1 Abschnitt 2 (FR-80 Punkt 8): Steuer je Euro je Aktientranche mit Teilfreistellung. Die Kennzahl steht in jeder Personenaufteilung (taxPerEuro) und wirkt auf Verkaufsreihenfolge und Schätzung ohne Tranchen; mit der alten Kennzahl sind alle vier Werte unverändert (geprüft 13.11.2026).",
+  "hashes": {
+    "b31d5742edc60ae4bd1345682e4b5c0ca38131e2fb1783ed8156b96a5f9fe3ae": "5b25abc38c33b513ad081049e3279a6c87f036a20eca9762688407e2ef7c8afb",
+    "4704ebc8f6d525037f0a6fd77884fc5ab5936c1edbf4c7369f95c1c9f3d90a28": "d4ecdbc1229328190e4d228b247b9f668a0c03c9029bb1e90f13199045e116e5",
+    "5d97598a4a51566f72a55b08af901813cd9aa15d4f7b5fdd2a05c2b8713ffae1": "f0a46a9c315173607d95fca8a1659fbac88a2ad0e89d1f141875d97a68691c9b",
+    "6cb2188a3913c3bd29e64f92d26f09d7c98c0275dc46f265ac1b88ea190f4793": "d6b271bdc5640b98eec954f8e0fdc0f2f42bb4d2f5bd2f45f1220f9474de30a6"
+  }
+}

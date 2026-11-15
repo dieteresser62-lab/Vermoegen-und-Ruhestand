@@ -5,7 +5,6 @@ import { localHistoryDate } from '../app/tranches/tranchen-history-store.js';
 import { createEmptyExpensesStore } from '../app/balance/balance-expenses-storage.js';
 import { buildSnapshot } from '../app/shared/snapshot-archive.js';
 import { readDecimalInput } from '../app/tranches/tranchen-manager-decimal-input.js';
-import { functionSource } from './designsystem-selection-dom.mjs';
 
 {
     const RealDate = globalThis.Date;
@@ -29,27 +28,7 @@ import { functionSource } from './designsystem-selection-dom.mjs';
     } finally { setAppTestDate(null); globalThis.Date = RealDate; }
 }
 
-// Tatsächlicher Vorschaupfad einschließlich Uhrübergabe an den isolierbaren DOM-Reader.
-const reconciliationSource = ['readOptionalNumber', 'readReconciliationActionFromDom', 'createReconciliationPreview']
-    .map(name => functionSource('app/tranches/tranchen-manager-page/reconciliation.js', name)).join('\n');
-const reconciliationFields = new Map([
-    ['reconcileCashStatus', 'confirmed_already_reflected'], ['reconcileInitialCashBalance', '207,5']
-]);
-const reconciliationState = { profileId: 'synthetic-person', confirmedTranches: [], confirmedRaw: '[]' };
-const createPreview = new Function('dependencies', `
-    const { byId, readDecimalInput, state, appNow, processingIsBlocked,
-        previewTrancheReconciliation, readStoredValue, PROFILE_STORAGE_KEYS,
-        renderReconciliationState, TrancheReconciliationError } = dependencies;
-    ${reconciliationSource}
-    return createReconciliationPreview;
-`)({
-    byId: id => ({ value: reconciliationFields.get(id) ?? '' }),
-    readDecimalInput, state: reconciliationState, appNow,
-    processingIsBlocked: () => false,
-    previewTrancheReconciliation: () => ({ status: 'ready' }),
-    readStoredValue: () => null, PROFILE_STORAGE_KEYS: { registry: 'rs_profiles_v1' },
-    renderReconciliationState() {}, TrancheReconciliationError: class extends Error {}
-});
+// FR-79: Der alte Verkaufsdialog mit eigenem DOM-Reader entfällt; der geführte Verkauf nimmt die Uhr über `appNow()` (vk-1-sollfaelle).
 
 const RealDate = globalThis.Date;
 const fixed = new RealDate(2026, 10, 1, 9, 31, 22, 777).getTime();
@@ -60,21 +39,10 @@ try {
     const input = { registry: null, activeId: null };
     assertEqual(JSON.stringify(projectOverview(input)), JSON.stringify(projectOverview({ ...input, now: new Date() })), 'Normalprojektion entspricht expliziter Systemzeit');
     assertEqual(planningYear(null), planningYear(null, new Date()), 'Planungsjahr bleibt gleich');
-    assertEqual(createPreview(), true, 'Cashvorschau im Normalmodus erfolgreich');
-    assertEqual(reconciliationState.reconciliationPreview.action.cashConfirmedAt, new Date().toISOString(), 'Cashbestätigung verwendet im Normalmodus die Systemzeit');
     setAppTestDate('2027-01-02');
-    assertEqual(createPreview(), true, 'Cashvorschau im Spielbereich erfolgreich');
-    assertEqual(reconciliationState.reconciliationPreview.action.cashConfirmedAt, appNow().toISOString(), 'Produktiver Vorschaupfad übergibt die fachliche Uhr an den Cashreader');
     setAppTestDate('2027-02-03');
-    assertEqual(createPreview(), true, 'Cashvorschau nach Datumssprung erfolgreich');
-    assertEqual(reconciliationState.reconciliationPreview.action.cashConfirmedAt, appNow().toISOString(), 'Cashbestätigung folgt dem geänderten Testdatum');
     setAppTestDate(null);
-    assertEqual(createPreview(), true, 'Cashvorschau nach Probelaufende erfolgreich');
-    assertEqual(reconciliationState.reconciliationPreview.action.cashConfirmedAt, new Date().toISOString(), 'Cashbestätigung kehrt zur Systemzeit zurück');
     setAppTestDate('2027-01-02');
-    reconciliationFields.set('reconcileCashStatus', 'pending_manual_posting');
-    assertEqual(createPreview(), true, 'Unbestätigte Cashvorschau erfolgreich');
-    assert(!Object.hasOwn(reconciliationState.reconciliationPreview.action, 'cashConfirmedAt'), 'Offener Cashstatus erhält keinen Bestätigungszeitpunkt');
     assertEqual(appNow().getHours(), 12, 'Virtuelle Uhr ist lokale Mittagszeit');
     assertEqual(planningYear(null), 2027, 'Planungsjahr verwendet virtuelle Uhr');
     assertEqual(personReferenceYear(null), 2027, 'Personenstandard verwendet virtuelle Uhr');

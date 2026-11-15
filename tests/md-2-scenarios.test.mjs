@@ -12,6 +12,7 @@ import { renderScenarioList } from '../app/simulator/scenario-log-view.js';
 import { renderScenarioComparison } from '../app/simulator/scenario-comparison.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
 
+import { readFI1References } from './helpers/fi-1-expectations.mjs';
 // LE-1b (P3-5): Das Ersatz-Geburtsjahr folgt der App-Uhr. Ein fester Stichtag (Messtag) hält die Belege über den Jahreswechsel.
 setAppTestDate('2026-11-12');
 
@@ -25,7 +26,7 @@ for (const [name, before] of Object.entries(baseline.cases)) {
     if (process.platform === equalization.runtime.platform && process.version === equalization.runtime.node) {
         assertEqual(JSON.stringify(equalization.cases[name].before), JSON.stringify(readEV1bReferences(before.hashes)), `${name}: vollständige Referenz vor ZG-1b bleibt erhalten`);
         // LE-1 (FR-75): Kohortentafel und abgestimmte Grundsterblichkeit ändern jeden Fall; gemessene Werte in le-1-expectation-deltas.json.
-        assertEqual(JSON.stringify(resultHashes(chunk)), JSON.stringify(le1Evidence.md2Cases[name]?.hashes ?? readHE4References(readHE2References(equalization.cases[name].after))), `${name}: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung`);
+        assertEqual(JSON.stringify(resultHashes(chunk)), readFI1References(JSON.stringify(le1Evidence.md2Cases[name]?.hashes ?? readHE4References(readHE2References(equalization.cases[name].after)))), `${name}: totals/lists/pathSummaries/heatmap mit belegter Familienheimkürzung`);
         const selected = characteristicIndices(chunk.runMeta);
         const typical = new ScenarioAnalyzer(50);
         chunk.runMeta.forEach(run => typical.addRun(run));

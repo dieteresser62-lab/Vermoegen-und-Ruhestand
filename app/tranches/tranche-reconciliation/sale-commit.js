@@ -1,7 +1,7 @@
 // @ts-check
 import { persistenceStorage, PersistenceFacade } from '../../shared/persistence-facade.js';
 import { getCurrentProfileId, getActiveProfileId, saveCurrentProfileFromLocalStorage, PROFILE_LIVE_BASE_KEY } from '../../profile/profile-storage.js';
-import { appNow } from '../../shared/app-clock.js';
+import { appNow, localCalendarDate } from '../../shared/app-clock.js';
 import { normalizeRequiredId } from './validation.js';
 import { fail, TrancheReconciliationError } from './schema.js';
 import { assertProfileContext, requireReconciliationFlush, restoreReconciliationRecords } from './persistence.js';
@@ -74,7 +74,7 @@ export async function commitTrancheReconciliation(request, options = {}) {
         assertProfileContext(profileId, dependencies);
         options.navigationOperation?.commit();
         writesStarted = true;
-        const lots = captureSaleWealthLots(previousLotsRaw, loaded.tranches, preview.nextTranches, preview.action.trancheId, dependencies.clock().slice(0, 10));
+        const lots = captureSaleWealthLots(previousLotsRaw, loaded.tranches, preview.nextTranches, preview.action.trancheId, localCalendarDate(new Date(dependencies.clock())));
         storage.setItem(PROFILE_WEALTH_LOTS_KEY, JSON.stringify(lots));
         const persistedTranches = saveTranchesToStorage(preview.nextTranches, storage);
         if (!dependencies.saveCurrentProfile()) {

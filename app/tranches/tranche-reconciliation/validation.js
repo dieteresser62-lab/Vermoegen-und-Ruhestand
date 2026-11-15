@@ -164,7 +164,8 @@ export function normalizeReconciliationAction(raw, expectedProfileId = null) {
     const sharesSold = normalizeNumber(raw.sharesSold, 'sharesSold', { greaterThan: 0 });
     const grossProceeds = normalizeNumber(raw.grossProceeds, 'grossProceeds', { greaterThan: 0 });
     const fees = normalizeNumber(raw.fees ?? 0, 'fees', { min: 0 });
-    const taxes = hasOwn(raw, 'taxes') ? normalizeNumber(raw.taxes, 'taxes', { min: 0 }) : 0;
+    // FR-79 Ergänzung 1 Punkt 9: Erstattung als negativer Steuerbetrag („Erstattung“), höchstens in Höhe des Kurswerts.
+    const taxes = hasOwn(raw, 'taxes') ? normalizeNumber(raw.taxes, 'taxes', { min: -grossProceeds }) : 0;
     if (fees + taxes > grossProceeds) {
         fail(
             'RECONCILIATION_FEES_EXCEED_PROCEEDS',

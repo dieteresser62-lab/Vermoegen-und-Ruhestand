@@ -3,6 +3,7 @@ import { buildDetailedTranchesFromPortfolio } from './simulator-engine-direct-ut
 import { addTaxRawAggregate } from './simulator-tax-recompute.js';
 import { calculateSaleAndTax } from '../../engine/transactions/sale-engine.mjs';
 import { isBondCategory } from '../../engine/transactions/three-bucket-logic.mjs';
+import { bankOrderFallback, applyIsinFifo } from '../../types/sale-fifo.js';
 
 /**
  * @param tranches
@@ -13,9 +14,8 @@ import { isBondCategory } from '../../engine/transactions/three-bucket-logic.mjs
 export function reduceAcrossTranches(tranches, amount, useFifo) {
     let remaining = Number(amount) || 0;
     if (!Array.isArray(tranches) || remaining <= 0) return 0;
-    const ordered = useFifo
-        ? [...tranches].sort((a, b) => /** @type {number} */ (/** @type {unknown} */ (new Date(a.purchaseDate || '1900-01-01'))) - /** @type {number} */ (/** @type {unknown} */ (new Date(b.purchaseDate || '1900-01-01'))))
-        : tranches;
+    // RK-2 (Gemini FI1-2, FR-82): dieselbe Bankreihenfolge wie im Rechenkern; ohne FIFO bleibt die Liste, je Person und ISIN aber ältere zuerst.
+    const ordered = useFifo ? bankOrderFallback(tranches) : applyIsinFifo(tranches, lot => lot);
     let reduced = 0;
     for (const tranche of ordered) {
         if (remaining <= 0) break;
@@ -207,7 +207,7 @@ export function applyForcedSaleLiquidityCoverage({
         } else {
             const reducedEq = reduceAcrossTranches(depotTranchesAktien, forcedShortfall, true);
             const remaining = Math.max(0, forcedShortfall - reducedEq);
-            const reducedGld = reduceAcrossTranches(depotTranchesGold, remaining, false);
+            const reducedGld = reduceAcrossTranches(depotTranchesGold, remaining, true);
             liquiditaetDelta += Math.min(forcedShortfall, reducedEq + reducedGld);
         }
     }
@@ -350,7 +350,7 @@ export function applyPayoutFallbackSale({
     } else {
         const reducedEq = reduceAcrossTranches(depotTranchesAktien, additionalNeeded, true);
         const remainingAfterEq = Math.max(0, additionalNeeded - reducedEq);
-        const reducedGld = reduceAcrossTranches(depotTranchesGold, remainingAfterEq, false);
+        const reducedGld = reduceAcrossTranches(depotTranchesGold, remainingAfterEq, true);
         totalReduced = reducedEq + reducedGld;
     }
 

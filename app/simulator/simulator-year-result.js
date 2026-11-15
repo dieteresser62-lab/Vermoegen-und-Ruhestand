@@ -11,6 +11,9 @@ import {
     resolveSimulatorCumulativeInflationFactor
 } from './simulator-engine-helpers.js';
 
+/** RK-3 Punkt 1 (FR-81): Grund einer persönlichen Flex-Kürzung Unverheirateter in Jahreszeile und Rohdaten. */
+const PERSONAL_FLEX_CUT_SOURCE = 'persönlicher Anteil ungedeckt';
+
 /**
  * @param {object} options
  * @param options.guardrailPlanInputs
@@ -32,6 +35,8 @@ import {
  * @param options.initialLiqStart
  * @param options.jahresEntnahmePlan
  * @param options.jahresEntnahmeEffektiv
+ * @param {number} [options.personalFlexCutNominal] FR-81: persönliche Flex-Kürzung Unverheirateter (nur für den Engine-Anker).
+ * @param {number} [options.personalFlexCutTotal] RK-3 Punkt 1: ganze persönliche Flex-Kürzung Unverheirateter im Haushalt.
  * @param options.liqBeforePayout
  * @param options.liqAfterPayout
  * @param options.portfolioTotalBeforePayout
@@ -120,6 +125,8 @@ export function buildSimulatorYearResult({
     initialLiqStart,
     jahresEntnahmePlan,
     jahresEntnahmeEffektiv,
+    personalFlexCutNominal,
+    personalFlexCutTotal,
     liqBeforePayout,
     liqAfterPayout,
     portfolioTotalBeforePayout,
@@ -218,7 +225,7 @@ export function buildSimulatorYearResult({
     const nextSpendingState = {
         ...spendingNewState,
         cumulativeInflationFactor: nextCumulativeInflationFactor,
-        lastEntnahmeReal: jahresEntnahmeEffektiv / cumulativeInflationFactor
+        lastEntnahmeReal: (jahresEntnahmeEffektiv + (personalFlexCutNominal || 0)) / cumulativeInflationFactor
     };
     const {
         nextWidowPensionP1,
@@ -312,15 +319,26 @@ export function buildSimulatorYearResult({
     const fulfilledFlexFromPortfolio = jahresEntnahmeEffektiv > inflatedFloor
         ? jahresEntnahmeEffektiv - inflatedFloor
         : 0;
-    const fulfilledHouseholdFlex = pensionFlexContribution + fulfilledFlexFromPortfolio;
+    // RK-3 Punkt 1 (FR-81 Punkt 3): Eine persönliche Flex-Kürzung Unverheirateter mindert den gezahlten Haushalts-Flex wie eine Kürzung
+    // bei Verheirateten, auch wenn sie aus verbrauchten Einkünften fehlt. Basis ist die geplante Auszahlung, die Kürzung zählt ganz.
+    const personalCut = personalFlexCutTotal > 0 ? personalFlexCutTotal : 0;
+    const plannedPayout = jahresEntnahmeEffektiv + (personalFlexCutNominal || 0);
+    const fulfilledHouseholdFlex = personalCut > 0
+        ? Math.max(0, pensionFlexContribution + Math.max(0, plannedPayout - inflatedFloor) - personalCut)
+        : pensionFlexContribution + fulfilledFlexFromPortfolio;
     const displayedWishFlex = Number.isFinite(fullResult.input?.flexBedarf)
         ? fullResult.input.flexBedarf : inflatedFlex;
-    const displayedFlexRate = flexRate === null ? null
+    const displayedFlexRate = flexRate === null && !(personalCut > 0) ? null
         : (displayedWishFlex > 0 ? fulfilledHouseholdFlex / displayedWishFlex * 100 : flexRate);
     const displayedFlexCut = displayedWishFlex <= 0 ? 0
         : displayedFlexRate === null ? spendingResult.kuerzungProzent : Math.max(0, 100 - displayedFlexRate);
     const householdFlexReductionPct = displayedFlexCut;
-    const displayedFlexNote = displayedWishFlex > 0 && (displayedFlexCut <= 0 || flexRate >= 100)
+    // RK-3 Punkt 1: Ohne Kürzung der Engine nennt die Jahreszeile die persönliche Kürzung als Grund.
+    const personalCutOnly = personalCut > 0 && displayedFlexCut > 0
+        && (!spendingResult.kuerzungQuelle || spendingResult.kuerzungQuelle === 'keine Kürzung');
+    const cutSource = personalCutOnly ? PERSONAL_FLEX_CUT_SOURCE : spendingResult.kuerzungQuelle;
+    const displayedFlexNote = personalCutOnly ? `(Flex um ${displayedFlexCut.toFixed(0)}% wg. ${PERSONAL_FLEX_CUT_SOURCE} gekürzt)`
+        : displayedWishFlex > 0 && (displayedFlexCut <= 0 || flexRate >= 100)
         ? '' : displayedWishFlex <= 0
         ? `kein Flex${careLog.pflege_aktiv ? ` (Pflegegrad ${careLog.pflege_grade})` : ''}`
         : Number.isFinite(displayedFlexCut) && typeof spendingResult.anmerkung === 'string'
@@ -470,7 +488,7 @@ export function buildSimulatorYearResult({
             WealthQuoteUsedPct: Number.isFinite(spendingResult.details?.entnahmequoteUsed)
                 ? spendingResult.details.entnahmequoteUsed * 100
                 : null,
-            CutReason: spendingResult.kuerzungQuelle || 'none',
+            CutReason: cutSource || 'none',
             Alarm: spendingNewState.alarmActive || false,
             Regime: spendingNewState.lastMarketSKey || 'unknown',
             QuoteEndPct: withdrawalRateEndPct,
@@ -639,6 +657,8 @@ export function buildSimulatorYearResult({
     // Die sieben späteren Gruppen haben keine Schlüssel mit späteren festen
     // Feldern gemeinsam; ihre gegenseitige Zuweisungsreihenfolge bleibt erhalten.
     const logData = result.logData;
+    // RK-3 Punkt 1: Grund der persönlichen Kürzung; der Schlüssel stammt schon aus `spendingResult`, die Reihenfolge bleibt.
+    if (personalCutOnly) logData.entscheidung.kuerzungQuelle = cutSource;
     if (Array.isArray(stressReplayTransactionDiagnostics)) {
         logData.stressReplayTransactionDiagnostics = stressReplayTransactionDiagnostics.map(diagnostic => ({
             ...diagnostic,

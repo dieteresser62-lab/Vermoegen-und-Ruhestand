@@ -75,7 +75,7 @@ export async function restoreMonteCarloResult({ doc = globalThis.document, depen
     const token = (dependencies.beginOverviewRun || beginOverviewRun)('montecarlo',
         readOverviewAssumptions('montecarlo', inputs, { ...monteCarloParams, useCapeSampling }),
         { startedAt: entry.startedAt || entry.savedAt, generationId: 'monte-carlo-restore' });
-    if (token) completeOverviewRun('montecarlo', token, projectMonteCarloOverview(display.aggregatedResults, display.anzahl, display.failCount, inputs));
+    if (token) completeOverviewRun('montecarlo', token, projectMonteCarloOverview(display.aggregatedResults, display.anzahl, display.failCount, inputs, display.displayContext?.durationYears ?? monteCarloParams?.maxDauer));
     const saved = new Date(entry.savedAt), time = saved.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
     const when = saved.toDateString() === new Date().toDateString() ? `von ${time}`
         : `vom ${saved.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} ${time}`;

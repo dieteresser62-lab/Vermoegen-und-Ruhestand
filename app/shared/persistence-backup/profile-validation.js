@@ -12,6 +12,7 @@ import { isSnapshotTechnicalKey } from '../persistence-key-policy.js';
 import { PROFILE_HEALTH_BUCKET_KEY, PROFILE_CASH_CONFIRMED_DATE_KEY, PROFILE_LOAD_STATUS, PROFILE_STORAGE_KEYS, PROFILE_TRANCHES_KEY, PROFILE_VALUE_KEYS, loadProfileHealthBucketFromData, loadStoredBalanceStateFromData, parseStoredBool, parseStoredNumber } from '../../profile/profile-state.js';
 import { isProfileScopedKey } from '../../profile/profile-key-policy.js';
 import { loadProfileRegistry, assertHouseholdLimit } from '../../profile/profile-registry.js';
+import { readReconciliationHistory, TRANCHE_RECONCILIATION_REGISTRY_FIELD } from '../../tranches/tranche-reconciliation.js';
 import { assertProfileIdentityRecords } from '../../profile/profile-storage.js';
 import { CONFIG } from '../../balance/balance-config.js';
 import { normalizeTrancheCollection } from '../../../types/tranche-contract.js';
@@ -168,6 +169,11 @@ export function validateRegistryAndProfiles(records, options = {}, profileIds = 
     const registryPresent = hasOwn(records, PROFILE_STORAGE_KEYS.registry);
     const registry = registryResult.value || { version: 1, profiles: {} };
     if (options.householdLimit !== false) assertHouseholdLimit(registry);
+    // VK-3b (Gutachten VK3 Befund 3): Käufe, Verkäufe, Stornos und Bestätigungen im Abgleich prüft der Import mit demselben strengen Leser
+    // wie die App beim Öffnen; ein defekter Abgleich scheitert schon beim Einspielen.
+    if (hasOwn(registry, TRANCHE_RECONCILIATION_REGISTRY_FIELD)) {
+        try { readReconciliationHistory(registry); } catch (error) { throw new Error(`registry.${TRANCHE_RECONCILIATION_REGISTRY_FIELD}: ${/** @type {Error} */ (error)?.message || 'Der Abgleich ist ungueltig.'}`); }
+    }
     if (options.requireProfileContext && !registryPresent) {
         throw new Error('Die Profilregistry fehlt.');
     }

@@ -1,7 +1,7 @@
 {
   "name": "ruhestand-app-final",
   "version": "1.0.0",
-  "description": "Die Ruhestand-App ist ein vollst\u00c3\u00a4ndig lokal ausf\u00c3\u00bchrbares Planungstool mit zwei Oberfl\u00c3\u00a4chen:",
+  "description": "Die Ruhestand-App ist ein vollständig lokal ausführbares Planungstool mit zwei Oberflächen:",
   "main": "balance-binder.js",
   "scripts": {
     "docs:parameter": "node scripts/docs-parameter.mjs",

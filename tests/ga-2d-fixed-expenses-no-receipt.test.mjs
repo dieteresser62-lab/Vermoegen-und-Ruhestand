@@ -38,9 +38,9 @@ try {
     }
     // N1 + N2: S4 im ersten Jahresabschluss ohne Beleg; Floor Januar–Juni 2.000 €, Juli–Dezember 3.000 €.
     const s4 = floors => fromActual(closeNeeds(sophie({ items: [kv], floors })));
-    assertEqual(s4({ ...months(1, 6, 2000), ...months(7, 12, 3000) }), 25000, 'N1: erster Abschluss ohne Beleg, „Ist + Inflation“ ohne feste Ausgabe');
-    assertEqual(s4(months(7, 12, 3000)), 25000, 'N2: Aufteilung nur Juli–Dezember, Abzug anteilig');
-    assertEqual(s4(months(1, 6, 2000)), 25000, 'N2: Aufteilung nur Januar–Juni, nichts abzuziehen');
+    assertEqual(s4({ ...months(1, 6, 2000), ...months(7, 12, 3000) }), 24480, 'N1: erster Abschluss ohne Beleg, „Ist + Inflation“ ohne feste Ausgabe');
+    assertEqual(s4(months(7, 12, 3000)), 24480, 'N2: Aufteilung nur Juli–Dezember, Abzug anteilig');
+    assertEqual(s4(months(1, 6, 2000)), 24480, 'N2: Aufteilung nur Januar–Juni, nichts abzuziehen');
     assertEqual(s4(months(1, 12, 300)), 0, 'N2: Ist-Floor unter der festen Ausgabe, Vorschlag nie negativ');
     // N2: feste Ausgabe nach dem Beschluss angelegt (neuer Beleg ohne feste Posten) wird ebenfalls abgezogen.
     {
@@ -50,7 +50,7 @@ try {
         const entry = Object.values(receipts.entries)[0];
         Object.assign(entry, receipt); delete entry.adopted.plannedPosts; entry.adopted.monthlyBudget = 10000;
         env.records[ANNUAL_PLAN_RECORD_KEY] = JSON.stringify(receipts);
-        assertEqual(fromActual(closeNeeds(env)), 25000, 'N2: nach dem Beschluss angelegte feste Ausgabe wird abgezogen');
+        assertEqual(fromActual(closeNeeds(env)), 24480, 'N2: nach dem Beschluss angelegte feste Ausgabe wird abgezogen');
         // N4: derselbe Beleg vor dem 11.11.2026 beschlossen: Altbeleg, feste Ausgabe im Import angeboten.
         entry.committedAt = '2026-10-01T12:00:00.000Z';
         env.records[ANNUAL_PLAN_RECORD_KEY] = JSON.stringify(receipts);

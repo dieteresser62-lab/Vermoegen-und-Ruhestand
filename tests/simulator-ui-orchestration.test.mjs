@@ -573,8 +573,15 @@ async function runSimulatorUiOrchestrationTests() {
         registerElement(documentRef, 'mcStartYearHalfLife', { value: '20' });
         const capeToggle = registerElement(documentRef, 'useCapeSampling', { type: 'checkbox', checked: true });
         const capeWarning = registerElement(documentRef, 'mcStartYearCapeWarning', { tagName: 'div' });
+        // GH-1 Punkt 11: eine bewusst eingetragene 35 bleibt nach dem Neuladen stehen.
+        const durationInput = registerElement(documentRef, 'mcDauer', { value: '' });
+        persistenceStorage.setItem('sim_mcDauer', '35'); persistenceStorage.setItem('sim_mcDauerBewusst', 'true');
 
         persistModule.initInputPersistence();
+        assertEqual(durationInput.value, '35', 'GH-1 Punkt 11: markierte 35 bleibt nach dem Neuladen');
+        durationInput.value = '40';
+        durationInput.dispatchEvent({ type: 'change' });
+        assertEqual(persistenceStorage.getItem('sim_mcDauerBewusst'), null, 'GH-1 Punkt 11: anderer Wert entfernt die Markierung');
         monteCarloUiModule.initMonteCarloMethodControls();
         monteCarloUiModule.initMonteCarloStartYearControls();
         assertEqual(blockSizeInput.disabled, true, 'Regime-Methoden deaktivieren Blocklaengenfeld');
@@ -584,10 +591,12 @@ async function runSimulatorUiOrchestrationTests() {
         assertEqual(filterValue.textContent, '1970', 'FILTER-Ausgabewert wird synchronisiert');
         assertEqual(halfLifeValue.textContent, '20', 'Recency-Ausgabewert wird synchronisiert');
         assertEqual(capeWarning.style.display, 'block', 'CAPE plus Gewichtung zeigt den sichtbaren Vorranghinweis');
+        assertEqual(startYearMode.disabled, true, 'GH-1 Punkt 4: CAPE graut die Daten-Gewichtung aus');
 
         capeToggle.checked = false;
         capeToggle.dispatchEvent({ type: 'change' });
         assertEqual(capeWarning.style.display, 'none', 'Der Vorranghinweis verschwindet ohne CAPE-Sampling');
+        assertEqual(startYearMode.disabled, false, 'GH-1 Punkt 4: ohne CAPE ist die Daten-Gewichtung wieder wählbar');
 
         methodSelect.value = 'stationary';
         methodSelect.dispatchEvent({ type: 'change' });

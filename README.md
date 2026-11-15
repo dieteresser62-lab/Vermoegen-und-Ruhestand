@@ -19,7 +19,11 @@ Vermögen & Ruhestand plant Entnahmen für Einzelpersonen und Paare. Du erfasst 
 
 Eine Installation kann mehrere getrennte Haushalte führen, etwa den eigenen und den eines erwachsenen Kindes. Den geöffneten Haushalt zeigt und wechselt der Umschalter oben links; jeder Haushalt hat eigene Daten, Sicherungen und einen eigenen Spielbereich.
 
-Ein Haushalt besteht aus einer oder zwei Personen. Balance empfiehlt Entnahmen und Umschichtungen; du entscheidest über die Umsetzung, führst Geschäfte selbst aus und pflegst tatsächliche Bestände nach. Monats- und Jahresabschluss halten Tagesgeld, Marktdaten und Plan fest. In Balance zeigt die Karte „Was zu tun ist“ den Plan aus dem Jahresabschluss, wie weit du ihn umgesetzt hast, und eine Vorschau auf den nächsten Plan; daneben stehen deine Reserven. Das Jahreshoch erscheint nur bei einem verdeckten Bärenmarkt. Dann wählst du im Jahresabschluss die Lesart; [Jahresbudget](docs/reference/JAHRESBUDGET.md) erklärt beide. Simulationen rechnen mit Jahresendständen, Fondskosten auf Aktien, der Kohortensterbetafel des Geburtsjahrgangs und vereinfachten Steuer-, Pflege- und Erbannahmen. Sie garantieren keine künftige Finanzierung.
+Ein Haushalt besteht aus einer oder zwei Personen. Balance empfiehlt Entnahmen und Umschichtungen; du entscheidest über die Umsetzung, führst Geschäfte selbst aus und pflegst tatsächliche Bestände nach.
+
+Einzelne Tranchen öffnen zuerst ihre Kennzahlen und den Verlauf. Die Stückzahl änderst du an der Kachel „Stück“. Längere Verläufe zeigen zuerst die neuesten drei Einträge und den Kauf; alle Einträge lassen sich aufklappen. Widersprüche zwischen Bestand und Kaufdatum erscheinen direkt als Warnung und in der Tranchenzeile. Verkäufe und Wertpapierangaben haben eigene Zugänge; Notizen speichern beim Verlassen des Felds.
+
+Monats- und Jahresabschluss halten Tagesgeld, Marktdaten und Plan fest. In Balance zeigt die Karte „Was zu tun ist“ den Plan aus dem Jahresabschluss, wie weit du ihn umgesetzt hast, und eine Vorschau auf den nächsten Plan; daneben stehen deine Reserven. Das Jahreshoch erscheint nur bei einem verdeckten Bärenmarkt. Dann wählst du im Jahresabschluss die Lesart; [Jahresbudget](docs/reference/JAHRESBUDGET.md) erklärt beide. Simulationen rechnen mit Jahresendständen, Fondskosten auf Aktien, der Kohortensterbetafel des Geburtsjahrgangs und vereinfachten Steuer-, Pflege- und Erbannahmen. Sie garantieren keine künftige Finanzierung.
 
 ### Keine Beratung
 

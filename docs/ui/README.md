@@ -42,7 +42,7 @@ Mit `npm run docs:bilder -- --szenarien` erneuerst du nur das Bild des Pfadvergl
 
 Haushalt & Plan, Balance und Simulator zeigen ihre zunächst geschlossenen Planbereiche. Bei Max wird unter Einkünfte eine einmalige Rückzahlung über 50.000 € für Januar 2028 als Personendatum gespeichert. Die vorhandene Aufnahme personen-max zeigt den Bereich Einkünfte mit diesem Eintrag und den Summen. Für die Monte-Carlo-Einstellungen öffnet Einstellungen → zeigen die Klappe im Monte-Carlo-Reiter; die Aufnahme zeigt gezielt die Monte-Carlo-Karte. Danach schließt das Werkzeug den Bereich und wechselt zum Rechnen zurück zu Monte Carlo. Die Aufnahme simulator-annahmen zeigt die Monatszeile über der Jahrestabelle in Einkünfte, Ausgaben und Bedarf. Der Eintrag bleibt nur im frischen Aufnahme-Spielbereich und wird mit dessen Browserkontext verworfen.
 
-Der Browser läuft mit 1920×1080 Pixeln, Skalierung 1, Deutsch und Europe/Berlin. Die technische Uhr ist festgesetzt; Zeitgeber für Speicher und UI laufen weiter. Ausschnitte und verlustfreie PNG-Kompression begrenzen die Bildgröße. Bilddateien, Unterschriften, Datum, Seite, Zustand, Git-Commit, Ausschnitt, Maße und Dateigröße stehen im [Manifest](manifest.json). Gleiche PNG-Bytes auf verschiedenen Plattformen sind nicht zugesichert.
+Der Browser läuft mit 1920×1080 Pixeln, Skalierung 1, Deutsch und Europe/Berlin. Die technische Uhr ist festgesetzt; Zeitgeber für Speicher und UI laufen weiter. Ausschnitte und pngquant (Farbpalette, Qualität 70–90, ohne pngquant verlustfreie Kompression) begrenzen die Bildgröße. Ohne pngquant bleibt eine vorhandene verkleinerte Datei stehen, solange die Maße gleich sind. Ein Bild wird nur neu geschrieben, wenn es sich sichtbar geändert hat: Die neue Aufnahme wird mit der Palette der vorhandenen Datei verkleinert; geändert ist sie bei anderen Maßen oder wenn mehr als 8 Pixel in einem Farbkanal um mehr als 32 abweichen; ein Versatz des ganzen Ausschnitts um ein Pixel zählt nicht. Bilddateien, Unterschriften, Datum, Seite, Zustand, Git-Commit, Ausschnitt, Maße und Dateigröße stehen im [Manifest](manifest.json). Gleiche PNG-Bytes auf verschiedenen Plattformen sind nicht zugesichert.
 
 Nach dem Lauf siehst du dir einige PNGs und beide Abläufe an. Prüfe den Zustand, lesbare Werte und fehlende Lade- oder Fehleranzeigen. Führe danach `npm run docs:pruefen` aus. Das Werkzeug meldet bei einem Abbruch Bild, Aktion und Grund; wiederhole den gesamten Lauf nach der Korrektur. Server und Browser werden auch bei Fehlern geschlossen.
 
@@ -105,6 +105,8 @@ Die [Ablaufdiagramme](ablaufdiagramme.md) halten die Mermaid-Quellen der drei st
 - [simulator-fondskosten.png](simulator-fondskosten.png): Unter „Alle Parameter“ steht die Karte „Fondskosten“ mit „Laufende Kosten Aktien-ETF“ in % pro Jahr.
 - [personen-rente-wie-loehne.png](personen-rente-wie-loehne.png): Max mit Rentenanpassung „wie Löhne“; darunter steht der Hinweis zur Lohnreihe.
 - [personen-fondskosten.png](personen-fondskosten.png): Haushalt & Plan › Weitere Planwerte: Karte „Fondskosten“ mit „Laufende Kosten Aktien-ETF“, vorbelegt mit 0,5 % pro Jahr.
+- [tranche-detail.png](tranche-detail.png): Tranche im Detail: Kennzahlen, Wertpapier, Kauf und Steuer; rechts der Verlauf mit Kauf und Verkauf aus dem Plan.
+- [tranche-detail-korrektur.png](tranche-detail-korrektur.png): Stückzahl an der Kachel „Stück“ ändern: Abweichung oder Aktiensplit mit Vorschau.
 
 ## Jahresbudget
 

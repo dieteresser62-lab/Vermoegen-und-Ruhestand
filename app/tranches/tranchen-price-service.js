@@ -317,6 +317,61 @@ export async function fetchProxySymbol(query, proxyBase = LOCAL_YAHOO_PROXY, nam
     return results.map(normalizeSearchResultSymbol).find(Boolean) || null;
 }
 
+const ISIN_PATTERN = /^[A-Z]{2}[A-Z0-9]{9}\d$/;
+const SEARCH_LIMIT = 6;
+/** Anlageklasse aus dem Typ der Suche (ETF/Aktie → Aktien); Geldmarkt, Anleihen und Gold nur, wenn der Treffer es sagt. */
+function searchAssetClass(entry) {
+    if (entry?.assetClass) return entry.assetClass;
+    const type = String(entry?.quoteType || entry?.type || '').toUpperCase();
+    return ['ETF', 'EQUITY', 'MUTUALFUND'].includes(type) ? 'equity' : null;
+}
+
+/** Kurs eines Treffers mit Befund: `ok` (Euro, höchstens sieben Tage alt), `stale` (älter, mit Kurs und Datum), `currency` (andere
+ * Währung, kein Kursabruf in €) oder `failed` (kein Kurs). @param {string} symbol @param {any} [hint] @param {any} [options] */
+export async function probeSearchQuote(symbol, hint = null, options = {}) {
+    if (hint?.currency && hint.currency !== 'EUR') return { status: 'currency', currency: hint.currency };
+    let raw;
+    try {
+        raw = await marketPriceAdapter('quote', { symbol }, () => fetchProxyJson(`${LOCAL_YAHOO_PROXY}/quote?symbol=${encodeURIComponent(symbol)}`, options));
+    } catch (error) {
+        return { status: 'failed', code: error?.code || 'QUOTE_FAILED' };
+    }
+    try {
+        const quote = normalizeQuote(raw, isSyntheticPriceMode() ? raw?.symbol : symbol, options);
+        return { status: 'ok', price: quote.price, currency: quote.currency, asOf: quote.asOf, source: quote.source };
+    } catch (error) {
+        if (error?.code === 'UNSUPPORTED_CURRENCY') return { status: 'currency', currency: error.details?.currency || raw?.currency || '' };
+        if (error?.code === 'QUOTE_STALE' && raw?.price > 0) return { status: 'stale', price: raw.price, currency: String(raw.currency || '').toUpperCase(), asOf: raw.asOf };
+        return { status: 'failed', code: error?.code || 'QUOTE_FAILED' };
+    }
+}
+
+/**
+ * VK-2 (FR-79 Punkt 6, Ergänzung 1 Punkt 9): Suche nach ISIN oder Name über die vorhandene Suche des Kursdienstes, dann je Treffer der
+ * vorhandene Kursabruf. Ergebnis: Kürzel, Name, Börse, Typ, Währung, letzter Kurs und Befund. Yahoo liefert keine ISIN; war die Suche
+ * eine ISIN, übernimmt die App sie. Ein Fehler der Suche selbst wird als QuoteError geworfen (Meldung, kein Absturz).
+ * @param {string} query @param {{probe?: typeof probeSearchQuote, limit?: number} & Record<string, any>} [options]
+ * @returns {Promise<{query: string, isin: string|null, hits: any[]}>}
+ */
+export async function searchSecurities(query, { probe = probeSearchQuote, limit = SEARCH_LIMIT, ...options } = {}) {
+    const text = String(query || '').trim();
+    if (!text) return { query: text, isin: null, hits: [] };
+    const isin = ISIN_PATTERN.test(text.toUpperCase()) ? text.toUpperCase() : null;
+    const data = await marketPriceAdapter('searchList', { query: text },
+        () => fetchProxyJson(`${LOCAL_YAHOO_PROXY}/search?q=${encodeURIComponent(text)}`, options));
+    if (!isSyntheticPriceMode() && !Array.isArray(data?.quotes)) throw createQuoteError('INVALID_RESPONSE', 'Dienstantwort enthält keine Trefferliste.');
+    const entries = (data?.quotes || []).map(entry => ({ entry, symbol: normalizeSearchResultSymbol(entry) })).filter(item => item.symbol).slice(0, limit);
+    const hits = [];
+    for (const { entry, symbol } of entries) {
+        const quote = await probe(symbol, entry, options);
+        hits.push({ symbol, name: String(entry.shortname || entry.longname || entry.name || symbol), exchange: String(entry.exchDisp || entry.exchange || ''),
+            type: String(entry.typeDisp || entry.quoteType || entry.type || ''), assetClass: searchAssetClass(entry), isin: entry.isin || isin,
+            currency: quote.currency || entry.currency || '', price: quote.price ?? null, asOf: quote.asOf ?? null, status: quote.status,
+            available: quote.status === 'ok' });
+    }
+    return { query: text, isin, hits };
+}
+
 function formatQuoteError(error) {
     const code = typeof error?.code === 'string' ? error.code : 'UNKNOWN_ERROR';
     const message = error?.message || String(error);

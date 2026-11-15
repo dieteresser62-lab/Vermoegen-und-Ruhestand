@@ -6,17 +6,18 @@ import { runManagerOperation } from './history.js';
 import { PROFILE_STORAGE_KEYS, loadStoredBalanceStateFromData, PROFILE_VALUE_KEYS } from '../../profile/profile-state.js';
 import { PROFILE_LIVE_BASE_KEY, saveCurrentProfileFromLocalStorage, getCurrentProfileId } from '../../profile/profile-storage.js';
 import { renderPersistenceState, setPersistenceStatus } from './persistence-status.js';
-import { persistenceStorage } from '../../shared/persistence-facade.js';
+import { persistenceStorage, PersistenceFacade } from '../../shared/persistence-facade.js';
+import { getPageNavigationGuard } from '../../shared/navigation-guard-dialog.js';
 import { refreshManagerProfiles, syncManagerProfileControls } from '../tranchen-manager-profiles.js';
 import { bindManagerPersonCards } from '../tranchen-manager-person-cards.js';
 import { renderPersonWealth, renderDepotHistory, renderPersonAssets, cashMetric } from './rendering.js';
-import { processingIsBlocked } from './controls.js';
+import { processingIsBlocked, managerFieldsBlocked } from './controls.js';
 import { validateIsoDate, personDateInputToIso, personReferenceYear, personAge } from '../../profile/profile-person-data.js';
 import { loadProfileRegistry } from '../../profile/profile-registry.js';
 import { bindPersonIncome } from '../tranchen-manager-income.js';
 import { bindPersonImmobilien } from '../tranchen-manager-immobilien.js';
 import { bindManagerPartnership } from '../tranchen-manager-partnership.js';
-import { readDecimalInput } from '../tranchen-manager-decimal-input.js';
+import { readDecimalInput, displayDecimalInput } from '../tranchen-manager-decimal-input.js';
 import { readProfileCareSettings } from '../../shared/care-profile-settings.js';
 
 export async function saveProfileValues(values = readProfileAssetValuesFromDom(), navigationOperation = null) {
@@ -134,7 +135,11 @@ export function scheduleProfileValuesSave({ resumePaused = false, cashChange = f
     }
     // Ein durch Navigation abgebrochener Dialog gibt seinen Besitzer zuerst frei.
     // Der fortgesetzte Timer darf schon geplant werden; saveProfileValues prüft vor jedem Write erneut den Lifecycle.
-    if ((!resumePaused && state.navigationLifecycle?.isBlocked()) || state.cashPostingInFlight || state.commitInFlight) return false;
+    if ((!resumePaused && state.navigationLifecycle?.isBlocked()) || state.cashPostingInFlight || state.commitInFlight) {
+        // VN-3: Die Felder bleiben während eines anderen Autosaves bedienbar; die Änderung speichert, sobald die Sperre endet.
+        state.profileResaveWanted = true;
+        return false;
+    }
     if (immediate) return saveProfileValues(values);
     state.profileSaveTimer = setTimeout(() => {
         state.profileSaveTimer = null;
@@ -213,7 +218,8 @@ export async function applyManagerBirthDate() {
 export function bindProfileValueInputs() {
     bindPersonIncome(document);
     state.immobilien = bindPersonImmobilien(document, { blocked: processingIsBlocked, notify: () => state.navigationRegistration?.notify(), refresh: renderPersonAssets });
-    state.partnership = bindManagerPartnership(document, { blocked: processingIsBlocked, notify: () => state.navigationRegistration?.notify(), runOperation: async execute => {
+    state.resumeProfileSave = () => { if (state.profileResaveWanted) { state.profileResaveWanted = false; void scheduleProfileValuesSave(); } };
+    state.partnership = bindManagerPartnership(document, { blocked: processingIsBlocked, fieldsBlocked: managerFieldsBlocked, notify: () => state.navigationRegistration?.notify(), runOperation: async execute => {
         try { return await state.navigationLifecycle.run({}, execute); } finally { renderPersistenceState(); }
     } });
     byId('managerBirthApply')?.addEventListener('click', applyManagerBirthDate);
@@ -248,9 +254,39 @@ export function bindProfileValueInputs() {
     });
 }
 
+/** VK-3c (Gutachten VK3B-FABLE P1-1): Eintrag des Tagesgeldfelds in der Grundlinie der Seite (`state.profileBaseline`). */
+function cashBaselineEntry(signature) {
+    try { return JSON.stringify(JSON.parse(signature || '[]').find((/** @type {any[]} */ entry) => entry[0] === 'profileTagesgeld') ?? null); } catch { return 'null'; }
+}
+
+/** Hat der Nutzer das Tagesgeldfeld seit dem letzten Abgleich mit dem Speicher geändert? */
+function cashFieldEdited() {
+    const base = cashBaselineEntry(state.profileBaseline);
+    return base === 'null' || base !== cashBaselineEntry(managerInputSignature(['profileTagesgeld']));
+}
+
+/** Gesichert wird nur eine Eingabe des Nutzers. Hat ein Schreibweg (Kauf mit Abbuchung, Verkauf mit Gutschrift, „Abbuchung bestätigen“,
+ * „Kauf rückgängig“ mit Rücksetzen) das Tagesgeld geändert, zeigt das unberührte Feld noch den alten Stand; der überschreibt den neuen nicht. */
 export function flushManagerCashInput() {
     const field = byId('profileTagesgeld');
     if (readDecimalInput(field?.value, field) === loadProfileAssetValues().tagesgeld) return true;
+    if (!cashFieldEdited()) return true;
     if (state.profileCommitInFlight || state.pendingProfileValues) return false;
     return scheduleProfileValuesSave({ cashChange: true, immediate: true });
+}
+
+/** VK-3c: Nach einem Haushaltsschreibweg zeigt das unberührte Tagesgeldfeld den gespeicherten Stand (auch für das nächste Speichern
+ * anderer Personenwerte, das alle Felder liest); danach lädt die Seite neu. Eine eigene Eingabe im Feld bleibt stehen. */
+export function reloadAfterHouseholdWrite() {
+    const field = /** @type {HTMLInputElement|null} */ (byId('profileTagesgeld'));
+    if (field && !cashFieldEdited()) {
+        try {
+            const entries = JSON.parse(state.profileBaseline || '[]');
+            field.value = displayDecimalInput(loadProfileAssetValues().tagesgeld, field);
+            const index = entries.findIndex((/** @type {any[]} */ entry) => entry[0] === 'profileTagesgeld');
+            if (index >= 0) { entries[index] = JSON.parse(managerInputSignature(['profileTagesgeld']))[0]; state.profileBaseline = JSON.stringify(entries); }
+            renderPersonWealth();
+        } catch { /* Das Neuladen liest den Speicher ohnehin neu. */ }
+    }
+    void getPageNavigationGuard(document).reload({ flush: () => PersistenceFacade.flush(), reload: () => window?.location?.reload?.() }).catch(() => {});
 }

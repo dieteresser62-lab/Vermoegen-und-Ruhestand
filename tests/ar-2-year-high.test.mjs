@@ -33,7 +33,8 @@ const draft = computeAnnualPlanUpdate(options), plain = prepareAnnualCommitRecor
 // Aus den Quellen vor AR-2 ermittelt, gleicher Musterhaushalt, identischer Zeitpunkt.
 assertEqual(hash(draft.records), readGU1References('aeac523006dd72fde26591464f7b22656ed1a4004c7318a6af89a382078463aa'), 'Ohne Wahl bleibt der Jahresentwurf bytegleich zum Ausgangsstand');
 // FR-73: Der Abschluss schreibt den fortgeschriebenen Pflegewerte-Record auch ohne Dialogentwurf.
-assertEqual(hash(plain.records), readGU1References(readPFA2References('634a5aebc0add1eca20d29e2f8d3d053799c699bb969c158a5d24d8594e49ec1')), 'Ohne Wahl bleiben alle Abschlussrecords bytegleich zum Ausgangsstand');
+// GN-1: Bedarf und Mindest-Flex werden genau gespeichert (30.642 / 30.642 / 7.661 statt 31.000 / 31.000 / 8.000); alle übrigen Abweichungen folgen daraus.
+assertEqual(hash(plain.records), '782c2bb80c823070aa2f0d45a7c6bb5dfc0bfa7cfd3727fe34d77b3c9e62c4f7', 'Ohne Wahl bleiben alle Abschlussrecords bytegleich zum Ausgangsstand');
 const chosenDraft = computeAnnualPlanUpdate({ ...options, yearHigh });
 const chosen = prepareAnnualCommitRecords(chosenDraft, { engineApi: EngineAPI, now });
 const after = JSON.parse(chosen.records[key]), age = (Date.parse('2026-12-31') - Date.parse(yearHigh.asOf)) / 86400000 / 365.2425;

@@ -1,6 +1,8 @@
 import { readPartnership, PARTNERSHIP_KEY } from '../profile/household-partnership.js';
 import { projectBalancePlanningHorizon } from './balance-planning-horizon.js';
 import { registeredPlanTrial, planTrialPatch, planTrialDifferences } from '../shared/plan-trial.js';
+import { syncWithdrawalModeOptions, carrierModeText } from '../shared/household-plan-fields.js';
+import { parseWithdrawalMode, ONE_CARRIES } from '../profile/household-withdrawal-mode.js';
 import { readBalanceInflationSource, renderBalanceInflationSource } from './balance-inflation-source.js';
 import { BALANCE_STORAGE_FIELD_IDS, buildBalanceEngineInputFromStorage } from './balance-input-storage.js';
 import { readBalancePersonStatus, projectParticipatingPerson } from '../shared/person-data-status.js';
@@ -178,7 +180,12 @@ export const UIReader = {
         if (plan.status !== 'valid') { this.planFormSource = null; return plan; }
         if (registeredPlanTrial(globalThis.document)?.read().active) return plan;
         this.applyStoredInputs(projectPlanToBalance(plan.entry.values));
-        if (dom.inputs['profilverbund-withdrawal-mode']) dom.inputs['profilverbund-withdrawal-mode'].value = plan.entry.values.householdWithdrawalMode;
+        if (dom.inputs['profilverbund-withdrawal-mode']) {
+            // FR-80: „Eine Person trägt“ wählt man in Haushalt & Plan; die Balance zeigt den Wert als eigenen Eintrag.
+            syncWithdrawalModeOptions(globalThis.document, dom.inputs['profilverbund-withdrawal-mode'], [], plan.entry.values.householdWithdrawalMode);
+            dom.inputs['profilverbund-withdrawal-mode'].value = plan.entry.values.householdWithdrawalMode;
+            syncCarrierSegment(globalThis.document, plan.entry.values.householdWithdrawalMode, plan.scope?.ids || []);
+        }
         // Null ist ein bewusst nicht gesetzter Schwellenwert, kein altes Formularfeld.
         if (dom.inputs.bondRefillThreshold && plan.entry.values.decumulation.bondRefillThreshold === null) dom.inputs.bondRefillThreshold.value = '';
         this.planFormSource = { scopeKey: plan.scope.key, capeMetaRaw: JSON.stringify(JSON.parse(persistenceStorage.getItem(CONFIG.STORAGE.LS_KEY) || '{}').capeMeta || null), fields: Object.fromEntries(Object.entries(dom.inputs)
@@ -712,3 +719,16 @@ export const UIReader = {
         registeredPlanTrial(globalThis.document)?.render?.();
     }
 };
+
+/** TRG-1c Punkt 6: Die Balance zeigt „Eine Person trägt · <Name>“ als gedrückten Eintrag neben den drei Modi. @param {Document} doc @param {string} mode @param {string[]} ids */
+function syncCarrierSegment(doc, mode, ids) {
+    const host = doc?.getElementById?.('profilverbund-withdrawal-mode-segments');
+    if (!host || !doc.createElement) return;
+    for (const node of [...(host.querySelectorAll?.('[data-balance-carrier]') || [])]) node.remove();
+    // Gehört die tragende Person nicht mehr zum Haushalt, rechnet die App steueroptimiert; die Karte nennt das (TRG-1b P3-6).
+    if (parseWithdrawalMode(mode).kind !== ONE_CARRIES || !ids.includes(/** @type {string} */ (parseWithdrawalMode(mode).carrierId))) return;
+    const button = doc.createElement('button');
+    button.setAttribute('type', 'button'); button.setAttribute('aria-pressed', 'true'); button.setAttribute('data-balance-carrier', '');
+    button.dataset.balanceValue = mode; button.textContent = carrierModeText(mode);
+    host.append(button);
+}

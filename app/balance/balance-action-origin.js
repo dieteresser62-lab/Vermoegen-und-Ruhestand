@@ -1,5 +1,14 @@
 import { comparisonScopeMatches } from '../profile/household-plan-comparison.js';
 import { appNow } from '../shared/app-clock.js';
+import { parseWithdrawalMode, ONE_CARRIES } from '../profile/household-withdrawal-mode.js';
+
+/** VK-3b (Fable P3-8): Modus des Beschlusses wie der Stand der Käufe: Feld `householdWithdrawal`, sonst der Modus aus `snapshot.plan`
+ * (Belege vor TRG-1c); nur bei „Eine Person trägt“. @param {any} confirmed @returns {any} */
+export function confirmedCarrier(confirmed) {
+    if (confirmed?.householdWithdrawal) return confirmed.householdWithdrawal;
+    const parsed = parseWithdrawalMode(confirmed?.withdrawalMode);
+    return parsed.kind === ONE_CARRIES ? { mode: confirmed.withdrawalMode, carrierId: parsed.carrierId } : null;
+}
 
 /** Lesende Herkunftsprojektion. Nur der passende Jahresbeleg ist festgeschrieben. */
 /**
@@ -26,7 +35,9 @@ export function projectBalanceActionOrigin({ comparison = null, year = appNow().
         confirmed: valid ? { year, committedAt: confirmed.committedAt, text: confirmed.action.type === 'NONE'
             ? 'Nichts tun – kein Handlungsbedarf' : confirmed.text, action: structuredClone(confirmed.action), label,
             ...(comparison.confirmedSnapshot?.marketReading ? { marketReading: structuredClone(comparison.confirmedSnapshot.marketReading) } : {}),
-            ...(confirmed.plannedPosts ? { plannedPosts: structuredClone(confirmed.plannedPosts) } : {}) } : null,
+            ...(confirmed.plannedPosts ? { plannedPosts: structuredClone(confirmed.plannedPosts) } : {}),
+            ...(confirmed.withdrawalMode ? { withdrawalMode: confirmed.withdrawalMode } : {}),
+            ...(confirmed.householdWithdrawal ? { householdWithdrawal: structuredClone(confirmed.householdWithdrawal) } : {}) } : null,
         label,
         notice: comparison?.recordStatus === 'invalid' ? comparison.notice : '',
         previewYear,

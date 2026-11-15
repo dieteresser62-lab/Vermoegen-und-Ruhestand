@@ -52,6 +52,9 @@ export function projectHouseholdCareNeeds({ storage, status, now = appNow(), pro
 
 const euro = value => formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 });
 
+/** VN-4: zuletzt gesetzter Hinweis je Host (kein Neuaufbau bei gleichem Inhalt). */
+const shownHtml = new WeakMap();
+
 /** Bestehendes Hinweismuster (ds-note) mit Text, Beträgen je Person und Knopf „Erledigt“.
  *
  * @param {HTMLElement|null} host Host mit Klasse ds-note und data-care-hint.
@@ -63,7 +66,7 @@ export function renderCareHint(host, hint, { except = null } = {}) {
     if (!host) return false;
     const show = Boolean(hint) && !hint.done && hint.persons.length > 0;
     host.hidden = !show;
-    if (!show) { host.replaceChildren(); return false; }
+    if (!show) { host.replaceChildren(); shownHtml.delete(host); return false; }
     const escape = text => String(text).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
     const where = person => person.residential ? ' im Heim' : person.own ? ' zu Hause, eigener Wert' : ' zu Hause, Staffel';
     const line = person => `${person.residential ? 'Heim' : 'Pflege'} ${escape(person.name)}: ${person.monthly === null ? 'Betrag noch nicht berechenbar'
@@ -71,7 +74,9 @@ export function renderCareHint(host, hint, { except = null } = {}) {
     // UR-1b: Auf der Personenkarte nennt das Pflegeband darunter den Betrag der angezeigten Person; der Hinweis wiederholt ihn nicht.
     // UR-1d: Ausschluss über die Profil-ID; namensgleiche andere Profile bleiben stehen.
     const amounts = hint.persons.filter(person => except === null || person.profileId !== except).map(line).join(' · ');
-    host.innerHTML = `<p>${CARE_HINT_TEXT}</p>${amounts ? `<p class="ds-help">Angesetzt: ${amounts}</p>` : ''}<div class="ds-actions"><button type="button" class="ds-button ds-button-secondary" data-care-hint-done>Erledigt</button></div>`;
+    const html = `<p>${CARE_HINT_TEXT}</p>${amounts ? `<p class="ds-help">Angesetzt: ${amounts}</p>` : ''}<div class="ds-actions"><button type="button" class="ds-button ds-button-secondary" data-care-hint-done>Erledigt</button></div>`;
+    // VN-4 (Breitensuche zu ABS1 P1): Nur bei geändertem Inhalt neu aufbauen; ein fokussierter Knopf „Erledigt“ bleibt nach jedem Speichern.
+    if (shownHtml.get(host) !== html) { host.innerHTML = html; shownHtml.set(host, html); }
     return true;
 }
 

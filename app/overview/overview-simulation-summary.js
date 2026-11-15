@@ -97,7 +97,7 @@ const mcFields = /^(?:mc|rngMode$|useCapeSampling$|stressPreset$|tailRisk|market
 const simFields = new Set(('startFloorBedarf startFlexBedarf minimumFlexAnnual flexBudgetAnnual flexBudgetYears flexBudgetRecharge '
     + 'marketCapeRatio dynamicFlex horizonMethod horizonYears survivalQuantile goGoActive goGoMultiplier '
     + 'longevityMode longevityQuantileShift longevityRelativePct longevityBufferYears pflegefallLogikAktivieren pflegeModellTyp '
-    + 'pflegeMaxFloor pflegeRampUp pflegeMinDauer pflegeMaxDauer pflegeKostenDrift pflegeRegionalZuschlag pflegeHeimEigeneAusgaben '
+    + 'pflegeMaxFloor pflegeRampUp pflegeMinDauer pflegeMaxDauer pflegeKostenDrift pflegeKostenDriftBis pflegeKostenDriftDanach pflegeRegionalZuschlag pflegeHeimEigeneAusgaben '
     + 'entnahmeStrategie bondTargetFactor drawdownTrigger bondRefillThreshold mcAnzahl mcDauer mcBlockSize mcSeed mcMethode rngMode '
     + 'useCapeSampling mcStartYearMode mcStartYearFilter mcStartYearHalfLife mcExcludeEstimatedHistory '
     + 'widowPensionMode widowPensionPct widowMarriageOffsetYears widowMinMarriageYears survivorFloorPercent survivorFlexPercent survivorMinimumFlexPercent stressPreset tailRiskMode tailRiskProbability tailRiskSeverity tailRiskHorizonYears goldAllokationAktiv goldAllokationProzent goldFloorProzent goldSteuerfrei rebalancingBand tagesgeld simStartVermoegen depotwertAlt geldmarktEtf einstandAlt liquidityRunwayYears runwayTargetMonths runwayMinMonths maxSkimPctOfEq maxBearRefillPctOfEq risikoprofil rentAdjPct').split(' '));

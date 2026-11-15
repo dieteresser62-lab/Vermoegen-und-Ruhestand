@@ -22,7 +22,8 @@ const lessons = {
             const year = pensionStart && Number(pensionStart.slice(0, 4));
             const years = year ? `die Jahre ${year} und ${year + 1}` : 'das Jahr ihres Rentenbeginns und das Folgejahr';
             return [`Personen & Vermögen → Erika → Einkünfte: Rente, Feld „ab“, von ${pensionStart ? month(pensionStart) : 'ihrem Rentenbeginn'} auf ${shiftMonth(pensionStart, 1)} verschieben. Vergleiche im Simulator → Annahmen → „Einkünfte, Ausgaben und Bedarf“ ${years}, Spalte „Ergebnis“ (aus Vermögen). Ohne Erikas Rente steigt die Entnahme in diesen Jahren.`, 'Personen & Vermögen → Haushalt & Plan → Bedarf pro Jahr: Wunschbedarf um 300 € im Monat erhöhen. Vergleiche Balance → Dein Monatsbudget, Zeile „aus dem Vermögen“. Übersicht: In der Variante „Haus und vermietete Wohnung“ stehen Gesamtvermögen und „davon Geldvermögen“ auf der Vermögenskarte; öffne das ⓘ für die Aufteilung.', 'Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: Güterstand zwischen „Zugewinngemeinschaft (gesetzlich)“ und „Gütertrennung“ umstellen. Rechne im Simulator mit demselben Seed neu und vergleiche die Erbschaftsteuer in einem Todesjahr mit realem Vermögenszuwachs.',
-                'Balance → Deine Reserven: Das Ziel steht im Grundfall gerundet bei 165.000 € (gerechnet 162.000 €); Ziele und Verkäufe rundet die App auf, Verfügbares ab. Was zu tun ist → „Details & Drucken“ zeigt den Plan genau mit Cent.'];
+                'Balance → Deine Reserven: Das Ziel steht im Grundfall gerundet bei 165.000 € (gerechnet 162.000 €); Ziele und Verkäufe rundet die App auf, Verfügbares ab. Was zu tun ist → „Details & Drucken“ zeigt den Plan genau mit Cent.',
+                'Balance → Was zu tun ist → „Verkauf starten“: Der Überblick schlägt 66 und 565 Stück vor (Plan brutto plus 1 % Puffer). Trag in „Abrechnung“ für Erika 400 Stück zu 144,38 € mit 9,90 € Gebühren und 478,03 € Steuern ein. Die App fragt „Was passiert mit dem Rest?“; mit „Bleibt im Depot – so entschieden“ steht die Zeile auf „Erledigt · Rest bleibt im Depot“, „Rest doch verkaufen“ in der Karte nimmt es zurück.'];
         },
         observe: 'Übung 1: Simulator → Annahmen → „Einkünfte, Ausgaben und Bedarf“, Spalte „Ergebnis“. Übung 2: Balance → Dein Monatsbudget, Zeile „aus dem Vermögen“. Übung 4: Balance → Deine Reserven und „Details & Drucken“.'
     },
@@ -46,7 +47,8 @@ const lessons = {
     },
     'martin-petra': {
         question: 'Ist der überlebende Partner abgesichert, und steht dafür genug verfügbares Geld bereit?',
-        exercises: [variantExercise('martin-petra', ['grund', 'hundert', 'ehe', 'testament']), 'Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: Erbanteile ändern. Danach Simulator → Monte Carlo rechnen → Szenarien: ein Protokoll mit Todesfall öffnen.', 'Öffne in der Todesjahrzeile das Erbe-ⓘ: Vergleiche Erbschaftsteuer, Kapitalertragsteuer und Herkunft aus Verkauf oder Liquidität mit der Liquidität am Jahresende.'],
+        exercises: [variantExercise('martin-petra', ['grund', 'hundert', 'ehe', 'testament']), 'Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: Erbanteile ändern. Danach Simulator → Monte Carlo rechnen → Szenarien: ein Protokoll mit Todesfall öffnen.', 'Öffne in der Todesjahrzeile das Erbe-ⓘ: Vergleiche Erbschaftsteuer, Kapitalertragsteuer und Herkunft aus Verkauf oder Liquidität mit der Liquidität am Jahresende.',
+            'Balance → Was zu tun ist → „Kauf starten“: Im Überblick nach IE00BK5BQT80 suchen. VWCE.DE trägt „✓ Kurs abrufbar“, VWRA.L in USD lässt sich nicht wählen. Martins Abrechnung mit 685 Stück × 144,41 € und 9,90 € Gebühren eintragen: Die Zeile steht auf „erledigt“, 1.069,25 € bleiben auf dem Tagesgeld.'],
         observe: 'Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: „bleibt im Haushalt / verlässt den Haushalt / Erbschaftsteuer“. Nach jeder Variante Monte Carlo neu rechnen → „Grundbedarf gedeckt“.',
         note: 'Die Erbregeln zeigen Modellwirkungen, keine Empfehlung für eine rechtliche Gestaltung.'
     },
@@ -60,6 +62,12 @@ const lessons = {
 };
 
 const variantLessons = {
+    traegt: {
+        exercises: ['Personen & Vermögen → Haushalt & Plan → Verteilung im Haushalt: „Steueroptimiert“ wählen und Balance → Was zu tun ist vergleichen: Dann verkauft vor allem Petra. Danach unter „Eine Person trägt“ wieder Martin wählen: Verkauf und Steuer stehen nur bei Martin, Petras Tagesgeld bleibt bei 30.000 €.',
+            'Simulator → Monte Carlo rechnen → Szenarien: ein Protokoll öffnen. Das Handlungs-ⓘ zeigt, dass Martin den gemeinsamen Anteil trägt; reicht sein Vermögen nicht mehr, steht dort „Vermögen von Petra wird angegriffen“.'],
+        observe: 'Balance → Was zu tun ist und das Handlungs-ⓘ im Simulator-Protokoll.',
+        note: 'Bei Unverheirateten können Zahlungen über die gemeinsame Haushaltsführung hinaus Schenkungen sein (Freibetrag 20.000 € in zehn Jahren).'
+    },
     testament: {
         exercises: ['Simulator → Monte Carlo rechnen → Szenarien: einen Pfad mit Martins Tod öffnen. Im Todesjahr zeigt das Erbe-ⓘ Geldanteil, Kapitalwert des Wohnrechts und Steuer. Martins Haus verlässt den Haushalt; Petras eigene Wohnung bleibt, bis sie verkauft wird. Bei bereits verkaufter Wohnung steht „Immobilien 0 €“.', 'Personen & Vermögen → Haushalt & Plan → Partnerschaft und Todesfall: Mindestbetrag, Höchstanteil und Immobilienregel vergleichen. Danach Monte Carlo neu rechnen.', 'Bei Martin die Steuer auf das Wohnrecht von sofort auf jährlich (§ 23 ErbStG) umstellen. Vergleiche die Vorschau und rechne mit demselben Seed neu. Im Todesjahr fällt weniger Steuer an; ab dem Folgejahr steht Steuer Wohnrecht (§ 23) im Protokoll. Prüfe auch 1.500 € ortsübliche Miete pro Monat am Haus. Die Muster-Variante startet weiter mit sofort.'],
         observe: 'Wohnrecht schafft verfügbares Geld nur durch den Geldanteil. Das Haus kann weder im Notfall noch für Heimpflege verkauft werden; dauerhafte Heimpflege beendet das Wohnrecht und weitere Jahreszahlungen ohne Auszahlung.'
@@ -74,11 +82,18 @@ const variantLessons = {
     },
     teilweise: {
         question: 'Wie zeigt die App, was vom Jahresplan schon umgesetzt ist?',
-        exercises: ['Balance → Überblick → „Was zu tun ist“: Max hat seine Planzeile verkauft, Erika erst einen Teil. Lies „… von … verkauft“, den Stand je Zeile und den Hinweis „Gutschrift nachtragen“.',
-            'Hinweis „Gutschrift nachtragen“ → „Tagesgeld nachtragen“: In Personen & Vermögen die offene Cashbuchung von Erika bestätigen. Zurück in der Balance ist der Hinweis weg, und „Deine Reserven“ zeigt den Erlös im Tagesgeld.',
-            'Balance → „Verkauf eintragen“: Der Verkaufsdialog öffnet sich für Erikas Aktien-ETF. Trag den offenen Rest ein; die Karte zeigt danach „Erledigt“.'],
+        exercises: ['Balance → Überblick → „Was zu tun ist“: Max hat seine Planzeile verkauft, Erika erst einen Teil. Lies „… von … verkauft“, den Stand je Zeile und den Hinweis „Gutschrift nachtragen“ mit „Gutschrift unterwegs“.',
+            'Hinweis „Gutschrift nachtragen“ → „Gutschrift eintragen“: Der geführte Verkauf öffnet Schritt 4. Wähle bei Erika „Schon da“ und übernimm den Kontostand. Zurück in der Balance ist der Hinweis weg, und „Deine Reserven“ zeigt den Erlös im Tagesgeld.',
+            'Balance → „Weiter mit Schritt 3“: Die Abrechnung öffnet sich für Erikas offenen Rest. Trag eine Abrechnung ein; die Karte zeigt danach „Erledigt“ und je Person „Geldmarkt kaufen“.'],
         observe: 'Balance → Was zu tun ist und Deine Reserven.',
         note: 'Die Verkäufe dieser Variante sind Beispieldaten. Die App bucht nichts selbst; sie liest nur die eingetragenen Verkäufe.'
+    },
+    nachkauf: {
+        question: 'Welche Stücke verkauft die Bank, wenn ich denselben ETF mehrmals gekauft habe?',
+        exercises: ['Personen & Vermögen → Erika → Depot: Ihr Aktien-ETF steht als drei Tranchen mit Kauf 16.03.2020, 03.10.2022 und 14.02.2025. Balance → Was zu tun ist → „Details & Drucken“: Erikas Verkauf nimmt die Tranche vom 16.03.2020. Die Bank verkauft bei derselben ISIN die ältesten Stücke zuerst, die App plant genauso, auch wenn die jüngste Tranche weniger Steuer kosten würde.',
+            'Bei der Tranche vom 16.03.2020 das Kaufdatum leeren. Der geführte Verkauf nennt dann „Kaufdatum fehlt – Reihenfolge der Bank geschätzt“: Ohne Datum zählt die Tranche als älteste.'],
+        observe: 'Balance → Was zu tun ist → „Details & Drucken“, Spalte „Tranche“.',
+        note: 'Nachkäufe trägst du als eigene Tranche mit eigenem Kaufdatum ein.'
     },
     halten: { question: 'Was kostet es, den Lebensstandard fast nie zu senken?' },
     'haus-pg3': {
@@ -207,12 +222,14 @@ export function musterSteckbrief(records, householdId, testDate, variantId = 'gr
         if (variantId === 'klein') changes = `Geldvermögen ${euro(wealth)} statt ${euro(base.numbers.wealth)}: Tagesgeld ${euro(assets.cash)}, Depot ${euro(assets.depot)}, keine Anleihen. Strategie Standard.`;
         if (variantId === 'kurssturz') changes = 'Planwerte wie im Grundfall. Die Spielkurse der Aktien steigen 2026 bis zum 15.06. auf das Doppelte des Vorjahresendes und fallen bis Ende 2026 auf das 1,25-Fache; Geldmarkt, Anleihen und Gold wie im Grundfall.';
         if (variantId === 'teilweise') changes = 'Planwerte und Jahresplan wie im Grundfall. Max hat seine Planzeile am 12.03. verkauft und gutgeschrieben; Erika hat am 02.09. ein gutes Drittel ihrer Zeile verkauft, die Gutschrift aufs Tagesgeld ist noch offen.';
+        if (variantId === 'nachkauf') changes = `${second.name}s Aktien-ETF (${euro(JSON.parse(second.data.depot_tranchen).filter((/** @type {any} */ l) => l.type === 'aktien_neu').reduce((/** @type {number} */ sum, /** @type {any} */ l) => sum + l.shares * l.currentPrice, 0))}) stammt aus drei Käufen desselben ETF: 16.03.2020, 03.10.2022 und 14.02.2025, je ein Drittel, zu verschiedenen Einständen. Planwerte und Geldvermögen wie im Grundfall.`;
         if (variantId === 'halten') changes = `Mindest-Flex ${euro(plan.minimumFlexAnnual)} statt ${euro(base.numbers.minimumFlexAnnual)}: Der Flex darf in schlechten Jahren kaum sinken.`;
         if (variantId === 'haus-pg3') changes = `Selbst genutztes Haus ${euro(propertyValue)}, je zur Hälfte. ${second.name} hat heute Pflegegrad ${second.data.profile_care_grade_today} und wird zu Hause durch Angehörige gepflegt. Der Grundbedarf bleibt ${euro(plan.floorBedarf)} ohne Pflege: Die App rechnet ${euro(careToday)} heutige Pflegekosten im Jahr selbst dazu und zeigt sie in Balance als Zeile „Pflege ${second.name}“.`;
         if (partTime) changes = `Gehalt ${euro(partTime.betragMonat)} statt ${euro(incomeFromRecord(first.data)[0].betragMonat)} in den letzten ${Number(partTime.bis.slice(0, 4)) - Number(partTime.ab.slice(0, 4)) + 1} Jahren (${partTime.ab.slice(0, 4)}–${partTime.bis.slice(0, 4)}).`;
         if (variantId === 'hundert') changes = `Wer stirbt, vererbt dem Partner alles: Immobilien und Geld (${inheritancePercent(readPartnership(records.household_partnership_v1), profiles[0].meta.id)} %).`;
         if (variantId === 'ehe') changes = `Verheiratet, gegenseitig ${inheritancePercent(readPartnership(records.household_partnership_v1), profiles[0].meta.id)} %: Steuerklasse I mit ${euro(wealth - inheritancePreview(wealth, 0, 100, { status: 'married' }).taxable)} Freibetrag, Witwenrente nach Modellannahme.`;
     }
+    if (variantId === 'traegt') changes = 'Verteilung im Haushalt „Eine Person trägt · Martin“: Notwendige Verkäufe, Entnahmen aus Tagesgeld und Geldmarkt, Käufe und die Steuer darauf kommen nur aus Martins Vermögen. Petras Vermögen bleibt unangetastet, ihre Einkünfte zählen weiter zum Haushalt. Damit Verkäufe nötig sind, beträgt der Jahresbedarf 60.000 € Grundbedarf plus 24.000 € Wunsch-Flex, und Martin hat 20.000 € Tagesgeld. Alles andere wie im Grundfall.';
     if (variantId === 'testament') changes = 'Martin vererbt Petra ein Drittel seines Geldvermögens, mindestens 200.000 € in Kaufkraft 10/2026, höchstens 50 %. Für sein Haus gilt Wohnrecht auf Lebenszeit. Petra vererbt weiterhin 0 %; ihre Wohnung bleibt eigenes Vermögen.';
     const lesson = musterLesson(householdId, variantId, second?.data.profile_rentenbeginn, first?.data.profile_rentenbeginn);
     const note = partTime ? `Weniger Arbeit senkt meist auch die Rente. Sie bleibt hier ${rentText}: Passe sie selbst an.` : lesson.note;

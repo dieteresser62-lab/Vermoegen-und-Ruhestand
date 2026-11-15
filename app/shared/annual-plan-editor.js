@@ -1,4 +1,4 @@
-import { ANNUAL_NEED_PATHS, annualNeedsTiles, annualNeedSuggestions, roundAnnualSuggestion } from './annual-needs-review.js';
+import { ANNUAL_NEED_PATHS, annualNeedsTiles, annualNeedSuggestions, roundAnnualSuggestion, exactAnnualSuggestion } from './annual-needs-review.js';
 import { createCloseTiles } from './close-dialog.js';
 import { assertPlanValues, PLAN_FIELD_PATHS } from '../profile/household-plan.js';
 import { getPlanField, setPlanField } from '../profile/household-plan-migration.js';
@@ -11,7 +11,7 @@ import { createManualAnnualQuote } from './annual-marketdata.js';
 import { appNow } from './app-clock.js';
 import { bindHouseholdPlanDynamicFlex } from './household-plan-dynamic-flex.js';
 import { createPlannedPostsView } from '../balance/balance-planned-posts-renderer.js';
-import { displayMonthlyDown } from './display-rounding.js';
+import { displayMonthlyDown, displayedWithdrawal } from './display-rounding.js';
 
 /** Rechnet ausschließlich in privatem Speicher, mit Engine auf Abruf.
  *
@@ -141,16 +141,21 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
     });
     const discard = doc.createElement('button'); discard.textContent = 'Anpassung verwerfen'; discard.className = 'ds-button ds-button-secondary'; discard.type = 'button'; discard.dataset.annualPlanDiscard = ''; discard.disabled = true;
     const bindings = new Map(), fields = new Map(), observedValues = new Map(); let initialized = false, dynamic = null, baseValues = null;
+    // FR-68 Punkt 7: Solange ein Vorschlag gewählt ist, zeigt das Feld ihn glatt; gelesen und gespeichert wird der genaue Wert.
+    const projectNeed = (path, value) => bindings.get(path).project(value, { force: true,
+        ...(getPreview && selectedSuggestions.get(path) !== null ? { shown: roundAnnualSuggestion(value) } : {}) });
     const projectFields = values => {
         projectHouseholdPlanBindings(bindings, values, { force: true });
+        for (const path of ANNUAL_NEED_PATHS) if (bindings.has(path)) projectNeed(path, getPlanField(values, path));
         for (const [path, field] of fields) observedValues.set(path, readHouseholdPlanField(field, path));
     };
     const presets = create('div'); presets.dataset.planDynamicPresetsHost = '';
     const details = create('div'); details.dataset.planDynamicDetails = ''; details.hidden = true;
     groups[4].append(presets);
     const money = value => Math.round(value + Number.EPSILON * Math.abs(value)).toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
-    // FR-78: Das Monatsbudget des Folgejahrs abgerundet (Monatsstaffel); die Entnahme ist schon nach der Engine-Staffel gerundet.
-    const planMoney = (/** @type {number} */ value, /** @type {string} */ key) => money(key === 'monthlyBudget' ? displayMonthlyDown(value) : value);
+    // FR-78: Das Monatsbudget des Folgejahrs abgerundet (Monatsstaffel); die Entnahme ist angezeigtes Budget − Einkünfte (Ergänzung 3).
+    const planMoney = (/** @type {any} */ outcome, /** @type {string} */ key) => money(key === 'monthlyBudget' ? displayMonthlyDown(outcome.monthlyBudget)
+        : displayedWithdrawal(outcome.monthlyWithdrawal, outcome.monthlyBudget));
     refreshSuggestions = () => {
         if (!initialized || !getPreview) return;
         const state = draft.read(), preview = getPreview();
@@ -168,9 +173,9 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
             // FR-43 (N5): Mit festen Ausgaben im Plan-Grundbedarf nennt die Zeile denselben Planwert wie der Vergleich.
             const before = path === 'floorBedarf' && Number.isFinite(annual?.needsReview?.plans?.fixedTotal) ? annual.needsReview.plans.floor : need?.before;
             row.before.textContent = path === 'minimumFlexAnnual' ? '' : `Plan ${preview.targetYear} ${Number.isFinite(before) ? money(before) : '—'} · Ist ${preview.targetYear} ${Number.isFinite(suggestions.actual) ? money(suggestions.actual) : '—'} (${suggestions.comparison})`;
-            row.plan.textContent = `${path === 'minimumFlexAnnual' ? 'hochgerechnet' : `Plan ${preview.targetYear} + Inflation`} · ${money(suggestions.plan)}`;
+            row.plan.textContent = `${path === 'minimumFlexAnnual' ? 'hochgerechnet' : `Plan ${preview.targetYear} + Inflation`} · ${money(roundAnnualSuggestion(suggestions.plan))}`;
             row.actual.hidden = suggestions.fromActual === null || path === 'minimumFlexAnnual';
-            row.actual.textContent = `Ist ${preview.targetYear} + Inflation · ${money(suggestions.fromActual)}`;
+            row.actual.textContent = `Ist ${preview.targetYear} + Inflation · ${money(roundAnnualSuggestion(suggestions.fromActual))}`;
             for (const [choice, button] of [['plan', row.plan], ['actual', row.actual]]) { button.disabled = !initialized; button.setAttribute('aria-pressed', String(selectedSuggestions.get(path) === choice)); }
             refreshNeedSource(path);
             row.field.dataset.adjusted = String(!Object.is(state.values?.[path], baseValues?.[path]));
@@ -179,7 +184,7 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
     // WT-1b (Entwurf 5): Solange die Wahl zum Jahreshoch offen ist, hängen Budget und Entnahme an ihr („nach deiner Wahl“).
     const renderPlanAmounts = (/** @type {any} */ adopted) => {
         const note = budgetNote();
-        for (const key of ['monthlyBudget', 'monthlyWithdrawal']) summaryCells.get(key).value.textContent = note || (adopted ? planMoney(adopted[key], key) : '—');
+        for (const key of ['monthlyBudget', 'monthlyWithdrawal']) summaryCells.get(key).value.textContent = note || (adopted ? planMoney(adopted, key) : '—');
     };
     const draft = createAnnualPlanDraft({ evaluate, notify: state => {
         for (const [path, field] of fields) {
@@ -191,8 +196,8 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
         badge.hidden = !state.dirty; discard.disabled = !state.dirty || !initialized;
         if (state.dirty && (!getPreview || [...fields.keys()].some(path => !ANNUAL_NEED_PATHS.includes(path) && !Object.is(getPlanField(state.values, path), getPlanField(baseValues, path))))) { panel.hidden = false; toggle.setAttribute('aria-expanded', 'true'); }
         for (const [index, key] of ['monthlyWithdrawal', 'monthlyBudget'].entries()) {
-            adoptedCells[index].textContent = state.valid ? planMoney(state.result.adopted[key], key) : '—';
-            if (state.valid) recommendedCells[index].textContent = planMoney(state.result.recommended[key], key);
+            adoptedCells[index].textContent = state.valid ? planMoney(state.result.adopted, key) : '—';
+            if (state.valid) recommendedCells[index].textContent = planMoney(state.result.recommended, key);
         }
         if (getPreview) {
             const preview = getPreview(), adopted = state.valid ? state.result.adopted : null;
@@ -237,15 +242,16 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
                 const value = choice === 'plan' ? suggestions.plan : suggestions.fromActual;
                 if (value === null) return;
                 selectedSuggestions.set(spec.path, choice);
-                bindings.get(spec.path).project(value, { force: true }); observedValues.set(spec.path, value);
+                projectNeed(spec.path, value); observedValues.set(spec.path, value);
                 void draft.change(spec.path, value);
                 plan.setAttribute('aria-pressed', String(choice === 'plan')); actual.setAttribute('aria-pressed', String(choice === 'actual')); refreshNeedSource(spec.path);
             });
         } else (spec.group === 4 && spec.path !== 'dynamicFlex' ? details : groups[spec.group]).append(row);
         fields.set(spec.path, field);
-        const changed = () => {
+        const changed = (typed = false) => {
             if (field.disabled) return;
             if (needRows.has(spec.path)) {
+                if (typed && !bindings.get(spec.path).typed()) return;
                 selectedSuggestions.set(spec.path, null);
                 const row = needRows.get(spec.path); row.plan.setAttribute('aria-pressed', 'false'); row.actual.setAttribute('aria-pressed', 'false'); refreshNeedSource(spec.path);
             }
@@ -254,13 +260,13 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
             if (Object.is(getPlanField(draft.read().values, spec.path), value)) return;
             void draft.change(spec.path, value);
         };
-        bindings.set(spec.path, bindHouseholdPlanField({ doc, field, row, path: spec.path, fractionDigits: ANNUAL_NEED_PATHS.includes(spec.path) ? 0 : undefined, nativeOnly: spec.path === 'dynamicFlex', listen, onChange: changed,
+        bindings.set(spec.path, bindHouseholdPlanField({ doc, field, row, path: spec.path, fractionDigits: ANNUAL_NEED_PATHS.includes(spec.path) ? 0 : undefined, nativeOnly: spec.path === 'dynamicFlex', listen, onChange: () => changed(),
             onFocusStateChange: focusState => {
                 const state = draft.read();
                 for (const binding of bindings.values()) binding.sync(state.values ? { ...state.values, householdPersonCount: getPreview?.()?.people?.length } : null, state.error);
                 dynamic?.sync(focusState);
             } }));
-        listen(field, 'input', changed); listen(field, 'change', changed);
+        listen(field, 'input', () => changed(true)); listen(field, 'change', () => changed());
     }
     groups[4].append(details);
     dynamic = bindHouseholdPlanDynamicFlex({ doc, root, host: presets, details, read: () => draft.read().values,
@@ -299,11 +305,23 @@ export function createAnnualPlanEditor({ doc, listen, evaluate, getPreview, getA
         setBase(values) {
             initialized = true;
             values = structuredClone(values);
-            if (getPreview) for (const path of ANNUAL_NEED_PATHS) values[path] = roundAnnualSuggestion(values[path]);
+            if (getPreview) for (const path of ANNUAL_NEED_PATHS) values[path] = exactAnnualSuggestion(values[path]);
             baseValues = structuredClone(values);
-            if (!draft.read().values) projectFields(values);
+            const first = !draft.read().values;
+            if (first) projectFields(values);
             capeValue.textContent = values.cape.value.toLocaleString('de-DE');
             provenance.textContent = `${values.cape.asOf || 'Stand fehlt'} · ${values.cape.source || 'Quelle fehlt'}`;
-            return draft.setBase(values);
+            const pending = draft.setBase(values);
+            // GN-2b (Fable P3-2): Neue Basis im offenen Dialog (etwa korrigierte Inflation): gewählte Vorschläge zeigen den neuen
+            // glatten Betrag; ein gewählter Ist-Vorschlag wird mit der neuen Inflation neu übernommen.
+            if (!first && getPreview) for (const path of ANNUAL_NEED_PATHS) {
+                const choice = selectedSuggestions.get(path);
+                if (!choice || !bindings.has(path)) continue;
+                const value = choice === 'plan' ? values[path] : annualNeedSuggestions(getPreview(), getAnnualExpenses?.(), path, values[path]).fromActual;
+                if (value === null || value === undefined) continue;
+                projectNeed(path, value); observedValues.set(path, value);
+                if (choice === 'actual') void draft.change(path, value);
+            }
+            return pending;
         } };
 }

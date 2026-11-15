@@ -1,6 +1,6 @@
 // @ts-check
 
-import { creditConsumedIncome, unmarriedWithdrawalPlan } from '../simulator-unmarried.js';
+import { creditConsumedIncome, consumedIncomeCredits, unmarriedWithdrawalPlan } from '../simulator-unmarried.js';
 import { syncPersonalLiquidity, personalProfiles, personalWithdrawalPlan, snapshotPersonalInvestments, creditPersonalSale } from '../simulator-personal-accounts.js';
 import { isBondKind, executedSaleBreakdown, sumDepot } from '../simulator-portfolio.js';
 import { euros } from '../simulator-engine-direct-utils.js';
@@ -39,9 +39,12 @@ export function coverYearWithdrawal(context) {
     // FR-43: Die Reserve ist bereits im Engineziel enthalten. Hier nur eine
     // verbleibende Deckungslücke finanzieren; die Zahlung selbst folgt einmalig.
     const expenseLog = plannedExpense > 0 ? { geplante_ausgaben: plannedExpense } : null;
+    // FR-80 (P2-2): verbrauchte Einkünfte je Person für „Eine Person trägt“.
+    const incomeCredits = unmarried ? consumedIncomeCredits(portfolio, inputs, pensionResult, fixedIncome, incomeLog) : null;
     const incomeConsumed = unmarried ? creditConsumedIncome(portfolio, inputs, pensionResult, fixedIncome, incomeLog) : 0;
     if (unmarried) liquiditaet = portfolio.liquiditaet;
-    const ownedPlan = unmarried ? /** @type {import('../../../typcheck/rechenkern-integration').UnmarriedWithdrawalPlan} */ (unmarriedWithdrawalPlan)(unmarriedShares, jahresEntnahmeTarget + incomeConsumed + plannedExpense, portfolio) : null;
+    const ownedPlan = unmarried ? /** @type {import('../../../typcheck/rechenkern-integration').UnmarriedWithdrawalPlan} */ (unmarriedWithdrawalPlan)(unmarriedShares, jahresEntnahmeTarget + incomeConsumed + plannedExpense, portfolio, true, incomeCredits) : null;
+    if (ownedPlan) ownedPlan.credits = incomeCredits;
     const totalLiqNeed = jahresEntnahmeTarget + minLiqAfterPayout + incomeConsumed;
     let forcedShortfall = Math.max(0, totalLiqNeed + plannedExpense - liquiditaet);
     healthBucketCoverage = /** @type {import('../../../typcheck/rechenkern-integration').ApplyHealthBucketCoverage} */ (applyHealthBucketCoverage)({
@@ -86,7 +89,7 @@ export function coverYearWithdrawal(context) {
     forcedShortfall = Math.max(0, totalLiqNeed + plannedExpense - liquiditaet);
     if (unmarried) {
         // Persönliche Lücken auch dann decken, wenn der Partner noch Tagesgeld hat.
-        const revisedPlan = /** @type {import('../../../typcheck/rechenkern-integration').UnmarriedWithdrawalPlan} */ (unmarriedWithdrawalPlan)(unmarriedShares, /** @type {NonNullable<typeof ownedPlan>} */ (ownedPlan).totalNeed, portfolio);
+        const revisedPlan = /** @type {import('../../../typcheck/rechenkern-integration').UnmarriedWithdrawalPlan} */ (unmarriedWithdrawalPlan)(unmarriedShares, /** @type {NonNullable<typeof ownedPlan>} */ (ownedPlan).totalNeed, portfolio, true, incomeCredits);
         const ownCoverage = coverPersonalPayout(portfolio, revisedPlan, market);
         personalCoverage.raised += ownCoverage.raised;
         personalCoverage.sources.push(...ownCoverage.sources);

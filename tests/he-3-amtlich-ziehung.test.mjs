@@ -32,6 +32,7 @@ import { runStressReplayPathV1 } from '../app/simulator/stress-replay-runner.js'
 import { runDecisionComparison } from '../app/simulator/decision-comparison.js';
 import { measurementInputs, parameters } from './helpers/ek-1b-measurement.mjs';
 
+import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 // Unabhängiges Orakel: Destatis 22421-01, Heim (I34:I38) / insgesamt (C34:C38) je Grad 1–5.
 const DESTATIS = { 1: 4344 / 785822, 2: 132378 / 2300753, 3: 297955 / 1686286, 4: 248626 / 669263, 5: 114191 / 244252 };
@@ -304,7 +305,7 @@ function runYear(inputs, { p1, p2 = null, yearIndex, p1Alive = true, p2Alive = i
     const chunk = await runMonteCarloChunk({ inputs: withCare, monteCarloParams: { anzahl: 12, maxDauer: 30, methode: 'block', blockSize: 1, seed: 31 },
         logIndices: new Set(Array.from({ length: 12 }, (_, i) => i)), widowOptions: withCare.widowOptions, useCapeSampling: false, engine: EngineAPI });
     // HE-4: Die Pflegekennzahl ist netto; mit abgeschalteter Netto-Kennzahl wieder der Hash von 8dc432d6.
-    assertEqual(hash(withPreviousRunEvidence(chunk)), readLE1References(readGU1References(readHE4References('d5ecdf599d9cb8fe91f6789bb9d7d64443e96f59609743df238037629b302688'))), 'Ohne Amtlich: vollständiges Monte-Carlo-Ergebnis wie vor HE-3, Pflegekennzahl netto (Laufbeleg wie vor LE-1b)');
+    assertEqual(hash(withPreviousRunEvidence(chunk)), readFI1References(readLE1References(readGU1References(readHE4References('d5ecdf599d9cb8fe91f6789bb9d7d64443e96f59609743df238037629b302688')))), 'Ohne Amtlich: vollständiges Monte-Carlo-Ergebnis wie vor HE-3, Pflegekennzahl netto (Laufbeleg wie vor LE-1b)');
     const backtestInputs = { ...withCare, pflegeKostenStaffelPreset: 'amtlich', careToday: { grade: 4, form: 'residential', progression: 'usual' },
         partner: { ...withCare.partner, careToday: { grade: 4, progression: 'usual' } } };
     for (const grade of [1, 2, 3, 4, 5]) backtestInputs.pflegeGradeConfigs[grade].zusatz = official[grade];

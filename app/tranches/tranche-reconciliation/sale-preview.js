@@ -22,8 +22,20 @@ function comparableAction(action) {
     };
 }
 
+// Gutachten VK-1 P2-02: Gutschriftstand gehört zur Ausführung (ohne Zeitstempel). Altbelege ohne dokumentierten Stand vergleichen ohne ihn.
+function comparableCash(action) {
+    return {
+        cashStatus: action.cashStatus ?? null,
+        cashBalanceAfterPostingEur: action.cashStatus === RECONCILIATION_CASH_STATUSES.ALREADY_REFLECTED
+            ? action.cashBalanceAfterPostingEur ?? null : null
+    };
+}
+
 function sameExecution(record, action) {
-    return JSON.stringify(comparableAction(record)) === JSON.stringify(comparableAction(action));
+    const legacy = !record.cashStatus || record.cashStatus === RECONCILIATION_CASH_STATUSES.LEGACY_UNKNOWN;
+    const cash = legacy ? {} : { cash: comparableCash(record) };
+    const next = legacy ? {} : { cash: comparableCash(action) };
+    return JSON.stringify({ ...comparableAction(record), ...cash }) === JSON.stringify({ ...comparableAction(action), ...next });
 }
 
 function summarizeLot(lot) {

@@ -7,7 +7,6 @@ import { persistTranchen } from './tranches.js';
 import { normalizeTranches } from '../tranchen-manager-state.js';
 import { render } from './rendering.js';
 import { executeCashPosting } from './cash-posting.js';
-import { executeReconciliation } from './reconciliation.js';
 import { saveProfileValues } from './profile-values.js';
 
 export function describeLegacyTaxMigration(raw) {
@@ -81,7 +80,6 @@ export function applyLoadResult(result) {
     state.persistenceError = '';
     state.taxMigrationWarning = '';
     state.pendingCommit = null;
-    state.pendingReconciliation = null;
     state.pendingCashPosting = null;
     state.reconciliationPreview = null;
     state.reconciliationStatus = '';
@@ -116,10 +114,6 @@ export async function retryPendingCommit() {
     if (state.navigationLifecycle?.isBlocked()) return;
     if (state.pendingCashPosting) {
         await executeCashPosting(state.pendingCashPosting);
-        return;
-    }
-    if (state.pendingReconciliation) {
-        await executeReconciliation(state.pendingReconciliation, { requireConfirmation: false });
         return;
     }
     if (state.pendingCommit) {

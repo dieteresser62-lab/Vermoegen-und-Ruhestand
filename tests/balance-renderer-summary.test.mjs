@@ -335,7 +335,7 @@ console.log('--- Balance Renderer Summary Tests Completed ---');
             assertEqual(outputs.balanceNeedRows.children.flatMap(group => group.children.slice(1)).length, 4, 'Beide Gruppen bewahren den finanzierten Haushalts-Flex und alle bisherigen Bedarfswerte');
             assertEqual(outputs.balanceNeedProfiles.children.length, 0, 'Ohne Profilbedarfswerte entsteht keine Vermögensersatzzeile');
             assert(outputs.balanceNeedProfiles.hidden, 'Profilbedarfshost bleibt ohne vorhandenen Bedarf verborgen');
-            assertEqual(outputs.balanceActionCoverage.textContent, ' Danach 99,3\u00a0% des Ziels.', 'Erklärung nutzt die gelieferte Nachherdeckung');
+            assertEqual(outputs.balanceActionCoverage.textContent, '', 'GN-2b: Kein Satz mehr ohne Element auf der Seite; die Deckung steht nur in „Deine Reserven“');
             plan.renderPlanCards({ ...ui, input });
             assertEqual(outputs.balanceActionCoverage.textContent, '', 'Fehlende Nachherdeckung lässt den Zusatz entfallen');
             assertEqual(JSON.stringify(input), raw, 'Kartenanzeige verändert keine Eingaben');

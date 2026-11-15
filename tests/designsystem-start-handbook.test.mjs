@@ -68,7 +68,7 @@ const handbookUi = fs.readFileSync(new URL('../app/handbook/handbook.js', import
 const imageManifest = JSON.parse(fs.readFileSync(new URL('../docs/ui/manifest.json', import.meta.url), 'utf8'));
 const handbookImages = [...handbook.matchAll(/<img\b[^>]*src="((?:docs\/ui|assets\/handbook)\/[^"]+)"/g)].map(match => match[1]);
 const budgetImages = imageManifest.images.filter(image => /^docs\/ui\/jahresbudget-max-erika-(?:normal|2002)\.png$/.test(image.path));
-assertEqual(handbookImages.filter(src => src.endsWith('.png')).length, 37 + budgetImages.length, 'Ausgewählte App-Ansichten stehen direkt bei den Klickwegen (PFA-10: Bereich Pflege; UR-1b: erfasste Stände, übernommene Rentenanpassung; GU-1b: Fondskosten, Hinweis „wie Löhne“; KO-2: Fondskosten in Haushalt & Plan)');
+assertEqual(handbookImages.filter(src => src.endsWith('.png')).length, 49 + budgetImages.length, 'Ausgewählte App-Ansichten stehen direkt bei den Klickwegen (VK-1: geführter Verkauf mit sechs Bildern; VK-2: geführter Kauf mit vier Bildern; BV-1: Tranche im Detail; TD-1: Stückzahlkorrektur; PFA-10: Bereich Pflege; UR-1b: erfasste Stände, übernommene Rentenanpassung; GU-1b: Fondskosten, Hinweis „wie Löhne“; KO-2: Fondskosten in Haushalt & Plan)');
 assertEqual(handbookImages.filter(src => src.endsWith('.svg')).length, 3, 'Monat, Jahr und Spielbereich zeigen Offline-Abläufe');
 assert(handbookImages.every(src => src.endsWith('.svg') || imageManifest.images.some(image => image.path === src)), 'Handbuchbilder stammen aus dem geprüften Manifest');
 assertEqual((handbook.match(/<figcaption>/g) || []).length, handbookImages.length, 'Jedes Handbuchbild hat eine Unterschrift');

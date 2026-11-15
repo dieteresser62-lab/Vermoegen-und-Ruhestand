@@ -24,7 +24,7 @@ export const TRANCHE_FIELD_GROUPS = Object.freeze({
     persisted: Object.freeze([
         'schemaVersion', 'trancheId', 'name', 'isin', 'ticker', 'shares',
         'purchasePrice', 'currentPrice', 'asOf', 'purchaseDate', 'category', 'type',
-        'tqf', 'taxExempt', 'notes'
+        'tqf', 'taxExempt', 'notes', 'correctionHistory', 'legacyCorrectionAt'
     ]),
     derived: Object.freeze(['marketValue', 'costBasis', 'instrumentId']),
     provenance: Object.freeze(['sourceProfileId'])
@@ -168,6 +168,28 @@ function readQuoteTimestamp(raw, errors, context) {
         return undefined;
     }
     return value;
+}
+
+/** Additive Verlaufsdaten: nur im Persistenzpfad prüfen, nie in die Engine übernehmen.
+ * @param {Record<string,unknown>} raw @param {TrancheFieldError[]} errors @param {TrancheContext} context */
+function readCorrections(raw, errors, context) {
+    const entries = raw.correctionHistory === undefined ? [] : raw.correctionHistory;
+    const timestamp = (/** @type {unknown} */ value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)
+        && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+    const valid = Array.isArray(entries) && entries.every(entry => entry && typeof entry === 'object' && !Array.isArray(entry)
+        && timestamp(entry.at) && ['depotauszug', 'split'].includes(entry.reason)
+        && ['sharesBefore', 'sharesAfter', 'purchasePriceBefore', 'purchasePriceAfter'].every(field => typeof entry[field] === 'number' && Number.isFinite(entry[field]) && entry[field] > 0)
+        && entry.sharesBefore !== entry.sharesAfter);
+    if (!valid) errors.push(fieldError('TRANCHE_CORRECTIONS_INVALID', 'correctionHistory', context.index, context.trancheId,
+        'Korrekturen brauchen ISO-Zeitpunkt, Grund und positive Stückzahlen und Kaufpreise vorher und nachher.', entries));
+    if (raw.legacyCorrectionAt !== undefined) {
+        const dayErrors = /** @type {TrancheFieldError[]} */ ([]);
+        if (!raw.legacyCorrectionAt || normalizeDate(raw.legacyCorrectionAt, dayErrors, context) !== raw.legacyCorrectionAt || dayErrors.length) {
+            errors.push(fieldError('TRANCHE_CORRECTIONS_INVALID', 'legacyCorrectionAt', context.index, context.trancheId,
+                'Der alte Korrekturtag muss ein gültiger Kalendertag sein.', raw.legacyCorrectionAt));
+        }
+    }
+    return valid ? entries.map(entry => ({ ...entry })) : [];
 }
 
 /** @param {Record<string,unknown>} raw
@@ -540,6 +562,13 @@ function normalizeOneUncached(raw, options = {}) {
     };
     delete value.id;
     delete value.kind;
+    if (mode === 'persisted') {
+        const corrections = readCorrections(raw, errors, context);
+        // Fehlend gilt als leer; alte Records behalten ihre Form ohne neues Leerfeld.
+        if (raw.correctionHistory !== undefined) value.correctionHistory = corrections;
+        else delete value.correctionHistory;
+    }
+    else { delete value.correctionHistory; delete value.legacyCorrectionAt; }
     if (asOf === undefined) delete value.asOf;
     else value.asOf = asOf;
     if (shares === null) delete value.shares;

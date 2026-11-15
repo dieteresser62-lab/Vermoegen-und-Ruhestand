@@ -82,8 +82,8 @@ console.log('Test 4: classification, signs and accessibility are unambiguous');
     assert(!html.includes('>Geldmarkt</span>'), 'Gold should not be labelled as money market');
     assert(html.includes('-10,0\u00a0%'), 'Negative return should contain one leading minus sign');
     assert(!html.includes('+-'), 'Negative values must never contain plus-minus output');
-    assert(html.includes('aria-label="Tranche Gold Reserve bearbeiten"'), 'Edit icon should have an accessible name');
-    assert(html.includes('aria-label="Tranche Gold Reserve löschen"'), 'Delete icon should have an accessible name');
+    assert(html.includes('aria-label="Tranche Gold Reserve im Detail"'), 'Detail icon should have an accessible name');
+    assert(!html.includes('data-action="delete-tranche"'), 'VN-1 Punkt 8: kein Papierkorb in der Zeile; Löschen nur in „Tranche im Detail“');
     assert(html.includes('class="table-scroll ds-table-scroll"'), 'Table should render inside its dedicated scroll container');
 }
 console.log('✓ classification and accessible actions OK');
@@ -139,16 +139,17 @@ console.log('Test 6: cash-status renderer distinguishes pending, corrected and l
             canCorrect: false
         }
     ]);
-    assert(html.includes('1 Verkauf/Verkäufe mit offener manueller Cashbuchung'),
-        'Renderer should count only true pending sales');
+    // VN-1 Punkt 7: Klartext ohne Kennungen, Zeitstempel und „Cash“.
+    assert(html.includes('Eine Gutschrift kommt noch.'), 'Renderer should count only true pending sales');
+    const visible = html.replace(/<[^>]*>/g, ' ');
+    assert(!/\d{4}-\d{2}-\d{2}T\d{2}:|Cash|Audit|Zielverkauf/.test(visible), `VN-1 Punkt 7: keine Zeitstempel, kein „Cash“, keine Kennungen (${visible.replace(/\s+/g, ' ').slice(0, 300)})`);
     assert(html.includes('data-cash-action="confirm"') && html.includes('data-cash-action="correct"'),
         'Renderer should expose explicit append-only workflow actions');
-    assert(html.includes('Revision 1') && html.includes('10.090'),
+    assert(html.includes('Tagesgeld korrigiert') && html.includes('10.090'),
         'Renderer should show only the effective corrected balance and revision');
-    assert(html.includes('Altfall – Cashstatus nicht dokumentiert'),
+    assert(html.includes('Älterer Verkauf ohne Angabe zur Gutschrift'),
         'Renderer should keep legacy evidence distinct from confirmed cash');
-    assert(html.includes('1 Altverkauf/Altverkäufe ohne dokumentierten Cashstatus')
-        && html.includes('nicht als cashbestätigt'),
+    assert(html.includes('Ein älterer Verkauf hat keine Angabe zur Gutschrift; er gilt als erledigt.'),
     'Renderer summary must disclose legacy sales instead of implying confirmed cash');
     assert(!html.includes('sale-<unsafe>') && html.includes('sale-&lt;unsafe&gt;'),
         'Cash target ids must be HTML-escaped in text and attributes');
@@ -156,7 +157,7 @@ console.log('Test 6: cash-status renderer distinguishes pending, corrected and l
     const errorHtml = buildReconciliationCashStatusesHtml([], {
         errorMessage: 'Audit <nicht lesbar>'
     });
-    assert(errorHtml.includes('Cashstatus-Audit nicht lesbar – die Liste ist unvollständig'),
+    assert(errorHtml.includes('Die Verkäufe sind nicht lesbar – die Liste ist unvollständig'),
         'Unreadable audit should render a dedicated incomplete-list state');
     assert(!errorHtml.includes('Noch keine dokumentierten Realverkäufe'),
         'Unreadable audit must never masquerade as an empty history');
@@ -299,7 +300,8 @@ console.log('Ganze Euro sind ausschließlich Ausgabe; Gruppensummen und Prozentn
     assert(table.includes('67,13') && table.includes('+10,2\u00a0%'), 'Einzelpreis behält Cent; Gewinnprozent verwendet den rohen Einstand');
     assertEqual(JSON.stringify(lots), before, 'Gerundete Finanzanzeige erhält sämtliche Rohbytes');
     const cash = buildReconciliationCashStatusesHtml([{ targetActionId: 'dezimal', confirmedNetProceedsEur: 95.49, cashBalanceAfterPostingEur: 10090.75 }]);
-    assert(cash.includes('95\u00a0€') && cash.includes('10.091\u00a0€') && cash.includes('95,49 €') && cash.includes('10.090,75 €'), 'Cashkarte zeigt ganze Euro und hält den centgenauen Nachweis zugänglich');
+    // VN-1 Punkt 7: Belegbeträge stehen genau mit Cent (FR-78 Punkt 4), ohne zweite gerundete Zeile.
+    assert(cash.includes('95,49\u00a0€') && cash.includes('10.090,75\u00a0€'), 'Verkaufskarte zeigt Gutschrift und Tagesgeld centgenau');
 }
 
 {

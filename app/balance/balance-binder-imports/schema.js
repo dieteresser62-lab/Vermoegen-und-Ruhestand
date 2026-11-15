@@ -119,6 +119,8 @@ export const BALANCE_IMPORT_INPUT_SCHEMA_V2 = Object.freeze({
     profilName: stringField({ maxLength: 200 }),
     depotLastUpdate: numberField({ integer: true, min: 0 }),
     decumulation: Object.freeze({ type: 'decumulation', required: false }),
+    // TRG-1c Punkt 6: Verteilung im Haushalt, optional (steueroptimiert, anteilig, nach Reichweite oder `one_carries:<Person>`).
+    householdWithdrawalMode: Object.freeze({ type: 'withdrawalMode', required: false }),
     healthBucket: Object.freeze({ type: 'healthBucket', required: false }),
     detailledTranches: Object.freeze({ type: 'tranchesOrNull', required: false })
 });

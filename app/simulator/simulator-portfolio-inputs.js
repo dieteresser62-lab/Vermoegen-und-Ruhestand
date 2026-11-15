@@ -1,6 +1,7 @@
 import { localCalendarDate } from '../shared/app-clock.js';
 /** @import {SimulatorInputs} from '../../typcheck/rechenkern.js' */
 /** @import {PensionFields, SimulatorControl} from '../../typcheck/simulator-ui.js' */
+import { dropUnusedCareDrift } from '../shared/care-cost-drift.js';
 import { PARTNERSHIP_KEY, readPartnership, hasTestament, testamentRule, hasInheritanceHomes } from '../profile/household-partnership.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { simulatorPlannedExpenses } from '../profile/household-planned-expenses.js';
@@ -146,6 +147,9 @@ export function getCommonInputs() {
     if (result.careToday?.grade || result.partner?.careToday?.grade) {
         Object.assign(result, careReference(localCalendarDate(), personInputs?.context.referenceYear ?? personReferenceYear(null)));
     }
+    // FR-73 Punkt 8 geändert: Kostenanstieg je Kalenderjahr; Index 0 ist das Bezugsjahr der Personendaten (wie die Protokolljahre).
+    if (result.pflegeKostenDriftDanach !== undefined) result.pflegeKostenStartJahr = personInputs?.context.referenceYear ?? personReferenceYear(null);
+    dropUnusedCareDrift(result);
     Object.assign(result, readDocumentPlannedInflows(personInputs?.context.referenceYear));
     Object.assign(result, simulatorPlannedExpenses({ scope: plan.scope }, personInputs?.context.referenceYear ?? personReferenceYear(null)));
     if (result.plannedExpenses?.length) result.plannedExpenses = withPlannedExpensePrices(result.plannedExpenses,

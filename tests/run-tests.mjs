@@ -43,6 +43,7 @@ export const QUICK_TESTS_DEPRECATED_MESSAGE =
     'QUICK_TESTS=1 is deprecated; use targeted run-single checks or the slice-specific commands instead.';
 
 export const TEST_EXECUTION_POLICY = Object.freeze({
+    'td-1b-corrections.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigener Persistenzadapter für Korrekturverlauf, Sicherung und Spielbereich.' }),
     'ff-1b-expenses.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigener Persistenzadapter für Personendateien und FF-1b-Gegenproben.' }),
     'ff-1-expenses.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigener Persistenzadapter für CSV, Sicherung und Personenaustausch mit Bedarfaufteilung.' }),
     'ph-1b-followup.test.mjs': Object.freeze({ mode: 'isolated', reason: 'Eigener Persistenzadapter für PH-1b-Gegenproben und Altbestand.' }),

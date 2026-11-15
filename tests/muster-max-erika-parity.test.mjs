@@ -1,4 +1,7 @@
-import { readLE1References } from './helpers/le-1-expectations.mjs';
+import { readTRG1References } from './helpers/trg-1-expectations.mjs';
+import { readLE1References as readBeforeGN2References } from './helpers/le-1-expectations.mjs';
+import { readGN2References } from './helpers/gn-2-expectations.mjs';
+const readLE1References = value => readGN2References(readBeforeGN2References(value));
 import { withPreviousRunEvidence } from './helpers/le-1b-expectations.mjs';
 const readQSCReferences = value => readPFA1References(beforePFA1QSCReferences(value));
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
@@ -27,6 +30,7 @@ import { PersistenceFacade as P } from '../app/shared/persistence-facade.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
 import { readPartnership, inheritancePercent } from '../app/profile/household-partnership.js';
 import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
+import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const ref = JSON.parse(fs.readFileSync(new URL('./fixtures/mu-1-max-erika-before.json', import.meta.url), 'utf8'));
 const partnership = readPartnership(createMusterHaushaltRecords(ref.testDate).household_partnership_v1);
 assertEqual(partnership.status, 'married', 'Max/Erika bisherige Partnerschaft bleibt verheiratet');
@@ -37,5 +41,5 @@ assertEqual(hash(backtest(inputs)), readLE1References(readGU1References(readQSCR
 const chunk = await runMonteCarloChunk({ inputs, monteCarloParams: ref.parameters, widowOptions: inputs.widowOptions,
     useCapeSampling: false, runRange: { start: 0, count: 2000 }, engine: EngineAPI });
 // LE-1 (FR-75): Längere Lebensläufe machen runMeta als eine JSON-Zeichenkette zu lang; je Lauf gehasht.
-assertEqual(hash({ ...withPreviousRunEvidence(chunk), runMeta: chunk.runMeta.map(run => hash(run)) }), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(ref.monteCarloHash))))), 'Max/Erika MC 2.000 Läufe, Seed 12345, 23.10.2026 mit belegten PA-1-Folgen');
+assertEqual(hash({ ...withPreviousRunEvidence(chunk), runMeta: chunk.runMeta.map(run => hash(run)) }), readFI1References(readTRG1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(ref.monteCarloHash))))))), 'Max/Erika MC 2.000 Läufe, Seed 12345, 23.10.2026 mit belegten PA-1-Folgen');
 P.resetPersistenceForTests(); setAppTestDate(null);

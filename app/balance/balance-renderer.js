@@ -19,8 +19,8 @@ import { SummaryRenderer } from './balance-renderer-summary.js';
 import { ActionRenderer } from './balance-renderer-action.js';
 import { DiagnosisRenderer } from './balance-renderer-diagnosis.js';
 import { displayDiagnosisText } from './balance-diagnosis-transaction.js';
-import { summarizeBalanceAction, summarizeThreeBucketAction, threeBucketActionTrades } from './balance-action-summary.js';
-import { currentYearActionSource, recalculatedActionSource } from './balance-reserves.js';
+import { summarizeThreeBucketAction, threeBucketActionTrades } from './balance-action-summary.js';
+import { reserveActionSource } from './balance-reserve-source.js';
 import { registeredPlanTrial } from '../shared/plan-trial.js';
 
 // Module-level references
@@ -155,20 +155,8 @@ export const UIRenderer = {
         const confirmed = !trial && summaryRenderer.actionOrigin?.confirmed?.action ? summaryRenderer.actionOrigin.confirmed : null;
         let reserveOptions = {};
         if (ui.currentYear || confirmed) {
-            // Dieselbe Aktionsaufbereitung ohne DOM-Schreibzugriff für Diagnose und laufende Reserven.
-            const prepare = source => {
-                const prepared = new ActionRenderer({}).prepareExecutionEntries(source.entries, currentYear.zielLiquiditaet);
-                return { source, prepared, base: summarizeBalanceAction(source.action, source.action, prepared) };
-            };
-            let result;
-            // WT-1: Wirft die Aufbereitung des Belegs (etwa weil die Liquidität nach einem Kauf nicht mehr reicht),
-            // rechnen Karte und Diagnose mit der Neuberechnung weiter. Die Seite bricht nie ab.
-            try { result = prepare(currentYearActionSource(currentYear, confirmed)); }
-            catch (error) {
-                if (!confirmed) throw error;
-                console.warn('Jahresbeleg nicht auf heutige Bestände anwendbar; Reserven rechnen neu:', error);
-                result = prepare(recalculatedActionSource(currentYear));
-            }
+            // Dieselbe Aktionsaufbereitung ohne DOM-Schreibzugriff für Diagnose und laufende Reserven (auch für die Übersicht).
+            const result = reserveActionSource(currentYear, confirmed);
             entries = result.prepared;
             reserveOptions = { targetEntries: result.source.targetEntries, settled: result.source.settled, creditPendingNet: result.source.creditPendingNet };
             diagnosisActionSummary = currentYear.input?.decumulation?.mode === '3_bucket_jilge'

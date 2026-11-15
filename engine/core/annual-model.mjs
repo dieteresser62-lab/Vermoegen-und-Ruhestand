@@ -94,9 +94,8 @@ export function _internal_calculateModel(input, lastState, { includeFlexTrace = 
 
     // 4. Gold-Floor berechnen (Mindestbestand)
     // Definiert minimalen Gold-Bestand als Prozentsatz des Gesamtvermögens
-    // @ts-expect-error TP-Befund TP-3-1: Bei aktivem Gold lässt der Validator fehlenden Gold-Floor durch; es entsteht NaN.
-    const goldFloorAbs = (normalizedInput.goldFloorProzent / 100) * gesamtwert;
-    const minGold = normalizedInput.goldAktiv ? goldFloorAbs : 0;
+    // GH-1 Punkt 8: Bei aktivem Gold setzt die Normalisierung einen fehlenden Gold-Floor auf 0 (vorher TP-3-1, NaN).
+    const minGold = normalizedInput.goldAktiv ? (/** @type {number} */ (normalizedInput.goldFloorProzent) / 100) * gesamtwert : 0;
 
     const {
         renteJahr, inflatedBedarf, staticFlexBaseline,

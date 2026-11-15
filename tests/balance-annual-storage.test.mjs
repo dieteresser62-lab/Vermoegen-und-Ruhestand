@@ -92,7 +92,7 @@ try {
     assertEqual(Object.keys(captured.people).length, 2, 'Jahresabschluss erfasst alle Haushaltsmitglieder');
     assertClose(captured.household.total, captured.people.muster_a.total + captured.people.muster_b.total, 1e-8, 'Jahrespersonenstände ergeben den Haushaltsstand');
     assertEqual(JSON.stringify(prepared.receipt.recommended), JSON.stringify(prepared.receipt.adopted), 'Ohne Planpatch sind beide Belegzweige bytegleich');
-    assert(!prepared.receipt.adjusted, 'Aufgerundete Empfehlung ist keine bewusste Plananpassung');
+    assert(!prepared.receipt.adjusted, 'Genaue Empfehlung ist keine bewusste Plananpassung');
     assertEqual(prepared.receipt.periodId, 'calendar-year:2026', 'Beleg verweist auf abgeschlossene Periode');
     assertEqual(prepared.receipt.year, 2027, 'Beleg gehört zum folgenden Planungsjahr');
     assertEqual(prepared.receipt.committedAt, clock().toISOString(), 'Beleg übernimmt bestätigten Abschlusszeitpunkt');
@@ -132,8 +132,9 @@ try {
         yearlyStorage = annualRecordStorage({ ...yearlyStorage.records, ...nextCommit.records });
         const read = readAnnualPlanRecord({ year: year + 1, scope: fractional.scope, storage: yearlyStorage });
         for (const id of ['floorBedarf', 'flexBedarf', 'minimumFlexAnnual']) {
-            expectedNeeds[id] = Math.ceil(expectedNeeds[id] / 1000) * 1000;
-            assertEqual(read.recommended.snapshot.plan[id], expectedNeeds[id], `${year}/${id}: Empfehlung entspricht aufgerundetem Vorschlag`);
+            // GN-1 (FR-68 Punkt 7): gespeichert wird genau in ganzen Euro, kaufmännisch.
+            expectedNeeds[id] = Math.round(expectedNeeds[id]);
+            assertEqual(read.recommended.snapshot.plan[id], expectedNeeds[id], `${year}/${id}: Empfehlung entspricht genauem Vorschlag`);
             assertEqual(read.adopted.snapshot.plan[id], expectedNeeds[id], `${year}/${id}: Reload behält den empfohlenen Bedarf`);
         }
     }
@@ -280,7 +281,7 @@ try {
                 await commitAnnualPlanUpdate({ targetYear: 2026, marketData, storage: live, persistence: PersistenceFacade, engineApi: EngineAPI, now: clock });
                 const confirmed = JSON.parse(live.getItem(CONFIG.STORAGE.LS_KEY));
                 const plan = readBalanceHouseholdPlan({ storage: live });
-                assertEqual(plan.entry.values.floorBedarf, 31000, 'Wiederaufnahme übernimmt den einmal inflationierten und aufgerundeten Planvorschlag');
+                assertEqual(plan.entry.values.floorBedarf, 30642, 'Wiederaufnahme übernimmt den einmal inflationierten genauen Planvorschlag');
                 assertEqual(confirmed.inputs.endeVJ_1, annualDraft.before.readerInputData.endeVJ, 'Wiederaufnahme nach Vorbereitungsfehler dreht die Kette genau einmal');
             }
         }

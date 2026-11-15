@@ -336,14 +336,12 @@ try {
     {
         const { doc, backend } = await setup();
         const before = JSON.stringify([...backend]);
-        await doc.getElementById('depotAddTrancheBtn').click();
-        assert(doc.getElementById('trancheModal').classList.contains('active'), 'Depotkauf bedient den bestehenden Kaufdialog');
+        // VK-2: „Kauf eintragen“ öffnet den geführten Kauf (Browserfall depot-tranchen-manager.html); der Tranchendialog dient dem Bearbeiten.
+        const { openCreateTrancheModal } = await import('../app/tranches/tranchen-manager-modal.js');
+        openCreateTrancheModal(doc, doc.getElementById('depotAddTrancheBtn'));
+        assert(doc.getElementById('trancheModal').classList.contains('active'), 'Tranchendialog öffnet weiter');
         await doc.getElementById('closeTrancheModalBtn').click();
-        assertEqual(doc.activeElement.id, 'depotAddTrancheBtn', 'Depotkauf erhält den tatsächlichen Rückfokus');
-        await doc.getElementById('depotOpenSaleEntryBtn').click();
-        assert(doc.getElementById('saleModal').classList.contains('active'), 'Depotverkauf bedient den bestehenden Verkaufsdialog');
-        await doc.getElementById('saleCancelBtn').click();
-        assertEqual(doc.activeElement.id, 'depotOpenSaleEntryBtn', 'Depotverkauf erhält den tatsächlichen Rückfokus');
+        assertEqual(doc.activeElement.id, 'depotAddTrancheBtn', 'Tranchendialog gibt den Fokus an den Öffner zurück');
         await doc.getElementById('managePeopleBtn').click();
         assert(doc.getElementById('managerPeopleModal').classList.contains('active'), 'Verwaltungsknopf bedient die bestehende Verwaltung');
         await doc.getElementById('dismissPeopleModalBtn').click();
@@ -406,56 +404,6 @@ try {
         assertEqual(doc.getElementById('profileTagesgeld').listeners.input.length, 1, 'Profilwechsel verdoppelt keine Autosavelistener');
     }
     {
-        const { doc, backend, holds, hold, release } = await setup();
-        const before = backend.get('rs_profiles_v1');
-        await doc.getElementById('depotOpenSaleEntryBtn').click();
-        const actionId = doc.getElementById('reconcileActionId').value;
-        assert(actionId.startsWith('sale-'), 'Öffnen erzeugt eine stabile Ausführungs-Kennung ohne Write');
-        assertEqual(backend.get('rs_profiles_v1'), before, 'Dialogöffnung schreibt weder Registry noch Audit');
-        const options = doc.getElementById('reconcileTrancheId').children;
-        assert(options.some(option => option.textContent.includes('Synthetischer Bestand A')), 'Alle aktiven Tranchen sind namentlich auswählbar');
-        for (const [id, value] of Object.entries({ reconcileTrancheId: lot.trancheId, reconcileExecutedAt: '2026-10-06', reconcileSharesSold: '1', reconcileGrossProceeds: '120', reconcileFees: '2' })) doc.getElementById(id).value = value;
-        await doc.getElementById('saleNextBtn').click();
-        assertEqual(doc.getElementById('saleStep2').hidden, false, 'Cash ist als zweiter Schritt erreichbar');
-        await doc.getElementById('saleBackBtn').click();
-        assertEqual(doc.getElementById('reconcileActionId').value, actionId, 'Schrittrückkehr erhält die Ausführungs-Kennung');
-        await doc.getElementById('saleNextBtn').click();
-        doc.getElementById('reconcileCashStatus').value = 'confirmed_already_reflected';
-        await doc.getElementById('reconcileCashStatus').listeners.change[0]();
-        assertEqual(doc.getElementById('reconciliationForm').listeners.submit[0]({ preventDefault() {} }), false, 'Cash Ja ohne bestätigten Stand erreicht keine Vorschau');
-        doc.getElementById('reconcileInitialCashBalance').value = '218';
-        assertEqual(doc.getElementById('reconciliationForm').listeners.submit[0]({ preventDefault() {} }), true, 'Cash Ja mit Stand erreicht die schreibfreie Vorschau');
-        assertEqual(doc.getElementById('saleStep3').hidden, false, 'Vorschau ist als dritter Schritt erreichbar');
-        assertEqual(backend.get('rs_profiles_v1'), before, 'Vorschau schreibt weder Livebestand noch Registry/Audit');
-        const realFlush = PersistenceFacade.flush;
-        let fail = true;
-        PersistenceFacade.flush = async () => { if (fail) { fail = false; return false; } return realFlush.call(PersistenceFacade); };
-        await completePageDialog(doc.getElementById('reconciliationConfirmBtn').click(), doc);
-        assertEqual(doc.getElementById('reconcileActionId').value, actionId, 'Speicherfehler erhält die Kennung für Retry');
-        assertEqual(doc.getElementById('retrySaleSaveBtn').hidden, false, 'Retry ist im offenen Verkaufsdialog erreichbar');
-        hold();
-        const retry = doc.getElementById('retrySaleSaveBtn').click();
-        await waitFor(() => holds.length > 0, 'Verkaufsretry hält den bestätigten Speicherabschluss');
-        await doc.getElementById('dismissSaleModalBtn').click();
-        assert(doc.getElementById('saleModal').classList.contains('active'), 'Laufender Verkaufswrite sperrt Dialogschluss');
-        release(); await retry;
-        const saved = JSON.parse(backend.get('rs_profiles_v1'));
-        assertEqual(saved.trancheReconciliation.actions.length, 1, 'Nur separate Bestätigung und Retry schreiben genau einen Verkauf');
-        assertEqual(saved.trancheReconciliation.actions[0].actionId, actionId, 'Retry benutzt unverändert die ursprüngliche Kennung');
-        assertEqual(saved.trancheReconciliation.actions[0].cashBalanceAfterPostingEur, 218, 'Cash Ja dokumentiert den bestätigten Stand');
-        assertEqual(backend.get('profile_tagesgeld'), '100', 'Verkauf erhöht Tagesgeld niemals automatisch');
-        assertEqual(doc.getElementById('saleModal').classList.contains('active'), false, 'Bestätigter Verkauf schließt seinen Dialog');
-        assertEqual(doc.activeElement.id, 'depotOpenSaleEntryBtn', 'Verkauf gibt Fokus an den Öffner zurück');
-        PersistenceFacade.flush = realFlush;
-        await doc.getElementById('depotOpenSaleEntryBtn').click();
-        for (const [id, value] of Object.entries({ reconcileActionId: actionId, reconcileTrancheId: lot.trancheId, reconcileExecutedAt: '2026-10-06', reconcileSharesSold: '1', reconcileGrossProceeds: '120', reconcileFees: '2' })) doc.getElementById(id).value = value;
-        await doc.getElementById('saleNextBtn').click();
-        assertEqual(doc.getElementById('reconciliationForm').listeners.submit[0]({ preventDefault() {} }), true, 'Exakte Wiederholung erreicht eine reine Duplikatvorschau');
-        initTranchenManagerPage({ profileId: 'a' });
-        assertEqual(doc.getElementById('reconciliationConfirmBtn').disabled, true, 'Persistenzrender erhält die Duplikatsperre');
-        assertEqual(JSON.parse(backend.get('rs_profiles_v1')).trancheReconciliation.actions.length, 1, 'Exakte Wiederholung erzeugt keinen weiteren Auditwrite');
-    }
-    {
         const { doc, backend } = await setup();
         const before = backend.get('rs_profiles_v1');
         await doc.getElementById('managePeopleBtn').click();
@@ -511,25 +459,6 @@ try {
         assertEqual(getPageNavigationGuard(doc).reasons().length, 0, 'Nach Löschen und Wechsel bleiben neue Baselines sauber');
     }
     {
-        const { doc, backend } = await setup();
-        const before = backend.get('rs_profiles_v1');
-        await doc.getElementById('depotOpenSaleEntryBtn').click();
-        const modal = doc.getElementById('saleModal');
-        doc.getElementById('reconcileSharesSold').value = '1';
-        modal.listeners.keydown[0]({ key: 'Escape', preventDefault() {} });
-        await waitFor(() => doc.getElementById('navigationGuardDialog').open, 'Escape fragt nach Verwerfen des Verkaufsentwurfs');
-        await answer(doc, false);
-        assert(modal.classList.contains('active'), 'Escape mit Bleiben erhält den Verkaufsentwurf');
-        assertEqual(doc.getElementById('reconcileSharesSold').value, '1', 'Bleiben erhält tatsächliche Verkaufseingaben');
-        modal.listeners.click[0]({ target: modal });
-        await waitFor(() => doc.getElementById('navigationGuardDialog').open, 'Overlay benutzt dieselbe Verwerfentscheidung');
-        await answer(doc, true);
-        await waitFor(() => !modal.classList.contains('active'), 'Bestätigtes Verwerfen schließt den Verkauf');
-        assertEqual(backend.get('rs_profiles_v1'), before, 'Verwerfen schreibt weder Bestand noch Audit');
-        assertEqual(getPageNavigationGuard(doc).reasons().length, 0, 'Verwerfen entfernt unbestätigte Schritte und alte Baselines');
-        assertEqual(doc.activeElement.id, 'depotOpenSaleEntryBtn', 'Verwerfen gibt Fokus an den ursprünglichen Öffner zurück');
-    }
-    {
         const { doc, backend } = await setup({ outside: true });
         await doc.getElementById('managePeopleBtn').click();
         const submit = () => doc.getElementById('managerPeopleForm').listeners.submit[0]({ preventDefault() {} });
@@ -547,31 +476,6 @@ try {
         assertEqual(doc.getElementById('managerPersonName').value, 'Flushfehler Person', 'Fehler erhält den Verwaltungsentwurf zur Wiederholung');
         PersistenceFacade.flush = realFlush;
         assertEqual(await submit(), true, 'Verwaltungsentwurf kann nach Rückschreiben erneut bestätigt werden');
-    }
-    for (const host of ['managerSectionNav', 'managerHousehold']) {
-        const { doc, backend } = await setup();
-        doc.getElementById('reconcileActionId').value = 'offener-entwurf';
-        const pending = choose(doc, 'b', host);
-        await waitFor(() => doc.getElementById('navigationGuardDialog').open, 'Verwerfentscheidung geöffnet');
-        await answer(doc, false); assertEqual(await pending, false, 'Bleiben erhält Ursprungsprofil');
-        assertEqual(backend.get('rs_current_profile'), 'a', 'Bleiben speichert keine Zielkennung');
-        assertEqual(doc.getElementById('reconcileActionId').value, 'offener-entwurf', 'Bleiben erhält Abgleichentwurf');
-        const accepted = choose(doc, 'b', host);
-        await waitFor(() => doc.getElementById('navigationGuardDialog').open, 'Erneute Entscheidung');
-        await answer(doc, true); assertEqual(await accepted, true, 'Öffnen und Reiter verwenden denselben Verwerfweg');
-        assertEqual(doc.getElementById('reconcileActionId').value, '', 'Verwerfen setzt den Ursprungsabgleich zurück');
-        assertEqual(getPageNavigationGuard(doc).reasons().length, 0, 'Verwerfen lädt neue saubere Baselines');
-    }
-    {
-        const { doc, backend } = await setup();
-        doc.getElementById('reconcileActionId').value = 'offener-entwurf';
-        const switching = choose(doc, 'b');
-        await waitFor(() => doc.getElementById('navigationGuardDialog').open, 'Entscheidung für neue Eingaben geöffnet');
-        assertEqual(doc.getElementById('profileTagesgeld').disabled, true, 'Profilfelder sind während der Verlustentscheidung gesperrt');
-        input(doc, 'profileTagesgeld', '777'); // synthetische Umgehung der nativen Sperre
-        await answer(doc, true);
-        assertEqual(await switching, false, 'Neue Eingabe entwertet frühere Zustimmung');
-        assertEqual(backend.get('rs_current_profile'), 'a', 'Entwertete Zustimmung erhält Ursprungsprofil');
     }
     {
         const { doc, backend } = await setup();
@@ -785,34 +689,6 @@ try {
         assertEqual(persistenceStorage.getItem('rs_profiles_v1'), oldRegistry, 'Verlorene Nachfrage verändert keine Registrybytes');
         assertEqual(backend.get(PROFILE_WEALTH_LOTS_KEY), before, 'Kein Reparaturwrite im Backend nach Kontextverlust');
         global.document = doc;
-    }
-    // Der Abgleich wartet mit derselben Action-ID auf eine ausdrückliche Entscheidung.
-    for (const outcome of ['cancel', 'accept', 'stale', 'profile-change']) {
-        const { doc, backend, batches } = await setup();
-        await doc.getElementById('depotOpenSaleEntryBtn').click();
-        for (const [id, value] of Object.entries({ reconcileTrancheId: lot.trancheId, reconcileExecutedAt: '2026-10-06',
-            reconcileSharesSold: '1', reconcileGrossProceeds: '120', reconcileFees: '2', reconcileCashStatus: 'pending_manual_posting' })) doc.getElementById(id).value = value;
-        await doc.getElementById('saleNextBtn').click();
-        assertEqual(doc.getElementById('reconciliationForm').listeners.submit[0]({ preventDefault() {} }), true, 'Abgleichvorschau ist schreibfrei bereit');
-        await originalFlush.call(PersistenceFacade);
-        const before = persistenceStorage.getItem('rs_profiles_v1'), count = batches.length;
-        const pending = doc.getElementById('reconciliationConfirmBtn').click();
-        await Promise.resolve(); await doc.getElementById('reconciliationConfirmBtn').click();
-        assertEqual(doc.pageDialogs.length, 1, 'Abgleichdoppelklick öffnet nur eine Rückfrage');
-        assertEqual(batches.length, count, 'Wartender Abgleich startet keinen Adapterwrite');
-        assertEqual(persistenceStorage.getItem('rs_profiles_v1'), before, 'Wartender Abgleich ändert weder Audit noch Registry');
-        let newer = before;
-        if (outcome === 'stale') {
-            const registry = JSON.parse(before); registry.profiles.b.meta.name = 'Neuer Bestand';
-            newer = JSON.stringify(registry); persistenceStorage.setItem('rs_profiles_v1', newer);
-        }
-        if (outcome === 'profile-change') persistenceStorage.setItem('rs_active_profile', 'b');
-        await respondPageDialog(doc, outcome === 'cancel' ? 'escape' : 'accept'); await pending;
-        if (outcome === 'accept') {
-            const audit = JSON.parse(backend.get('rs_profiles_v1')).trancheReconciliation.actions;
-            assertEqual(audit.length, 1, 'Zustimmung dokumentiert genau eine Ausführung');
-            assertEqual(backend.get('profile_tagesgeld'), '100', 'Abgleich bestätigt keine automatische Cashbuchung');
-        } else assertEqual(persistenceStorage.getItem('rs_profiles_v1'), newer, 'Abgleichabbruch oder Quellwechsel erhalten die Registry');
     }
 
     // Ein bereits geplanter Autosave pausiert während der Löschentscheidung und bleibt bei Abbruch erhalten.

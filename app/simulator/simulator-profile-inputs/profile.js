@@ -1,5 +1,6 @@
 import { localCalendarDate } from '../../shared/app-clock.js';
-import { resolveCarePrices } from '../../shared/care-prices.js';
+import { resolveCarePrices, careDriftScheduleOf } from '../../shared/care-prices.js';
+import { careDriftInputPatch } from '../../shared/care-cost-drift.js';
 import { careReference } from '../../shared/care-needs.js';
 import { sharesHouseholdCareValues } from '../../shared/care-profile-settings.js';
 /** @import {StorageReader} from '../../../typcheck/runtime-contracts.js' */
@@ -18,7 +19,6 @@ import { projectPerson, personReferenceYear, personGenderAssumed, personBirthYea
 import { careTodayFromRecord } from '../../profile/profile-care.js';
 import { normalizeLongevityMode, LONGEVITY_DEFAULTS } from '../dynamic-flex-longevity-contract.js';
 import { STRATEGY_OPTIONS } from '../../../types/strategy-options.js';
-import { normalizeCareCostDriftPercent } from '../simulator-input-care.js';
 import { survivorFloorPercent, survivorFlexPercent } from '../simulator-survivor.js';
 import { residentialOwnExpensesInputPatch } from '../simulator-residential-care.js';
 import { resolveLiquidityRunwayYears } from '../../../types/liquidity-runway-contract.js';
@@ -213,7 +213,8 @@ export function buildSimulatorInputsFromProfileData(profileData, { referenceYear
         pflegeRampUp: readInt(profileData, simKey('pflegeRampUp'), 5),
         pflegeMinDauer: readInt(profileData, simKey('pflegeMinDauer'), 5),
         pflegeMaxDauer: readInt(profileData, simKey('pflegeMaxDauer'), 10),
-        pflegeKostenDrift: normalizeCareCostDriftPercent(careCosts.driftPercent),
+        // FR-73 Punkt 8 geändert: Verlauf des Kostenanstiegs; Index 0 ist das Bezugsjahr der Person.
+        ...careDriftInputPatch(careDriftScheduleOf(careCosts), person.referenceYear),
         pflegeRegionalZuschlag: readNumber(profileData, simKey('pflegeRegionalZuschlag'), 0) / 100,
         ...residentialOwnExpensesInputPatch(careCosts.ownExpensesMonthly),
         healthBucket,

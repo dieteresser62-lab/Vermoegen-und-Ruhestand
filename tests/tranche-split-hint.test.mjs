@@ -43,6 +43,7 @@ assertEqual(detectPossibleSplit(at(monday), record([friday], [100], [[friday, fr
 assertEqual(detectPossibleSplit(at(tuesday), record([friday], [100], [[friday, monday]]))?.previousClose, 100, 'Abgefragter Feiertag ohne Schlusskurs: Hinweis');
 
 assertEqual(writes, 0, 'Lesen und Anzeigen schreiben nie');
-assert(SPLIT_HINT_INFO.includes('„Haushalt & Plan“') && SPLIT_HINT_INFO.includes('„Plan“'), 'ⓘ nennt beide Reiternamen');
+// VK-3: Stückzahl über „Tranche im Detail“ → „Korrigieren“; der Verlauf vermerkt die Korrektur ohne eigene Bestätigung.
+assert(SPLIT_HINT_INFO.includes('„Tranche im Detail“') && SPLIT_HINT_INFO.includes('„ändern“ an der Kachel „Stück“'), 'ⓘ nennt Dialog und Korrektur');
 assert(SPLIT_HINT_INFO.split(/[.!?](\s|$)/).filter(part => part && part.trim()).length <= 3, 'ⓘ hat höchstens drei Sätze');
 console.log('✓ Möglicher Split OK');

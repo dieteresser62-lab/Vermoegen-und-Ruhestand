@@ -36,6 +36,7 @@ import { PFLEGE_GRADE_PROGRESSION_PROBABILITIES } from '../app/simulator/simulat
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
+import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const today = (extra = {}) => ({ grade: 2, additionalMonthly: null, progression: 'usual', allowanceAsIncome: false, ...extra });
 const base = () => ({ ...structuredClone(fixture), startAlter: 60, geschlecht: 'm',
     partner: { ...fixture.partner, aktiv: true, startAlter: 63, geschlecht: 'w' },
@@ -117,7 +118,7 @@ for (const [progression, factor] of [['usual', 1], ['slower', .5], ['much_slower
                 monteCarloParams: { anzahl: 4, maxDauer: 35, methode: 'regime_markov', blockSize: 3,
                     seed: 12345, rngMode: 'per-run-seed', startYearMode: 'UNIFORM' },
                 logIndices: [0, 1, 2, 3], widowOptions: input.widowOptions, useCapeSampling: false, engine: EngineAPI });
-            assertEqual(hash(withPreviousRunEvidence(chunk)), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(mcSha256))))), `${variant}, Paar ${couple}: vollständiges MC-Ergebnis mit belegten PA-1-Folgen (Laufbeleg wie vor LE-1b)`);
+            assertEqual(hash(withPreviousRunEvidence(chunk)), readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(mcSha256)))))), `${variant}, Paar ${couple}: vollständiges MC-Ergebnis mit belegten PA-1-Folgen (Laufbeleg wie vor LE-1b)`);
         }
         const historical = runFixture({ input, selectedPeriod: { startYear: 2000, endYear: 2011 } });
         assertEqual(hash(historical), readLE1References(readGU1References(readQSCReferences(readVF2BReferences(backtestSha256)))), `${variant}, Paar ${couple}: vollständiger Backtest bytegleich zu vor LV-1`);

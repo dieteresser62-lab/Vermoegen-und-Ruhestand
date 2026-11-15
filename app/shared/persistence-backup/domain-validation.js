@@ -8,6 +8,7 @@ import { PLANNED_EXPENSES_KEY, assertPlannedExpensesRecord } from '../../profile
 import { HOUSEHOLD_PLAN_KEY, assertHouseholdPlanRecord } from '../../profile/household-plan.js';
 import { WEALTH_CAPTURES_KEY, readWealthCaptures } from '../../../types/wealth-capture-contract.js';
 import { ANNUAL_PLAN_RECORD_KEY, assertAnnualPlanRecord } from '../../profile/annual-plan-record.js';
+import { ANNUAL_PLAN_RESOLUTIONS_KEY, assertAnnualPlanResolutions } from '../../profile/annual-plan-resolutions.js';
 import { DATA_BACKUP_SUMMARY_KEY, assertBackupSummary } from '../../data/data-backup-summary.js';
 import { WEALTH_HISTORY_START_KEY, DAILY_PRICES_KEY, assertHistoryStart, assertDailyPrices, requireHistoryRecord } from '../../tranches/tranchen-history-store.js';
 import { OVERVIEW_BACKUP_KEY } from '../../overview/overview-storage.js';
@@ -92,7 +93,7 @@ export function validatePersistenceDomainRecords(records, options = {}) {
             const summary = assertBackupSummary(JSON.parse(/** @type {string} */ (records[DATA_BACKUP_SUMMARY_KEY])));
             if (hasOwn(records, OVERVIEW_BACKUP_KEY) && summary.exportedAt !== records[OVERVIEW_BACKUP_KEY]) throw new Error('Sicherungszeit und Vergleichsbasis widersprechen sich.');
         }
-        for (const [key, validator] of /** @type {[string, (value: unknown) => unknown][]} */ ([[HOUSEHOLD_CARE_VALUES_KEY, parseCareValues], [CARE_HINT_KEY, parseCareHint], [HOUSEHOLD_PLAN_KEY, assertHouseholdPlanRecord], [PLANNED_EXPENSES_KEY, assertPlannedExpensesRecord], [ANNUAL_PLAN_RECORD_KEY, assertAnnualPlanRecord]])) {
+        for (const [key, validator] of /** @type {[string, (value: unknown) => unknown][]} */ ([[HOUSEHOLD_CARE_VALUES_KEY, parseCareValues], [CARE_HINT_KEY, parseCareHint], [HOUSEHOLD_PLAN_KEY, assertHouseholdPlanRecord], [PLANNED_EXPENSES_KEY, assertPlannedExpensesRecord], [ANNUAL_PLAN_RECORD_KEY, assertAnnualPlanRecord], [ANNUAL_PLAN_RESOLUTIONS_KEY, assertAnnualPlanResolutions]])) {
             if (hasOwn(records, key)) validator(records[key]);
         }
         if (hasOwn(records, PARTNERSHIP_KEY)) readPartnership(records[PARTNERSHIP_KEY]);

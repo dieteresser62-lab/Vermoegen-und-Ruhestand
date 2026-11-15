@@ -22,7 +22,7 @@ export interface Summary {verb: string; amount: number|null; note: string; purpo
 export interface Ui extends Partial<Omit<R.EngineUi, 'action'|'spending'>> {input?: Input; action?: Action; spending?: Partial<R.SpendingResult>; healthBucketDiagnostics?: HealthDiagnostics; nextYearBudget?: {rule?: {components?: {kind: string; amount: number}[]}} | null;}
 export interface Budget {income: number; withdrawal: number; budget: number|null; saving: number|null;}
 export interface FlexTrace extends Budget {grossNeed: number|null; cut: number|null; householdFlex: number|null; financedHouseholdFlex: number|null; householdFlexRate: number|null; netFloor: number|null; rows: {label: string; value: number; kind: string; left: number; width: number}[]; reason: string|null;}
-export interface Reserves {before: {tagesgeld: number; geldmarkt: number; liquidity: number|null}; after: {tagesgeld: number; geldmarkt: number; liquidity?: number}|null; targets: {name: string; target: number}[]; target: number;}
+export interface Reserves {before: {tagesgeld: number; geldmarkt: number; liquidity: number|null}; after: {tagesgeld: number; geldmarkt: number; liquidity?: number}|null; targets: {name: string; target: number; held?: boolean}[]; target: number; held?: {before: number; after: number};}
 export interface HealthDiagnostics {enabled: boolean; definition: D.HealthBucket; releasePolicy: string; releaseAllowed: boolean; releaseReason: string; releasedAmount: number; grossLiquidity: number; requestedAmount: number; lockedAmount: number; lockedFromMoneyMarket: number; lockedFromCash: number; operativeLiquidity: number; nominalGap: number; targetInflationAdjusted: number; targetCoveragePct: number|null; targetGap: number; warning: string|null;}
 export interface ProfileInput {profileId: string; name?: string; inputs: Input; tranches?: readonly R.EngineTranche[]; balanceState?: D.BalanceState;}
 export type PersonStatus = ReturnType<typeof import('../app/shared/person-data-status.js').readBalancePersonStatus>;
@@ -58,6 +58,7 @@ export type ProfileRuns = ProfileRun[] & {householdResult?: R.EngineSuccess; hou
 declare global {
     interface Window {
         __profilverbundDistribution?: ReturnType<typeof import('../app/profile/profilverbund-balance.js').calculateWithdrawalDistribution>|null;
+        __profilverbundCarrierMissing?: boolean;
         __profilverbundProfileSummaries?: ReturnType<typeof import('../app/profile/profilverbund-balance.js').buildProfilverbundProfileSummaries>|null;
         __profilverbundActionResults?: (ActionEntry & {spending?: Partial<R.SpendingResult>; targetLiquidity?: number})[]|null;
         __balanceMonthRecovery?: {snapshotId?: string; restore(options: {opener?: HTMLElement}): Promise<{status: string}>};

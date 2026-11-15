@@ -75,7 +75,7 @@ import { createDialogFixture } from './close-dialog.test.mjs?fixture';
             committedAt: annualTestNow().toISOString(), recommended, adopted, adjustedFields }).entry;
     };
     for (const path of ['floorBedarf', 'flexBedarf', 'minimumFlexAnnual']) {
-        assertEqual(initial.values[path] % 1000, 0, path + ': Empfehlung auf volle Tausend');
+        assert(Number.isInteger(initial.values[path]), path + ': GN-1: Empfehlung genau in ganzen Euro');
         assertEqual(initial.recommended.snapshot.plan[path], initial.values[path], path + ': Belegbasis entspricht Vorschlag');
     }
     assertEqual(ui.accept(), undefined, 'FF-3b: stehender Planvorschlag ohne Anpassungspatch');

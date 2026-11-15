@@ -1,11 +1,14 @@
 /** @import * as P from "../../typcheck/profile-ui.js" */
-import { readAnnualPlanRecord } from './annual-plan-record.js';
+import { readAnnualPlanRecord, annualPlanEntryMode } from './annual-plan-record.js';
+import { parseWithdrawalMode, ONE_CARRIES } from './household-withdrawal-mode.js';
+/** Modus „Eine Person trägt“ des Belegs, sonst leer. @param {any} record */
+const carriedMode = record => parseWithdrawalMode(annualPlanEntryMode(record)).kind === ONE_CARRIES ? annualPlanEntryMode(record) : '';
 import { planScope } from './household-plan.js';
 import { summarizeBalanceAction, describeBalanceActionSummary } from '../balance/balance-action-summary.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { escapeHtml } from '../shared/security-utils.js';
 import { infoPopoverHtml } from '../shared/designsystem-info-popover.js';
-import { displayUp, displayMonthlyDown, displayActionAmount } from '../shared/display-rounding.js';
+import { displayUp, displayMonthlyDown, displayActionAmount, displayedWithdrawal } from '../shared/display-rounding.js';
 
 const money = value => Number.isFinite(value) ? formatDisplayNumber(value, { unit: 'currency', fractionDigits: 0 }) : '—';
 const number = value => formatDisplayNumber(value, { fractionDigits: 1 });
@@ -74,7 +77,9 @@ export function projectHouseholdPlanComparison({ year, scope, storage, preview =
     return { year, scope: normalized ? structuredClone(normalized) : null,
         confirmedAction: adopted ? { year: record.year, committedAt: record.committedAt, text: a.text, action: structuredClone(adopted.action),
             ...(Object.hasOwn(adopted, 'monthlySaving') ? { monthlySaving: adopted.monthlySaving } : {}),
-            ...(adopted.plannedPosts ? { plannedPosts: structuredClone(adopted.plannedPosts) } : {}) } : null,
+            ...(adopted.plannedPosts ? { plannedPosts: structuredClone(adopted.plannedPosts) } : {}),
+            // TRG-1c Punkte 5 und 8: Modus und tragende Person des Beschlusses (nur bei „Eine Person trägt“).
+            ...(carriedMode(record) ? { withdrawalMode: carriedMode(record), ...(adopted.householdWithdrawal ? { householdWithdrawal: structuredClone(adopted.householdWithdrawal) } : {}) } : {}) } : null,
         confirmedSnapshot: adopted ? structuredClone(adopted.snapshot) : null,
         recordStatus: invalid ? 'invalid' : adopted ? 'valid' : 'missing', adjusted: Boolean(adopted && record.adjusted),
         adjustedFields: adopted ? record.adjustedFields : [],
@@ -89,15 +94,36 @@ export function projectHouseholdPlanComparison({ year, scope, storage, preview =
  * Handlungsanweisung aufgerundet; Δ ergibt sich aus den gezeigten Budgets. `view` (Teil des Modells) bleibt genau und unverändert;
  * die Einzelbeträge im Beleg bleiben genau.
  * @param {ReturnType<typeof projectHouseholdPlanComparison>} view
- * @param {{planBudget?: number|null, previewSummary?: {monthlyBudget?: number, action?: any}|null}} [raw] ungerundete Quellen derselben Zeilen
+ * GN-2b (Fable P2-1, Ergänzung 3 FR-78): „Monatsbetrag“ = angezeigtes Monatsbudget − Einkünfte; „Liquidität“ in ganzen Prozent aus den
+ * angezeigten Beträgen wie in „Deine Reserven“ (`planCoverage`, `previewCoverage`), Δ aus den gezeigten Werten.
+ * @param {{planBudget?: number|null, planWithdrawal?: number|null, previewSummary?: {monthlyBudget?: number, monthlyWithdrawal?: number, action?: any}|null,
+ *   planCoverage?: number|null, previewCoverage?: number|null}} [raw] ungerundete Quellen derselben Zeilen
  * @returns {ReturnType<typeof projectHouseholdPlanComparison>} */
-export function roundedHouseholdPlanComparison(view, { planBudget = null, previewSummary = null } = {}) {
+export function roundedHouseholdPlanComparison(view, { planBudget = null, planWithdrawal = null, previewSummary = null, planCoverage = null, previewCoverage = null } = {}) {
     const up = (/** @type {number} */ value) => money(displayUp(value));
     // Hauptbetrag: Verkauf auf, Kauf ab (RD-1c); Zusatzbeträge (Umschichtung) auf.
     const describe = (/** @type {any} */ summary) => describeBalanceActionSummary(summary, value => value === summary.amount ? money(displayActionAmount(summary.verb, value)) : up(value));
     // Nur eine Quelle, die genau den Text der Zeile ergibt, gehört zu ihr; sonst bleibt die Zeile, wie sie ist.
     const rounded = (/** @type {unknown} */ raw, /** @type {string} */ text) => typeof raw === 'number' && money(raw) === text ? displayMonthlyDown(raw) : null;
+    const shownWithdrawal = (/** @type {unknown} */ raw, /** @type {unknown} */ budget, /** @type {string} */ text) => typeof raw === 'number' && typeof budget === 'number'
+        && money(raw) === text ? displayedWithdrawal(raw, budget) : null;
+    const whole = (/** @type {number} */ value) => formatDisplayNumber(value, { fractionDigits: 0 });
+    const pct = (/** @type {number} */ value) => `${whole(value)} %`;
     const rows = view.rows.map(row => {
+        if (row.label === 'Monatsbetrag') {
+            const plan = shownWithdrawal(planWithdrawal, planBudget, row.plan), preview = shownWithdrawal(previewSummary?.monthlyWithdrawal, previewSummary?.monthlyBudget, row.preview);
+            const both = Number.isFinite(plan) && Number.isFinite(preview);
+            return { ...row, plan: Number.isFinite(plan) ? money(plan) : row.plan, preview: Number.isFinite(preview) ? money(preview) : row.preview,
+                delta: row.delta === '—' || !both ? row.delta : `${preview - plan > 0 ? '+' : ''}${money(preview - plan)}` };
+        }
+        if (row.label.startsWith('Liquidität')) {
+            // GN-2d (Gemini P2-1): direkt aus der eigenen Rechnung, unabhängig von der gespeicherten Zusammenfassung.
+            const plan = Number.isFinite(planCoverage) ? Math.round(/** @type {number} */ (planCoverage)) : null;
+            const preview = Number.isFinite(previewCoverage) ? Math.round(/** @type {number} */ (previewCoverage)) : null;
+            // GN-2c: nie die genaue Dezimalzahl; ohne Deckung aus angezeigten Beträgen bleibt die Zelle offen, Δ aus den gezeigten Werten.
+            return { ...row, plan: plan === null ? '—' : pct(plan), preview: preview === null ? '—' : pct(preview),
+                delta: plan === null || preview === null ? '—' : `${preview - plan > 0 ? '+' : ''}${whole(preview - plan)} Prozentpunkte` };
+        }
         if (row.label === 'Monatsbudget') {
             const plan = rounded(planBudget, row.plan), preview = rounded(previewSummary?.monthlyBudget, row.preview);
             const both = Number.isFinite(plan) && Number.isFinite(preview);

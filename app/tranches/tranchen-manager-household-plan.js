@@ -1,8 +1,9 @@
 /** @import * as T from "../../typcheck/tranches-ui.js" */
 /** @import * as P from "../../typcheck/profile-ui.js" */
 import { readPartnership, PARTNERSHIP_KEY } from '../profile/household-partnership.js';
-import { assertHouseholdPlanInputValues, bindHouseholdPlanField, readHouseholdPlanField, projectHouseholdPlanBindings, hasHouseholdPlanDynamicErrors, hasHouseholdPlanDynamicCorrections } from '../shared/household-plan-fields.js';
-import { readAnnualPlanRecord } from '../profile/annual-plan-record.js';
+import { assertHouseholdPlanInputValues, bindHouseholdPlanField, readHouseholdPlanField, projectHouseholdPlanBindings, hasHouseholdPlanDynamicErrors, hasHouseholdPlanDynamicCorrections,
+    syncWithdrawalModeOptions, planModeChangeText } from '../shared/household-plan-fields.js';
+import { readAnnualPlanRecord, annualPlanEntryMode } from '../profile/annual-plan-record.js';
 import { appNow } from '../shared/app-clock.js';
 import { persistenceStorage, PersistenceFacade } from '../shared/persistence-facade.js';
 import { readBalanceHouseholdPlan, assertPlanValues, patchHouseholdPlan, canonicalPlan } from '../profile/household-plan.js';
@@ -10,6 +11,7 @@ import { initializeHouseholdPlanPage } from '../profile/household-plan-dialog.js
 import { loadProfileRegistry } from '../profile/profile-registry.js';
 import { getPlanField, setPlanField } from '../profile/household-plan-migration.js';
 import { projectHouseholdPlanComparison } from '../profile/household-plan-comparison.js';
+import { carrierMissing, CARRIER_MISSING_TEXT } from '../profile/household-withdrawal-mode.js';
 import { projectOverview, planningYear } from '../overview/overview-model.js';
 import { sourceFingerprint } from '../overview/overview-simulation-summary.js';
 import { readOverviewSummary, OVERVIEW_SUMMARY_KEY, overviewScope } from '../overview/overview-storage.js';
@@ -44,11 +46,57 @@ export function managerPlanPatch(values, changes) {
     return patch;
 }
 
+/** FR-80: Segment „Eine Person trägt“ für das Feld der Verteilung im Haushalt. Die Knöpfe setzen `one_carries:<Person>`; die
+ * Liste bekommt dafür je Person einen Eintrag. @param {Document} doc @param {any} field @param {(field: any) => void} onChange */
+function createCarrierChoice(doc, field, onChange) {
+    const row = field?.closest?.('.pv-plan-field');
+    const state = { people: /** @type {{id: string, name: string}[]} */ ([]), shown: '', sync: (/** @type {any} */ _values) => {}, syncDisabled: () => {},
+        modeChange: (/** @type {string} */ _text) => {} };
+    if (!field || !row?.append || !doc?.createElement) return state;
+    // TR-2 Befund 2: Wechsel der Verteilung nach dem Beschluss des laufenden Jahres.
+    const change = doc.createElement('p'); change.className = 'ds-note household-plan-mode-change'; change.dataset.planModeChange = ''; change.hidden = true;
+    row.append(change);
+    state.modeChange = text => { change.textContent = text; change.hidden = !text; };
+    const wrap = doc.createElement('div'); wrap.className = 'household-plan-carrier'; wrap.dataset.planCarrier = ''; wrap.hidden = true;
+    const label = doc.createElement('small'); label.className = 'ds-explanation'; label.textContent = 'Eine Person trägt';
+    const segment = doc.createElement('div'); segment.className = 'ds-segment'; segment.setAttribute('role', 'group'); segment.setAttribute('aria-label', 'Eine Person trägt');
+    wrap.append(label, segment); row.append(wrap);
+    // TRG-1b (P3-6): gespeicherte tragende Person gehört nicht mehr zum Haushalt.
+    const missing = doc.createElement('p'); missing.className = 'ds-note ds-note-warning household-plan-carrier-missing'; missing.dataset.planCarrierMissing = '';
+    missing.textContent = CARRIER_MISSING_TEXT; missing.hidden = true; row.append(missing);
+    const buttons = () => /** @type {HTMLButtonElement[]} */ ([...(segment.children || [])]);
+    state.syncDisabled = () => { for (const button of buttons()) button.disabled = field.disabled; };
+    state.sync = values => {
+        const people = state.people.length === 2 ? state.people : [];
+        const value = values?.householdWithdrawalMode ?? field.value;
+        syncWithdrawalModeOptions(doc, field, people, value);
+        const key = people.map(person => `${person.id}:${person.name}`).join('|');
+        if (key !== state.shown) {
+            state.shown = key; segment.replaceChildren?.();
+            for (const person of people) {
+                const button = doc.createElement('button'); button.type = 'button'; button.textContent = person.name; button.dataset.planCarrier = person.id;
+                button.addEventListener('click', () => {
+                    const next = `one_carries:${person.id}`;
+                    if (field.disabled || field.value === next) return;
+                    syncWithdrawalModeOptions(doc, field, people, next);
+                    field.value = next; onChange(field);
+                });
+                segment.append(button);
+            }
+        }
+        wrap.hidden = !people.length;
+        missing.hidden = !carrierMissing(value, state.people.map(person => ({ profileId: person.id })));
+        for (const button of buttons()) button.setAttribute('aria-pressed', String(value === `one_carries:${button.dataset.planCarrier}`));
+        state.syncDisabled();
+    };
+    return state;
+}
+
 /** Ein Controller pro statischem Host. Planfelder werden niemals neu erzeugt.
- * @param {{doc?: Document, getProfileId?: () => string, storage?: typeof persistenceStorage, persistence?: typeof PersistenceFacade, runOperation?: (execute: Function) => Promise<unknown>, notify?: () => void, blocked?: () => boolean, now?: () => Date, schedule?: typeof setTimeout, unschedule?: typeof clearTimeout, initialize?: typeof initializeHouseholdPlanPage}} [options]
+ * @param {{doc?: Document, getProfileId?: () => string, storage?: typeof persistenceStorage, persistence?: typeof PersistenceFacade, runOperation?: (execute: Function) => Promise<unknown>, notify?: () => void, blocked?: () => boolean, fieldsBlocked?: () => boolean, now?: () => Date, schedule?: typeof setTimeout, unschedule?: typeof clearTimeout, initialize?: typeof initializeHouseholdPlanPage}} [options]
  * @returns Controller mit Entwurf, Speicherbestätigung und Navigation. */
 export function createManagerHouseholdPlan({ doc, getProfileId, storage = persistenceStorage, persistence = PersistenceFacade,
-    runOperation, notify = () => {}, blocked = () => false, now = appNow,
+    runOperation, notify = () => {}, blocked = () => false, fieldsBlocked = blocked, now = appNow,
     schedule = setTimeout, unschedule = clearTimeout, initialize = initializeHouseholdPlanPage } = {}) {
     const host = doc.getElementById('managerHouseholdPlan');
     const jointField = doc.getElementById('managerPlan_jointAssessment');
@@ -100,17 +148,30 @@ export function createManagerHouseholdPlan({ doc, getProfileId, storage = persis
         try { return readPartnership(storage.getItem(PARTNERSHIP_KEY)).status === 'married'; }
         catch { return false; } // Unlesbare Partnerschaft erklärt ihr eigener Editor; keine Steuerwahl anbieten.
     };
-    const visible = (values, focusState) => { for (const binding of bindings.values()) binding.sync(values ? { ...values, householdPersonCount: scope?.ids.length, householdMarried: householdMarried() } : values, validation); dynamic?.sync(focusState); renderManagerPlanSummary(doc, values); };
+    const visible = (values, focusState) => { for (const binding of bindings.values()) binding.sync(values ? { ...values, householdPersonCount: scope?.ids.length, householdMarried: householdMarried() } : values, validation); dynamic?.sync(focusState); carrier.sync(values); renderManagerPlanSummary(doc, values); };
+    // FR-80: „Eine Person trägt“ mit Auswahl der Person, nur bei zwei Personen. Eigenes Segment unter den drei Modi; gespeichert
+    // wird im selben Feld (`one_carries:<Person>`), die drei Modi bleiben das vorhandene Segment.
+    const carrier = createCarrierChoice(doc, fields.find(field => field.dataset.managerPlanField === 'householdWithdrawalMode'), field => changed({ target: field }));
     function projectFields(force = false) {
         if (!confirmed) return;
+        carrier.people = (() => {
+            const registry = (() => { try { return loadProfileRegistry(storage).value; } catch { return null; } })();
+            return (scope?.ids || []).map(id => ({ id, name: registry?.profiles?.[id]?.meta?.name || id }));
+        })();
+        carrier.sync(confirmed.values);
         projectHouseholdPlanBindings(bindings, confirmed.values, { force });
         visible(confirmed.values);
         const cape = confirmed.values.cape;
         text('managerPlanCapeOrigin', [cape.source || 'Quelle nicht belegt', cape.asOf ? new Date(cape.asOf).toLocaleDateString('de-DE') : 'Stand nicht belegt'].join(' · '));
     }
-    function syncBlocked(external = blocked()) {
+    // VN-3: Felder sperrt nur, was kein Autosave ist (`fieldsBlocked`); gespeichert wird weiter erst, wenn nichts sperrt (`arm`).
+    function syncBlocked(external = fieldsBlocked()) {
         const locked = !confirmed || persistence.hasSyncWriteBlocks?.() || Boolean(globalThis.window?.__profileRecoveryBlocker);
-        for (const field of fields) field.disabled = locked || external && !writing;
+        // DS-1 Punkt 11: Sperrt etwas anderes die Seite nur kurz (Kursabruf, Speichern eines anderen Bereichs), bleibt das Feld in Bearbeitung
+        // bedienbar; sonst ginge nach jeder Ziffer der Fokus verloren. Die Änderung wartet, bis die Sperre endet (`arm` prüft `blocked`).
+        const active = doc?.activeElement;
+        for (const field of fields) field.disabled = locked || external && !writing && field !== active;
+        carrier.syncDisabled();
         for (const [path, binding] of bindings) binding.sync(path === 'jointAssessment' ? { householdPersonCount: scope?.ids.length, householdMarried: householdMarried() } : null, validation);
         dynamic?.sync();
         if (node('managerPlanRetry')) { node('managerPlanRetry').hidden = !retryChanges; node('managerPlanRetry').disabled = locked || Boolean(writing); }
@@ -148,6 +209,8 @@ export function createManagerHouseholdPlan({ doc, getProfileId, storage = persis
         renderManagerPlanComparison(doc, view);
         const record = /** @type {P.ReadAnnualPlan} */ (readAnnualPlanRecord)({ year, scope, storage });
         const snapshot = record?.status !== 'invalid' ? record?.adopted?.snapshot : null;
+        carrier.modeChange(confirmed && record?.adopted && record.status !== 'invalid' && scope.ids.length === 2 ? planModeChangeText({ year,
+            decidedMode: annualPlanEntryMode(record), currentMode: confirmed.values.householdWithdrawalMode, people: carrier.people }) : '');
         // updatedAt ist kein Inflationsnachweis. Nur die passende Momentaufnahme zählt.
         const matches = confirmed && snapshot && canonicalPlan(snapshot.plan) === canonicalPlan(confirmed.values);
         text('managerPlanInflation', matches ? `zuletzt fortgeschrieben mit der Inflation ${record.periodId.slice('calendar-year:'.length)} (${snapshot.inflation > 0 ? '+' : ''}${snapshot.inflation.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %)` : 'Inflationsfortschreibung noch nicht belegt');

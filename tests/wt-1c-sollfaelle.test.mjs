@@ -98,8 +98,8 @@ const withMoneyMarket = (id, cash) => editRegistry(createMusterHaushaltRecords('
 {
     const low = await renderCard(withMoneyMarket('martin-petra', { muster_martin: 300, muster_petra: 300 }));
     assert(text(low.doc.getElementById('balancePersonalCashTargets')).includes('Summe 8.000 €'), 'Soll 2: Reservekarte Martin und Petra mit Tagesgeldziel 8.000 €');
-    assert(low.refill.includes('Dein Tagesgeld (600 €) liegt unter der eisernen Reserve von 8.000 €.') && low.refill.includes('8.000 €vom Geldmarkt')
-        && low.refill.includes('Martin4.000 €') && low.refill.includes('Petra4.000 €'), `Soll 2: Martin und Petra 600 € → bis zur eisernen Reserve 8.000 € (je 3.700 € aufgerundet auf 4.000 €, Betrag = Summe der angezeigten Personenbeträge, Ergänzung 2 FR-78) (${low.refill})`);
+    assert(low.refill.includes('Dein Tagesgeld (600 €) liegt unter der eisernen Reserve von 8.000 €.') && low.refill.includes('7.500 €vom Geldmarkt')
+        && low.refill.includes('Martin3.750 €') && low.refill.includes('Petra3.750 €'), `Soll 2: Martin und Petra 600 € → bis zur eisernen Reserve 8.000 € (je 3.700 € aufgerundet auf 3.750 €, Ergänzung 4 FR-78, Betrag = Summe der angezeigten Personenbeträge, Ergänzung 2 FR-78) (${low.refill})`);
     const mid = await renderCard(withMoneyMarket('martin-petra', { muster_martin: 2000, muster_petra: 2000 }));
     assert(mid.refill.includes('4.000 €vom Geldmarkt'), `Soll 2: 4.000 € unter der Reserve → Hinweis 4.000 € (${mid.refill})`);
     assertEqual((await renderCard(withMoneyMarket('martin-petra', { muster_martin: 4000, muster_petra: 4000 }))).refill, '', 'Soll 2: genau an der eisernen Reserve → kein Hinweis');

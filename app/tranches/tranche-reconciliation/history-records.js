@@ -32,7 +32,8 @@ export function normalizeSaleHistoryRecord(record, { legacy }) {
     const grossProceeds = normalizeNumber(actual.grossProceeds, 'actual.grossProceeds', { greaterThan: 0 });
     const fees = normalizeNumber(actual.fees, 'actual.fees', { min: 0 });
     const netProceeds = normalizeNumber(actual.netProceeds, 'actual.netProceeds');
-    const taxes = hasOwn(actual, 'taxes') ? normalizeNumber(actual.taxes, 'actual.taxes', { min: 0 }) : 0;
+    // FR-79 Ergänzung 1 Punkt 9: Steuererstattung bei Verlust als negativer Steuerbetrag, höchstens in Höhe des Kurswerts.
+    const taxes = hasOwn(actual, 'taxes') ? normalizeNumber(actual.taxes, 'actual.taxes', { min: -grossProceeds }) : 0;
     if (fees + taxes > grossProceeds || !sameEuroCent(netProceeds, grossProceeds - fees - taxes)) {
         fail(
             'RECONCILIATION_HISTORY_INVALID',
@@ -161,5 +162,64 @@ export function normalizeCorrectionHistoryRecord(record) {
         cashBalanceAfterPostingEur: normalizeNumber(record.cashBalanceAfterPostingEur, 'cashBalanceAfterPostingEur'),
         correctionReason: normalizeReason(record.correctionReason),
         correctedAt: normalizeTimestamp(record.correctedAt, 'correctedAt')
+    };
+}
+
+/** VK-2: Kauf im Abgleich. `actual.netCashDebited` = Kurswert + Gebühren (Abbuchung vom Tagesgeld). Cashstatus wie beim Verkauf:
+ * offen („Kommt noch“) oder schon abgegangen mit Kontostand. */
+export function normalizeBuyHistoryRecord(record) {
+    if (record.schemaVersion !== TRANCHE_RECONCILIATION_SCHEMA_VERSION) {
+        fail('RECONCILIATION_HISTORY_INVALID', 'Kaufrecord besitzt eine nicht unterstützte Schemaversion.');
+    }
+    const actionId = normalizeRequiredId(record.actionId, 'actionId', { eventType: RECONCILIATION_EVENT_TYPES.BUY, maxLength: SALE_ID_MAX_LENGTH, allowReservedSalePrefix: false });
+    const actual = record.actual;
+    if (!actual || typeof actual !== 'object' || Array.isArray(actual)) {
+        fail('RECONCILIATION_HISTORY_INVALID', `Kauf ${actionId} besitzt keine gültigen Ausführungsdaten.`);
+    }
+    const sharesBought = normalizeNumber(actual.sharesBought, 'actual.sharesBought', { greaterThan: 0 });
+    const grossAmount = normalizeNumber(actual.grossAmount, 'actual.grossAmount', { greaterThan: 0 });
+    const fees = normalizeNumber(actual.fees, 'actual.fees', { min: 0 });
+    const netCashDebited = normalizeNumber(actual.netCashDebited, 'actual.netCashDebited', { greaterThan: 0 });
+    if (!sameEuroCent(netCashDebited, grossAmount + fees)) {
+        fail('RECONCILIATION_HISTORY_INVALID', `Kauf ${actionId} besitzt eine inkonsistente Belastung.`, { field: 'actual.netCashDebited' });
+    }
+    const cashStatus = normalizeCashStatus(record.cashStatus);
+    const projected = {
+        ...cloneJson(record),
+        eventType: RECONCILIATION_EVENT_TYPES.BUY,
+        actionId,
+        profileId: normalizeRequiredId(record.profileId, 'profileId'),
+        trancheId: normalizeRequiredId(record.trancheId, 'trancheId'),
+        executedAt: normalizeExecutionDate(record.executedAt),
+        actual: { ...cloneJson(actual), sharesBought, grossAmount, fees, netCashDebited },
+        cashStatus
+    };
+    if (cashStatus === RECONCILIATION_CASH_STATUSES.ALREADY_REFLECTED) {
+        projected.cashBalanceAfterPostingEur = normalizeNumber(record.cashBalanceAfterPostingEur, 'cashBalanceAfterPostingEur');
+        projected.cashConfirmedAt = normalizeTimestamp(record.cashConfirmedAt, 'cashConfirmedAt');
+    } else if (cashStatus !== RECONCILIATION_CASH_STATUSES.PENDING) {
+        fail('RECONCILIATION_CASH_STATUS_INVALID', `Kauf ${actionId} besitzt einen ungültigen Cashstatus.`, { field: 'cashStatus' });
+    } else if (hasOwn(record, 'cashBalanceAfterPostingEur') || hasOwn(record, 'cashConfirmedAt')) {
+        fail('RECONCILIATION_CASH_FIELDS_UNEXPECTED', `Offener Kauf ${actionId} darf keine Bestätigungsfelder tragen.`, { field: 'cashStatus' });
+    }
+    return projected;
+}
+
+/** VK-3 (Nachtrag 2): Storno eines Kaufbelegs. `{schemaVersion, eventType: 'buy_cancelled', actionId, profileId, trancheId,
+ * targetActionId, cancelledAt}`; der Kauf zählt danach weder im Stand der Käufe noch als offene Abbuchung. */
+export function normalizeBuyCancellationRecord(record) {
+    if (record.schemaVersion !== TRANCHE_RECONCILIATION_SCHEMA_VERSION) {
+        fail('RECONCILIATION_HISTORY_INVALID', 'Kaufstorno besitzt eine nicht unterstützte Schemaversion.');
+    }
+    const allowed = ['schemaVersion', 'eventType', 'actionId', 'profileId', 'trancheId', 'targetActionId', 'cancelledAt'];
+    if (Object.keys(record).some(key => !allowed.includes(key))) fail('RECONCILIATION_HISTORY_INVALID', 'Kaufstorno besitzt unbekannte Felder.');
+    return {
+        schemaVersion: record.schemaVersion,
+        eventType: RECONCILIATION_EVENT_TYPES.BUY_CANCELLATION,
+        actionId: normalizeRequiredId(record.actionId, 'actionId', { eventType: RECONCILIATION_EVENT_TYPES.BUY_CANCELLATION, maxLength: SALE_ID_MAX_LENGTH, allowReservedSalePrefix: false }),
+        profileId: normalizeRequiredId(record.profileId, 'profileId'),
+        trancheId: normalizeRequiredId(record.trancheId, 'trancheId'),
+        targetActionId: normalizeRequiredId(record.targetActionId, 'targetActionId'),
+        cancelledAt: normalizeTimestamp(record.cancelledAt, 'cancelledAt')
     };
 }

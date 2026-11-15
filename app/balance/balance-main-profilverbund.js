@@ -27,8 +27,11 @@ import {
     calculateWithdrawalDistribution,
     reconcileWithdrawalLiquidity,
     buildProfilverbundAssetSummary,
-    buildProfilverbundProfileSummaries
+    buildProfilverbundProfileSummaries,
+    classifyTrancheCategoryCached
 } from '../profile/profilverbund-balance.js';
+import { activeCarrier, carrierMissing } from '../profile/household-withdrawal-mode.js';
+import { planCarrierAction, carrierAttributionView, cappedPurchaseAmount, nonCarrierSales, carrierTransactionView, carrierViewCapital, carrierOnlyProfiles, carrierReserveShortfall } from '../profile/household-carrier-action.js';
 import { toggleProfilverbundMode } from '../profile/profilverbund-balance-ui.js';
 import {
     attributeHouseholdAction,
@@ -132,9 +135,19 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
         return output;
     };
 
+    /** VN-3: Eigene Bestände der tragenden Person für die Sicht der Engine (gleiche Zusammenfassung wie der Haushalt, nur ihre Lose). */
+    const carrierHoldings = (householdInput, entry) => {
+        const summary = buildProfilverbundAssetSummary([entry]);
+        return { depotwertAlt: summary.totalDepotAlt, depotwertNeu: summary.totalDepotNeu, goldWert: summary.totalGold,
+            costBasisAlt: summary.totalCostAlt, costBasisNeu: summary.totalCostNeu, goldCost: summary.totalGoldCost,
+            detailledTranches: (householdInput.detailledTranches || []).filter(lot => lot.sourceProfileId === entry.profileId) };
+    };
+
     const runProfilverbundProfileSimulations = (sharedInput, profiles, householdLastState = null, { engineApi = globalThis.window?.EngineAPI, withdrawalMode = readWithdrawalMode(), publish = true } = {}) => {
         const grossSharedInput = sharedInput;
         const grossProfiles = profiles;
+        // TRG-1b (P3-6): gewählte tragende Person fehlt im Haushalt → Hinweis in der Karte, gerechnet wird steueroptimiert.
+        if (publish && typeof window !== 'undefined') window.__profilverbundCarrierMissing = carrierMissing(withdrawalMode, profiles);
         // Ein ausgewähltes fremdes Mitglied rechnet regulär allein. Die
         // Mehrpersonenattribution darf weder verlangt noch künstlich dupliziert werden.
         if (profiles.length === 1) {
@@ -176,7 +189,7 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
         const operative = prepareBalanceEngineAssets(persistedHouseholdInput, profiles);
         const householdInput = operative.input;
         profiles = operative.profiles;
-        const householdResult = engineApi.simulateSingleYear(householdInput, householdLastState);
+        let householdResult = engineApi.simulateSingleYear(householdInput, householdLastState);
         if (householdResult?.error) {
             throw householdResult.error;
         }
@@ -195,14 +208,41 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
             throw new Error(`Profilverbund: ${distribution.remaining.toFixed(2)} EUR Haushaltsbedarf konnten keinem Profil zugeordnet werden.`);
         }
 
-        const finalizedHouseholdAction = householdResult.ui?.action || {};
+        // LZ-1 (Ergänzung 2 FR-80): Bei „Eine Person trägt“ entscheidet die Engine Auffüllen und Anlegen nur mit Tagesgeld und
+        // Geldmarkt der tragenden Person (Sicht wie TJ-2). Ausgaben, Flex und Ziel bleiben beim Haushalt; Rückgriff wie bisher.
+        const carrierId = activeCarrier(mode, profiles);
+        // VN-3 (Ergänzung 1 FR-80): Auch die Wertpapiere der Sicht sind nur ihre eigenen; die andere Person verkauft nie fürs Auffüllen.
+        const carrierEntry = carrierId && !distribution.attacked?.length ? profiles.find(profile => profile.profileId === carrierId) : null;
+        const carrierView = carrierEntry ? carrierTransactionView(carrierEntry.inputs, carrierHoldings(householdInput, carrierEntry)) : null;
+        if (carrierView) {
+            householdResult = engineApi.simulateSingleYear({ ...householdInput, transactionView: carrierView }, householdLastState);
+            if (householdResult?.error) throw householdResult.error;
+        }
+        let finalizedHouseholdAction = householdResult.ui?.action || {};
         let threeBucketDiagnosis = householdResult.ui?.threeBucket || null;
 
-        const attribution = attributeHouseholdAction({
-            householdAction: finalizedHouseholdAction,
-            profiles,
-            mode, jointAssessment: sharedInput.jointAssessment === true
+        const attribute = householdAction => attributeHouseholdAction({
+            householdAction, profiles: carrierView ? carrierOnlyProfiles(profiles, carrierId) : profiles, mode,
+            jointAssessment: sharedInput.jointAssessment === true
         });
+        // FR-80 (TRG-1b): Bei „Eine Person trägt“ zahlt die tragende Person ihre Jahresauszahlung aus eigenem Vermögen und kauft nur
+        // aus eigener freier Liquidität, solange ihr Vermögen reicht (sonst Rückgriff mit Hinweis über die Auszahlungsverteilung).
+        let attribution;
+        if (carrierView) {
+            const carrier = profiles.find(profile => profile.profileId === carrierId);
+            const capital = carrierViewCapital(householdInput, carrierView);
+            const planned = planCarrierAction({ action: finalizedHouseholdAction, carrierId,
+                cashBefore: (carrier.inputs.tagesgeld || 0) + (carrier.inputs.geldmarktEtf || 0),
+                payout: distribution.items.find(item => item.profileId === carrierId)?.withdrawalAmount || 0,
+                attribute: action => { const result = attribute(action); return { ...carrierAttributionView(result.profileActions), result }; },
+                purchase: (requested, free) => cappedPurchaseAmount(requested, free, /** @type {any} */ (finalizedHouseholdAction).cashInvestmentRules,
+                    /** @type {any} */ (householdResult), capital),
+                sale: { lots: (householdInput.detailledTranches || []).filter(lot => lot.sourceProfileId === carrierId
+                    && ['equity', 'gold', 'bonds'].includes(classifyTrancheCategoryCached(lot))),
+                kirchensteuerSatz: carrier.inputs.kirchensteuerSatz || 0, market: householdResult.ui?.market } });
+            finalizedHouseholdAction = planned.action;
+            attribution = planned.result;
+        } else attribution = attribute(finalizedHouseholdAction);
         threeBucketDiagnosis = reconcileAttributedThreeBucketState(threeBucketDiagnosis, finalizedHouseholdAction, attribution.finalAction);
         householdResult.ui.action = attribution.finalAction;
         if (threeBucketDiagnosis) householdResult.ui.threeBucket = threeBucketDiagnosis;
@@ -240,6 +280,16 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
             { ...householdNeed, netWithdrawal: decidedAnnualWithdrawal }, mode), profilesAfterAction.map(profile => ({
                 profileId: profile.profileId, tagesgeld: profile.inputs.tagesgeld
             })));
+        // FR-80 Punkt 3 (P3-4): Verkauft die Zuordnung trotzdem bei der anderen Person, steht das im Hinweis.
+        const otherSales = carrierId ? nonCarrierSales(attribution.finalAction, carrierId, attribution.profileActions) : [];
+        if (otherSales.length) distribution = { ...distribution, carrierId, carrierName: distribution.carrierName || profiles.find(profile => profile.profileId === carrierId)?.name,
+            attacked: [...(distribution.attacked || []), ...otherSales.filter(row => !distribution.attacked?.some(item => item.profileId === row.profileId))
+                .map(row => ({ ...row, name: profiles.find(profile => profile.profileId === row.profileId)?.name || row.profileId }))] };
+        // VN-3 (Ergänzung 1 FR-80): Reicht das Vermögen der tragenden Person nicht für ihr Liquiditätsziel, bleibt es unerreicht (Hinweis).
+        const reserveShort = carrierView ? carrierReserveShortfall({ view: carrierView, target: Number(householdResult.ui?.zielLiquiditaet) || 0,
+            carrierAction: attribution.profileActions.find(entry => entry.profileId === carrierId)?.action }) : 0;
+        if (reserveShort > 0) distribution = /** @type {typeof distribution} */ (/** @type {unknown} */ ({ ...distribution, carrierReserveShort: { profileId: carrierId, amount: reserveShort,
+            name: profiles.find(profile => profile.profileId === carrierId)?.name || carrierId } }));
         const allocationByProfile = new Map(distribution.items.map(item => [item.profileId, item.withdrawalAmount]));
         const attributedByProfile = new Map(attribution.profileActions.map(entry => /** @type {[string, {profileId: string, action: import("../../typcheck/rechenkern.js").Action, taxStateNext: import("../../typcheck/rechenkern.js").TaxState}]} */ ([entry.profileId, entry])));
         /** @type {import('../../typcheck/balance-ui.js').ProfileRuns} */
@@ -257,7 +307,8 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
                 input: persistedInput,
                 persistedInput,
                 ui: {
-                    action: attributed.action,
+                    // TR-2 (Ergänzung 1 FR-80): Die nicht tragende Person bekommt keine Aufträge (Umschichtung, Käufe); nur Kennzeichen.
+                    action: carrierId && entry.profileId !== carrierId ? { ...attributed.action, carrierHold: true } : attributed.action,
                     spending: { monatlicheEntnahme: withdrawalAmount / 12 },
                     zielLiquiditaet: null
                 },
@@ -449,9 +500,16 @@ export function createProfilverbundHandlers({ dom, PROFILVERBUND_STORAGE_KEYS })
         }
     };
 
+    /** VK-3d P7 (TRG-1b P3-6): Rechnet die Balance nur eine Person (die tragende Person ist gelöscht), läuft keine Haushaltsrechnung.
+     * Der Hinweis „Die tragende Person gibt es nicht mehr“ braucht trotzdem den gespeicherten Modus. @param {any[]} profiles */
+    const publishCarrierMissing = profiles => {
+        if (typeof window !== 'undefined') window.__profilverbundCarrierMissing = carrierMissing(readWithdrawalMode(), profiles);
+    };
+
     return {
         refreshProfilverbundBalance,
         runProfilverbundProfileSimulations,
+        publishCarrierMissing,
         mergeProfilverbundActions,
         persistProfilverbundInputs,
         persistProfilverbundProfileStates,

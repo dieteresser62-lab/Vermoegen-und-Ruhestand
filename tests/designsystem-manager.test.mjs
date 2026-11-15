@@ -32,12 +32,12 @@ assert(swappedErrors.includes('Personenseite: Planhost außerhalb des Planpanels
 assert(validatePersonenVermoegenLayout({ ...sources, 'css/personen-vermoegen.css': sources['css/personen-vermoegen.css'].replace('font-size: var(--balance-h2)', 'font-size: 30px') }).includes('Personenseite: Typografietoken fehlt'), 'Neue Pixelschrift wird in der Personenseite abgewiesen');
 assert(validatePersonenVermoegenLayout({ ...sources, 'depot-tranchen-manager.html': sources['depot-tranchen-manager.html'].replace('id="trancheFormPreview"', 'id="entfernt"') }).includes('Personenseite: Depot-/Dialoghost fehlt: trancheFormPreview'), 'Fehlender tatsächlicher Vorschauhost scheitert');
 assert(validatePersonenVermoegenLayout({ ...sources, 'depot-tranchen-manager.html': sources['depot-tranchen-manager.html'].replace('id="type" required class="ds-select" hidden', 'id="type" required class="ds-select"') }).includes('Personenseite: nativer Segmentwertträger fehlt'), 'Verlorene Wertträgertrennung scheitert');
-const codeBlock = sources['depot-tranchen-manager.html'].match(/\.code-block\s*\{[^}]*\}/)?.[0];
+const codeBlock = sources['css/personen-vermoegen-seite.css'].match(/\.code-block\s*\{[^}]*\}/)?.[0];
 assert(codeBlock?.includes('color: var(--text-main);'), 'Codeblock verwendet die Haupttextrolle auf der abgesenkten Fläche');
 for (const token of ['--border', '--border-strong']) {
     const mutatedBlock = codeBlock.replace('color: var(--text-main);', `color: var(${token});`);
     assert(mutatedBlock !== codeBlock, `${token}: Gegenprobe verändert den tatsächlichen Codeblock`);
-    const mutated = { ...sources, 'depot-tranchen-manager.html': sources['depot-tranchen-manager.html'].replace(codeBlock, mutatedBlock) };
+    const mutated = { ...sources, 'css/personen-vermoegen-seite.css': sources['css/personen-vermoegen-seite.css'].replace(codeBlock, mutatedBlock) };
     assert(validateManager(mutated).includes('Manager-Rahmentoken als Textfarbe'), `${token}: Rollenverwechslung im Codeblock scheitert`);
 }
 assertEqual(JSON.stringify(validateManager(sources)), '[]', 'Manager und Status verwenden ausschließlich gemeinsame Rollen');
@@ -68,7 +68,7 @@ for (const [index, expected] of [
     [2, ['Keine Tranchen vorhanden']],
     [3, ['02.01.2024', '02.01.2023', '100,00 €/Stück', '120,00 €/Stück', '+20,0 %', '-11,1 %', 'Kaufpreis (€/Stück)']],
     [4, ['Noch keine Verkäufe eingetragen.']],
-    [5, ['Synthetischer Auditfehler', 'Cashstatus-Audit nicht lesbar']]
+    [5, ['Die Verkäufe sind nicht lesbar']]
 ]) for (const value of expected) assert(text(fragments[index]).includes(value), `Manageranzeige ${index}: ${value}`);
 assertEqual(JSON.stringify(lots), before, 'Renderer mutieren keine Lots und keine Sortierreihenfolge');
 const doc = createPresentationTestDocument();
@@ -91,8 +91,8 @@ const cash = buildReconciliationCashStatusesHtml([
 ]);
 fragments.push(cash);
 assert(cash.includes('data-cash-status="pending_manual_posting" class="ds-note ds-note-warning"'), 'Offene Cashbuchung hat Warnrolle und bleibt operativ unterscheidbar');
-assert(cash.includes('data-cash-status="legacy_unknown" class="ds-note "') && cash.includes('nicht als cashbestätigt'), 'Altverkäufe bleiben neutral und nicht cashbestätigt');
-assert(cash.includes('data-cash-status="confirmed_corrected"') && cash.includes('Revision 1') && cash.includes('10.090,00'), 'Cashkorrektur behält wirksamen Nachweis und bestätigten Betrag');
+assert(cash.includes('data-cash-status="legacy_unknown" class="ds-note "') && cash.includes('ohne Angabe zur Gutschrift'), 'Altverkäufe bleiben neutral und nicht als bestätigt ausgewiesen');
+assert(cash.includes('data-cash-status="confirmed_corrected"') && cash.includes('Tagesgeld korrigiert · Synthetische Korrektur') && cash.includes('10.090,00'), 'Korrektur behält Grund und bestätigten Betrag');
 
 assertEqual(JSON.stringify(validateManager(sources, fragments)), '[]', 'Tatsächlich erzeugte Statistik-, Tabellen-, Leer-, Fehler- und Dialogfragmente erfüllen Rollen');
 const table = fragments[3];
@@ -145,7 +145,7 @@ for (const gain of [0, -0, 200, -200, .00001, -.00001]) {
 }
 assert(!sources['depot-tranchen-manager.html'].includes('profileRenteHelp'), 'Statischer Rentenhinweis und alte ARIA-Referenz fehlen');
 
-assert(validatePersonenVermoegenLayout({ ...sources, 'depot-tranchen-manager.html': sources['depot-tranchen-manager.html'].replace('id="saleStep2"', 'id="fehlenderCashschritt"') }).length > 0, 'Fehlender tatsächlicher Cashschritt scheitert');
+assert(validatePersonenVermoegenLayout({ ...sources, 'depot-tranchen-manager.html': sources['depot-tranchen-manager.html'].replace('id="depotOpenSaleEntryBtn"', 'id="fehlenderVerkaufsoeffner"') }).length > 0, 'Fehlender Verkaufsöffner (geführter Verkauf, FR-79) scheitert');
 assert(validatePersonenVermoegenLayout({ ...sources, 'depot-tranchen-manager.html': sources['depot-tranchen-manager.html'].replace('id="managerPeopleList"', 'id="fehlendePersonenliste"') }).length > 0, 'Fehlender tatsächlicher Personenhost scheitert');
 
 for (const id of ['profileGoldAktiv', 'profileGoldSteuerfrei', 'profileHealthBucketEnabled']) {

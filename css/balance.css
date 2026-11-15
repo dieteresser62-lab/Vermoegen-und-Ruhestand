@@ -98,12 +98,14 @@ h1 {
     color: var(--text-main);
 }
 
-h2 { font: 500 var(--balance-h2)/1.2 var(--font-serif); color: var(--text-main); margin: 0 0 18px; }
+/* VN-4 Punkt 6 (Abnahme VN1-5): Die Altregeln für h2, label, input und select gelten nicht in den geführten Dialogen
+   (Verkauf, Kauf, Abbuchung); dort gilt wie in Personen & Vermögen nur das Designsystem. */
+h2:where(:not(.sale-flow-dialog *)) { font: 500 var(--balance-h2)/1.2 var(--font-serif); color: var(--text-main); margin: 0 0 18px; }
 
 h3, h4 { font-family: var(--font-serif); font-weight: 500; color: var(--text-main); }
 
 /* Form Elements */
-label {
+label:where(:not(.sale-flow-dialog *)) {
     margin-bottom: 4px; font-weight: 600; font-size: var(--balance-help);
     color: var(--secondary-text); display: flex; align-items: center; gap: 5px;
 }
@@ -120,7 +122,7 @@ label {
     width: auto;
 }
 
-input, select {
+:is(input, select):where(:not(.sale-flow-dialog *)) {
     font-family: var(--font-sans);
     padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;
     font-size: var(--balance-help); width: 100%; box-sizing: border-box;
@@ -128,7 +130,7 @@ input, select {
     transition: all 0.2s ease-in-out;
 }
 
-input:focus, select:focus {
+:is(input, select):where(:not(.sale-flow-dialog *)):focus {
     outline: none; border-color: var(--accent-color);
     box-shadow: 0 0 0 var(--ring-width) var(--ring-color);
 }
@@ -928,8 +930,8 @@ hr { border: none; border-top: 1px solid var(--border-color); margin: 15px 0; }
 .einstand-hinweis { font-size: var(--balance-help); color: var(--info-text-color); margin: 5px 0 10px 0; }
 
 /* Compact Density Mode */
-html[data-density=compact] label { margin-bottom: 4px; font-size: var(--balance-help); }
-html[data-density=compact] input, html[data-density=compact] select { padding: 8px; }
+html[data-density=compact] label:where(:not(.sale-flow-dialog *)) { margin-bottom: 4px; font-size: var(--balance-help); }
+html[data-density=compact] :is(input, select):where(:not(.sale-flow-dialog *)) { padding: 8px; }
 
 /* Jahresabschluss als rechte Dialogfläche; Ereignishosts bleiben erhalten. */
 .modal { position: fixed; inset: 0; z-index: 10000; display: flex; justify-content: flex-end; }
@@ -1632,3 +1634,12 @@ html[data-suite-page="balance"] #navigationGuardDialog h2 { font-size: var(--bal
 .balance-action-dialog [hidden] { display: none; }
 .balance-diagnosis-market { margin-bottom: var(--space-4); }
 .todo-preview-line #balanceActionAmount:not(:empty)::before { content: " · "; }
+
+/* DS-1 Punkt 3: vorher Inline-Stile in Balance.html. */
+.modal[hidden], .balance-dev-tools[hidden], .balance-breakdown[hidden] { display: none; }
+.balance-breakdown { margin-top: 10px; }
+.balance-breakdown-content { margin-top: 10px; font-size: var(--balance-help); line-height: 1.5; }
+.balance-dev-tools { position: fixed; bottom: 10px; right: 10px; z-index: 9999; padding: 10px; border-radius: 5px; color: var(--surface); background: var(--text-main); }
+.balance-dev-tools-row { margin-bottom: 8px; }
+.balance-dev-tools-actions { display: flex; gap: 8px; }
+.balance-dev-tools-button { padding: 4px 8px; cursor: pointer; }

@@ -16,7 +16,7 @@ import { evaluateBalanceMarketPreview } from './balance-market-preview-runtime.j
  * profiles: import('../../typcheck/balance-ui.js').ProfileInput[], profileId: string|null,
  * profilverbundHandlers: {runProfilverbundProfileSimulations: (input: import('../../typcheck/balance-ui.js').Input,
  * profiles: import('../../typcheck/balance-ui.js').ProfileInput[], state: import('../../typcheck/rechenkern.js').EngineState|null,
- * options?: {publish: boolean})=>import('../../typcheck/balance-ui.js').ProfileRuns},
+ * options?: {publish: boolean})=>import('../../typcheck/balance-ui.js').ProfileRuns, publishCarrierMissing?: (profiles: import('../../typcheck/balance-ui.js').ProfileInput[]) => void},
  * engineApi: Pick<typeof import('../../engine/index.mjs').EngineAPI, 'simulateSingleYear'>,
  * publish?: boolean, planInputs?: object, profileSimulationOptions?: {publish: boolean}|null}} BalanceEvaluationOptions */
 
@@ -45,7 +45,10 @@ function evaluateBalanceBaseInputs({ inputData, persistentState, profiles, profi
     const profilverbundRuns = multi ? (profileSimulationOptions
         ? profilverbundHandlers.runProfilverbundProfileSimulations(inputData, profiles, householdLastState, profileSimulationOptions)
         : profilverbundHandlers.runProfilverbundProfileSimulations(inputData, profiles, householdLastState)) : null;
-    if (publish && !profilverbundRuns && typeof window !== 'undefined') window.__profilverbundActionResults = null;
+    if (publish && !profilverbundRuns && typeof window !== 'undefined') {
+        window.__profilverbundActionResults = null;
+        profilverbundHandlers.publishCarrierMissing?.(profiles);
+    }
     const modelResult = profilverbundRuns?.householdResult || engineApi.simulateSingleYear(/** @type {import('../../typcheck/rechenkern.js').EngineInput} */ ({ ...prepareBalanceEngineAssets(inputData).input, finalizeThreeBucketAction: true }), lastState);
     if (!modelResult || typeof modelResult !== 'object') throw new Error('EngineAPI.simulateSingleYear() liefert kein Ergebnisobjekt.');
     if (modelResult.error) throw modelResult.error;

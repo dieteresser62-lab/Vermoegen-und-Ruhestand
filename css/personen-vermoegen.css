@@ -108,6 +108,7 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .pv-depot-table .pv-group-count { font-size: var(--text-dense); color: var(--text-muted); font-weight: 400; }
 .pv-depot-table small { display: block; color: var(--text-muted); font-size: var(--text-base); font-weight: 400; margin-top: 0.25rem; }
 .pv-tranche-name { min-width: 15rem; max-width: 24rem; overflow-wrap: anywhere; }
+.pv-tranche-name .ds-badge { display: inline-block; white-space: nowrap; } /* TD-1h: Chip „Bestand prüfen“ bricht nicht um. */
 .pv-depot-table .badge { font-size: var(--balance-help); }
 .pv-depot-table .badge-steuerfrei { color: var(--good); background: var(--good-soft); }
 .pv-depot-table .table-actions { white-space: nowrap; }
@@ -115,6 +116,8 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 
 /* Dialoge benutzen dieselben IDs, native Typauswahl und den bestehenden Speicherweg. */
 .personen-vermoegen-page .pv-tranche-dialog { max-width: 67.5rem; width: calc(100% - 2rem); padding: 1.75rem 2rem; }
+/* VK-3c: Ein Klick auf freie Fläche der breiten Detailansicht hält den Fokus im Dialog (tabindex="-1"); die Fläche selbst ist kein Bedienelement. */
+.pv-tranche-dialog:focus { outline: none; }
 .pv-dialog-header { display: flex; align-items: start; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
 .pv-dialog-header p { color: var(--text-muted); font-size: var(--text-base); line-height: 1.55; margin-top: 0.5rem; }
 .pv-dialog-header button { flex-shrink: 0; }
@@ -130,7 +133,53 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .pv-dialog-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; }
 .pv-dialog-footer .form-actions { margin: 0; }
 .pv-form-preview { color: var(--text-muted); font-size: var(--text-base); font-variant-numeric: tabular-nums; }
+/* VK-3 (FR-79 Punkt 9): Tranche im Detail wie Entwurf T1 – Kopf, Kennzahlen (Kacheln des Abschlussdialogs), zwei Spalten, Fuß. */
+.personen-vermoegen-page .pv-tranche-dialog { max-width: 76rem; max-height: 94vh; padding: 0; display: flex; flex-direction: column; }
+.pv-detail-header { padding: var(--space-6) var(--space-6) var(--space-3); margin: 0; border-bottom: 1px solid var(--border); }
+.pv-detail-eyebrow { margin: 0; color: var(--text-muted); font-size: var(--text-sm); letter-spacing: 0.08em; text-transform: uppercase; }
+.pv-detail-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-1); }
+.pv-detail-title h2 { margin: 0; font-family: var(--font-serif); font-weight: 500; }
+.pv-detail-header #trancheModalDescription { margin-top: var(--space-2); }
+.pv-detail-kpis { padding: 0 var(--space-6) var(--space-3); border-bottom: 1px solid var(--border); }
+.pv-detail-kpis .close-dialog-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); margin-top: var(--space-3); }
+.pv-detail-kpis .close-dialog-tile[data-tone="accent"] { border-color: var(--accent); background: var(--surface); }
+.pv-detail-kpis .close-dialog-tile[data-tone="good"] .ds-readonly-value { color: var(--good); }
+.pv-detail-kpis .close-dialog-tile[data-tone="bad"] .ds-readonly-value { color: var(--bad); }
+.pv-tranche-dialog > .form-error, .pv-tranche-dialog > .reconciliation-actions { margin-inline: var(--space-6); }
+.pv-detail-form { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--space-4) var(--space-6); padding: var(--space-4) var(--space-6) 0; overflow-y: auto; min-height: 0; }
+.pv-detail-main, .pv-detail-side { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.pv-detail-group { margin: 0; padding: var(--space-3) var(--space-4) var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; }
+.pv-detail-group legend { padding: 0 var(--space-1); font-weight: 600; }
+.pv-detail-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.pv-detail-pair-top { align-items: start; }
+.pv-detail-quote { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+.pv-detail-quote[data-quote-state="ok"] { color: var(--good); background: var(--good-soft); border-color: transparent; }
+.pv-detail-quote[data-quote-state="warning"] { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
+.pv-detail-help { margin: 0 0 var(--space-2); color: var(--text-muted); font-size: var(--text-base); }
+.pv-detail-tqf { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-2); }
+.pv-detail-tqf label { display: flex; align-items: flex-start; gap: var(--space-2); }
+.pv-detail-panel { padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.pv-detail-panel h3 { margin: 0 0 var(--space-3); font-family: var(--font-serif); font-weight: 500; }
+.pv-detail-tax { background: var(--surface-sunken); }
+.pv-detail-tax h3 { font-family: var(--font-sans); font-size: var(--text-base); font-weight: 600; }
+.pv-detail-tax p { margin: 0; }
+.pv-detail-timeline { list-style: none; margin: 0; padding: 0; }
+.pv-detail-timeline li { position: relative; padding: 0 0 var(--space-3) var(--space-6); }
+.pv-detail-timeline li::before { content: ""; position: absolute; left: 0.25rem; top: 0.45rem; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--text-main); }
+.pv-detail-timeline li[data-kind="sale"]::before { background: var(--accent); }
+.pv-detail-timeline li:not(:last-child)::after { content: ""; position: absolute; left: 0.52rem; top: 1.2rem; bottom: 0; width: 1px; background: var(--border); }
+.pv-detail-timeline .pv-detail-entry-head { display: flex; justify-content: space-between; gap: var(--space-3); }
+.pv-detail-timeline small { display: block; color: var(--text-muted); font-size: var(--text-sm); }
+.pv-detail-footer { grid-column: 1 / -1; position: sticky; bottom: 0; margin: 0 calc(-1 * var(--space-6)); padding: var(--space-3) var(--space-6); background: var(--surface-sunken); }
+.pv-detail-footer .ds-button-secondary { background: var(--surface); border: 1px solid var(--border); }
+.pv-detail-security .pv-dialog-classification { grid-template-columns: auto auto; justify-content: start; gap: var(--space-4); }
+.pv-detail-security .pv-tranche-choices { flex-wrap: nowrap; }
+.pv-detail-security .pv-tranche-choices .ds-button { padding-inline: var(--space-3); }
+.pv-tranche-dialog .ds-button.sale-flow-link { min-height: 0; padding: 0; border: 0; background: none; font: inherit; text-decoration: underline; }
+.pv-detail-delete-link { color: var(--bad); }
+.pv-detail-delete-link:disabled { color: var(--text-muted); }
 @media (max-width: 45rem) {
+    .pv-detail-form, .pv-detail-pair, .pv-detail-kpis .close-dialog-tiles { grid-template-columns: minmax(0, 1fr); }
     .pv-dialog-classification, .pv-dialog-fields { grid-template-columns: minmax(0, 1fr); }
     .pv-dialog-fields .pv-form-name { grid-column: auto; }
     .personen-vermoegen-page .pv-tranche-dialog { padding: 1rem; }
@@ -190,7 +239,6 @@ html[data-suite-page="manager"] .pv-heading h1, html[data-suite-page="manager"] 
 .pv-depot-header .pv-depot-count { margin: 0.5rem 0 0; color: var(--text-muted); font-size: var(--text-base); }
 .pv-depot-table .icon-action { color: var(--text-muted); background: transparent; border-color: transparent; box-shadow: none; }
 .pv-depot-table .icon-action:hover { color: var(--accent); background: var(--surface-sunken); }
-.pv-depot-table .delete-btn:hover { color: var(--bad); background: var(--bad-soft); }
 .pv-depot-table .pv-gain-percent { color: inherit; }
 .pv-sales .pv-sales-empty { margin-block: 0.75rem 0; color: var(--text-muted); font-size: var(--balance-help); }
 .pv-cash-evidence { font-size: var(--balance-help); margin-block: 0.5rem; }
@@ -717,3 +765,4 @@ details[open] > summary .pv-disclosure-action > span:last-child { display: inlin
 .pv-care-record-fields { display: grid; gap: var(--space-4); min-width: 0; }
 .pv-care-heim-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .pv-care-allowance-fields { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.pv-cash-posting-summary { white-space: pre-line; margin: 0 0 var(--space-3); }

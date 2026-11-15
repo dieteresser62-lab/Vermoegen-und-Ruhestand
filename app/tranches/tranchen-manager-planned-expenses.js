@@ -38,12 +38,12 @@ export function renderPlannedExpenseSummary(items, doc) {
 
 
 /** Eigenständiger Haushaltsrecord, derselbe Navigations- und Transaktionsbesitzer wie die Planfelder.
- * @param {{doc?: Document, getProfileId?: () => string, runOperation?: (execute: Function) => Promise<unknown>, notify?: () => void, blocked?: () => boolean, storage?: typeof persistenceStorage, persistence?: typeof PersistenceFacade, schedule?: typeof setTimeout, unschedule?: typeof clearTimeout}} [options]
+ * @param {{doc?: Document, getProfileId?: () => string, runOperation?: (execute: Function) => Promise<unknown>, notify?: () => void, blocked?: () => boolean, fieldsBlocked?: () => boolean, storage?: typeof persistenceStorage, persistence?: typeof PersistenceFacade, schedule?: typeof setTimeout, unschedule?: typeof clearTimeout}} [options]
  * @returns Controller mit Entwurf, Speicherbestätigung und Navigation. */
-export function createManagerPlannedExpenses({ doc, getProfileId, runOperation, notify = () => {}, blocked = () => false,
+export function createManagerPlannedExpenses({ doc, getProfileId, runOperation, notify = () => {}, blocked = () => false, fieldsBlocked = blocked,
     storage = persistenceStorage, persistence = PersistenceFacade, schedule = setTimeout, unschedule = clearTimeout } = {}) {
     const host = doc.getElementById('managerPlannedExpenses');
-    let items = [], baseline = '[]', scope = null, origin = null, revision = 0, epoch = 0, timer = null, writing = null, error = '', disposed = false;
+    let items = [], baseline = '[]', scope = null, origin = null, revision = 0, epoch = 0, timer = null, writing = null, error = '', disposed = false, rendered = false;
     const node = id => doc.getElementById(id);
     const dirty = () => JSON.stringify(items) !== baseline;
     const pause = () => { if (timer !== null) unschedule(timer); timer = null; };
@@ -51,9 +51,14 @@ export function createManagerPlannedExpenses({ doc, getProfileId, runOperation, 
         if (disposed || generation !== epoch || id !== getProfileId()) return false;
         try { return readBalanceHouseholdPlan({ storage, profileId: id }).scope?.key === key; } catch { return false; }
     };
-    function syncBlocked(external = blocked()) {
-        const locked = !scope || Boolean(writing) || external || persistence.hasSyncWriteBlocks?.() || Boolean(globalThis.window?.__profileRecoveryBlocker);
-        for (const el of /** @type {NodeListOf<HTMLInputElement|HTMLSelectElement|HTMLButtonElement>} */ (host?.querySelectorAll?.('input, select, button[data-expense-action]')) || []) el.disabled = locked;
+    function syncBlocked(external = fieldsBlocked()) {
+        const hard = !scope || persistence.hasSyncWriteBlocks?.() || Boolean(globalThis.window?.__profileRecoveryBlocker);
+        const transient = external, active = host?.ownerDocument?.activeElement;
+        // DS-1 Punkt 11: Das Feld in Bearbeitung bleibt während einer kurzen Sperre bedienbar (Fokus und Text bleiben).
+        // VN-3 (Codex F02): Auch das eigene Speichern sperrt nur die Knöpfe; Eingaben währenddessen speichert der nächste Lauf.
+        for (const el of /** @type {NodeListOf<HTMLInputElement|HTMLSelectElement|HTMLButtonElement>} */ (host?.querySelectorAll?.('input, select, button[data-expense-action]')) || []) {
+            el.disabled = hard || el.tagName === 'BUTTON' && (Boolean(writing) || transient) || transient && el !== active;
+        }
     }
     function status() {
         const errors = plannedExpenseErrors(items);
@@ -67,7 +72,7 @@ export function createManagerPlannedExpenses({ doc, getProfileId, runOperation, 
     function render(newEntryId = null) {
         const fixed = node('managerFixedExpenseRows'), once = node('managerOneTimeExpenseRows');
         if (!fixed || !once) return;
-        fixed.replaceChildren(); once.replaceChildren();
+        fixed.replaceChildren(); once.replaceChildren(); rendered = true;
         items.forEach((item, index) => {
             const line = doc.createElement('div'); line.className = isFixedExpense(item) ? 'pv-fixed-expense-row' : 'pv-once-income-row';
             const add = (key, label, options) => {
@@ -134,14 +139,18 @@ export function createManagerPlannedExpenses({ doc, getProfileId, runOperation, 
         if (writing) return writing;
         if (!dirty()) return Promise.resolve(!error);
         if (plannedExpenseErrors(items).length) return Promise.resolve(false);
-        writing = Promise.resolve().then(drain).finally(() => { writing = null; status(); }); status(); return writing;
+        writing = Promise.resolve().then(drain).finally(() => { writing = null; status(); arm(); }); status(); return writing;
     }
     function refresh() {
         if (writing || dirty() || disposed) return;
+        const before = { origin, key: scope?.key, baseline, items, error };
         pause(); epoch++; origin = getProfileId(); scope = null; error = ''; items = [];
         try { const plan = readBalanceHouseholdPlan({ storage, profileId: origin }); if (plan.status === 'valid') { scope = plan.scope; items = readPlannedExpenses({ storage, scope }); } }
         catch (caught) { scope = null; error = caught.message; }
-        baseline = JSON.stringify(items); render();
+        baseline = JSON.stringify(items);
+        // VN-4 (Breitensuche zu ABS1 P1): Unveränderte Zeilen bleiben stehen; ein Feld mit Fokus (Tab aus dem Plan) verschwindet nicht.
+        if (before.origin === origin && before.key === scope?.key && before.baseline === baseline && !before.error && !error && rendered) { items = before.items; status(); return; }
+        render();
     }
     function discard() { if (writing) return false; pause(); items = JSON.parse(baseline); error = ''; epoch++; render(); return true; }
     for (const [id, fixed] of [['managerFixedExpenseAdd', true], ['managerOneTimeExpenseAdd', false]]) node(id)?.addEventListener('click', () => {

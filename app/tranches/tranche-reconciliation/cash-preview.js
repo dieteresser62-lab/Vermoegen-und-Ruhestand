@@ -1,17 +1,20 @@
 // @ts-check
 import { hasOwn, sameEuroCent, normalizeRequiredId, deriveCashConfirmationActionId, normalizeNumber, normalizeTimestamp, normalizeCorrectionRevision, deriveCashCorrectionActionId, normalizeReason } from './validation.js';
 import { fail, RECONCILIATION_EVENT_TYPES, SALE_ID_MAX_LENGTH, TRANCHE_RECONCILIATION_SCHEMA_VERSION, CORRECTION_ID_MAX_LENGTH } from './schema.js';
-import { readReconciliationHistory, projectReconciliationCashStatuses, parseRegistry } from './history.js';
+import { readReconciliationHistory, projectReconciliationCashStatuses, projectBuyCashStatuses, parseRegistry } from './history.js';
 
 function requireTargetSale(registry, profileId, targetActionId) {
     if (!hasOwn(registry.profiles, profileId)) {
         fail('RECONCILIATION_PROFILE_UNKNOWN', `Profil ${profileId} ist in der Profilregistry nicht vorhanden.`);
     }
     const history = readReconciliationHistory(registry);
-    const sale = history.find(record => (
-        record.eventType === RECONCILIATION_EVENT_TYPES.SALE
+    // VK-2: Ziel kann auch ein Kauf sein (Abbuchung); sein Betrag zählt negativ.
+    const found = history.find(record => (
+        (record.eventType === RECONCILIATION_EVENT_TYPES.SALE || record.eventType === RECONCILIATION_EVENT_TYPES.BUY)
         && record.actionId === targetActionId
     ));
+    const buy = found?.eventType === RECONCILIATION_EVENT_TYPES.BUY;
+    const sale = buy ? { ...found, actual: { ...found.actual, netProceeds: -found.actual.netCashDebited } } : found;
     if (!sale) {
         fail(
             'RECONCILIATION_CASH_TARGET_INVALID',
@@ -26,7 +29,7 @@ function requireTargetSale(registry, profileId, targetActionId) {
             { field: 'profileId' }
         );
     }
-    const status = projectReconciliationCashStatuses(registry, profileId)
+    const status = (buy ? projectBuyCashStatuses(registry, profileId) : projectReconciliationCashStatuses(registry, profileId))
         .find(item => item.targetActionId === targetActionId);
     if (!status) {
         fail('RECONCILIATION_CASH_TARGET_INVALID', `Für Verkauf ${targetActionId} ist kein Cashstatus ableitbar.`);

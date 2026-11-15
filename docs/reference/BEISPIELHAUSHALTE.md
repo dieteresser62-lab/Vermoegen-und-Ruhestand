@@ -4,7 +4,7 @@ Welcher vorhandene Haushalt zu deiner Übungsfrage passt und was seine Varianten
 
 ## Auf einen Blick
 
-- Sechs synthetische Haushalte bieten zusammen 16 Grundfälle und Varianten.
+- Sechs synthetische Haushalte bieten zusammen 18 Grundfälle und Varianten.
 - Jeder Haushalt beginnt mit einer Lebensfrage; eine kleine Änderung macht ihre Wirkung sichtbar.
 - Die Varianten ändern gezielt einzelne Vorgaben, etwa Vermögen, Mindest-Flex, Pflege oder Nachlass.
 - Die Zahlen sind Übungsdaten und keine Aussage über die Tragfähigkeit deines eigenen Plans.
@@ -74,13 +74,14 @@ Der Grundfall heißt „Haus + Steuer“: unverheiratet, gegenseitig 0 % Geldant
 
 ### Unterschiede zum Grundfall
 
-Die sechs beschriebenen Grundfälle und diese zehn zusätzlichen Varianten bilden alle 16 Steckbriefe. Nicht genannte Eingaben stammen aus dem jeweiligen Grundfall. Ein Variantenwechsel baut das Beispiel neu auf und verwirft deine bisherigen Übungen darin.
+Die sechs beschriebenen Grundfälle und diese zwölf zusätzlichen Varianten bilden alle 18 Steckbriefe. Nicht genannte Eingaben stammen aus dem jeweiligen Grundfall. Ein Variantenwechsel baut das Beispiel neu auf und verwirft deine bisherigen Übungen darin.
 
 | Haushalt und Variante | Geänderte Vorgaben | Übungsfrage |
 | --- | --- | --- |
 | Max und Erika · „Haus und vermietete Wohnung“ | Max erhält ein Haus für 450.000 €, Erika eine Wohnung für 210.000 € mit 650 € Nettomiete monatlich. Gesamtvermögen 1.450.000 €, davon Geldvermögen 790.000 € und Immobilien 660.000 €. | Wie unterscheiden sich verfügbares Geld, Miete und Immobilienwert? |
 | Max und Erika · „Markt erst heiß, dann Rückgang“ | Planwerte wie im Grundfall. Die Spielkurse der Aktien steigen 2026 bis zum 15.06. auf das Doppelte des Vorjahresendes und fallen bis Ende 2026 auf das 1,25-Fache; Geldmarkt, Anleihen und Gold wie im Grundfall. | Was zeigt der Jahresabschluss 2026, wenn die Jahresendregel ein neues Hoch sieht, gemessen am Jahreshoch aber ein Bärenmarkt herrscht (FR-77, verdeckter Bärenmarkt)? |
 | Max und Erika · „Plan teilweise umgesetzt“ | Planwerte und Jahresplan wie im Grundfall. Max hat seine Planzeile am 12.03. verkauft und gutgeschrieben; Erika hat am 02.09. ein gutes Drittel ihrer Zeile verkauft, die Gutschrift aufs Tagesgeld ist noch offen. | Wie zeigt die Karte „Was zu tun ist“ den Stand des Jahresplans, und was bedeutet „Gutschrift nachtragen“ (FR-77)? |
+| Max und Erika · „Nachkäufe desselben ETF“ | Planwerte und Geldvermögen wie im Grundfall. Erikas Aktien-ETF (180.000 €) stammt aus drei Käufen derselben ISIN am 16.03.2020, 03.10.2022 und 14.02.2025, je ein Drittel. Testdatum 23.10.2026. | Welche Tranche verkauft der Jahresplan? Die Bank verkauft bei derselben ISIN die ältesten Stücke zuerst, die App plant genauso (FR-82). Ohne Kaufdatum zählt eine Tranche als älteste. |
 | Renate · „Kleines Vermögen“ | Gesamtvermögen 90.000 €, davon Geldvermögen 90.000 € und Immobilien 0 €: Tagesgeld 15.000 €, Aktien 75.000 €, keine Anleihen und kein Geldmarkt. Strategie Standard. | Wie reagiert der Plan bei gleicher Rente und gleichem Bedarf? Ein Scheitern ist ein mögliches Übungsergebnis. |
 | Jan und Lena · „Lebensstandard halten“ | Mindest-Flex steigt von 6.750 € auf den gesamten Wunsch-Flex von 27.000 € jährlich. | Wie oft unterschreitet der tatsächlich gezahlte Flex diese strengere Schwelle? |
 | Helga und Werner · „Mit Haus, Werner Pflegegrad 3“ | Haus 450.000 €, je zur Hälfte; Gesamtvermögen 1.050.000 €, davon Geldvermögen 600.000 € und Immobilien 450.000 €. Werner startet mit Grad 3 und Angehörigenpflege. Grundbedarf 36.000 € ohne Pflege wie im Grundfall; die App rechnet 18.000 € heutige Pflegekosten im Jahr selbst dazu. | Wann wechselt die Pflegeform, wann greift die Hausverkaufsregel? |
@@ -88,6 +89,7 @@ Die sechs beschriebenen Grundfälle und diese zehn zusätzlichen Varianten bilde
 | Martin und Petra · „Gegenseitig 100 %“ | Weiter unverheiratet; jeder vererbt dem Partner Geld und Immobilien vollständig. | Wie viel bleibt nach modellierter Steuer verfügbar? |
 | Martin und Petra · „Verheiratet“ | Gegenseitig 100 % wie zuvor, nun verheiratet mit den dafür geltenden Steuer- und Hinterbliebenenannahmen. | Welche Folgen entstehen allein durch den Partnerschaftsstatus? |
 | Martin und Petra · „Testament“ | Martin vererbt ein Drittel seines Geldvermögens, mindestens 200.000 € in Kaufkraft 10/2026, höchstens 50 %. Petra erhält Wohnrecht am Haus. Ihre eigene Geldquote bleibt 0 %. | Wie unterscheiden sich Wohnrecht und verfügbares Geld? Die Wohnrechtsteuer startet mit „sofort“; jährlich ist eine eigene Übung. |
+| Martin und Petra · „Martin trägt“ | Verteilung im Haushalt „Eine Person trägt · Martin“. Verkäufe, Entnahmen aus Tagesgeld und Geldmarkt, Käufe und die Steuer darauf kommen nur aus Martins Vermögen; Petras Einkünfte zählen weiter zum Haushalt. Bedarf 60.000 € plus 24.000 €, Martins Tagesgeld 20.000 €, damit Verkäufe nötig sind. | Was ändert sich an Verkauf, Steuer und Petras Tagesgeld gegenüber „Steueroptimiert“, und wann wird Petras Vermögen angegriffen? |
 
 ## Beispielausgaben
 

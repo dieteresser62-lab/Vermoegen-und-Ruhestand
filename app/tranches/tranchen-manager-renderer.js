@@ -1,3 +1,4 @@
+import { purchaseStockState } from './tranche-detail-model.js';
 import { HOUSEHOLD_CURRENT_LIMIT_MESSAGE } from '../profile/profile-registry.js';
 import { propertyParts, wealthInfo, wealthDetail, wealthAllocation, allocationNames } from '../shared/wealth-display.js';
 import { householdImmobilienValue } from '../profile/profile-immobilien.js';
@@ -6,17 +7,22 @@ import { appNow } from '../shared/app-clock.js';
 import { assetStrategyWarningHtml } from '../shared/asset-strategy-warnings.js';
 import { bindInfoPopovers, createInfoPopover } from '../shared/designsystem-info-popover.js';
 
+// VN-4: zuletzt gesetzte Kennzahl je Karte (kein Neuaufbau bei gleichem Inhalt).
+const metricHtml = new WeakMap();
+
 export function renderManagerPlanComparison(doc, view) {
     const host = doc.getElementById('managerPlanComparison');
     if (!host) return;
     const budget = view.rows.find(row => row.label === 'Monatsbudget');
-    host.innerHTML = `<span data-plan-record-status="${escapeHtml(view.recordStatus)}" data-preview-status="${escapeHtml(view.previewStatus)}">${escapeHtml(view.planLabel)}${view.adjusted ? ' · bewusst angepasst' : ''}: ${escapeHtml(view.notice || budget?.plan || '—')} · Vorschau heute: ${escapeHtml(view.previewStatus === 'current' ? budget?.preview || '—' : view.previewNotice)} · <a class="ds-text-link" href="index.html#overviewPlanComparison" data-profile-handoff>Vergleich auf der Übersicht →</a>${view.previewStatus !== 'current' ? ' · <a class="ds-text-link" href="Balance.html" data-profile-handoff>Vorschau in der Balance rechnen →</a>' : ''}</span>`;
+    const html = `<span data-plan-record-status="${escapeHtml(view.recordStatus)}" data-preview-status="${escapeHtml(view.previewStatus)}">${escapeHtml(view.planLabel)}${view.adjusted ? ' · bewusst angepasst' : ''}: ${escapeHtml(view.notice || budget?.plan || '—')} · Vorschau heute: ${escapeHtml(view.previewStatus === 'current' ? budget?.preview || '—' : view.previewNotice)} · <a class="ds-text-link" href="index.html#overviewPlanComparison" data-profile-handoff>Vergleich auf der Übersicht →</a>${view.previewStatus !== 'current' ? ' · <a class="ds-text-link" href="Balance.html" data-profile-handoff>Vorschau in der Balance rechnen →</a>' : ''}</span>`;
+    if (host.innerHTML !== html) host.innerHTML = html;
 }
 import { buildHistoryRecoveryHtml, buildPersonHistoryHtml, buildPersonHistoryDetailsHtml, projectTrancheHistory, buildTrancheHistorySummary, buildTrancheHistoryDetail, bindTrancheHistoryChart } from './tranchen-history-ui.js';
 
 import { formatDisplayNumber, formatDisplayDate } from '../shared/designsystem-number-format.js';
 import { escapeHtml } from '../shared/security-utils.js';
 import { STARTUP_PRICE_SESSION_KEY } from './tranchen-startup-prices.js';
+import { trancheTypeName } from './sale-flow-model.js';
 import { buildHomeGroupsHtml } from './tranchen-manager-immobilien.js';
 import { splitHintHtml } from './tranche-split-hint.js';
 import { householdPlanSummary } from '../shared/household-plan-presentation.js';
@@ -320,6 +326,7 @@ const DEPOT_GROUPS = Object.freeze([
     { key: 'unknown', label: 'Unbekannte Anlageform', types: [] }
 ]);
 
+// VN-1 Punkt 8: Löschen und „Kauf rückgängig“ gibt es nur noch in „Tranche im Detail“ (mit Sperre und Begründung), nicht in der Zeile.
 export function buildTranchenTableHtml(tranchen, { context = null, profileId = null, expandedId = null, onDetail = /** @type {(tranche: object, history: object) => void} */ (() => {}), strategyWarnings = [] } = {}) {
     if (!tranchen.length) return buildEmptyTranchenHtml();
     const groups = DEPOT_GROUPS.map(group => ({ ...group, items: [] }));
@@ -352,7 +359,7 @@ export function buildTranchenTableHtml(tranchen, { context = null, profileId = n
             const expanded = expandedId === t.trancheId;
             if (expanded) onDetail(t, history);
             return `<tr class="tranche-row" data-tranche-id="${escapeHtml(t.trancheId)}">
-                <td class="pv-tranche-name"><strong>${escapeHtml(t.name)}</strong>
+                <td class="pv-tranche-name"><strong>${escapeHtml(t.name)}</strong>${purchaseStockState(t).mismatch ? ' <span class="ds-badge ds-chip-warning">Bestand prüfen</span>' : ''}
                     <small>${escapeHtml(t.isin) || '–'} · ${escapeHtml(t.ticker) || '–'}</small></td>
                 <td><span class="classification-category">${escapeHtml(classification.category)}</span>
                     <span class="badge ds-badge ${classification.className}">${escapeHtml(classification.type)}</span> ${taxBadge}
@@ -368,8 +375,7 @@ export function buildTranchenTableHtml(tranchen, { context = null, profileId = n
                 ${buildTrancheHistorySummary(history)}
                 <td class="table-actions">
                     <button type="button" class="ds-button ds-button-quiet pv-history-toggle" data-history-toggle="${escapeHtml(t.trancheId)}" aria-expanded="${expanded}" aria-controls="${escapeHtml(detailId)}" aria-label="Kursverlauf ${accessibleName} ${expanded ? 'ausblenden' : 'zeigen'}">${expanded ? '▾ ausblenden' : '▸ zeigen'}</button>
-                    <button class="icon-action ds-button ds-icon-button" type="button" data-action="edit-tranche" data-tranche-id="${escapeHtml(t.trancheId)}" aria-label="Tranche ${accessibleName} bearbeiten" title="Tranche bearbeiten"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>
-                    <button class="delete-btn icon-action ds-button ds-icon-button" type="button" data-action="delete-tranche" data-tranche-id="${escapeHtml(t.trancheId)}" aria-label="Tranche ${accessibleName} löschen" title="Tranche löschen"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
+                    <button class="icon-action ds-button ds-icon-button" type="button" data-action="edit-tranche" data-tranche-id="${escapeHtml(t.trancheId)}" aria-label="Tranche ${accessibleName} im Detail" title="Tranche im Detail"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button>
                 </td></tr>${strategyWarnings.filter(warning => warning.profileId === profileId && warning.trancheIds.includes(t.trancheId)).map(warning => `<tr><td colspan="12">${assetStrategyWarningHtml(warning)}</td></tr>`).join('')}<tr class="pv-history-row" id="${escapeHtml(detailId)}" ${expanded ? '' : 'hidden'}><td colspan="12">${expanded ? buildTrancheHistoryDetail(t, history) : ''}</td></tr>`;
         }).join('')}</tbody>`;
     }).join('');
@@ -397,7 +403,9 @@ export function renderTranchenStats(container, tranchen, { cash = 0, immobilien 
     for (const metric of metrics) {
         const host = container.querySelector(`[data-wealth-metric="${metric[0]}"]`);
         if (host) {
-            host.innerHTML = wealthMetricBody(metric);
+            // VN-4 (Breitensuche zu ABS1 P1): unverändert nicht neu aufbauen, ein fokussiertes ⓘ bleibt.
+            const html = wealthMetricBody(metric);
+            if (metricHtml.get(host) !== html) { host.innerHTML = html; metricHtml.set(host, html); }
             host.hidden = metric[6] === true;
         }
     }
@@ -432,53 +440,44 @@ export function renderTranchenTable(container, tranchen, options = {}) {
     if (container.ownerDocument && container.querySelector?.('[data-split-hint]')) bindInfoPopovers(container.ownerDocument, { root: container });
 }
 
+/** Liste „Verkäufe & Cashstatus“ der Seite. Den Verkauf selbst trägt der geführte Ablauf ein (FR-79). @param {Document} [doc] */
 export function ensureReconciliationCashControls(doc = document) {
-    const form = doc.getElementById?.('reconciliationForm');
-    if (!form || typeof doc.createElement !== 'function') return null;
-    let choice = doc.getElementById?.('reconciliationCashChoice');
-    if (!choice) {
-        choice = doc.createElement('fieldset');
-        choice.id = 'reconciliationCashChoice';
-        choice.className = 'reconciliation-cash-choice';
-        choice.setAttribute?.('style', 'margin:0;padding:1rem;border:1px solid var(--border-strong);border-radius:8px;');
-        choice.innerHTML = `
-            <legend>Cashstatus nach dem Verkauf *</legend>
-            <div class="form-group">
-                <label for="reconcileCashStatus">Ist der Nettoerlös bereits in der freien Liquidität enthalten?</label>
-                <select id="reconcileCashStatus" class="ds-select">
-                    <option value="pending_manual_posting" selected>Nein / noch unklar – manuell offen halten</option>
-                    <option value="confirmed_already_reflected">Ja – bereits im erfassten Cashstand enthalten</option>
-                </select>
-                <small>Es erfolgt niemals eine automatische Cashbuchung.</small>
-            </div>
-            <div id="reconcileInitialCashBalanceGroup" class="form-group" hidden>
-                <label for="reconcileInitialCashBalance">Bestätigter Cashstand nach Berücksichtigung (€) *</label>
-                <input class="ds-input" id="reconcileInitialCashBalance" data-money-input type="text" inputmode="decimal" lang="de">
-                <small>Dieser Stand wird zusammen mit Nettoerlös und Zeitpunkt append-only dokumentiert.</small>
-            </div>`;
-        const firstActions = form.querySelector?.('.reconciliation-actions');
-        if (firstActions?.parentNode?.insertBefore) firstActions.parentNode.insertBefore(choice, firstActions);
-        else form.appendChild?.(choice);
-    }
-
-    let statusContainer = doc.getElementById?.('reconciliationCashStatuses');
-    if (!statusContainer) {
-        statusContainer = doc.createElement('div');
-        statusContainer.id = 'reconciliationCashStatuses';
-        statusContainer.className = 'reconciliation-preview ds-card';
-        statusContainer.setAttribute?.('aria-live', 'polite');
-        form.parentNode?.appendChild?.(statusContainer);
-    }
-    return statusContainer;
+    return doc.getElementById?.('reconciliationCashStatuses') || null;
 }
 
-/** @param {ReadonlyArray<ReturnType<typeof import('./tranche-reconciliation.js').projectReconciliationCashStatuses>[number]>} [statuses]
- * @param {{errorMessage?: string}} [options]
+/** VK-2b P2-2: „Abbuchung nachtragen“ zu offenen Käufen der Person (Kauf mit oder ohne Plan). @param {{date: string, amount: number}[]} debits */
+export function buildOpenDebitsHtml(debits = []) {
+    const rows = debits.map(debit => `<li>Kauf vom ${escapeHtml(debit.date)}: Abbuchung unterwegs, Vermögen um ${formatDisplayNumber(debit.amount, { fractionDigits: 2 })}\u00a0€ zu hoch</li>`).join('');
+    return `
+        <article class="ds-note ds-note-warning" data-open-debits="" style="margin-top: var(--space-2);">
+            <div><strong>Abbuchung nachtragen</strong></div>
+            <ul>${rows}</ul>
+            <div class="reconciliation-actions"><button type="button" class="ds-button ds-button-secondary" data-buy-debit-open="">Abbuchung eintragen</button></div>
+        </article>`;
+}
+
+/** VN-1 Punkt 7 (FR-79 Punkt 4): Ordernummer aus der Kennung einer Abrechnung mit Bank-Ordernummer, sonst leer.
+ * @param {string} actionId @param {string} profileId */
+function orderNumberOf(actionId, profileId) {
+    const prefix = `order-${profileId}-`;
+    if (!String(actionId).startsWith(prefix)) return '';
+    return String(actionId).slice(prefix.length).replace(/^\d{4}-\d{2}-\d{2}-/, '').replace(/(~t?\d+)+$/, '');
+}
+/** @param {string|null|undefined} value JJJJ-MM-TT */
+const plainDate = value => /^\d{4}-\d{2}-\d{2}/.test(value || '') ? String(value).slice(0, 10).split('-').reverse().join('.') : 'unbekanntem Tag';
+/** @param {number|null|undefined} value */
+const centEuro = value => Number.isFinite(value) ? `${formatDisplayNumber(Number(value), { fractionDigits: 2 })}\u00a0€` : '—';
+
+/** Block „Verkäufe und Gutschriften“ in Klartext (VN-1 Punkt 7, FR-79 Punkt 4): Datum, Wertpapier, Stück, Gutschrift, Stand der Gutschrift;
+ * keine technischen Kennungen, kein Zeitstempel, kein „Cash“. Die Knöpfe behalten ihre Datenattribute für den bestehenden Schreibweg.
+ * @param {ReadonlyArray<ReturnType<typeof import('./tranche-reconciliation.js').projectReconciliationCashStatuses>[number]>} [statuses]
+ * @param {{errorMessage?: string, tranches?: any[]}} [options]
  */
-export function buildReconciliationCashStatusesHtml(statuses = [], { errorMessage = '' } = {}) {
+export function buildReconciliationCashStatusesHtml(statuses = [], { errorMessage = '', tranches = [] } = {}) {
     if (errorMessage) {
         return `
-            <p class="reconciliation-status ds-note ds-note-error" data-kind="error" role="alert"><strong>Cashstatus-Audit nicht lesbar – die Liste ist unvollständig.</strong><br>${escapeHtml(errorMessage)}</p>`;
+            <p class="reconciliation-status ds-note ds-note-error" data-kind="error" role="alert"><strong>Die Verkäufe sind nicht lesbar – die Liste ist unvollständig.</strong><br>Gutschriften lassen sich erst wieder eintragen, wenn der Bestand lesbar ist.</p>
+            <details class="pv-cash-evidence ds-technical-details"><summary>Technische Angabe</summary><p>${escapeHtml(errorMessage)}</p></details>`;
     }
     if (!Array.isArray(statuses) || statuses.length === 0) {
         return `
@@ -486,44 +485,34 @@ export function buildReconciliationCashStatusesHtml(statuses = [], { errorMessag
     }
     const rows = statuses.map(status => {
         const targetActionId = escapeHtml(status.targetActionId);
-        const label = escapeHtml(status.statusLabel || 'Cashstatus unbekannt');
-        const net = formatMoney(status.confirmedNetProceedsEur);
-        const cashBalance = status.cashBalanceAfterPostingEur === null
-            ? '-'
-            : `${formatMoney(status.cashBalanceAfterPostingEur)}\u00a0€`;
-        const evidence = status.effectiveActionId
-            ? `<div><strong>Wirksamer Auditnachweis:</strong> ${escapeHtml(status.effectiveActionId)}</div>`
-            : '';
+        const tranche = tranches.find(item => item?.trancheId === status.trancheId);
+        const security = tranche ? `${tranche.name || 'Wertpapier'} · ${trancheTypeName(tranche)}` : 'Wertpapier, nicht mehr im Depot';
+        const shares = Number(status.saleRecord?.actual?.sharesSold);
+        const order = orderNumberOf(status.targetActionId, status.profileId);
+        const state = status.isPending ? 'Gutschrift kommt noch'
+            : status.isLegacy ? 'Älterer Verkauf ohne Angabe zur Gutschrift'
+                : `Gutschrift bestätigt${status.cashBalanceAfterPostingEur === null ? '' : ` · Tagesgeld danach ${centEuro(status.cashBalanceAfterPostingEur)}`}`;
         const correction = status.correctionRevision > 0
-            ? `<div><strong>Korrektur:</strong> Revision ${Number(status.correctionRevision)} · ${escapeHtml(status.correctionReason || '')}</div>`
-            : '';
-        const confirmLabel = status.isLegacy ? 'Cashnachweis freiwillig ergänzen' : 'Cashbuchung manuell bestätigen';
+            ? `<div>Tagesgeld korrigiert${status.correctionRevision > 1 ? ` (${Number(status.correctionRevision)}-mal)` : ''}${status.correctionReason ? ` · ${escapeHtml(status.correctionReason)}` : ''}</div>` : '';
         const action = status.canConfirm
-            ? `<button type="button" class="btn-primary ds-button ds-button-primary" data-cash-action="confirm" data-target-action-id="${targetActionId}">${confirmLabel}</button>`
+            ? `<button type="button" class="btn-primary ds-button ds-button-primary" data-cash-action="confirm" data-target-action-id="${targetActionId}">${status.isLegacy ? 'Gutschrift nachträglich bestätigen' : 'Gutschrift eintragen'}</button>`
             : status.canCorrect
-                ? `<button type="button" class="btn-secondary ds-button ds-button-secondary" data-cash-action="correct" data-target-action-id="${targetActionId}">Bestätigten Cashstand korrigieren</button>`
+                ? `<button type="button" class="btn-secondary ds-button ds-button-secondary" data-cash-action="correct" data-target-action-id="${targetActionId}">Tagesgeld nach dem Verkauf korrigieren</button>`
                 : '';
         return `
             <article data-cash-status="${escapeHtml(status.cashStatus)}" class="ds-note ${status.isPending ? 'ds-note-warning' : ''}" style="margin-top: var(--space-2);">
-                <div><strong>${label}</strong></div>
-                <div><strong>Verkauf vom ${escapeHtml(status.executedAt || 'unbekannt')}${status.saleRecord?.source === 'spielwert' ? ' · Spielwert' : ''}:</strong> ${escapeHtml(status.trancheId || 'Tranche unbekannt')}</div>
-                <div><strong>Zielverkauf:</strong> ${targetActionId}</div>
-                <div><strong>Nettoerlös:</strong> ${net}\u00a0€ · <strong>bestätigter Cashstand:</strong> ${cashBalance}</div>
-                <details class="pv-cash-evidence ds-technical-details"><summary>Exakte Beträge</summary><p>Nettoerlös: ${formatDisplayNumber(status.confirmedNetProceedsEur, { fractionDigits: 2 })} € · bestätigter Cashstand: ${status.cashBalanceAfterPostingEur === null ? '-' : `${formatDisplayNumber(status.cashBalanceAfterPostingEur, { fractionDigits: 2 })} €`}</p></details>
-                ${status.confirmedAt ? `<div><strong>Nachweiszeitpunkt:</strong> ${escapeHtml(status.confirmedAt)}</div>` : ''}
-                ${evidence}${correction}
+                <div><strong>Verkauf vom ${plainDate(status.executedAt)}${status.saleRecord?.source === 'spielwert' ? ' · Spielwert' : ''}</strong> · ${escapeHtml(security)}</div>
+                <div>${Number.isFinite(shares) && shares > 0 ? `${formatDisplayNumber(shares, { fractionDigits: Number.isInteger(shares) ? 0 : 3 })} Stück · ` : ''}Gutschrift ${centEuro(status.confirmedNetProceedsEur)}${order ? ` · Ordernummer ${escapeHtml(order)}` : ''}</div>
+                <div>${escapeHtml(state)}</div>
+                ${correction}
                 <div class="reconciliation-actions">${action}</div>
             </article>`;
     }).join('');
     const pendingCount = statuses.filter(status => status.isPending).length;
     const legacyCount = statuses.filter(status => status.isLegacy).length;
     const summary = [
-        pendingCount > 0
-            ? `${pendingCount} Verkauf/Verkäufe mit offener manueller Cashbuchung.`
-            : 'Kein offener manueller Cashrückstand.',
-        legacyCount > 0
-            ? `${legacyCount} Altverkauf/Altverkäufe ohne dokumentierten Cashstatus; operativ abgeschlossen, aber nicht als cashbestätigt ausgewiesen.`
-            : ''
+        pendingCount === 1 ? 'Eine Gutschrift kommt noch.' : pendingCount > 1 ? `${pendingCount} Gutschriften kommen noch.` : 'Alle Gutschriften sind eingetragen.',
+        legacyCount > 0 ? `${legacyCount === 1 ? 'Ein älterer Verkauf hat' : `${legacyCount} ältere Verkäufe haben`} keine Angabe zur Gutschrift; ${legacyCount === 1 ? 'er gilt' : 'sie gelten'} als erledigt.` : ''
     ].filter(Boolean).join(' ');
     return `
         <p>${summary}</p>
@@ -568,7 +557,12 @@ export function renderManagerPersonData(doc, profile) {
     text('profileGenderStatus', v.genderAssumed ? 'bitte prüfen · Geschlecht bisher angenommen' : '');
     const year = dates?.hint?.match(/^Für die Planung (\d{4}) zählt/)?.[1];
     const dateStatus = doc.getElementById('profilePersonDateStatus');
-    if (dateStatus && year && Number.isFinite(dates.age)) {
+    const keptInfo = dateStatus?.firstChild?.nodeType === 3 && dateStatus.childNodes.length === 2 ? dateStatus.querySelector(':scope > .ds-info') : null;
+    if (dateStatus && year && Number.isFinite(dates.age) && keptInfo) {
+        // VN-4 (Abnahme ST-1): Nach dem Speichern des Geburtsdatums bleibt das ⓘ derselbe Knopf; ein Tab-Fokus darauf geht nicht verloren.
+        dateStatus.firstChild.nodeValue = `Planalter ${year}: ${dates.age} Jahre`;
+        keptInfo.querySelector('.ds-info-pop').textContent = dates.hint;
+    } else if (dateStatus && year && Number.isFinite(dates.age)) {
         dateStatus.textContent = `Planalter ${year}: ${dates.age} Jahre`;
         dateStatus.append(createInfoPopover(doc, 'Wie wird das Planalter bestimmt?', dates.hint));
         bindInfoPopovers(doc, { root: dateStatus });

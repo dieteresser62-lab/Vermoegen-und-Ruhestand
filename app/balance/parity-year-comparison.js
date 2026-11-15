@@ -85,8 +85,8 @@ export function parityTaxWithdrawalPriceTie(left, right, paid, distribution) {
         if ([a, b].some((person, index) => ['tagesgeld', 'geldmarktEtf', 'depotwertAlt', 'depotwertNeu',
             'costBasisAlt', 'costBasisNeu', 'kirchensteuerSatz'].some(key =>
             Math.abs((person.inputs[key] || 0) - ([c, d][index].inputs[key] || 0)) > 1e-7))) continue;
-        const delta = calculateTaxPerEuro(a.inputs) - calculateTaxPerEuro(b.inputs);
-        const otherDelta = calculateTaxPerEuro(c.inputs) - calculateTaxPerEuro(d.inputs);
+        const delta = calculateTaxPerEuro(a.inputs, a.tranches) - calculateTaxPerEuro(b.inputs, b.tranches);
+        const otherDelta = calculateTaxPerEuro(c.inputs, c.tranches) - calculateTaxPerEuro(d.inputs, d.tranches);
         if (Math.abs(delta) <= 1e-14 && Math.abs(otherDelta) <= 1e-14 && Math.sign(delta) !== Math.sign(otherDelta)) {
             tied.add(a.profileId); tied.add(b.profileId);
         }

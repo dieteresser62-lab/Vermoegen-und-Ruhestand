@@ -8,26 +8,31 @@ import { projectBalanceFlexTrace } from './balance-flex-trace.js';
 import { createPlannedPostsView } from './balance-planned-posts-renderer.js';
 import { fixedPlannedTotal } from './balance-planned-posts.js';
 import { bindBalanceBudgetWhy, renderBalanceStrategyValues } from './balance-presentation-controls.js';
-import { householdPlanFieldSpec } from '../shared/household-plan-fields.js';
+import { householdPlanFieldSpec, withdrawalModeText, planModeChangeText } from '../shared/household-plan-fields.js';
 import { readBalanceInflationSource } from './balance-inflation-source.js';
-import { readBalanceHouseholdPlan } from '../profile/household-plan.js';
+import { readBalanceHouseholdPlan, memberPlanScope } from '../profile/household-plan.js';
 import { expensesHref } from '../shared/expenses-navigation.js';
 import { projectExpenses, readExpensesBudget } from '../expenses/expenses-model.js';
 import { loadExpensesStoreResult } from './balance-expenses-storage.js';
 import { appNow } from '../shared/app-clock.js';
-import { projectBalanceReserves, displayedReserves } from './balance-reserves.js';
+import { projectBalanceReserves, displayedReserveView } from './balance-reserves.js';
 import { withAnnualActionProgress } from './annual-action-progress.js';
-import { projectAnnualTodoPlan, projectCashRefill, cashRefillPeople, cashRefillMonthlyBase, cashRefillIronReserve } from './annual-todo.js';
-import { createTodoPlan, createCashRefill, createPlanDetails } from '../shared/annual-todo-view.js';
-import { projectBalanceActionOrigin } from './balance-action-origin.js';
-import { overviewScope } from '../overview/overview-storage.js';
+import { projectAnnualTodoPlan, projectCashRefill, cashRefillPeople, cashRefillMonthlyBase, cashRefillIronReserve, heldBelowCashTarget } from './annual-todo.js';
+import { todoMoney, createTodoPlan, createCashRefill, createPlanDetails, carrierNoteText, createOpenDebitsNote, createHeldCashNotes } from '../shared/annual-todo-view.js';
+import { CARRIER_MISSING_TEXT, CARRIER_RESERVE_SHORT_TEXT } from '../profile/household-withdrawal-mode.js';
+import { saleFlowPlanFromConfirmed, projectSaleFlowCard, bindSaleFlowCard, readSaleFlowPlan } from '../tranches/sale-flow-dialog.js';
+import { buyFlowPlanFromConfirmed, projectBuyFlowCard, bindBuyFlowCard } from '../tranches/buy-flow-dialog.js';
+import { openDebitNotes } from '../tranches/buy-debit-dialog.js';
+import { planBankOrderGuessed } from '../tranches/sale-flow-model.js';
+import { ironCashReserve } from './balance-play-execution.js';
+import { projectBalanceActionOrigin, confirmedCarrier } from './balance-action-origin.js';
 import { projectOverviewWithAnnualArchive } from '../overview/overview-model.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { bindCareHintDone, renderCareHint } from '../shared/care-hint.js';
 import { loadProfileRegistry } from '../profile/profile-registry.js';
 import { personReferenceYear, projectPerson, describePersonDates } from '../profile/profile-person-data.js';
 import { readBalancePersonStatus } from '../shared/person-data-status.js';
-import { displayUp, displayMonthlyUp, displayMonthlyDown, displayActionAmount } from '../shared/display-rounding.js';
+import { displayUp, displayMonthlyUp, displayMonthlyDown, displayedWithdrawal } from '../shared/display-rounding.js';
 /**
  * Module: Balance Renderer Summary
  * Purpose: Renders the high-level summary KPIs (Runway, Liquidity Coverage) and Market Status.
@@ -43,6 +48,8 @@ import { deriveCompletedCalendarYear } from './balance-annual-period.js';
 import { getMarketDataProvenanceViewModel } from './balance-reader.js';
 import { formatDisplayNumber } from '../shared/designsystem-number-format.js';
 import { createDiagnosisInfo } from './balance-diagnosis-guardrails.js';
+
+export { confirmedCarrier };
 
 /**
  * @param value Eingabe für die bestehende Projektion.
@@ -216,7 +223,10 @@ export class SummaryRenderer {
         set('balanceMonthlyIncome', flow ? currency(flow.euros.income) : '—');
         setFlow('balanceFlowBudget', flow ? currency(shownBudget) : '—');
         setFlow('balanceFlowNeed', '');
-        /** @type {(host: HTMLElement, flow: ReturnType<typeof projectBalanceMonthlyFlow>, cut: number, format: (value: number)=>string)=>void} */ (renderMonthlyFlowBar)(this.getPresentationOutput('balanceBudgetBar'), flow, cut, currency);
+        // Ergänzung 3 FR-78: „aus dem Vermögen“ = angezeigtes Budget − Einkünfte, auch im Balken.
+        const shownWithdrawal = flow ? displayedWithdrawal(flow.euros.withdrawal, flow.euros.budget, shownBudget) : null;
+        const shownFlow = flow ? { ...flow, euros: { ...flow.euros, budget: shownBudget, withdrawal: shownWithdrawal } } : null;
+        /** @type {(host: HTMLElement, flow: ReturnType<typeof projectBalanceMonthlyFlow>, cut: number, format: (value: number)=>string)=>void} */ (renderMonthlyFlowBar)(this.getPresentationOutput('balanceBudgetBar'), shownFlow, cut, currency);
         const incomeDetails = balanceIncomeDetails(status);
         const matchingIncome = finite(income) && Math.abs(incomeDetails.reduce((sum, item) => sum + item.amount, 0) - income) < .01;
         const surplus = saving > 0;
@@ -366,9 +376,7 @@ export class SummaryRenderer {
         // Die bestehende Profilzusammenfassung enthält Vermögen, keinen Profilbedarf.
         const needProfiles = outputs.balanceNeedProfiles;
         if (needProfiles) { needProfiles.replaceChildren(); needProfiles.hidden = true; }
-        set('balanceActionCoverage', finite(overviewUi.liquiditaet?.deckungNachher)
-            ? ` Danach ${formatDisplayNumber(overviewUi.liquiditaet.deckungNachher, { unit: 'percent',
-                fractionDigits: overviewUi.liquiditaet.deckungNachher > 100 ? 0 : 1 })} des Ziels.` : '');
+        // GN-2b (Gemini 3): Der frühere Satz „Danach … des Ziels“ hat kein Element auf der Seite; die Deckung steht nur in „Deine Reserven“.
         rows('balanceMarketFacts', [
             ['Abstand zum Allzeithoch', finite(market.abstandVomAthProzent) ? formatDisplayNumber(market.abstandVomAthProzent, { unit: 'percent' }) : null],
             ['Seit dem Hoch', finite(input.jahreSeitAth) ? formatDisplayNumber(input.jahreSeitAth, { unit: 'years' }) : null],
@@ -407,15 +415,68 @@ export class SummaryRenderer {
         const chip = this.dom?.outputs?.balanceActionPeriod || doc.getElementById?.('balanceActionPeriod');
         const confirmed = origin.confirmed;
         const plan = confirmed ? projectAnnualTodoPlan({ confirmed, people: confirmed.people || people }) : null;
+        this.saleFlowPeople = people;
+        // FR-79: Stand des geführten Verkaufs für die Karte (Start, „Weiter mit Schritt n“, „Geldmarkt kaufen“). Nur gelesen.
+        let saleFlowPlan = null;
+        // RK-3 Punkt 2 (FR-82): Tranchen, die die Bank je Belegzeile tatsächlich verkauft (wie Verkaufsdialog und Abrechnung).
+        // RK-4: dazu die Steuerschätzung des Dialogs für diese Tranchen und ob sie nur den offenen Rest betrifft.
+        const bankTranches = new Map();
+        if (plan?.rows.length) {
+            try {
+                const registry = loadProfileRegistry().value;
+                saleFlowPlan = saleFlowPlanFromConfirmed(confirmed, this.saleFlowIds || [], registry);
+                if (saleFlowPlan) plan.flow = projectSaleFlowCard({ plan: saleFlowPlan, registry, cashContext: this.saleFlowCash || null });
+                if (saleFlowPlan) for (const line of readSaleFlowPlan({ plan: saleFlowPlan, registry }).lines) {
+                    const source = confirmed.action?.quellen?.[line.index];
+                    if (source && line.bank?.differs && line.bank.parts.length) bankTranches.set(source, { tranches: line.bank.parts.map((/** @type {any} */ part) => part.tranche),
+                        tax: line.bank.tax, rest: line.restNet < line.planNet - 0.005 });
+                }
+            } catch { saleFlowPlan = null; }
+        }
+        this.saleFlowPlan = saleFlowPlan;
+        bindSaleFlowCard(host, () => this.saleFlowPlan ? { plan: this.saleFlowPlan, cashContext: this.saleFlowCash || null } : null);
+        // VK-2 (FR-79 Punkt 7): Stand der Käufe aus dem Plan; bei „Eine Person trägt“ zahlt die tragende Person (Nachtrag 2).
+        // TRG-1c Punkt 8 (Fable VK2 P2-4): Modus und tragende Person kommen aus dem Beleg, nicht aus dem heutigen Plan.
+        let buyFlowPlan = null;
+        if (plan?.purchases.length) {
+            try {
+                const registry = loadProfileRegistry().value;
+                buyFlowPlan = buyFlowPlanFromConfirmed(confirmed, this.saleFlowIds || [], registry, /** @type {any} */ (confirmed).withdrawalMode || '');
+                if (buyFlowPlan) plan.buyFlow = projectBuyFlowCard({ plan: buyFlowPlan, registry });
+            } catch { buyFlowPlan = null; }
+        }
+        this.buyFlowPlan = buyFlowPlan;
+        bindBuyFlowCard(host, () => ({ plan: this.buyFlowPlan, cashContext: this.saleFlowCash || null }));
+        // VK-2b P2-2: offene Abbuchungen ohne passende Planzeile (Kauf ohne Plan, „Geldmarkt kaufen“) bekommen eine eigene Erinnerung.
+        let openDebits = [];
+        try {
+            const inPlan = new Set((plan?.buyFlow?.pending || []).map((/** @type {any} */ row) => row.actionId));
+            openDebits = openDebitNotes(loadProfileRegistry().value, this.saleFlowIds || []).filter(row => !inPlan.has(row.actionId));
+        } catch { openDebits = []; }
         this.todoPlan = plan;
         this.planDetails = null;
         if (chip) { chip.hidden = !plan; chip.textContent = plan ? `Plan ${plan.year}` : ''; }
         if (plan) {
+            const carrier = confirmedCarrier(confirmed);
+            if (carrier) /** @type {any} */ (plan).carrierText = `Entnahme: Eine Person trägt · ${carrier.carrierName
+                || (confirmed.people || people).find((/** @type {any} */ person) => person.id === carrier.carrierId)?.name || 'tragende Person'}`;
             host.appendChild(createTodoPlan(doc, plan));
             if (/Beispieldaten.*Spielbereich|Spielbereich.*Beispieldaten/.test(confirmed.action?.title || '')) {
                 const marker = doc.createElement('small'); marker.className = 'ds-source'; marker.textContent = 'Spielbereich · Beispieldaten'; host.append(marker);
             }
-            this.planDetails = createPlanDetails(doc, plan, confirmed.action, confirmed.people || people);
+            // FR-82: Hinweis, wenn die App die Bankreihenfolge mangels Kaufdatum schätzt (nur gelesen).
+            let bankOrderGuessed = false;
+            try { bankOrderGuessed = planBankOrderGuessed(loadProfileRegistry().value, confirmed.action?.quellen || []); } catch { bankOrderGuessed = false; }
+            const household = (confirmed.people || people).length > 1;
+            const decidedModeText = household ? withdrawalModeText(this.planModes?.decided || '', confirmed.people || people) : '';
+            this.planDetails = createPlanDetails(doc, /** @type {any} */ ({ ...plan, carrier: confirmedCarrier(confirmed), bankOrderGuessed, decidedModeText, bankTranches }), confirmed.action, confirmed.people || people);
+            // TR-2 Befund 2: Wechsel der Verteilung nach dem Beschluss; der Beleg gilt weiter, die Vorschau rechnet schon neu.
+            const modeChange = household && this.planModes?.current ? planModeChangeText({ year: plan.year, decidedMode: this.planModes.decided,
+                currentMode: this.planModes.current, people: confirmed.people || people }) : '';
+            if (modeChange) {
+                const note = doc.createElement('p'); note.className = 'ds-note todo-mode-change'; note.dataset.todoModeChange = ''; note.textContent = modeChange;
+                host.appendChild(note);
+            }
         } else {
             const text = doc.createElement('p'); text.className = 'todo-empty';
             text.textContent = `Noch keine Handlungsanweisung aus dem Jahresabschluss. Den Plan beschließt du im Jahresabschluss Anfang ${origin.previewYear + 1}; bis dahin zeigt die Vorschau unten, was die App heute vorschlagen würde.`;
@@ -423,6 +484,27 @@ export class SummaryRenderer {
             if (origin.notice) {
                 const notice = doc.createElement('p'); notice.setAttribute('role', 'alert'); notice.textContent = origin.notice; host.appendChild(notice);
             }
+        }
+        if (openDebits.length) host.appendChild(createOpenDebitsNote(doc, openDebits, [...new Set(openDebits.map(row => row.profileId))]));
+        // FR-80 Punkt 3: „Eine Person trägt“ reicht nicht mehr; die Karte sagt ausdrücklich, wessen Vermögen angegriffen wird.
+        // TRG-1c Punkt 5: Der Hinweis aus dem Beleg bleibt nach dem Neuladen stehen; sonst der aus der heutigen Rechnung.
+        const stored = confirmedCarrier(confirmed);
+        const carrying = stored?.attacked?.length ? stored : globalThis.window?.__profilverbundDistribution;
+        if (carrying?.attacked?.length) {
+            const note = doc.createElement('p'); note.className = 'ds-note ds-note-warning todo-carrier-note'; note.dataset.todoCarrierNote = '';
+            note.textContent = carrierNoteText(carrying);
+            host.appendChild(note);
+        }
+        const reserveShort = /** @type {any} */ (globalThis.window?.__profilverbundDistribution)?.carrierReserveShort;
+        if (reserveShort?.amount > 0) {
+            const note = doc.createElement('p'); note.className = 'ds-note ds-note-warning todo-carrier-note'; note.dataset.todoCarrierReserveShort = '';
+            note.textContent = CARRIER_RESERVE_SHORT_TEXT(reserveShort.name, todoMoney(reserveShort.amount));
+            host.appendChild(note);
+        }
+        if (globalThis.window?.__profilverbundCarrierMissing) {
+            const note = doc.createElement('p'); note.className = 'ds-note ds-note-warning todo-carrier-note'; note.dataset.todoCarrierMissing = '';
+            note.textContent = CARRIER_MISSING_TEXT;
+            host.appendChild(note);
         }
         const planHost = doc.getElementById?.('balancePlanDetails');
         if (planHost) planHost.replaceChildren(...(this.planDetails ? [this.planDetails.root] : []));
@@ -437,14 +519,35 @@ export class SummaryRenderer {
         host.replaceChildren();
         const plan = this.todoPlan;
         const planOpen = Boolean(plan && (plan.status === 'offen' || plan.status === 'teilweise'));
-        let refill = null;
+        let refill = null, held = [];
         try {
-            refill = trial ? null : projectCashRefill({ people: cashRefillPeople(currentYear, () => loadProfileRegistry().value, persistenceStorage.getItem('rs_current_profile')),
+            // RK-2: Mit Beleg gilt sein Modus („Eine Person trägt“); die andere Person bekommt keine Zeile, nur den Hinweis.
+            const people = trial ? [] : cashRefillPeople(currentYear, () => loadProfileRegistry().value, persistenceStorage.getItem('rs_current_profile'),
+                this.actionOrigin?.confirmed || null);
+            held = heldBelowCashTarget(people);
+            refill = trial ? null : projectCashRefill({ people,
                 monthlyBase: cashRefillMonthlyBase(currentYear), cashMonths: currentYear.input?.liquidityCashMonths, planOpen,
                 ironReserve: cashRefillIronReserve(currentYear) });
-        } catch { refill = null; }
-        host.hidden = !refill;
+        } catch { refill = null; held = []; }
+        host.hidden = !refill && !held.length;
         if (refill) host.appendChild(createCashRefill(doc, refill));
+        if (held.length) host.append(...createHeldCashNotes(doc, held));
+        // FR-79 Ergänzung 1 Punkt 2: Tagesgeldziele je Person wie die Reservekarte für Schritt 5 und die Zeile „Geldmarkt kaufen“.
+        if (!trial) {
+            let cash = null;
+            try {
+                const people = cashRefillPeople(currentYear, () => loadProfileRegistry().value, persistenceStorage.getItem('rs_current_profile'));
+                if (people.length && people.every(person => person.profileId && Number.isFinite(person.target))) {
+                    cash = { householdTarget: people.reduce((sum, person) => sum + person.target, 0), months: currentYear.input?.liquidityCashMonths || 12,
+                        targets: Object.fromEntries(people.map(person => [person.profileId, person.target])),
+                        // VK-2: Mindest-Liquidität für „Tagesgeld danach“ im geführten Kauf (`ironCashReserve`).
+                        ironReserve: ironCashReserve(null, currentYear.profileActionResults?.[0]?.input || currentYear.input) };
+                }
+            } catch { cash = null; }
+            const changed = JSON.stringify(cash) !== JSON.stringify(this.saleFlowCash || null);
+            this.saleFlowCash = cash;
+            if (changed && (this.saleFlowPlan || this.buyFlowPlan) && this.actionOrigin) this.renderAnnualAction(this.actionOrigin, this.saleFlowPeople);
+        }
         if (refill && plan?.status === 'erledigt') {
             const rest = doc.createElement('p'); rest.className = 'ds-source'; rest.textContent = 'Sonst ist bis zum Jahresabschluss nichts zu tun.'; host.appendChild(rest);
         }
@@ -485,10 +588,12 @@ export class SummaryRenderer {
         }
         const withdrawalPlan = this.getPresentationOutput('balanceWithdrawalPlan');
         if (withdrawalPlan) {
-            const different = plan && Number.isFinite(plan.monthlyWithdrawal)
-                && Math.round(plan.monthlyWithdrawal) !== projectBalanceMonthlyFlow(ui)?.euros.withdrawal;
+            // GN-2b (Gemini 4): Vergleich und Anzeige wie die Budgetzeile, angezeigtes Budget − Einkünfte.
+            const flow = projectBalanceMonthlyFlow(ui);
+            const planShown = plan && Number.isFinite(plan.monthlyWithdrawal) ? displayedWithdrawal(plan.monthlyWithdrawal, plan.monthlyBudget) : null;
+            const different = Number.isFinite(planShown) && (!flow || planShown !== displayedWithdrawal(flow.euros.withdrawal, flow.euros.budget));
             withdrawalPlan.hidden = !different;
-            withdrawalPlan.textContent = different ? `Plan ${plan.year} aus dem Vermögen: ${UIUtils.formatBalanceCurrency(plan.monthlyWithdrawal)}/Monat` : '';
+            withdrawalPlan.textContent = different ? `Plan ${plan.year} aus dem Vermögen: ${UIUtils.formatBalanceCurrency(planShown)}/Monat` : '';
         }
     }
 
@@ -526,7 +631,9 @@ export class SummaryRenderer {
             try {
                 const registry = loadProfileRegistry().value;
                 const ids = model.scope?.ids || [];
-                const receiptScope = overviewScope(ids.some(id => registry?.profiles[id]?.meta.belongsToHousehold !== false) ? 'household' : 'single', ids);
+                // N4 (GN-1): derselbe Planbereich wie auf der Ausgaben-Seite; eine Einzelperson mit eigenem Plan liest ihren Beleg,
+                // nicht die neu gerechnete Balance-Zusammenfassung.
+                const receiptScope = memberPlanScope(ids, persistenceStorage, ids.some(id => registry?.profiles[id]?.meta.belongsToHousehold !== false));
                 const budget = readExpensesBudget({ year, scope: model.scope, receiptScope, registry, activeId: model.activeId, storage: persistenceStorage });
                 const result = loadExpensesStoreResult(persistenceStorage);
                 if (result.status === 'corrupt') throw new Error('Ausgaben nicht lesbar');
@@ -539,6 +646,14 @@ export class SummaryRenderer {
         const firstYearText = `Erstes Planungsjahr ${model.firstPlanningYear} · erster Jahresabschluss Anfang ${model.firstPlanningYear + 1}`;
         const origin = model.actionOrigin || projectBalanceActionOrigin({ comparison: model.planComparison, year: targetYear + 1, scope: model.scope, occasion: model.occasion });
         this.actionOrigin = withAnnualActionProgress(origin, () => loadProfileRegistry().value, model.scope?.ids); // Umsetzungsstand FR-77
+        this.saleFlowIds = model.scope?.ids || [];
+        // TR-2: Modus des Belegs (auch Vorgabemodus, aus der Momentaufnahme) und heutiger Modus für Hinweis und „Details & Drucken“.
+        this.planModes = { decided: '', current: '' };
+        try {
+            const decided = model.planComparison?.confirmedAction?.withdrawalMode || model.planComparison?.confirmedSnapshot?.plan?.householdWithdrawalMode || '';
+            const plan = readBalanceHouseholdPlan({ storage: persistenceStorage, profileId: model.activeId });
+            this.planModes = { decided, current: plan.status === 'valid' ? plan.entry.values.householdWithdrawalMode || '' : '' };
+        } catch { this.planModes = { decided: '', current: '' }; }
         this.renderAnnualAction(this.actionOrigin, model.members);
         // Vorschau aufs nächste Jahr nur als zugeklappte Zeile (FR-77 Punkt 4).
         const previewTitle = outputs.balanceActionPreviewTitle || globalThis.document?.getElementById?.('balanceActionPreviewTitle');
@@ -603,19 +718,8 @@ export class SummaryRenderer {
         const set = (key, value) => { const host = get(key); if (host) host.textContent = value; };
         const money = UIUtils.formatBalanceCurrency;
         const make = (tag, text, cls) => { const node = doc.createElement(tag); node.textContent = text; if (cls) node.className = cls; return node; };
-        // Ergänzung 2 FR-78: Folgewerte aus angezeigten Beträgen. Der Zufluss ist die Summe der angezeigten offenen Planzeilen,
-        // wenn die Änderung genau diesem Rest entspricht; Tagesgeldziel = Summe der angezeigten Personenziele.
-        const targets = view.targets.filter(row => Number.isFinite(row.target));
-        const exactTarget = targets.length ? targets.reduce((sum, row) => sum + row.target, 0) : null;
-        const openRows = (this.todoPlan?.rows || []).filter(row => row.restNet > 0);
-        const delta = view.after && Number.isFinite(view.before.liquidity) ? view.after.liquidity - view.before.liquidity : NaN;
-        // RD-1c: Ein Kauf ohne Planzeilen fließt mit dem angezeigten (abgerundeten) Betrag ab.
-        const purchase = !this.todoPlan?.rows?.length && this.todoPlan?.purchases?.length && Number.isFinite(this.todoPlan.amount)
-            && Math.abs(delta + this.todoPlan.amount) < 1 ? -displayActionAmount(this.todoPlan.verb, this.todoPlan.amount) : null;
-        const inflow = openRows.length && Math.abs(delta - openRows.reduce((sum, row) => sum + row.restNet, 0)) < 1
-            ? openRows.reduce((sum, row) => sum + displayUp(row.restNet), 0) : purchase;
-        const shown = displayedReserves(view, { cashTarget: exactTarget, shownCashTarget: targets.length ? targets.reduce((sum, row) => sum + displayUp(row.target), 0) : null,
-            inflow, liquidityTarget: view.target });
+        // Ergänzungen 2 und 3 FR-78: Folgewerte und Deckung aus angezeigten Beträgen, dieselbe Rechnung wie in der Übersicht.
+        const { shown, targets, coverage: { today, after } } = displayedReserveView(view, this.todoPlan);
         const values = get('balanceReserveValues');
         if (values) {
             values.replaceChildren();
@@ -650,8 +754,6 @@ export class SummaryRenderer {
         set('balanceReserveTarget', `Ziel: ${number(months)} Monate Entnahme = ${money(displayUp(view.target))}, davon ${number(input.liquidityCashMonths)} Monate im Tagesgeld`);
         set('balancePersonalCashTargets', targets.length > 1
             ? `Tagesgeldziel: ${targets.map(row => `${row.name || 'Person'} ${money(displayUp(row.target))}`).join(' · ')} · Summe ${money(targets.reduce((sum, row) => sum + displayUp(row.target), 0))}` : '');
-        const coverage = amount => Number.isFinite(amount) && view.target > 0 ? amount / view.target * 100 : null;
-        const today = coverage(view.before.liquidity), after = view.after ? coverage(view.after.liquidity) : null;
         const pct = value => formatDisplayNumber(value, { unit: 'percent', fractionDigits: 0 });
         const label = `heute ${pct(today)} gedeckt${view.after ? ` · nach Umsetzung ${pct(after)}` : ''}`;
         const bar = get('balanceReserveBar');
@@ -735,7 +837,8 @@ export class SummaryRenderer {
     renderEntnahme(spending = {}, flow = null) {
         if (!this.dom?.outputs?.monatlicheEntnahme) return;
 
-        const monatlicheEntnahme = flow ? flow.euros.withdrawal : spending.monatlicheEntnahme;
+        // Ergänzung 3 FR-78: angezeigtes Monatsbudget − Einkünfte (Einkünfte genau), nie negativ.
+        const monatlicheEntnahme = flow ? displayedWithdrawal(flow.euros.withdrawal, flow.euros.budget) : spending.monatlicheEntnahme;
         this.dom.outputs.monatlicheEntnahme.replaceChildren(document.createTextNode(
             Number.isFinite(monatlicheEntnahme) ? UIUtils.formatBalanceCurrency(monatlicheEntnahme) : '—'));
 

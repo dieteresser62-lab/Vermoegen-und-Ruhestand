@@ -265,7 +265,7 @@ export async function executeMonteCarloRun(runState) {
         throwIfRunCancelled(signal, generationId);
         const startedAt = overviewToken?.metadata?.startedAt;
         const startYear = startedAt ? new Date(startedAt).getFullYear() : undefined;
-        const displayContext = { personDataContext, personDisplayContext,
+        const displayContext = { personDataContext, personDisplayContext, durationYears: maxDauer,
             startYear: personDataContext?.referenceYear ?? (Number.isFinite(startYear) ? startYear : undefined) };
         (dependencies.displayResults || displayMonteCarloResults)(aggregatedResults, anzahl, failCount, worstRun, {}, {}, pflegeTriggeredCount, inputs, worstRunCare, scenarioLogs, displayContext);
         if (runState.registration) {
@@ -286,7 +286,7 @@ export async function executeMonteCarloRun(runState) {
         }
         throwIfRunCancelled(signal, generationId);
         if (activeMonteCarloRun === runState) {
-            if (overviewToken) completeOverviewRun('montecarlo', overviewToken, projectMonteCarloOverview(aggregatedResults, anzahl, failCount, inputs));
+            if (overviewToken) completeOverviewRun('montecarlo', overviewToken, projectMonteCarloOverview(aggregatedResults, anzahl, failCount, inputs, maxDauer));
             if (!overviewToken || simulatorRunAssumptions.read('montecarlo').last?.metadata === overviewToken.metadata) {
                 successfulSummary = { result: aggregatedResults, requestedRuns: anzahl };
                 completed = true;

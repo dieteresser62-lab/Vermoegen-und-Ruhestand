@@ -35,7 +35,11 @@ for (const requested of [1000, 1000 / 0.7, 10000]) {
     assertEqual(sale.breakdown[0].trancheId, 'old', 'Älteste Tranche zuerst bei Gleichstand');
     tranches[0].costBasis = 100000;
     const cheaper = calculateSaleAndTax(10000, { ...input, detailledTranches: tranches }, {}, market, false);
-    assertEqual(cheaper.breakdown[0].trancheId, 'new', 'Steuerliche Reihenfolge bleibt vor dem Datum');
+    // FR-82: Bei derselben ISIN bleibt die Bankreihenfolge, bei verschiedenen ISINs entscheidet die Steuerlast.
+    assertEqual(cheaper.breakdown[0].trancheId, 'old', 'Gleiche ISIN: älteste Stücke zuerst trotz geringerer Steuer der neuen');
+    tranches[0].isin = 'OTHER';
+    const otherIsin = calculateSaleAndTax(10000, { ...input, detailledTranches: tranches }, {}, market, false);
+    assertEqual(otherIsin.breakdown[0].trancheId, 'new', 'Andere ISIN: steuerliche Reihenfolge bleibt vor dem Datum');
 }
 
 // F1: Schlechte Drei-Topf-Jahre erkennen vorhandene Anleihen.

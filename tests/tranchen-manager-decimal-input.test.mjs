@@ -61,7 +61,7 @@ for (const override of [{ disabled: true }, { readOnly: true }, { type: 'number'
     assertEqual(field.value, '7.5', 'Gesperrtes oder fachfremdes Feld bleibt unverändert');
 }
 
-for (const id of ['profileTagesgeld', 'profileSparerPauschbetrag', 'profileHealthBucketInitialAmount', 'purchasePrice', 'reconcileGrossProceeds', 'cashPostingBalance']) {
+for (const id of ['profileTagesgeld', 'profileSparerPauschbetrag', 'profileHealthBucketInitialAmount', 'purchasePrice', 'cashPostingBalance']) {
     const field = decimalField('98000,123456789', { id });
     focusOut({ target: field });
     assertEqual(field.value, '98.000,123456789', id + ': Geldanzeige gruppiert ohne Rundung');
@@ -103,30 +103,5 @@ events.focusin(); popDoc.activeElement = button; events.keydown({ key: 'Escape',
 assertEqual(host.dataset.visible, 'false', 'Escape schließt trotz bestehendem Fokus');
 assertEqual(popDoc.activeElement, button, 'Escape erhält Rückfokus');
 
-// Der tatsächliche Verkaufsreader bleibt DOM-frei isolierbar; nicht nur Adaptertest.
-const { functionSource } = await import('./designsystem-selection-dom.mjs');
-const saleFields = new Map([
-    ['reconcileActionId', 'synthetic-sale'], ['reconcileTrancheId', 'synthetic-lot'], ['reconcileExecutedAt', '2026-01-02'],
-    ['reconcileSharesSold', '7,5'], ['reconcileGrossProceeds', '107,5'], ['reconcileFees', '0,5'],
-    ['reconcileRecommendedShares', ''], ['reconcileRecommendedGross', ''],
-    ['reconcileCashStatus', 'confirmed_already_reflected'], ['reconcileInitialCashBalance', '207,5']
-]);
-const saleSource = ['readOptionalNumber', 'readReconciliationActionFromDom'].map(name => functionSource('app/tranches/tranchen-manager-page/reconciliation.js', name)).join('\n');
-const readSale = new Function('byId', 'readDecimalInput', 'state', 'Date', `${saleSource}\nreturn readReconciliationActionFromDom;`)(id => ({ value: saleFields.get(id) ?? '' }), readDecimalInput, { profileId: 'synthetic-person' }, class extends Date { constructor() { super('2026-01-02T12:00:00.000Z'); } });
-const commaSale = readSale();
-for (const [key, value] of saleFields) saleFields.set(key, value.replace(',', '.'));
-assertEqual(JSON.stringify(readSale()), JSON.stringify(commaSale), 'Verkaufsdialog liefert mit Komma und Punkt denselben kanonischen Auftrag');
-assertEqual(commaSale.sharesSold, 7.5, 'Tatsächliche Verkaufsstücke bleiben präzise');
-assertEqual(commaSale.grossProceeds, 107.5, 'Tatsächlicher Bruttoerlös bleibt präzise');
-assertEqual(commaSale.recommendation, null, 'Leere optionale Empfehlung bleibt fehlend');
-const groupedSaleFields = new Map([...saleFields].map(([id, value]) => [id, decimalField(value, { id })]));
-for (const [id, value] of [['reconcileGrossProceeds', 98000.25], ['reconcileFees', 1000.5], ['reconcileInitialCashBalance', 207000.5]]) {
-    const field = groupedSaleFields.get(id);
-    field.value = displayDecimalInput(value, field);
-}
-const readGroupedSale = new Function('byId', 'readDecimalInput', 'state', 'Date', `${saleSource}\nreturn readReconciliationActionFromDom;`)(
-    id => groupedSaleFields.get(id), readDecimalInput, { profileId: 'synthetic-person' }, Date);
-const groupedSale = readGroupedSale();
-assertEqual(groupedSale.grossProceeds, 98000.25, 'Verkaufsreader liest gruppierten Bruttoerlös als Zahl');
-assertEqual(groupedSale.fees, 1000.5, 'Verkaufsreader liest gruppierte Kosten als Zahl');
-assertEqual(groupedSale.cashBalanceAfterPostingEur, 207000.5, 'Verkaufsreader liest gruppierten Cashstand als Zahl');
+// FR-79: Der alte Verkaufsreader entfällt; die Beträge des geführten Verkaufs liest `parseMoney` (sale-flow-steps) mit `readMoneyText`.
+

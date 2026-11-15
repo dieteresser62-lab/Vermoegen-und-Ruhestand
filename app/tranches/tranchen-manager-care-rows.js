@@ -51,7 +51,9 @@ export function careRowSummaries({ values, careValues, officialCosts = null, hom
         Home: `${PRESET_LABELS[values.pflegeKostenStaffelPreset] || PRESET_LABELS.custom} · ${staffel} · Deckel ${num(values.pflegeMaxFloor)} €/Jahr je Person`,
         Heim: `Eigenanteil ${num(residentialMonthly(components, 1))} €/Monat im 1. Heimjahr, ab dem 4. Jahr ${num(residentialMonthly(components, 4))} € · eigene Ausgaben ${num(values.pflegeHeimEigeneAusgaben)} €/Monat je Person · ${careOriginText(careValues.residential, 'residential')}`,
         Flex: `Vom Wunsch- und Mindest-Flex bleiben bei Grad 1 bis 5: ${GRADES.map(grade => pct(values[`pflegeStufe${grade}FlexCut`])).join(' / ')} %`,
-        Rise: `${pct(values.pflegeKostenDrift)} % p.a. über der Inflation · regionaler Zuschlag ${pct(values.pflegeRegionalZuschlag)} % · gilt für zu Hause und Heim`,
+        Rise: `${Number(values.pflegeKostenDriftDanach) !== Number(values.pflegeKostenDrift) && values.pflegeKostenDriftDanach != null
+            ? `${pct(values.pflegeKostenDrift)} % p.a. über der Inflation bis ${values.pflegeKostenDriftBis}, danach ${pct(values.pflegeKostenDriftDanach)} %`
+            : `${pct(values.pflegeKostenDrift)} % p.a. über der Inflation`} · regionaler Zuschlag ${pct(values.pflegeRegionalZuschlag)} % · gilt für zu Hause und Heim`,
         Allowance: `Grad 2 bis 5: ${[2, 3, 4, 5].map(grade => num(careValues.allowance.values[grade])).join(' / ')} €/Monat · nur bei Pflege durch Angehörige · ${careOriginText(careValues.allowance, 'allowance')}`
     };
 }

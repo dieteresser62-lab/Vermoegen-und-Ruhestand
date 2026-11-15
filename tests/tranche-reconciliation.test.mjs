@@ -1,3 +1,4 @@
+import { readTRG1References } from './helpers/trg-1-expectations.mjs';
 import { PersistenceFacade as P, persistenceStorage as live } from '../app/shared/persistence-facade.js';
 import { localHistoryDate } from '../app/tranches/tranchen-history-store.js';
 import {
@@ -473,14 +474,16 @@ console.log('Test 9: pending sale, confirmation and corrections form one append-
     assertEqual(status.correctionRevision, 2, 'Effektive Projektion zeigt die letzte Revision');
     assertEqual(readReconciliationHistory(registry).length, 4, 'Verkauf, Abschluss und beide Korrekturen bleiben im Audit');
 
-    const duplicateSale = previewTrancheReconciliation({
-        profileId: PROFILE_ID,
-        tranches: salePreview.nextTranches,
-        action: createAction({ cashStatus: 'confirmed_already_reflected', cashBalanceAfterPostingEur: 1,
-            cashConfirmedAt: '2026-07-20T10:00:00.000Z' }),
-        registry
-    });
-    assertEqual(duplicateSale.status, 'duplicate', 'Cashstatusänderungen verändern die Verkaufsduplikat-Semantik nicht');
+    // VK-1b (Gutachten VK-1 P2-02, Nachtrag der Steuerung): Der Gutschriftstand gehört zur Ausführung. Die Bestätigungs- und
+    // Korrekturkette ändert den Verkaufsbeleg nicht; dieselbe Wiederholung bleibt idempotent, ein abweichender Stand ist Konflikt.
+    const duplicateSale = previewTrancheReconciliation({ profileId: PROFILE_ID, tranches: salePreview.nextTranches, action: createAction(), registry });
+    assertEqual(duplicateSale.status, 'duplicate', 'Gleiche Wiederholung nach Bestätigung und Korrekturen bleibt idempotent');
+    let conflict = null;
+    try {
+        previewTrancheReconciliation({ profileId: PROFILE_ID, tranches: salePreview.nextTranches,
+            action: createAction({ cashStatus: 'confirmed_already_reflected', cashBalanceAfterPostingEur: 1, cashConfirmedAt: '2026-07-20T10:00:00.000Z' }), registry });
+    } catch (error) { conflict = error; }
+    assertEqual(conflict?.code, 'RECONCILIATION_ACTION_CONFLICT', 'Abweichender Gutschriftstand bei gleicher Kennung ist Konflikt');
 }
 console.log('✓ append-only confirmation/correction chain OK');
 

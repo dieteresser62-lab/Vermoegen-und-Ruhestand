@@ -40,7 +40,7 @@ export interface EngineInput {
  endeVJ?: number; endeVJ_1?: number; endeVJ_2?: number; endeVJ_3?: number; ath?: number; jahreSeitAth: number;
  detailledTranches?: readonly EngineTranche[]|null; returnPolicy?: string; equityCostPct?: Percent;
  finalizeThreeBucketAction?: boolean; deferTaxSettlement?: boolean;
- transactionView?: TransactionView;
+ transactionView?: TransactionView|CarrierTransactionView;
 }
 /** TJ-2: Sicht der überlebenden Person für Kauf und Auffüllung im Todesjahr. */
 export interface TransactionView {
@@ -48,6 +48,9 @@ export interface TransactionView {
  costBasisAlt: Euro; costBasisNeu: Euro; goldCost: Euro; anleihenWert?: Euro; tqfAlt?: Ratio; tqfNeu?: Ratio;
  taxExemptAlt?: boolean; taxExemptNeu?: boolean; detailledTranches: readonly EngineTranche[];
 }
+/** LZ-1 (Ergänzung 2 FR-80): Sicht der tragenden Person für Auffüllen und Anlegen; VN-3: auch nur ihre eigenen Bestände. */
+export interface CarrierTransactionView { aktuelleLiquiditaet: Euro; tagesgeld: Euro; geldmarktEtf: Euro; depotwertAlt?: Euro; depotwertNeu?: Euro;
+ goldWert?: Euro; costBasisAlt?: Euro; costBasisNeu?: Euro; goldCost?: Euro; detailledTranches?: readonly EngineTranche[]; }
 export interface EngineState {
  [key:string]:unknown;
  initialized?: boolean; flexRate?: Percent; flexRateSmoothingReference?: Percent; lastMarketSKey?: string;

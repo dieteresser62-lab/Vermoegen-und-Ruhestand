@@ -1,5 +1,7 @@
 import { DYNAMIC_FLEX_OPTIONS } from './dynamic-flex-presets.js';
 import { createInfoPopover } from './designsystem-info-popover.js';
+import { ONE_CARRIES, oneCarriesMode, parseWithdrawalMode } from '../profile/household-withdrawal-mode.js';
+import { persistenceStorage } from './persistence-facade.js';
 
 /**
  * @param doc Dokument der Seite.
@@ -53,6 +55,7 @@ export const HOUSEHOLD_PLAN_FIELDS = [
         "path": "floorBedarf",
         "label": "Grundbedarf (Floor)",
         "hint": "muss immer gedeckt sein",
+        "infoHint": "Zahlst du Kranken- und Pflegeversicherung nicht als pflichtversicherter Rentner über die Rente (zum Beispiel freiwillig gesetzlich oder privat versichert), gehören die Beiträge in den Grundbedarf. Die App zieht sie sonst nirgends ab.",
         "group": 0,
         "unit": "€"
     },
@@ -185,7 +188,7 @@ export const HOUSEHOLD_PLAN_FIELDS = [
             ]
         ],
         "hint": "wer entnimmt zuerst",
-        "infoHint": "wer entnimmt zuerst · Reichweite zuerst",
+        "infoHint": "wer entnimmt zuerst · Reichweite zuerst · Eine Person trägt: Verkäufe, Entnahmen und Steuer nur aus ihrem Vermögen. Bei Unverheirateten können Zahlungen über die gemeinsame Haushaltsführung hinaus Schenkungen sein (Freibetrag 20.000 € in zehn Jahren).",
         "group": 3,
         "segment": true
     },
@@ -463,7 +466,8 @@ export function formatHouseholdPlanValue(value, path, { editing = false, include
     const spec = descriptions.get(path) || HOUSEHOLD_PLAN_DISPLAY_FIELDS[path];
     if (value === null || value === undefined) return '';
     if (spec?.checkbox) return value ? 'An' : 'Aus';
-    if (spec?.options) return spec.options.find(([key]) => key === value)?.[1] || String(value);
+    if (spec?.options) return spec.options.find(([key]) => key === value)?.[1]
+        || (path === 'householdWithdrawalMode' && parseWithdrawalMode(value).kind === ONE_CARRIES ? carrierModeText(value) : String(value));
     if (!Number.isFinite(value)) return String(value);
     if (editing) return fractionDigits === 0 ? String(Math.round(value + Number.EPSILON * Math.abs(value)))
         : shiftDecimalText(value, spec?.scale === 100 ? 2 : 0).replace('.', ',');
@@ -500,6 +504,49 @@ export function writeBoundHouseholdPlanField(field, value) {
  * @param path Feldpfad.
  * @returns Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
  */
+/** FR-80: Auswahl „Eine Person trägt“ je Person (nur bei zwei Personen) in der Liste der Verteilung im Haushalt. Ein gespeicherter
+ * Wert ohne passende Person bleibt als Eintrag sichtbar, damit die Liste nichts still verändert.
+ * @param {Document} doc @param {HTMLSelectElement} field @param {{id: string, name: string}[]} people @param {string} [current] */
+/** TRG-1c Punkt 6: Name der tragenden Person aus der Liste oder dem Personenbestand. @param {string|null} id @param {{id: string, name: string}[]} [people] */
+function carrierName(id, people = []) {
+    if (!id) return '';
+    const listed = people.find(person => person.id === id)?.name;
+    if (listed) return listed;
+    try { return JSON.parse(persistenceStorage.getItem('rs_profiles_v1') || 'null')?.profiles?.[id]?.meta?.name || ''; } catch { return ''; }
+}
+/** „Eine Person trägt · <Name>“ (ohne bekannten Namen ohne Zusatz). @param {unknown} value @param {{id: string, name: string}[]} [people] */
+export function carrierModeText(value, people = []) {
+    const name = carrierName(parseWithdrawalMode(value).carrierId, people);
+    return name ? `Eine Person trägt · ${name}` : 'Eine Person trägt';
+}
+
+/** TR-2: Modus der Verteilung im Klartext („Steueroptimiert“, „Eine Person trägt · Martin“); leer gilt als Vorgabe steueroptimiert.
+ * @param {unknown} value @param {{id: string, name: string}[]} [people] */
+export function withdrawalModeText(value, people = []) {
+    const mode = typeof value === 'string' && value ? value : 'tax_optimized';
+    return parseWithdrawalMode(mode).kind === ONE_CARRIES ? carrierModeText(mode, people) : formatHouseholdPlanValue(mode, 'householdWithdrawalMode');
+}
+
+/** TR-2 Befund 2: Hinweis, wenn die Verteilung nach dem Beschluss gewechselt wurde; ohne Wechsel leer.
+ * @param {{year: number, decidedMode?: string|null, currentMode?: string|null, people?: {id: string, name: string}[]}} options */
+export function planModeChangeText({ year, decidedMode, currentMode, people = [] }) {
+    const decided = decidedMode || 'tax_optimized', current = currentMode || 'tax_optimized';
+    if (decided === current) return '';
+    return `Der Plan ${year} gilt wie beschlossen (${withdrawalModeText(decided, people)}). Die neue Verteilung gilt ab dem nächsten Jahresabschluss, die Vorschau rechnet schon damit.`;
+}
+
+export function syncWithdrawalModeOptions(doc, field, people, current = '') {
+    if (!field?.options || !doc?.createElement) return;
+    // VK-3d P1: Die gewählte Person bleibt gewählt. Ohne das fiel die Liste beim Neuaufbau auf den ersten Eintrag
+    // („Steueroptimiert“) zurück, und jede spätere Speicherung las diesen Wert.
+    const selected = String(field.value ?? '');
+    for (const option of [...field.options]) if (String(option.value).startsWith(`${ONE_CARRIES}:`)) option.remove();
+    const choices = people.length === 2 ? people.map(person => [oneCarriesMode(person.id), `Eine Person trägt · ${person.name}`]) : [];
+    if (parseWithdrawalMode(current).kind === ONE_CARRIES && !choices.some(([value]) => value === current)) choices.push([current, carrierModeText(current, people)]);
+    for (const [value, text] of choices) { const option = doc.createElement('option'); option.value = value; option.textContent = text; field.append(option); }
+    if ([...field.options].some(option => option.value === selected)) field.value = selected;
+}
+
 export function readHouseholdPlanField(field, path) {
     const spec = descriptions.get(path);
     if (spec?.checkbox) return field.checked === true;
@@ -507,7 +554,7 @@ export function readHouseholdPlanField(field, path) {
     const state = bindings.get(field);
     if (state && field.value === state.text) return state.value;
     const value = parseHouseholdPlanNumber(field.value, path);
-    if (state) { state.text = field.value; state.value = value; state.reportRangeError?.(value); }
+    if (state) { state.text = field.value; state.value = value; state.shown = undefined; state.reportRangeError?.(value); }
     return value;
 }
 
@@ -576,7 +623,7 @@ export function bindHouseholdPlanField({ doc, field, row, path, listen, onChange
             state.correcting ||= !nativeOnly && state.invalid;
             const value = readHouseholdPlanField(field, path);
             if (!state.invalid && (value === null || Number.isFinite(value))) {
-                field.value = state.text = formatHouseholdPlanValue(value, path, { editing: true, fractionDigits });
+                field.value = state.text = formatHouseholdPlanValue(state.shown ?? value, path, { editing: true, fractionDigits });
             }
             // Synchron markieren, bevor Autofill oder Tippen die Auswahl ersetzt.
             // Spätere Klicks/Auswahlen gehören ausschließlich dem Nutzer.
@@ -588,7 +635,7 @@ export function bindHouseholdPlanField({ doc, field, row, path, listen, onChange
             const wasCorrecting = state.correcting;
             const value = readHouseholdPlanField(field, path); state.focused = false;
             state.correcting = false;
-            if (!state.invalid && (value === null || Number.isFinite(value))) field.value = state.text = formatHouseholdPlanValue(value, path, { includeUnit, fractionDigits });
+            if (!state.invalid && (value === null || Number.isFinite(value))) field.value = state.text = formatHouseholdPlanValue(state.shown ?? value, path, { includeUnit, fractionDigits });
             onFocusStateChange({ correctionChanged: wasCorrecting, blurredField: field, relatedTarget: /** @type {Node|null} */ (event.relatedTarget) });
         });
     }
@@ -599,13 +646,29 @@ export function bindHouseholdPlanField({ doc, field, row, path, listen, onChange
             const value = readHouseholdPlanField(field, path);
             return state.invalid || !spec.options && !spec.checkbox && !(spec.nullable && value === null) && !Number.isFinite(value);
         },
-        project(value, { force = false } = {}) {
+        /** `shown` (FR-68 Punkt 7): Das Feld zeigt diesen glatten Betrag, gelesen wird weiter der genaue `value`,
+         * auch nach Fokus und Blur. Erst eine Eingabe ersetzt beides.
+         * @param {any} value @param {{force?: boolean, shown?: number|null}} [options] */
+        project(value, { force = false, shown = null } = {}) {
             if (!force && (state.focused || doc?.activeElement === field || state.text !== undefined && binding.isInvalid())) { sync(); return; }
             if (force) { state.correcting = false; state.reportRangeError?.(value); }
             state.value = value;
+            state.shown = typeof shown === 'number' && Number.isFinite(shown) ? shown : undefined;
             if (spec.checkbox) field.checked = value === true;
-            else field.value = state.text = spec.options ? value : formatHouseholdPlanValue(value, path, { includeUnit, fractionDigits });
+            else {
+                // FR-80: Ein gespeichertes „Eine Person trägt“ braucht einen Eintrag in der Liste, sonst läse das Feld leer.
+                if (path === 'householdWithdrawalMode' && field.options && ![...field.options].some(option => option.value === value)) syncWithdrawalModeOptions(doc, /** @type {HTMLSelectElement} */ (/** @type {unknown} */ (field)), [], value);
+                field.value = state.text = spec.options ? value : formatHouseholdPlanValue(state.shown ?? value, path, { includeUnit, fractionDigits });
+            }
             sync();
+        },
+        /** Eine Tasteneingabe gilt genau so, wie sie im Feld steht, auch wenn sie dem angezeigten glatten Betrag gleicht.
+         * GN-2b (Fable P3-1): Steht nach dem Ereignis derselbe Text wie vorher, bleibt der genaue Wert des Vorschlags (Rückgabe false).
+         * @returns {boolean} */
+        typed() {
+            if (state.shown === undefined) return true;
+            if (field.value === state.text) return false;
+            state.text = undefined; state.shown = undefined; return true;
         },
         sync(values, error = '') {
             const invalid = Boolean(error && (error.includes(path) || error.includes(path.split('.').at(-1))

@@ -7,7 +7,8 @@ import { persistenceStorage } from '../../shared/persistence-facade.js';
 import { detailsMethods } from './details.js';
 import { cashRebalanceMethods } from './cash-rebalance.js';
 import { transactionMethods } from './transaction.js';
-import { displayActionAmount } from '../../shared/display-rounding.js';
+import { displayActionAmount, displayUp } from '../../shared/display-rounding.js';
+import { todoMoney } from '../../shared/annual-todo-view.js';
 
 /** Renderer für Handlungsempfehlungen; Zustand bleibt auf derselben Instanz. */
 export class ActionRenderer {
@@ -104,7 +105,8 @@ export class ActionRenderer {
         if (routingHost) routingHost.hidden = !outputs.balanceActionTransfer?.children.length;
         const taxHost = globalThis.document?.getElementById?.('balanceActionTax');
         if (taxHost) {
-            taxHost.textContent = `${UIUtils.formatBalanceCurrency(this.executionEntries.reduce((sum, entry) => sum + (entry.action.steuer || 0), 0))} · bereits abgezogen`;
+            // GH-1 Punkt 2 (FR-78 Ergänzung 5): gerundete Steuer nach der Staffel mit „ca.“.
+            taxHost.textContent = `ca. ${todoMoney(displayUp(this.executionEntries.reduce((sum, entry) => sum + (entry.action.steuer || 0), 0)))} · bereits abgezogen`;
             /** @type {HTMLElement} */ (taxHost.parentNode).hidden = !this.executionEntries.some(entry => (entry.action.quellen || [])
                 .some(source => source.brutto > 0 && !source.internalCashRebalance && !['liquiditaet', 'geldmarkt'].includes(source.kind) && source.source !== 'Liquidität'));
         }

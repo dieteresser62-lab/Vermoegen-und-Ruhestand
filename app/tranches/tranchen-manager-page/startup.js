@@ -9,7 +9,7 @@ import { applyProfileAssetValuesToDom, loadProfileAssetValues, readProfileAssetV
 import { updateActiveProfileLabel, renderDepotHistory, render } from './rendering.js';
 import { getPageNavigationGuard } from '../../shared/navigation-guard-dialog.js';
 import { createNavigationOperationLifecycle } from '../../shared/navigation-guard.js';
-import { setManagerControlsBlocked, processingIsBlocked, managerSelectionIsBlocked } from './controls.js';
+import { setManagerControlsBlocked, processingIsBlocked, managerSelectionIsBlocked, managerFieldsBlocked } from './controls.js';
 import { flushManagerCashInput, saveProfileValues, bindProfileValueInputs } from './profile-values.js';
 import { bindManagerHistoryStartUI, bindTrancheHistoryUI } from '../tranchen-history-ui.js';
 import { saveManagerHistoryStart } from './history.js';
@@ -67,7 +67,6 @@ export function resetRuntimeState(profileId) {
     state.taxMigrationWarning = '';
     state.rawRevealed = false;
     state.reconciliationPreview = null;
-    state.pendingReconciliation = null;
     state.pendingCashPosting = null;
     state.reconciliationStatus = '';
     state.reconciliationError = '';
@@ -121,12 +120,12 @@ export function initTranchenManagerPage(options = {}) {
         let lastInputs = null, revision = 0;
         state.navigationRegistration = guard.register('manager-retry-inputs', { read: () => {
             const inputs = JSON.stringify([managerInputSignature(RECONCILIATION_INPUT_IDS), managerInputSignature(PROFILE_INPUT_IDS),
-                state.pendingCommit?.tranches, state.pendingReconciliation?.action, state.pendingCashPosting?.request,
+                state.pendingCommit?.tranches, state.pendingCashPosting?.request,
                 state.pendingProfileValues, state.reconciliationPreview?.action, state.profileSaveTimer !== null, state.historyStartDraft, state.immobilien?.read?.(), state.partnership?.read(), state.householdPlan?.read(), state.plannedExpenses?.read()]);
             if (inputs !== lastInputs) { lastInputs = inputs; revision++; }
             return {
                 revision,
-                dirty: Boolean(state.pendingCommit || state.pendingReconciliation || state.pendingCashPosting || state.pendingProfileValues || state.profileSaveTimer !== null
+                dirty: Boolean(state.pendingCommit || state.pendingCashPosting || state.pendingProfileValues || state.profileSaveTimer !== null
                     || state.immobilien?.read?.().dirty || state.partnership?.read().dirty || state.householdPlan?.read().dirty || state.plannedExpenses?.read().dirty
                     || state.reconciliationPreview
                     || state.historyStartDraft !== null
@@ -159,7 +158,7 @@ export function initTranchenManagerPage(options = {}) {
 
     if (byId('managerHouseholdPlan')) {
         if (!state.householdPlan) state.householdPlan = createManagerHouseholdPlan({ doc: document,
-            getProfileId: () => state.profileId, blocked: processingIsBlocked,
+            getProfileId: () => state.profileId, blocked: processingIsBlocked, fieldsBlocked: managerFieldsBlocked,
             notify: () => { state.navigationRegistration?.notify(); state.plannedExpenses?.refresh(); renderDepotHistory(); },
             runOperation: async execute => {
                 try { return await state.navigationLifecycle.run({}, execute); }
@@ -170,7 +169,7 @@ export function initTranchenManagerPage(options = {}) {
     }
     if (byId('managerPlannedExpenses')) {
         if (!state.plannedExpenses) state.plannedExpenses = createManagerPlannedExpenses({ doc: document,
-            getProfileId: () => state.profileId, blocked: processingIsBlocked,
+            getProfileId: () => state.profileId, blocked: processingIsBlocked, fieldsBlocked: managerFieldsBlocked,
             notify: () => state.navigationRegistration?.notify(),
             runOperation: async execute => {
                 try { return await state.navigationLifecycle.run({}, execute); }

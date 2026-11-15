@@ -1,9 +1,9 @@
 // @ts-check
 import { bindAssetStrategyWarnings } from '../../shared/asset-strategy-warnings.js';
 import { processingIsBlocked } from './controls.js';
-import { flushManagerHouseholdPlan, managerInputSignature, byId, readStoredValue } from './helpers.js';
-import { state, PROFILE_INPUT_IDS, RECONCILIATION_INPUT_IDS } from './state.js';
-import { saveProfileValues } from './profile-values.js';
+import { flushManagerHouseholdPlan, managerInputSignature, byId } from './helpers.js';
+import { state, PROFILE_INPUT_IDS } from './state.js';
+import { saveProfileValues, reloadAfterHouseholdWrite } from './profile-values.js';
 import { readProfileAssetValuesFromDom, applyProfileAssetValuesToDom, loadProfileAssetValues } from '../../profile/profile-asset-values.js';
 import { enableAssetStrategy } from '../../profile/asset-strategy.js';
 import { renderPersistenceState } from './persistence-status.js';
@@ -11,20 +11,17 @@ import { render } from './rendering.js';
 import { bindManagerPersonCards } from '../tranchen-manager-person-cards.js';
 import { bindDecimalInputDisplay } from '../tranchen-manager-decimal-input.js';
 import { bindInfoPopovers } from '../../shared/designsystem-info-popover.js';
-import { setManagerModalWriteStateReader, bindTrancheModalLifecycle, bindCashPostingModalLifecycle, closeTrancheModal } from '../tranchen-manager-modal.js';
+import { setManagerModalWriteStateReader, bindTrancheModalLifecycle, bindCashPostingModalLifecycle, closeTrancheModal, cancelTrancheDetails } from '../tranchen-manager-modal.js';
 import { bindManagerProfileSwitch, bindManagerProfileControls, bindManagerPeopleDialog } from '../tranchen-manager-profiles.js';
-import { selectManagerView, openManagerOverviewTarget } from './views.js';
+import { selectManagerView, openManagerOverviewTarget, openManagerSaleFlow } from './views.js';
 import { bindManagerCareValues } from '../tranchen-manager-care-values.js';
 import { bindHistoryRecoveryUI } from '../tranchen-history-ui.js';
 import { repairManagerHistory, reloadManagerPrices } from './history.js';
-import { addTranche, saveTranche, editTranche, deleteTranche } from './tranches.js';
-import { bindManagerSaleDialog } from '../tranchen-manager-sale-dialog.js';
-import { createReconciliationPreview, clearReconciliationPreview, confirmReconciliation } from './reconciliation.js';
+import { addTranche, saveTranche, editTranche, bindTrancheDetailControls } from './tranches.js';
 import { manageManagerPerson } from './people.js';
-import { renderReconciliationState, syncInitialCashStatusControls } from './reconciliation-view.js';
-import { getProfileMeta } from '../../profile/profile-storage.js';
-import { PROFILE_STORAGE_KEYS } from '../../profile/profile-state.js';
-import { generateTrancheId } from '../tranchen-manager-state.js';
+import { isSaleFlowOpen, saleFlowClosed } from '../sale-flow-dialog.js';
+import { isBuyFlowOpen, buyFlowClosed } from '../buy-flow-dialog.js';
+import { openPendingDebits } from '../buy-debit-dialog.js';
 import { updatePrices } from './quotes.js';
 import { revealCorruptPayload, copyCorruptPayload, resetCorruptPayload, retryLoad, retryPendingCommit } from './recovery.js';
 import { submitCashPosting, openCashStatusWorkflow } from './cash-posting.js';
@@ -68,29 +65,16 @@ export function bindControls() {
     });
     bindHistoryRecoveryUI(document, { execute: repairManagerHistory, blocked: processingIsBlocked });
     for (const id of ['depotAddTrancheBtn']) byId(id)?.addEventListener('click', addTranche);
-    const saleDialog = bindManagerSaleDialog(document, {
-        preview: createReconciliationPreview,
-        discard: () => { state.pendingReconciliation = null; clearReconciliationPreview({ resetForm: true }); renderPersistenceState(); }, blocked: processingIsBlocked
-    });
     bindManagerPeopleDialog(document, { execute: manageManagerPerson, activeId: () => state.profileId, blocked: processingIsBlocked });
-    for (const openerId of ['depotOpenSaleEntryBtn']) byId(openerId)?.addEventListener('click', event => {
+    // FR-79 Punkt 8: „Verkauf eintragen“ öffnet den geführten Verkauf ohne Planbezug (Tranche in Klartext → Abrechnung → Gutschrift).
+    byId('depotOpenSaleEntryBtn')?.addEventListener('click', event => {
         if (processingIsBlocked()) return;
-        renderReconciliationState();
-        const name = byId('saleProfileName');
-        if (name) name.textContent = getProfileMeta(state.profileId)?.name || state.profileId;
-        const id = byId('reconcileActionId');
-        if (saleDialog && id && !id.value) {
-            const registryRaw = readStoredValue(PROFILE_STORAGE_KEYS.registry) || '';
-            const baseId = `sale-${generateTrancheId()}`;
-            let suffix = 1; id.value = baseId;
-            while (registryRaw.includes(JSON.stringify(id.value))) id.value = `${baseId}-${suffix++}`;
-            state.reconciliationBaseline = managerInputSignature(RECONCILIATION_INPUT_IDS);
-        }
-        saleDialog?.open(event.currentTarget || byId(openerId));
+        openManagerSaleFlow(null, /** @type {HTMLElement|null} */ (event.currentTarget));
     });
     byId('updatePricesBtn')?.addEventListener('click', () => updatePrices());
-    byId('closeTrancheModalBtn')?.addEventListener('click', () => closeTrancheModal());
+    byId('closeTrancheModalBtn')?.addEventListener('click', () => { if (!processingIsBlocked()) cancelTrancheDetails(); });
     byId('trancheForm')?.addEventListener('submit', event => saveTranche(event));
+    bindTrancheDetailControls();
     byId('revealCorruptPayloadBtn')?.addEventListener('click', revealCorruptPayload);
     byId('copyCorruptPayloadBtn')?.addEventListener('click', () => copyCorruptPayload());
     byId('resetCorruptPayloadBtn')?.addEventListener('click', () => resetCorruptPayload());
@@ -98,26 +82,21 @@ export function bindControls() {
     byId('retryTrancheSaveBtn')?.addEventListener('click', () => retryPendingCommit());
     byId('retryTrancheDialogSaveBtn')?.addEventListener('click', () => retryPendingCommit());
     byId('retryCashPostingSaveBtn')?.addEventListener('click', () => retryPendingCommit());
-    if (!saleDialog) byId('reconciliationForm')?.addEventListener('submit', createReconciliationPreview);
-    byId('reconciliationConfirmBtn')?.addEventListener('click', () => confirmReconciliation());
-    if (!saleDialog) byId('reconciliationCancelBtn')?.addEventListener('click', () => clearReconciliationPreview());
-    byId('retrySaleSaveBtn')?.addEventListener('click', () => retryPendingCommit());
     byId('cashPostingForm')?.addEventListener('submit', event => submitCashPosting(event));
     byId('reconciliationCashStatuses')?.addEventListener('click', event => {
+        // VK-2b P2-2: offene Abbuchung eines Kaufs (mit oder ohne Plan) bestätigen.
+        const debit = /** @type {HTMLElement} */ (/** @type {HTMLElement} */ (event.target).closest?.('[data-buy-debit-open]'));
+        if (debit && state.profileId) {
+            let changed = false;
+            const handle = openPendingDebits({ doc: document, ids: [state.profileId], opener: debit, onChanged: () => { changed = true; } });
+            void handle?.closed.then(() => {
+                if (changed) reloadAfterHouseholdWrite();
+            });
+            return;
+        }
         const target = /** @type {HTMLElement} */ (/** @type {HTMLElement} */ (event.target).closest?.('[data-cash-action]'));
         if (!target) return;
         openCashStatusWorkflow(target.dataset.targetActionId, target.dataset.cashAction, target);
-    });
-    byId('reconcileCashStatus')?.addEventListener('change', syncInitialCashStatusControls);
-    RECONCILIATION_INPUT_IDS.forEach(id => {
-        for (const event of ['input', 'change']) byId(id)?.addEventListener(event, () => {
-            state.navigationRegistration?.notify();
-            if (!state.reconciliationPreview || state.commitInFlight) return;
-            state.reconciliationPreview = null;
-            state.reconciliationStatus = '';
-            state.reconciliationError = 'Eingaben wurden nach der Vorschau geändert. Bitte eine neue Vorschau erstellen.';
-            renderReconciliationState();
-        });
     });
     byId('tranchenTable')?.addEventListener('click', event => {
         if (processingIsBlocked()) return;
@@ -126,12 +105,11 @@ export function bindControls() {
         const index = state.tranchen.findIndex(tranche => tranche.trancheId === target.dataset.trancheId);
         if (index < 0) return;
         if (target.dataset.action === 'edit-tranche') editTranche(index, target);
-        if (target.dataset.action === 'delete-tranche') void deleteTranche(index);
         if (target.dataset.action === 'reload-prices') void reloadManagerPrices(state.tranchen[index], target);
     });
 
     if (typeof document.addEventListener === 'function') {
-        let wasHidden = false;
+        let wasHidden = false, deferred = false;
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
                 wasHidden = true;
@@ -139,13 +117,20 @@ export function bindControls() {
             }
             if (wasHidden && document.visibilityState === 'visible') {
                 wasHidden = false;
-                void getPageNavigationGuard(document).reload({
+                const refresh = () => void getPageNavigationGuard(document).reload({
                     flush: () => PersistenceFacade.flush(), reload: () => window?.location?.reload?.()
                 }).catch(() => {
                     state.persistenceError = 'Der Profilrefresh konnte nicht sicher abgeschlossen werden. Bitte erneut versuchen.';
                     renderPersistenceState();
                 });
+                // FR-79 (VKR Abschnitt 3): kein Auto-Reload, solange der geführte Verkauf offen ist; Gutachten VK-1 P3-5: nach dem Schließen nachholen.
+                if (isSaleFlowOpen(document) || isBuyFlowOpen(document)) {
+                    if (!deferred) { deferred = true; void Promise.all([saleFlowClosed(document), buyFlowClosed(document)]).then(() => { deferred = false; refresh(); }); }
+                    return;
+                }
+                refresh();
             }
         });
     }
 }
+

@@ -15,7 +15,8 @@ assert(!JSON.stringify(basis).includes('purchaseDate') && !JSON.stringify(basis)
 const now = '2026-10-01T12:00:00.000Z';
 const compare = async source => compareBackupSummaries(basis, await buildBackupSummary(source, now), time);
 const same = await compare(records);
-assertEqual(JSON.stringify(same), JSON.stringify({ months: { added: 0, changed: 0, removed: 0 }, cash: { added: 0, changed: 0, removed: 0 }, tranches: { added: 0, changed: 0, removed: 0 } }), 'Kaufdaten erfinden keine Aktivität');
+assertEqual(JSON.stringify(same), JSON.stringify({ months: { added: 0, changed: 0, removed: 0 }, cash: { added: 0, changed: 0, removed: 0 }, tranches: { added: 0, changed: 0, removed: 0 },
+    areas: { plan: 'unchanged', income: 'unchanged', partnership: 'unchanged', care: 'unchanged' } }), 'Kaufdaten erfinden keine Aktivität');
 const changed = structuredClone(records);
 changed.overview_month_provision_v1 = JSON.stringify({ version: 1, entries: { [monthKey]: { ...provision, completedAt: now }, [JSON.stringify(['2026-09', scope.key])]: { ...provision, month: '2026-09' } } });
 changed.profile_cash_history_v1 = JSON.stringify({ version: 1, baselineValue: 100, entries: [{ date: '2026-08-01', value: 120 }, { date: '2026-09-01', value: 130 }] });
@@ -36,7 +37,7 @@ assertEqual(removals.cash.removed, 1, 'Entfernte Tagesgeldeinträge werden gezä
 assertEqual(removals.tranches.removed, Object.keys(basis.profiles[id].tranches).length, 'Entfernte Tranchen werden gezählt');
 assertEqual(compareBackupSummaries(null, basis, time), null, 'Ältere Sicherung ohne Basis bleibt unbekannt');
 assertEqual(compareBackupSummaries(basis, basis, now), null, 'Fremde Sicherungszeit ist keine Vergleichsbasis');
-for (const bad of [{ ...basis, version: 2 }, { ...basis, extra: true }, { ...basis, profiles: { a: { months: {}, cash: {}, tranches: { t: 'invalid' } } } }]) {
+for (const bad of [{ ...basis, version: 3 }, { ...basis, extra: true }, { ...basis, areas: { ...basis.areas, plan: 'x' } }, { ...basis, profiles: { a: { months: {}, cash: {}, tranches: { t: 'invalid' } } } }]) {
     let rejected = false; try { assertBackupSummary(bad); } catch { rejected = true; }
     assert(rejected, 'Enger Validator weist fremde Version, Felder und Signaturen zurück');
 }

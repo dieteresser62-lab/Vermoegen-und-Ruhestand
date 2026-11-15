@@ -293,8 +293,9 @@ try {
 
     const portfolioSource = sources['app/simulator/simulator-portfolio-display.js'].replace(/^import .*;$/gm, '').replace(/export /g, '');
     let portfolioInputs, aggregate;
-    const updatePortfolio = new Function('readBasePortfolioInputs', 'readStrategyInputs', 'readDecumulationInputs', 'readTrancheInputs', 'calculateAggregatedValues', 'formatCurrency', 'formatDisplayNumber', 'setFieldState', 'propertyParts', 'wealthDetail', 'wealthMoney', 'optionalWealthVisible', `${portfolioSource}\nreturn updateStartPortfolioDisplay;`)(
-        () => portfolioInputs, () => ({}), () => ({}), () => ({}), () => aggregate, formatCurrency, formatDisplayNumber, setFieldState, propertyParts, wealthDetail, wealthMoney, (active, amount) => active === true || amount > 0
+    const updatePortfolio = new Function('readBasePortfolioInputs', 'readStrategyInputs', 'readDecumulationInputs', 'readTrancheInputs', 'calculateAggregatedValues', 'formatCurrency', 'formatDisplayNumber', 'setFieldState', 'propertyParts', 'wealthDetail', 'wealthMoney', 'optionalWealthVisible', 'loadProfileRegistry', 'pendingCreditTotal', 'creditUnderwayText', 'pendingDebitTotal', 'debitUnderwayText', `${portfolioSource}\nreturn updateStartPortfolioDisplay;`)(
+        () => portfolioInputs, () => ({}), () => ({}), () => ({}), () => aggregate, formatCurrency, formatDisplayNumber, setFieldState, propertyParts, wealthDetail, wealthMoney, (active, amount) => active === true || amount > 0,
+        () => ({ value: null }), () => 0, () => '', () => 0, () => ''
     );
     const portfolio = fixture({ simStartVermoegen: { disabled: true }, depotwertGesamt: { disabled: true }, goldWert: { disabled: true }, initialBondBucket: { disabled: true }, einstandNeu: '', displayPortfolioBreakdown: '', goldStrategyPanel: '' });
     for (const useAggregates of [false, true, false]) {

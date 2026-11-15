@@ -98,7 +98,14 @@ function unchangedProjection(records, id) {
         const needs = JSON.parse(root.household_simulator_needs_v1);
         delete needs.values[id === 'jan-lena' ? 'minimumFlexAnnual' : 'startFloorBedarf']; root.household_simulator_needs_v1 = JSON.stringify(needs);
     }
-    if (id === 'martin-petra') delete root.household_partnership_v1;
+    if (id === 'martin-petra') {
+        delete root.household_partnership_v1;
+        // TRG-1: Die Variante „Martin trägt“ ändert nur die Verteilung im Haushalt und den daraus beschlossenen Jahresbeleg.
+        delete root.annual_plan_record_v1;
+        const plan = JSON.parse(root.household_plan_v1);
+        for (const entry of Object.values(plan.entries)) delete entry.values.householdWithdrawalMode;
+        root.household_plan_v1 = JSON.stringify(plan);
+    }
     return JSON.stringify(root);
 }
 for (const h of MUSTER_HAUSHALTE) for (const v of musterVarianten(h.id)) {
@@ -118,6 +125,22 @@ for (const h of MUSTER_HAUSHALTE) for (const v of musterVarianten(h.id)) {
     if (v.id === 'kurssturz') { assertEqual(JSON.stringify(p), JSON.stringify(plan(base)), 'max-erika/kurssturz: Planwerte wie im Grundfall'); continue; }
     // WT-1: Die Variante trägt eingetragene Planverkäufe; Planwerte und Jahresplan bleiben die des Grundfalls.
     if (v.id === 'teilweise') { assertEqual(JSON.stringify(p), JSON.stringify(plan(base)), 'max-erika/teilweise: Planwerte wie im Grundfall'); continue; }
+    // FI-1 (FR-82): Erikas Aktien-ETF in drei Käufen; Planwerte und Geldvermögen wie im Grundfall.
+    if (v.id === 'nachkauf') {
+        assertEqual(JSON.stringify(p), JSON.stringify(plan(base)), 'max-erika/nachkauf: Planwerte wie im Grundfall');
+        assertClose(n.wealth, musterSteckbrief(base, h.id, date).numbers.wealth, 0.01, 'max-erika/nachkauf: Geldvermögen wie im Grundfall');
+        const lots = JSON.parse(ps[1].data.depot_tranchen).filter(lot => lot.type === 'aktien_neu');
+        assertEqual(lots.map(lot => `${lot.isin} ${lot.purchaseDate}`).join(), 'IE00BK5BQT80 2020-03-16,IE00BK5BQT80 2022-10-03,IE00BK5BQT80 2025-02-14', 'Erika: drei Käufe desselben ETF');
+        continue;
+    }
+    // TRG-1b (P3-3): „Martin trägt“ hat höheren Bedarf und weniger Tagesgeld bei Martin, damit Verkäufe nötig sind; übrige Planwerte wie im Grundfall.
+    if (v.id === 'traegt') {
+        const strip = values => { const copy = structuredClone(values); for (const key of ['householdWithdrawalMode', 'floorBedarf', 'flexBedarf']) delete copy[key]; return JSON.stringify(copy); };
+        assertEqual(strip(p), strip(plan(base)), 'martin-petra/traegt: übrige Planwerte wie im Grundfall');
+        assertEqual(`${p.floorBedarf}/${p.flexBedarf}`, '60000/24000', 'martin-petra/traegt: Bedarf 60.000 + 24.000 €');
+        assertEqual(ps.map(person => person.data.profile_tagesgeld).join('/'), '20000/30000', 'martin-petra/traegt: Tagesgeld Martin 20.000 €, Petra 30.000 €');
+        continue;
+    }
     assert(unchangedProjection(r, h.id) === unchangedProjection(base, h.id), `${h.id}/${v.id}: alle übrigen Daten bytegleich`);
     if (v.id === 'klein') {
         assertEqual([n.cash, n.depot, n.bonds, n.gold].map(Math.round).join(), '15000,75000,0,0', 'Renate: kleines Vermögen');

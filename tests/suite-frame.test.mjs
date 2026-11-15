@@ -124,7 +124,7 @@ assertEqual(css.includes('container-type: normal'), true, 'Druck hebt Containerz
 assertEqual(css.includes('@container suite-shell (width < 82rem)'), true, 'Automatik misst ausschließlich äußeren Container unter 82rem');
 assertEqual(css.includes('grid-template-columns: 4rem minmax(0, 1fr)') && css.includes('grid-template-columns: 12rem minmax(0, 1fr)'), true, 'Breitenbudget gibt kompakt acht Rem Hauptinhalt zurück');
 assertEqual(sources['css/balance.css'].includes('@container suite-content (max-width: 1250px)'), true, 'Balance misst verfügbaren Inhalt');
-assertEqual(sources['depot-tranchen-manager.html'].includes('@container manager (max-width: 980px)'), true, 'Manager misst seinen inneren Container');
+assertEqual(sources['css/personen-vermoegen-seite.css'].includes('@container manager (max-width: 980px)'), true, 'Manager misst seinen inneren Container');
 assertEqual(sources['simulator.css'].includes('@container simulator-panel (max-width: 1000px)') && sources['simulator.css'].includes('@container simulator-panel (max-width: 899px)'), true, 'Simulator misst betroffene Panels');
 assertEqual(sources['Balance.html'].includes('id="print-footer"') && sources['css/balance.css'].includes('.suite-content > :not(.balance-action-dialog) { display: none; }'), true, 'Balance-Druckanker bleiben erhalten');
 assertEqual(sources['Simulator.html'].includes('id="monteCarloResults"') && sources['simulator.css'].includes('.mc-view-panel[hidden]'), true, 'Simulator-Druckanker bleiben erhalten');

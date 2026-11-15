@@ -228,3 +228,7 @@
 .overview-pill, #overviewDate, .overview-plan .ds-source { font-size: var(--text-base); }
 .overview-year-metric:last-child strong { font-family: var(--font-sans); }
 .overview-history .history-legend, .overview-history .history-note, .overview-history .history-measurement, .overview-history .history-metric small, .overview-history .history-periods button { font-size: var(--text-base); }
+
+/* DS-1 Punkt 3: vorher Inline-Stil in index.html. */
+.overview-dev-tools { position: fixed; bottom: 10px; right: 10px; z-index: 9999; padding: 10px; border-radius: 5px; color: var(--surface); background: var(--text-main); }
+.overview-dev-tools[hidden] { display: none; }

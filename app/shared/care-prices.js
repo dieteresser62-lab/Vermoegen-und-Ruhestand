@@ -3,6 +3,7 @@
  * Altbestand aufgelöst; Lesen schreibt nie. Fortgeschrieben wird einmal je Jahresabschluss aus einer eingefrorenen Basis. */
 import { CARE_COST_DEFAULTS, CARE_DRIFT_DEFAULT_PERCENT, readCareCostSettings, resolveCareSetting } from './care-cost-resolver.js';
 import { assertCarePrices, parseCareValues, residentialComponents, residentialMonthly } from './household-care-values.js';
+import { resolveCareDriftSchedule, careDriftRateForYear } from './care-cost-drift.js';
 
 export const CARE_PRICE_DEFAULTS = Object.freeze({ costs: CARE_COST_DEFAULTS, maximumFloor: 120000, ownExpensesMonthly: 500, driftPercent: CARE_DRIFT_DEFAULT_PERCENT });
 /** Gutachten PFA-4, Befund 2: eigener Preisblock einer Außenperson (gleiche Form wie `prices` im Pflegewerte-Record) an
@@ -35,22 +36,35 @@ export const wholeEuro = value => Math.floor(value + 0.5 + 1e-9);
  * @param {{prices?: object}|null|undefined} careValues Gelesener Pflegewerte-Record.
  * @param {object|null|undefined} legacySource Speicheradapter oder Profilrecord mit `sim_pflege…`-Schlüsseln.
  * @param {{shared?: boolean}} [options]
- * @returns {{costs: Record<number, number>, maximumFloor: number, ownExpensesMonthly: number, driftPercent: number, driftMarked: boolean, origin: string, priceYear: number|null, stored: boolean}} Wirksame Preise.
+ * @returns {{costs: Record<number, number>, maximumFloor: number, ownExpensesMonthly: number, driftPercent: number, driftUntilYear: number, driftAfterPercent: number, driftMarked: boolean, scheduleMarked: boolean, origin: string, priceYear: number|null, stored: boolean}} Wirksame Preise.
  */
 export function resolveCarePrices(careValues, legacySource, { shared = true } = {}) {
     const stored = shared ? careValues?.prices : ownCarePrices(legacySource);
     const legacy = readCareCostSettings(legacySource);
     const driftMarked = Number.isFinite(stored?.driftPercent);
-    const driftPercent = driftMarked ? stored.driftPercent : legacy.driftPercent;
+    // FR-73 Punkt 8 geändert [A7]: Verlauf erste Rate / Wechseljahr / zweite Rate, Altbestand nur beim Lesen umgedeutet.
+    const scheduleMarked = Number.isFinite(stored?.driftAfterPercent);
+    // GN-2b (Fable P3-7): Ist die erste Rate im Block markiert, gilt nur der Block; `sim_`-Verlaufsfelder zählen dann nicht.
+    const schedule = resolveCareDriftSchedule({ firstPercent: driftMarked ? stored.driftPercent : legacy.driftPercent,
+        untilYear: scheduleMarked ? stored.driftUntilYear ?? null : driftMarked ? null : legacy.driftUntilYear,
+        afterPercent: scheduleMarked ? stored.driftAfterPercent : driftMarked ? null : legacy.driftAfterPercent });
+    const drift = { driftPercent: schedule.firstPercent, driftUntilYear: schedule.untilYear, driftAfterPercent: schedule.afterPercent, driftMarked, scheduleMarked };
     if (stored) {
         return { costs: Object.fromEntries(GRADES.map(grade => [grade, stored.costs[grade]])), maximumFloor: stored.maximumFloor,
-            ownExpensesMonthly: stored.ownExpensesMonthly, driftPercent, driftMarked, origin: stored.origin, priceYear: stored.priceYear, stored: true };
+            ownExpensesMonthly: stored.ownExpensesMonthly, ...drift, origin: stored.origin, priceYear: stored.priceYear, stored: true };
     }
     const isDefault = GRADES.every(grade => legacy.costs[grade] === CARE_PRICE_DEFAULTS.costs[grade])
         && legacy.maximumFloor === CARE_PRICE_DEFAULTS.maximumFloor && legacy.ownExpensesMonthly === CARE_PRICE_DEFAULTS.ownExpensesMonthly;
-    return { costs: legacy.costs, maximumFloor: legacy.maximumFloor, ownExpensesMonthly: legacy.ownExpensesMonthly, driftPercent, driftMarked: false,
+    return { costs: legacy.costs, maximumFloor: legacy.maximumFloor, ownExpensesMonthly: legacy.ownExpensesMonthly, ...drift, driftMarked: false, scheduleMarked: false,
         origin: isDefault ? 'mitgeliefert' : 'von Hand', priceYear: null, stored: false };
 }
+
+/** Verlauf des Kostenanstiegs aus wirksamen Preisen. @param {ReturnType<typeof resolveCarePrices>} prices */
+export const careDriftScheduleOf = prices => ({ firstPercent: prices.driftPercent, untilYear: prices.driftUntilYear, afterPercent: prices.driftAfterPercent });
+
+/** Rate über der Inflation für den Schritt in das Planjahr `year` (Jahresabschluss, Balance-Folgejahr).
+ * @param {ReturnType<typeof resolveCarePrices>} prices @param {number} year @returns {number} */
+export const careDriftPercentForYear = (prices, year) => careDriftRateForYear(year, careDriftScheduleOf(prices));
 
 /** Kostenanstieg in Prozent allein aus dem Altbestand (Resolver: 3,5 gilt als 5). Die wirksame Zahl samt
  * Markierung liefert {@link resolveCarePrices}.
@@ -74,7 +88,8 @@ export function projectCarePrices(prices, { inflationRate, driftPercent, priceYe
     const inflation = 1 + inflationRate / 100, factor = inflation * (1 + driftPercent / 100);
     return { costs: Object.fromEntries(GRADES.map(grade => [grade, wholeEuro(prices.costs[grade] * factor)])),
         maximumFloor: wholeEuro(prices.maximumFloor * factor), ownExpensesMonthly: wholeEuro(prices.ownExpensesMonthly * inflation),
-        ...(prices.driftMarked ? { driftPercent: prices.driftPercent } : {}), origin: 'fortgeschrieben', priceYear };
+        ...(prices.driftMarked ? { driftPercent: prices.driftPercent } : {}),
+        ...(prices.scheduleMarked ? { driftUntilYear: prices.driftUntilYear, driftAfterPercent: prices.driftAfterPercent } : {}), origin: 'fortgeschrieben', priceYear };
 }
 
 /** Der vollständige Pflegewerte-Record für das neue Planjahr: Heim-Bestandteile und Preise fortgeschrieben,
@@ -121,10 +136,15 @@ export function ownCarePricesWithPatch(legacySource, patch, { priceYear }) {
 }
 
 function patchedCarePrices(current, patch, priceYear) {
-    const drift = patch.driftPercent ?? (current.driftMarked ? current.driftPercent : undefined);
+    // GN-2b (Steuerung zu Fable P2-2): Ändert der Nutzer eine der drei Angaben, werden alle drei mit dem gerade wirksamen
+    // Verlauf geschrieben. Die Altbestandsregel „anderer Wert → dauerhaft“ gilt damit nur noch für Werte vor GN-2.
+    const touched = patch.driftPercent !== undefined || patch.driftUntilYear !== undefined || patch.driftAfterPercent !== undefined;
+    const drift = patch.driftPercent ?? (current.driftMarked || touched ? current.driftPercent : undefined);
+    const schedule = touched || current.scheduleMarked
+        ? { driftUntilYear: patch.driftUntilYear ?? current.driftUntilYear, driftAfterPercent: patch.driftAfterPercent ?? current.driftAfterPercent } : {};
     const prices = /** @type {import('../../typcheck/datenvertraege.js').CarePrices} */ ({ costs: { ...current.costs, ...(patch.costs || {}) },
         maximumFloor: patch.maximumFloor ?? current.maximumFloor, ownExpensesMonthly: patch.ownExpensesMonthly ?? current.ownExpensesMonthly,
-        ...(drift === undefined ? {} : { driftPercent: drift }), origin: 'von Hand', priceYear: current.priceYear ?? priceYear });
+        ...(drift === undefined ? {} : { driftPercent: drift }), ...schedule, origin: 'von Hand', priceYear: current.priceYear ?? priceYear });
     assertCarePrices(prices);
     return prices;
 }

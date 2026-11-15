@@ -1,6 +1,7 @@
 // @ts-check
 /** @import {SimulatorInputs,SimulationState,HistoricalYear,CareMeta,HouseholdContext,ReplayCollector,YearOutcome} from '../../../typcheck/rechenkern' */
 import { isUnmarriedSimulation, unmarriedYearShares } from '../simulator-unmarried.js';
+import { activeCarrier } from '../../profile/household-withdrawal-mode.js';
 import { sellHomesForExternalCare, sellHomesForEmergency, homeRentForYear, endResidenceRights } from '../simulator-home-sale.js';
 import { applyPlannedInflows } from '../planned-inflows.js';
 import { calculateFixedIncomeForYear } from '../simulator-fixed-income.js';
@@ -110,6 +111,9 @@ export function prepareYear(context) {
     const startAssets = unmarried ? structuredClone(portfolio) : null;
     const survivorYear = /** @type {import('../../../typcheck/rechenkern-integration').PrepareSurvivorYear} */ (prepareSurvivorYear)(currentState, inputs, householdCtx, portfolio, yearIndex);
     if (survivorYear) inputs = survivorYear.inputs;
+    // FR-80 Punkt 5 (TRG-1b, P3-7): Stirbt die tragende Person, endet „Eine Person trägt“ schon im Todesjahr.
+    if (survivorYear && activeCarrier(inputs.householdWithdrawalMode, [{ profileId: survivorYear.survivor?.deceasedProfileId }]))
+        inputs = { ...inputs, householdWithdrawalMode: 'tax_optimized' };
     // Auch gespeicherte Replay-Ereignisse können noch aktive Pflege Verstorbener enthalten.
     const careP1 = householdCtx.care?.p1;
     const careP2 = householdCtx.care?.p2;

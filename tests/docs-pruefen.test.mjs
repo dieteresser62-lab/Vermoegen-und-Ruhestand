@@ -19,7 +19,7 @@ try {
     assertEqual(ACTIVE_FILES.length, 53, 'Zielstruktur enthält die technischen Hauptorte anstelle der sechs Sonderreferenzen, dazu die Kohortentafel (FR-75)');
     assert(ACTIVE_FILES.includes('docs/reference/SIMULATION_LESEN.md'), 'Simulationsergebnisse gehören zum vollständig geprüften Leserbestand');
     assert(ACTIVE_FILES.includes('docs/reference/STRATEGIEN.md'), 'Strategien gehört zum vollständig geprüften Leserbestand');
-    assertEqual(IMAGE_FILES.length, 70, 'Bilderliste enthält Vergleich, Zielwertsuche, Protokolle, Tagesgeld, Pflegegrad, Bereich Pflege, Partnerschaft, Immobilien, erfasste Stände, übernommene Rentenanpassung, Fondskosten in Simulator und Haushalt & Plan und Hinweis „wie Löhne“');
+    assertEqual(IMAGE_FILES.length, 82, 'Bilderliste enthält die sechs Bilder des geführten Verkaufs (VK-1), vier des geführten Kaufs (VK-2, BV-1), Tranche im Detail (BV-1), Stückzahlkorrektur (TD-1), Vergleich, Zielwertsuche, Protokolle, Tagesgeld, Pflegegrad, Bereich Pflege, Partnerschaft, Immobilien, erfasste Stände, übernommene Rentenanpassung, Fondskosten in Simulator und Haushalt & Plan und Hinweis „wie Löhne“');
     for (const file of ACTIVE_FILES) {
         assert(FINISHED_FILES.includes(file), file + ': volle Dokuprüfung einschließlich Handbuch und Bildern');
     }

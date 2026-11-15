@@ -39,7 +39,7 @@ try {
         assertEqual(view.needs.plans.floorMonths[6], 3000, 'Monatstabelle: Floor-Plan Juli');
         const review = { ...view.needs, monthsWithBreakdown: 12, fixedInActual: 6000, annualForecast: { floor: 30000, flex: 96000, total: 126000 } };
         const suggestion = annualNeedSuggestions({ inflation: { rate: 2 } }, { needsReview: review }, 'floorBedarf', 24480);
-        assertEqual(suggestion.fromActual, 25000, '„Ist + Inflation“ zieht die feste Ausgabe ab: (30.000 − 6.000) × 1,02, aufgerundet');
+        assertEqual(suggestion.fromActual, 24480, '„Ist + Inflation“ zieht die feste Ausgabe ab: (30.000 − 6.000) × 1,02, genau');
         assertEqual(suggestion.comparison, 'genau im Plan', 'Ist nach Plan liegt genau im Plan-Grundbedarf');
     }
     // Befund 2: Monatsabschluss nimmt das Jahresbudget aus dem Beleg; Flex-Kachel Januar und Juli je 8.000 €.

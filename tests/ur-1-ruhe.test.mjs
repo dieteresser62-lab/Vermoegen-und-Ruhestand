@@ -28,10 +28,10 @@ const summaries = (records, extra = {}) => {
         'Pflege zu Hause: Vorgabestaffel mit Formen und Deckel');
     assertEqual(base.Heim, 'Eigenanteil 3.364 €/Monat im 1. Heimjahr, ab dem 4. Jahr 2.111 € · eigene Ausgaben 500 €/Monat je Person · mitgeliefert, Stand 07.2026', 'Pflege im Heim: Eigenanteil, eigene Ausgaben und Herkunft (UR-2)');
     assertEqual(base.Flex, 'Vom Wunsch- und Mindest-Flex bleiben bei Grad 1 bis 5: 100 / 100 / 50 / 0 / 0 %', 'Flex bei Pflege: Vorgabe 100/100/50/0/0');
-    assertEqual(base.Rise, '5 % p.a. über der Inflation · regionaler Zuschlag 0 % · gilt für zu Hause und Heim', 'Kostenanstieg und Zuschlag');
+    assertEqual(base.Rise, '5 % p.a. über der Inflation bis 2035, danach 2 % · regionaler Zuschlag 0 % · gilt für zu Hause und Heim', 'Kostenanstieg (bis 2035 + 5 %, danach + 2 %) und Zuschlag');
     assert(base.Allowance.startsWith('Grad 2 bis 5: 347 / 599 / 800 / 990 €/Monat · nur bei Pflege durch Angehörige · gesetzlich, Stand '), `Pflegegeld der Kasse: ${base.Allowance}`);
     const own = summaries(pfa2Records({}).records, { pflegeStufe3Zusatz: '21000', pflegeStufe4Form: 'home-support', pflegeMaxFloor: '90000',
-        pflegeKostenDrift: '3.5', pflegeRegionalZuschlag: '12.5', pflegeStufe1FlexCut: '90', pflegeHeimEigeneAusgaben: '650' });
+        pflegeKostenDrift: '3.5', pflegeKostenDriftDanach: '3.5', pflegeRegionalZuschlag: '12.5', pflegeStufe1FlexCut: '90', pflegeHeimEigeneAusgaben: '650' });
     assertEqual(own.Home, 'Eigene Werte · Grad 1 bis 4 zu Hause: 300 / 500 / 1.750 / 2.667 €/Monat · Grad 5 im Heim · Deckel 90.000 €/Jahr je Person',
         'Eigene Staffel: neuer Betrag und Form erscheinen nach der Änderung');
     assertEqual(own.Rise, '3,5 % p.a. über der Inflation · regionaler Zuschlag 12,5 % · gilt für zu Hause und Heim', 'Dezimalwerte mit Komma');

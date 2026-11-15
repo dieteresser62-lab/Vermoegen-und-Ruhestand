@@ -65,7 +65,10 @@ export function isArchivedTrialPoint(point, model) {
 export function snapshotGroups(points, model) {
     const names = ['Monatsabschluss', 'Jahresabschluss', 'Import und Einspielen', 'Löschen und Haushalt', 'Spielbereich', 'Sonstiges', 'Spielbereich (nur Archiv)'];
     const groups = names.map(title => ({ title, archive: title === 'Spielbereich (nur Archiv)', points: [] }));
-    for (const point of [...points].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)) || String(b.id).localeCompare(String(a.id)))) {
+    // VK-3c: Gleich alte Punkte stehen fest nach Bezeichnung; Personenpunkte tragen eine Zufallskennung, nach ihr allein wechselte die
+    // Reihenfolge von Aufruf zu Aufruf. Nur die Anzeige; Speicher, Aufbewahrung und Sicherung bleiben unverändert.
+    for (const point of [...points].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))
+        || String(a.label ?? '').localeCompare(String(b.label ?? ''), 'de') || String(b.id).localeCompare(String(a.id)))) {
         const index = isArchivedTrialPoint(point, model) ? 6
             : point.kind === 'monthly-close-pre-mutation' || point.kind === 'manual' && /^Monatsabschluss \d{4}-\d{2}$/.test(point.label) ? 0
             : point.kind === 'annual-close-pre-mutation' ? 1

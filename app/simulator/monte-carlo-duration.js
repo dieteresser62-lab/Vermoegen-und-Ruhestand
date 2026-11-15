@@ -5,11 +5,21 @@
  */
 import { MONTE_CARLO_PARAMETER_LIMITS, resolveMonteCarloDefaultDurationV1 } from './monte-carlo-parameters.js';
 
-/** Gespeicherter Rohwert für das Feld; die alte Vorgabe 35 wird zu „automatisch“ (leer).
- * @param {unknown} storedValue @returns {unknown} */
-export function readStoredMonteCarloDuration(storedValue) {
-    return String(storedValue ?? '').trim() === String(MONTE_CARLO_PARAMETER_LIMITS.durationYears.legacyStoredDefault)
+/** GH-1 Punkt 11: Markierung „35 Jahre bewusst eingetragen“ (Muster wie der markierte Pflegekostenanstieg, FR-73 Punkt 8). Ein `sim_`-Schlüssel,
+ * daher wandert sie mit Sicherung und Profilwechsel wie die übrigen Simulator-Einstellungen. */
+export const MONTE_CARLO_DURATION_EXPLICIT_KEY = 'sim_mcDauerBewusst';
+
+/** Gespeicherter Rohwert für das Feld; die alte Vorgabe 35 wird zu „automatisch“ (leer), außer sie ist als bewusst markiert.
+ * @param {unknown} storedValue @param {boolean} [explicit] @returns {unknown} */
+export function readStoredMonteCarloDuration(storedValue, explicit = false) {
+    return !explicit && String(storedValue ?? '').trim() === String(MONTE_CARLO_PARAMETER_LIMITS.durationYears.legacyStoredDefault)
         ? '' : storedValue;
+}
+
+/** Markierung beim Speichern: nur eine eingetragene 35 ist bewusst; jeder andere Wert entfernt sie. @param {any} storage @param {unknown} value */
+export function writeMonteCarloDurationMarker(storage, value) {
+    if (String(value ?? '').trim() === String(MONTE_CARLO_PARAMETER_LIMITS.durationYears.legacyStoredDefault)) storage.setItem(MONTE_CARLO_DURATION_EXPLICIT_KEY, 'true');
+    else storage.removeItem?.(MONTE_CARLO_DURATION_EXPLICIT_KEY);
 }
 
 /** Wirksamer Wert des Felds: eigener Wert oder die zuletzt angezeigte automatische Dauer.

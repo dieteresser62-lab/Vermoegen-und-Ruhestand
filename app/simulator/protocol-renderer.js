@@ -9,6 +9,7 @@ import { noCareAllowanceReason } from '../shared/care-benefits.js';
 import { STRATEGY_OPTIONS } from '../../types/strategy-options.js';
 import { FAMILY_HOME_CONDITIONS, spouseTaxNote, inheritancePersonalAllowance } from '../profile/household-partnership.js';
 import { displayTradeAmount } from '../shared/transaction-display-text.js';
+import { CARRIER_RESERVE_SHORT_TEXT, activeCarrier } from '../profile/household-withdrawal-mode.js';
 import { formatDisplayPercentRatio } from '../shared/shared-formatting.js';
 
 /**
@@ -279,6 +280,31 @@ export function protocolActionExplanation(entry, options = {}, fallback = '') {
         const shares = raw.personalPayoutSales.map(person => `${person.name} ${(person.share * 100).toLocaleString('de-DE', { maximumFractionDigits: 2 })} %`).join(', ');
         text += ` · Nicht verheiratet: Jede Person zahlt ihren Anteil (${shares}) aus eigenem Geld. Reicht ihr Tagesgeld nicht, verkauft sie eigene Wertpapiere.${raw.personalPayoutSales.length === 1 ? ' Der Überschuss der anderen Person bleibt auf ihrem Tagesgeld, bis die App ihn nach ihren Regeln anlegt.' : ''}`;
     }
+    // FR-80 Punkt 3: „Eine Person trägt“ reicht nicht mehr; der Plan greift auf das Vermögen der anderen Person zu.
+    const attacked = (raw.personalPayout?.attacked || []).map(row => raw.personAccounts?.find(person => person.profileId === row.profileId)?.name || row.profileId);
+    if (attacked.length) text += ` · Vermögen von ${attacked.join(' und ')} wird angegriffen: Das Vermögen der tragenden Person reicht für den gemeinsamen Anteil nicht mehr.`;
+    // VN-3 (Ergänzung 1 FR-80): Das Vermögen der tragenden Person reicht nicht für ihr Liquiditätsziel; die andere Person verkauft dafür nichts.
+    const short = raw.personalPayout?.carrierReserveShort;
+    if (short?.amount > 0) text += ` · ${CARRIER_RESERVE_SHORT_TEXT(raw.personAccounts?.find(person => person.profileId === short.profileId)?.name, actionMoney(short.amount, entry, options))}`;
+    // FR-81: Unverheiratet im Vorgabemodus – fehlt einer Person nur ein Teil ihres Flex-Anteils, wird er gekürzt.
+    const flexCut = (raw.personalPayout?.flexCut || []).map(row => raw.personAccounts?.find(person => person.profileId === row.profileId)?.name || row.profileId);
+    if (flexCut.length) text += ` · Flex-Anteil von ${flexCut.join(' und ')} gekürzt: Das eigene Geld reicht nur noch für den eigenen Anteil am Grundbedarf.`;
+    // Ergänzung 1 FR-81: Die Einkünfte des Haushalts hätten gereicht; bei Unverheirateten gehören sie aber jeder Person selbst.
+    if (flexCut.length && raw.personalPayout?.flexCutIncomeCovers) text += ' Mit „Eine Person trägt“ legt die App die Einkünfte beider zusammen.';
+    // VN-4 Punkt 5 (Abnahme LZDS-2): „Verkäufe und Käufe je Person“ zeigte nur die Überschrift. Jetzt mit den Werten des Jahresbelegs:
+    // wer verkauft (bei „Eine Person trägt“ die tragende Person), Steuer des Haushalts und Tagesgeld je Person nach dem Jahr.
+    const people = raw.personAccounts || [];
+    if (/^Profilverbund-Transaktionen$/.test(String(raw.aktionUndGrund || '').trim()) && people.length > 1
+        && options.strategyMode !== STRATEGY_OPTIONS.THREE_BUCKET_JILGE) {
+        const money = value => actionMoney(value, entry, options);
+        const sold = displayTradeAmount(raw.vk?.vkGes ?? ((Number(raw.vk?.vkAkt) || 0) + (Number(raw.vk?.vkGld) || 0) + (Number(raw.vk?.vkBnd) || 0)));
+        const carrier = activeCarrier(options.inputs?.householdWithdrawalMode, people);
+        const carrierName = people.find(person => person.profileId === carrier)?.name;
+        if (sold > 0) text += carrierName && !attacked.length ? ` · ${carrierName} verkauft ${money(sold)} (trägt die Entnahme), die andere Person verkauft nichts`
+            : ` · Verkauft im Haushalt ${money(sold)}`;
+        if (Number(raw.steuern_gesamt) > 0.5) text += ` · Steuer im Jahr ${money(raw.steuern_gesamt)}`;
+        text += ` · Tagesgeld danach: ${people.map(person => `${person.name || 'Person'} ${money(person.tagesgeld)}${person.geldmarktEtf > 0.5 ? ` (dazu Geldmarkt ${money(person.geldmarktEtf)})` : ''}`).join(', ')}`;
+    }
     if (options.strategyMode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE && visibleTrades?.length) {
         // Einzelne Klassenbeträge stehen bereits vollständig im Personensaldo.
         if (singleClass) {
@@ -488,7 +514,8 @@ export function renderProtocolTable(rows, options = {}) {
                 const action = column.id === 'action';
                 const withdrawal = column.id === 'withdrawal';
                 const cashflow = ['income-total', 'expense-total'].includes(column.id);
-                const actionInfo = action && (!raw.inheritance || options.strategyMode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE || raw.personalPayoutSales?.length)
+                // TRG-1c Punkt 5: Ein Rückgriff („Vermögen von … wird angegriffen“) bleibt auch im Todesjahr sichtbar.
+                const actionInfo = action && (!raw.inheritance || options.strategyMode === STRATEGY_OPTIONS.THREE_BUCKET_JILGE || raw.personalPayoutSales?.length || raw.personalPayout?.attacked?.length || raw.personalPayout?.flexCut?.length)
                     ? protocolInfo('Handlung und vollständige Begründung', protocolActionExplanation(entry, actionOptions, formatted)) : '';
                 const content = action
                     ? `${escape(protocolActionShortText(entry, actionOptions, formatted))}${actionInfo}${raw.inheritance ? inheritanceInfo(raw, entry, options) : ''}`

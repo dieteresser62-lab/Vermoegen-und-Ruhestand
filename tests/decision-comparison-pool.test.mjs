@@ -1,4 +1,6 @@
-import { readLE1References } from './helpers/le-1-expectations.mjs';
+import { readLE1References as readBeforeGN2References } from './helpers/le-1-expectations.mjs';
+import { readGN2References } from './helpers/gn-2-expectations.mjs';
+const readLE1References = value => readGN2References(readBeforeGN2References(value));
 import { readGU1References } from './helpers/gu-1-expectations.mjs';
 import { readPFA1References } from './helpers/pfa-1-expectations.mjs';
 import { readEV1bReferences as readBeforeHE2References } from './helpers/ev-1b-expectations.mjs';
@@ -26,6 +28,7 @@ import { renderDecisionResult } from '../app/simulator/decision-comparison-ui.js
 import { readPersistedRecords, flush } from '../app/shared/persistence-facade.js';
 import { getCommonInputs } from '../app/simulator/simulator-portfolio.js';
 
+import { readFI1References } from './helpers/fi-1-expectations.mjs';
 for (const [standard, reduced] of [[10000, 1000], [2000, 500], [300, 300], [1234, 500]])
     assert.equal(decisionComparisonRunCount(standard), reduced);
 const inputs = await measurementInputs(0, 'max-erika');
@@ -55,8 +58,8 @@ try {
     assert.equal(DecisionNodeWorker.instances.length - comparisonWorkers, 4, 'Ein Pool für beide Vergleichspläne');
     assert.ok(DecisionNodeWorker.instances.every(worker => worker.terminated));
     // Referenz vor VS-1b, bereits mit dem Datenstand nach KETTE TB.
-    assert.equal(checksum(pooled.baseline), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('a96ddabcf9286552785a6406175a5a3b133d150ce19357a847a2c710bf67a6ce')))))));
-    assert.equal(checksum(pooled.variant), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('244b5d9c72c108b27e8764e46ad426b7b2a7cb6becbed0b5f7181e1e34f2ade4')))))));
+    assert.equal(checksum(pooled.baseline), readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('a96ddabcf9286552785a6406175a5a3b133d150ce19357a847a2c710bf67a6ce'))))))));
+    assert.equal(checksum(pooled.variant), readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('244b5d9c72c108b27e8764e46ad426b7b2a7cb6becbed0b5f7181e1e34f2ade4'))))))));
     assert.ok(progress.some(row => row.completedRuns > 0 && row.completedRuns < 24));
     assert.ok(progress.every((row, i) => !i || row.pct >= progress[i - 1].pct));
     console.log('VS-1 Vergleich SHA256', checksum(pooled.baseline), checksum(pooled.variant));
@@ -80,7 +83,7 @@ try {
     const serialStep = await evaluate();
     assert.deepEqual(poolStep.metrics, serialStep.metrics);
     assert.equal(checksum(poolStep), checksum(serialStep));
-    assert.equal(checksum(poolStep), readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('f4ce36cbd93c3d38b9dbf88db996a31f16ec76c840e77fdebb3421ac86f32c9c')))))));
+    assert.equal(checksum(poolStep), readFI1References(readLE1References(readGU1References(readEV1References(readQSCReferences(readVF2BReferences(readGL1References('f4ce36cbd93c3d38b9dbf88db996a31f16ec76c840e77fdebb3421ac86f32c9c'))))))));
     assert.deepEqual(poolStep.diagnostics, serialStep.diagnostics);
     assert.deepEqual(poolStep.chunk.runMeta, serialStep.chunk.runMeta);
     console.log('VS-1 Suchschritt nach Ruin SHA256', checksum(poolStep));

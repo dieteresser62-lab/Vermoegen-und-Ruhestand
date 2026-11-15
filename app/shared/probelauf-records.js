@@ -181,8 +181,9 @@ const labels = {
     profile_tagesgeld: 'Tagesgeld', goldAktiv: 'Gold', goldZielProzent: 'Gold-Zielanteil',
     startFlexBedarf: 'Wunschbedarf (Flex) im Jahr', startFloorBedarf: 'Grundbedarf (Floor) im Jahr'
 };
-const trancheLabels = { name: 'Name', type: 'Anlageart', category: 'Anlageklasse', shares: 'Stück', purchasePrice: 'Kaufpreis', purchaseDate: 'Kaufdatum', ticker: 'Börsenkürzel', isin: 'ISIN', notes: 'Notiz', taxExempt: 'Steuerfrei', tqf: 'Teilfreistellung' };
-const trancheValue = (value, field) => value == null ? '–' : field === 'purchasePrice' ? number(value, 'currency')
+const trancheLabels = { name: 'Name', type: 'Anlageart', category: 'Anlageklasse', shares: 'Stück', purchasePrice: 'Kaufpreis', purchaseDate: 'Kaufdatum', ticker: 'Börsenkürzel', isin: 'ISIN', notes: 'Notiz', taxExempt: 'Steuerfrei', tqf: 'Teilfreistellung', correctionHistory: 'Korrekturen', legacyCorrectionAt: 'Frühere Stückzahl nicht gespeichert, Korrektur am' };
+const trancheValue = (value, field) => field === 'correctionHistory' ? String(Array.isArray(value) ? value.length : 0)
+    : value == null ? '–' : field === 'purchasePrice' ? number(value, 'currency')
     : field === 'type' ? ({ aktien_alt: 'Altaktien', aktien_neu: 'Neuaktien', geldmarkt: 'Geldmarkt', anleihe: 'Anleihen', gold: 'Gold' })[value] || display(value) : display(value);
 const same = (a, b) => fingerprint(a) === fingerprint(b);
 const allKeys = (a, b) => [...new Set([...Object.keys(a || {}), ...Object.keys(b || {})])].sort();
@@ -306,6 +307,10 @@ export function summarizeProbelaufChanges(realRecords, playRecords, { beforeDoma
                 fields(before?.values, after?.values, 'Bedarf & Strategie', 'Simulator · ');
             } else if (key === 'profile_health_bucket') {
                 fields(before, after, 'Bedarf & Strategie', prefix + 'Pflegeschutz · ', Object.fromEntries(Object.entries({ enabled: 'Aktiv', initialAmount: 'Anfangsbetrag', triggerMinGrade: 'Ab Pflegegrad', triggerMode: 'Auslöser', coverageMode: 'Abdeckung', targetMode: 'Ziel', returnMode: 'Rückfluss', assetSource: 'Geldquelle' }).map(([field, label]) => [field, { label }])));
+            } else if (key === 'annual_plan_resolutions_v1') {
+                // FR-79 Punkt 11: Anzahl der Planzeilen mit „Rest bleibt im Depot“.
+                const kept = (/** @type {any} */ value) => Object.values(value?.entries || {}).reduce((sum, entry) => sum + Object.keys(/** @type {any} */ (entry)?.lines || {}).length, 0);
+                add('Abschlüsse', 'Planzeilen mit „Rest bleibt im Depot“', kept(before), kept(after), value => String(value));
             } else if (key === 'annual_plan_record_v1') {
                 for (const id of allKeys(before?.entries, after?.entries)) {
                     if (before?.entries?.[id]?.periodId !== after?.entries?.[id]?.periodId) closedYear(after?.entries?.[id]?.periodId);

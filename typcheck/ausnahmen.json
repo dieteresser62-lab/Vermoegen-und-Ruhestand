@@ -13,7 +13,7 @@
   "app/tranches": 0,
   "engine": 0,
   "engine/analyzers": 0,
-  "engine/core": 4,
+  "engine/core": 3,
   "engine/planners": 0,
   "engine/transactions": 0,
   "engine/validators": 0,

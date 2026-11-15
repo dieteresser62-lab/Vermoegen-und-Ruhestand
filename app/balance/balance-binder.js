@@ -1,3 +1,4 @@
+import { bindDialogBackdrop } from '../shared/dialog-backdrop.js';
 import { initializeWealthHistoryNavigation } from '../shared/wealth-history-navigation.js';
 import { projectAnnualCloseResult } from '../shared/annual-close-result.js';
 import { registeredPlanTrial } from '../shared/plan-trial.js';
@@ -129,11 +130,23 @@ function bindBalancePresentation() {
         dialog.dataset.actionDetailsMode = plan ? 'plan' : 'preview';
         const head = dialog.querySelector?.('.balance-action-dialog-head');
         for (const node of [head, document.getElementById('handlungsanweisung'), document.getElementById('actionPurposeContent'),
-            dialog.querySelector?.('.balance-action-note'), dialog.querySelector?.('.ds-actions'), document.getElementById('balancePlayExecutionStatus')]) {
+            dialog.querySelector?.('.balance-action-note')]) {
             if (node) /** @type {HTMLElement} */ (node).hidden = plan;
         }
+        // VN-1 Punkt 11: „Als ausgeführt eintragen“ (Spielbereich) steht weder in der Vorschau noch im Plan; erfasst wird im geführten Ablauf.
+        for (const node of [dialog.querySelector?.('.ds-actions'), document.getElementById('balancePlayExecutionStatus')]) if (node) /** @type {HTMLElement} */ (node).hidden = true;
         const planHost = document.getElementById('balancePlanDetails');
         if (planHost) planHost.hidden = !plan;
+        // VN-1 Punkt 11: Die Vorschau hat keine Erfassungsknöpfe. Im beschlossenen Plan starten „Verkauf starten“ und „Kauf starten“
+        // den geführten Ablauf (dieselben Knöpfe wie in „Was zu tun ist“) statt „Verkauf erfassen →“ und „Als ausgeführt eintragen“.
+        const manager = document.getElementById('actionManagerLink');
+        if (manager) manager.hidden = true;
+        for (const [id, selector] of [['actionSaleStart', '#balanceActionArea [data-todo-sale-entry]'], ['actionBuyStart', '#balanceActionArea [data-todo-purchase-entry]']]) {
+            const button = document.getElementById(id), entry = /** @type {HTMLElement|null} */ (document.querySelector(selector));
+            if (!button) continue;
+            button.hidden = !plan || !entry;
+            if (entry) button.textContent = entry.textContent || button.textContent;
+        }
         dialog.setAttribute('aria-labelledby', plan ? 'balancePlanDetailsTitle' : 'actionDetailsTitle');
     };
     const open = (trigger, mode = 'preview') => {
@@ -149,10 +162,16 @@ function bindBalancePresentation() {
         if (trigger) open(trigger, trigger.dataset.actionDetails);
     });
     document.getElementById('closeActionDetails')?.addEventListener('click', () => dialog.close());
+    for (const [id, selector] of [['actionSaleStart', '#balanceActionArea [data-todo-sale-entry]'], ['actionBuyStart', '#balanceActionArea [data-todo-purchase-entry]']]) {
+        document.getElementById(id)?.addEventListener('click', () => {
+            const entry = /** @type {HTMLElement|null} */ (document.querySelector(selector));
+            actionTrigger = entry; dialog?.close(); entry?.click();
+        });
+    }
     dialog?.addEventListener('close', () => actionTrigger?.focus());
-    dialog?.addEventListener('click', e => {
+    bindDialogBackdrop(dialog, () => dialog.close(), e => {
         const rect = dialog.getBoundingClientRect();
-        if (e.target === dialog && (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom)) dialog.close();
+        return e.target === dialog && (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom);
     });
     document.getElementById('balanceChangeScope')?.addEventListener('click', () => {
         UIBinder.selectTab(dom.containers.tabButtons?.querySelector('[data-tab="strategy"]'));

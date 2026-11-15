@@ -57,12 +57,16 @@ function render(doc) {
     state.reveal = null;
     syncRentalIncome(doc);
 }
+// VN-4: zuletzt gesetzte Mieteinnahmen je Host (kein Neuaufbau bei gleichem Inhalt).
+const rentalHtml = new WeakMap();
 /** @param doc Dokument mit Immobilien- und Einkünftefeldern.
  * @returns {void} */
 export function syncRentalIncome(doc) {
     const host = node(doc, 'profileRentalIncome'); if (!host) return;
     const rentals = immobilienIncome(entries(doc));
-    host.innerHTML = rentals.map(entry => `<div class="pv-rental-income"><span>${esc(entry.bezeichnung)}</span><span>${money(entry.betragMonat)}/Monat</span><small>aus Immobilien · <button type="button" class="ds-button ds-button-quiet ds-text-link" data-rental-home="${esc(entry.id.slice('immobilie:'.length))}">ändern</button></small></div>`).join('');
+    const html = rentals.map(entry => `<div class="pv-rental-income"><span>${esc(entry.bezeichnung)}</span><span>${money(entry.betragMonat)}/Monat</span><small>aus Immobilien · <button type="button" class="ds-button ds-button-quiet ds-text-link" data-rental-home="${esc(entry.id.slice('immobilie:'.length))}">ändern</button></small></div>`).join('');
+    // VN-4 (Breitensuche zu ABS1 P1): unverändert nicht neu aufbauen, ein fokussierter Knopf „ändern“ bleibt.
+    if (rentalHtml.get(host) !== html) { host.innerHTML = html; rentalHtml.set(host, html); }
     let income = [];
     try { income = JSON.parse(node(doc, 'profileEinkuenfte')?.value || '{}').entries || []; } catch { /* Einkünfteeditor zeigt Prüfmeldung. */ }
     const warning = node(doc, 'profileRentalWarning');

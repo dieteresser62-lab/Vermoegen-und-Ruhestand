@@ -222,7 +222,7 @@ export function displayMonteCarloResults(results, anzahl, failCount, worstRun, r
         moneyBasis = mode;
         const model = /** @type {PrepareMonteCarloViewModel} */ (prepareMonteCarloViewModel)({ results, totalRuns: anzahl, failCount, inputs, moneyBasis });
         const detailsOpen = /** @type {HTMLDetailsElement} */ (dashboard?.querySelector?.('.mc-more-metrics'))?.open;
-        for (const id of ['monteCarloAnswers', 'overviewMonteCarloAnswers']) renderMonteCarloAnswers(document.getElementById(id), buildMonteCarloAnswers({ results, totalRuns: anzahl, failCount, moneyBasis, inputs }));
+        for (const id of ['monteCarloAnswers', 'overviewMonteCarloAnswers']) renderMonteCarloAnswers(document.getElementById(id), buildMonteCarloAnswers({ results, totalRuns: anzahl, failCount, moneyBasis, inputs, durationYears: displayContext.durationYears ?? null }));
         renderSummary(document.getElementById('monteCarloSummary'), model.summaryCards);
         renderKpiDashboard(dashboard, model.kpiDashboard, riskDashboard, { stressMetrics: model.stressMetrics });
         const disclosure = /** @type {HTMLDetailsElement} */ (dashboard?.querySelector?.('.mc-more-metrics'));

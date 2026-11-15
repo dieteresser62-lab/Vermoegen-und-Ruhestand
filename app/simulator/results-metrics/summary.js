@@ -6,6 +6,7 @@ import { hasTechnicalFinancialError, projectMinimumFlexDisplay, LEGACY_FLEX_REST
 import { formatPercentage, formatCoveragePercentage, formatCoveredRuns } from '../results-formatting.js';
 import { missingMoney, directMetricReason, finalMoney, otherBasisLine, formatConservativeCurrency, summaryEuro, unavailableStatus, wealthPartsDetail } from './display-values.js';
 import { percentileWealthNotice } from '../../shared/wealth-display.js';
+import { coverageAssumptions } from '../simulator-assumption-lines.js';
 
 // Wilson-Grenzen wie bisher auf der Ergebnisseite mit höchstens zwei Nachkommastellen (SE-1b).
 const wilsonPercent = value => `${new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 }).format(value)} %`;
@@ -15,7 +16,7 @@ const wilsonPercent = value => `${new Intl.NumberFormat('de-DE', { maximumFracti
  * @param options - Optionen des Aufrufers.
  * @returns Aus den übergebenen Daten abgeleitete Ergebnisform.
  */
-export function buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBasis = DEFAULT_EURO_MODE, inputs = {} }) {
+export function buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBasis = DEFAULT_EURO_MODE, inputs = {}, durationYears = null }) {
     const inventory = results?.outcomeInventory;
     const current = inventory?.schemaVersion === 'MonteCarloOutcomeInventoryV1';
     const technical = hasTechnicalFinancialError(results);
@@ -47,6 +48,8 @@ export function buildMonteCarloAnswers({ results, totalRuns, failCount, moneyBas
                 : current ? 'Ein Lauf kann am gewählten Zeitraumende enden. Das ist kein nachgewiesenes Lebensende.'
                     : 'Altes Ergebnis ohne vollständigen Endzustandsbeleg. Eine Deckung bis zum Lebensende ist daraus nicht nachgewiesen.',
             tooltip: floor.description,
+            // GN-1 (S3): Annahmen direkt unter der Deckungsquote.
+            assumptions: coverageAvailable ? coverageAssumptions(inputs, results, { durationYears, failCount }) : null,
             endWealth: endWealthView(results, totalRuns, failCount, moneyBasis) },
         { question: 'Muss ich mich einschränken?', value: !restriction.legacy
                 ? restriction.value === '—' ? '—' : `${restriction.value} der Jahre`

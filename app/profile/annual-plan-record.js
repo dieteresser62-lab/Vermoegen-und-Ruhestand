@@ -2,6 +2,7 @@
 /** @import * as I from "../../typcheck/speicher-integration.js" */
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { assertPlanScope, assertPlanValues, PLAN_FIELD_PATHS, PLAN_DEFAULTS, plain } from './household-plan.js';
+import { parseWithdrawalMode, isWithdrawalMode, ONE_CARRIES } from './household-withdrawal-mode.js';
 
 export const ANNUAL_PLAN_RECORD_KEY = 'annual_plan_record_v1';
 /** @param {number} year @param {D.PlanScope} scope */
@@ -18,6 +19,16 @@ function assertJson(value) {
     if (typeof value === 'number' && !finite(value) || value === undefined || typeof value === 'function') throw new Error('Jahresbeleg enthält ungültige Ergebniswerte.');
     if (value && typeof value === 'object') Object.values(value).forEach(assertJson);
 }
+/** TRG-1c: `{mode: 'one_carries:<Person>', carrierId, carrierName?, attacked?: [{profileId, name?, amount}]}`. @param {any} value */
+function assertHouseholdWithdrawal(value) {
+    const mode = parseWithdrawalMode(value?.mode);
+    if (!plain(value) || mode.kind !== ONE_CARRIES || !isWithdrawalMode(value.mode) || value.carrierId !== mode.carrierId
+        || Object.hasOwn(value, 'carrierName') && !text(value.carrierName)
+        || Object.hasOwn(value, 'attacked') && (!Array.isArray(value.attacked) || value.attacked.some((/** @type {any} */ row) => !plain(row) || !text(row.profileId)
+            || row.profileId === value.carrierId || Object.hasOwn(row, 'name') && !text(row.name) || !finite(row.amount) || row.amount < 0))
+        || Object.keys(value).some(key => !['mode', 'carrierId', 'carrierName', 'attacked'].includes(key))) throw new Error('Jahresbeleg: ungültiger Entnahmemodus.');
+}
+
 /** Euro/Monat, Liquiditätsdeckung und Flex-Rate in Prozent wie im Balance-Ergebnis. */
 /**
  * @param {D.AnnualOutcome} outcome
@@ -46,6 +57,8 @@ function assertOutcome(outcome) {
         || Object.hasOwn(action, 'quellen') && !Array.isArray(action.quellen)
         || Object.hasOwn(action, 'verwendungen') && !plain(action.verwendungen)) throw new Error('Jahresbeleg: unvollständige Handlungsanweisung.');
     assertJson(outcome);
+    // TRG-1c Punkte 5 und 8: optional Modus „Eine Person trägt“ mit tragender Person und Rückgriff zum Zeitpunkt des Beschlusses.
+    if (Object.hasOwn(outcome, 'householdWithdrawal')) assertHouseholdWithdrawal(outcome.householdWithdrawal);
     for (const source of action.quellen || []) {
         if (!plain(source) || !text(source.kind) || !finite(source.brutto) || source.brutto < 0
             || !finite(source.netto) || source.netto < 0 || !finite(source.steuer) || source.steuer < 0) throw new Error('Jahresbeleg: ungültige Handlungsquelle.');
@@ -115,4 +128,22 @@ export function buildAnnualPlanRecord(raw, { targetYear, scope, committedAt, rec
     record.entries[key] = entry;
     assertAnnualPlanRecord(record);
     return { raw: JSON.stringify(record), record, entry };
+}
+
+/** Entnahmemodus zum Zeitpunkt des Beschlusses (TRG-1c Punkt 8). Alte Belege ohne Feld gelten als Vorgabemodus. @param {any} entry @returns {string} */
+export function annualPlanEntryMode(entry) {
+    if (!entry || entry.status) return '';
+    // Neue Belege tragen das Feld; ältere halten den Modus in der Momentaufnahme des Plans, sonst gilt der Vorgabemodus.
+    const mode = entry.adopted?.householdWithdrawal?.mode ?? entry.adopted?.snapshot?.plan?.householdWithdrawalMode;
+    return typeof mode === 'string' ? mode : '';
+}
+
+/** Feld für den Beleg aus der Haushaltsverteilung (nur bei „Eine Person trägt“). @param {string} mode
+ * @param {{carrierId?: string, carrierName?: string, attacked?: {profileId: string, name?: string, amount: number}[]}|null|undefined} distribution */
+export function householdWithdrawalEvidence(mode, distribution) {
+    const { kind, carrierId } = parseWithdrawalMode(mode);
+    if (kind !== ONE_CARRIES || !distribution?.carrierId || distribution.carrierId !== carrierId) return null;
+    const attacked = (distribution.attacked || []).filter(row => row.profileId !== carrierId && Number(row.amount) > 0.5)
+        .map(row => ({ profileId: row.profileId, ...(row.name ? { name: String(row.name) } : {}), amount: Math.round(Number(row.amount) * 100) / 100 }));
+    return { mode, carrierId, ...(distribution.carrierName ? { carrierName: String(distribution.carrierName) } : {}), ...(attacked.length ? { attacked } : {}) };
 }

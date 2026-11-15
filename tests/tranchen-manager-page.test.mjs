@@ -1,9 +1,16 @@
+/** VN-1 Punkt 8: Löschen und „Kauf rückgängig“ gibt es nur noch in „Tranche im Detail“: Zeile öffnen, dort „Tranche löschen …“.
+ * Gibt das Versprechen des Löschknopfs zurück (es endet erst nach der Rückfrage). @param {any} doc @param {string} trancheId */
+export function requestDetailDelete(doc, trancheId) {
+    const target = new MockElement('', 'button'); target.dataset = { action: 'edit-tranche', trancheId };
+    doc.getElementById('tranchenTable').listeners.click[0]({ target });
+    return doc.getElementById('deleteTrancheDialogBtn').listeners.click[0]();
+}
+
 export async function deleteFirstTranche(doc) {
     const guard = getPageNavigationGuard(doc);
     const blocked = guard.reasons().some(reason => ['preparing', 'commit'].includes(reason.phase));
     const count = doc.pageDialogs?.length || 0;
-    const target = new MockElement('', 'button'); target.dataset = { action: 'delete-tranche', trancheId: window.tranchen[0]?.trancheId };
-    doc.getElementById('tranchenTable').listeners.click[0]({ target });
+    void requestDetailDelete(doc, window.tranchen[0]?.trancheId);
     if (blocked) return;
     await waitFor(() => (doc.pageDialogs?.length || 0) > count, 'Einzeldelete fragt vor dem Write');
     await waitFor(() => !guard.reasons().some(reason => ['preparing', 'commit'].includes(reason.phase)), 'Einzeldelete ist vollständig abgeschlossen');
@@ -23,7 +30,7 @@ import { describeLegacyTaxMigration, initTranchenManagerPage, openManagerOvervie
 import { PersistenceFacade, persistenceStorage } from '../app/shared/persistence-facade.js';
 import { loadTranchesFromStorage } from '../app/tranches/tranchen-manager-state.js';
 import { getPageNavigationGuard } from '../app/shared/navigation-guard-dialog.js';
-import { bindCashPostingModalLifecycle, closeCashPostingModal, captureManagerModalSubmission, isManagerModalSubmissionCurrent, finishManagerModalSubmission } from '../app/tranches/tranchen-manager-modal.js';
+import { bindCashPostingModalLifecycle, closeCashPostingModal, captureManagerModalSubmission, isManagerModalSubmissionCurrent, finishManagerModalSubmission, openCreateTrancheModal } from '../app/tranches/tranchen-manager-modal.js';
 import { canonicalDecimalInput } from '../app/tranches/tranchen-manager-decimal-input.js';
 import { setAppTestDate } from '../app/shared/app-clock.js';
 import { WEALTH_HISTORY_START_KEY } from '../app/tranches/tranchen-history-store.js';
@@ -228,6 +235,7 @@ export function createTranchenPageDom() {
         'depotAddTrancheBtn',
         'updatePricesBtn',
         'closeTrancheModalBtn',
+        'deleteTrancheDialogBtn',
         'revealCorruptPayloadBtn',
         'copyCorruptPayloadBtn',
         'resetCorruptPayloadBtn',
@@ -317,7 +325,8 @@ export function createCashSale(overrides = {}) {
 /** Neue Dialogfelder ausschließlich aus dem tatsächlich ausgelieferten Markup. */
 export function addManagerDialogDom(doc) {
     const html = fs.readFileSync(new NodeURL('../depot-tranchen-manager.html', import.meta.url), 'utf8');
-    const dialogs = html.slice(html.indexOf('    <div class="modal" id="saleModal"'), html.indexOf('    <!-- Modal für Tranche'));
+    // FR-79: Der alte Verkaufsdialog ist entfallen; die übrigen Hilfsdialoge beginnen mit der Personenverwaltung.
+    const dialogs = html.slice(html.indexOf('    <div class="modal" id="managerPeopleModal"'), html.indexOf('    <!-- Modal für Tranche'));
     for (const match of dialogs.matchAll(/<([\w-]+)\b([^>]*\bid="([^"]+)"[^>]*)>/g)) {
         const element = doc.getElementById(match[3]) || doc.register(new MockElement(match[3], match[1]));
         element.hidden = /\bhidden\b/.test(match[2]);
@@ -325,17 +334,6 @@ export function addManagerDialogDom(doc) {
         element.reportValidity = () => !element.required || element.value !== '';
     }
     for (const id of ['managePeopleBtn', 'depotOpenSaleEntryBtn']) doc.register(new MockElement(id, 'button'));
-    for (const step of [1, 2]) {
-        const fragment = dialogs.match(new RegExp(`<fieldset id="saleStep${step}"[\\s\\S]*?</fieldset>`))[0];
-        const fields = [...fragment.matchAll(/<(?:input|select)\b[^>]*id="([^"]+)"/g)].map(match => doc.getElementById(match[1]));
-        doc.getElementById(`saleStep${step}`).querySelectorAll = () => fields;
-    }
-    doc.getElementById('reconciliationForm').reset = () => {
-        for (const match of dialogs.matchAll(/<(?:input|select)\b[^>]*id="(reconcile[^"]+)"/g)) doc.getElementById(match[1]).value = '';
-        doc.getElementById('reconcileFees').value = '0';
-        doc.getElementById('reconcileCashStatus').value = 'pending_manual_posting';
-    };
-    doc.getElementById('reconciliationForm').reset();
 }
 
 export function createCashRegistry(actions) {
@@ -656,8 +654,7 @@ async function runTranchenManagerPageTests() {
         assert(doc.getElementById('stats').innerHTML.includes('Gesamtvermögen'), 'Stats container should be rendered');
         assert(doc.persistencePanel.hidden, 'Normaler Ladeleerzustand zeigt keine dauerhafte Ladekarte');
         assertEqual(persistenceStorage.getItem('depot_tranchen'), null, 'Pure empty load must not create a tranche key');
-        assertEqual(doc.getElementById('reconciliationPreviewBtn').disabled, true, 'Persistenzrender erhält die Previewsperre ohne Tranchen');
-        assertEqual(doc.getElementById('reconciliationConfirmBtn').disabled, true, 'Persistenzrender sperrt Bestätigung ohne ready-Vorschau');
+        assertEqual(doc.getElementById('saleModal'), null, 'FR-79: kein alter Verkaufsdialog mehr');
     }
     console.log('✓ empty storage initialization OK');
 
@@ -697,11 +694,15 @@ async function runTranchenManagerPageTests() {
         assertEqual(window.tranchen.map(t => t.trancheId).join(','), 'gold-first,equity-later,equity-earlier', 'Edit erhält Speicherreihenfolge und Identitäten');
         assertEqual(window.tranchen[2].name, 'Früher bearbeitet', 'Nur die gewählte Tranche wird geändert');
         const confirmed = persistenceStorage.getItem('depot_tranchen');
-        action('delete-tranche', 'equity-later');
-        assert(doc.pageDialogs.at(-1).open, 'Löschen öffnet eine ausdrückliche Rückfrage');
+        // VN-1 Punkt 8: Löschen über „Tranche im Detail“.
+        let dialogs = doc.pageDialogs.length;
+        void requestDetailDelete(doc, 'equity-later');
+        await waitFor(() => doc.pageDialogs.length > dialogs && doc.pageDialogs.at(-1).open, 'Löschen öffnet eine ausdrückliche Rückfrage');
         await respondPageDialog(doc, 'cancel');
         assertEqual(persistenceStorage.getItem('depot_tranchen'), confirmed, 'Abgelehntes Löschen erhält Bestand');
-        action('delete-tranche', 'equity-later');
+        dialogs = doc.pageDialogs.length;
+        void requestDetailDelete(doc, 'equity-later');
+        await waitFor(() => doc.pageDialogs.length > dialogs, 'zweite Löschrückfrage');
         await respondPageDialog(doc);
         await waitFor(() => window.tranchen.length === 2, 'ID-Löschcommit abgeschlossen');
         assertEqual(window.tranchen.map(t => t.trancheId).join(','), 'gold-first,equity-earlier', 'Löschen trifft ausschließlich die gewählte ID');
@@ -1244,7 +1245,10 @@ async function runTranchenManagerPageTests() {
         input.focus(); input.value = '6.5'; input.listeners.input[0]();
         await waitFor(() => saveCalls === 1 && getPageNavigationGuard(doc).reasons().some(reason => reason.phase === 'commit'), 'Autosave starts with active decimal input');
         assertEqual(input.disabled, false, 'Aktives Dezimalfeld bleibt beim Autosave bearbeitbar und fokussiert');
-        assertEqual(doc.getElementById('profileGoldFloor').disabled, true, 'Andere Profilfelder behalten die vorhandene Savesperre');
+        // VN-3 (Gemini Befund 5, Codex F02): Während des Autosaves bleiben auch die anderen Profilfelder bedienbar (Ziel eines Tab-Wechsels);
+        // Knöpfe bleiben gesperrt.
+        assertEqual(doc.getElementById('profileGoldFloor').disabled, false, 'VN-3: Andere Profilfelder bleiben während des Autosaves bedienbar');
+        assertEqual(doc.getElementById('depotAddTrancheBtn').disabled, true, 'VN-3: Knöpfe behalten die Savesperre');
         assert(getPageNavigationGuard(doc).reasons().some(reason => reason.phase === 'commit'), 'Aktive Dezimaleingabe hebt Commit-/Navigationsschutz nicht auf');
         input.value = '7.5'; input.listeners.input[0](); releaseSave();
         await waitFor(() => adapterStore.get('profile_gold_ziel_pct') === '7.5'
@@ -1279,7 +1283,7 @@ async function runTranchenManagerPageTests() {
                 captureManagerModalSubmission, finishManagerModalSubmission);
         const shares = doc.getElementById('shares');
         shares.tagName = 'INPUT'; shares.type = 'text'; shares.setAttribute('inputmode', 'decimal');
-        await doc.getElementById('depotAddTrancheBtn').click();
+        openCreateTrancheModal(doc, doc.getElementById('depotAddTrancheBtn')); // VK-2: der Knopf öffnet den geführten Kauf
         shares.value = '7.5';
         const sameSubmission = captureManagerModalSubmission('tranche');
         const originalSignature = sameSubmission.signature;
@@ -1288,7 +1292,7 @@ async function runTranchenManagerPageTests() {
         assertEqual(finishDecimal('tranche', sameSubmission), true, 'Bestätigter Dialogabschluss akzeptiert alleinige Punkt-/Kommaformatierung nach Retry');
         assertEqual(doc.getElementById('trancheModal').classList.contains('active'), false, 'Reine Formatierung hinterlässt keinen falschen offenen Dirty-Dialog');
         assertEqual(sameSubmission.signature, originalSignature, 'Formatvergleich verändert den gespeicherten UI-Auftrag nicht');
-        await doc.getElementById('depotAddTrancheBtn').click();
+        openCreateTrancheModal(doc, doc.getElementById('depotAddTrancheBtn')); // VK-2: der Knopf öffnet den geführten Kauf
         shares.value = '7.5'; const changedSubmission = captureManagerModalSubmission('tranche');
         shares.value = '8,5';
         assertEqual(finishDecimal('tranche', changedSubmission), false, 'Echte spätere Dialogwertänderung wird nicht als Formatierung geschlossen');
@@ -1312,9 +1316,9 @@ async function runTranchenManagerPageTests() {
         actionButton.dataset.cashAction = 'correct';
         actionButton.dataset.targetActionId = sale.actionId;
         doc.getElementById('reconciliationCashStatuses').listeners.click[0]({ target: actionButton });
-        assert(doc.getElementById('cashPostingModalSummary').textContent.includes('Nächste Korrekturrevision: 1'),
+        assertEqual(doc.getElementById('cashPostingModalSummary').dataset.nextRevision, '1',
             'Correction dialog should pin the displayed revision');
-        assert(doc.getElementById('cashPostingModalSummary').textContent.includes('cash-correction:v1:page-cash-sale:1'),
+        assertEqual(doc.getElementById('cashPostingModalSummary').dataset.nextActionId, 'cash-correction:v1:page-cash-sale:1',
             'Correction dialog should pin the displayed canonical action id');
 
         const registryAfterOtherTab = createCashRegistry([sale, {
@@ -1366,7 +1370,7 @@ async function runTranchenManagerPageTests() {
 
         await initTranchenManagerPage({ profileId: 'page-cash-profile' });
         const panel = doc.getElementById('reconciliationCashStatuses').innerHTML;
-        assert(panel.includes('Cashstatus-Audit nicht lesbar – die Liste ist unvollständig'),
+        assert(panel.includes('Die Verkäufe sind nicht lesbar – die Liste ist unvollständig'),
             'Manager panel should expose its unreadable audit state');
         assert(!panel.includes('Noch keine dokumentierten Realverkäufe'),
             'Unreadable audit must not be rendered as an empty sale history');
@@ -1554,7 +1558,7 @@ async function runTranchenManagerPageTests() {
         balance.value = baseline;
         balance.listeners.input[0]({ target: balance });
         closeCashPostingModal(doc);
-        await doc.getElementById('depotAddTrancheBtn').click();
+        openCreateTrancheModal(doc, doc.getElementById('depotAddTrancheBtn')); // VK-2: der Knopf öffnet den geführten Kauf
         const name = doc.getElementById('name');
         name.value = 'Synthetische Tranche';
         name.listeners.input[0]({ target: name });
@@ -1616,8 +1620,8 @@ async function runTranchenManagerPageTests() {
         const before = snapshot();
         open('correct');
         const summary = doc.getElementById('cashPostingModalSummary').textContent;
-        assert(summary.includes('Aktueller Tagesgeld-Stand: 8.000,00')
-            && summary.includes('Historischer Auditbetrag (letzter Nachweis): 10.000,00'),
+        assert(summary.includes('Dein Tagesgeld laut App heute: 8.000,00')
+            && summary.includes('Zuletzt bestätigter Tagesgeld-Stand: 10.000,00'),
         'Mai zeigt aktuellen Aprilstand und historischen Märzbetrag getrennt');
         assertEqual(Number(canonicalDecimalInput(doc.getElementById('cashPostingBalance').value, doc.getElementById('cashPostingBalance'))), 8000,
             'Mai belegt ausschließlich den aktuellen Aprilbetrag numerisch vor');
@@ -1625,7 +1629,7 @@ async function runTranchenManagerPageTests() {
         assertEqual(closeCashPostingModal(doc), true, 'Unveränderter Korrekturdialog lässt sich abbrechen');
         assertEqual(JSON.stringify(snapshot()), JSON.stringify(before), 'Abbruch erhält sämtliche Aprilrohbytes');
         open('correct');
-        assert(doc.getElementById('cashPostingSubmitBtn').textContent.includes('Aktuellen Tagesgeld-Stand übernehmen'),
+        assert(doc.getElementById('cashPostingSubmitBtn').textContent.includes('Stand übernehmen'),
             'Submit benennt die Übernahme des aktuellen Standes ausdrücklich');
         doc.getElementById('cashPostingBalance').value = inputAmount;
         doc.getElementById('cashPostingReason').value = 'Synthetische bewusste Maibestätigung';
@@ -1634,12 +1638,12 @@ async function runTranchenManagerPageTests() {
         const statusText = doc.getElementById('reconciliationStatus').textContent;
         const persistenceText = doc.getElementById('tranchePersistenceStatus').textContent;
         if (amount === 8000) {
-            assertEqual(statusText, 'Nur der Korrektur-Auditnachweis wurde append-only gespeichert; Verkauf und frühere Nachweise blieben unverändert.', 'Gleichwertige Eingabe meldet ausschließlich Auditappend');
-            assertEqual(persistenceText, 'Nur der Auditnachweis wurde dauerhaft ergänzt.', 'Persistenzmeldung nennt ausschließlich Auditappend');
+            assertEqual(statusText, 'Korrektur gespeichert, der Kontostand war schon richtig. Verkauf und frühere Angaben bleiben unverändert.', 'Gleichwertige Eingabe meldet ausschließlich Auditappend');
+            assertEqual(persistenceText, 'Bestätigung dauerhaft gespeichert.', 'Persistenzmeldung nennt ausschließlich Auditappend');
             for (const message of [statusText, persistenceText]) assert(!/Tagesgeld|übernommen|Cashhistorie/.test(message), 'Reiner Auditappend behauptet keine Cashwirkung');
         } else {
-            assertEqual(statusText, 'Neuer Tagesgeld-Stand übernommen und Korrektur-Auditnachweis append-only gespeichert; Verkauf und frühere Nachweise blieben unverändert.', 'Änderung meldet ausdrücklich den übernommenen neuen Stand');
-            assertEqual(persistenceText, 'Neuer Tagesgeld-Stand übernommen und Auditnachweis gemeinsam dauerhaft gespeichert.', 'Persistenzmeldung bestätigt neuen Stand und Audit gemeinsam');
+            assertEqual(statusText, 'Neuer Tagesgeld-Stand übernommen und Korrektur gespeichert. Verkauf und frühere Angaben bleiben unverändert.', 'Änderung meldet ausdrücklich den übernommenen neuen Stand');
+            assertEqual(persistenceText, 'Neuer Tagesgeld-Stand und Bestätigung dauerhaft gespeichert.', 'Persistenzmeldung bestätigt neuen Stand und Audit gemeinsam');
         }
         const after = snapshot();
         const oldRegistry = JSON.parse(before.backend.rs_profiles_v1);
@@ -1851,10 +1855,9 @@ async function runTranchenManagerPageTests() {
         persistenceStorage.setItem('depot_tranchen', raw); initTranchenManagerPage(); await PersistenceFacade.flush();
         const request = () => {
             if (kind !== 'single') return doc.getElementById('resetCorruptPayloadBtn').click();
-            const target = new MockElement('', 'button'); target.dataset = { action: 'delete-tranche', trancheId: 'decision-lot' };
-            doc.getElementById('tranchenTable').listeners.click[0]({ target });
+            return requestDetailDelete(doc, 'decision-lot');
         };
-        const pending = request(); await Promise.resolve();
+        const pending = request(); await waitFor(() => doc.pageDialogs.length > 0, 'Bestandsrückfrage offen');
         const count = doc.pageDialogs.length;
         await request();
         assertEqual(doc.pageDialogs.length, count, 'Doppelklick öffnet nur eine Bestandsrückfrage');

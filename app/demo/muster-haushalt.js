@@ -17,6 +17,7 @@ import { projectPerson } from '../profile/profile-person-data.js';
 import { evaluateAnnualDraft } from '../balance/balance-annual-storage-commit.js';
 import { EngineAPI } from '../../engine/index.mjs';
 import { musterHaushalt, musterVariante, musterMarktverlauf, DEFAULT_MUSTER_HAUSHALT } from './muster-haushalte.js';
+import { oneCarriesMode } from '../profile/household-withdrawal-mode.js';
 import { DEFAULT_PROFILE_HEALTH_BUCKET, PROFILE_HEALTH_BUCKET_KEY } from '../profile/profile-state.js';
 import { IMMOBILIEN_KEY, writeImmobilien } from '../profile/profile-immobilien.js';
 import { PARTNERSHIP_KEY } from '../profile/household-partnership.js';
@@ -118,6 +119,10 @@ function householdVariant(householdId, variantId) {
         next.people[0].properties = [{ id: 'muster-haus', bezeichnung: 'Haus', nutzung: 'selbst', wert: 450000, mieteNetto: 0, anpassung: 'keine' }];
         next.people[1].properties = [{ id: 'muster-mietwohnung', bezeichnung: 'Vermietete Wohnung', nutzung: 'vermietet', wert: 210000, mieteNetto: 650, anpassung: 'inflation' }];
     }
+    // FI-1 (FR-82): Erika hat ihren Aktien-ETF in drei Käufen zu verschiedenen Einständen erworben; die Bank verkauft die ältesten zuerst.
+    if (householdId === 'max-erika' && variant.id === 'nachkauf') {
+        next.people[1].newPurchases = [['2020-03-16', 1 / 3], ['2022-10-03', 1 / 3], ['2025-02-14', 1 / 3]];
+    }
     if (householdId === 'renate') {
         Object.assign(next.people[0], { cash: 15000, lots: [0, 75000, 0], bonds: 0 });
         next.decumulation = { ...next.decumulation, mode: 'standard' };
@@ -135,6 +140,12 @@ function householdVariant(householdId, variantId) {
         { ...next.people[0].income[0], bis: '2032-12' },
         { ...next.people[0].income[0], id: 'muster-teilzeit', betragMonat: 2600, ab: '2033-01' }
     ];
+    // TRG-1b (P3-3): höherer Bedarf, damit Verkäufe nötig sind und Balance und Beleg sie nur bei Martin zeigen.
+    if (householdId === 'martin-petra' && variant.id === 'traegt') {
+        Object.assign(next, { householdWithdrawalMode: oneCarriesMode('muster_martin'), floorBedarf: 60000, flexBedarf: 24000 });
+        next.people = next.people.map(person => person.id === 'muster_martin' ? { ...person, cash: 20000 } : person);
+        return next;
+    }
     if (householdId === 'martin-petra') next.partnership = { schemaVersion: 1,
         status: variant.id === 'ehe' ? 'married' : 'unmarried',
         inheritance: { muster_martin: 100, muster_petra: 100 },
@@ -198,8 +209,12 @@ function addMusterPlanSales(records, testDate) {
         && !['liquiditaet', 'cash'].includes(source.kind));
     const day = date => date < testDate ? date : testDate;
     // Belegquellen tragen die Tranche mit Personenpräfix („person:tranche“).
-    const sales = lines.slice(0, 2).map((source, index) => ({ profileId: source.sourceProfileId, trancheId: String(source.trancheId).split(':').pop(),
-        net: index === 0 ? Math.round(source.netto) : Math.round(source.netto * 0.38), executedAt: day(index === 0 ? `${year}-03-12` : `${year}-09-02`), pending: index > 0 }));
+    // VK-1 (FR-79 Punkt 3): Die Abrechnung trägt die Steuer anteilig zur Planzeile; Netto = Kurswert − Gebühren − Steuern.
+    const sales = lines.slice(0, 2).map((source, index) => {
+        const share = index === 0 ? 1 : 0.38, net = Math.round(source.netto * share);
+        return { profileId: source.sourceProfileId, trancheId: String(source.trancheId).split(':').pop(), net,
+            taxes: Math.round((Number(source.steuer) || 0) * share * 100) / 100, executedAt: day(index === 0 ? `${year}-03-12` : `${year}-09-02`), pending: index > 0 };
+    });
     const actions = [];
     for (const [index, sale] of sales.entries()) {
         const data = registry.profiles[sale.profileId].data;
@@ -207,12 +222,12 @@ function addMusterPlanSales(records, testDate) {
         data.profile_tagesgeld = String(cash);
         const tranches = JSON.parse(data.depot_tranchen), lot = tranches.find((/** @type {any} */ item) => item.trancheId === sale.trancheId);
         if (!lot) continue;
-        const sold = sale.net / lot.currentPrice, before = lot.shares;
+        const gross = Math.round((sale.net + sale.taxes) * 100) / 100, sold = gross / lot.currentPrice, before = lot.shares;
         lot.shares = before - sold;
         if ('marketValue' in lot) lot.marketValue = lot.shares * lot.currentPrice;
         data.depot_tranchen = JSON.stringify(tranches);
         actions.push({ schemaVersion: 1, eventType: 'sale_reconciled', actionId: `muster-plan-verkauf-${index + 1}`, profileId: sale.profileId, trancheId: sale.trancheId,
-            executedAt: sale.executedAt, actual: { sharesSold: sold, grossProceeds: sale.net, fees: 0, taxes: 0, netProceeds: sale.net },
+            executedAt: sale.executedAt, actual: { sharesSold: sold, grossProceeds: gross, fees: 0, taxes: sale.taxes, netProceeds: sale.net },
             ...(sale.pending ? { cashStatus: 'pending_manual_posting' } : { cashStatus: 'confirmed_already_reflected', cashBalanceAfterPostingEur: cash,
                 cashConfirmedAt: `${sale.executedAt}T10:00:00.000Z` }),
             result: { beforeShares: before, remainingShares: lot.shares, trancheRemoved: false }, reconciledAt: `${sale.executedAt}T10:00:00.000Z` });
@@ -285,7 +300,7 @@ function createRecords(testDate, householdId, variantId) {
         const { id, name, cash } = person;
         const tranches = [
             ['aktien_alt', 'VWRL.DE', 'IE00B3RBWM25', person.lots[0], '2016-06-15'],
-            ['aktien_neu', 'VWCE.DE', 'IE00BK5BQT80', person.lots[1], person.newPurchaseDate],
+            ...(person.newPurchases || [[person.newPurchaseDate, 1]]).map(([date, share]) => ['aktien_neu', 'VWCE.DE', 'IE00BK5BQT80', person.lots[1] * share, date]),
             ['geldmarkt', 'XEON.DE', 'LU0290358497', person.lots[2], '2024-04-12'],
             ['anleihe', 'EUNH.DE', 'IE00B4WXJJ64', person.bonds || 0, '2020-05-18'],
             ['gold', '4GLD.DE', 'DE000A0S9GB0', person.gold || 0, '2022-03-15']

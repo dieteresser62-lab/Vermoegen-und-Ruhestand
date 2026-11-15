@@ -10,6 +10,34 @@ const date = raw => new Date(raw).toLocaleString('de-DE', { dateStyle: 'medium',
 const bytes = value => value === null || value === undefined ? 'nicht verfügbar' : value > 0 && value < 100000 ? '< 0,1 MB' : formatDisplayNumber(value / 1000000, { fractionDigits: 1 }) + ' MB';
 const day = raw => new Date(raw).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const count = (value, one, many) => `${value} ${value === 1 ? one : many}`;
+const AREA_NAMES = Object.freeze({ plan: 'Haushalt & Plan', income: 'Einkünfte', partnership: 'Partnerschaft und Erbe', care: 'Pflege' });
+const list = (/** @type {string[]} */ items) => items.length > 1
+    ? `${items.slice(0, -1).join(', ')} ${items.some(item => item.includes(' und ')) ? 'sowie' : 'und'} ${items.at(-1)}` : items[0] || '';
+const DATIVE = Object.freeze(/** @type {Record<string, string>} */ ({ 'Monatsabschlüsse': 'Monatsabschlüssen', 'Tagesgeld-Einträge': 'Tagesgeld-Einträgen', 'Einkünfte': 'Einkünften' }));
+
+/** GH-1 Punkt 5 (F-06): Änderungen seit der letzten Sicherung, auch an Haushalts- und Planwerten. Kennt die alte Sicherung (Version 1) diese
+ * Bereiche nicht, heißt es „seit der letzten Sicherung nicht feststellbar“ statt einer Entwarnung.
+ * @param {any} changes @returns {string} */
+export function backupChangesText(changes) {
+    const names = { months: ['Monatsabschluss', 'Monatsabschlüsse'], cash: ['Tagesgeld-Eintrag', 'Tagesgeld-Einträge'], tranches: ['Tranche', 'Tranchen'] };
+    const parts = [];
+    for (const key of Object.keys(names)) {
+        const change = changes?.[key] || {};
+        for (const [field, label] of [['added', 'neu'], ['changed', 'geändert'], ['removed', 'entfernt']]) {
+            if (change[field]) parts.push(`${count(change[field], .../** @type {[string,string]} */ (names[/** @type {keyof typeof names} */ (key)]))} ${label}`);
+        }
+    }
+    const areas = changes?.areas || null;
+    const areaKeys = /** @type {(keyof typeof AREA_NAMES)[]} */ (Object.keys(AREA_NAMES));
+    const changedAreas = areas ? areaKeys.filter(key => areas[key] === 'changed').map(key => AREA_NAMES[key]) : [];
+    const unknownAreas = areas ? areaKeys.filter(key => areas[key] === 'unknown').map(key => AREA_NAMES[key]) : areaKeys.map(key => AREA_NAMES[key]);
+    if (changedAreas.length) parts.push(`${list(changedAreas)} geändert`);
+    const checked = ['Monatsabschlüsse', 'Tagesgeld-Einträge', 'Tranchen', ...areaKeys.filter(key => !unknownAreas.includes(AREA_NAMES[key])).map(key => AREA_NAMES[key])];
+    const unknown = unknownAreas.length ? ` ${list(unknownAreas)}: seit der letzten Sicherung nicht feststellbar.` : '';
+    return parts.length ? `${parts.join(', ')}. Geprüft: ${list(checked)}.${unknown}`
+        : `Keine Änderungen in ${list(checked.map(name => DATIVE[name] || name))}.${unknown}`;
+}
+
 /**
  * @param {Document} doc
  * @param {import("../../typcheck/data-ui.js").DataModel} model
@@ -36,16 +64,7 @@ export function renderDataPage(doc, model) {
     set('dataBackupTitle', model.changes ? 'Seit der letzten Sicherung geändert:' : 'Vollsicherung als Datei');
     set('dataBackupContext', model.lastBackup ? 'Gesichert am ' + day(model.lastBackup) : ageText);
     set('dataHouseholdContext', model.householdNames ? 'Haushalt: ' + (model.householdNames.join(' + ') || 'Noch keine Personen') : 'Haushalt: nicht verfügbar');
-    const names = { months: ['Monatsabschluss', 'Monatsabschlüsse'], cash: ['Tagesgeld-Eintrag', 'Tagesgeld-Einträge'], tranches: ['Tranche', 'Tranchen'] };
-    const changes = [];
-    for (const [key, change] of Object.entries(model.changes || {})) {
-        for (const [field, label] of [['added', 'neu'], ['changed', 'geändert'], ['removed', 'entfernt']]) {
-            if (change[field]) changes.push(`${count(change[field], .../** @type {[string,string]} */ (names[key]))} ${label}`);
-        }
-    }
-    set('dataBackupChanges', model.changes ? changes.length
-        ? changes.join(', ') + '. Geprüft: Monatsabschlüsse, Tagesgeld-Einträge und Tranchen.'
-        : 'Keine Änderungen in Monatsabschlüssen, Tagesgeld-Einträgen und Tranchen.' : '');
+    set('dataBackupChanges', model.changes ? backupChangesText(model.changes) : '');
     const backupChanges = doc.getElementById('dataBackupChanges');
     if (backupChanges) backupChanges.hidden = !model.changes;
     const content = doc.getElementById('dataContent'); content.replaceChildren();

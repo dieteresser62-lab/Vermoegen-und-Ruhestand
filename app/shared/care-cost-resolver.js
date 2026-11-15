@@ -4,6 +4,10 @@ export const CARE_COST_DEFAULTS = Object.freeze({ 1: 3600, 2: 6000, 3: 18000, 4:
 export const CARE_DRIFT_DEFAULT_PERCENT = 5;
 const LEGACY = { 1: 6000, 2: 12000 };
 const GRADES = [1, 2, 3, 4, 5];
+const optionalNumber = raw => {
+    const text = raw == null ? '' : String(raw).trim(), value = Number(text.replace(',', '.'));
+    return text && Number.isFinite(value) && value >= 0 ? value : null;
+};
 const numberOr = (raw, fallback) => {
     const text = raw == null ? '' : String(raw).trim();
     const value = Number(text.replace(',', '.'));
@@ -64,6 +68,9 @@ export function readCareCostSettings(source) {
     const read = key => typeof source?.getItem === 'function' ? source.getItem(key) : source?.[key];
     return { costs: Object.fromEntries(GRADES.map(g => [g, resolveCareSetting(`sim_pflegeStufe${g}Zusatz`, read(`sim_pflegeStufe${g}Zusatz`))])),
         driftPercent: resolveCareSetting('sim_pflegeKostenDrift', read('sim_pflegeKostenDrift')),
+        // FR-73 Punkt 8 geändert: Wechseljahr und zweite Rate nur, wenn bewusst gespeichert; sonst null (Altbestandsregel).
+        driftUntilYear: optionalNumber(read('sim_pflegeKostenDriftBis')),
+        driftAfterPercent: optionalNumber(read('sim_pflegeKostenDriftDanach')),
         maximumFloor: resolveCareSetting('sim_pflegeMaxFloor', read('sim_pflegeMaxFloor')),
         ownExpensesMonthly: resolveCareSetting('sim_pflegeHeimEigeneAusgaben', read('sim_pflegeHeimEigeneAusgaben')),
         rememberedCosts: resolveCareSetting('sim_pflegeCustomCosts', read('sim_pflegeCustomCosts')) };

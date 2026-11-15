@@ -6,6 +6,7 @@ import {
     confirmManagerModalBaseline,
     captureManagerModalSubmission,
     finishManagerModalSubmission,
+    bindManagerAuxiliaryDialog, openManagerAuxiliaryDialog, closeManagerAuxiliaryDialog,
     bindCashPostingModalLifecycle,
     bindTrancheModalLifecycle,
     closeCashPostingModal,
@@ -69,6 +70,7 @@ function createDocumentMock() {
         , 'cashPostingModal', 'cashPostingModalTitle', 'cashPostingModalSummary', 'cashPostingForm',
         'cashPostingBalance', 'cashPostingReasonGroup', 'cashPostingReason', 'cashPostingFormError',
         'retryCashPostingSaveBtn', 'cashPostingCancelBtn', 'cashPostingSubmitBtn',
+        'managerPeopleModal', 'managerPeopleForm', 'managerPersonName',
         'navigationGuardDialog', 'navigationGuardTitle', 'navigationGuardStay', 'navigationGuardLeave', 'navigationGuardDescription', 'suiteNavigationStatus'
     ];
     ids.forEach(id => elements.set(id, createElement(id, doc)));
@@ -127,7 +129,7 @@ console.log('Test 2: edit modal fills fields');
         notes: 'Test'
     }, doc);
     assertEqual(doc.getElementById('name').value, 'ETF', 'Edit modal should fill name');
-    assertEqual(doc.getElementById('saveTrancheBtn').textContent, 'Änderungen speichern', 'Bearbeitungsmodus benennt seine Speicheraktion');
+    assertEqual(doc.getElementById('saveTrancheBtn').textContent, 'Angaben speichern', 'Bearbeitungsmodus benennt seine Speicheraktion');
     assert(doc.getElementById('trancheFormPreview').textContent.includes('500') && doc.getElementById('trancheFormPreview').textContent.includes('600'), 'Vorschau nutzt kanonischen Einstand und Marktwert');
     assertEqual(doc.getElementById('ticker').value, 'VWCE', 'Edit modal should fill ticker');
     assertEqual(doc.getElementById('taxExempt').checked, true, 'Edit modal should fill explicit tax exemption');
@@ -154,6 +156,21 @@ console.log('Test 3: readTrancheFromForm computes derived values');
     assertEqual(tranche.taxExempt, true, 'Form reader should persist explicit tax exemption');
 }
 console.log('✓ readTrancheFromForm computes derived values OK');
+
+// TD-1b: „Angaben“ erhält Korrekturen und unbekannte Felder der bestehenden Tranche.
+{
+    const doc = createDocumentMock();
+    const correctionHistory = [{ at: '2026-11-15T12:00:00.000Z', sharesBefore: 10, sharesAfter: 20,
+        purchasePriceBefore: 100, purchasePriceAfter: 50, reason: 'split' }];
+    const existingTranche = { schemaVersion: 2, trancheId: 'td-1b', name: 'ETF', shares: 20, purchasePrice: 50, currentPrice: 60,
+        purchaseDate: '2024-01-01', category: 'equity', type: 'aktien_neu', tqf: 0.3, taxExempt: false, correctionHistory, extraData: { keep: true } };
+    openEditTrancheModal(existingTranche, doc);
+    doc.getElementById('name').value = 'Neuer Name';
+    const next = readTrancheFromForm('td-1b', doc, { existingTranche, detailsOnly: true });
+    assertEqual(next.name, 'Neuer Name', 'Name geändert');
+    assertEqual(JSON.stringify(next.correctionHistory), JSON.stringify(correctionHistory), 'Korrekturliste bleibt bei Namensänderung erhalten');
+    assertEqual(JSON.stringify(next.extraData), '{"keep":true}', 'Unbekannte Felder bleiben erhalten');
+}
 
 console.log('Test 4: close modal removes active class');
 {
@@ -277,10 +294,11 @@ console.log('Test 11: cash dialog shows immutable evidence and reads explicit co
         nextActionId: 'cash-confirmation:v1:sale-1'
     }, doc, opener);
     assert(doc.getElementById('cashPostingModal').classList.has('active'), 'Cash confirmation dialog should open');
-    assert(doc.getElementById('cashPostingModalSummary').textContent.includes('sale-1')
-        && doc.getElementById('cashPostingModalSummary').textContent.includes('95,00')
-        && doc.getElementById('cashPostingModalSummary').textContent.includes('cash-confirmation:v1:sale-1'),
-    'Cash dialog should show target, immutable net proceeds and next audit id');
+    // DS-1 Punkt 8: Klartext ohne Kennungen; Nettoerlös bleibt sichtbar.
+    assert(doc.getElementById('cashPostingModalSummary').textContent.includes('Nettoerlös 95,00')
+        && !doc.getElementById('cashPostingModalSummary').textContent.includes('sale-1')
+        && !doc.getElementById('cashPostingModalSummary').textContent.includes('cash-confirmation:v1:sale-1'),
+    'Cash dialog should show immutable net proceeds in plain language without ids');
     assertEqual(doc.getElementById('cashPostingReasonGroup').hidden, true,
         'Initial cash confirmation should not ask for a correction reason');
     doc.getElementById('cashPostingBalance').value = '10095.25';
@@ -337,7 +355,7 @@ console.log('Test: Guardinitialisierung vor dynamischer Casherzeugung und wieder
     }
     assertEqual(form.listeners.reset.length, 1, 'Formularreset bleibt genau einmal gebunden');
     assertEqual(doc.getElementById('category').listeners.change.length, 2, 'Kategorie behält genau Guard- und Typoptionenlistener');
-    assertEqual(doc.getElementById('notes').listeners.input.length, 1, 'Auch Trancheneingaben werden nur einmal gebunden');
+    assertEqual(doc.getElementById('notes').listeners.input?.length || 0, 0, 'Notizen gehören nicht zur Angabenbaseline');
     balance.value = '5095';
     balance.listeners.input[0]({ type: 'input', target: balance });
     assert(snapshots.at(-1).some(reason => reason.owner === 'manager-dialog-cash' && reason.dirty),
@@ -380,13 +398,15 @@ console.log('Test 12: Formular erhält ausschließlich unveränderte Kursproveni
         assertEqual(read(changes).asOf, original.asOf, 'Unveränderter Kurs behält seine Zeit');
     }
     for (const changes of [{ currentPrice: '130' }, { isin: 'DE000TEST002' }, { ticker: 'OTHER.DE' },
-        { category: 'bonds', type: 'anleihe', tqf: '0' }, { type: 'aktien_alt' }, { currentPrice: '' }]) {
-        assert(!('asOf' in read(changes)), 'Manuelle Kurs-/Instrumentänderung oder Kaufpreis-Fallback entfernt Zeit');
+        { category: 'bonds', type: 'anleihe', tqf: '0' }, { type: 'aktien_alt' }]) {
+        assert(!('asOf' in read(changes)), 'Manuelle Kurs-/Instrumentänderung entfernt Zeit');
     }
     const changed = read({ currentPrice: '130' });
     assert(!('asOf' in read({ currentPrice: '120' }, changed)), 'Wiedereintragen des früheren Preises erfindet keine Zeit');
+    // VK-3 (Nachtrag 2): Ein leeres Kursfeld wird nicht mehr still zum Kaufpreis; der gespeicherte Kurs und seine Zeit bleiben.
     const fallback = read({ currentPrice: '' });
-    assertEqual(fallback.currentPrice, 100, 'Leeres Kursfeld nutzt weiter den Kaufpreis');
+    assertEqual(fallback.currentPrice, 120, 'Leeres Kursfeld behält den gespeicherten Kurs');
+    assertEqual(fallback.asOf, original.asOf, 'Leeres Kursfeld behält die Kurszeit');
     const doc = createDocumentMock();
     openEditTrancheModal(original, doc);
     doc.getElementById('currentPrice').value = '120';
@@ -394,13 +414,17 @@ console.log('Test 12: Formular erhält ausschließlich unveränderte Kursproveni
     assert(!('asOf' in readTrancheFromForm(null, doc, { idFactory: () => 'new' })), 'Neuanlage ist undatiert');
 }
 
-for (const kind of ['tranche', 'cash']) {
+for (const kind of ['tranche', 'cash', 'people']) {
     const doc = createDocumentMock(), guard = getPageNavigationGuard(doc);
-    const open = () => kind === 'tranche' ? openCreateTrancheModal(doc) : openCashPostingModal({ mode: 'confirm', targetActionId: 'synthetic', confirmedNetProceedsEur: 1 }, doc);
-    const close = () => kind === 'tranche' ? closeTrancheModal(doc) : closeCashPostingModal(doc);
-    const field = doc.getElementById(kind === 'tranche' ? 'notes' : 'cashPostingBalance');
-    const modal = doc.getElementById(kind === 'tranche' ? 'trancheModal' : 'cashPostingModal');
+    if (kind === 'people') bindManagerAuxiliaryDialog('people', doc);
+    const open = () => kind === 'tranche' ? openCreateTrancheModal(doc) : kind === 'people' ? openManagerAuxiliaryDialog('people', doc, null, 'managerPersonName') : openCashPostingModal({ mode: 'confirm', targetActionId: 'synthetic', confirmedNetProceedsEur: 1 }, doc);
+    const close = () => kind === 'tranche' ? closeTrancheModal(doc) : kind === 'people' ? closeManagerAuxiliaryDialog('people', doc) : closeCashPostingModal(doc);
+    const field = doc.getElementById(kind === 'tranche' ? 'name' : kind === 'people' ? 'managerPersonName' : 'cashPostingBalance');
+    const modal = doc.getElementById(kind === 'tranche' ? 'trancheModal' : kind === 'people' ? 'managerPeopleModal' : 'cashPostingModal');
     open(); const baseline = field.value;
+    modal.listeners.mousedown({ target: field, preventDefault() {} });
+    modal.listeners.click({ target: modal });
+    assert(modal.classList.contains('active'), `${kind}: Markieren über Rand erhält sauberen Dialog`);
     assertEqual(guard.reasons().length, 0, 'Vollständig befülltes Formular startet sauber');
     field.value = '42'; field.listeners.input();
     assertEqual(guard.reasons().some(s => s.dirty), true, 'Tatsächliche Formularänderung ist verlustrelevant');
@@ -416,19 +440,10 @@ for (const kind of ['tranche', 'cash']) {
     for (const trigger of ['Escape', 'Overlay']) {
         if (trigger === 'Escape') modal.listeners.keydown({ key: 'Escape', preventDefault() {}, stopPropagation() {} });
         else {
-            if (kind === 'tranche') {
-                let prevented = false;
-                modal.listeners.mousedown({ target: modal, preventDefault() { prevented = true; } });
-                assertEqual(prevented, true, 'Hintergrund-Mausversuch verdrängt den Tranchendialogfokus nicht');
-            }
+            let prevented = false;
+            modal.listeners.mousedown({ target: modal, preventDefault() { prevented = true; } });
+            assertEqual(prevented, true, 'Hintergrund-Mausversuch verdrängt den Dialogfokus nicht');
             modal.listeners.click({ target: modal });
-            if (kind === 'tranche') {
-                assertEqual(doc.getElementById('navigationGuardDialog').open, false, 'Dirty-Tranchenhintergrund öffnet keine Schutzfrage');
-                assertEqual(modal.classList.contains('active'), true, 'Dirty-Hintergrundversuch erhält den Tranchendialog');
-                assertEqual(field.value, '42', 'Dirty-Hintergrundversuch erhält Formularwerte');
-                assertEqual(guard.isBusy(), false, 'Dirty-Hintergrundversuch reserviert keine App-Navigation');
-                continue;
-            }
         }
         assertEqual(doc.getElementById('navigationGuardDialog').open, true, `${kind}: ${trigger} öffnet die Dirty-Nachfrage`);
         assertEqual(doc.getElementById('navigationGuardTitle').textContent, 'Änderungen verwerfen?', `${kind}: ${trigger} benennt Verwerfen`);
@@ -442,6 +457,7 @@ for (const kind of ['tranche', 'cash']) {
     field.value = baseline; field.listeners.input();
     assertEqual(guard.reasons().some(s => s.dirty), false, 'Rückänderung zum Ausgangswert ist wieder sauber');
     if (kind === 'tranche') {
+        modal.listeners.mousedown({ target: modal, preventDefault() {} });
         modal.listeners.click({ target: modal });
         assertEqual(modal.classList.contains('active'), false, 'Sauberer Tranchendialog schließt weiterhin über den Hintergrund');
         open();
@@ -480,7 +496,7 @@ for (const kind of ['tranche', 'cash']) {
 
 {
     const doc = createDocumentMock(); openCreateTrancheModal(doc);
-    doc.getElementById('notes').value = 'Nicht quittierter Editor';
+    doc.getElementById('name').value = 'Nicht quittierter Editor';
     const guard = getPageNavigationGuard(doc);
     const foreign = guard.register('foreign-manager-write', { read: () => ({ phase: 'commit' }) });
     assertEqual(closeTrancheModal(doc, { confirmed: true }), false, 'Erfolgsschließen quittiert keinen fremden Commit');
@@ -621,7 +637,8 @@ for (const kind of ['tranche', 'cash']) {
         category: 'equity', type: 'aktien_neu', tqf: 0.3, taxExempt: false, notes: '' };
     openEditTrancheModal(lot, doc);
     const submission = captureManagerModalSubmission('tranche', doc);
-    assertEqual(doc.getElementById('purchasePrice').value, '1.234,56789', 'Bearbeitung zeigt gruppierte Preise ohne Rundung');
+    // VK-3 (Nachtrag 1): Kaufpreis je Stück mit 2 Stellen anzeigen, gespeichert bleibt der ungerundete Wert.
+    assertEqual(doc.getElementById('purchasePrice').value, '1.234,57', 'Bearbeitung zeigt den Kaufpreis gruppiert mit 2 Stellen');
     for (const id of ['purchasePrice', 'currentPrice']) {
         const field = doc.getElementById(id);
         doc.listeners.focusin({ target: field }); doc.listeners.focusout({ target: field });

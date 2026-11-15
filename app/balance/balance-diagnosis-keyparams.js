@@ -11,6 +11,7 @@ import { formatDisplayPercentValue, formatDisplayPercentRatio, formatDisplayMont
 import { displayDiagnosisText } from './balance-diagnosis-transaction.js';
 
 import { UIUtils } from './balance-utils.js';
+import { minimumFlexStatusText, minimumFlexBlockText, coveredByIncome, PENSION_SURPLUS_CUT_TEXT } from './balance-diagnosis-labels.js';
 
 /**
  * @param params Eingabe für die bestehende Projektion.
@@ -133,7 +134,7 @@ export function buildKeyParams(params = {}) {
             alarm: 'aktiver Alarm',
             bear_deep: 'positive Rohkürzung im tiefen Bärenmarkt'
         };
-        const source = sourceLabels[params.safetyCapSource] || params.safetyCapSource || 'unbekannte Quelle';
+        const source = sourceLabels[params.safetyCapSource] || 'Sonstiger Grund';
         const rawCandidate = Number.isFinite(params.safetyCapRawCandidateFlexRatePct)
             ? `; Rohkandidat ${formatDisplayPercentValue(params.safetyCapRawCandidateFlexRatePct, { fractionDigits: 1, invalid: 'n/a' })}`
             : '';
@@ -206,23 +207,6 @@ export function buildKeyParams(params = {}) {
     }
 
     if (typeof params.minimumFlexAnnual === 'number' && isFinite(params.minimumFlexAnnual)) {
-        const statusLabels = {
-            inactive_zero: 'Nicht gesetzt',
-            not_needed: 'Nicht benötigt',
-            applied: 'Angewandt',
-            applied_limited_by_final_smoothing: 'Geglättet angewandt',
-            limited_by_final_quantization: 'Durch Endrundung begrenzt',
-            limited_by_available_flex: 'Durch verfügbaren Flex begrenzt',
-            blocked_emergency: 'Blockiert',
-            limited_by_flex_budget: 'Durch Flex-Budget begrenzt',
-            overridden_by_severe_flex_emergency: 'In schwerer Flex-Notlage bewusst überstimmt'
-        };
-        const blockReasonLabels = {
-            alarm_active: 'Alarmmodus aktiv',
-            no_open_flex_need: 'kein offener Flex-Bedarf',
-            floor_minimum_flex_not_covered: 'Floor-/Mindest-Flex-Deckung unzureichend',
-            minimum_runway_not_restorable: 'Mindest-Runway nicht wiederherstellbar'
-        };
         const status = params.minimumFlexStatus || 'inactive_zero';
         const blockReason = params.minimumFlexBlockReason || null;
         const hasShortfall = Number.isFinite(params.minimumFlexShortfallAnnual)
@@ -235,8 +219,8 @@ export function buildKeyParams(params = {}) {
             label: 'Mindest-Flex p.a.',
             value: UIUtils.formatBalanceCurrency(params.minimumFlexAnnual),
             meta: blockReason
-                ? `${statusLabels[status] || status}: ${blockReasonLabels[blockReason] || blockReason}`
-                : (statusLabels[status] || status),
+                ? `${minimumFlexStatusText(status)}: ${minimumFlexBlockText(blockReason)}`
+                : minimumFlexStatusText(status),
             trend
         });
         if (typeof params.minimumFlexRequiredRate === 'number' && isFinite(params.minimumFlexRequiredRate) && params.minimumFlexAnnual > 0) {
@@ -273,11 +257,13 @@ export function buildKeyParams(params = {}) {
     }
 
     if (typeof params.kuerzungProzent === 'number' && isFinite(params.kuerzungProzent)) {
-        const trend = params.kuerzungProzent > 0 ? 'down' : params.kuerzungProzent < 0 ? 'up' : 'neutral';
+        // GH-1 Punkt 1 (F-01): Decken die Einkünfte den Bedarf (Entnahme 0), ist das keine Kürzung von 100 %.
+        const surplus = coveredByIncome(params);
+        const trend = surplus ? 'neutral' : params.kuerzungProzent > 0 ? 'down' : params.kuerzungProzent < 0 ? 'up' : 'neutral';
         pushMetric({
             label: 'Kürzung ggü. Flex-Bedarf',
-            value: formatDisplayPercentValue(params.kuerzungProzent, { fractionDigits: 1, invalid: null }),
-            meta: 'Abweichung zum Soll',
+            value: surplus ? PENSION_SURPLUS_CUT_TEXT : formatDisplayPercentValue(params.kuerzungProzent, { fractionDigits: 1, invalid: null }),
+            meta: surplus ? 'Keine Entnahme aus dem Vermögen nötig' : 'Abweichung zum Soll',
             trend
         });
     }
@@ -286,7 +272,8 @@ export function buildKeyParams(params = {}) {
         pushMetric({
             label: 'Jahresentnahme (brutto)',
             value: formatCurrencySafe(params.jahresentnahme),
-            meta: 'Geplante Auszahlung'
+            // N4 (GN-1): Die Diagnose rechnet mit heutigen Werten neu; der Beleg aus dem Jahresabschluss bleibt maßgeblich.
+            meta: 'Neu gerechnet mit heutigen Werten, kann vom beschlossenen Plan abweichen'
         });
     }
 

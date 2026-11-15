@@ -128,3 +128,20 @@ const lossPayment=payPersonalExtraCost(lossPortfolio,'b',10000,{items:[{profileI
 assertClose(lossPayment.extraTax,-prior.taxDue,.01,'Steuerverkauf mit Verlust erstattet die bereits bezahlte Jahressteuer');
 assertClose(lossPortfolio.tagesgeld,prior.taxDue,.01,'Erstattung geht auf das Tagesgeld der lebenden Person');
 assertClose(lossAction.steuer,0,.01,'Jahressteuer berücksichtigt auch neue Verluste aus dem Steuerverkauf');
+// FR-81: Fehlt einer Person nur ein Teil ihres Flex-Anteils, ist das eine Kürzung; fehlt ihr Anteil am Grundbedarf, bleibt es Ruin.
+const { unmarriedFlexCut }=await import('../app/simulator/simulator-unmarried.js');
+const cutAmounts={payout:50000,incomeConsumed:30000,netFloorYear:30000,floor:60000};
+const flexOnly=unmarriedFlexCut({items:[{profileId:'a',planned:40000,amount:40000},{profileId:'b',planned:40000,amount:32000}]},cutAmounts);
+same(flexOnly,[{profileId:'b',amount:8000}],'FR-81: B zahlt ihren Grundbedarfsanteil (30.000 €), nur 8.000 € Flex fehlen');
+assertEqual(unmarriedFlexCut({items:[{profileId:'a',planned:40000,amount:40000},{profileId:'b',planned:40000,amount:29000}]},cutAmounts),null,'FR-81: Unter dem Grundbedarfsanteil bleibt es Ruin');
+assertEqual(unmarriedFlexCut({items:[{profileId:'a',planned:40000,amount:30000}]},{payout:20000,incomeConsumed:20000,netFloorYear:30000,floor:50000}),null,'FR-81: Liegt der Grundbedarf über dem Plan, ist jeder fehlende Euro Grundbedarf');
+same(unmarriedFlexCut({items:[{profileId:'a',planned:40000,amount:40000}]},{payout:30000,incomeConsumed:20000,netFloorYear:35000,floor:55000}),[],'FR-81: Ganzer Plan gezahlt, Rest nicht verteilt: kein persönlicher Ruin');
+same(unmarriedFlexCut({items:[{profileId:'a',planned:50000,amount:25000}]},{payout:20000,incomeConsumed:30000,netFloorYear:0,floor:20000}),[{profileId:'a',amount:25000}],'FR-81: Verbrauchte Einkünfte über dem Floor zählen nur bis zum Floor als Grundbedarf');
+{
+    // FR-81: Das Handlungs-ⓘ nennt die Flex-Kürzung je Person wie einen Rückgriff.
+    const { protocolActionExplanation }=await import('../app/simulator/protocol-renderer.js');
+    const row={recordType:'financial_year',financiallyEvaluable:true,aktionUndGrund:'Verkauf für die Auszahlung',personAccounts:[{profileId:'b',name:'Erika'}],
+        personalPayout:{flexCut:[{profileId:'b',amount:8000}]}};
+    const text=protocolActionExplanation({jahr:2003,inflationVJ:2,row},{source:'backtest'});
+    assert(text.includes('Flex-Anteil von Erika gekürzt'),'FR-81: Protokoll nennt die Flex-Kürzung');
+}

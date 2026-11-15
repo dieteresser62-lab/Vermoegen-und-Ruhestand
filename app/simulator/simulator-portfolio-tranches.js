@@ -1,5 +1,6 @@
 /** @import {AppError} from '../../typcheck/runtime-contracts.js' */
 import { equityPurchaseTemplate } from '../../types/tranche-contract.js';
+import { bankOrderFallback } from '../../types/sale-fifo.js';
 import { capitalGainsTaxRate } from '../../engine/tax-settlement.mjs';
 /**
  * Module: Simulator Portfolio Tranches
@@ -118,11 +119,8 @@ function createSimulationLot(portfolio, amount, assetKind, profileId = null) {
  * @returns Ergebnis der Operation.
  */
 export function sortTranchesFIFO(tranches) {
-    return [...tranches].sort((a, b) => {
-        const dateA = a.purchaseDate ? new Date(a.purchaseDate) : new Date('1900-01-01');
-        const dateB = b.purchaseDate ? new Date(b.purchaseDate) : new Date('1900-01-01');
-        return /** @type {number} */ (/** @type {unknown} */ (dateA)) - /** @type {number} */ (/** @type {unknown} */ (dateB));
-    });
+    // RK-2 (FR-82): dieselbe Regel wie im Rechenkern; ohne gültiges Kaufdatum zuerst, je Person und ISIN Bankreihenfolge.
+    return bankOrderFallback(tranches);
 }
 
 /**
@@ -304,13 +302,14 @@ export function applySaleToPortfolio(portfolio, saleResult) {
                         throw error;
                     }
                     // Distribute across identical-name/ISIN tranches to prevent repeated hits on the first match.
-                    reduceAcrossTranches(metaMatches, saleItem.brutto, isEquityKind(kind));
+                    // RK-2 (Gemini FI1-2): Bankreihenfolge für alle Anlageklassen, nicht nur Aktien.
+                    reduceAcrossTranches(metaMatches, saleItem.brutto, true);
                     return;
                 }
                 tranche = metaMatches.length === 1 ? metaMatches[0] : findTrancheByMeta(pool, saleItem);
                 if (!tranche) {
                     // Fallback: reduce across all matching tranches to avoid "phantom sales".
-                    reduceAcrossTranches(pool, saleItem.brutto, isEquityKind(kind));
+                    reduceAcrossTranches(pool, saleItem.brutto, true);
                     return;
                 }
             }

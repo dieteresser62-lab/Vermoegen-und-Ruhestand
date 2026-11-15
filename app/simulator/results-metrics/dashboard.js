@@ -29,9 +29,10 @@ export function buildKpiDashboard(results, inputs = {}, moneyBasis = DEFAULT_EUR
     /** @type {KpiDescriptor[]} */
     const primary = [
         {
-            title: 'Ø Lebensdauer',
+            // N5 (GN-1): Gescheiterte Läufe zählen nur bis zum Ruin; die Kennzahl ist deshalb eine Laufzeit, keine Lebensdauer.
+            title: 'Ø Laufzeit',
             value: formatNumberWithUnit(results?.kpiLebensdauer?.mean, 'Jahre'),
-            description: 'Durchschnittliche simulierte Lebensdauer über alle Läufe.',
+            description: 'Bis zum Tod oder bis das Geld nicht mehr reicht. Durchschnitt über alle Läufe.',
             tone: 'default'
         },
         {

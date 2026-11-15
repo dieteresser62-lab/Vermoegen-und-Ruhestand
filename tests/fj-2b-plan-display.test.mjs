@@ -66,7 +66,7 @@ try {
         if (mode !== 'fallback') {
             assert(payload.nextYearBudget.displayEvaluation, mode + ': Folgejahresprojektion aktiv: ' + payload.nextYearBudget?.reason);
             assertEqual(payload.input.referenceYear, 2027, mode + ': Überblick verwendet Zieljahr');
-            assertEqual(payload.input.floorBedarf, 32000, mode + ': Projektionsinput schreibt 31000 mit 2 % und Abschlussrundung fort');
+            assertEqual(payload.input.floorBedarf, 31620, mode + ': Projektionsinput schreibt 31000 mit 2 % genau fort (GN-1)');
             assertEqual(payload.nextYearBudget.current.needBeforeIndexation, 31000 + values.flexBedarf, mode + ': Projektion basiert auf übernommenem Plan');
             assertEqual(get('balanceActionPreviewTitle').textContent, 'Vorschau auf den Plan 2027', mode + ': Vorschauzeile verwendet Folgejahr');
             // FR-78/RD-1d: Das Budget wird immer nur abgerundet.

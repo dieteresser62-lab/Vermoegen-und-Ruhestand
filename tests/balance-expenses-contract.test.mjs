@@ -33,8 +33,8 @@ try {
     facade.initExpensesTab(refs, options);
     assertEqual(context.dom, refs, 'Alle Teilmodule verwenden dieselben DOM-Referenzen');
     assertEqual(context.adapters, options, 'Adapter werden einmal im gemeinsamen Kontext gehalten');
-    assertEqual(bindings.length, 6, 'Jedes bestehende Controlereignis wird einmal gebunden');
-    assertEqual(new Set(bindings.map(({ name, type }) => `${name}:${type}`)).size, 6,
+    assertEqual(bindings.length, 7, 'Controls einschließlich Hintergrund-Mausdruck werden einmal gebunden');
+    assertEqual(new Set(bindings.map(({ name, type }) => `${name}:${type}`)).size, 7,
         'Die Initialisierung erzeugt keine doppelte Bindung');
     assertEqual(changes, 0, 'Initialisierung löst keinen Änderungsrückruf aus');
     const generation = context.generation;
@@ -52,7 +52,7 @@ try {
     assertEqual(state.monthlyBudget, 100, 'Budgetänderung erreicht denselben Monatszustand');
     assertEqual(state.annualBudget, 1200, 'Budgetänderung erreicht denselben Jahreszustand');
     assertEqual(renders, 4, 'Initialisierung, Refresh, Jahreswechsel und Budget delegieren jeweils einmal');
-    assertEqual(bindings.length, 6, 'Refresh und Zustandsänderungen binden keine weiteren Ereignisse');
+    assertEqual(bindings.length, 7, 'Refresh und Zustandsänderungen binden keine weiteren Ereignisse');
 } finally {
     Object.assign(context, previousContext);
     Object.assign(state, previousState);

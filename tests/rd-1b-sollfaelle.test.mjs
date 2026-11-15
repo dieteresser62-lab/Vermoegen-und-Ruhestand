@@ -27,8 +27,9 @@ const reasonsHidden = maxErika.doc.getElementById('balanceBudgetReasons').hidden
 // Karte „Was zu tun ist“: Plan = Summe der angezeigten Zeilen; „Wohin das Geld geht“ derselbe Betrag.
 {
     const card = maxErika.card;
-    assert(card.includes('Aktien verkaufen89.500 €netto') && card.includes('9.500 €offen') && card.includes('80.000 €offen'),
-        `Was zu tun ist: 9.500 + 80.000 = 89.500 € (${card.slice(0, 260)})`);
+    // VN-1 Punkt 4: Zeilen auf den Euro, die Handlungszeile gerundet mit „ca.“.
+    assert(card.includes('Aktien verkaufenca. 89.500 €netto') && card.includes('9.363 €offen') && card.includes('79.950 €offen'),
+        `Was zu tun ist: ca. 89.500 €, Zeilen 9.363 + 79.950 € (${card.slice(0, 260)})`);
     assert(card.includes('der Rest in den Geldmarkt89.500 €'), 'Was zu tun ist: „Wohin das Geld geht“ 89.500 €');
 }
 
@@ -61,7 +62,7 @@ const reasonsHidden = maxErika.doc.getElementById('balanceBudgetReasons').hidden
 // Budgetkarte: Hauptzahl gerundet, Teile ohne Gleichheitszeichen und Summe, Differenz 0 ohne „Warum anders“.
 {
     assertEqual(budgetTexts.balanceMonthlyBudget, '5.000 €', 'Budget: 5.000 €');
-    assertEqual(`${budgetTexts.balanceMonthlyIncome} · ${budgetTexts.monatlicheEntnahme}`, '3.100 € · 2.000 €', 'Budget: Einkünfte 3.100 € · aus dem Vermögen 2.000 €');
+    assertEqual(`${budgetTexts.balanceMonthlyIncome} · ${budgetTexts.monatlicheEntnahme}`, '3.100 € · 1.900 €', 'Budget: Einkünfte 3.100 € · aus dem Vermögen 1.900 € (Ergänzung 3 FR-78)');
     assertEqual(budgetTexts.balanceBudgetPlan, 'Plan 2026 · festgeschrieben am 01.01.20265.000 €Differenz 0 €', 'Budget: Plan 2026 5.000 €, Differenz 0 €');
     assertEqual(reasonsHidden, true, 'Budget: bei Differenz 0 keine Zeile „Warum anders“');
     const html = fs.readFileSync(new URL('../Balance.html', import.meta.url), 'utf8');
@@ -71,11 +72,11 @@ const reasonsHidden = maxErika.doc.getElementById('balanceBudgetReasons').hidden
     assert(equation.includes('aria-hidden="true">·</span>'), 'Budget: Teile mit „·“ getrennt');
     // Sophie: krummes Budget aus genauen Einkünften, Teile ohne Summe; Bedarf gesamt = Summe der angezeigten Zeilen.
     const sophie = await renderCard(createMusterHaushaltRecords(DATE, 'sophie'));
-    assertEqual(read(sophie, 'balanceMonthlyBudget'), '2.900 €', 'Sophie: Budget 2.967 € → 2.900 €');
+    assertEqual(read(sophie, 'balanceMonthlyBudget'), '2.800 €', 'Sophie: Budget 2.850 € → 2.800 € (GN-1: Bedarf genau fortgeschrieben)');
     assertEqual(read(sophie, 'balanceMonthlyIncome'), '3.400 €', 'Sophie: Einkünfte genau, ohne Summe daneben');
     const rows = [...read(sophie, 'balanceNeedRows').matchAll(/(\d{1,3}(?:\.\d{3})*) € \/ Monat/g)].map(match => Number(match[1].replaceAll('.', '')));
     assertEqual(euros(read(sophie, 'balanceNeedTotal'))[0], rows[0] + rows[1], `Sophie: Bedarf gesamt = Summe der angezeigten Zeilen (${rows.join(' + ')})`);
-    assert(sophie.card.includes('Aktien kaufen9.000 €') && sophie.card.includes('In Aktien9.000 €'), 'Sophie: Kauf und Verwendung gleich (Kauf abgerundet, RD-1c)');
+    assert(sophie.card.includes('Aktien kaufenca. 9.000 €') && sophie.card.includes('In Aktien9.000 €'), 'Sophie: Kauf und Verwendung gleich (Kauf abgerundet, RD-1c)');
 }
 
 // Jahresabschluss 2027 (Abschluss 2026 mit synthetischen Jahresdaten): Plan = Summe der angezeigten Zeilen, Bedarf = Summe der Teile.
@@ -94,11 +95,13 @@ const reasonsHidden = maxErika.doc.getElementById('balanceBudgetReasons').hidden
     const plan = projectAnnualTodoPlan({ confirmed: { year: 2027, action: entry.adopted.action }, people });
     const text = clean(createTodoResult(new MockDocument(), plan).textContent);
     const amounts = euros(text);
-    assert(plan.rows.length >= 1 && amounts[0] === amounts.slice(1, 1 + plan.rows.length).reduce((sum, value) => sum + value, 0),
-        `Jahresabschluss: Plan = Summe der angezeigten Zeilen (${text.slice(0, 200)})`);
+    // VN-2 P5 / DS-1 Punkt 7: wie die Karte – Zeilen auf den Euro, die Handlungszeile gerundet mit „ca.“ (Summe der aufgerundeten Zeilen).
+    const exact = plan.rows.map(row => Math.round(row.planNet));
+    assert(plan.rows.length >= 1 && text.includes('ca. ') && exact.every((value, i) => amounts[1 + i] === value),
+        `Jahresabschluss: Zeilen auf den Euro, Handlungszeile mit „ca.“ (${text.slice(0, 200)})`);
     const values = Object.values(JSON.parse(booked.household_plan_v1).entries)[0].values;
     const result = clean(createAnnualPlanResult({ doc: new MockDocument(), model: { summary: { monthlyBudget: entry.adopted.monthlyBudget }, annual: {} },
         result: { year: 2027, targetYear: 2026, planLabel: 'Plan 2027', needs: [{ id: 'floorBedarf', after: values.floorBedarf }, { id: 'flexBedarf', after: values.flexBedarf }],
             inflation: { rate: 2 } } }).textContent);
-    assert(result.includes('62.000 € im Jahr'), `Jahresabschluss: beschlossener Bedarf genau 31.000 € + 31.000 € = 62.000 € (RD-1c) (${result.slice(0, 300)})`);
+    assert(result.includes('65.000 € im Jahr'), `Jahresabschluss (GN-1): gespeichert 30.642 + 30.642 €, angezeigt 32.500 + 32.500 = 65.000 € (${result.slice(0, 300)})`);
 }

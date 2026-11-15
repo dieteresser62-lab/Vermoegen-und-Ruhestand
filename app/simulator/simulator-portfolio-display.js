@@ -14,6 +14,8 @@ import { readBasePortfolioInputs, readStrategyInputs, readDecumulationInputs } f
 import { readTrancheInputs } from './simulator-input-tranches.js';
 import { formatDisplayNumber } from './simulator-portfolio-format.js';
 import { setFieldState } from '../shared/field-state.js';
+import { loadProfileRegistry } from '../profile/profile-registry.js';
+import { pendingCreditTotal, creditUnderwayText, pendingDebitTotal, debitUnderwayText } from '../tranches/sale-underway.js';
 
 let hasLoggedTranchenDisplay = false;
 let displayedHomes = [];
@@ -158,7 +160,8 @@ export function updateStartPortfolioDisplay(options = {}) {
     const displayBondsWert = useAggregates && aggregated.bondsWert > 0 ? aggregated.bondsWert : 0;
     const initialBondBucketField = /** @type {HTMLInputElement} */ (document.getElementById('initialBondBucket'));
     if (initialBondBucketField) initialBondBucketField.value = formatCurrency(displayBondsWert);
-    renderSimulatorPortfolioTiles(document, inputs, { money: derivedStartVermoegen + displayBondsWert,
+    // N2 (GN-1): Anleihen stecken im Tranchenaggregat schon im Depotwert (Neubestand); sie zählen nur einmal.
+    renderSimulatorPortfolioTiles(document, inputs, { money: derivedStartVermoegen,
         gold: displayGoldWert, bonds: displayBondsWert });
     for (const field of [startField, depotwertGesamtField, goldWertField, initialBondBucketField]) {
         if (field?.ownerDocument && field.parentNode) {
@@ -170,7 +173,8 @@ export function updateStartPortfolioDisplay(options = {}) {
 
     // Render a quick visual split for user validation.
     const homes = propertyParts([{ values: { immobilien: displayedHomes } }]);
-    const allocation = [displayDepotwertAlt + displayDepotwertNeu, displayGoldWert, displayTagesgeld + displayGeldmarkt, displayBondsWert, ...(homes.present ? [homes.self, homes.rented] : [])];
+    const allocation = projectStartAllocation({ depotAlt: displayDepotwertAlt, depotNeu: displayDepotwertNeu, gold: displayGoldWert,
+        liquidity: displayTagesgeld + displayGeldmarkt, bonds: displayBondsWert, homes });
     const labels = ['Depot', 'Gold', 'Liquidität', 'Anleihen', ...(homes.present ? ['Immobilien selbst genutzt', 'Immobilien vermietet'] : [])];
     const colors = [0, 1, 2, 5, 3, 4];
     const total = allocation.reduce((sum, value) => sum + value, 0);
@@ -180,11 +184,28 @@ export function updateStartPortfolioDisplay(options = {}) {
         <div class="sim-allocation-bar" aria-hidden="true">${shares.map((share, index) => share === null ? '' : `<span class="sim-allocation-${colors[index]}" style="width:${share}%"></span>`).join('')}</div>
         <div class="sim-allocation-legend">${shares.map((share, index) => allocation[index] > 0 ? `<span><i class="sim-allocation-${colors[index]}" aria-hidden="true"></i>${labels[index]} ${share === null ? '—' : `${Math.round(share).toLocaleString('de-DE')} %`}</span>` : '').join('')}</div>
         <div class="sim-field-grid sim-allocation-values" ${homes.present ? '' : 'hidden'}><div class="ds-field"><label>Immobilien selbst genutzt</label><span class="calculated-display ds-metric">${wealthMoney(homes.self)}</span></div><div class="ds-field"><label>Immobilien vermietet</label><span class="calculated-display ds-metric">${wealthMoney(homes.rented)}</span></div></div>`;
+    // FR-79 Ergänzung 1 Punkt 4: offene Gutschrift nennen; gerechnet wird unverändert mit dem eingetragenen Tagesgeld.
+    // Gutachten VK-1 P3-02: nur die Personen, die der Simulator rechnet (zum Haushalt gehörend), wie Balance und Jahresabschluss.
+    const registry = (() => { try { return loadProfileRegistry().value; } catch { return null; } })();
+    const members = Object.entries(registry?.profiles || {}).filter(([, profile]) => /** @type {any} */ (profile)?.meta?.belongsToHousehold !== false).map(([id]) => id);
+    const underway = creditUnderwayText(pendingCreditTotal(registry, members));
+    if (underway) breakdownHtml += `<p class="ds-note ds-note-warning sim-sale-underway" data-sale-underway>${underway} Trag die Gutschrift in der Balance unter „Was zu tun ist“ ein.</p>`;
+    // VK-2: offene Abbuchung eines Kaufs (Richtung „zu hoch“); gerechnet wird unverändert.
+    const debit = debitUnderwayText(pendingDebitTotal(registry, members));
+    if (debit) breakdownHtml += `<p class="ds-note ds-note-warning sim-sale-underway" data-buy-underway>${debit} Trag die Abbuchung in der Balance unter „Was zu tun ist“ ein.</p>`;
     document.getElementById('displayPortfolioBreakdown').innerHTML = breakdownHtml;
     const goldPanel = document.getElementById('goldStrategyPanel');
     if (goldPanel) {
         goldPanel.style.display = showGoldPanel ? 'block' : 'none';
     }
+}
+
+/** N2 (GN-1): Teile der Anzeige „Gesamtvermögen zu Beginn“ in der Reihenfolge Depot, Gold, Liquidität, Anleihen, Immobilien.
+ * Der Neubestand des Tranchenaggregats enthält die Anleihen; das Depot zählt sie deshalb nicht noch einmal.
+ * @param {{depotAlt: number, depotNeu: number, gold: number, liquidity: number, bonds: number, homes?: {present: boolean, self: number, rented: number}}} parts
+ * @returns {number[]} */
+export function projectStartAllocation({ depotAlt, depotNeu, gold, liquidity, bonds, homes }) {
+    return [Math.max(0, depotAlt + depotNeu - bonds), gold, liquidity, bonds, ...(homes?.present ? [homes.self, homes.rented] : [])];
 }
 
 /** Anzeige bleibt von den bisherigen Recheneingaben getrennt, auch beim Anleihenbestand.

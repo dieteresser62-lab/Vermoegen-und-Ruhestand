@@ -532,7 +532,7 @@ assert(i02.initialStates.some(state => state.kind === 'technisch verborgen' && s
     'I02: verborgene Haushaltspille (seit Mehrere Haushalte) und geschützter Managerwechsel ersetzen den entfernten Profilselect');
 assert(i02.coverage.node.some(ref => ref.path === 'tests/profile-ui-contract.test.mjs' && ref.evidence.includes('Sofortiger Reload')),
     'I02: dauerhafte Profilbestätigung hat eigenen Handler-/Reloadbeleg');
-for (const id of ['V05', 'V06', 'V14', 'V18', 'V21']) {
+for (const id of ['V05', 'V06', 'V14']) {
     assert(entries.find(entry => entry.id === id).coverage.node.some(ref => ref.path === 'tests/designsystem-selection-text.test.mjs'),
         `${id}: Managerauswahl hat Kürzungs-/Resetbeleg`);
 }
@@ -956,7 +956,7 @@ duplicateFiles.set('Balance.html', balanceSource.replace('</body>', '<input id="
 assertSourceFailure(inventory, duplicateFiles, 'Gültiger Feldtreffer verdeckt keine ausgelagerte Kopie', ['B13', 'Balance.html', '#floorBedarf', '.form-column', 'Delegation']);
 const cashCopy = structuredClone(inventory);
 const cashEntry = cashCopy.pages.flatMap(page => page.entries).find(entry => entry.id === 'V22');
-cashEntry.selectors.dynamic.find(record => record.selector === '[data-cash-action="confirm"]').host = '#reconciliationForm';
+cashEntry.selectors.dynamic.find(record => record.selector === '[data-cash-action="confirm"]').host = '#reconciliationTitle';
 assertSourceFailure(cashCopy, sources, 'Reales dynamisches Feld hat falschen Host', ['V22', 'depot-tranchen-manager.html', '[data-cash-action="confirm"]', '#reconciliationCashStatuses', 'Delegation']);
 
 extended.findings.push({ id: 'F-100', entryIds: ['I100'], source: { path: module, location: 'build' },

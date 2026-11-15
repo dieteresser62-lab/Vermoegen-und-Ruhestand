@@ -11,6 +11,9 @@ import { createBalanceDisplayEngineApi, buildBalanceRendererPayload } from '../.
 import { projectNextYearBudget } from '../../app/balance/balance-next-year-budget.js';
 import { UIRenderer, initUIRenderer } from '../../app/balance/balance-renderer.js';
 import { summarizeBalanceAction } from '../../app/balance/balance-action-summary.js';
+import { projectOverviewFromRecords } from '../../app/overview/overview-model.js';
+import { loadOverviewReserveCalculator } from '../../app/overview/overview-reserves.js';
+import { persistenceStorage } from '../../app/shared/persistence-facade.js';
 
 export const clean = text => String(text).replaceAll('\u00a0', ' ').replaceAll('\u202f', ' ');
 
@@ -78,4 +81,16 @@ export async function renderCard(records, date = '2026-10-23') {
             preview: read('balanceActionPreviewTitle'), market: doc.getElementById('balanceMarketPreview').hidden ? '' : read('balanceMarketPreviewBody'),
             verb: recalculated.verb, amount: recalculated.amount, doc, next };
     } finally { Object.assign(globalThis, saved); P.resetPersistenceForTests(); setAppTestDate(null); }
+}
+
+/** GN-2c: Übersichtsmodell mit der Deckung, die die Übersicht nach dem Laden ihrer Rechnung zeigt (wie `createOverviewReserves`). */
+export async function overviewModel(records, date = '2026-10-23') {
+    const calculate = await loadOverviewReserveCalculator({ engineLoader: { load: async () => EngineAPI } });
+    await freshArea({ ...records });
+    setAppTestDate(date);
+    try {
+        const model = projectOverviewFromRecords({ registry: JSON.parse(records.rs_profiles_v1), activeId: records.rs_current_profile, liveData: records,
+            now: new Date(`${date}T12:00:00Z`) });
+        return { ...model, reserveCoverages: calculate({ storage: persistenceStorage, profileId: model.activeId, model }) };
+    } finally { P.resetPersistenceForTests(); setAppTestDate(null); }
 }

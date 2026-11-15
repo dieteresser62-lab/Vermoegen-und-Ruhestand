@@ -6,6 +6,8 @@
 export const DISPLAY_ROUNDING = Object.freeze({
     /** Jahres- und Bestandswerte. */
     ANNUAL_TIERS: Object.freeze([
+        // Ergänzung 4 FR-78 (Nutzer 12.11.2026): unter 5.000 € in Schritten von 250 €.
+        Object.freeze({ limit: 5000, step: 250 }),
         Object.freeze({ limit: 10000, step: 500 }),
         Object.freeze({ limit: 25000, step: 1000 }),
         Object.freeze({ limit: 50000, step: 2500 }),
@@ -66,6 +68,10 @@ export function displayAnnualFromMonthly(monthly, direction) {
     return typeof rounded === 'number' && Number.isFinite(rounded) ? rounded * 12 : rounded;
 }
 
+/** VK-3d P4: Summe der Kaufzeilen je Person, wie die Tabelle „Käufe aus dem Plan“ sie zeigt (jede Zeile abgerundet).
+ * Kopf, „von … gekauft“, Jahresabschluss und Reserven nehmen diese Summe. @param {{amount: number}[]} lines @returns {number} */
+export const displayedBuyTotal = lines => lines.reduce((sum, line) => sum + (displayDown(line.amount) ?? line.amount), 0);
+
 /** RD-1c: Betrag einer Hauptaktion. Ein Kauf ist Geld, das zum Anlegen zur Verfügung steht, und wird abgerundet; so unterschreitet
  * der angezeigte Kauf nie die Reserve. Verkäufe und Umschichtungen werden aufgerundet.
  * @param {string|null|undefined} verb z. B. „Aktien kaufen“ @param {number|null|undefined} amount @returns {any} */
@@ -74,4 +80,13 @@ export function displayActionAmount(verb, amount) {
     const down = displayDown(amount);
     // Ein Kauf unter der kleinsten Stufe stünde sonst als 0 €; dann ganze Euro, abgerundet.
     return down === 0 && typeof amount === 'number' && amount >= 1 ? Math.floor(amount) : down;
+}
+
+/** Ergänzung 3 FR-78 Punkt 2: „aus dem Vermögen“ = angezeigtes Monatsbudget − Einkünfte; die Einkünfte bleiben genau. Die Entnahme
+ * sinkt also um genau den Betrag, um den das Budget abgerundet angezeigt wird, nie unter 0. Nur Anzeige.
+ * @param {number|null|undefined} withdrawal genaue Entnahme @param {number|null|undefined} budget genaues Monatsbudget
+ * @param {number|null|undefined} [shownBudget] angezeigtes Monatsbudget, sonst nach der Monatsstaffel abgerundet @returns {any} */
+export function displayedWithdrawal(withdrawal, budget, shownBudget = displayMonthlyDown(budget)) {
+    if (![withdrawal, budget, shownBudget].every(value => typeof value === 'number' && Number.isFinite(value))) return withdrawal;
+    return Math.max(0, /** @type {number} */ (withdrawal) - (/** @type {number} */ (budget) - /** @type {number} */ (shownBudget)));
 }

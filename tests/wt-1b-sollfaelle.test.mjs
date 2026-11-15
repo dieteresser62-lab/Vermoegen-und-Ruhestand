@@ -94,7 +94,7 @@ function planDone(records, cash) {
 // Soll 2 (P2-2): Verb bei Anleiheverkäufen wie die Diagnose, nie „Handlung prüfen“ bei eindeutigem Beleg.
 {
     const renate = await renderCard(createMusterHaushaltRecords('2026-10-23', 'renate'));
-    assert(renate.card.includes('Anleihen verkaufen45.000 €netto'), `Soll 2: Renate „Anleihen verkaufen · 44.448 €“, angezeigt 45.000 € (${renate.card.slice(0, 200)})`);
+    assert(renate.card.includes('Anleihen verkaufenca. 45.000 €netto'), `Soll 2: Renate „Anleihen verkaufen · 44.448 €“, angezeigt ca. 45.000 € (${renate.card.slice(0, 200)})`);
     for (const variant of ['grund', 'haus-pg3']) {
         const helga = await renderCard(createMusterHaushaltRecords('2026-10-23', 'helga-werner', variant));
         assert(helga.card.includes('Anleihen verkaufen') && !helga.card.includes('Handlung prüfen'), `Soll 2: Helga und Werner (${variant}) mit passendem Verb`);
@@ -104,7 +104,7 @@ function planDone(records, cash) {
     assertEqual(main.text, 'Anleihen verkaufen', 'Soll 2: Bärenblock und Wahl nehmen dasselbe Verb');
     assertEqual(Math.round(main.netAmount), 44448, 'Soll 2: mit Netto-Betrag');
     const result = text(createTodoResult(new MockDocument(), projectAnnualTodoPlan({ confirmed: { year: 2026, action }, people: [{ id: 'muster_renate', name: 'Renate' }] })));
-    assert(result.includes('Anleihen verkaufen45.000 €netto') && !result.includes('Handlung prüfen'), 'Soll 2: Ergebnis im Jahresabschluss mit demselben Verb (44.448 € aufgerundet)');
+    assert(result.includes('Anleihen verkaufenca. 45.000 €netto') && !result.includes('Handlung prüfen'), 'Soll 2: Ergebnis im Jahresabschluss mit demselben Verb (44.448 € aufgerundet, „ca.“ wie die Karte)');
     const variant = monthlyBudget => ({ monthlyBudget, mainAction: main });
     const choice = text(createAnnualMarketChoice(new MockDocument(), { yearEndDate: '2025-12-31', high: { high: { value: 165.79, asOf: '2026-08-12' } },
         comparison: { rule: variant(3000), high: variant(2900), difference: { monthlyBudget: -100 } } }, null, () => {}));
@@ -118,35 +118,11 @@ function planDone(records, cash) {
     assert(beleg(records).adopted.action.quellen.some(source => source.trancheId === 'muster_b:muster_b_lot_2'), 'Soll 3: Beleg trägt „person:tranche“');
     const shown = await renderCard(records);
     const sale = walk(shown.doc.getElementById('balanceAnnualAction')).find(node => node.dataset?.todoSaleEntry !== undefined);
-    assertEqual(sale?.getAttribute('href'), 'depot-tranchen-manager.html?person=muster_b&tranche=muster_b_lot_2#verkauf', 'Soll 3: Link aus dem echten Beleg ohne Präfix');
-    const saved = Object.fromEntries(['document', 'window', 'localStorage', 'confirm', 'alert', 'URL', 'Blob'].map(key => [key, globalThis[key]]));
-    try {
-        const doc = createTranchenPageDom(); addManagerDialogDom(doc);
-        for (const id of ['managerWealthHistory', 'managerWealthTitle', 'managerWealthChart', 'managerWealthContext', 'managerWealthMetrics', 'managerWealthTable', 'managerWealthHint',
-            'managerWealthPersonHint', 'managerWealthLegend', 'managerWealthDailyNote', 'managerWealthStatus', 'managerCaptureWealthBtn', 'managerProfileRecovery', 'managerBirthSupplement',
-            'managerBirthDate', 'managerBirthApply', 'managerBirthSuggestion', 'managerBirthError', 'profilePersonDateStatus', 'managerPensionStatus', 'managerPersonSummary',
-            'managerAssetsSummary', 'managerCareSummary', 'managerCardsToggleAll', ...['Person', 'Assets', 'Care'].flatMap(card => [`manager${card}Toggle`, `manager${card}Body`])]) doc.register(new MockElement(id));
-        doc.getElementById('managerProfileRecovery').hidden = true;
-        installGlobals(doc, createLocalStorageMock());
-        for (const id of ['navigationGuardDialog', 'navigationGuardStay', 'navigationGuardLeave', 'navigationGuardTitle', 'navigationGuardDescription']) doc.register(new MockElement(id));
-        const guard = doc.getElementById('navigationGuardDialog');
-        guard.showModal = () => { guard.open = true; }; guard.close = () => { guard.open = false; };
-        for (const el of [guard, doc.getElementById('navigationGuardStay'), doc.getElementById('navigationGuardLeave'), doc]) {
-            el.removeEventListener = (type, fn) => { el.listeners[type] = (el.listeners[type] || []).filter(handler => handler !== fn); };
-        }
-        // Die Testattrappe pflegt `options` nicht; im Browser liefert der Select seine Optionen selbst.
-        const select = doc.getElementById('reconcileTrancheId');
-        Object.defineProperty(select, 'options', { configurable: true, get: () => select.children.filter(node => node.tagName?.toLowerCase() === 'option') });
-        PersistenceFacade.resetPersistenceForTests({ name: 'wt-1b-manager', async open() {}, async loadAll() { return { ...records }; }, async saveBatch() {},
-            async writeSnapshot() {}, async readSnapshot() { return null; }, async listSnapshots() { return []; } });
-        await PersistenceFacade.init();
-        initTranchenManagerPage({ profileId: records.rs_current_profile });
-        await startTranchenManagerPage();
-        const [path, hash] = sale.getAttribute('href').split('#'), search = path.slice(path.indexOf('?'));
-        assertEqual(await openManagerOverviewTarget({ hash: `#${hash}`, search }, { ready: true }), true, 'Soll 3: Sprungziel öffnet den Verkaufsdialog');
-        assert(doc.getElementById('saleModal').classList.contains('active'), 'Soll 3: Verkaufsdialog offen');
-        assertEqual(select.value, 'muster_b_lot_2', 'Soll 3: im Verkaufsdialog ist die Tranche gewählt');
-    } finally { Object.assign(globalThis, saved); PersistenceFacade.resetPersistenceForTests(); }
+    // FR-79: Die Karte öffnet den geführten Verkauf in der Balance; die Planzeile bringt ihre Tranche selbst mit.
+    // Max erledigt, Erika teilweise: Stand aus Eingetragenem, Sprung direkt in die Abrechnung (Ergänzung 1 FR-79 Punkt 7).
+    assertEqual(sale?.dataset?.saleFlowStart, '3', 'Soll 3: „Weiter mit Schritt 3“ springt in die Abrechnung');
+    assert(sale?.textContent === 'Weiter mit Schritt 3', 'Soll 3: Knopftext nach Unterbrechung');
+    // Der alte Sprung in den Verkaufsdialog von Personen & Vermögen entfällt (FR-79); die Tranche kommt aus der Planzeile (vk-1-sollfaelle).
 }
 
 // Soll 5 (P3-6): „Vorschau auf den Plan J+1“; der Jahresabschluss „Jahr J abschließen“ beschließt genau diesen Plan.
@@ -262,7 +238,7 @@ const bearView = (() => {
 // Nachtrag 11 und 12 (Bildabnahme): „Details“ ohne doppeltes „zeigen“, Stand des alten Plans ohne „Erledigt“.
 {
     const note = text(createPlanProgressNote(new MockDocument(), { year: 2026, status: 'offen', soldNet: 0, planNet: 89312 }, true));
-    assertEqual(note, 'Plan 2026 · nicht umgesetzt0 € von 90.000 € verkauft. Der neue Plan ersetzt ihn.', 'Nachtrag 12: kein „Erledigt“ bei nicht umgesetztem Plan (ohne Planzeilen: Plan 89.312 € aufgerundet)');
+    assertEqual(note, 'Plan 2026 · nicht umgesetzt0 € von 89.312 € verkauft. Der neue Plan ersetzt ihn.', 'Nachtrag 12: kein „Erledigt“ bei nicht umgesetztem Plan (VN-1 Punkt 4: Plan auf den Euro)');
     const { doc } = createDialogFixture();
     const action = beleg(createMusterHaushaltRecords('2026-10-23', 'renate')).adopted.action;
     const root = createAnnualTodoResult(doc, { year: 2027, action, text: 'Anleihen verkaufen', people: [{ id: 'muster_renate', name: 'Renate' }] });
@@ -283,5 +259,5 @@ const bearView = (() => {
     try { shown = await renderCard(records); } finally { console.warn = warn; }
     assertEqual(warned, 1, 'Befund 11: Aufbereitung des Belegs wirft, der Rückfall greift');
     assert(shown.values.includes('nach Umsetzung180.500 €'), `Befund 11: Reserven mit der Neuberechnung (179.185 €, angezeigt 180.500 €, nicht 179.500 € aus dem Beleg) (${shown.values})`);
-    assert(shown.card.includes('Aktien verkaufen89.500 €'), 'Befund 11: Karte zeigt weiter den Beleg (Summe der angezeigten Zeilen 89.500 €)');
+    assert(shown.card.includes('Aktien verkaufenca. 89.500 €'), 'Befund 11: Karte zeigt weiter den Beleg (ca. 89.500 €)');
 }

@@ -112,12 +112,12 @@ try {
             const reloaded = projectOverviewFromRecords({ registry: JSON.parse(records.rs_profiles_v1), activeId: records.rs_current_profile, liveData: records, now: appNow() });
             assertEqual(reloaded.occasion.kind, 'play', label + ': erneut geladene Startseite hat keinen offenen Dezember');
             const receipt = Object.values(JSON.parse(records[ANNUAL_PLAN_RECORD_KEY]).entries).find(entry => entry.year === 2027 && entry.scope.key === sample.scope.key);
-            const roundedFields = ['floorBedarf', 'flexBedarf', 'minimumFlexAnnual'].filter(path =>
-                Math.ceil(receipt.recommended.snapshot.plan[path] / 1000) * 1000 !== receipt.recommended.snapshot.plan[path]);
+            // GN-1 (FR-68 Punkt 7): Vorschläge werden genau übernommen; eine Rundung ist keine Anpassung mehr.
+            const roundedFields = [];
             const expectedFields = adjusted ? [...new Set(['floorBedarf', 'flexBedarf', ...roundedFields, 'decumulation.bondTargetFactor'])] : roundedFields;
-            assertEqual(receipt.adjusted, expectedFields.length > 0, label + ': Anpassungsentscheidung umfasst Tausendervorschläge');
-            assertEqual(JSON.stringify(receipt.adjustedFields), JSON.stringify(expectedFields), label + ': genaue Feldpfade einschließlich aufgerundetem Mindest-Flex');
-            if (!adjusted) for (const path of ['floorBedarf', 'flexBedarf', 'minimumFlexAnnual']) assertEqual(receipt.adopted.snapshot.plan[path], Math.ceil(receipt.recommended.snapshot.plan[path] / 1000) * 1000, label + ': vorausgewählter Vorschlag in vollen Tausendern');
+            assertEqual(receipt.adjusted, expectedFields.length > 0, label + ': Anpassungsentscheidung nur bei bewusster Änderung');
+            assertEqual(JSON.stringify(receipt.adjustedFields), JSON.stringify(expectedFields), label + ': genaue Feldpfade der bewussten Änderung');
+            if (!adjusted) for (const path of ['floorBedarf', 'flexBedarf', 'minimumFlexAnnual']) assertEqual(receipt.adopted.snapshot.plan[path], receipt.recommended.snapshot.plan[path], label + ': vorausgewählter Vorschlag genau übernommen');
             await doc.getElementById('annualCloseBtn').fire('click');
             if (balance) preserveUIBinderStateForTests().handlers.closeCoordinator.dispose(); else controls.dispose();
             return { records, result };

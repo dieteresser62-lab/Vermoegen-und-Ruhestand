@@ -1,6 +1,6 @@
 /** Lokale Lucide-Schmucksymbole, im Dokument des Aufrufers erzeugt. */
 const ICON_NAMES = new Set(['book-open', 'circle-help', 'check', 'triangle-alert',
-    'house', 'scale', 'chart-no-axes-combined', 'wallet', 'landmark', 'panel-left-close', 'panel-left']);
+    'house', 'scale', 'chart-no-axes-combined', 'wallet', 'receipt-text', 'landmark', 'panel-left-close', 'panel-left']);
 const SVG_NS = 'http://www.w3.org/2000/svg';
 // Lokales Lucide-copy (ISC): synchron für dynamische Buttons und HTML-Renderer.
 // Nur konstantes Markup; weder Nutzerdaten noch ein asynchroner Symbolfetch.

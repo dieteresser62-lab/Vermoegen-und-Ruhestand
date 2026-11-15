@@ -44,7 +44,7 @@ export interface PlanFieldBindingOptions extends PlanFormatOptions {doc?: Docume
     listen?: (node: EventTarget, kind: string, callback: (event: FocusEvent)=>void)=>void;
     onChange?: (field: PlanField)=>void; onFocusStateChange?: (state: PlanFocusState)=>void; nativeOnly?: boolean;
 }
-export interface PlanFieldState {path: string; value: number|string|boolean|null|undefined; text: string|undefined; focused: boolean; correcting: boolean; invalid: boolean;
+export interface PlanFieldState {path: string; value: number|string|boolean|null|undefined; text: string|undefined; shown?: number; focused: boolean; correcting: boolean; invalid: boolean;
     includeUnit: boolean; fractionDigits?: number; reportRangeError?: (value: number|string|boolean|null|undefined)=>void; dispose?: ()=>void;}
 export interface DynamicFlexBindingOptions {doc?: Document; root?: HTMLElement; host?: HTMLElement; details?: HTMLElement;
     read?: ()=>D.PlanValues; disabled?: ()=>boolean; onChange?: (patch: Partial<D.PlanValues>)=>void;

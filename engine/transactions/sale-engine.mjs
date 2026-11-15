@@ -13,6 +13,7 @@ import {
     TrancheValidationError
 } from '../../types/tranche-contract.js';
 import { ValidationError } from '../errors.mjs';
+import { applyIsinFifo, hasIsinFifoGroup } from '../../types/sale-fifo.js';
 
 /** @param {unknown} error */
 function asEngineTrancheValidationError(error) {
@@ -373,22 +374,23 @@ export function getSellOrder(tranches, market, input, context, isEmergencySale) 
         return String(a).localeCompare(String(b));
     });
 
-    // FIFO-Sortierung für Gold (falls mehrere Gold-Tranchen existieren)
-    const sortedGoldKeys = [...goldKeys].sort((a, b) => {
-        const tA = tranches[a];
-        const tB = tranches[b];
+    // FR-82: Innerhalb derselben Person und ISIN verkauft die Bank die ältesten Stücke zuerst; nur die älteste noch vorhandene
+    // Tranche je Gruppe ist Kandidat, unter den Kandidaten bleibt die Steuerlast je Euro maßgeblich.
+    // RK-3 Punkt 4: Gruppen nur einmal je Verkauf prüfen; ohne zwei Tranchen derselben Person und ISIN bleibt die Folge wie vorher.
+    const fifoLot = (/** @type {string} */ key) => /** @type {SaleLot} */ (tranches[key]);
+    const fifo = hasIsinFifoGroup(allKeys, fifoLot);
+    const sortedEquityFifoKeys = fifo ? applyIsinFifo(sortedEquityKeys, fifoLot) : sortedEquityKeys;
+    const bondFifoKeys = fifo ? applyIsinFifo(bondKeys, fifoLot) : bondKeys;
 
-        if (/** @type {SaleLot} */ (tA).purchaseDate && /** @type {SaleLot} */ (tB).purchaseDate) {
-            const dateA = new Date(/** @type {SaleLot} */ (tA).purchaseDate);
-            const dateB = new Date(/** @type {SaleLot} */ (tB).purchaseDate);
-            return /** @type {number} */ (/** @type {unknown} */ (dateA)) - /** @type {number} */ (/** @type {unknown} */ (dateB));
-        }
-
-        if (/** @type {SaleLot} */ (tA).purchaseDate && !/** @type {SaleLot} */ (tB).purchaseDate) return -1;
-        if (!/** @type {SaleLot} */ (tA).purchaseDate && /** @type {SaleLot} */ (tB).purchaseDate) return 1;
-
-        return 0;
-    });
+    // Gold nach älterem Kaufdatum (ohne Datum dahinter); RK-2: innerhalb derselben Person und ISIN dieselbe Bankreihenfolge
+    // wie bei Aktien und Anleihen (ohne Kaufdatum zuerst, FR-82).
+    const goldStamp = (/** @type {string} */ key) => {
+        const date = fifoLot(key).purchaseDate;
+        const parsed = date ? Date.parse(date) : NaN;
+        return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+    };
+    const goldByDate = goldKeys.length < 2 ? goldKeys : [...goldKeys].sort((a, b) => goldStamp(a) === goldStamp(b) ? 0 : goldStamp(a) < goldStamp(b) ? -1 : 1);
+    const sortedGoldKeys = fifo ? applyIsinFifo(goldByDate, fifoLot) : goldByDate;
 
     const isDefensiveContext = isEmergencySale ||
         market.sKey === 'bear_deep' ||
@@ -396,7 +398,7 @@ export function getSellOrder(tranches, market, input, context, isEmergencySale) 
 
     // Defensiv: Gold nach älterem Kaufdatum, dann Anleihen in vorhandener Reihenfolge, dann steuerlich sortierte Aktien.
     if (isDefensiveContext) {
-        const order = [...sortedGoldKeys, ...bondKeys, ...sortedEquityKeys];
+        const order = [...sortedGoldKeys, ...bondFifoKeys, ...sortedEquityFifoKeys];
         return uniqueExisting(order);
     }
 
@@ -416,12 +418,12 @@ export function getSellOrder(tranches, market, input, context, isEmergencySale) 
         const totalGoldValue = sortedGoldKeys.reduce((sum, k) => sum + (/** @type {SaleLot} */ (tranches[k]).marketValue || 0), 0);
 
         if (totalGoldValue > goldObergrenze) {
-            return uniqueExisting([...sortedGoldKeys, ...bondKeys, ...sortedEquityKeys]);
+            return uniqueExisting([...sortedGoldKeys, ...bondFifoKeys, ...sortedEquityFifoKeys]);
         }
     }
 
     // Standard: Anleihen in vorhandener Reihenfolge, dann steuerlich sortierte Aktien, dann Gold nach älterem Kaufdatum.
-    return uniqueExisting([...bondKeys, ...sortedEquityKeys, ...sortedGoldKeys]);
+    return uniqueExisting([...bondFifoKeys, ...sortedEquityFifoKeys, ...sortedGoldKeys]);
 }
 
 /**

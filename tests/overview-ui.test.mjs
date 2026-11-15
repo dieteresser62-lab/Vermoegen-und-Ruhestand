@@ -512,7 +512,7 @@ for (const status of ['vorläufig', 'fest']) {
     assertEqual(doc.getElementById('overviewPlanStatus').textContent, '', 'Alte Abschlussmetadaten ergeben keinen festgeschriebenen Plan');
     assertEqual(doc.getElementById('overviewWithdrawal').textContent, 'Vorschau: ' + moneyText(500), 'Gespeicherte Summary bleibt ausdrücklich Vorschau');
     assert(doc.getElementById('overviewPlanAction').textContent.startsWith('Vorschau:'), 'Unterjährige Handlung bleibt Vorschau');
-    assertEqual(doc.getElementById('overviewLiquidity').textContent, 'Heute unbekannt · 89,4\u00a0% nach Umsetzung', 'Alte Summary gibt Nachherdeckung nicht als Ist aus');
+    assertEqual(doc.getElementById('overviewLiquidity').textContent, 'Heute unbekannt · 89\u00a0% nach Umsetzung', 'Alte Summary gibt Nachherdeckung nicht als Ist aus (ganze Prozent wie die Balance, Ergänzung 3 FR-78)');
     assertEqual(doc.getElementById('overviewMarket').textContent, 'Stabiler Höchststand', 'Vorhandene Marktphase bleibt unverändert');
     assert(doc.getElementById('overviewPlanBudget').textContent.includes(moneyText(700)), 'Budget bleibt getrennt von Entnahme');
     renderOverview(doc, { ...populated, summary: null });
@@ -970,9 +970,9 @@ renderOverview(doc, playModel);
 assertEqual(doc.getElementById('overviewTitle').textContent, 'Ein Schritt offen: Cashstatus prüfen', 'Eine offene Cashbuchung verhindert Alles erledigt');
 assert(doc.getElementById('overviewLead').innerHTML.includes('data-next-step="cash"') && doc.getElementById('overviewLead').innerHTML.includes('data-profile-handoff'), 'Offener Schritt hat bedienbaren Managerlink mit Profilhandoff');
 renderOverview(doc, { ...playModel, summary: { ...monthly.summary, liquidityBefore: 67.5, liquidityAfter: 103.1, actionBasis: { material: true } } });
-assertEqual(doc.getElementById('overviewLiquidity').textContent, '67,5\u00a0% heute · 103,1\u00a0% nach Umsetzung', 'Liquidität unterscheidet Ist und Planfolge ohne fachliche Abrundung');
+assertEqual(doc.getElementById('overviewLiquidity').textContent, '68\u00a0% heute · 103\u00a0% nach Umsetzung', 'Liquidität unterscheidet Ist und Planfolge (ganze Prozent wie die Balance)');
 renderOverview(doc, { ...playModel, summary: { ...monthly.summary, liquidityBefore: 103.1, liquidityAfter: 103.1, actionBasis: { material: false } } });
-assertEqual(doc.getElementById('overviewLiquidity').textContent, '103,1\u00a0% des Ziels', 'Gleiche Werte ohne Handlung zeigen nur Zielstand');
+assertEqual(doc.getElementById('overviewLiquidity').textContent, '103\u00a0% des Ziels', 'Gleiche Werte ohne Handlung zeigen nur Zielstand');
 // Echte Musterrecords durch den produktiven Projektor und Renderer.
 {
     const records = createMusterHaushaltRecords('2027-07-01');
@@ -1079,7 +1079,9 @@ assert(html.includes('id="overviewBackupReminder"') && html.includes('href="Date
         sourceFingerprint: 'current', now: new Date('2026-10-09T12:00:00Z') });
     let comparison = view();
     renderOverview(doc, { ...focusBase, planComparison: comparison });
-    assert(doc.getElementById('overviewPlanComparison').innerHTML.startsWith(householdPlanComparisonHtml(comparison)), 'Startseitenrenderer verwendet denselben Vergleich wie Manager');
+    // GN-2c: Liquidität nur aus angezeigten Beträgen (Rechnung der Reservekarte); ohne sie offen, nie genaue Dezimalprozente.
+    const shownComparison = { ...comparison, rows: comparison.rows.map(row => row.label.startsWith('Liquidität') ? { ...row, plan: '—', preview: '—', delta: '—' } : row) };
+    assert(doc.getElementById('overviewPlanComparison').innerHTML.startsWith(householdPlanComparisonHtml(shownComparison)), 'Startseitenrenderer verwendet denselben Vergleich wie Manager');
     assert(doc.getElementById('overviewPlanComparison').innerHTML.includes('data-action-origin') && doc.getElementById('overviewPlanComparison').innerHTML.includes('Balance.html#handlungsanweisung'), 'Lesender Herkunftshinweis erhält den Balance-Link mit Profilhandoff');
     assertEqual(doc.getElementById('overviewPlanStatus').textContent, 'festgeschrieben', 'Nur gültiger Beleg setzt sichtbaren Status');
     assert(doc.getElementById('overviewPlanComparison').innerHTML.includes('bewusst angepasst'), 'Startseite zeigt bewusste Anpassung');

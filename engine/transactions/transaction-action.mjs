@@ -220,6 +220,10 @@ export function determineAction(p, helpers) {
             : ((hasCoverageGap || hasRunwayGap) && guardrailGapEuro > 1);
 
         if (isBearRegimeProxy && hasGuardrailGap) {
+            // GH-1 Punkt 9 (Gutachten 13.11., F-03), bewusst so seit be885a67 („Adjust guardrail activation to allow normal refills“):
+            // Löst die Deckung den Schutz aus (< runwayGuardrailActivationPct = 69 %), liegt sie immer unter runwayCoverageMinPct (75 %);
+            // die Lage gilt dann stets als kritisch. Der sanfte, gedeckelte Pfad greift nur, wenn eine Lücke in Monaten (hasRunwayGap)
+            // bei einer Deckung ab 75 % auslöst. Keine Verhaltensänderung.
             // FIX: isCriticalLiquidity muss AUCH Runway% berücksichtigen, nicht nur absoluten Puffer.
             // Bei hoher Rentendeckung ist sicherheitsPuffer klein, aber 72% Runway ist trotzdem kritisch.
             // Die runwayCoverageThreshold (75%) ist der Standard für "sicher", darunter sollte das Cap angehoben werden.
@@ -263,6 +267,8 @@ export function determineAction(p, helpers) {
 
             // Universeller Runway-Failsafe: gilt in allen Nicht-Bären-Regimes
         } else if (hasGuardrailGap) {
+            // GH-1 Punkt 9 (F-03): wie im Bärenzweig – über die Deckung (< 69 %) ausgelöst ist die Lage immer kritisch (< 75 %);
+            // ohne Deckungslücke bleibt hier nur die Lücke in Monaten, die ebenfalls als kritisch zählt. Keine Verhaltensänderung.
             const isCriticalLiquidityFailsafe = zielLiquiditaetsdeckung < runwayCoverageThreshold || hasRunwayGap;
 
             const minTradeGateResult = computeAppliedMinTradeGate({

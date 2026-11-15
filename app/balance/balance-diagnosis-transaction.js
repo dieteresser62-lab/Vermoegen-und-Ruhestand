@@ -78,7 +78,7 @@ export function buildTransactionDiagnostics(transactionDiag, actionSummary = nul
     summaryRows.push({ label: 'Geplante Aktion', value: describeBalanceActionSummary(actionSummary, UIUtils.formatBalanceCurrency) });
     const selected = transactionDiag.selectedTranches;
     summaryRows.push({ label: 'Tranchenauswahl', value: Array.isArray(selected) && selected.length
-        ? `${selected.length} Tranchen · geringste Steuerlast zuerst` : 'Keine Tranchen ausgewählt' });
+        ? `${selected.length} Tranchen · je Wertpapier die ältesten Stücke zuerst, sonst geringste Steuerlast` : 'Keine Tranchen ausgewählt' });
     const whyNot = displayTradeAmount(actionSummary?.goldPurchaseAmount) > 0 ? [] : buildGoldWhyNotRows(transactionDiag);
     if (whyNot.length) summaryRows.push({ label: 'Warum kein Goldkauf?', value: whyNot[0].value });
     for (const [label, values] of [['Aktien-Grenzen', transactionDiag.equityThresholds], ['Gold-Grenzen', transactionDiag.goldThresholds]]) {
@@ -313,7 +313,11 @@ const DIAGNOSIS_TERMS = Object.freeze({
  */
 export function displayDiagnosisText(value, { formatNumbers = true } = {}) {
     let text = translateBufferActionText(value ?? 'Nicht verfügbar').replaceAll('Bonds Auffüllen', 'Anleihen auffüllen')
-        .replaceAll('Profilverbund-Transaktionen', 'Verkäufe und Käufe je Person');
+        .replaceAll('Profilverbund-Transaktionen', 'Verkäufe und Käufe je Person')
+        // VK-3d P9: Schritt und Quellenangaben der Engine auf Deutsch.
+        .replaceAll('Surplus Rebalancing', 'Überschuss anlegen')
+        .replaceAll('spending.details.endgueltigeEntnahme', 'Jahresentnahme der Entnahmeplanung')
+        .replaceAll('spending.monatlicheEntnahme_x12', 'Monatsentnahme × 12');
     for (const [term, label] of Object.entries(DIAGNOSIS_TERMS)) {
         text = text.replace(new RegExp(`\\b${term}\\b`, 'g'), label);
     }

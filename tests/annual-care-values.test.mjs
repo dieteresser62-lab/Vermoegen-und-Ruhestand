@@ -39,8 +39,9 @@ import { PersistenceFacade as P, resetPersistenceForTests } from '../app/shared/
 import { sourceFingerprint } from '../app/overview/overview-simulation-summary.js';
 import { overviewScope } from '../app/overview/overview-storage.js';
 
+import { readFI1References } from './helpers/fi-1-expectations.mjs';
 const control = JSON.parse(await fs.readFile(new URL('./fixtures/care-values-default-controls.json', import.meta.url)));
-assertEqual(JSON.stringify(await careValueControls(undefined, careValuesInputPatch(parseCareValues(JSON.stringify(DEFAULT_CARE_VALUES))))), readLE1References(readGU1References(JSON.stringify(readQSCReferences(readVF2BReferences(readGL1References(readAS1References(readEP1References(readRNG1References(control))))))))),
+assertEqual(JSON.stringify(await careValueControls(undefined, careValuesInputPatch(parseCareValues(JSON.stringify(DEFAULT_CARE_VALUES))))), readFI1References(readLE1References(readGU1References(JSON.stringify(readQSCReferences(readVF2BReferences(readGL1References(readAS1References(readEP1References(readRNG1References(control)))))))))),
     'Vorgaben: vollständige MC-, Backtest- und Paritätsbytes mit belegten FR-51-/FR-57-Folgen');
 assertEqual(JSON.stringify(officialCareCosts()), JSON.stringify({ 1: 200, 2: 2300, 3: 7100, 4: 15000, 5: 18900 }), 'Amtliche Vorgabestaffel bytegleich');
 
@@ -126,7 +127,7 @@ const evaluate = patch => evaluateAnnualPlanPreview({ targetYear: 2026, marketDa
 const initial = await evaluate();
 const editor = createAnnualPlanEditor({ doc, listen, getPreview: preview, getAnnualExpenses: () => ({ complete: true, total: 60467.5 }), evaluate }); doc.body.append(editor.root); await editor.setBase(initial.values);
 const minimum = doc.getElementById('annualPlan_minimumFlexAnnual');
-assertEqual(minimum.value, '8.000 €', 'Mindest-Flex wird auf volle Tausender aufgerundet');
+assertEqual(minimum.value, '8.000 €', 'Mindest-Flex wird im Feld glatt angezeigt (genau 7.688 €)');
 assertEqual(editor.accept(), undefined, 'Vorausgewählte Tausendervorschläge gehören ohne Anpassungspatch zum Jahresbeschluss');
 const flex = doc.getElementById('annualPlan_flexBedarf');
 assert(!editor.root.querySelector('[data-annual-needs-review]').hidden && !flex.parent.hidden, 'Bedarfsfelder direkt sichtbar');
@@ -137,7 +138,7 @@ assert(editor.root.querySelector('[data-annual-plan-panel]').hidden, 'Eigener Be
 await editor.root.querySelector('[data-annual-need-suggestion="flexBedarf:plan"]').fire('click');
 for (let i = 0; i < 100 && editor.read().pending; i++) await new Promise(resolve => setTimeout(resolve, 1));
 assertEqual(editor.accept(), undefined, 'Planvorschlag ersetzt eigenen Wert durch Empfehlung ohne Anpassungspatch');
-assertEqual(editor.read().values.flexBedarf, 31000, 'Hochrechnung bleibt die Inflationsprojektion und übernimmt keine Ist-Ausgaben');
+assertEqual(editor.read().values.flexBedarf, 30750, 'Hochrechnung bleibt die genaue Inflationsprojektion und übernimmt keine Ist-Ausgaben');
 const complete = annualNeedsComparison(preview(), { complete: true, total: 60467.5 });
 assertClose(complete.difference, 467.5, 1e-8, 'Abweichung aus Jahresausgaben minus Grundbedarf und Flex');
 assertClose(complete.percent, 467.5 / 60000 * 100, 1e-8, 'Prozentabweichung bezieht sich auf Bedarf J');

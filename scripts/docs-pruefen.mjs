@@ -108,7 +108,11 @@ export const IMAGE_FILES = Object.freeze([
     'tagesgeld-bearbeiten', 'personen-pflegegrad',
     'partnerschaft-todesfall', 'personen-immobilien', 'simulator-hinterbliebene', 'partnerschaft-verheiratet',
     'monte-carlo-vergleich', 'monte-carlo-zielwert', 'personen-pflege', 'verlauf-vermoegensstaende', 'personen-erika-einkuenfte',
-    'simulator-fondskosten', 'personen-rente-wie-loehne', 'personen-fondskosten'
+    'simulator-fondskosten', 'personen-rente-wie-loehne', 'personen-fondskosten',
+    ...['01-ueberblick', '02-verkaufen', '03-abrechnung', '03b-weniger', '04-gutschrift', '05-verteilen'].map(name => `verkauf/${name}`),
+    ...['01-ueberblick', '02-kaufen', '03-abrechnung', '04-abbuchung'].map(name => `kauf/${name}`),
+    // BV-1: nach der Verkleinerung passen Merkzettel Kauf und „Tranche im Detail“ ins Bildbudget.
+    'tranche-detail', 'tranche-detail-korrektur'
 ].map(name => `docs/ui/${name}.png`));
 const APP_PAGES = ['index.html', 'depot-tranchen-manager.html', 'Ausgaben.html',
     'Balance.html', 'Simulator.html', 'Daten-Sicherung.html'];
@@ -531,7 +535,8 @@ export function checkDocs({ root = REPO_ROOT, activeFiles = ACTIVE_FILES,
         const width = buffer.readUInt32BE(16), height = buffer.readUInt32BE(20);
         if (width !== data.width || height !== data.height || width < 1 || height < 1 || width > 1920 || height > 1080) emit(severity, 'image-size', file, source, offset,
             `${data.width}×${data.height}`, `${data.path}: tatsächliche Maße ${width}×${height}`);
-        const expectedHousehold = data.path === 'docs/ui/personen-sophie.png' ? 'Sophie Mustermann' : 'Max und Erika Mustermann';
+        // VK-2: Die Kaufbilder zeigen den Musterhaushalt Martin und Petra (Kauf aus Überschuss im Grundfall).
+        const expectedHousehold = data.path === 'docs/ui/personen-sophie.png' ? 'Sophie Mustermann' : data.path.startsWith('docs/ui/kauf/') ? 'Martin und Petra' : 'Max und Erika Mustermann';
         if (data.household !== expectedHousehold || data.viewport?.width !== 1920 || data.viewport?.height !== 1080
             || data.scale !== 1 || typeof data.caption !== 'string' || !data.caption.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(data.date || '')) {
             emit(severity, 'image-origin', file, source, offset, 'Mustermann, 1920×1080, Skalierung 1, Datum, Bildunterschrift', `${data.path}: Herkunft unvollständig`);

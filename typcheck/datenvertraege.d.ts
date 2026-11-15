@@ -98,7 +98,7 @@ export interface PlanValues {
     dynamicFlex: boolean; horizonMethod: 'mean' | 'survival_quantile'; horizonYears: number; survivalQuantile: number;
     goGoActive: boolean; goGoMultiplier: number; longevityMode: 'none' | 'quantile_shift' | 'relative_horizon_buffer' | 'buffer_years'; longevityQuantileShift: number;
     jointAssessment?: boolean; longevityRelativePct: number; longevityBufferYears: number;
-    householdWithdrawalMode: 'tax_optimized' | 'proportional' | 'runway_first';
+    householdWithdrawalMode: 'tax_optimized' | 'proportional' | 'runway_first' | `one_carries:${string}`;
     cape: { value: number; asOf: string | null; source: string | null };
     /** FR-76: Laufende Kosten Aktien-ETF in % pro Jahr; fehlt in älteren Ständen, gelesen als Vorgabe. */
     equityCostPct?: number;
@@ -161,6 +161,8 @@ export interface AnnualOutcome {
     liquidityBefore: number; liquidityAfter: number; flexRate: number; marketPhase: string;
     action: AnnualAction; snapshot?: { plan: PlanValues; inflation: number; ageByPerson: Record<string, number>; marketReading?: YearHighChoice & {reading: 'year_high'} };
     plannedPosts?: PlannedPosts;
+    /** TRG-1c: „Eine Person trägt“ zum Zeitpunkt des Beschlusses (optional, fehlt im Vorgabemodus). */
+    householdWithdrawal?: { mode: string; carrierId: string; carrierName?: string; attacked?: { profileId: string; name?: string; amount: Euro }[] };
 }
 /** Ergebniskandidat vor assertAnnualPlanRecord; null wird am bestehenden Validator abgewiesen. */
 export type AnnualOutcomeCandidate = Omit<AnnualOutcome, "monthlyBudget" | "action" | "flexRate"> & { monthlyBudget: Euro | null; flexRate?: number; action: AnnualAction | import('./rechenkern.js').Action };
@@ -204,8 +206,9 @@ export interface PartnershipRecord { schemaVersion: 1; status: 'married' | 'unma
 export type CarePriceOrigin = 'mitgeliefert' | 'von Hand' | 'fortgeschrieben';
 export interface CareValueSource { asOf: YearMonth; source: string; origin: CarePriceOrigin; validFrom: YearMonth; }
 /** FR-73 P8: Staffel zu Hause (€/Jahr je Grad), Deckel (€/Jahr) und eigene Ausgaben im Heim (€/Monat) mit Preisstand (Planjahr);
- * `driftPercent` steht nur nach bewusster Eingabe des Kostenanstiegs (Gutachten PFA-2, Befund 6). */
-export interface CarePrices { costs: Record<1 | 2 | 3 | 4 | 5, Euro>; maximumFloor: Euro; ownExpensesMonthly: Euro; driftPercent?: number; origin: CarePriceOrigin; priceYear: number; }
+ * `driftPercent` steht nur nach bewusster Eingabe des Kostenanstiegs (Gutachten PFA-2, Befund 6);
+ * `driftUntilYear` (letztes Jahr der ersten Rate) und `driftAfterPercent` (Rate danach) ebenso (FR-73 Punkt 8 geändert). */
+export interface CarePrices { costs: Record<1 | 2 | 3 | 4 | 5, Euro>; maximumFloor: Euro; ownExpensesMonthly: Euro; driftPercent?: number; driftUntilYear?: number; driftAfterPercent?: number; origin: CarePriceOrigin; priceYear: number; }
 export interface HouseholdCareValues { version: 1; allowance: CareValueSource & {values: Record<2 | 3 | 4 | 5, Euro>; origin: 'mitgeliefert' | 'von Hand'};
     residential: CareValueSource & {monthly: Euro; components?: {care: Euro; board: Euro; invest: Euro}}; confirmedForYear: number | null; prices?: CarePrices; }
 /** FR-73 Punkt 10: „Pflegehinweis erledigt“ je Haushalt; `rule` ist die Regelversion, `doneAt` ein Kalendertag. */
@@ -224,10 +227,12 @@ export type SimulatorPersonKeysAlt = `sim_${'p1StartAlter' | 'startAlter' | 'p1G
     | 'p1KirchensteuerPct' | 'kirchensteuerSatz' | 'p1SparerPauschbetrag' | 'startSPB' | 'r2StartAlter' | 'r2Geschlecht' | 'r2Monatsrente'
     | 'r2Brutto' | 'r2StartInJahren' | 'r2KirchensteuerPct' | 'r2SparerPauschbetrag' | 'r2Steuerquote' | 'partnerAktiv' | 'chkPartnerAktiv'}`;
 export type SimulatorPersonRecordsAlt = Partial<Record<SimulatorPersonKeysAlt, string>>;
+export interface TrancheCorrection { at: string; sharesBefore: number; sharesAfter: number;
+    purchasePriceBefore: Euro; purchasePriceAfter: Euro; reason: 'depotauszug' | 'split'; }
 export interface Tranche { schemaVersion: 2; trancheId: string; name: string; isin: string; ticker: string; shares: number;
     purchasePrice: Euro; currentPrice: Euro; asOf?: number; purchaseDate: string | null;
     category: 'equity' | 'bonds' | 'money_market' | 'gold'; type: 'aktien_alt' | 'aktien_neu' | 'anleihe' | 'geldmarkt' | 'gold';
-    tqf: number; taxExempt: boolean; notes: string; }
+    tqf: number; taxExempt: boolean; notes: string; correctionHistory?: TrancheCorrection[]; legacyCorrectionAt?: IsoDate; }
 /** V0/1 ohne kanonische IDs/Steuerflags: der Tranchevalidator besitzt die Lese-Normalisierung. */
 export type TrancheAlt = Partial<Omit<Tranche, 'schemaVersion'>> & { schemaVersion?: 0 | 1; id?: string; };
 export interface ProbelaufState { version: 2; active: true; phase: 'starting' | 'active'; source: 'copy' | 'demo'; runtime: 'browser' | 'tauri';

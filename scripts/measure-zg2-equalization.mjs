@@ -72,7 +72,8 @@ async function observe(runIndex, deathYearIndex) {
         // Die Initialisierung darf eine JSDoc-Zusicherung tragen; der Haltepunkt bleibt dieselbe Deklaration.
         ['after_returns', marketFile, 'const balanceTrace ='],
         ['before_payout', payoutFile, 'const personalPayout = unmarried'],
-        ['after_payout', payoutFile, 'const jahresEntnahmeEffektiv = payout;'],
+        // FR-81: Die Entnahme kann bei Unverheirateten nach einer Flex-Kürzung kleiner sein; der Haltepunkt bleibt dieselbe Deklaration.
+        ['after_payout', payoutFile, 'const jahresEntnahmeEffektiv = flexCut'],
         ['before_inheritance', inheritanceFile, 'const rule = testamentRule(inputs.partnership, deceasedProfileId);']
     ];
     try {

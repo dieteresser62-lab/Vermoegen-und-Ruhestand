@@ -1,5 +1,6 @@
 import { resolveCareSetting } from '../shared/care-cost-resolver.js';
 import { resolveCarePrices } from '../shared/care-prices.js';
+import { careDriftInputPatch, resolveCareDriftSchedule } from '../shared/care-cost-drift.js';
 import { careSettingsStorage, sharesHouseholdCareValues } from '../shared/care-profile-settings.js';
 import { persistenceStorage } from '../shared/persistence-facade.js';
 import { readCareValues, officialCareCosts, careValuesInputPatch } from '../shared/household-care-values.js';
@@ -16,7 +17,6 @@ import { readChecked, readInt, readNumber, readValue } from './simulator-input-d
 import { CARE_FLEX_DEFAULT_PERCENT, CARE_MORTALITY_DEFAULT_FACTORS } from './simulator-care-flex.js';
 import { residentialOwnExpensesInputPatch } from './simulator-residential-care.js';
 
-const DEFAULT_PFLEGE_DRIFT_PCT = 5;
 
 /**
  * Normalizes a persisted/UI percentage to the simulator's ratio contract.
@@ -64,6 +64,12 @@ export function readCareInputs({ gender = 'w', doc = globalThis.document, storag
     const rawPflegeMax = readInt('pflegeMaxDauer', NaN, doc);
     const normalizedCareDuration = normalizeCareDurationRange(rawPflegeMin, rawPflegeMax, gender);
     const driftPctRaw = readNumber('pflegeKostenDrift', NaN, doc);
+    const untilRaw = readInt('pflegeKostenDriftBis', NaN, doc), afterRaw = readNumber('pflegeKostenDriftDanach', NaN, doc);
+    const storedAfter = String(careSettingsStorage(storage).getItem('sim_pflegeKostenDriftDanach') ?? '').trim();
+    const scheduleStored = storedAfter !== '' && Number.isFinite(Number(storedAfter.replace(',', '.')));
+    // GN-2c (Gemini P3-1): wie `resolveCarePrices` (Fable P3-7). Ist die erste Rate im Preisblock markiert, zählt nur der Block;
+    // `sim_`-Verlaufsfelder gelten nur ohne markierte erste Rate.
+    const schedule = prices.scheduleMarked || !prices.driftMarked && scheduleStored;
     const regionalRaw = readNumber('pflegeRegionalZuschlag', NaN, doc);
 
     return {
@@ -79,8 +85,13 @@ export function readCareInputs({ gender = 'w', doc = globalThis.document, storag
         pflegeMinDauer: normalizedCareDuration.minYears,
         pflegeMaxDauer: normalizedCareDuration.maxYears,
         // Gutachten PFA-2, Befund 6: Ein im Preisblock markierter Kostenanstieg ist bewusste Eingabe und wird nicht umgedeutet.
-        pflegeKostenDrift: normalizeCareCostDriftPercent(prices.driftMarked ? (Number.isFinite(driftPctRaw) ? Math.max(0, driftPctRaw) : prices.driftPercent)
-            : resolveCareSetting('sim_pflegeKostenDrift', Number.isFinite(driftPctRaw) ? driftPctRaw : null), DEFAULT_PFLEGE_DRIFT_PCT),
+        // FR-73 Punkt 8 geändert: Wechseljahr und Rate danach zählen nur, wenn sie bewusst gesetzt sind; sonst Altbestandsregel.
+        // Das Kalenderjahr von Index 0 ergänzt getCommonInputs (`pflegeKostenStartJahr`).
+        ...careDriftInputPatch(resolveCareDriftSchedule({
+            firstPercent: Math.max(0, prices.driftMarked ? (Number.isFinite(driftPctRaw) ? driftPctRaw : prices.driftPercent)
+                : resolveCareSetting('sim_pflegeKostenDrift', Number.isFinite(driftPctRaw) ? driftPctRaw : null)),
+            untilYear: schedule ? (Number.isInteger(untilRaw) ? untilRaw : prices.driftUntilYear) : null,
+            afterPercent: schedule ? (Number.isFinite(afterRaw) ? Math.max(0, afterRaw) : prices.driftAfterPercent) : null }), null),
         pflegeRegionalZuschlag: Math.max(0, Number.isFinite(regionalRaw) ? regionalRaw : 0) / 100,
         // FR-72 Punkt 3: wie die Pflegewerte erst bei Abweichung von der Vorgabe übergeben.
         ...residentialOwnExpensesInputPatch(prices.stored ? numberOr(readValue('pflegeHeimEigeneAusgaben', null, doc), prices.ownExpensesMonthly)

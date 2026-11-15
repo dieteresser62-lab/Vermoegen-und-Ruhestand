@@ -16,6 +16,9 @@ import { deathYearCashShare, deathYearTransactionView } from '../simulator-death
 import { unmarriedInvestmentReserves } from '../simulator-unmarried.js';
 import { SIMULATOR_TECHNICAL_ERROR_CODES, buildTechnicalErrorOutcome } from './outcomes.js';
 import { restoreEngineBoundaryPortfolio, alignEngineInflationContract } from './engine-boundary.js';
+import { carrierYear, carrierHoldings } from './action-plan.js';
+import { activeCarrier } from '../../profile/household-withdrawal-mode.js';
+import { carrierTransactionView } from '../../profile/household-carrier-action.js';
 /** @typedef {import('./year-market.js').YearContext & NonNullable<ReturnType<typeof decideYear>['state']>} YearContext */
 /** @param {import('./year-market.js').YearContext} context */
 export function decideYear(context) {
@@ -231,8 +234,17 @@ export function decideYear(context) {
             plannedWithdrawalResolution.annualWithdrawal, plannedExpense, pensionResult, fixedIncome, incomeLog)
             : personalWithdrawalPlan(personalProfiles(portfolio, inputs), plannedWithdrawalResolution.annualWithdrawal + plannedExpense,
                 inputs.householdWithdrawalMode).items.map(item => ({ profileId: item.profileId, amount: item.withdrawalAmount })) });
-    if (deathYearView) {
-        engineInput.transactionView = deathYearView.engineView;
+    // LZ-1 (Ergänzung 2 FR-80): Bei „Eine Person trägt“ entscheidet die Engine Auffüllen und Anlegen erneut, nur mit Tagesgeld und
+    // Geldmarkt der tragenden Person (wie die Balance). Ausgaben und Ziel bleiben beim Haushalt; reicht ihr Vermögen nicht, Rückgriff wie bisher.
+    const accounts = /** @type {any[]} */ (portfolio.personAccounts || []);
+    const carrier = deathYearView || accounts.length < 2 || !activeCarrier(inputs.householdWithdrawalMode, accounts) ? null : carrierYear({ portfolio, inputs, unmarried, unmarriedShares,
+        ownReserves: unmarried ? unmarriedInvestmentReserves(portfolio, inputs, unmarriedShares, plannedWithdrawalResolution.annualWithdrawal,
+            plannedExpense, pensionResult, fixedIncome, incomeLog) : null,
+        withdrawal: plannedWithdrawalResolution.annualWithdrawal + plannedExpense });
+    const transactionView = deathYearView ? deathYearView.engineView
+        : carrier ? carrierTransactionView(accounts.find(row => row.profileId === carrier.carrierId), carrierHoldings(portfolio, inputs, carrier.carrierId)) : null;
+    if (transactionView) {
+        engineInput.transactionView = transactionView;
         const viewRun = runEngine();
         if (viewRun.outcome) return { outcome: viewRun.outcome };
         fullResult = viewRun.result;

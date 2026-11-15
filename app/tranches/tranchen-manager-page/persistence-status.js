@@ -27,8 +27,6 @@ export function clearRawPreview() {
 export function renderPersistenceState() {
     state.navigationRegistration?.notify();
     notifyManagerModalState();
-    const saleRetry = byId('retrySaleSaveBtn');
-    if (saleRetry) saleRetry.hidden = !state.pendingReconciliation;
     const recovery = byId('trancheRecoveryActions');
     const retryLoad = byId('retryTrancheLoadBtn');
     const retrySave = byId('retryTrancheSaveBtn');
@@ -51,7 +49,6 @@ export function renderPersistenceState() {
     if (retryLoad) retryLoad.hidden = !isUnavailable;
     if (retrySave) retrySave.hidden = !state.pendingCommit
         && !state.pendingProfileValues
-        && !state.pendingReconciliation
         && !state.pendingCashPosting;
     setManagerControlsBlocked(processingIsBlocked());
 

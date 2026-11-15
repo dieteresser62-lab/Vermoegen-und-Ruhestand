@@ -40,7 +40,9 @@ export const cashRebalanceMethods = {
             }
             return amounts;
         };
-        const deficits = balances.map(row => Math.max(0, -row.gap));
+        // TR-2 (Ergänzung 1 FR-80): Bei „Eine Person trägt“ bekommt die andere Person keine Aufträge, auch keine Umschichtung.
+        const held = entries.map(entry => entry.action?.carrierHold === true);
+        const deficits = balances.map((row, i) => held[i] ? 0 : Math.max(0, -row.gap));
         const refills = allocate(deficits, balances.map((row, i) => Math.min(deficits[i], row.available)));
         for (const [i, amount] of refills.entries()) if (amount > 0) transfers[i] = {
             from: 'Geldmarkt-ETF', to: 'Tagesgeld', amount };
@@ -59,9 +61,10 @@ export const cashRebalanceMethods = {
             return Math.max(0, entry.input?.tagesgeld || 0) - (balances[i].split?.fromTagesgeld || 0)
                 + (action.verwendungen?.liquiditaet || 0) - (action.liquidityInflowToMoneyMarket || 0) - (action.cashOutflowTax || 0);
         });
-        const householdCashTarget = entries.reduce((sum, entry) => sum + this._resolveZielTagesgeld(entry.spending, entry.targetLiquidity, entry.input), 0);
-        const surplus = cashAfterRefill.map((cash, i) => transfers[i] || priced[i]?.unknown ? 0 : Math.max(0, cash - this._resolveZielTagesgeld(entries[i].spending, entries[i].targetLiquidity, entries[i].input)));
-        const cashAvailable = cashAfterRefill.reduce((sum, cash, i) => sum + (priced[i]?.unknown
+        // RK-2 (Fable P3-6): Bei „Eine Person trägt“ zählen Ziel und Bestand der anderen Person nicht für die Obergrenze der Umschichtung.
+        const householdCashTarget = entries.reduce((sum, entry, i) => held[i] ? sum : sum + this._resolveZielTagesgeld(entry.spending, entry.targetLiquidity, entry.input), 0);
+        const surplus = cashAfterRefill.map((cash, i) => held[i] || transfers[i] || priced[i]?.unknown ? 0 : Math.max(0, cash - this._resolveZielTagesgeld(entries[i].spending, entries[i].targetLiquidity, entries[i].input)));
+        const cashAvailable = cashAfterRefill.reduce((sum, cash, i) => held[i] ? sum : sum + (priced[i]?.unknown
             ? Math.max(0, entries[i].input?.tagesgeld || 0) : cash), 0);
         const joint = entries.some(entry => entry.input?.jointAssessment || entry.action.taxSettlement?.jointAssessment);
         const safeSurplus = joint && priced.some(row => row?.unknown) ? 0 : Math.max(0, cashAvailable - householdCashTarget);
@@ -72,7 +75,7 @@ export const cashRebalanceMethods = {
             const action = this._integrateCashRebalance(entry.action, transfers[i], entry.input, entry.spending, entry.targetLiquidity, priced[i]);
             const split = balances[i].split;
             const amount = transfers[i]?.to === 'Geldmarkt-ETF' ? transfers[i].amount : 0;
-            return { ...entry, action, tagesgeldTarget: balances[i].target, cashSplit: amount > 0 ? { zielTagesgeld: this._resolveZielTagesgeld(entry.spending, entry.targetLiquidity, entry.input),
+            return { ...entry, action, tagesgeldTarget: balances[i].target, ...(held[i] && balances[i].gap < -0.5 ? { heldBelowTarget: true } : {}), cashSplit: amount > 0 ? { zielTagesgeld: this._resolveZielTagesgeld(entry.spending, entry.targetLiquidity, entry.input),
                 fromTagesgeld: (split?.fromTagesgeld || 0) + amount, fromGeldmarkt: split?.fromGeldmarkt || 0,
                 totalOutflow: (split?.totalOutflow || 0) + amount } : split };
         });

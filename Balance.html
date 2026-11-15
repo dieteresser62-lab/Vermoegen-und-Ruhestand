@@ -41,7 +41,7 @@
                 </button>
                 <a href="index.html" data-profile-handoff aria-label="Übersicht" title="Übersicht"><span data-suite-icon="house" aria-hidden="true"></span><span>Übersicht</span></a>
                 <a href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false" aria-label="Personen &amp; Vermögen – Rente, Depot, Gold" title="Personen &amp; Vermögen"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Personen &amp; Vermögen<small class="ds-navigation-subtitle">Rente, Depot, Gold</small></span></a>
-                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
+                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="receipt-text" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
                 <a href="Balance.html" data-profile-handoff aria-current="page" aria-label="Balance – Jahresplanung" title="Balance"><span data-suite-icon="scale" aria-hidden="true"></span><span>Balance<small class="ds-navigation-subtitle">Jahresplanung</small></span></a>
                 <a href="Simulator.html" data-profile-handoff aria-label="Simulator" title="Simulator"><span data-suite-icon="chart-no-axes-combined" aria-hidden="true"></span><span>Simulator</span></a>
                 <a href="Handbuch.html" data-profile-handoff aria-label="Handbuch" title="Handbuch"><span data-suite-icon="book-open" aria-hidden="true"></span><span>Handbuch</span></a>
@@ -101,9 +101,9 @@
 <div id="balanceWithdrawalPlan" class="monthly-flow-detail" hidden></div>
 <div id="balanceIncomeSurplusNote" class="monthly-flow-detail" hidden>angelegt: aufs Tagesgeld, dann nach den Regeln der App</div>
 </div>
-<div class="monthly-flow-footer"><div id="balanceBudgetChips" class="balance-budget-notes"></div><p id="balancePlannedExpensesNote" class="monthly-flow-detail"></p><p class="balance-expenses-summary"><a id="balanceExpensesSummary" href="Ausgaben.html#ausgaben" data-profile-handoff>Ausgabenstand noch nicht verfügbar</a></p></div><details class="ds-technical-details" id="entnahme-breakdown" style="margin-top: 10px; display: none;">
+<div class="monthly-flow-footer"><div id="balanceBudgetChips" class="balance-budget-notes"></div><p id="balancePlannedExpensesNote" class="monthly-flow-detail"></p><p class="balance-expenses-summary"><a id="balanceExpensesSummary" href="Ausgaben.html#ausgaben" data-profile-handoff>Ausgabenstand noch nicht verfügbar</a></p></div><details class="ds-technical-details balance-breakdown" id="entnahme-breakdown" hidden>
                     <summary>Details zur Entnahme</summary>
-                    <div style="margin-top: 10px; font-size: var(--balance-help); line-height: 1.5;" id="entnahmeDetailsContent">
+                    <div class="balance-breakdown-content" id="entnahmeDetailsContent">
                     </div>
                 </details></section>
 <section class="ds-plan-card ov-need" aria-labelledby="h-ov-need"><div class="ds-plan-card-head"><h3 id="h-ov-need">Dein Bedarf</h3><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung Bedarf" aria-expanded="false" aria-describedby="info-Bedarf" aria-controls="info-Bedarf">ⓘ</button><span class="ds-info-pop" id="info-Bedarf" role="tooltip">Floor ist der Basisbedarf; Flex deckt Extras. Die bestehende Flex-Rate bestimmt den finanzierten Anteil.</span></span></div><div><div id="balanceNeedTotal" class="balance-card-number">—</div><div class="ds-source">Bedarf gesamt laut Plan · im Monat</div></div><div id="balanceNeedRows"></div><div id="balanceCareHint" class="ds-note" data-care-hint hidden></div><p id="balanceFloorCoverage" class="ds-hint"></p><strong id="neuerBedarf" hidden>—</strong><div id="balanceNeedProfiles" hidden></div><button type="button" class="ds-mini-button balance-text-action" data-balance-tab="strategy"><svg class="balance-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Bedarf &amp; Strategie anpassen</button></section>
@@ -290,14 +290,14 @@
       <div class="balance-action-dialog-head"><h2 id="actionDetailsTitle">Handlungsanweisung</h2><div class="balance-action-dialog-amount"><div id="actionDetailsAmountLabel" class="ds-source"></div><strong id="actionDetailsAmount"></strong></div></div>
       <div id="handlungsanweisung" title="Vollständige Handlungsempfehlung"></div><div id="balancePlanDetails" class="balance-plan-details" hidden></div>
       <aside class="hint ds-note balance-action-note" role="note"><div id="actionDetailsNote" class="ds-explanation">Die Empfehlung bucht nichts <span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung zur Empfehlung" aria-expanded="false">i</button><span class="ds-info-pop" role="tooltip">Die Empfehlung bucht nichts. Balance rechnet mit dem vorhandenen Bestand.</span></span></div></aside>
-      <div class="balance-dialog-actions balance-action-dialog-primary"><a id="actionManagerLink" class="ds-button balance-button-brass" href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false">Vermögen öffnen →</a><button id="copyAction" type="button" class="ds-button ds-button-secondary"><svg class="balance-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>Als Text kopieren</button></div>
+      <div class="balance-dialog-actions balance-action-dialog-primary"><button id="actionSaleStart" type="button" class="ds-button ds-button-primary" hidden>Verkauf starten</button><button id="actionBuyStart" type="button" class="ds-button ds-button-secondary" hidden>Kauf starten</button><a id="actionManagerLink" class="ds-button balance-button-brass" href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false">Vermögen öffnen →</a><button id="copyAction" type="button" class="ds-button ds-button-secondary"><svg class="balance-button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" focusable="false"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>Als Text kopieren</button></div>
       <div class="ds-actions"><button id="balancePlayExecute" type="button" class="ds-button ds-button-secondary" hidden>Als ausgeführt eintragen</button><button id="balancePlayCredit" type="button" class="ds-button ds-button-primary" hidden>Gutschrift bestätigen</button><span id="balancePlayCreditAmount" class="ds-source"></span></div>
       <p id="balancePlayExecutionStatus" class="ds-source" role="status"></p>
       <div id="actionPurposeContent"></div>
       <div id="print-footer"></div>
     </dialog>
 <!-- Modal: Jahres-Update Ergebnis -->
-    <div id="updateResultModal" class="modal" style="display: none;">
+    <div id="updateResultModal" class="modal" hidden>
         <div class="modal-overlay"></div>
         <div class="modal-content ds-card">
             <div class="modal-header">
@@ -314,17 +314,16 @@
         </div>
     </div>
 
-    <div id="devTools"
-        style="display:none; position:fixed; bottom:10px; right:10px; background:var(--text-main); color:var(--surface); padding:10px; border-radius:5px; z-index:9999;">
-        <div style="margin-bottom:8px;">
+    <div id="devTools" class="balance-dev-tools" hidden>
+        <div class="balance-dev-tools-row">
             <label>
                 <input type="checkbox" id="telemetryToggle" class="ds-checkbox" />
                 Worker-Diagnose
             </label>
         </div>
-        <div style="display:flex; gap:8px;">
-            <button id="printTelemetry" style="padding:4px 8px; cursor:pointer;" class="ds-button ds-button-secondary">Bericht anzeigen</button>
-            <button id="exportTelemetry" style="padding:4px 8px; cursor:pointer;" class="ds-button ds-button-secondary">Export JSON</button>
+        <div class="balance-dev-tools-actions">
+            <button id="printTelemetry" class="ds-button ds-button-secondary balance-dev-tools-button">Bericht anzeigen</button>
+            <button id="exportTelemetry" class="ds-button ds-button-secondary balance-dev-tools-button">Export JSON</button>
         </div>
     </div>
     <script>
@@ -335,7 +334,7 @@
             const exportBtn = document.getElementById('exportTelemetry');
 
             if (devTools && toggle) {
-                devTools.style.display = 'block';
+                devTools.hidden = false;
                 toggle.checked = localStorage.getItem('enableWorkerTelemetry') === 'true';
                 toggle.addEventListener('change', e => {
                     localStorage.setItem('enableWorkerTelemetry', e.target.checked);

@@ -3,9 +3,10 @@
  * mit denen Balance, Simulator, Jahresabschluss und Personenkarten rechnen. Geschrieben wird über denselben Weg wie im
  * Simulator (`care-price-fields.js`); Lesen schreibt nie. Bei einer Außenperson zeigt und ändert der Bereich ihre
  * eigenen Werte, wie der Simulator. Seit UR-1 stehen die Werte in Aufklappzeilen (`tranchen-manager-care-rows.js`). */
+import { CARE_DRIFT_YEAR_RANGE } from '../shared/care-cost-drift.js';
 import { PersistenceFacade, persistenceStorage } from '../shared/persistence-facade.js';
 import { CARE_FORMS } from '../shared/care-benefits.js';
-import { CARE_RECORD_FIELDS, CARE_RECORD_LIMITS, careRecordLimitText, PFLEGE_COST_PRESETS, readCareFieldValues, writeCarePreset, writeCareRecordField, writeCareSettingField } from '../shared/care-price-fields.js';
+import { CARE_RECORD_FIELDS, CARE_RECORD_LIMITS, careRecordLimitText, PFLEGE_COST_PRESETS, readCareFieldValues, writeCarePreset, writeCareRecordField, writeCareSettingField, validCareDriftYear } from '../shared/care-price-fields.js';
 import { officialCareCosts, readCareValues, residentialComponents, residentialMonthly } from '../shared/household-care-values.js';
 import { resolveCarePrices } from '../shared/care-prices.js';
 import { careSettingsStorage, sharesHouseholdCareValues } from '../shared/care-profile-settings.js';
@@ -104,11 +105,21 @@ export function renderManagerCareValues(doc, { storage = persistenceStorage } = 
         }
         setText(doc, `managerCareMonthly${grade}`, residential ? 'Heimkosten' : euro(annual / 12));
     }
-    const fields = [['managerCareMaxFloor', 'pflegeMaxFloor'], ['managerCareDrift', 'pflegeKostenDrift'], ['managerCareOwnExpenses', 'pflegeHeimEigeneAusgaben'],
+    const fields = [['managerCareMaxFloor', 'pflegeMaxFloor'], ['managerCareOwnExpenses', 'pflegeHeimEigeneAusgaben'],
         ['managerCareRegional', 'pflegeRegionalZuschlag'], ...GRADES.map(grade => [`managerCareFlex${grade}`, `pflegeStufe${grade}FlexCut`])];
     for (const [id, field] of fields) {
         const input = /** @type {HTMLInputElement|null} */ (doc.getElementById(id));
         if (input && doc.activeElement !== input) input.value = displayDecimalInput(values[field], input);
+    }
+    // FR-73 Punkt 8 geändert: Verlauf des Kostenanstiegs, das Jahr ohne Tausenderpunkt. GN-2b (Fable P2-2): Auch ein Feld mit
+    // Fokus zeigt nach dem Speichern den wirksamen Wert, solange dort seit dem letzten Zeichnen nichts getippt wurde.
+    for (const [id, text] of /** @type {[string, (input: HTMLInputElement) => string][]} */ ([
+        ['managerCareDrift', input => displayDecimalInput(values.pflegeKostenDrift, input)],
+        ['managerCareDriftUntil', () => String(values.pflegeKostenDriftBis ?? '')],
+        ['managerCareDriftAfter', input => displayDecimalInput(values.pflegeKostenDriftDanach, input)]])) {
+        const input = /** @type {HTMLInputElement|null} */ (doc.getElementById(id));
+        if (!input || doc.activeElement === input && input.value !== input.dataset.renderedValue) continue;
+        input.value = text(input); input.dataset.renderedValue = input.value;
     }
     const components = residentialComponents(careValues.residential);
     // UR-2: Pflegegeld und Heim-Bestandteile als Felder; sie gehören dem Haushalt, eine Außenperson sieht sie nur.
@@ -181,6 +192,16 @@ export function bindManagerCareValues(doc, { openPerson = () => {}, blocked = ()
             fieldReason(field, '');
             void commit(() => writeCareRecordField(id, canonical));
             return;
+        }
+        // GN-2b (Gemini 5): Das letzte Jahr der ersten Rate ist ein ganzes Jahr von 2026 bis 2100; sonst wird nichts gespeichert.
+        // GN-2c (Gemini P3-2): auch leer oder negativ mit der Jahresmeldung am Feld, vor der allgemeinen Betragsprüfung.
+        if (id === 'pflegeKostenDriftBis') {
+            if (!validCareDriftYear(canonical)) {
+                const reason = `Bitte ein ganzes Jahr von ${CARE_DRIFT_YEAR_RANGE.min} bis ${CARE_DRIFT_YEAR_RANGE.max} eintragen; der bisherige Wert bleibt.`;
+                fieldReason(field, reason); status(`Nicht gespeichert: ${reason}`); renderManagerCareValues(doc);
+                return;
+            }
+            fieldReason(field, '');
         }
         if (canonical === '' || canonical === 'NaN' || Number(canonical) < 0 || (flexLevel && Number(canonical) > 100)) {
             status(flexLevel ? 'Bitte ein Flex-Level von 0 bis 100 % eintragen; der bisherige Wert bleibt.' : 'Bitte einen Betrag ab 0 eintragen; der bisherige Wert bleibt.');

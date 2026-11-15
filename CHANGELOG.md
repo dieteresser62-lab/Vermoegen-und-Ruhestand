@@ -2,16 +2,59 @@
 
 ## Aktuelle dokumentierte Fassung
 
-Stand 12. November 2026.
+Stand 15. November 2026.
 
 ### Was sich an deinen Zahlen ändert
+
+- Bei Paaren, die nicht verheiratet sind, endet ein Lauf seltener mit „Persönlicher Ausgabenanteil ungedeckt“. Fehlt einer Person nur ihr Anteil am Flex, kürzt die App den Flex. Ruin gilt erst, wenn ihr Anteil am Grundbedarf fehlt.
+- Bei mehreren Tranchen desselben Wertpapiers verkauft die App wie die Bank die ältesten Stücke zuerst. Bis zum ersten Todesfall ändert sich nichts. Danach kann der Simulator leicht abweichen, weil geerbte Tranchen nun in dieser Reihenfolge verkauft werden.
+- Der Kostenanstieg der Pflege ist gestuft: 5 % pro Jahr bis 2035, danach 2 %.
+- Im Modus „Eine Person trägt“ hält die tragende Person die volle Reserve selbst. Sie verkauft dafür mehr als vorher; das Tagesgeld der anderen Person zählt nicht mit.
+
+### Verkauf und Kauf geführt
+
+- Verkauf und Kauf laufen in Schritten: Überblick, Merkzettel für die Bank, Abrechnung, Gutschrift oder Abbuchung, bei Verkäufen zuletzt die Verteilung des Geldes. Teilausführungen und mehrere Personen gehen in einem Durchgang.
+- Die Abrechnung nimmt Stück, Kurs, Gebühren und Steuern auf. Die Gutschrift bzw. Abbuchung bestätigst du mit dem Kontostand vom Tagesgeld.
+- Die Karte „Was zu tun ist“ geht auf den Euro auf: Plan gleich verkauft plus offen, dazu „weniger als geplant“ oder „mehr als geplant“, wenn du das so entschieden hast.
+- „Kauf rückgängig“ setzt auf Wunsch auch das Tagesgeld zurück.
+
+### Eine Person trägt
+
+- In Haushalt & Plan wählst du, ob eine Person die Entnahme allein trägt. Die andere Person bekommt dann keine Aufträge; ihr Vermögen bleibt unberührt, solange die tragende Person reicht.
+- Reicht das Vermögen der tragenden Person nicht für die volle Reserve, steht ein Hinweis „Reserve unter Ziel“.
+
+### Tranche im Detail
+
+- Die Tranche öffnet als Ansicht mit fünf Kennzahlen: Stück, Einstand, Wert heute, Gewinn und Steuer bei Verkauf. „wie gerechnet?“ erklärt die Steuer in Klartext.
+- Die Stückzahl änderst du über „ändern“ an der Kachel. Bei einem Aktiensplit bleibt der Einstand gleich und der Kaufpreis je Stück wird umgerechnet.
+- Der Verlauf zeigt den ursprünglichen Kauf und jede Korrektur mit vorher und nachher. Ab fünf Einträgen ist er verkürzt.
+- Name, ISIN, Kursabruf, Anlageform, Steuerart und Kauf stehen eingeklappt unter „Angaben zum Wertpapier“. Die Notiz speichert beim Verlassen des Felds.
+- Der Bestand ergibt sich aus dem Kaufdatum: vor 2009 Altbestand, sonst Neubestand. Passt bei vorhandenen Tranchen beides nicht zusammen, steht ein Hinweis da; die App ändert nichts von selbst. Die Steuer hängt nicht am Bestand, sondern an Einstand, Teilfreistellung und „Ganz steuerfrei“.
+
+### Eingaben und Gestaltung
+
+- Personen & Vermögen sieht aus wie Balance und Übersicht. Betragsfelder haben einen €-Rahmen, Gebühren und Steuern stehen mit Cent.
+- Tagesgeld steht überall in ganzen Euro.
+- Beim Tippen bleibt der Cursor im Feld; automatisches Speichern sperrt keine Felder mehr.
+- Ziehen mit der Maus aus einem Feld über den Fensterrand schließt kein Fenster mehr.
+
+### Beispiele
+
+- Neue Variante „Max und Erika · Nachkäufe desselben ETF“ für die Bankreihenfolge.
+- Martin und Petra haben die Variante „Martin trägt“.
+
+## Frühere Fassungen
+
+### Gerundete Anzeige, Fondskosten und Lebenserwartung
+
+#### Was sich an deinen Zahlen ändert
 
 - Erfolgsquoten im Simulator sinken. Die App rechnet mit einer längeren Lebenserwartung, simuliert bis zum Alter 110 und zieht Fondskosten von der Aktienrendite ab.
 - Mit Dynamic Flex sinkt das Monatsbudget in Balance und Simulator. Fondskosten mindern die erwartete Rendite, und der längere Horizont verteilt das Vermögen auf mehr Jahre.
 - Gespeicherte Rentenanpassungen bleiben, wie sie sind. Wer „wie Löhne“ eingestellt hat, rechnet weiter damit und sieht dazu einen Hinweis.
 - Ergebnisse, die vor dieser Fassung gerechnet wurden, zeigt die Übersicht einmal als veraltet. Ein Backtest ohne Dynamic Flex bleibt gültig.
 
-### Gerundete Anzeige
+#### Gerundete Anzeige
 
 - Beträge, die die App berechnet, stehen gerundet da: unter 10.000 € auf 500 €, unter 25.000 € auf 1.000 €, unter 50.000 € auf 2.500 €, unter 200.000 € auf 5.000 €, unter 1 Mio. € auf 10.000 €, darüber auf 25.000 €. Monatswerte runden auf 50, 100 oder 250 €.
 - Was du brauchst oder ausgibst, wird aufgerundet: Bedarf, Ziele, Verkäufe, Steuer, „Tagesgeld auffüllen“. Was dir zur Verfügung steht, wird abgerundet: Budget, Flex, Käufe, Liquidität nach Umsetzung. Der Jahreswert ist der gerundete Monatswert mal 12.
@@ -19,7 +62,7 @@ Stand 12. November 2026.
 - Summen, Stände „nach Umsetzung“ und Differenzen entstehen aus den angezeigten Beträgen und gehen deshalb auf. Die Budgetzeile nennt Einkünfte und Entnahme ohne Summe, weil die Einkünfte genau bleiben.
 - Das gilt im Balance-Überblick, in „Was zu tun ist“, „Deine Reserven“, im Jahresabschluss und in der Übersicht.
 
-### Balance
+#### Balance
 
 - Die Karte „Was zu tun ist“ ersetzt im Überblick Handlungsanweisung, Budgetprüfung und Marktphase. Sie zeigt oben den Plan aus dem Jahresabschluss mit Stand je Zeile: „Offen“, „Teilweise erledigt“ oder „Erledigt“. Der Stand kommt aus den eingetragenen Verkäufen seit dem Beschluss.
 - Eine Planzeile gilt als erledigt, sobald etwas verkauft ist und höchstens eine halbe Rundungsstufe fehlt; mehr verkaufen zählt auch. Vorher galt eine feste Grenze von 98 %.
@@ -30,12 +73,12 @@ Stand 12. November 2026.
 - „Deine Reserven“ steht rechts unter „Was zu tun ist“. „nach Umsetzung“ zählt nur den Teil der Anweisung, den du noch nicht als Verkauf eingetragen hast. Die Marktphase steht unter „Diagnose“.
 - Fehlt nur der Betrag, den die Abrundung der Monatsentnahme weglässt, gilt der Flex als voll finanziert. Die App meldet dann keine Kürzung; der Abschlussbeleg nennt die Rundung.
 
-### Jahresabschluss
+#### Jahresabschluss
 
 - Der Schritt „Plan“ zeigt, wie weit der alte Plan umgesetzt ist, und den neuen Plan als Karte „Was zu tun ist“.
 - Den Vergleich mit dem Jahreshoch gibt es nur noch bei einem verdeckten Bärenmarkt. Dann wählst du im Schritt „Plan“ ohne Vorauswahl zwischen „Nach Kursen zum Jahresende“ und „Mit dem Jahreshoch vom …“. Sonst gilt die Jahresendregel ohne Rückfrage.
 
-### Planwerte
+#### Planwerte
 
 - Neue Personen und Beispiele starten mit der Rentenanpassung „wie Inflation“. „wie Löhne“ bleibt wählbar; ein Hinweis erklärt, warum die Lohnreihe als Rentenannahme optimistisch ist.
 - „Laufende Kosten Aktien-ETF“ ist ein Planwert in Haushalt & Plan unter „Weitere Planwerte › Fondskosten“, vorbelegt mit 0,5 % pro Jahr. Backtest und Monte Carlo ziehen ihn jedes Jahr von der Aktienrendite ab; Gold und Geldmarkt bleiben ohne Abschlag. Mit Dynamic Flex mindert er auch die erwartete Rendite. Im Simulator probierst du einen anderen Wert mit „Nur hier ausprobieren“ aus.
@@ -43,19 +86,18 @@ Stand 12. November 2026.
 - Übergang: Ein Jahresplan, der vor dem 11.11.2026 beschlossen wurde, behält bis zum nächsten Beschluss seine alte Bedeutung. Sein Monatsbudget bleibt gleichmäßig, und der Import bietet feste Ausgaben in diesem Jahr weiter zur Zuordnung an.
 - Der Kostenanstieg der Pflege heißt überall „Inflation + …“.
 
-### Lebenserwartung und Pflege
+#### Lebenserwartung und Pflege
 
 - Monte Carlo und Planungshorizont rechnen mit der Kohortensterbetafel V2 des Statistischen Bundesamts für den Geburtsjahrgang jeder Person. Vorher galt die Periodentafel 2023/2025; sie dient jetzt nur noch der Pflegeabstimmung. Für 60- bis 70-Jährige liegt die Lebenserwartung dadurch 0,7 bis 1,6 Jahre höher.
 - Wer heute ohne Pflegegrad ist, lebt im Modell im Mittel so lange wie die Tafel, auch mit gezogenem Pflegefall. Ein eingetragener Pflegegrad verkürzt das Leben, auch mit langsamerem Verlauf.
 - Pflegeeintritt und Gradfortschritt sind auf die neue Sterblichkeit abgestimmt. Menschen in Pflege leben im Modell länger, ein Pflegefall dauert deshalb länger als vorher.
 - „Maximale Dauer“ in Monte Carlo ist leer und damit automatisch: bis die jüngste Person 110 wäre. Eine gespeicherte 35, die frühere Vorgabe, gilt als automatisch. Auch Auto-Optimize rechnet mit dieser Dauer statt fest mit 35 Jahren.
 
-### Beispiele
+#### Beispiele
 
 - Neue Variante „Plan teilweise umgesetzt“ bei Max und Erika: Sie zeigt den Stand eines halb erledigten Jahresplans und „Gutschrift nachtragen“. Die Variante „Markt erst heiß, dann Rückgang“ führt jetzt zum verdeckten Bärenmarkt im Jahresabschluss.
 - Renate hat Übungen zur Rentenanpassung und zu den Fondskosten.
 
-## Frühere Fassungen
 
 ### Pflege, Haushalte und Abschlüsse
 

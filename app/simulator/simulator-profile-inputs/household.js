@@ -1,4 +1,5 @@
 import { localCalendarDate } from '../../shared/app-clock.js';
+import { dropUnusedCareDrift } from '../../shared/care-cost-drift.js';
 import { HOUSEHOLD_CURRENT_LIMIT_MESSAGE } from '../../profile/profile-registry.js';
 import { readSimulatorHouseholdPlan, projectPlanToSimulatorProfile } from '../../profile/household-plan.js';
 import { buildProfileAssetRecord } from './tranches.js';
@@ -321,5 +322,6 @@ export function combineSimulatorProfiles(profileInputs, primaryProfileId, { plan
         Object.assign(merged, projectPlanToSimulatorProfile(planValues));
         delete merged.minimumFlexProfiles;
     }
-    return { combined: merged, warnings };
+    // GN-2b (Fable P3-4): Ungenutzten Verlauf erst nach der Kombination streichen, wenn auch der Partner bekannt ist.
+    return { combined: dropUnusedCareDrift(merged), warnings };
 }

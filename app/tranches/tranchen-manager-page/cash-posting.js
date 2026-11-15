@@ -18,13 +18,13 @@ export function openCashStatusWorkflow(targetActionId, mode, opener = null) {
     if (processingIsBlocked()) return false;
     const status = state.reconciliationCashStatuses.find(item => item.targetActionId === targetActionId);
     if (!status) {
-        state.reconciliationError = `Cashstatus für Zielverkauf ${targetActionId} ist nicht mehr verfügbar.`;
+        state.reconciliationError = 'Diesen Verkauf gibt es nicht mehr in der Liste. Bitte lade die Seite neu.';
         renderReconciliationState();
         return false;
     }
     const correctionMode = mode === 'correct';
     if ((correctionMode && !status.canCorrect) || (!correctionMode && !status.canConfirm)) {
-        state.reconciliationError = 'Der Cashstatus hat sich geändert. Bitte aktuellen Stand neu laden.';
+        state.reconciliationError = 'Der Stand dieses Verkaufs hat sich geändert. Bitte lade die Seite neu.';
         renderReconciliationState();
         return false;
     }
@@ -33,6 +33,8 @@ export function openCashStatusWorkflow(targetActionId, mode, opener = null) {
     return openCashPostingModal({
         mode: correctionMode ? 'correct' : 'confirm',
         targetActionId: status.targetActionId,
+        executedAt: status.executedAt,
+        trancheName: state.confirmedTranches.find(lot => lot.trancheId === status.trancheId)?.name || '',
         confirmedNetProceedsEur: status.confirmedNetProceedsEur,
         historicalAuditBalanceEur: status.cashBalanceAfterPostingEur,
         cashBalanceAfterPostingEur: cashSource.value,
@@ -78,19 +80,19 @@ export async function executeCashPosting(pending, { navigationOperation } = {}) 
         state.profileBaseline = managerInputSignature(PROFILE_INPUT_IDS);
         state.registryDisplayRaw = undefined;
         state.reconciliationStatus = result.status === 'duplicate'
-            ? 'Ein inhaltlich gleicher Cashnachweis war bereits gespeichert; es wurde nichts angehängt und der erste Nachweiszeitpunkt bleibt erhalten.'
+            ? 'Genau diese Angabe war schon gespeichert. Es hat sich nichts geändert.'
             : result.cashRecordsChanged
                 ? pending.mode === 'correct'
-                    ? 'Neuer Tagesgeld-Stand übernommen und Korrektur-Auditnachweis append-only gespeichert; Verkauf und frühere Nachweise blieben unverändert.'
-                    : 'Neuer Tagesgeld-Stand übernommen und Abschluss-Auditnachweis append-only gespeichert.'
+                    ? 'Neuer Tagesgeld-Stand übernommen und Korrektur gespeichert. Verkauf und frühere Angaben bleiben unverändert.'
+                    : 'Neuer Tagesgeld-Stand übernommen und Gutschrift bestätigt.'
                 : pending.mode === 'correct'
-                    ? 'Nur der Korrektur-Auditnachweis wurde append-only gespeichert; Verkauf und frühere Nachweise blieben unverändert.'
-                    : 'Nur der Abschluss-Auditnachweis wurde append-only gespeichert.';
+                    ? 'Korrektur gespeichert, der Kontostand war schon richtig. Verkauf und frühere Angaben bleiben unverändert.'
+                    : 'Gutschrift bestätigt, der Kontostand war schon richtig.';
         state.persistenceMessage = result.status === 'duplicate'
-            ? 'Keine Auditänderung: Ein inhaltlich gleicher Cashnachweis war bereits vorhanden.'
+            ? 'Nichts geändert: Genau diese Angabe war schon gespeichert.'
             : result.cashRecordsChanged
-                ? 'Neuer Tagesgeld-Stand übernommen und Auditnachweis gemeinsam dauerhaft gespeichert.'
-                : 'Nur der Auditnachweis wurde dauerhaft ergänzt.';
+                ? 'Neuer Tagesgeld-Stand und Bestätigung dauerhaft gespeichert.'
+                : 'Bestätigung dauerhaft gespeichert.';
         refreshReconciliationCashStatuses();
         succeeded = true;
         return true;
@@ -99,9 +101,9 @@ export async function executeCashPosting(pending, { navigationOperation } = {}) 
         if (error?.code === 'RECONCILIATION_PERSISTENCE_FAILED') state.registryDisplayRaw = previousRegistryRaw;
         state.reconciliationError = error instanceof TrancheReconciliationError
             ? `${error.message}${error.retryable ? ' Retry ist möglich.' : ''}`
-            : 'Der Cashstatus konnte nicht geprüft oder dauerhaft gespeichert werden. Bitte den Dialog neu öffnen.';
+            : 'Die Gutschrift konnte nicht geprüft oder gespeichert werden. Bitte öffne den Dialog neu.';
         state.persistenceError = error?.code === 'RECONCILIATION_CASH_SOURCE_INVALID'
-            ? '' : 'Cashstatus wurde nicht dauerhaft bestätigt. Der letzte Auditstand bleibt sichtbar.';
+            ? '' : 'Die Gutschrift ist nicht gespeichert. Der letzte bestätigte Stand bleibt sichtbar.';
         showCashPostingFormError(state.reconciliationError, 'cashPostingBalance');
         return false;
     } finally {
@@ -158,7 +160,7 @@ export async function submitCashPosting(event) {
         showCashPostingFormError(
             error instanceof TrancheReconciliationError
                 ? error.message
-                : 'Cashstatus konnte nicht geprüft werden.',
+                : 'Die Gutschrift konnte nicht geprüft werden.',
             field
         );
         return false;

@@ -9,6 +9,7 @@ import { CONFIG } from './balance-config.js';
 import { UIUtils } from './balance-utils.js';
 import { UIRenderer } from './balance-renderer.js';
 import { describeBalanceActionSummary } from './balance-action-summary.js';
+import { transactionBlockText, minimumFlexStatusText, minimumFlexBlockText, coveredByIncome, PENSION_SURPLUS_CUT_TEXT } from './balance-diagnosis-labels.js';
 import { displayDiagnosisText, formatThresholdLabel, transactionDetailRows } from './balance-diagnosis-transaction.js';
 
 /**
@@ -71,18 +72,8 @@ export function createDiagnosisHandlers({ dom, appState }) {
         const txnDiag = diagnosis.transactionDiagnostics;
         const actionSummary = UIRenderer.getActionSummary();
         if (txnDiag || actionSummary) text += `\nGeplante Aktion: ${describeBalanceActionSummary(actionSummary, UIUtils.formatCurrency)}\n`;
-        const describeReason = (reason) => {
-            const map = {
-                none: 'Keine Blockade',
-                min_trade: 'Unter Mindestgröße',
-                liquidity_sufficient: 'Liquidität ausreichend',
-                guardrail_block: 'Leitplanke verhindert Verkauf',
-                cap_active: 'Obergrenze begrenzt Handel',
-                gold_floor: 'Gold-Mindestreserve aktiv'
-            };
-            if (!reason) return map.none;
-            return map[reason.toLowerCase()] || reason.replace(/[_-]/g, ' ');
-        };
+        // GH-1 Punkt 1: deutsche Texte, unbekannte Codes als „Sonstiger Grund“ statt roh.
+        const describeReason = transactionBlockText;
         const determineReasonStatus = (reason, wasTriggered) => {
             const statusMap = {
                 none: 'OK',
@@ -126,7 +117,7 @@ export function createDiagnosisHandlers({ dom, appState }) {
             text += `Empfehlung ausgelöst: ${txnDiag.wasTriggered ? 'Ja' : 'Nein'}\n`;
             text += `Blockierter Betrag: ${UIUtils.formatCurrency(txnDiag.blockedAmount || 0)}\n`;
             if (txnDiag.blockReason && txnDiag.blockReason !== 'none') {
-                text += `Grundcode: ${txnDiag.blockReason}\n`;
+                text += `Grund: ${transactionBlockText(txnDiag.blockReason)}\n`;
             }
             if (txnDiag.potentialTrade && typeof txnDiag.potentialTrade === 'object' && Object.keys(txnDiag.potentialTrade).length > 0) {
                 const trade = txnDiag.potentialTrade;
@@ -159,33 +150,16 @@ export function createDiagnosisHandlers({ dom, appState }) {
             text += `Flex-Min-Rate: ${UIUtils.formatPercentValue(diagnosis.keyParams.minFlexRatePct, { fractionDigits: 1, invalid: 'n/a' })}\n`;
         }
         if (typeof diagnosis.keyParams.minimumFlexAnnual === 'number') {
-            const statusLabels = {
-                inactive_zero: 'Nicht gesetzt',
-                not_needed: 'Nicht benötigt',
-                applied: 'Angewandt',
-                applied_limited_by_final_smoothing: 'Geglättet angewandt',
-                limited_by_final_quantization: 'Durch Endrundung begrenzt',
-                limited_by_available_flex: 'Durch verfügbaren Flex begrenzt',
-                blocked_emergency: 'Blockiert',
-                limited_by_flex_budget: 'Durch Flex-Budget begrenzt',
-                overridden_by_severe_flex_emergency: 'In schwerer Flex-Notlage bewusst überstimmt'
-            };
-            const blockReasonLabels = {
-                alarm_active: 'Alarmmodus aktiv',
-                no_open_flex_need: 'kein offener Flex-Bedarf',
-                floor_minimum_flex_not_covered: 'Floor-/Mindest-Flex-Deckung unzureichend',
-                minimum_runway_not_restorable: 'Mindest-Runway nicht wiederherstellbar'
-            };
             const minFlexStatus = diagnosis.keyParams.minimumFlexStatus || 'inactive_zero';
             const minFlexBlockReason = diagnosis.keyParams.minimumFlexBlockReason || null;
-            text += `Mindest-Flex p.a.: ${UIUtils.formatCurrency(diagnosis.keyParams.minimumFlexAnnual)} (${statusLabels[minFlexStatus] || minFlexStatus}`;
+            text += `Mindest-Flex p.a.: ${UIUtils.formatCurrency(diagnosis.keyParams.minimumFlexAnnual)} (${minimumFlexStatusText(minFlexStatus)}`;
             if (minFlexBlockReason) {
-                text += `: ${blockReasonLabels[minFlexBlockReason] || minFlexBlockReason}`;
+                text += `: ${minimumFlexBlockText(minFlexBlockReason)}`;
             }
             text += `)\n`;
         }
         if (typeof diagnosis.keyParams.kuerzungProzent === 'number') {
-            text += `Kürzung ggü. Flex-Bedarf: ${UIUtils.formatPercentValue(diagnosis.keyParams.kuerzungProzent, { fractionDigits: 1, invalid: 'n/a' })}\n`;
+            text += `Kürzung ggü. Flex-Bedarf: ${coveredByIncome(diagnosis.keyParams) ? PENSION_SURPLUS_CUT_TEXT : UIUtils.formatPercentValue(diagnosis.keyParams.kuerzungProzent, { fractionDigits: 1, invalid: 'n/a' })}\n`;
         }
         if (typeof diagnosis.keyParams.jahresentnahme === 'number') {
             text += `Jahresentnahme (brutto): ${UIUtils.formatCurrency(diagnosis.keyParams.jahresentnahme)}\n`;
@@ -243,7 +217,7 @@ export function createDiagnosisHandlers({ dom, appState }) {
             }
             const longevityMode = vpw.longevityMode || 'none';
             if (longevityMode !== 'none') {
-                text += `Langlebigkeits-Puffer: ${longevityModeLabels[longevityMode] || longevityMode}\n`;
+                text += `Langlebigkeits-Puffer: ${longevityModeLabels[longevityMode] || 'Sonstiger Puffer'}\n`;
                 if (typeof vpw.longevityAppliedShift === 'number' && isFinite(vpw.longevityAppliedShift)) {
                     text += `Angewandter Quantil-Shift: ${vpw.longevityAppliedShift.toFixed(2)}\n`;
                 }
@@ -254,7 +228,7 @@ export function createDiagnosisHandlers({ dom, appState }) {
                     text += `Angewandter Jahrespuffer: ${vpw.longevityAppliedBufferYears.toFixed(1)} Jahre\n`;
                 }
                 if (vpw.longevityClampReason) {
-                    text += `Longevity-Clamp: ${longevityClampLabels[vpw.longevityClampReason] || vpw.longevityClampReason}\n`;
+                    text += `Longevity-Clamp: ${longevityClampLabels[vpw.longevityClampReason] || 'Sonstiger Grund'}\n`;
                 }
                 if (typeof vpw.survivalQuantileRaw === 'number' && isFinite(vpw.survivalQuantileRaw)
                     && typeof vpw.survivalQuantileAdjusted === 'number' && isFinite(vpw.survivalQuantileAdjusted)) {

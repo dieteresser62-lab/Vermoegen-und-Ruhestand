@@ -1,7 +1,7 @@
 /** @import * as D from "../../typcheck/datenvertraege.js" */
 /** @import * as I from "../../typcheck/speicher-integration.js" */
 import { HOUSEHOLD_CARE_VALUES_KEY, parseCareValues, readCareValues } from '../shared/household-care-values.js';
-import { OWN_CARE_PRICES_KEY, projectCarePrices, projectCareValuesForYear, resolveCarePrices } from '../shared/care-prices.js';
+import { OWN_CARE_PRICES_KEY, careDriftPercentForYear, projectCarePrices, projectCareValuesForYear, resolveCarePrices } from '../shared/care-prices.js';
 import { annualCareProfileId, careSettingsStorage, sharesHouseholdCareValues } from '../shared/care-profile-settings.js';
 import { applyCareTodayClosing } from '../shared/care-today-closing.js';
 import { appNow } from '../shared/app-clock.js';
@@ -13,7 +13,7 @@ import { evaluateStoredAnnualHousehold } from './balance-main-profilverbund.js';
 import { createBalanceFingerprint, createBalanceCommitBaseFingerprint, persistBalanceUpdate, BALANCE_UPDATE_MODE } from './balance-update-pipeline.js';
 import { completeAnnualPeriodCommit } from './balance-annual-period.js';
 import { HOUSEHOLD_PLAN_KEY, buildPlanRecord, stripBalancePlanInputs } from '../profile/household-plan.js';
-import { ANNUAL_PLAN_RECORD_KEY, buildAnnualPlanRecord } from '../profile/annual-plan-record.js';
+import { ANNUAL_PLAN_RECORD_KEY, buildAnnualPlanRecord, householdWithdrawalEvidence } from '../profile/annual-plan-record.js';
 import { stripBalancePersonInputs } from '../profile/profile-person-data.js';
 import { assertCumulativeInflationFactor } from '../../types/cumulative-inflation-contract.js';
 import { assertBalanceWealthHistory } from '../../types/wealth-history-contract.js';
@@ -28,7 +28,7 @@ import { sourceFingerprint } from '../overview/overview-simulation-summary.js';
 import { prepareWealthCapture } from '../profile/profile-wealth-captures.js';
 import { WEALTH_CAPTURES_KEY } from '../../types/wealth-capture-contract.js';
 import { projectBalanceBudget } from './balance-budget.js';
-import { ANNUAL_NEED_PATHS, roundAnnualSuggestion } from '../shared/annual-needs-review.js';
+import { ANNUAL_NEED_PATHS, exactAnnualSuggestion } from '../shared/annual-needs-review.js';
 
 /** Eigener Preisblock einer Außenperson im Abschlussentwurf: Registry und, für die aktive Person, die Livequelle.
  *
@@ -63,7 +63,8 @@ export function evaluateAnnualDraft(draft, { engineApi, adoptedPlanPatch, careVa
     // Argon FR73A B2: Preisbesitzer ist der Haushalt, auch wenn zuletzt eine Außenperson geöffnet war (wie im Dialog).
     const careProfileId = annualCareProfileId(adapter);
     const careLegacy = careSettingsStorage(adapter, careProfileId), careShared = sharesHouseholdCareValues(adapter, careProfileId);
-    const closingDrift = () => resolveCarePrices(readCareValues(adapter), careLegacy, { shared: careShared }).driftPercent;
+    // FR-73 Punkt 8 geändert: × (1 + Rate des neuen Planjahrs J+1) über der Inflation.
+    const closingDrift = () => careDriftPercentForYear(resolveCarePrices(readCareValues(adapter), careLegacy, { shared: careShared }), draft.planningYear);
     const closingRates = draft.status === 'prepared' && Number.isFinite(draft.inflation?.rate)
         ? { inflationRate: /** @type {number} */ (draft.inflation?.rate), driftPercent: closingDrift() } : null;
     // Einzelprofil einer Außenperson: ihre Preise gehören in ihren eigenen Preisblock, der Haushaltsrecord behält seine.
@@ -81,15 +82,15 @@ export function evaluateAnnualDraft(draft, { engineApi, adoptedPlanPatch, careVa
     // FR-73 Punkt 13 / PFA-2 B1: eigene Werte der Personen fortschreiben oder den im Dialog bestätigten Betrag übernehmen,
     // Heimjahr-Anker ohne „seit“ setzen (Vorschau wie Abschluss).
     if (closingRates) applyCareTodayClosing(adapter, { ids: draft.scope.ids, activeId: draft.profileId, ...closingRates, targetYear: draft.targetYear, ownValues: careToday });
-    // Im vorbereiteten Jahresabschluss sind die aufgerundeten Vorschläge die
-    // Empfehlung. Bestehende Planstände (z. B. Musterbelege) bleiben unverändert.
+    // Im vorbereiteten Jahresabschluss sind die genauen Vorschläge in ganzen Euro die Empfehlung (FR-68 Punkt 7);
+    // nur die Anzeige rundet auf volle 1.000 € auf. Bestehende Planstände (z. B. Musterbelege) bleiben unverändert.
     let values = structuredClone(draft.values), /** @type {string[]} */ adjustedFields = [];
     if (draft.status === 'prepared') {
         const state = JSON.parse(/** @type {string} */ (adapter.getItem(CONFIG.STORAGE.LS_KEY)));
         const evidence = state.balanceStateLifecycle?.planInputEvidence?.[draft.scope.key];
         for (const path of /** @type {('floorBedarf' | 'flexBedarf' | 'minimumFlexAnnual' | 'flexBudgetAnnual' | 'flexBudgetRecharge')[]} */ (ANNUAL_NEED_PATHS)) {
-            values[path] = /** @type {number} */ (roundAnnualSuggestion(values[path]));
-            // Automatische Rundung ist keine Planentscheidung. Bereits vorher
+            values[path] = /** @type {number} */ (exactAnnualSuggestion(values[path]));
+            // Rundung auf ganze Euro ist keine Planentscheidung. Bereits vorher
             // bewusst geänderte Werte behalten ihre abweichende Resetevidenz.
             if (evidence && Object.is(evidence[path], draft.values[path])) evidence[path] = values[path];
         }
@@ -119,6 +120,9 @@ export function evaluateAnnualDraft(draft, { engineApi, adoptedPlanPatch, careVa
         action: structuredClone(modelResult.ui.action), snapshot: { plan: structuredClone(values),
             inflation: inputData.inflation, ageByPerson: structuredClone(draft.ageByPerson) } };
     if (inputData.plannedPosts) outcome.plannedPosts = structuredClone(inputData.plannedPosts);
+    // TRG-1c Punkte 5 und 8: Modus „Eine Person trägt“, tragende Person und Rückgriff stehen mit dem Beschluss im Beleg.
+    const carrier = householdWithdrawalEvidence(values.householdWithdrawalMode, /** @type {any} */ (runs)?.distribution);
+    if (carrier) /** @type {any} */ (outcome).householdWithdrawal = carrier;
     if (draft.yearHigh && outcome.snapshot) outcome.snapshot.marketReading = { reading: 'year_high', ...draft.yearHigh };
     if (/** @type {number} */ (monthlySaving) > 0) outcome.monthlySaving = /** @type {number} */ (monthlySaving);
     // Einzelrechnungen laufen ohne Profilverbund-Zuordnung. Die eindeutige

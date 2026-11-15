@@ -1,11 +1,18 @@
+import { displayUp } from './display-rounding.js';
 import { expenseDeviation, expenseNeedsCoverage } from '../expenses/expenses-needs.js';
 const money = value => Number.isFinite(value) ? value.toLocaleString('de-DE', { maximumFractionDigits: 0 }).replace(/^-/, '−') + ' €' : '—';
 export const ANNUAL_NEED_PATHS = ['floorBedarf', 'flexBedarf', 'minimumFlexAnnual'];
-/**
- * @param value Zu verarbeitender Wert.
- * @returns {number} Rückgabe gemäß bestehendem Ablauf; Typ aus der Implementierung abgeleitet.
+/** FR-68 Punkt 7 mit Ergänzung 4 FR-78: Anzeige eines Vorschlags im Jahresabschluss, aufgerundet nach der Anzeigestaffel. Nie speichern.
+ * @param {number|null|undefined} value Genauer Vorschlag.
+ * @returns {number|null} Glatter Anzeigebetrag.
  */
-export const roundAnnualSuggestion = value => Number.isFinite(value) ? Math.ceil(value / 1000) * 1000 : null;
+export const roundAnnualSuggestion = value => Number.isFinite(value) ? displayUp(value) : null;
+/** FR-68 Punkt 7 (geändert 12.11.2026): Vorschläge werden genau gerechnet und gespeichert, ganze Euro, kaufmännisch.
+ * Der Zwischenschritt auf Cent fängt Gleitkommareste wie 3074,9999… ab.
+ * @param {number|null|undefined} value Fortgeschriebener Wert.
+ * @returns {number|null} Gespeicherter Vorschlag.
+ */
+export const exactAnnualSuggestion = value => Number.isFinite(value) ? Math.round(Math.round(/** @type {number} */ (value) * 100) / 100) : null;
 
 /** Ist-Ausgaben sind ausschließlich Vergleichsdaten und niemals ein automatischer Planpatch.
  *
@@ -23,7 +30,7 @@ export function annualNeedsComparison(preview, annual) {
 }
 
 /** FR-43 (N2): Ist + Inflation; mit festen Ausgaben im Ist erst abziehen, Untergrenze 0. Ohne sie wie bisher. */
-const fromActualSuggestion = (actual, fixedInActual, preview) => roundAnnualSuggestion((Number.isFinite(fixedInActual)
+const fromActualSuggestion = (actual, fixedInActual, preview) => exactAnnualSuggestion((Number.isFinite(fixedInActual)
     ? Math.max(0, actual - fixedInActual) : actual) * (1 + (preview.inflation?.rate ?? 0) / 100));
 
 /**
@@ -37,7 +44,7 @@ export function annualNeedSuggestions(preview, annual, path, projected) {
     const review = annual?.needsReview, key = path === 'floorBedarf' ? 'floor' : 'flex';
     const actual = path !== 'minimumFlexAnnual' && review?.monthsWithBreakdown ? review.annualForecast[key] : null;
     const plan = path === 'floorBedarf' ? review?.plans.floor : review?.plans.flex;
-    return { plan: roundAnnualSuggestion(projected), actual,
+    return { plan: exactAnnualSuggestion(projected), actual,
         // FR-43 (N2): Feste Ausgaben im Ist kommen nicht in den Grundbedarf.
         fromActual: actual === null ? null : fromActualSuggestion(actual, path === 'floorBedarf' ? review.fixedInActual : undefined, preview),
         comparison: actual === null ? '—' : expenseDeviation(actual, plan, money).replace('über Plan', path === 'flexBedarf' ? 'über Flex nach Regeln' : 'über Plan').replace('unter Plan', path === 'flexBedarf' ? 'unter Flex nach Regeln' : 'unter Plan') };

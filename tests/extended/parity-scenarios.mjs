@@ -179,7 +179,7 @@ export function summarizeParityScenario(key, label, cases, outcome) {
     return result;
 }
 
-export function runParityScenarios({ source: suppliedSource, engineApi = EngineAPI } = {}) {
+export function runParityScenarios({ source: suppliedSource, engineApi = EngineAPI, carrierCase = false } = {}) {
     const started = performance.now(), cases = [], scenarios = [];
     const provenance = suppliedSource || paritySource();
     const unchanged = JSON.stringify({ records, inputs, provenance });
@@ -188,10 +188,15 @@ export function runParityScenarios({ source: suppliedSource, engineApi = EngineA
     const scale = 100 / levels.endeVJ.value;
     const market = { ...Object.fromEntries(['endeVJ', 'endeVJ_1', 'endeVJ_2', 'endeVJ_3'].map(key => [key, levels[key].value * scale])),
         ath: prepared.initialMarketHistory.allTimeHigh.value * scale, jahreSeitAth: prepared.initialMarketHistory.yearsSinceAllTimeHigh };
-    for (const [key, label] of DYNAMIC_FLEX_OPTIONS.filter(([key]) => key !== 'custom')) {
-        const scenarioInputs = { ...structuredClone(inputs), ...dynamicFlexPresetPatch(key) };
+    // TRG-1 (FR-80): auf Wunsch (npm run test:paritaet) ein Fall im Modus „Eine Person trägt“ (Max trägt) neben den Dynamic-Flex-Vorgaben;
+    // der Byteabgleich gegen den Ausgangsstand rechnet ohne ihn.
+    const carrying = { householdWithdrawalMode: `one_carries:${records.rs_current_profile}` };
+    for (const [key, label, extra = {}] of [...DYNAMIC_FLEX_OPTIONS.filter(([key]) => key !== 'custom'),
+        ...(carrierCase ? [['one-carries', 'Eine Person trägt', carrying]] : [])]) {
+        const preset = key === 'one-carries' ? {} : dynamicFlexPresetPatch(key);
+        const scenarioInputs = { ...structuredClone(inputs), ...preset, ...extra };
         // FR-76: Der Plan der Balance trägt dieselben Fondskosten wie die Simulatoreingaben (fehlend = 0).
-        const initialRecords = createParitySequenceSeed(records, { ...dynamicFlexPresetPatch(key),
+        const initialRecords = createParitySequenceSeed(records, { ...preset, ...extra,
             equityCostPct: Number(scenarioInputs.equityCostPct) > 0 ? Number(scenarioInputs.equityCostPct) : 0 }, market, inputs.referenceYear);
         const collector = createParityReplayCollector({ source: provenance, initialRecords });
         const inputBytes = JSON.stringify(scenarioInputs);

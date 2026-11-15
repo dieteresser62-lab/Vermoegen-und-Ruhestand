@@ -698,6 +698,7 @@ async function runBalanceUiOrchestrationTests() {
         assert(!actionDialog.open && documentRef.activeElement === popupControls.openActionDetails, 'Schließen führt zum Detailsauslöser zurück');
         openDetails();
         assert(actionDialog.open, 'Details lassen sich erneut öffnen');
+        actionDialog.listeners.mousedown[0]({ target: actionDialog, clientX: 10, clientY: 10, preventDefault() {} });
         actionDialog.listeners.click[0]({ target: actionDialog, clientX: 10, clientY: 10 });
         assert(!actionDialog.open && documentRef.activeElement === popupControls.openActionDetails, 'Außenklick führt zum Detailsauslöser zurück');
         info.listeners.focusin[0]();

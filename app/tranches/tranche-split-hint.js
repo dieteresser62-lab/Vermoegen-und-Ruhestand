@@ -13,7 +13,7 @@ export const SPLIT_HINT_MAX_GAP_DAYS = 7;
 
 export const SPLIT_HINT_LABEL = 'Möglicher Split';
 export const SPLIT_HINT_INFO = 'Der Kurs liegt mehr als 50 % unter dem letzten gespeicherten Schlusskurs, vielleicht wegen eines Splits. '
-    + 'Trage dann über „Tranche bearbeiten“ Stückzahl und Kaufpreis laut Depotauszug ein (Einstand bleibt gleich) und bestätige im Reiter „Haushalt & Plan“ (bei einer Person „Plan“) in der Personenkarte den korrigierten Bestand für den Verlauf. '
+    + 'Öffne dann „Tranche im Detail“, wähle „ändern“ an der Kachel „Stück“ und „Aktiensplit“ und trage die Stückzahl laut Depotauszug ein (Einstand bleibt gleich); der Verlauf vermerkt die Korrektur. '
     + 'Danach holt „Tageskurse neu laden“ die alten Schlusskurse im neuen Maßstab; ohne das zeigen Kurs- und Vermögensverlauf am Splittag eine Stufe.';
 
 /** TH-2c: Bestätigung mit Name und Zahl der gespeicherten Tage.

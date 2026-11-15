@@ -1785,12 +1785,15 @@ fieldset.collapsible legend .legend-text {
 #mcAdvancedDisclosure #devTools .mc-checkbox-row { margin: 0; }
 
 #mcSetupDisclosure .household-plan-field { grid-template-columns: minmax(0, 1fr) minmax(6rem, 14rem); margin-block: var(--space-3); }
-#mcSetupDisclosure .household-plan-field > label { white-space: normal; }
-#mcSetupDisclosure .household-plan-field:has(> select:not([hidden])) { grid-template-columns: minmax(0, 1fr) minmax(10rem, 18rem); }
+/* GH-1 Punkt 7: Beschriftungen brechen nur zwischen Wörtern („Simulationsmethode“ bei 1280 px nicht mitten im Wort); die Auswahl nimmt den Rest. */
+#mcSetupDisclosure .household-plan-field > label { white-space: normal; overflow-wrap: normal; word-break: normal; }
+#mcSetupDisclosure .household-plan-field:has(> select:not([hidden])) { grid-template-columns: minmax(min-content, 1fr) minmax(8rem, 18rem); }
 #mcSetupDisclosure .mc-range-control { min-width: 0; }
 #mcSetupDisclosure .ds-unit-frame > input { height: 100%; }
 #mcSetupDisclosure .mc-range-control { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 #mcSetupDisclosure .mc-range-control > input { flex: 1; width: 0; min-width: 0; }
+/* GH-1 Punkt 4: von „Startjahre nach CAPE“ überstimmte Felder ausgegraut (wie deaktivierte Designsystem-Felder). */
+#mcSetupDisclosure .mc-field-overruled label, #mcSetupDisclosure .mc-field-overruled output, #mcSetupDisclosure .mc-field-overruled span { color: var(--text-muted); }
 #mcSetupDisclosure .mc-range-control > output { font: 500 var(--text-base)/1.3 var(--font-sans); }
 #mcSetupDisclosure .mc-range-control > span { font-size: var(--balance-help); white-space: nowrap; }
 #mcSetupDisclosure .ds-field-reason { font-size: var(--text-sm); }
@@ -2814,4 +2817,326 @@ input[data-plan-trial-readonly][type="text"] { text-align: right; }
     .sim-backtest-split { grid-template-columns: minmax(0, 1fr); }
     #tab-backtesting .sim-backtest-primary, #tab-backtesting .sim-backtest-primary:has(.sim-money-detail) { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: var(--space-3); }
     #tab-backtesting .sim-backtest-primary > .summary-item:nth-child(4) { padding-left: 0; border-left: 0; }
+}
+
+/* DS-1: vorher eingebettet in Simulator.html (gleiche Stelle in der Kaskade: nach simulator.css, vor suite-frame.css). */
+.debug-actions {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem
+}
+
+.btn-debug {
+    font-size: var(--text-dense);
+    padding: .25rem .5rem;
+    border-radius: .5rem;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer
+}
+
+.btn-debug:hover {
+    background: var(--accent-soft)
+}
+
+.dev-only {
+    display: none
+}
+
+.dev-on .dev-only {
+    display: block
+}
+
+.debug-link {
+    font-size: var(--text-dense);
+    padding: .1rem .3rem;
+    border: 1px solid var(--border);
+    border-radius: .4rem;
+    color: var(--accent);
+    text-decoration: none
+}
+
+.debug-link:hover {
+    background: var(--accent-soft)
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between
+}
+
+/* Log Export Buttons - wie toggle-btn */
+.log-export-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 10px;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+}
+
+.log-export-buttons button {
+    padding: 4px 10px;
+    font-size: var(--text-dense);
+    border: 1px solid var(--border-strong);
+    background-color: var(--surface-sunken);
+    color: var(--text-main);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: auto !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.log-export-buttons button:hover {
+    border-color: var(--accent);
+    background-color: var(--border);
+}
+
+/* Auto-Optimize Preset Buttons */
+.ao-preset-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card);
+    border-color: var(--secondary-color) !important;
+}
+
+.ao-preset-btn:active {
+    transform: translateY(0);
+}
+
+.profilverbund-profile-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 8px 12px;
+}
+
+.profilverbund-profile-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--text-base);
+}
+
+.profilverbund-status {
+    font-size: var(--text-dense);
+    color: var(--text-muted);
+}
+
+.profilverbund-status[data-kind="ok"] {
+    color: var(--good);
+}
+
+.profilverbund-status[data-kind="error"] {
+    color: var(--bad);
+}
+
+.toast-container {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.toast {
+    max-width: 300px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--text-main);
+    color: var(--surface);
+    font-size: var(--text-dense);
+    box-shadow: var(--shadow-card);
+    visibility: hidden;
+    transform: translateY(6px);
+    transition: transform 0.2s ease;
+}
+
+.toast-show {
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Slice 02: Exaktwerte und Messhinweise duerfen auch mobil nicht
+   abgeschnitten oder als technische Kurzlabels missverstanden werden. */
+.main-layout,
+.panel,
+.tab-content,
+.tab-panel,
+fieldset,
+fieldset.collapsible .fieldset-content {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+:where(html[data-suite-page="simulator"]) fieldset {
+    min-inline-size: 0;
+}
+
+fieldset.collapsible legend {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+fieldset.collapsible legend .legend-text {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.care-panel,
+.care-sections,
+.care-section,
+.care-section-grid,
+.care-duration-group,
+.care-grade-matrix,
+.care-grade-row {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.tab-buttons {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.tab-btn {
+    flex: 0 0 auto;
+    width: auto;
+}
+
+#monteCarloResults,
+#scenarioLogContainer,
+#scenarioSelector,
+#scenarioLogOutput,
+.scenario-selector {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+#scenarioLogOutput {
+    width: 100%;
+}
+
+
+
+#withdrawalRateChartContainer,
+#heatmap-container {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.kpi-card .sim-metric-heading>strong,
+.summary-item .sim-metric-heading>strong {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+}
+
+.summary-item>span,
+.kpi-card .value-line {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.kpi-card.kpi-exact-value,
+.summary-item.summary-exact-value {
+    min-width: 0;
+}
+
+.kpi-card.kpi-exact-value .sim-metric-heading>strong,
+.summary-item.summary-exact-value .sim-metric-heading>strong {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+}
+
+.kpi-card.kpi-exact-value .value-line,
+.kpi-card.kpi-exact-value .kpi-secondary-value,
+.kpi-card.kpi-exact-value .kpi-status-line,
+.summary-item.summary-exact-value>span,
+.summary-item.summary-exact-value .summary-status-line {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.kpi-secondary-value {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 2px 0 8px;
+    font-size: var(--text-dense);
+    color: var(--text-muted);
+}
+
+.kpi-secondary-value>strong {
+    color: var(--text-main);
+    font-size: 1rem;
+}
+
+.kpi-secondary-value>small,
+.kpi-status-line,
+.summary-status-line {
+    color: var(--bad);
+    font-size: var(--text-dense);
+    line-height: 1.3;
+}
+
+.summary-status-line {
+    display: block;
+    margin-top: 4px;
+}
+
+.reporting-reference-note {
+    max-width: 78ch;
+    margin: 10px auto 14px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: var(--text-dense);
+    line-height: 1.4;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.heatmap-v4-svg {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    overflow: hidden;
+}
+
+.kpi-grid.kpi-grid-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.drawdown-pair-heading {
+    margin: 18px 0 0;
+    color: var(--primary-color);
+    text-align: center;
 }

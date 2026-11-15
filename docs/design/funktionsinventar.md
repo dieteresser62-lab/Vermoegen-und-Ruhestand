@@ -241,21 +241,21 @@ Quelle: `depot-tranchen-manager.html`
 | V06 | depot-tranchen-manager.html | Personen & Vermögen | Pflegebucket-Policies: Trigger, Deckung, Rendite und Inflationssicht | bedingt sichtbar, bewusst gesperrt | persistent: profile\_health\_bucket, rs\_profiles\_v1.profiles\[profileId\].data.p… | Node 2; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#pflege) |
 | V07 | depot-tranchen-manager.html | Personen & Vermögen | Profil, Plan und Geplante Ausgaben validieren und automatisch speichern | bedingt sichtbar, bewusst gesperrt, technisch verborgen | persistent: profile\_tagesgeld, profile\_rente\_aktiv, profile\_rente\_monatlich,…; persistent: household\_plan\_v1;… | Node 9; Browser 1; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#ausgaben) |
 | V07.1 | depot-tranchen-manager.html | Haushalt & Plan | Gemeinsame Dynamic-Flex-Voreinstellungen im Manager | bedingt sichtbar | persistent: household\_plan\_v1 | Node 2; Browser 1; Risiko 0; Schuld 0 | 1 | [Kapitel](../../Handbuch.html#haushalt-plan) |
-| V08 | depot-tranchen-manager.html | Tranchen und Kurse | Kauf eintragen: neue Tranche öffnen | sichtbar, bewusst gesperrt | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
-| V09 | depot-tranchen-manager.html | Tranchen und Kurse | Zeilenaktionen bearbeiten und löschen | sichtbar, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr…; persistent: rs\_daily\_prices\_v1 | Node 4; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V08 | depot-tranchen-manager.html | Tranchen und Kurse | Kauf eintragen: geführten Kauf öffnen | sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1, depot\_tranchen, profile\_wealth\_history\_lots\_v1, … | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V09 | depot-tranchen-manager.html | Tranchen und Kurse | Zeilenaktion Tranche im Detail; Löschen nur im Detail | sichtbar, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr…; persistent: rs\_daily\_prices\_v1 | Node 5; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
 | V10 | depot-tranchen-manager.html | Tranchen und Kurse | EUR-Kursbatch, Proxycheck, Teilfehler und Preisprovenienz | sichtbar, bewusst gesperrt, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 6; Browser 3; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#kauf) |
 | V11 | depot-tranchen-manager.html | Tranchen und Kurse | Depotbewertung, Tranchensumme, Kursstand und leerer Bestand | sichtbar, bedingt sichtbar | keine | Node 5; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
 | V12 | depot-tranchen-manager.html | Tranchen und Kurse | Gruppiertes Depot: Anlageformen, Gruppensummen und Kaufdatumssortierung sowie Kursverlauf mit Tagesfeld, fünf Zeiträumen und aufklappbaren Details | sichtbar, bedingt sichtbar | keine | Node 10; Browser 2; Risiko 4; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#vermoegensverlauf) |
 | V13 | depot-tranchen-manager.html | Tranchendialog | Identifikation, Bestand und Kurseingaben | bedingt sichtbar | nur Sitzung | Node 4; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
-| V14 | depot-tranchen-manager.html | Tranchendialog | Kategorie-/Typvertrag, Teilfreistellung, explizite Steuerfreiheit und Notiz | bedingt sichtbar, technisch verborgen | nur Sitzung | Node 4; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
+| V14 | depot-tranchen-manager.html | Tranchendialog | Kategorie-/Typvertrag, Teilfreistellung, explizite Steuerfreiheit und Notiz | bedingt sichtbar, technisch verborgen | nur Sitzung | Node 5; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
 | V15 | depot-tranchen-manager.html | Tranchendialog | Speichern, Dialogretry, Abbruch, Feldfehler und Dialogtastatur | bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 6; Browser 4; Risiko 2; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
 | V16 | depot-tranchen-manager.html | Meldungen und Recovery | Speicherstatus und Load-/Save-Retry | bedingt sichtbar | nur Sitzung | Node 4; Browser 2; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#daten-sicherung) |
 | V17 | depot-tranchen-manager.html | Meldungen und Recovery | Korrupte Tranchen: bewusst Rohdaten anzeigen/kopieren, Reset und Rückwege | bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 1; Browser 1; Risiko 1; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#daten-sicherung) |
-| V18 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Broker-Ausführung über exakte Profil-/Tranche-/Action-ID erfassen | sichtbar, bewusst gesperrt, bedingt sichtbar | nur Sitzung | Node 2; Browser 2; Risiko 2; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#verkauf) |
-| V19 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Optionale Empfehlung und Ist-Abweichung | sichtbar, bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#verkauf) |
-| V20 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Schreibfreie Vorschau, Status, getrennte Bestätigung und Abbruch | sichtbar, bedingt sichtbar, bewusst gesperrt | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr…; persistent: profile\_wealth\_his… | Node 5; Browser 2; Risiko 2; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#verkauf) |
-| V21 | depot-tranchen-manager.html | Verkauf eintragen → Ausführung, Cash, Vorschau | Cashstatuswahl in Verkaufsschritt 2 | sichtbar, bedingt sichtbar, bewusst gesperrt | nur Sitzung | Node 2; Browser 2; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#verkauf) |
-| V22 | depot-tranchen-manager.html | Verkäufe & Cashstatus | Dynamische Cashhistorie, Altverkäufe, wirksamer Nachweis und Aktionen | sichtbar, bedingt sichtbar, bewusst gesperrt | keine | Node 2; Browser 1; Risiko 3; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#verkauf) |
+| V18 | depot-tranchen-manager.html | Verkauf eintragen → geführter Verkauf ohne Planbezug | Verkauf eintragen öffnet den geführten Verkauf für die Person | sichtbar, bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#verkauf) |
+| V19 | depot-tranchen-manager.html | Verkauf eintragen → geführter Verkauf ohne Planbezug | Abrechnung: Stück × Kurs − Gebühren − Steuern = Gutschrift, Rest-Frage | bedingt sichtbar | nur Sitzung | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#verkauf) |
+| V20 | depot-tranchen-manager.html | Verkauf eintragen → geführter Verkauf ohne Planbezug | Verkauf eintragen schreibt Beleg, Tranchen und Tagesgeld in einem Commit | bedingt sichtbar | persistent: rs\_profiles\_v1, depot\_tranchen, profile\_wealth\_history\_lots\_v1, … | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#verkauf) |
+| V21 | depot-tranchen-manager.html | Verkauf eintragen → geführter Verkauf ohne Planbezug | Gutschrift: schon da (Kontostand) oder kommt noch (Erinnerung) | bedingt sichtbar | persistent: rs\_profiles\_v1, depot\_tranchen, profile\_wealth\_history\_lots\_v1, … | Node 1; Browser 1; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#verkauf) |
+| V22 | depot-tranchen-manager.html | Verkäufe und Gutschriften | Verkäufe und Gutschriften in Klartext: Datum, Wertpapier, Stück, Gutschrift, Stand; Aktionen „Gutschrift eintragen“ und „Tagesgeld nach dem Verkauf korrigieren“ | sichtbar, bedingt sichtbar, bewusst gesperrt | keine | Node 2; Browser 1; Risiko 3; Schuld 0 | 1, 5 | [Kapitel](../../Handbuch.html#verkauf) |
 | V23 | depot-tranchen-manager.html | Cashdialog | Cashbestätigung und lineare Korrektur mit Grund, Fokus und Konfliktprüfung | bedingt sichtbar, bewusst gesperrt | persistent: rs\_profiles\_v1.trancheReconciliation.actions, rs\_profiles\_v1.tra… | Node 9; Browser 4; Risiko 2; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V24 | depot-tranchen-manager.html | Hilfen und Bedienung | Feldhilfen, Labels und Tabellen-/Dialogzugänglichkeit | bedingt sichtbar | keine | Node 3; Browser 1; Risiko 1; Schuld 0 | 2, 5 | [Kapitel](../../Handbuch.html#haushalt-plan) |
 | V25 | depot-tranchen-manager.html | Kurszeit-Datenvertrag | asOf: Lokales Kursdatum im Depot, Provenienz und Balance-Kursfrische | sichtbar, bewusst gesperrt, bedingt sichtbar | persistent: depot\_tranchen, rs\_profiles\_v1.profiles\[profileId\].data.depot\_tr… | Node 11; Browser 3; Risiko 1; Schuld 0 | 5 | [Kapitel](../../Handbuch.html#kauf) |
@@ -351,10 +351,10 @@ Quelle: `Daten-Sicherung.html`
 
 ### Dynamische Schutzstatistik
 
-207 Funktionseinträge; 429 dynamische Belege:
+207 Funktionseinträge; 431 dynamische Belege:
 
-- geschützt: **403**
-- ungeschützt (Anker fehlt): **6**
+- geschützt: **406**
+- ungeschützt (Anker fehlt): **5**
 - ungeschützt (Erzeugungsform vom Prüfer nicht unterstützt): **20**
 
 Gemischte Einträge sind nur für ihre einzeln als geschützt ausgewiesenen Belege geschützt. Beide ungeschützten Kategorien zählen separat.
@@ -380,10 +380,6 @@ Gemischte Einträge sind nur für ihre einzeln als geschützt ausgewiesenen Bele
 - **V14:** Gemeinsamer Dialog → Vermögen → Steuermerkmale — Vollständige Typ-/TQF-/Steuerfreiheit-/Notizfelder ergänzen.
 - **V16:** Gemeinsamer Speicherstatus → Vermögen → Recovery — Nicht bestätigte Writes nie als gespeichert melden; Load-/Save-Recovery getrennt ergänzen.
 - **V17:** Gemeinsame Recovery → Vermögen → beschädigter Bestand — Rohdatengrenze, zentrales Backup und ausdrücklichen destruktiven Reset ergänzen.
-- **V18:** Vermögen → Verkäufe und Abgleich → Ist-Ausführung — Realbestand nur nach gesondert bestätigter tatsächlicher Broker-Ausführung ändern; Zielbild-Verkaufsvorschau ist kein Ersatz.
-- **V19:** Vermögen → Ausführung → Empfehlung und Abweichung — Optionale Vergleichsdaten ergänzen statt Ist-Daten durch Simulation zu ersetzen.
-- **V20:** Gemeinsamer Status → Vermögen → Prüfen und Bestätigen — Preview und bestätigten Write trennen, Idempotenz/Recovery erhalten.
-- **V21:** Vermögen → Ausführung → Cashstatuswahl — Vollständige Offen/Bereits-enthalten-Wahl und Cashstandnachweis ergänzen.
 - **V22:** Gemeinsamer Status → Vermögen → Vorgänge — Unvollständigkeit/Altstatus, wirksame Nachweise und Korrekturaktionen erhalten.
 - **V23:** Gemeinsamer Dialog → Vermögen → Cashabgleich — Grund, erwartete Revision, Feldfehler und Fokus erhalten; ausdrückliche Dialogbestätigung übernimmt absoluten Tagesgeldstand samt Cashhistorie und Audit gemeinsam, ohne Nettoerlös zu addieren.
 
@@ -670,7 +666,7 @@ Paketbezug: 5.
 - **V05:** Vier Bucket-Grundfelder mit realen Listenern/Reload/Recovery prüfen; keine Engineassertion als UI-Beleg. — vorläufig – wird in der Paket-Idee eingeordnet
 - **V06:** Jede Policy per echtem Selectlistener und Reload testen; Validierungsmodul belegt nicht Browserbedienung. — vorläufig – wird in der Paket-Idee eingeordnet
 - **V07:** Echte Browserprüfung von Feldfehler-ARIA, queued Autosave und fehlgeschlagenem Profilflush; vorhandene Node-Mocks decken den Ablauf teilweise ab. — vorläufig – wird in der Paket-Idee eingeordnet
-- **V08:** Gesperrte Neuanlage bei jedem Busy-/Recoveryzustand im Browser; Modal-/Pagetests sind Teilnachweise. — vorläufig – wird in der Paket-Idee eingeordnet
+- **V08:** Vollständiger Kauf im Browser nur über die Prüfbilder (docs-bilder --vk2); Grenzen in Node (vk-2-sollfaelle). — vorläufig – wird in der Paket-Idee eingeordnet
 - **V09:** Gesamtlöschung, native Dialogablehnung und gruppierte ID-Zuordnung im Browser; Node belegt gezieltes Edit/Löschen. — vorläufig – wird in der Paket-Idee eingeordnet
 - **V10:** Proxyhealth-Bedienung, Timeout, Profilwechsel und Kursflush-Retry im Browser; Node belegt Batch-/Provenienzpfade teilweise. — vorläufig – wird in der Paket-Idee eingeordnet
 - **V11:** Alle fünf KPI-Werte einschließlich Verlust und Einstand=0 im realen DOM; Rendererassertionen sind Teilbelege. — vorläufig – wird in der Paket-Idee eingeordnet
@@ -684,12 +680,10 @@ Paketbezug: 5.
 - **V15:** Echter Rückfokus nach Editrender bleibt extern offen; Node prüft neuen Zeilenbutton derselben ID. Cash-Rückfokus bleibt F-06. — vorläufig – wird in der Paket-Idee eingeordnet
 - **V16:** Unavailable-Loadretry und jeder Save-Retrypfad einschließlich Reconcile/Cash im echten Browser; Node-Mocks liefern nur Teilabläufe. — vorläufig – wird in der Paket-Idee eingeordnet
 - **V17:** Clipboard-Erfolg/-Ablehnung, Resetablehnung/-Flushfehler und kompletter zentraler Backup-Rückweg im Browser; Recovery-Smoke ist Teilabdeckung. — vorläufig – wird in der Paket-Idee eingeordnet
-- **V18:** Alle Eingabegrenzen, gelöschtes Lot und Profilkonflikt über reale Previewlistener; Browser-Smoke enthält nur gültigen Teilablauf. — vorläufig – wird in der Paket-Idee eingeordnet
-- **V18 · option:** Stabiler Anker und daran gebundener Bediennachweis fehlen. — vorläufig – wird in der Paket-Idee eingeordnet
-- **V19:** Nur-ein-Feld-Referenz und ungültige Referenz über Browserlistener; vorhandener Smoke deckt nur zwei gültige Referenzfelder. — vorläufig – wird in der Paket-Idee eingeordnet
-- **V20:** Native Ablehnung, expliziter Previewabbruch, Vollverkauf, Feldinvalidierung, paralleler Konflikt und Reconcile-Flushretry über Browserlistener; Fachmodul und positiver Browserablauf sind Teilbelege. — vorläufig – wird in der Paket-Idee eingeordnet
-- **V20:** Browserprüfung endgültiger disabled-Zustände nach Init/Commit/Retry; globale und fachspezifische Sperren sind jetzt gemeinsam gesetzt. — vorläufig – wird in der Paket-Idee eingeordnet
-- **V21:** confirmed\_already\_reflected, Sichtbarkeit/required des Cashstands und Invalidierung nach change/input im Browser; vorhandener Smoke zeigt nur den Default. — vorläufig – wird in der Paket-Idee eingeordnet
+- **V18:** Eingabegrenzen der Abrechnung im Browser nur am gültigen Ablauf; Grenzen in Node (vk-1-sollfaelle). — vorläufig – wird in der Paket-Idee eingeordnet
+- **V19:** Eingabegrenzen der Abrechnung im Browser nur am gültigen Ablauf; Grenzen in Node (vk-1-sollfaelle). — vorläufig – wird in der Paket-Idee eingeordnet
+- **V20:** Eingabegrenzen der Abrechnung im Browser nur am gültigen Ablauf; Grenzen in Node (vk-1-sollfaelle). — vorläufig – wird in der Paket-Idee eingeordnet
+- **V21:** Eingabegrenzen der Abrechnung im Browser nur am gültigen Ablauf; Grenzen in Node (vk-1-sollfaelle). — vorläufig – wird in der Paket-Idee eingeordnet
 - **V22:** Echte Hostersatz-/Rerenderdelegation und unlesbarer Auditpfad im Browser; positiver Cashworkflow und Nodewarnung liefern Teilbelege. — vorläufig – wird in der Paket-Idee eingeordnet
 - **V22 · \[data-cash-status\]:** Eigener Attributanker vorhanden; vollständiger Bediennachweis bleibt offen. — vorläufig – wird in der Paket-Idee eingeordnet
 - **V22 · \[data-target-action-id\]:** Eigener Attributanker vorhanden; vollständiger Bediennachweis bleibt offen. — vorläufig – wird in der Paket-Idee eingeordnet

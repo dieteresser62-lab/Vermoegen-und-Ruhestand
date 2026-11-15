@@ -19,6 +19,7 @@ import { loadTranchesFromStorage, calculateTrancheDerivedValues } from './tranch
 import { renderManagerProfiles } from './tranchen-manager-renderer.js';
 import { bindManagerAuxiliaryDialog, openManagerAuxiliaryDialog, closeManagerAuxiliaryDialog, confirmManagerModalBaseline } from './tranchen-manager-modal.js';
 import { escapeHtml } from '../shared/security-utils.js';
+import { readDecimalInput } from './tranchen-manager-decimal-input.js';
 
 /** Monatsanzeige ohne Indexierung oder Steuerrechnung; Beginnmonat zählt vollständig. */
 function projectCurrentIncome(data, values, now, name) {
@@ -320,7 +321,7 @@ export function syncManagerProfileControls(doc) {
     syncPersonSegments(doc);
     const fixedGroup = doc.querySelector?.('[data-person-field="profileRentenanpassungPct"]');
     const mode = doc.getElementById('profileRentenanpassungArt')?.value;
-    const rate = Number(String(doc.getElementById('profileRentenanpassungPct')?.value || '0').replace(',', '.'));
+    const rate = readDecimalInput(doc.getElementById('profileRentenanpassungPct')?.value || '0');
     if (fixedGroup) fixedGroup.hidden = mode !== 'fix' || rate === 0 && doc.getElementById('profilePensionSegments')?.dataset.explicitFixed !== 'true';
     syncPensionWageHint(doc);
     const rente = doc.getElementById('profileRenteAktiv');
@@ -373,15 +374,19 @@ function syncPersonSegments(doc) {
         if (!host || !field) continue;
         const pct = doc.getElementById('profileRentenanpassungPct');
         const selected = fieldId === 'profileRentenanpassungArt' && field.value === 'fix'
-            && Number(String(pct?.value || '0').replace(',', '.')) === 0 && host.dataset.explicitFixed !== 'true' ? 'none' : field.value;
+            && readDecimalInput(pct?.value || '0') === 0 && host.dataset.explicitFixed !== 'true' ? 'none' : field.value;
         const choices = [...options];
-        if (fieldId === 'profileKirchensteuerPct' && !options.some(([value]) => Number(value) === Number(String(field.value).replace(',', '.')))) choices.push([field.value, `${field.value} % · bisher`]);
-        host.replaceChildren();
-        choices.forEach(([value, label]) => {
-            const button = doc.createElement('button'); button.type = 'button'; button.className = 'ds-button ds-button-secondary';
-            button.dataset.personSegmentField = fieldId; button.dataset.value = String(value); button.textContent = label;
-            button.disabled = field.disabled; button.setAttribute('aria-pressed', String(String(selected) === String(value)));
-            host.appendChild(button);
+        if (fieldId === 'profileKirchensteuerPct' && !options.some(([value]) => Number(value) === readDecimalInput(field.value))) choices.push([field.value, `${field.value} % · bisher`]);
+        // VN-3 (Breitensuche zu Gemini Befund 5): Gleiche Wahl → Knöpfe an Ort und Stelle aktualisieren; ein Neuaufbau bei jeder
+        // Sperre nähme dem fokussierten Knopf (auch dem Ziel eines Tab-Wechsels) den Fokus.
+        const existing = [...host.children];
+        const same = existing.length === choices.length && choices.every(([value, label], index) => existing[index].dataset?.value === String(value) && existing[index].textContent === label);
+        if (!same) host.replaceChildren();
+        choices.forEach(([value, label], index) => {
+            const button = same ? /** @type {HTMLButtonElement} */ (existing[index]) : doc.createElement('button');
+            if (!same) { button.type = 'button'; button.className = 'ds-button ds-button-secondary';
+                button.dataset.personSegmentField = fieldId; button.dataset.value = String(value); button.textContent = label; host.appendChild(button); }
+            button.disabled = field.disabled && button !== doc.activeElement; button.setAttribute('aria-pressed', String(String(selected) === String(value)));
         });
     }
 }

@@ -1,4 +1,5 @@
 import { bindInfoPopovers, createInfoPopover } from './designsystem-info-popover.js';
+import { patchInPlace } from './dom-patch.js';
 
 /** Schreibfreie Abschlusskomponente. Fachzustand und Speicherbesitz bleiben beim Aufrufer. */
 const active = new WeakMap();
@@ -114,7 +115,8 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
                 description.textContent = [progressNames, progress, footnote].filter(Boolean).join(' · ');
             }
         };
-        const updateSteps = next => {
+        /** @param {any[]} next @param {{patch?: boolean}} [options] `patch`: Eingabe im aktiven Schritt (VN-1 Punkt 1). */
+        const updateSteps = (next, { patch = false } = {}) => {
             if (ended) return;
             const oldFocus = /** @type {import("../../typcheck/shared-ui.js").CloseElement} */ (doc.activeElement), scroll = content.scrollTop;
             // Hintergrundupdates ändern weder Besuchsmenge noch geöffnete Entwurfsarbeit.
@@ -140,7 +142,10 @@ export function createCloseDialog({ doc = document, id, title, eyebrow = 'Monats
                 row.root.dataset.locked = String(Boolean(step.locked));
                 row.step = step; row.index = index; row.name.textContent = step.chip || step.title; row.fullTitle.textContent = step.title; row.result.textContent = step.result || '';
                 row.result.classList.toggle('close-dialog-result-warning', step.resultTone === 'warning');
-                if (step.content && row.content !== step.content) {
+                // VN-1 Punkt 1: Eine Eingabe im aktiven Schritt tauscht dessen Inhalt nicht aus; berechnete Werte ändern sich an Ort und Stelle,
+                // das Feld mit dem Fokus und das Ziel von Tab oder Mausklick bleiben dieselben Elemente.
+                if (patch && step.id === current && row.content && step.content && row.content !== step.content) patchInPlace(row.content, step.content);
+                else if (step.content && row.content !== step.content) {
                     Array.from(row.body.children || []).forEach(child => child.remove());
                     row.body.append(step.content); row.content = step.content;
                 }

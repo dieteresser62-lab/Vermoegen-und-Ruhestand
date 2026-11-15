@@ -566,6 +566,25 @@ async function openSmokePage(browser, baseUrl, entry, options) {
     return smoke;
 }
 
+/** VN-1 Punkt 8: Löschen und „Kauf rückgängig“ gibt es nur in „Tranche im Detail“. Öffnet das Detail einer Tranche (ohne Kennung die erste).
+ * @param {import('playwright').Page} page @param {string|null} [trancheId] */
+async function openTrancheDetailDelete(page, trancheId = null) {
+    await page.locator(trancheId ? `[data-action="edit-tranche"][data-tranche-id="${trancheId}"]` : '[data-action="edit-tranche"]').first().click();
+    await page.locator('#trancheDetailsToggle').click();
+    await page.locator('#trancheModal.active #deleteTrancheDialogBtn').waitFor();
+}
+
+// VK-2: „Kauf eintragen“ öffnet den geführten Kauf (#buyFlowDialog); der Tranchendialog dient dem Bearbeiten. Dialogfälle des
+// Tranchendialogs öffnen ihn direkt mit dem Kaufknopf als Öffner.
+async function openTrancheCreate(page) {
+    await page.evaluate(async () => {
+        const { openCreateTrancheModal } = await import('./app/tranches/tranchen-manager-modal.js');
+        const { state } = await import('./app/tranches/tranchen-manager-page/state.js');
+        state.editingIndex = -1;
+        openCreateTrancheModal(document, document.getElementById('depotAddTrancheBtn'));
+    });
+}
+
 async function readIndexedDb(page, storeName, key) {
     return page.evaluate(({ storeName, key }) => new Promise((resolve, reject) => {
         const request = indexedDB.open(JSON.parse(localStorage.getItem('rs_storage_area_control_v1') || 'null')?.activeArea === 'spiel' ? 'ruhestand-suite-spiel' : 'ruhestand-suite');
@@ -6918,7 +6937,7 @@ async function runTranchesSmoke(browser, baseUrl) {
         assert(await page.evaluate(() => JSON.stringify(Object.entries(localStorage).sort())) === records, 'Reine Formatierung verändert keine Exportrecords');
         assert(await page.evaluate(async () => (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard(document).reasons().length) === 0, 'Formatierung erzeugt keinen Dirty-Navigationshinweis');
     }
-    await page.locator('#depotAddTrancheBtn').click();
+    await openTrancheCreate(page);
     await page.locator('#trancheModal.active').waitFor();
     const sharesInput = page.locator('#shares');
     const initialShares = await sharesInput.inputValue();
@@ -6934,8 +6953,16 @@ async function runTranchesSmoke(browser, baseUrl) {
     await sharesInput.fill(initialShares);
     await page.locator('#closeTrancheModalBtn').click();
     assert(await page.locator('#depotAddTrancheBtn').evaluate(button => button === document.activeElement), 'Depot-Kauföffnung erhält Rückfokus');
+    // VK-2: „Kauf eintragen“ öffnet den geführten Kauf ohne Planbezug (Wertpapier → Abrechnung → Abbuchung).
+    await page.locator('#depotAddTrancheBtn').click();
+    await page.locator('#buyFlowDialog [data-buy-flow-overview]').waitFor();
+    assert(await page.locator('#buyFlowDialog [data-close-dialog-activate]').count() === 3, 'Kauf ohne Plan hat drei Schritte');
+    await page.locator('#buyFlowDialog [data-close-dialog-close]').click();
+    await page.locator('#buyFlowDialog').waitFor({ state: 'detached' });
+    // FR-79: „Verkauf eintragen“ öffnet den geführten Verkauf ohne Planbezug.
     await page.locator('#depotOpenSaleEntryBtn').click();
-    await page.locator('#saleModal.active').waitFor(); await page.locator('#saleCancelBtn').click();
+    await page.locator('#saleFlowDialog').waitFor(); await page.locator('#saleFlowDialog [data-close-dialog-close]').click();
+    await page.locator('#saleFlowDialog').waitFor({ state: 'detached' });
     assert(await page.locator('#depotOpenSaleEntryBtn').evaluate(button => button === document.activeElement), 'Depot-Verkaufsöffnung erhält Rückfokus');
     await page.locator('#managePeopleBtn').click();
     await page.locator('#managerPeopleModal.active').waitFor(); await page.locator('#dismissPeopleModalBtn').click();
@@ -6978,25 +7005,25 @@ async function runTranchesSmoke(browser, baseUrl) {
     assert(profileContext.label === profileA && profileContext.back === profileA,
         'Profilwahl, Manager-Kontext und Rücknavigation müssen Profil A referenzieren');
 
-    await page.locator('#depotAddTrancheBtn').click();
+    await openTrancheCreate(page);
     await page.locator('#trancheModal.active').waitFor({ state: 'visible' });
     await page.locator('#modalTitle').filter({ hasText: 'Kauf eintragen' }).waitFor({ state: 'visible' });
     assert(await page.locator('#trancheModal').getAttribute('role') === 'dialog', 'Editor muss als Dialog ausgezeichnet sein');
     assert(await page.locator('#trancheModal').getAttribute('aria-modal') === 'true', 'Editor muss modal ausgezeichnet sein');
     assert(await page.evaluate(() => document.activeElement?.id) === 'name', 'Dialog muss den initialen Fokus auf den Namen setzen');
-    await page.locator('#dismissTrancheModalBtn').focus();
+    await page.locator('#trancheQuoteRecheckBtn').focus();
     await page.keyboard.press('Shift+Tab');
     assert(await page.evaluate(() => document.activeElement?.textContent?.trim()) === 'Tranche speichern', 'Fokusfalle muss rückwärts zum letzten Dialogelement springen');
     await page.keyboard.press('Escape');
     assert(await page.evaluate(() => document.activeElement?.id) === 'depotAddTrancheBtn', 'Escape muss Fokus an den Auslöser zurückgeben');
 
-    await page.locator('#depotAddTrancheBtn').click();
+    await openTrancheCreate(page);
     await page.locator('#name').fill('Abbruchprobe');
     await page.locator('#closeTrancheModalBtn').click();
     await page.locator('#navigationGuardLeave').click();
     assert(await page.evaluate(() => document.activeElement?.id) === 'depotAddTrancheBtn', 'Dialogabbruch gibt Fokus zurück');
     assert((await readIndexedDb(page, 'kv', 'depot_tranchen')).value === '[]', 'Dialogabbruch schreibt keine Tranche');
-    await page.locator('#depotAddTrancheBtn').click();
+    await openTrancheCreate(page);
     await page.locator('#name').fill('Synthetische Browser-Tranche');
     await page.locator('#ticker').fill('FLOW.DE');
     await page.locator('#shares').fill('-1');
@@ -7006,8 +7033,9 @@ async function runTranchesSmoke(browser, baseUrl) {
     await page.locator('[data-tranche-category="gold"]').click();
     assert(await page.locator('#type').inputValue() === 'gold', 'Anlageformsegment bedient den bestehenden Typvertrag');
     await page.locator('[data-tranche-category="equity"]').click();
-    await page.locator('[data-tranche-type="aktien_neu"]').click();
-    await page.locator('#tqf').fill('0.3');
+    assert(await page.locator('#trancheStockReadOnly').textContent() === 'Neubestand', 'Kaufdatum ab 2009 setzt den Bestand lesend');
+    // VK-3: Teilfreistellung als Auswahl (30 · 15 · 0 %), nur bei Aktien.
+    await page.locator('#trancheTqfSelect').selectOption('0.3');
     const typeState = await page.locator('#type').evaluate(select => ({
         value: select.value,
         enabled: Array.from(select.options).filter(option => !option.disabled && !option.hidden).map(option => option.value)
@@ -7050,7 +7078,7 @@ async function runTranchesSmoke(browser, baseUrl) {
     assert(rowText.includes('Aktien') && rowText.includes('Neubestand') && !rowText.includes('Geldmarkt'),
         'Aktientranche muss kanonisch klassifiziert sein');
     assert(await row.locator('[data-action="edit-tranche"]').getAttribute('aria-label'), 'Edit-Icon benötigt einen zugänglichen Namen');
-    assert(await row.locator('[data-action="delete-tranche"]').getAttribute('aria-label'), 'Delete-Icon benötigt einen zugänglichen Namen');
+    assert(await row.locator('[data-action="delete-tranche"]').count() === 0, 'VN-1 Punkt 8: kein Papierkorb in der Zeile');
     const createdTranche = JSON.parse((await readIndexedDb(page, 'kv', 'depot_tranchen')).value)[0];
     assert(!('asOf' in createdTranche), 'Manuelle Neuanlage erhält keinen Kurszeitpunkt');
     assert((await row.locator('.pv-quote-date').textContent()) === 'Kursdatum unbekannt', 'Undatierter Preis wird nicht als aktueller Kurs ausgegeben');
@@ -7076,7 +7104,9 @@ async function runTranchesSmoke(browser, baseUrl) {
 
     await row.locator('[data-action="edit-tranche"]').click();
     await page.locator('#notes').fill('Nur eine Notiz');
-    await page.locator('#trancheForm button[type="submit"]').click();
+    await page.locator('#notes').blur();
+    await page.locator('#trancheNoteStatus').filter({ hasText: 'gespeichert' }).waitFor();
+    await page.locator('#dismissTrancheModalBtn').click();
     await page.locator('#trancheModal.active').waitFor({ state: 'hidden' });
     assert(JSON.parse((await readIndexedDb(page, 'kv', 'depot_tranchen')).value)[0].asOf === quoteAsOf,
         'Reine Notizänderung bewahrt Kursprovenienz');
@@ -7090,7 +7120,11 @@ async function runTranchesSmoke(browser, baseUrl) {
     const beforeEditRow = await readIndexedDb(page, 'kv', 'depot_tranchen');
     const beforeEditId = JSON.parse(beforeEditRow.value)[0].trancheId;
     await row.locator('[data-action="edit-tranche"]').click();
+    await page.locator('#trancheDetailsToggle').click();
+    // VK-3: „Kurs von Hand“ gibt es nur ohne Kursabruf; ohne Kürzel erscheint das Feld (Kürzel danach wieder wie vorher).
+    await page.locator('#ticker').fill('');
     await page.locator('#currentPrice').fill('95');
+    await page.locator('#ticker').fill('FLOW.DE');
     await page.locator('#trancheForm button[type="submit"]').click();
     await page.locator('#tranchePersistenceStatus').filter({ hasText: 'aktualisiert' }).waitFor();
     const afterEditRow = await readIndexedDb(page, 'kv', 'depot_tranchen');
@@ -7105,14 +7139,10 @@ async function runTranchesSmoke(browser, baseUrl) {
     const afterReloadRow = await readIndexedDb(page, 'kv', 'depot_tranchen');
     assert(afterReloadRow.value === afterEditRow.value, 'Reload muss den bestätigten Profil-A-Bestand bytegleich laden');
 
-    await page.locator('#depotOpenSaleEntryBtn').click();
-    await page.locator('#saleStep1').waitFor({ state: 'visible' });
-    await page.locator('#reconcileActionId').fill('synthetic-unsaved-return');
-    await page.locator('#managerBackLink').evaluate(link => link.click());
-    await page.locator('#navigationGuardDialog[open]').waitFor();
-    assert((await page.locator('#navigationGuardDescription').textContent()).includes('Manager-Eingaben'),
-        'Erster unsauberer Rückweg benennt den Verlust geänderter Abgleichfelder');
-    await page.locator('#navigationGuardLeave').click();
+    await openSaleSettlement(page);
+    await page.locator('#saleFlowDialog [data-sale-flow-field="price"]').fill('97');
+    await discardSaleFlow(page, 'Erstes Schließen mit Eingaben benennt den Verlust ungespeicherter Verkaufseingaben');
+    await page.locator('#managerBackLink').click();
     await page.locator('#overviewTitle').waitFor({ state: 'visible' });
     await page.locator('.suite-navigation a[href="depot-tranchen-manager.html"]').click();
     await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
@@ -7169,85 +7199,52 @@ async function runTranchesSmoke(browser, baseUrl) {
     assert(await page.locator('#suiteProfileContext').getAttribute('data-profile-id') === profileA,
         'Rückwechsel muss exakt den bestätigten Bestand von Profil A laden');
 
-    await page.locator('#depotOpenSaleEntryBtn').click();
-    await page.locator('#saleStep1').waitFor({ state: 'visible' });
-    await page.locator('#reconcileActionId').fill('browser-order-1');
-    await page.locator('#reconcileTrancheId').selectOption(afterEditId);
-    await page.locator('#reconcileExecutedAt').fill('2026-07-14');
-    await page.locator('#reconcileSharesSold').fill('1');
-    await page.locator('#reconcileGrossProceeds').fill('97');
-    await page.locator('#reconcileFees').fill('2');
-    await page.locator('.reconciliation-recommendation').evaluate(details => { details.open = true; });
-    await page.locator('#reconcileRecommendedShares').fill('0.8');
-    await page.locator('#reconcileRecommendedGross').fill('90');
-    await page.locator('#saleNextBtn').click();
-    await page.locator('#saleStep2').waitFor({ state: 'visible' });
+    await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).flush());
     const previewStockBefore = (await readIndexedDb(page, 'kv', 'depot_tranchen')).value;
     const previewRegistryBefore = (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
-    await page.locator('#reconciliationPreviewBtn').click();
-    await page.locator('#saleStep3').waitFor({ state: 'visible' });
-    await page.locator('#reconciliationPreview').waitFor({ state: 'visible' });
+    await enterBrowserSale(page);
     assert((await readIndexedDb(page, 'kv', 'depot_tranchen')).value === previewStockBefore
         && (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value === previewRegistryBefore,
-        'Verkaufsvorschau schreibt weder Bestand noch Registry oder Audit');
-    const previewText = await page.locator('#reconciliationPreviewContent').textContent();
-    assert(previewText.includes(afterEditId) && previewText.includes('browser-order-1'),
-        'Reconcile-Vorschau muss exakte Profil-/Tranche-/Action-Identitaet zeigen');
-    assert(previewText.includes('Resultierender Bestand') && previewText.includes('Abweichung'),
-        'Reconcile-Vorschau muss resultierenden Bestand und Empfehlungsabweichung zeigen');
-    assert(previewText.includes('Cashstatus: offen') && previewText.includes('keine automatische Cashbuchung'),
-        'Reconcile-Vorschau muss den offenen manuellen Cashprozess unmissverständlich zeigen');
-    await page.locator('#reconciliationConfirmBtn').click();
-    const question = await answerPageDialog(page, { label: 'Ausführung anwenden' });
-    assert(question.includes('Cashstatus: offen') && question.includes('keine automatische Cashbuchung'), 'Abgleichrückfrage erklärt Cashstatus und reale Bestandsfolge');
-    await page.locator('#reconciliationStatus').filter({ hasText: 'Cashbuchung bleibt manuell offen' }).waitFor();
-    assert(await page.locator('#reconcileTrancheId').inputValue() === '', 'Erfolgreiche Abgleichbestätigung setzt die Tranchenauswahl zurück');
-    await page.locator('#depotOpenSaleEntryBtn').click();
-    await assertCurrentSelectionText(page, ['reconcileTrancheId'], true);
-    await page.locator('#dismissSaleModalBtn').click();
+        'Merkzettel und Abrechnung schreiben weder Bestand noch Registry oder Audit');
+    assert((await page.locator('#saleFlowDialog [data-sale-flow-credit]').textContent()).includes('95,00'), 'Gutschrift = Kurswert − Gebühren − Steuern');
+    await page.locator('#saleFlowDialog [data-sale-flow-primary]').click();
+    await page.locator('#saleFlowDialog').waitFor({ state: 'detached' });
+    await page.waitForLoadState('load');
+    await page.locator('#reconciliationCashStatuses').filter({ hasText: 'Gutschrift kommt noch' }).waitFor();
 
     const reconciledRow = await readIndexedDb(page, 'kv', 'depot_tranchen');
     assert(JSON.parse(reconciledRow.value)[0].shares === 1,
         'Bestaetigte tatsaechliche Ausfuehrung muss den persistenten Stueckbestand reduzieren');
     const reconciledRegistryRow = await readIndexedDb(page, 'kv', 'rs_profiles_v1');
     const reconciledRegistry = JSON.parse(reconciledRegistryRow.value);
-    assert(reconciledRegistry.trancheReconciliation.actions[0].actionId === 'browser-order-1',
-        'Bestaetigung muss stabile Action-ID fuer Reload-Idempotenz speichern');
+    // VK-1b (Gutachten VK-1 P3-4): Ausführungstag in der Kennung.
+    const saleActionId = `order-${profileA}-${reconciledRegistry.trancheReconciliation.actions[0].executedAt}-browser-order-1`;
+    assert(reconciledRegistry.trancheReconciliation.actions[0].actionId === saleActionId,
+        'Ordernummer wird zur stabilen Kennung fuer Reload-Idempotenz');
     assert(reconciledRegistry.trancheReconciliation.actions[0].eventType === 'sale_reconciled'
-        && reconciledRegistry.trancheReconciliation.actions[0].cashStatus === 'pending_manual_posting',
-    'Neuer Realverkauf muss explizit als offener Cashstatus gespeichert werden');
+        && reconciledRegistry.trancheReconciliation.actions[0].cashStatus === 'pending_manual_posting'
+        && reconciledRegistry.trancheReconciliation.actions[0].actual.taxes === 0,
+    'Neuer Realverkauf muss explizit als offener Cashstatus mit Steuerfeld gespeichert werden');
     const saleRecordBeforeCash = JSON.stringify(reconciledRegistry.trancheReconciliation.actions[0]);
 
-    await page.locator('#depotOpenSaleEntryBtn').click();
-    await page.locator('#saleStep1').waitFor({ state: 'visible' });
-    await page.locator('#reconcileActionId').fill('browser-order-1');
-    await page.locator('#reconcileTrancheId').selectOption(afterEditId);
-    await page.locator('#reconcileExecutedAt').fill('2026-07-14');
-    await page.locator('#reconcileSharesSold').fill('1');
-    await page.locator('#reconcileGrossProceeds').fill('97');
-    await page.locator('#reconcileFees').fill('2');
-    await page.locator('.reconciliation-recommendation').evaluate(details => { details.open = true; });
-    await page.locator('#reconcileRecommendedShares').fill('0.8');
-    await page.locator('#reconcileRecommendedGross').fill('90');
-    await page.locator('#saleNextBtn').click();
-    await page.locator('#saleStep2').waitFor({ state: 'visible' });
+    await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).flush());
     const duplicateRegistryBefore = (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
-    await page.locator('#reconciliationPreviewBtn').click();
-    await page.locator('#saleStep3').waitFor({ state: 'visible' });
-    assert((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value === duplicateRegistryBefore,
-        'Duplikatvorschau schreibt keinen weiteren Auditnachweis');
-    await page.locator('#reconciliationStatus').filter({ hasText: 'bereits identisch verarbeitet' }).waitFor();
-    assert(await page.locator('#reconciliationConfirmBtn').isDisabled(),
-        'Identische Action-ID darf keine zweite Bestaetigung anbieten');
+    await enterBrowserSale(page);
+    await page.locator('#saleFlowDialog [data-sale-flow-primary]').click();
+    await page.locator('#saleFlowDialog').waitFor({ state: 'detached' });
+    await page.waitForLoadState('load');
+    await page.locator('#reconciliationCashStatuses').filter({ hasText: 'Gutschrift kommt noch' }).waitFor();
+    const auditOf = raw => JSON.stringify(JSON.parse(raw).trancheReconciliation);
+    assert(auditOf((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value) === auditOf(duplicateRegistryBefore),
+        'Dieselbe Ordernummer mit denselben Daten schreibt keinen weiteren Auditnachweis');
     const duplicateRow = await readIndexedDb(page, 'kv', 'depot_tranchen');
     assert(JSON.parse(duplicateRow.value)[0].shares === 1,
         'Identische Action-ID darf den Bestand nicht ein zweites Mal reduzieren');
 
-    await page.locator('#managerBackLink').evaluate(link => link.click());
-    await page.locator('#navigationGuardDialog[open]').waitFor();
-    assert((await page.locator('#navigationGuardDescription').textContent()).includes('Manager-Eingaben'),
-        'Zweiter unsauberer Rückweg benennt den Verlust geänderter Abgleichfelder');
-    await page.locator('#navigationGuardLeave').click();
+    await openSaleSettlement(page);
+    await page.locator('#saleFlowDialog [data-sale-flow-field="price"]').fill('97');
+    await discardSaleFlow(page, 'Zweites Schließen mit Eingaben benennt den Verlust ungespeicherter Verkaufseingaben');
+    await page.locator('#managerBackLink').click();
     await page.waitForURL('**/index.html');
     await page.locator('.suite-navigation a[href="Balance.html"]').click();
     await page.goto(`${baseUrl}/index.html`);
@@ -7259,16 +7256,18 @@ async function runTranchesSmoke(browser, baseUrl) {
     await page.locator(`#managerSectionNav [data-manager-profile="${profileA}"]`).click();
     await page.locator('#reconciliationCashStatuses').waitFor({ state: 'visible' });
     await page.reload({ waitUntil: 'load' });
-    await page.locator('#reconciliationCashStatuses').filter({ hasText: 'offener manueller Cashbuchung' }).waitFor();
-    assert(await page.locator('[data-cash-action="confirm"][data-target-action-id="browser-order-1"]').isVisible(),
+    await page.locator('#reconciliationCashStatuses').filter({ hasText: 'Gutschrift kommt noch' }).waitFor();
+    assert(await page.locator(`[data-cash-action="confirm"][data-target-action-id="${saleActionId}"]`).isVisible(),
         'Offener Cashstatus muss Reload ueberleben und eine explizite Bestaetigung anbieten');
-    await page.locator('[data-cash-action="confirm"][data-target-action-id="browser-order-1"]').click();
+    await page.locator(`[data-cash-action="confirm"][data-target-action-id="${saleActionId}"]`).click();
     await page.locator('#cashPostingModal.active').waitFor({ state: 'visible' });
     const confirmationSummary = await page.locator('#cashPostingModalSummary').textContent();
-    assert(confirmationSummary.includes('browser-order-1') && confirmationSummary.includes('95,00')
-        && confirmationSummary.includes('cash-confirmation:v1:browser-order-1'),
+    // DS-1 Punkt 8: Der Dialog spricht Klartext ohne Kennungen; Zielverkauf und Abschluss-ID hängen am Datenattribut (wie bei der Korrektur).
+    const confirmationId = await page.locator('#cashPostingModalSummary').evaluate(node => node.dataset.nextActionId);
+    assert(confirmationSummary.includes('95,00') && confirmationId === `cash-confirmation:v1:${saleActionId}`
+        && !/cash-confirmation|Audit/.test(confirmationSummary) && !confirmationSummary.includes(saleActionId),
     'Cashdialog muss Zielverkauf, unveraenderten Nettoerloes und kanonische Abschluss-ID zeigen');
-    assert((await page.locator('#cashPostingModalSummary').textContent()).includes('wird als Tagesgeld-Stand übernommen'), 'Cashdialog erklärt Übernahme des absoluten Standes');
+    assert((await page.locator('#cashPostingModalSummary').textContent()).includes('Die App übernimmt ihn so und rechnet den Nettoerlös nicht noch einmal dazu'), 'Cashdialog erklärt Übernahme des absoluten Standes (Klartext DS-1 Punkt 8)');
     await page.locator('#cashPostingBalance').fill('10095');
     await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).PersistenceFacade.flush());
     const goldTargetBeforeCash = await page.locator('#profileGoldZiel').inputValue();
@@ -7283,7 +7282,7 @@ async function runTranchesSmoke(browser, baseUrl) {
     assert(JSON.stringify(await readIndexedDb(page, 'kv', 'profile_tagesgeld')) === JSON.stringify(cashBeforeDirtyCash), 'Verweigerter Cashnachtrag schreibt keinen Tagesgeldstand');
     await page.locator('#profileGoldZiel').evaluate((node, value) => { node.value = value; }, goldTargetBeforeCash);
     await page.locator('#cashPostingSubmitBtn').click();
-    await page.locator('#reconciliationStatus').filter({ hasText: 'Abschluss-Auditnachweis append-only gespeichert' }).waitFor();
+    await page.locator('#reconciliationStatus').filter({ hasText: 'Gutschrift bestätigt' }).waitFor();
 
     const confirmedCashRegistry = JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value);
     assert(confirmedCashRegistry.trancheReconciliation.actions.length === 2,
@@ -7295,12 +7294,12 @@ async function runTranchesSmoke(browser, baseUrl) {
     const cashConfirmation = confirmedCashRegistry.trancheReconciliation.actions[1];
     assert(cashConfirmation.eventType === 'cash_posting_confirmed'
         && cashConfirmation.actionId === cashConfirmation.confirmationActionId
-        && cashConfirmation.targetActionId === 'browser-order-1'
+        && cashConfirmation.targetActionId === saleActionId
         && cashConfirmation.confirmedNetProceedsEur === 95,
     'Cashabschluss muss kanonisch auf Verkauf und Nettoerloes verweisen');
 
     await page.reload({ waitUntil: 'load' });
-    await page.locator('#reconciliationCashStatuses').filter({ hasText: 'Kein offener manueller Cashrückstand' }).waitFor();
+    await page.locator('#reconciliationCashStatuses').filter({ hasText: 'Alle Gutschriften sind eingetragen' }).waitFor();
     // SOURCE, extern auszuführen: neuer echter Profilwrite nach dem historischen Cashnachweis.
     await page.locator('#managerCashEdit').click();
     await page.locator('#profileTagesgeld').fill('8000');
@@ -7310,27 +7309,28 @@ async function runTranchesSmoke(browser, baseUrl) {
     await page.locator('#tranchePersistenceStatus').filter({ hasText: 'Profilwerte dauerhaft gespeichert.' }).waitFor();
     const currentCashBeforeCorrection = await readIndexedDb(page, 'kv', 'profile_tagesgeld');
     const currentHistoryBeforeCorrection = await readIndexedDb(page, 'kv', 'profile_cash_history_v1');
-    await page.locator('[data-cash-action="correct"][data-target-action-id="browser-order-1"]').click();
+    await page.locator(`[data-cash-action="correct"][data-target-action-id="${saleActionId}"]`).click();
     await page.locator('#cashPostingModal.active').waitFor({ state: 'visible' });
     const correctionSummary = await page.locator('#cashPostingModalSummary').textContent();
-    assert(correctionSummary.includes('Historischer Auditbetrag (letzter Nachweis): 10.095,00')
-        && correctionSummary.includes('Aktueller Tagesgeld-Stand: 8.000,00') && correctionSummary.includes('Korrekturrevision: 1')
-        && correctionSummary.includes('cash-correction:v1:browser-order-1:1'),
+    const correctionPin = await page.locator('#cashPostingModalSummary').evaluate(node => [node.dataset.nextRevision, node.dataset.nextActionId]);
+    assert(correctionSummary.includes('Zuletzt bestätigter Tagesgeld-Stand: 10.095,00')
+        && correctionSummary.includes('Dein Tagesgeld laut App heute: 8.000,00') && correctionPin[0] === '1'
+        && correctionPin[1] === `cash-correction:v1:${saleActionId}:1` && !/cash-correction|Audit/.test(correctionSummary),
     'Korrekturdialog trennt aktuellen Stand und historischen Nachweis bei unveränderter Revision und ID');
     assert(Number((await page.locator('#cashPostingBalance').inputValue()).replace(',', '.')) === 8000,
         'Korrektur belegt den aktuellen Profilbetrag statt des historischen Auditbetrags vor');
-    assert((await page.locator('#cashPostingSubmitBtn').textContent()).includes('Aktuellen Tagesgeld-Stand übernehmen'),
+    assert((await page.locator('#cashPostingSubmitBtn').textContent()).includes('Stand übernehmen'),
         'Korrektursubmit benennt die Übernahme des aktuellen Standes ausdrücklich');
     await page.locator('#cashPostingCancelBtn').click();
     await page.locator('#cashPostingModal.active').waitFor({ state: 'hidden' });
     assert(JSON.stringify(await readIndexedDb(page, 'kv', 'profile_tagesgeld')) === JSON.stringify(currentCashBeforeCorrection)
         && JSON.stringify(await readIndexedDb(page, 'kv', 'profile_cash_history_v1')) === JSON.stringify(currentHistoryBeforeCorrection),
         'Öffnen und Abbruch erhalten beide aktuellen Cashrecords dauerhaft bytegleich');
-    await page.locator('[data-cash-action="correct"][data-target-action-id="browser-order-1"]').click();
+    await page.locator(`[data-cash-action="correct"][data-target-action-id="${saleActionId}"]`).click();
     await page.locator('#cashPostingBalance').fill('10090');
     await page.locator('#cashPostingReason').fill('Browser-Test: Zahlendreher korrigiert');
     await page.locator('#cashPostingSubmitBtn').click();
-    await page.locator('#reconciliationStatus').filter({ hasText: 'Neuer Tagesgeld-Stand übernommen und Korrektur-Auditnachweis append-only gespeichert' }).waitFor();
+    await page.locator('#reconciliationStatus').filter({ hasText: 'Neuer Tagesgeld-Stand übernommen und Korrektur gespeichert' }).waitFor();
 
     const correctedCashRegistry = JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value);
     assert(correctedCashRegistry.trancheReconciliation.actions.length === 3,
@@ -7363,7 +7363,7 @@ async function runTranchesSmoke(browser, baseUrl) {
 
     await page.reload({ waitUntil: 'load' });
     const correctedStatusText = await page.locator('#reconciliationCashStatuses').textContent();
-    assert(correctedStatusText.includes('Revision 1') && correctedStatusText.includes('10.090,00'),
+    assert(correctedStatusText.includes('Tagesgeld korrigiert') && correctedStatusText.includes('10.090,00'),
         'Reload muss ausschließlich den letzten wirksamen korrigierten Cashstand anzeigen');
 
     await page.evaluate(async () => {
@@ -7382,14 +7382,32 @@ async function runTranchesSmoke(browser, baseUrl) {
     });
     await page.reload({ waitUntil: 'load' });
     const legacyStatusText = await page.locator('#reconciliationCashStatuses').textContent();
-    assert(legacyStatusText.includes('Abgeschlossen (Altfall – Cashstatus nicht dokumentiert)')
-        && legacyStatusText.includes('Kein offener manueller Cashrückstand'),
+    assert(legacyStatusText.includes('Älterer Verkauf ohne Angabe zur Gutschrift')
+        && legacyStatusText.includes('Alle Gutschriften sind eingetragen'),
     'Legacy-Verkauf muss sichtbar, operativ abgeschlossen und nicht als pending dargestellt werden');
 
     await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
 
     await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
-    await page.locator('[data-action="delete-tranche"]').click();
+    // VK-3 (Ergänzung 1 FR-79): Mit eingetragenem Verkauf ist Löschen gesperrt und nennt den Grund.
+    // VN-1 Punkt 8: Löschen nur in „Tranche im Detail“; dort gesperrt mit Begründung.
+    await openTrancheDetailDelete(page);
+    assert(await page.locator('#deleteTrancheDialogBtn').isDisabled(), 'Gesperrtes Löschen ist nicht bedienbar');
+    assert((await page.locator('#trancheDeleteReason').textContent()).includes('Verkauf'), 'Begründung nennt den eingetragenen Verkauf');
+    await page.locator('#closeTrancheModalBtn').click();
+    assert(await page.locator('#pageDialog[open]').count() === 0, 'Gesperrtes Löschen fragt nicht nach');
+    // Für den Löschpfad die synthetischen Verkaufsbelege entfernen (Testaufbau wie oben beim Altfall).
+    await page.evaluate(async () => {
+        const { persistenceStorage, PersistenceFacade } = await import('./app/shared/persistence-facade.js');
+        const registry = JSON.parse(persistenceStorage.getItem('rs_profiles_v1'));
+        delete registry.trancheReconciliation;
+        persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(registry));
+        await PersistenceFacade.flush();
+    });
+    await page.reload({ waitUntil: 'load' });
+    await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
+    await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
+    await openTrancheDetailDelete(page); await page.locator('#deleteTrancheDialogBtn').click();
     // Seit Paket 9 fragt die App im eigenen Seitendialog nach; der Test bestätigt wie ein Nutzer.
     await page.locator('#pageDialog [data-page-dialog-accept]').click();
     await page.locator('#tranchenTable').filter({ hasText: 'Keine Tranchen vorhanden' }).waitFor();
@@ -7398,6 +7416,7 @@ async function runTranchesSmoke(browser, baseUrl) {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.locator('#managerPlanTab').click();
     const managePeople = page.locator('#managePeopleBtn');
+    await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).flush());
     const peopleRegistryBefore = (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
     await managePeople.click();
     await page.locator('#managerPeopleModal').waitFor({ state: 'visible' });
@@ -7820,10 +7839,11 @@ async function runSlice1PageDialogs(browser, baseUrl) {
             await waitSuiteIdentity(page, 'dialog-a');
             await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
             await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
-            const opener = page.locator('[data-action="delete-tranche"][data-tranche-id="dialog-lot"]');
+            // VN-1 Punkt 8: Löschen über „Tranche im Detail“; der Fokus kehrt zum Detailknopf der Zeile zurück.
+            const opener = page.locator('[data-action="edit-tranche"][data-tranche-id="dialog-lot"]');
             await opener.waitFor();
             const before = (await readIndexedDb(page, 'kv', 'depot_tranchen')).value;
-            await opener.click();
+            await openTrancheDetailDelete(page, 'dialog-lot'); await page.locator('#deleteTrancheDialogBtn').click();
             const dialog = page.locator('#pageDialog[open]'); await dialog.waitFor();
             const bounds = await dialog.boundingBox();
             assert(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= width && bounds.y + bounds.height <= 900, `${width}: Seitendialog bleibt im Viewport`);
@@ -7833,7 +7853,7 @@ async function runSlice1PageDialogs(browser, baseUrl) {
             assert(declined.includes('Synthetischer Dialogbestand') && declined.includes('dauerhaft'), 'Frage nennt Identität und Löschfolge');
             assert((await readIndexedDb(page, 'kv', 'depot_tranchen')).value === before, 'Escape erhält Tranchenbytes');
             assert(await opener.evaluate(node => node === document.activeElement), 'Abbruch erhält den verbundenen Öffner');
-            await opener.click(); await answerPageDialog(page, { label: 'Tranche löschen' });
+            await openTrancheDetailDelete(page, 'dialog-lot'); await page.locator('#deleteTrancheDialogBtn').click(); await answerPageDialog(page, { label: 'Tranche löschen' });
             await waitForPageCondition(page, async () => {
                 const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
                 const { getPageNavigationGuard } = await import('./app/shared/navigation-guard-dialog.js');
@@ -7855,6 +7875,7 @@ async function runSlice1PageDialogs(browser, baseUrl) {
             await page.locator('#managePeopleBtn').click();
             const remove = page.locator('[data-person-action="delete"][data-person-id="dialog-b"]');
             await remove.waitFor();
+            await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).flush());
             const before = (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
             await remove.click(); await answerPageDialog(page, { action: 'cancel', label: 'Person löschen' });
             assert((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value === before, `${label}: Profillöschabbruch erhält Registrybytes`);
@@ -9344,11 +9365,14 @@ async function runManualSmoke(browser, baseUrl) {
                 assert(await images.evaluateAll(nodes => nodes.filter(node => /\/(?:06|09)-ergebnis\.png$/.test(node.src)).every(node => node.getBoundingClientRect().width <= 480)), `${width}/${id}: hochkante Dialogbilder höchstens 480 Pixel`);
             }
             await page.keyboard.press('Control+k');
+            // GH-1: Der Schritt „Kategorie und Teilfreistellung prüfen“ entfiel mit dem geführten Kauf (0e4ad867); geprüft wird ein vorhandener Schritt.
+            await page.locator('#handbookSearch').fill('Ausführungstag');
+            const stepSnippets = await page.locator('#handbookHits .hb-hit p').allTextContents();
+            assert(stepSnippets.some(text => text.includes('Abrechnung Trag Ausführungstag, Stück, Kurs')),
+                `${width}: Suchausschnitt trennt Schritte, Überschrift und Absatz ohne Schrittnummer`);
             await page.locator('#handbookSearch').fill('Teilfreistellung');
             assert(await page.locator('#handbookHits .hb-hit').count() >= 2, `${width}: Suche findet Kapiteltext und Begriffe`);
             const snippets = await page.locator('#handbookHits .hb-hit p').allTextContents();
-            assert(snippets.some(text => text.includes('Kategorie und Teilfreistellung prüfen Aktien passen')),
-                `${width}: Suchausschnitt trennt Schritte, Überschrift und Absatz ohne Schrittnummer`);
             assert(snippets.some(text => text.includes('Teilfreistellung Steuerfreier Fondsertragsanteil.')) && snippets.every(text => !text.includes('Zum Kapitel')),
                 `${width}: Suchausschnitt trennt Begriff und Erklärung ohne Hilfslinks`);
             await page.locator('#handbookHits .hb-hit').first().click();
@@ -10103,20 +10127,12 @@ async function runDesignsystemDataLayout(browser, baseUrl) {
         assert(await page.locator('#tranchenTable tbody tr.tranche-row').count() === lots.length, 'Manager zeigt alle synthetischen Bestandszeilen');
         await assertCurrentSelectionText(page, await page.locator('select[id]').evaluateAll(nodes => nodes.map(node => node.id)));
         assert(await page.locator('#tranchenTable tbody tr.tranche-row td').nth(3).evaluate(node => getComputedStyle(node).fontVariantNumeric.includes('tabular-nums')), 'Manager-Zahlspalten sind tabellarisch');
-        // Die Tranchenwahl der Verkaufserfassung liegt im Verkaufsdialog.
+        // FR-79: Der geführte Verkauf nennt die Tranche in Klartext; Öffnen und Schließen ohne Eingaben schreibt nichts.
+        // VN-1 Punkt 2: Bei mehreren Tranchen steht zuerst die Wahl, ohne Vorwahl.
         await page.locator('#depotOpenSaleEntryBtn').click();
-        await page.locator('#reconcileTrancheId').focus();
-        await page.locator('#reconcileTrancheId').selectOption('layout-lot-0');
-        await fulltext('#reconcileTrancheId');
-        assert(await page.locator('#reconcileTrancheId').evaluate(node => document.activeElement === node), 'Tranchenwahl erhält den Fokus');
-        for (const width of [1280, 1366, 1920, 2560]) {
-            await page.setViewportSize({ width, height: 900 });
-            await fulltext('#reconcileTrancheId');
-        }
-        await page.locator('#dismissSaleModalBtn').click();
-        await page.locator('#navigationGuardDialog[open]').waitFor();
-        await page.locator('#navigationGuardLeave').click();
-        await page.locator('#saleModal').waitFor({ state: 'hidden' });
+        await page.locator('#saleFlowDialog [data-sale-flow-tranche-choice]').waitFor();
+        await page.locator('#saleFlowDialog [data-close-dialog-close]').click();
+        await page.locator('#saleFlowDialog').waitFor({ state: 'detached' });
         for (const width of [1280, 1366, 1920, 2560]) {
             await page.setViewportSize({ width, height: 900 });
             await noPageOverflow(`Manager ${width}`);
@@ -10125,7 +10141,7 @@ async function runDesignsystemDataLayout(browser, baseUrl) {
         }
         await page.locator('#managerCardsToggleAll').click();
         const managerSelectionFixtures = async () => {
-            const ids = ['profileHealthBucketTargetMode', 'profileHealthBucketAssetSource', 'reconcileCashStatus'];
+            const ids = ['profileHealthBucketTargetMode', 'profileHealthBucketAssetSource'];
             // Tabellenbereitschaft bestätigt nicht den Adapterwrite des Subpage-Bootstraps.
             await page.waitForFunction(() => window.__rsProfileSubpageLifecycleInitialized === true);
             await page.evaluate(async () => {
@@ -10133,15 +10149,6 @@ async function runDesignsystemDataLayout(browser, baseUrl) {
                 if (!isInitialized()) throw new Error('Managerpersistenz ist noch nicht initialisiert');
                 await flush();
             });
-            // reconcileCashStatus liegt in Schritt 2 des Verkaufsdialogs; der Dialog bleibt ohne Vorschau oder Buchung geöffnet.
-            await page.locator('#depotOpenSaleEntryBtn').click();
-            await page.locator('#saleStep1').waitFor({ state: 'visible' });
-            for (const [id, value] of [['reconcileActionId', 'layout-order'], ['reconcileExecutedAt', '2026-07-14'], ['reconcileSharesSold', '1'], ['reconcileGrossProceeds', '97'], ['reconcileFees', '2']]) {
-                if (id === 'reconcileExecutedAt') await page.locator('#reconcileTrancheId').selectOption('layout-lot-0');
-                await page.locator('#' + id).fill(value);
-            }
-            await page.locator('#saleNextBtn').click();
-            await page.locator('#reconcileCashStatus').waitFor({ state: 'visible' });
             await assertCurrentSelectionText(page, ids, true);
             const before = (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
             await page.evaluate(ids => {
@@ -10181,14 +10188,10 @@ async function runDesignsystemDataLayout(browser, baseUrl) {
                     }
                     delete window.__managerSelectionFixtureEvents;
                 });
-                await page.locator('#dismissSaleModalBtn').click();
-                await page.locator('#navigationGuardDialog[open]').waitFor();
-                await page.locator('#navigationGuardLeave').click();
-                await page.locator('#saleModal').waitFor({ state: 'hidden' });
             }
         };
         await managerSelectionFixtures();
-        await page.locator('#depotAddTrancheBtn').click();
+        await openTrancheCreate(page);
         await assertCurrentSelectionText(page, ['category', 'type'], true);
         await page.locator('#trancheForm').evaluate(form => form.reset());
         await assertCurrentSelectionText(page, ['category', 'type'], true);
@@ -10197,7 +10200,6 @@ async function runDesignsystemDataLayout(browser, baseUrl) {
         await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
         await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
         await page.locator('#tranchenTable table').waitFor();
-        await assertCurrentSelectionText(page, ['reconcileTrancheId'], true);
         await assertCurrentSelectionText(page, await page.locator('select[id]').evaluateAll(nodes => nodes.map(node => node.id)));
         // Karten beginnen nach dem Reload wieder geschlossen.
         await page.locator('#managerCardsToggleAll').click();
@@ -11327,7 +11329,7 @@ async function runNavigationGuardPresentation(browser, baseUrl) {
         try {
             const { page } = smoke, label = `${source} ${width}×900 discard`, input = 'Ungespeicherte synthetische Tranche';
             await waitForNavigationDecisionSettled(page);
-            await page.locator('#depotAddTrancheBtn').click();
+            await openTrancheCreate(page);
             await page.locator('#name').fill(input);
             await page.locator('#closeTrancheModalBtn').click();
             await page.locator('#navigationGuardDialog[open]').waitFor({ state: 'visible' });
@@ -11423,7 +11425,7 @@ async function runNavigationGuardModal(browser, baseUrl) {
     const smoke = await openSmokePage(browser, baseUrl, 'depot-tranchen-manager.html', { storage });
     try {
         const { page } = smoke;
-        await page.locator('#depotAddTrancheBtn').click(); await page.locator('#name').fill('Ungespeicherte Probe');
+        await openTrancheCreate(page); await page.locator('#name').fill('Ungespeicherte Probe');
         await page.locator('#closeTrancheModalBtn').click();
         await page.locator('#navigationGuardDialog[open]').waitFor();
         assert(await page.getByRole('dialog', { name: 'Änderungen verwerfen?', exact: true }).count() === 1, 'Dirty-Schließen benennt Verwerfen im zugänglichen Dialognamen');
@@ -11442,11 +11444,11 @@ async function runNavigationGuardModal(browser, baseUrl) {
         assert(await page.evaluate(() => document.activeElement.id) === 'closeTrancheModalBtn', 'Escape gibt Fokus an Schließauslöser zurück');
         await page.locator('#name').fill(''); await page.locator('#closeTrancheModalBtn').click();
         assert(await page.locator('#trancheModal').getAttribute('aria-hidden') === 'true', 'Rückänderung erlaubt Schließen ohne Nachfrage');
-        await page.locator('#depotAddTrancheBtn').click(); await page.locator('#name').fill('Verwerfprobe');
+        await openTrancheCreate(page); await page.locator('#name').fill('Verwerfprobe');
         await page.locator('#closeTrancheModalBtn').click(); await page.locator('#navigationGuardLeave').click();
         assert(await page.locator('#trancheModal').getAttribute('aria-hidden') === 'true', 'Bestätigtes Verwerfen schließt Editor');
         assert((await readIndexedDb(page, 'kv', 'depot_tranchen')).value === '[]', 'Verwerfen schreibt keinen Bestand');
-        await page.locator('#depotAddTrancheBtn').click(); await page.locator('#name').fill('Linkprobe nach Verwerfen');
+        await openTrancheCreate(page); await page.locator('#name').fill('Linkprobe nach Verwerfen');
         const link = page.locator('.suite-navigation a[href="Handbuch.html"]');
         const box = await link.boundingBox();
         assert(box && box.width > 0 && box.height > 0, 'Rahmenziel besitzt echte Mauskoordinaten');
@@ -11460,14 +11462,17 @@ async function runNavigationGuardModal(browser, baseUrl) {
         });
         await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-        assert(page.url().endsWith('/depot-tranchen-manager.html') && await page.locator('#navigationGuardDialog').isHidden(),
-            'Echter Hintergrund-Mausversuch navigiert nicht und öffnet keine Schutzfrage');
-        assert(await page.evaluate(() => window.__modalNavigationPrompts) === 0, 'Hintergrund-Mausversuch erzeugt auch keine kurzlebige Schutzfrage');
+        assert(page.url().endsWith('/depot-tranchen-manager.html') && await page.locator('#navigationGuardDialog').isVisible(),
+            'Vollständiger Hintergrundklick öffnet bei geänderten Angaben die Schutzfrage');
+        assert(await page.evaluate(() => window.__modalNavigationPrompts) === 1, 'Hintergrundklick fragt genau einmal');
+        assert(await page.locator('#navigationGuardTitle').textContent() === 'Änderungen verwerfen?', 'Hintergrundklick nutzt dieselbe Verwerfrückfrage wie Schließen');
+        await page.keyboard.press('Escape');
+        await waitForNavigationDecisionSettled(page);
         assert(await page.locator('#name').inputValue() === 'Linkprobe nach Verwerfen', 'Hintergrundversuch erhält Fachdialogwerte');
         await link.evaluate(node => node.click());
         await page.locator('#navigationGuardDialog[open]').waitFor();
         prompts = await page.evaluate(() => window.__modalNavigationPrompts);
-        assert(prompts === 1, 'Programmatische App-Navigation fragt genau einmal');
+        assert(prompts === 2, 'Programmatische App-Navigation fragt nach abgelehntem Hintergrundschließen erneut genau einmal');
         assert(await page.getByRole('dialog', { name: 'Seite verlassen?', exact: true }).count() === 1, 'Spätere Linknavigation stellt den zugänglichen Seitenwechseltitel wieder her');
         assert(await page.locator('#navigationGuardLeave').textContent() === 'Trotzdem wechseln', 'Spätere Linknavigation stellt den Wechselknopf wieder her');
         await page.keyboard.press('Escape');
@@ -11515,6 +11520,39 @@ function managerMonthlyCashStorage() {
     return storage;
 }
 
+/** Schließen mit ungespeicherten Eingaben fragt nach; Verwerfen schreibt nichts. @param {import('playwright').Page} page @param {string} message */
+async function discardSaleFlow(page, message) {
+    // Der Subpage-Start schreibt updatedAt entprellt; er gehört vor die Bytebaseline.
+    await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).flush());
+    const before = (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
+    await page.locator('#saleFlowDialog [data-close-dialog-close]').click();
+    await page.locator('#navigationGuardDialog[open]').waitFor();
+    assert((await page.locator('#navigationGuardDescription').textContent()).includes('verloren'), message);
+    await page.locator('#navigationGuardLeave').click();
+    await page.locator('#saleFlowDialog').waitFor({ state: 'detached' });
+    assert((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value === before, 'Verwerfen des Verkaufs schreibt nichts');
+}
+
+/** FR-79: geführter Verkauf ohne Planbezug bis zur Abrechnung. @param {import('playwright').Page} page */
+async function openSaleSettlement(page) {
+    await page.locator('#depotOpenSaleEntryBtn').click();
+    await page.locator('#saleFlowDialog [data-sale-flow-memo]').waitFor();
+    await page.locator('#saleFlowDialog [data-sale-flow-primary]').click();
+    await page.locator('#saleFlowDialog [data-sale-flow-form]').waitFor();
+}
+
+/** FR-79: Abrechnung 1 Stück × 97 € − 2 € Gebühren − 0 € Steuern mit Ordernummer, Gutschrift „Kommt noch“. @param {import('playwright').Page} page */
+async function enterBrowserSale(page) {
+    await openSaleSettlement(page);
+    const field = name => page.locator(`#saleFlowDialog [data-sale-flow-form] [data-sale-flow-field="${name}"]`);
+    await page.locator('#saleFlowDialog [data-sale-flow-form] input[type="date"]').fill('2026-07-14');
+    for (const [name, value] of [['shares', '1'], ['price', '97'], ['fees', '2'], ['taxes', '0']]) { await field(name).fill(value); await field(name).blur(); }
+    await page.locator('#saleFlowDialog [data-sale-flow-form] details summary').click();
+    await page.locator('#saleFlowDialog [data-sale-flow-form] details input').fill('browser-order-1');
+    await page.locator('#saleFlowDialog [data-sale-flow-primary]').click();
+    await page.locator('#saleFlowDialog [data-sale-flow-credit]').waitFor();
+}
+
 async function runManagerCashEffectSmoke(browser, baseUrl, changed = false) {
     for (const amount of changed ? ['10100'] : ['8000', '8000,00']) {
         const smoke = await openSmokePage(browser, baseUrl, 'depot-tranchen-manager.html', {
@@ -11533,11 +11571,11 @@ async function runManagerCashEffectSmoke(browser, baseUrl, changed = false) {
             const status = await page.locator('#reconciliationStatus').textContent();
             const persistence = await page.locator('#tranchePersistenceStatus').textContent();
             assert(status === (changed
-                ? 'Neuer Tagesgeld-Stand übernommen und Korrektur-Auditnachweis append-only gespeichert; Verkauf und frühere Nachweise blieben unverändert.'
-                : 'Nur der Korrektur-Auditnachweis wurde append-only gespeichert; Verkauf und frühere Nachweise blieben unverändert.'), amount + ': sichtbare Statusmeldung entspricht tatsächlicher Cashwirkung');
+                ? 'Neuer Tagesgeld-Stand übernommen und Korrektur gespeichert. Verkauf und frühere Angaben bleiben unverändert.'
+                : 'Korrektur gespeichert, der Kontostand war schon richtig. Verkauf und frühere Angaben bleiben unverändert.'), amount + ': sichtbare Statusmeldung entspricht tatsächlicher Cashwirkung');
             assert(persistence === (changed
-                ? 'Neuer Tagesgeld-Stand übernommen und Auditnachweis gemeinsam dauerhaft gespeichert.'
-                : 'Nur der Auditnachweis wurde dauerhaft ergänzt.'), amount + ': sichtbare Persistenzmeldung entspricht tatsächlicher Cashwirkung');
+                ? 'Neuer Tagesgeld-Stand und Bestätigung dauerhaft gespeichert.'
+                : 'Bestätigung dauerhaft gespeichert.'), amount + ': sichtbare Persistenzmeldung entspricht tatsächlicher Cashwirkung');
             const after = await readIndexedDbValues(page, keys);
             const actions = JSON.parse(after.rs_profiles_v1).trancheReconciliation.actions;
             assert(actions.length === 2 && JSON.stringify(actions[0]) === JSON.stringify(JSON.parse(before.rs_profiles_v1).trancheReconciliation.actions[0]), 'Genau ein Auditappend, Verkauf unverändert');
@@ -11640,7 +11678,7 @@ async function runNavigationGuardManagerCommits(browser, baseUrl) {
             if (tranche) {
                 await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
                 await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
-                await page.locator('[data-action="edit-tranche"]').click(); await page.locator('#name').fill('Synthetische Änderung');
+                await page.locator('[data-action="edit-tranche"]').click(); await page.locator('#trancheDetailsToggle').click(); await page.locator('#name').fill('Synthetische Änderung');
                 await page.locator('#trancheForm button[type="submit"]').click();
             } else {
                 await page.locator(`[data-cash-action="${kind === 'cash-correct' ? 'correct' : 'confirm'}"]`).click();
@@ -11724,6 +11762,7 @@ async function runNavigationGuardManagerDirtyInputs(browser, baseUrl) {
         await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
         await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
         await page.locator('[data-action="edit-tranche"]').click();
+        await page.locator('#trancheDetailsToggle').click();
         const dirty = () => page.evaluate(async () => {
             const { getPageNavigationGuard } = await import('./app/shared/navigation-guard-dialog.js');
             return getPageNavigationGuard().reasons().some(reason => reason.owner === 'manager-dialog-tranche' && reason.dirty);
@@ -11731,13 +11770,16 @@ async function runNavigationGuardManagerDirtyInputs(browser, baseUrl) {
         assert(!await dirty(), 'Befülltes Editformular startet sauber');
         await page.locator('#taxExempt').check(); assert(await dirty(), 'Checkbox gehört zur echten Dialogbaseline');
         await page.locator('#taxExempt').uncheck(); assert(!await dirty(), 'Checkbox-Rückänderung ist sauber');
-        // Der Typ wird über sichtbare Segmentknöpfe gewählt; das versteckte Select bleibt das Formularfeld.
+        // Ohne Datum bleibt der Bestand von Hand wählbar.
+        const date = await page.locator('#purchaseDate').inputValue();
+        await page.locator('#purchaseDate').fill('');
         const type = await page.locator('#type').inputValue();
         await page.locator(`#trancheTypeChoices [data-tranche-type="${type === 'aktien_neu' ? 'aktien_alt' : 'aktien_neu'}"]`).click();
         assert(await page.locator('#type').inputValue() !== type && await dirty(), 'Select gehört zur echten Dialogbaseline');
         await page.locator(`#trancheTypeChoices [data-tranche-type="${type}"]`).click();
+        await page.locator('#purchaseDate').fill(date);
         assert(await page.locator('#type').inputValue() === type && !await dirty(), 'Select-Rückänderung ist sauber');
-        await page.locator('#closeTrancheModalBtn').click();
+        await page.locator('#dismissTrancheModalBtn').click();
         await page.locator('[data-cash-action="correct"]').click();
         const balance = await page.locator('#cashPostingBalance').inputValue();
         await page.locator('#cashPostingBalance').fill('10120'); await page.locator('#cashPostingReason').fill('Nicht gespeichert');
@@ -13017,7 +13059,7 @@ async function runNavigationGuardTauriProtocol(browser, baseUrl) {
             createBrowserProfileStorage({ 'tauri-recovery': { name: 'Synthetische EXE-Wiederherstellung', tranchesRaw: '[]' } }, 'tauri-recovery'));
         try {
             const { page } = smoke;
-            await page.locator('#depotAddTrancheBtn').click(); await page.locator('#name').fill('Wiederherstellung');
+            await openTrancheCreate(page); await page.locator('#name').fill('Wiederherstellung');
             await installTauriCloseProbe(smoke);
             const documentId = await page.evaluate(() => window.__tauriLifecycleProbe.documentId);
             const navigationCount = smoke.tauriLifecycle.navigations.length;
@@ -13141,7 +13183,7 @@ async function runNavigationGuardTauriProtocol(browser, baseUrl) {
         });
         try {
             const { page } = smoke;
-            await page.locator('#depotAddTrancheBtn').click(); await page.locator('#name').fill('EXE-Eingabe');
+            await openTrancheCreate(page); await page.locator('#name').fill('EXE-Eingabe');
             await installTauriCloseProbe(smoke);
             await page.evaluate(() => window.__tauriCloseProbe?.request());
             await page.locator('#navigationGuardDialog[open]').waitFor();
@@ -13228,7 +13270,7 @@ function registryWithoutActiveUpdatedAt(raw, activeId) {
 
 async function openNativeManagerEditor(page, editor, value, { dirty = true } = {}) {
     if (editor === 'tranche') {
-        await page.locator('#depotAddTrancheBtn').click();
+        await openTrancheCreate(page);
         if (dirty) await page.locator('#name').fill(value);
         return { modal: '#trancheModal', fields: { '#name': dirty ? value : '' } };
     }
@@ -13257,7 +13299,7 @@ async function openNativeManagerEditor(page, editor, value, { dirty = true } = {
         const input = document.getElementById('cashPostingBalance');
         return { '#cashPostingBalance': canonicalDecimalInput(input.value, input) };
     });
-    if (dirty) assert(numbers['#cashPostingBalance'] === '10120', 'Cashprobe beginnt mit dem tatsächlich eingegebenen Betrag');
+    if (dirty) assert(numbers['#cashPostingBalance'] === '10120', `Cashprobe beginnt mit dem tatsächlich eingegebenen Betrag (${numbers['#cashPostingBalance']})`);
     return { modal: '#cashPostingModal', fields, numbers, auditBefore, auditActiveId, auditTranches };
 }
 
@@ -13529,6 +13571,7 @@ async function runSimulatorHouseholdBacktestInvalidation(browser, baseUrl) {
     try {
         const { page } = smoke;
         await waitForSimulatorOpening(page, 'Simulator.html');
+        await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).flush());
         const before = (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
         await openSimulatorProfileList(page);
         assert(await page.locator('#simProfileList input').count() === 0, 'Annahmen haben keine Haushaltscheckboxen');
@@ -13845,13 +13888,9 @@ async function runManagerCurrentIncome(browser, baseUrl) {
             && await incomeB.locator('dd').textContent() === '2.400 € /Monat', 'B zeigt laufende Rente und sonstige Einkünfte zusammen');
         await page.locator('#managerSectionNav [data-manager-profile]').first().click();
         const readRegistry = async () => (await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value;
-        // Startschritte der Seite dürfen den Profilbestand noch nachziehen; Vergleichsstand erst nach Ruhe lesen.
-        let baseline = await readRegistry();
-        for (let stable = 0, tries = 0; stable < 8 && tries < 60; tries++) {
-            await page.waitForTimeout(250);
-            const next = await readRegistry();
-            stable = next === baseline ? stable + 1 : 0; baseline = next;
-        }
+        // Startwrites vor dem Vergleich bestätigen, statt zeitliche Stabilität abzuwarten.
+        await page.evaluate(async () => (await import('./app/shared/persistence-facade.js')).flush());
+        const baseline = await readRegistry();
         await assertCards('Initialisierung');
         await page.locator('#managerPersonToggle').press('Enter'); await assertCards('Einzelöffnung');
         await page.locator('#managerCardsToggleAll').press('Space'); await assertCards('Gesamtöffnung per Space');
@@ -15064,6 +15103,17 @@ async function main() {
             ['Manager Cash: Quellenablehnung und Abbruch', runManagerCashSourceRejectionSmoke],
             ['tranche quote partial/offline', runTranchesQuoteFailureSmoke],
             ['Slice 1 page dialogs', runSlice1PageDialogs],
+            ['VK-3c Storno mit Tagesgeld-Rücksetzung', runVk3cCancelBuyCashSmoke],
+            ['VK-3d Eine Person trägt wählen', runVk3dCarrierChoiceSmoke],
+            ['RK-2 Eine Person trägt Reserven und Hinweis', runRk2CarrierReservesSmoke],
+            ['VN-1 Verkauf und Kauf: Fokus und Ablauf', runVn1FlowFocusSmoke],
+            ['VN-1 Kauf ohne Plan behält das Wertpapier', runVn1FreeBuySecuritySmoke],
+            ['DS-1 Mehrstellig tippen: Fokus und Wert bleiben', runDs1TypingFocusSmoke],
+            ['VN-3 Kauf ohne Plan: Suche, Anlageform und Kurs per Tastatur', runVn3BuyKeyboardSmoke],
+            ['VN-3 Autosave: Text-, Datums- und Betragsfelder, Tab während des Speicherns', runVn3AutosaveTabSmoke],
+            ['VN-4 Verlassen eines Felds: Testament, Partnerschaft und Person', runVn4LeaveFieldSmoke],
+            ['VN-4 Schrittleiste: Namen ohne Umbruch im Wort', runVn4StepBarSmoke],
+            ['VN-4 Stückzahl über die Kachel ändern', runVn4SharesEditSmoke],
             ['Slice 2 page dialogs', runSlice2PageDialogs],
             ['Slice 3 simulator page dialogs', runSlice3SimulatorPageDialogs],
             ['tranche corrupt recovery', runTranchesRecoverySmoke],
@@ -17513,14 +17563,14 @@ async function runBalanceDeferredPlanSmoke(browser, baseUrl) {
         await page.evaluate(async () => {
             const { UIRenderer } = await import('./app/balance/balance-renderer.js');
             const { prepareAnnualNeeds } = await import('./app/balance/balance-annual-inflation.js');
-            const { roundAnnualSuggestion } = await import('./app/shared/annual-needs-review.js');
+            const { exactAnnualSuggestion } = await import('./app/shared/annual-needs-review.js');
             const render = UIRenderer.render;
             window.__balancePlanPreviewInputs = [];
             UIRenderer.render = function(payload) {
                 const result = render.call(this, payload);
                 const projection = payload.nextYearBudget?.displayEvaluation ? payload.nextYearBudget : null;
                 const planInput = payload.currentYear?.input || payload.input;
-                const expectedFloor = projection ? roundAnnualSuggestion(prepareAnnualNeeds({ floorBedarf: { value: '31000' } },
+                const expectedFloor = projection ? exactAnnualSuggestion(prepareAnnualNeeds({ floorBedarf: { value: '31000' } },
                     projection.assumptions.find(item => item.kind === 'inflation').value).entries[0].nextAmount) : 31000;
                 window.__balancePlanPreviewInputs.push(structuredClone({ input: payload.input, planInput,
                     targetYear: projection?.targetYear, sourceNeed: projection?.current.needBeforeIndexation, expectedFloor }));
@@ -18935,4 +18985,798 @@ async function runAnnualCombinedClose(browser, baseUrl, source) {
             smoke.assertNoErrors();
         } finally { await smoke.close(); }
     }
+}
+
+// VK-3c (Gutachten VK3B-FABLE P1-1): „Kauf rückgängig“ mit „Tagesgeld zurücksetzen“ hält nach dem Neuladen. Martin und Petra, 23.10.2026:
+// Tagesgeld 100.000 € → Kauf 98.930,75 € mit bestätigter Abbuchung → 1.069,25 € → Storno mit Rücksetzen auf 100.000 €. Das alte Feld der
+// Seite überschreibt den neuen Stand weder nach dem Kauf noch nach dem Storno.
+async function runVk3cCancelBuyCashSmoke(browser, baseUrl) {
+    const DATE = '2026-10-23', MARTIN = 'muster_martin';
+    const smoke = await openSmokePage(browser, baseUrl, 'depot-tranchen-manager.html', { storage: createMusterHaushaltRecords(DATE, 'martin-petra', 'grund'),
+        fixedTime: `${DATE}T12:00:00+02:00`, viewport: { width: 1920, height: 1080 } });
+    const { page } = smoke;
+    const cash = () => page.evaluate(async id => {
+        const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
+        return { registry: JSON.parse(persistenceStorage.getItem('rs_profiles_v1')).profiles[id].data.profile_tagesgeld,
+            live: persistenceStorage.getItem('profile_tagesgeld'), field: document.getElementById('profileTagesgeld').value,
+            history: JSON.parse(persistenceStorage.getItem('profile_cash_history_v1') || '{"entries":[]}').entries.filter(entry => entry.date === '2026-10-23').map(entry => entry.value) };
+    }, MARTIN);
+    const reloaded = async () => {
+        await page.waitForFunction(() => !window.__vk3cDocument && document.getElementById('suiteProfileContext')?.dataset.profileId, null, { timeout: 30000 });
+        await waitSuiteIdentity(page, MARTIN);
+        await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
+    };
+    try {
+        await waitSuiteIdentity(page, MARTIN);
+        assert((await cash()).registry === '100000', 'Martin vor dem Kauf 100.000 €');
+        // Kauf mit bestätigter Abbuchung über den Haushaltsschreiber, danach derselbe Neuladeweg wie nach dem geführten Kauf.
+        await page.evaluate(async date => {
+            window.__vk3cDocument = true;
+            const { prepareSaleFlowWrite, commitSaleFlowWrite } = await import('./app/tranches/household-sale-writer.js');
+            const { getPageNavigationGuard } = await import('./app/shared/navigation-guard-dialog.js');
+            const { PersistenceFacade } = await import('./app/shared/persistence-facade.js');
+            const tranche = { schemaVersion: 2, trancheId: 'vk3c_buy', name: 'Muster Aktien-ETF', type: 'aktien_neu', category: 'equity', ticker: 'VWCE.DE',
+                isin: 'IE00BK5BQT80', shares: 685, purchasePrice: 98930.75 / 685, currentPrice: 144.46978, purchaseDate: date, tqf: 0.3, taxExempt: false, notes: '' };
+            await commitSaleFlowWrite(await prepareSaleFlowWrite({ buys: [{ profileId: 'muster_martin', actionId: 'vk3c-buy', executedAt: date, assetClass: 'equity',
+                tranche, shares: 685, gross: 98920.85, fees: 9.9, cashValue: 1069.25 }] }));
+            void getPageNavigationGuard(document).reload({ flush: () => PersistenceFacade.flush(), reload: () => location.reload() });
+        }, DATE);
+        await reloaded();
+        let after = await cash();
+        assert(after.registry === '1069.25' && after.live === '1069.25' && after.field === '1.069,25', `nach dem Kauf bleibt 1.069,25 € stehen: ${JSON.stringify(after)}`);
+        // Storno über die Tabelle: „Tagesgeld zurücksetzen“, Vorschlag 100.000,00 € bestätigen.
+        await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
+        await page.evaluate(() => { window.__vk3cDocument = true; });
+        await openTrancheDetailDelete(page, 'vk3c_buy'); await page.locator('#deleteTrancheDialogBtn').click();
+        const choiceDialog = page.locator('#pageChoiceDialog');
+        await choiceDialog.waitFor({ state: 'visible' });
+        const choice = await choiceDialog.textContent();
+        assert(/Tagesgeld zurücksetzen \(Vorschlag 100\.000\s€\)/.test(choice), `Wahl mit Vorschlag: ${choice}`);
+        await choiceDialog.locator('[data-page-choice-accept]').click();
+        const field = page.locator('#pageDialog[open] [data-page-dialog-input]');
+        await field.waitFor();
+        assert(await field.inputValue() === '100.000', 'Eingabefeld mit Vorschlag (VN-4 Nachtrag 1: Tagesgeld in ganzen Euro)');
+        await page.locator('#pageDialog[open] [data-page-dialog-accept]').click();
+        await reloaded();
+        after = await cash();
+        assert(after.registry === '100000' && after.live === '100000' && after.field === '100.000', `nach dem Storno bleibt 100.000 € stehen: ${JSON.stringify(after)}`);
+        assert(!after.history.includes(1069.25), `Tagesgeldverlauf ohne 1.069,25 € am 23.10.: ${JSON.stringify(after.history)}`);
+        const stored = JSON.parse((await readIndexedDb(page, 'kv', 'rs_profiles_v1')).value).profiles[MARTIN].data.profile_tagesgeld;
+        assert(stored === '100000', 'dauerhaft gespeichert: 100.000 €');
+        assert(!/Profilwerte dauerhaft gespeichert/.test(await page.locator('#tranchePersistenceStatus').textContent()), 'keine Sicherung des alten Feldes');
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+}
+
+// VK-3d: Spielbereich mit Beispielhaushalt und Testdatum wie im Bedien-Durchlauf (Start auf der Startseite, danach die Zielseite).
+async function openVk3dPlayArea(browser, baseUrl, source, date, entry, variant = null) {
+    const smoke = await openSmokePage(browser, baseUrl, 'index.html', { storage: createMusterHaushaltRecords('2026-11-01'),
+        fixedTime: '2026-11-13T12:00:00+01:00', viewport: { width: 1920, height: 1080 } });
+    const page = smoke.page;
+    await waitForPageCondition(page, key => ['complete', 'empty'].includes(JSON.parse(sessionStorage.getItem(key) || 'null')?.status), STARTUP_PRICE_SESSION_KEY);
+    await page.locator('#probelaufStart').click();
+    const dialog = page.locator('[data-probelauf-dialog]');
+    await dialog.locator(`[data-probelauf-source="${source}"]`).click();
+    if (variant) await dialog.locator(`[data-muster-variant="${variant}"]`).click();
+    await dialog.getByLabel('Spielkurse', { exact: true }).check();
+    await dialog.getByLabel('Testdatum').fill(date);
+    await waitForProbelaufReload(page, () => dialog.getByRole('button', { name: 'Spielbereich starten', exact: true }).click(), date);
+    await page.goto(`${baseUrl}/${entry}`, { waitUntil: 'load' });
+    return smoke;
+}
+
+// VK-3d P1: „Eine Person trägt“ lässt sich in Haushalt & Plan wählen (Klick und Tastatur), bleibt nach dem Neuladen und die Kaufkarte
+// in Balance folgt (nur Martin kauft). Martin und Petra, Grundfall, 23.10.2026; vorher „Anteilig“, damit ein Rücksprung auffällt.
+async function runVk3dCarrierChoiceSmoke(browser, baseUrl) {
+    const DATE = '2026-10-23', MARTIN = 'muster_martin';
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'martin-petra', DATE, 'depot-tranchen-manager.html');
+    const { page } = smoke;
+    const storedMode = () => page.evaluate(async () => {
+        const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
+        const { readBalanceHouseholdPlan } = await import('./app/profile/household-plan.js');
+        return readBalanceHouseholdPlan({ storage: persistenceStorage, profileId: persistenceStorage.getItem('rs_current_profile') }).entry?.values?.householdWithdrawalMode;
+    });
+    const openPlan = async () => {
+        await page.locator('#managerPlanTab').click();
+        await page.locator('#managerPlanPanel').waitFor({ state: 'visible' });
+        await page.locator('#managerPlanStatus').filter({ hasText: /Bestätigter Plan geladen|Gespeichert/ }).waitFor();
+        await page.locator('#managerPlanMore').evaluate(details => { details.open = true; });
+    };
+    const saved = async expected => {
+        await page.locator('#managerPlanStatus').filter({ hasText: 'Gespeichert' }).waitFor();
+        await waitForPageCondition(page, async expected => {
+            const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
+            const { readBalanceHouseholdPlan } = await import('./app/profile/household-plan.js');
+            return readBalanceHouseholdPlan({ storage: persistenceStorage, profileId: persistenceStorage.getItem('rs_current_profile') }).entry?.values?.householdWithdrawalMode === expected;
+        }, expected, { timeout: 5000 }).catch(() => {});
+        const mode = await storedMode();
+        assert(mode === expected, `gespeichert ${expected}, gefunden ${mode}`);
+    };
+    const pressed = () => page.locator('[data-plan-carrier] button[aria-pressed="true"]').allTextContents();
+    // Die Liste hinter den Segmenten zeigt denselben Wert; kein Modusknopf („Steueroptimiert“) leuchtet zusätzlich.
+    const shown = async expected => {
+        const view = await page.evaluate(() => ({ value: document.getElementById('managerPlan_householdWithdrawalMode').value,
+            modes: [...document.querySelectorAll('[data-plan-segment="householdWithdrawalMode"] button[aria-pressed="true"]')].map(button => button.textContent) }));
+        assert(view.value === expected && view.modes.length === 0, `angezeigt ${expected}: ${JSON.stringify(view)}`);
+    };
+    try {
+        await waitSuiteIdentity(page, MARTIN);
+        await openPlan();
+        const row = page.locator('#managerPlan_householdWithdrawalMode').locator('xpath=ancestor::*[contains(@class,"pv-plan-field")][1]');
+        await row.locator('.ds-segment button', { hasText: 'Anteilig' }).first().click();
+        await saved('proportional');
+        // Klick auf „Petra“: gespeichert wird one_carries:muster_petra, nicht „Steueroptimiert“.
+        await page.locator('[data-plan-carrier] button', { hasText: 'Petra' }).click();
+        await saved('one_carries:muster_petra');
+        await shown('one_carries:muster_petra');
+        assert(JSON.stringify(await pressed()) === '["Petra"]', `Petra gedrückt: ${JSON.stringify(await pressed())}`);
+        // Tastatur: Fokus auf „Martin“ und Enter.
+        await page.locator('[data-plan-carrier] button', { hasText: 'Martin' }).focus();
+        await page.keyboard.press('Enter');
+        await saved(`one_carries:${MARTIN}`);
+        await shown(`one_carries:${MARTIN}`);
+        await page.reload({ waitUntil: 'load' });
+        await waitSuiteIdentity(page, MARTIN);
+        await openPlan();
+        assert(await storedMode() === `one_carries:${MARTIN}`, 'nach dem Neuladen bleibt Martin trägt');
+        assert(JSON.stringify(await pressed()) === '["Martin"]', `nach dem Neuladen Martin gedrückt: ${JSON.stringify(await pressed())}`);
+        await shown(`one_carries:${MARTIN}`);
+        // Balance: Kaufkarte nach dem gespeicherten Modus, nur Martin kauft.
+        // Der Beleg 2026 behält seinen Modus (TRG-1c Punkt 8); die Vorschau auf den nächsten Plan folgt der Wahl.
+        await page.goto(`${baseUrl}/Balance.html`, { waitUntil: 'load' });
+        await page.locator('#balanceActionTitle').filter({ hasText: 'Aktien kaufen' }).waitFor();
+        await page.locator('#balanceActionPreview summary').click();
+        await page.locator('#openPreviewDetails').click();
+        const details = page.locator('dialog[open]').filter({ hasText: 'Wohin es fließt' });
+        await details.waitFor();
+        const flows = await details.innerText();
+        assert(flows.includes('Martin: Kauf von Aktien') && !flows.includes('Petra: Kauf'), `Vorschau: nur Martin kauft: ${flows}`);
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+}
+
+// RK-2 (Ergänzung 1 FR-80): Martin und Petra, Martin trägt, 23.10.2026. Tagesgeld 10.000 / 110.000 € mit und ohne beschlossenen Plan:
+// Petras Tagesgeld bleibt in „Deine Reserven“ (nach Umsetzung) stehen, kein Auftrag für Petra. Bei 10.000 / 5.000 € liegt Petra unter
+// ihrem Ziel: Der Hinweis steht sichtbar in „Was zu tun ist“, ohne Zeile für Petra.
+async function runRk2CarrierReservesSmoke(browser, baseUrl) {
+    const DATE = '2026-10-23', PETRA = 'muster_petra';
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'martin-petra', DATE, 'Balance.html', 'traegt');
+    const { page } = smoke;
+    const euro = text => Number(String(text).replace(/[^0-9,-]/g, '').replace(',', '.'));
+    const prepare = (cash, dropPlan) => page.evaluate(async ({ cash, dropPlan }) => {
+        const { persistenceStorage, PersistenceFacade } = await import('./app/shared/persistence-facade.js');
+        const registry = JSON.parse(persistenceStorage.getItem('rs_profiles_v1'));
+        for (const [id, value] of Object.entries(cash)) registry.profiles[id].data.profile_tagesgeld = String(value);
+        persistenceStorage.setItem('rs_profiles_v1', JSON.stringify(registry));
+        const current = persistenceStorage.getItem('rs_current_profile');
+        if (cash[current] !== undefined) persistenceStorage.setItem('profile_tagesgeld', String(cash[current]));
+        if (dropPlan) persistenceStorage.removeItem('annual_plan_record_v1');
+        await PersistenceFacade.flush();
+    }, { cash, dropPlan });
+    const read = async (cash, dropPlan = false) => {
+        await prepare(cash, dropPlan);
+        await page.reload({ waitUntil: 'load' });
+        const today = cash.muster_martin + cash.muster_petra;
+        await waitForPageCondition(page, today => {
+            const parts = [...document.querySelectorAll('#balanceReserveParts strong')].map(node => node.textContent);
+            return parts.length === 4 && Number(parts[0].replace(/[^0-9,-]/g, '').replace(',', '.')) === today;
+        }, today, { description: 'Deine Reserven mit heutigem Tagesgeld' });
+        return page.evaluate(() => ({ parts: [...document.querySelectorAll('#balanceReserveParts strong')].map(node => node.textContent),
+            annual: document.getElementById('balanceAnnualAction').textContent,
+            refillHidden: document.getElementById('balanceCashRefill').hidden,
+            petraRows: document.querySelectorAll('#balanceCashRefill [data-todo-refill-person="muster_petra"]').length,
+            notes: [...document.querySelectorAll('#balanceActionArea [data-todo-held-note]')].filter(node => node.getClientRects().length).map(node => node.textContent) }));
+    };
+    try {
+        await waitSuiteIdentity(page, 'muster_martin');
+        for (const dropPlan of [false, true]) {
+            const label = dropPlan ? 'ohne Plan' : 'mit Plan';
+            const rich = await read({ muster_martin: 10000, muster_petra: 110000 }, dropPlan);
+            assert(euro(rich.parts[1]) >= 120000, `${label}: Petras Tagesgeld bleibt im „danach“: ${JSON.stringify(rich.parts)}`);
+            assert(dropPlan || /Plan 2026|Verkauf|verkaufen/i.test(rich.annual), `${label}: Karte mit Beleg: ${rich.annual}`);
+            assert(!rich.annual.includes('Petra') && rich.petraRows === 0 && rich.notes.length === 0, `${label}: kein Auftrag und kein Hinweis für Petra: ${JSON.stringify(rich)}`);
+            const poor = await read({ muster_martin: 10000, muster_petra: 5000 }, false);
+            assert(poor.petraRows === 0, `${label}: unter Ziel keine Zeile für Petra`);
+            assert(poor.notes.length === 1 && poor.notes[0].startsWith('Petra · Tagesgeld unter dem persönlichen Ziel'), `${label}: Hinweis sichtbar: ${JSON.stringify(poor)}`);
+        }
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+}
+
+// VN-1 Punkt 1: Ein Feldwechsel mit Tab, Umschalt+Tab oder Maus landet beim ersten Mal im Zielfeld, auch wenn sich berechnete Werte
+// ändern. Verkauf Max und Erika (Abrechnung, „Anders verkaufen“, Gutschrift), Kauf Martin und Petra (Abrechnung, Abbuchung), 23.10.2026.
+async function runVn1FlowFocusSmoke(browser, baseUrl) {
+    const DATE = '2026-10-23';
+    const focused = page => page.evaluate(() => {
+        const node = /** @type {HTMLElement} */ (document.activeElement);
+        return node?.dataset?.saleFlowField || node?.dataset?.buyFlowField || node?.dataset?.saleFlowCreditChoice || node?.dataset?.buyFlowDebitChoice
+            || (node?.dataset?.saleFlowCash !== undefined ? 'cash' : '') || (node?.dataset?.buyFlowCash !== undefined ? 'cash' : '') || node?.id || node?.tagName;
+    });
+    const expectFocus = async (page, expected, label) => { const actual = await focused(page); assert(actual === expected, `${label}: Fokus auf ${expected}, gefunden ${actual}`); };
+    const typeInto = async (page, text) => { await page.keyboard.press('Control+A'); await page.keyboard.type(text); };
+    const dialogFits = root => root.locator('[data-close-dialog-content]').evaluate(content => content.scrollHeight <= content.clientHeight + 1);
+    // Verkauf: Tastatur Stück → Kurs → Gebühren → Steuern, Umschalt+Tab zurück, Maus Kurs → Gebühren.
+    let smoke = await openVk3dPlayArea(browser, baseUrl, 'max-erika', DATE, 'depot-tranchen-manager.html');
+    let page = smoke.page;
+    try {
+        // VN-1 Punkt 2: „Verkauf eintragen“ ohne vorgegebene Tranche wählt nichts vor; „Weiter“ erst nach der Wahl.
+        await waitSuiteIdentity(page, 'muster_a');
+        await page.locator('#depotOpenSaleEntryBtn').click();
+        const free = page.locator('#saleFlowDialog');
+        await free.locator('[data-sale-flow-tranche-choice]').waitFor();
+        const options = free.locator('[data-sale-flow-tranche-option]');
+        assert(await options.count() > 1 && await free.locator('[data-sale-flow-tranche-option]:checked').count() === 0, 'Freier Verkauf: keine Tranche vorgewählt');
+        assert(await free.locator('[data-sale-flow-primary]').isDisabled() && await free.locator('[data-sale-flow-memo]').count() === 0, 'Freier Verkauf: Weiter gesperrt, kein Merkzettel ohne Wahl');
+        assert(/gekauft am|ohne Kaufdatum/.test(await free.locator('[data-sale-flow-tranche-choice]').textContent()), 'Wahl nennt Kaufdatum');
+        await options.last().click();
+        await free.locator('[data-sale-flow-memo]').waitFor();
+        // VN-2 (Gemini 2.1, Codex F01): Nach der ersten Wahl behält derselbe Radioknopf den Fokus; Tab und Umschalt+Tab bleiben im Dialog.
+        const chosenId = await options.last().getAttribute('data-sale-flow-tranche-option');
+        assert(await page.evaluate(() => document.activeElement?.dataset?.saleFlowTrancheOption) === chosenId, 'Freier Verkauf: Fokus bleibt nach der ersten Wahl auf der Tranche');
+        await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab');
+        assert(await page.evaluate(() => Boolean(document.activeElement?.closest('#saleFlowDialog')) && document.activeElement?.dataset?.saleFlowTrancheOption !== undefined),
+            'Freier Verkauf: Umschalt+Tab und Tab führen zurück zur Tranchenwahl');
+        assert(await free.locator('[data-sale-flow-primary]').isEnabled(), 'Freier Verkauf: Weiter nach der Wahl frei');
+        await discardSaleFlow(page, 'Freier Verkauf: Wahl der Tranche zählt als Eingabe');
+        await page.goto(`${baseUrl}/Balance.html`, { waitUntil: 'load' });
+        await page.locator('[data-todo-sale-entry]').click();
+        const sale = page.locator('#saleFlowDialog');
+        await sale.locator('[data-close-dialog-activate="sell"]').click();
+        await page.setViewportSize({ width: 1920, height: 1000 });
+        assert(await dialogFits(sale), 'Verkauf, Merkzettel: ohne Scrollen ganz sichtbar');
+        await page.setViewportSize({ width: 1920, height: 1080 });
+        await sale.locator('[data-sale-flow-sell] details summary').click();
+        await sale.locator('[data-sale-flow-sell] details input').click();
+        await typeInto(page, '70'); await page.keyboard.press('Tab');
+        await expectFocus(page, 'saleFlowTranche-' + await sale.locator('[data-sale-flow-sell]').getAttribute('data-sale-flow-sell'), 'Anders verkaufen: Tab nach der Stückzahl');
+        assert((await sale.locator('[data-sale-flow-memo] .sale-flow-shares').textContent()) === '70', 'Merkzettel zeigt die neue Stückzahl');
+        await sale.locator('[data-close-dialog-activate="settle"]').click();
+        const field = name => sale.locator(`[data-sale-flow-form] [data-sale-flow-field="${name}"]`);
+        await field('shares').click(); await typeInto(page, '65'); await page.keyboard.press('Tab');
+        await expectFocus(page, 'price', 'Abrechnung: Tab nach Stück');
+        await page.keyboard.type('144,52'); await page.keyboard.press('Tab');
+        await expectFocus(page, 'fees', 'Abrechnung: Tab nach Kurs');
+        await page.keyboard.type('4,90'); await page.keyboard.press('Tab');
+        await expectFocus(page, 'taxes', 'Abrechnung: Tab nach Gebühren');
+        await page.keyboard.type('0'); await page.keyboard.press('Shift+Tab');
+        await expectFocus(page, 'fees', 'Abrechnung: Umschalt+Tab nach Steuern');
+        assert(/^65$/.test(await field('shares').inputValue()) && /^144,52$/.test(await field('price').inputValue()) && /^4,90$/.test(await field('fees').inputValue())
+            && /^0(,00)?$/.test(await field('taxes').inputValue()), `Alle Eingaben stehen in ihren Feldern: ${JSON.stringify(await Promise.all(['shares', 'price', 'fees', 'taxes'].map(name => field(name).inputValue())))}`);
+        assert((await sale.locator('[data-sale-flow-form] .sale-flow-gross').textContent()).startsWith('9.393,80'), 'Kurswert rechnet an Ort und Stelle neu');
+        await field('price').click(); await typeInto(page, '144,50'); await field('fees').click();
+        await expectFocus(page, 'fees', 'Abrechnung: Mausklick vom Kurs in die Gebühren');
+        assert((await sale.locator('[data-sale-flow-form] .sale-flow-gross').textContent()).startsWith('9.392,50'), 'Kurswert nach dem Mausklick neu');
+        await field('taxes').click(); await expectFocus(page, 'taxes', 'Abrechnung: Mausklick in die Steuern');
+        await sale.locator('[data-sale-flow-primary]').click();
+        // VN-1 Punkt 3: Nach Max (erledigt) folgt Erika; nach ihrer Teilabrechnung die Gutschrift, die Kachel zählt „1 teilweise“.
+        await sale.locator('[data-sale-flow-person][aria-pressed="true"]').filter({ hasText: 'Erika' }).waitFor();
+        for (const [name, value] of [['shares', '400'], ['price', '144,38'], ['fees', '9,9'], ['taxes', '478,03']]) { await field(name).click(); await typeInto(page, value); }
+        await page.keyboard.press('Tab');
+        await sale.locator('[data-sale-flow-rest-question]').waitFor();
+        // VN-1 Punkt 9: Gebühren und Steuern im €-Rahmen, nach dem Verlassen mit zwei Nachkommastellen.
+        assert(await field('fees').inputValue() === '9,90' && await field('shares').inputValue() === '400', 'Gebühren 9,9 → 9,90; Stück bleiben ganz');
+        for (const name of ['fees', 'taxes']) assert(await field(name).evaluate(node => node.parentElement.classList.contains('ds-unit-frame') && node.parentElement.textContent.trim() === '€'), `${name} im €-Rahmen`);
+        await sale.locator('[data-sale-flow-primary]').click();
+        await sale.locator('[data-close-dialog-activate="credit"][aria-current="step"]').waitFor();
+        assert((await sale.locator('[data-close-dialog-activate="settle"]').textContent()).includes('1 von 2 · 1 teilweise'), 'Kachel Abrechnung: 1 von 2 · 1 teilweise');
+        assert((await sale.locator('[data-sale-flow-primary]').textContent()) === 'Weiter zu Rest Verkauf Erika', 'Gutschrift verweist auf den Rest');
+        await sale.locator('[data-sale-flow-credit-person="muster_b"] [data-sale-flow-credit-choice="now"]').click();
+        await expectFocus(page, 'now', 'Gutschrift: Wahl „Schon da“ behält den Fokus');
+        await sale.locator('[data-sale-flow-cash="muster_b"]').click();
+        await expectFocus(page, 'cash', 'Gutschrift: erster Mausklick ins Tagesgeld');
+        await page.keyboard.press('Shift+Tab');
+        assert(['now', 'later'].includes(await focused(page)), 'Gutschrift: Umschalt+Tab zurück zur Wahl');
+        assert((await sale.locator('[data-sale-flow-primary]').textContent()) === 'Speichern und weiter zu Rest Verkauf Erika', 'Gutschrift speichern führt zum Rest');
+        await sale.locator('[data-sale-flow-primary]').click();
+        await sale.locator('[data-close-dialog-activate="settle"][aria-current="step"]').waitFor();
+        await sale.locator('[data-sale-flow-person][aria-pressed="true"]').filter({ hasText: 'Erika' }).waitFor();
+        // VN-1 Punkt 10: Nach der Unterbrechung zeigt die Karte die Schritte als Chips ohne doppelte Nummern.
+        await sale.locator('[data-sale-flow-secondary]').click().catch(() => {});
+        if (await sale.count()) await sale.locator('[data-close-dialog-close]').click();
+        await page.locator('#balanceAnnualAction [data-todo-flow-steps]').waitFor();
+        const steps = await page.locator('#balanceAnnualAction [data-todo-flow-steps]').evaluate(list => ({ style: getComputedStyle(list).listStyleType,
+            items: [...list.children].map(item => item.textContent), current: list.querySelector('[aria-current="step"]')?.textContent }));
+        assert(steps.style === 'none' && steps.items[0] === '✓Überblick' && steps.current === '3Abrechnung', `Schrittchips: ${JSON.stringify(steps)}`);
+        if (process.env.VN1_SHOT_DIR) await page.locator('#balanceAnnualAction').screenshot({ path: path.join(process.env.VN1_SHOT_DIR, 'vn1-karte.png') });
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+    // Kauf: Tastatur Stück → Kurs → Gebühren, Maus Kurs → Gebühren, Abbuchung.
+    smoke = await openVk3dPlayArea(browser, baseUrl, 'martin-petra', DATE, 'depot-tranchen-manager.html');
+    page = smoke.page;
+    // VN-1 Punkt 6: Der geführte Kauf sieht in Personen & Vermögen aus wie in der Balance (Titel, Eingabefeld, Knöpfe).
+    const dialogLook = async label => {
+        const look = await page.locator('#buyFlowDialog').evaluate(root => {
+            const pick = (selector, keys) => { const node = root.querySelector(selector), style = node && getComputedStyle(node);
+                return node ? Object.fromEntries(keys.map(key => [key, style[key]])) : null; };
+            const all = {};
+            for (const node of root.querySelectorAll('*')) {
+                if (!node.checkVisibility()) continue;
+                const key = `${node.tagName.toLowerCase()}.${[...node.classList].sort().join('.')}`;
+                if (all[key]) continue;
+                const style = getComputedStyle(node);
+                all[key] = ['fontFamily', 'fontWeight', 'fontSize', 'paddingTop', 'paddingLeft', 'marginTop', 'marginBottom', 'boxSizing', 'lineHeight', 'display'].map(name => style[name]).join('|');
+            }
+            globalThis.__vn1Look = all;
+            return { title: pick('#buyFlowDialogTitle', ['fontFamily', 'fontSize', 'fontWeight']),
+                field: pick('[data-buy-flow-form] [data-buy-flow-field="price"]', ['fontSize', 'paddingTop', 'borderTopWidth', 'borderTopStyle', 'boxSizing']),
+                label: pick('[data-buy-flow-form] .sale-flow-label', ['fontSize', 'fontWeight']),
+                secondary: pick('[data-buy-flow-secondary]', ['backgroundColor', 'borderTopWidth', 'paddingTop', 'fontSize', 'transform']),
+                primary: pick('[data-buy-flow-primary]', ['backgroundColor', 'paddingTop', 'fontSize', 'fontWeight']) };
+        });
+        if (process.env.VN1_SHOT_DIR) await page.locator('#buyFlowDialog').screenshot({ path: path.join(process.env.VN1_SHOT_DIR, `vn1-kauf-${label}.png`) });
+        if (process.env.VN1_SHOT_DIR) fs.writeFileSync(path.join(process.env.VN1_SHOT_DIR, `vn1-kauf-${label}.json`), JSON.stringify(await page.evaluate(() => globalThis.__vn1Look), null, 1));
+        return look;
+    };
+    let managerLook;
+    try {
+        await waitSuiteIdentity(page, 'muster_martin');
+        await page.locator('#depotAddTrancheBtn').click();
+        await page.locator('#buyFlowDialog [data-buy-flow-overview]').waitFor();
+        await page.locator('#buyFlowDialog [data-buy-flow-primary]').click();
+        await page.locator('#buyFlowDialog [data-buy-flow-form]').waitFor();
+        managerLook = await dialogLook('personen');
+        await page.locator('#buyFlowDialog [data-close-dialog-close]').click();
+        const leave = page.locator('#navigationGuardDialog[open] #navigationGuardLeave');
+        if (await leave.count()) await leave.click();
+        await page.locator('#buyFlowDialog').waitFor({ state: 'detached' });
+        await page.goto(`${baseUrl}/Balance.html`, { waitUntil: 'load' });
+        // VN-1 Punkt 11: Vorschau ohne Erfassungsknöpfe, mit Entnahmemodus und ⓘ hinter ihrer Zeile; im Plan „Kauf starten“.
+        await page.locator('[data-todo-purchase-entry]').waitFor();
+        await page.locator('#balanceActionPreview').evaluate(node => { node.open = true; });
+        await page.locator('[data-action-details="preview"]').click();
+        const details = page.locator('#actionDetailsDialog[open]'); await details.waitFor();
+        assert(!await page.locator('#actionManagerLink').isVisible() && !await page.locator('#balancePlayExecute').isVisible() && !await page.locator('#actionBuyStart').isVisible(), 'Vorschau ohne Erfassungsknöpfe');
+        assert((await details.innerText()).includes('Entnahme: '), 'Vorschau nennt den Entnahmemodus');
+        assert(await details.locator('.balance-action-target-note').evaluateAll(nodes => nodes.every(node => /Tagesgeldziel/.test(node.textContent))), 'ⓘ zum Tagesgeldziel mit Zeile');
+        await page.locator('#closeActionDetails').click();
+        await page.locator('#openActionDetails').click(); await details.waitFor();
+        assert(await page.locator('#actionBuyStart').isVisible() && (await page.locator('#actionBuyStart').textContent()) === 'Kauf starten' && !await page.locator('#actionManagerLink').isVisible(), 'Plan: „Kauf starten“ statt „Kauf erfassen →“');
+        await page.locator('#actionBuyStart').click();
+        const buy = page.locator('#buyFlowDialog');
+        await buy.locator('[data-buy-flow-overview]').waitFor();
+        await buy.locator('[data-buy-flow-primary]').click();
+        await buy.locator('[data-buy-flow-memo]').waitFor();
+        await buy.locator('[data-buy-flow-primary]').click();
+        await buy.locator('[data-buy-flow-form]').waitFor();
+        const balanceLook = await dialogLook('balance');
+        assert(JSON.stringify(balanceLook) === JSON.stringify(managerLook), `Kaufdialog gleich in Balance und Personen & Vermögen: ${JSON.stringify({ balanceLook, managerLook })}`);
+        // VN-1 Punkt 5: Bei 1920 × 1080 (Fensterinhalt etwa 1920 × 1000) stehen Wertpapierwahl, Merkzettel und Abrechnung ohne Scrollen da.
+        await page.setViewportSize({ width: 1920, height: 1000 });
+        for (const step of ['overview', 'buy', 'settle']) {
+            await buy.locator(`[data-close-dialog-activate="${step}"]`).click();
+            assert(await dialogFits(buy), `Kauf, Schritt ${step}: ohne Scrollen ganz sichtbar`);
+        }
+        const field = name => buy.locator(`[data-buy-flow-form] [data-buy-flow-field="${name}"]`);
+        await field('shares').click(); await typeInto(page, '692'); await page.keyboard.press('Tab');
+        await expectFocus(page, 'price', 'Kaufabrechnung: Tab nach Stück');
+        await page.keyboard.type('144,41'); await page.keyboard.press('Tab');
+        await expectFocus(page, 'fees', 'Kaufabrechnung: Tab nach Kurs');
+        await page.keyboard.type('9,90'); await page.keyboard.press('Shift+Tab');
+        await expectFocus(page, 'price', 'Kaufabrechnung: Umschalt+Tab nach Gebühren');
+        await field('shares').click(); await typeInto(page, '691'); await field('price').click();
+        await expectFocus(page, 'price', 'Kaufabrechnung: Mausklick von Stück in den Kurs');
+        await typeInto(page, '144,41'); await field('fees').click();
+        await expectFocus(page, 'fees', 'Kaufabrechnung: Mausklick vom Kurs in die Gebühren');
+        assert((await buy.locator('[data-buy-flow-form] .sale-flow-credit').textContent()).startsWith('99.797,21'), 'Belastung rechnet an Ort und Stelle neu');
+        await buy.locator('[data-buy-flow-primary]').click();
+        await buy.locator('[data-close-dialog-activate="debit"]').click();
+        await buy.locator('[data-buy-flow-debit-person] [data-buy-flow-debit-choice="now"]').click();
+        assert(await dialogFits(buy), 'Kauf, Abbuchung mit Kontostand und „Stand des Plans“: ohne Scrollen ganz sichtbar');
+        await expectFocus(page, 'now', 'Abbuchung: Wahl „Schon abgegangen“ behält den Fokus');
+        await buy.locator('[data-buy-flow-cash]').click();
+        await expectFocus(page, 'cash', 'Abbuchung: erster Mausklick ins Tagesgeld');
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+}
+
+// DS-1 Punkt 11 (Nutzer 14.11.): Nach jeder Ziffer war der Fokus weg. Je Formular mit Autosave oder Neuaufbau beim Tippen: Ziffer für Ziffer
+// tippen, mit Pausen länger als die Autosave-Frist (300 ms); danach liegen Fokus und der ganze Wert im selben Feld. Martin und Petra, 23.10.2026.
+async function runDs1TypingFocusSmoke(browser, baseUrl) {
+    const DATE = '2026-10-23';
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'martin-petra', DATE, 'depot-tranchen-manager.html');
+    const { page } = smoke;
+    const typeSlowly = async (selector, text, label, { expected = null, before = async () => {} } = {}) => {
+        const field = page.locator(selector).first();
+        await field.waitFor({ state: 'visible' });
+        await before();
+        await field.click(); await page.keyboard.press('Control+A');
+        for (const char of text) {
+            await page.keyboard.type(char); await page.waitForTimeout(450);
+            const focusedId = await page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
+            const id = await field.evaluate(node => node.id);
+            assert(focusedId === id, `${label}: Fokus bleibt nach „${char}“ im Feld (${focusedId})`);
+        }
+        const value = await field.inputValue();
+        const digits = value.replace(/[^0-9]/g, '');
+        assert(digits.startsWith(expected ?? text.replace(/[^0-9]/g, '')), `${label}: ganzer Wert steht im Feld (${value})`);
+        await page.keyboard.press('Tab');
+    };
+    try {
+        await waitSuiteIdentity(page, 'muster_martin');
+        // Haushalt & Plan: Grundbedarf, Flex, Mindest-Flex, weitere Planwerte (Reichweite).
+        await page.locator('#managerPlanTab').click();
+        await page.locator('#managerPlanStatus').filter({ hasText: /Bestätigter Plan geladen|Gespeichert/ }).waitFor();
+        await typeSlowly('#managerPlan_floorBedarf', '60000', 'Haushalt & Plan, Grundbedarf');
+        // Läuft nebenher etwas, das die Seite kurz sperrt (etwa „Kurse automatisch“ beim Öffnen), bleibt das Feld in Bearbeitung bedienbar.
+        await page.evaluate(async () => { const { state } = await import('./app/tranches/tranchen-manager-page/state.js'); state.quoteBatchPromise = new Promise(() => {}); });
+        await typeSlowly('#managerPlan_floorBedarf', '61000', 'Haushalt & Plan, Grundbedarf während Kursabruf', { expected: '61000' });
+        await page.evaluate(async () => { const { state } = await import('./app/tranches/tranchen-manager-page/state.js'); state.quoteBatchPromise = null;
+            const { setManagerControlsBlocked, processingIsBlocked } = await import('./app/tranches/tranchen-manager-page/controls.js'); setManagerControlsBlocked(processingIsBlocked()); });
+        await typeSlowly('#managerPlan_flexBedarf', '24000', 'Haushalt & Plan, Flex');
+        await typeSlowly('#managerPlan_minimumFlexAnnual', '3000', 'Haushalt & Plan, Mindest-Flex');
+        await page.locator('#managerPlanMore').evaluate(details => { details.open = true; });
+        await typeSlowly('#managerPlan_flexBudgetAnnual', '1000', 'Haushalt & Plan, Flex-Budget');
+        // DS-1 Punkt 9: „Tranche im Detail“ – Klick auf die Teilfreistellung rechnet Schätzung und Erklärung neu; Fokus bleibt, Tab geht weiter.
+        await page.goto(`${baseUrl}/depot-tranchen-manager.html`, { waitUntil: 'load' });
+        await waitSuiteIdentity(page, 'muster_martin');
+        await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
+        await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
+        await page.locator('[data-action="edit-tranche"]').first().click();
+        await page.locator('#trancheModal.active').waitFor();
+        await page.locator('#trancheDetailsToggle').click();
+        const tqf = page.locator('#trancheTqfSelect');
+        assert(await tqf.count() === 1, 'Tranche im Detail: Teilfreistellung als Auswahl (Aktien)');
+        {
+            await tqf.selectOption('0.15');
+            await tqf.focus();
+            assert(await page.evaluate(() => document.activeElement?.id) === 'trancheTqfSelect', 'Tranche im Detail: Fokus bleibt auf der gewählten Teilfreistellung');
+            await page.keyboard.press('Tab');
+            const next = await page.evaluate(() => ({ inside: Boolean(document.activeElement?.closest('#trancheModal')), id: document.activeElement?.id || document.activeElement?.tagName }));
+            assert(next.inside && next.id !== 'closeTrancheModalBtn', `Tranche im Detail: Tab nach der Teilfreistellung bleibt im Formular (${next.id})`);
+            await page.locator('#purchasePrice').click();
+            assert(await page.evaluate(() => document.activeElement?.id) === 'purchasePrice', 'Tranche im Detail: erster Mausklick ins Kaufpreisfeld');
+        }
+        await page.locator('#dismissTrancheModalBtn').click();
+        const leaveDetail = page.locator('#navigationGuardDialog[open] #navigationGuardLeave');
+        if (await leaveDetail.count()) await leaveDetail.click();
+        // Balance „Nur hier ausprobieren“: Grundbedarf und Flex.
+        await page.goto(`${baseUrl}/Balance.html`, { waitUntil: 'load' });
+        await page.locator('#balanceTabStrategy').click();
+        await page.locator('#tab-strategy').waitFor({ state: 'visible' });
+        await page.locator('#balancePlanTrialStart').click();
+        await waitForPageCondition(page, () => document.getElementById('floorBedarf')?.disabled === false && document.getElementById('floorBedarf')?.readOnly !== true);
+        await typeSlowly('#floorBedarf', '61000', 'Balance ausprobieren, Grundbedarf');
+        await typeSlowly('#flexBedarf', '25000', 'Balance ausprobieren, Flex');
+        // Simulator Annahmen „Nur hier ausprobieren“.
+        await page.goto(`${baseUrl}/Simulator.html`, { waitUntil: 'load' });
+        await openSimulatorPlanTrial(page);
+        await waitForPageCondition(page, () => document.getElementById('startFloorBedarf')?.disabled === false && document.getElementById('startFloorBedarf')?.readOnly !== true);
+        await typeSlowly('#startFloorBedarf', '62000', 'Simulator ausprobieren, Grundbedarf');
+        await typeSlowly('#startFlexBedarf', '26000', 'Simulator ausprobieren, Flex');
+        smoke.assertNoErrors(['Update-Fehler: ValidationError']);
+    } finally { await smoke.close(); }
+    // Mit Pflegegrad (Hinweis beim Grundbedarf, FR-73): Helga und Werner.
+    const care = await openVk3dPlayArea(browser, baseUrl, 'helga-werner', DATE, 'depot-tranchen-manager.html');
+    try {
+        const carePage = care.page;
+        await carePage.locator('#managerPlanTab').click();
+        await carePage.locator('#managerPlanStatus').filter({ hasText: /Bestätigter Plan geladen|Gespeichert/ }).waitFor();
+        const field = carePage.locator('#managerPlan_floorBedarf');
+        await field.click();
+        for (const char of '40000') {
+            await carePage.keyboard.type(char); await carePage.waitForTimeout(450);
+            assert(await carePage.evaluate(() => document.activeElement?.id) === 'managerPlan_floorBedarf', `Pflegegrad, Grundbedarf: Fokus bleibt nach „${char}“`);
+        }
+        assert((await field.inputValue()).replace(/[^0-9]/g, '').startsWith('40000'), `Pflegegrad, Grundbedarf: ganzer Wert (${await field.inputValue()})`);
+        care.assertNoErrors(['Update-Fehler: ValidationError']);
+    } finally { await care.close(); }
+}
+
+// VN-3 (Gemini Befund 5, Codex F02): Während eines Autosaves (Schreiben 1,5 s aufgehalten) bleiben das Feld in Bearbeitung und das
+// Ziel eines Tab-Wechsels bedienbar: Personendaten (Text und Datum), Geplante Ausgaben (Betrag) und Partnerschaft (Erbanteil).
+async function runVn3AutosaveTabSmoke(browser, baseUrl) {
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'martin-petra', '2026-10-23', 'depot-tranchen-manager.html');
+    const { page } = smoke;
+    const hold = () => page.evaluate(async () => { const { holdWritesUntil } = await import('./app/shared/persistence-facade.js'); holdWritesUntil(new Promise(resolve => setTimeout(resolve, 1500))); });
+    const active = () => page.evaluate(() => ({ id: document.activeElement?.id || document.activeElement?.tagName, tag: document.activeElement?.tagName, disabled: Boolean(document.activeElement?.disabled) }));
+    const typeHeld = async (selector, text, label) => {
+        await hold();
+        const field = page.locator(selector).first();
+        await field.click(); await page.keyboard.press('Control+A');
+        const id = await field.evaluate(node => node.id);
+        for (const char of text) {
+            await page.keyboard.type(char); await page.waitForTimeout(400);
+            const now = await active();
+            assert(now.id === id && !now.disabled, `${label}: Fokus bleibt nach „${char}“ im bedienbaren Feld (${now.id}${now.disabled ? ', gesperrt' : ''})`);
+        }
+        // Tab während des Speicherns: Das Ziel ist ein bedienbares Feld und behält den Fokus, bis das Speichern endet.
+        await hold(); await page.keyboard.type(text.at(-1)); await page.keyboard.press('Backspace'); await page.waitForTimeout(350);
+        await page.keyboard.press('Tab');
+        const target = await active();
+        assert(['INPUT', 'SELECT', 'BUTTON'].includes(target.tag) && !target.disabled, `${label}: Tab-Ziel bedienbar (${target.id})`);
+        await page.waitForTimeout(1600);
+        const after = await active();
+        assert(after.id === target.id, `${label}: Fokus bleibt nach dem Speichern auf dem Tab-Ziel (${after.id} statt ${target.id})`);
+    };
+    try {
+        await waitSuiteIdentity(page, 'muster_martin');
+        // Personendaten: Bezeichnung der Rente (Text) und Rentenbeginn (MM.JJJJ).
+        if (!await page.locator('#profileRenteBezeichnung').isVisible()) await page.locator('#managerIncomeToggle').click();
+        await typeHeld('#profileRenteBezeichnung', 'DRV', 'Person, Bezeichnung der Rente');
+        await typeHeld('#profileRentenbeginn', '03.2024', 'Person, Rente ab');
+        // Haushalt & Plan: Geplante Ausgaben, Betrag pro Monat; Partnerschaft und Todesfall, Erbanteil.
+        await page.locator('#managerPlanTab').click();
+        await page.locator('#managerPlanStatus').filter({ hasText: /Bestätigter Plan geladen|Gespeichert/ }).waitFor();
+        if (await page.locator('#managerExpensesBody').isHidden()) await page.locator('#managerExpensesToggle').click();
+        await page.locator('#managerFixedExpenseAdd').click();
+        await page.locator('#expense-0-betragMonat').waitFor();
+        await page.locator('#expense-0-bezeichnung').fill('Kredit');
+        await typeHeld('#expense-0-betragMonat', '600', 'Geplante Ausgaben, Betrag');
+        if (await page.locator('#managerPartnershipBody').isHidden()) await page.locator('#managerPartnershipToggle').click();
+        await typeHeld('#managerPartnership [data-inheritance-person]', '50', 'Partnerschaft, Erbanteil');
+        // VN-3 (Breitensuche zu 049ab9f2): Ein Betragsfeld fokussieren und ohne Änderung verlassen ist keine Änderung (Formatieren beim
+        // Verlassen); kein Formular meldet „verwerfen?“. Tranche im Detail, Immobilie, Geplante Ausgaben.
+        const dirtyReasons = () => page.evaluate(async () => (await import('./app/shared/navigation-guard-dialog.js')).getPageNavigationGuard(document)
+            .reasons().filter(reason => reason.dirty).map(reason => reason.owner).join(','));
+        await page.waitForTimeout(1600);
+        await page.locator('#expense-0-betragMonat').click(); await page.keyboard.press('Tab'); await page.waitForTimeout(500);
+        assert(await dirtyReasons() === '', `Geplante Ausgaben: Fokus und Verlassen ohne Änderung meldet nichts (${await dirtyReasons()})`);
+        await page.goto(`${baseUrl}/depot-tranchen-manager.html`, { waitUntil: 'load' });
+        await waitSuiteIdentity(page, 'muster_martin');
+        await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
+        await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
+        await page.locator('[data-action="edit-tranche"]').first().click();
+        await page.locator('#trancheModal.active').waitFor();
+        await page.locator('#trancheDetailsToggle').click();
+        await page.locator('#purchasePrice').click(); await page.keyboard.press('Tab');
+        await page.locator('#dismissTrancheModalBtn').click();
+        await page.locator('#trancheModal.active').waitFor({ state: 'hidden', timeout: 3000 });
+        assert(await page.locator('#navigationGuardDialog[open]').count() === 0, 'Tranche im Detail: Kaufpreis fokussiert und verlassen, Schließen ohne „verwerfen?“');
+        await page.locator('[data-home-open]').first().click();
+        const homeValue = page.locator('[data-home-field="wert"]');
+        await homeValue.click(); await page.keyboard.press('Tab'); await page.waitForTimeout(300);
+        assert(await dirtyReasons() === '', `Immobilie: Wert fokussiert und verlassen meldet nichts (${await dirtyReasons()})`);
+        smoke.assertNoErrors(['Update-Fehler: ValidationError']);
+    } finally { await smoke.close(); }
+}
+
+// VN-4 Punkt 1 (Gutachten ABS1 P1/P2, Abnahme ST-1): Verlassen eines Textfelds baut kein Formular neu. Zeichen für Zeichen tippen, Tab
+// oder Klick: Der Fokus landet auf dem nächsten Feld und bleibt dort, der Wert wird gespeichert, kein zweites Speichern. Testament
+// (mindestens, Stand, höchstens), Partnerschaft (Erbanteil) und Person (Geburtsdatum mit ⓘ zum Planalter). Martin und Petra, Testament.
+async function runVn4LeaveFieldSmoke(browser, baseUrl) {
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'martin-petra', '2026-10-23', 'depot-tranchen-manager.html', 'testament');
+    const { page } = smoke;
+    const active = () => page.evaluate(() => ({ id: document.activeElement?.id || document.activeElement?.tagName, label: document.activeElement?.getAttribute?.('aria-label') || '' }));
+    const status = () => page.locator('#managerPartnershipStatus').textContent();
+    const saved = () => page.locator('#managerPartnershipStatus').filter({ hasText: /^Gespeichert$/ }).waitFor({ timeout: 5000 });
+    const storedRule = () => page.evaluate(async () => {
+        const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
+        const { PARTNERSHIP_KEY, readPartnership, testamentRule } = await import('./app/profile/household-partnership.js');
+        return testamentRule(readPartnership(persistenceStorage.getItem(PARTNERSHIP_KEY)), 'muster_martin');
+    });
+    const typeChars = async text => { for (const char of text) { await page.keyboard.type(char); await page.waitForTimeout(60); } };
+    // Kennt jeder Knoten seine Herkunft, fällt ein Neuaufbau auf (neuer Knoten ohne Marke).
+    const mark = selector => page.locator(selector).evaluate(node => { node.dataset.vn4Mark = 'alt'; });
+    const marked = selector => page.locator(selector).evaluate(node => node.dataset.vn4Mark === 'alt');
+    try {
+        await waitSuiteIdentity(page, 'muster_martin');
+        await page.locator('#managerSectionNav [data-manager-view="plan"]').click();
+        if (await page.locator('#managerPartnershipBody').isHidden()) await page.locator('#managerPartnershipToggle').click();
+        await page.locator('#inheritance-min-0').waitFor({ state: 'visible' });
+        let saves = 0;
+        await page.exposeFunction('__vn4Status', text => { if (text === 'Wird gespeichert …') saves++; });
+        await page.evaluate(() => new MutationObserver(() => window.__vn4Status(document.getElementById('managerPartnershipStatus').textContent))
+            .observe(document.getElementById('managerPartnershipStatus'), { childList: true, characterData: true, subtree: true }));
+        // Testament „mindestens“ Zeichen für Zeichen, Tab: Fokus auf „Stand“, Wert mit Tausenderpunkt, genau ein Speichern.
+        await mark('#inheritance-stand-0'); await mark('#inheritance-max-0');
+        await page.locator('#inheritance-min-0').click(); await page.keyboard.press('Control+A'); await typeChars('260000');
+        await page.keyboard.press('Tab'); await saved(); await page.waitForTimeout(300);
+        assert((await active()).id === 'inheritance-stand-0', `Testament mindestens + Tab: Fokus auf „Stand“ (${(await active()).id})`);
+        assert(await marked('#inheritance-stand-0'), 'Testament mindestens + Tab: „Stand“ ist derselbe Knoten (kein Neuaufbau)');
+        assert(await page.locator('#inheritance-min-0').inputValue() === '260.000', `Testament mindestens: Anzeige 260.000 (${await page.locator('#inheritance-min-0').inputValue()})`);
+        assert((await storedRule()).minimum === 260000, 'Testament mindestens: 260.000 gespeichert');
+        assert(saves === 1, `Testament mindestens: genau ein Speichern (${saves})`);
+        // „Stand“ Zeichen für Zeichen, Tab: Fokus auf „höchstens“.
+        await page.keyboard.press('Control+A'); await typeChars('05/2026'); await page.keyboard.press('Tab'); await saved(); await page.waitForTimeout(300);
+        assert((await active()).id === 'inheritance-max-0' && await marked('#inheritance-max-0'), `Testament Stand + Tab: Fokus auf „höchstens“ (${(await active()).id})`);
+        assert((await storedRule()).minimumStand === '2026-05', 'Testament Stand: 05/2026 gespeichert');
+        // Wie ET-1: „mindestens“ + Enter speichert, dann Klick auf „höchstens“ und „101“: Feld bleibt, Fehler sofort markiert.
+        await page.locator('#inheritance-min-0').click(); await page.keyboard.press('Control+A'); await typeChars('250000'); await page.keyboard.press('Enter'); await saved();
+        saves = 0;
+        await page.locator('#inheritance-max-0').click();
+        assert(await marked('#inheritance-max-0'), 'Klick auf „höchstens“ nach Enter: derselbe Knoten');
+        await page.keyboard.press('Control+A'); await typeChars('101');
+        assert((await active()).id === 'inheritance-max-0', `„101“: Fokus bleibt im Feld (${(await active()).id})`);
+        assert(await page.locator('#inheritance-max-0').getAttribute('aria-invalid') === 'true', '„101“: Höchstanteil als ungültig markiert');
+        assert(saves === 0, `Klick nach Enter: kein zweites Speichern (${saves})`);
+        await page.keyboard.press('Backspace'); await page.keyboard.press('Tab'); await saved(); await page.waitForTimeout(300);
+        assert((await active()).label === 'Immobilien nach Testament', `„10“ + Tab: Fokus auf dem ⓘ zu den Immobilien (${(await active()).id} ${(await active()).label})`);
+        assert((await storedRule()).maximumPercent === 10 && (await storedRule()).minimum === 250000, 'höchstens 10 % und mindestens 250.000 gespeichert');
+        // Partnerschaft, Erbanteil + Tab: Fokus verlässt das Feld nach vorn und bleibt dort.
+        await page.locator('#inheritance-1').click(); await page.keyboard.press('Control+A'); await typeChars('80'); await page.keyboard.press('Tab');
+        const next = await active(); await saved(); await page.waitForTimeout(300);
+        assert(next.id !== 'BODY' && (await active()).id === next.id && (await active()).label === next.label, `Erbanteil + Tab: Fokus bleibt auf dem nächsten Element (${next.id} ${next.label} → ${(await active()).id})`);
+        assert(/^Gespeichert$/.test(await status()), 'Erbanteil gespeichert');
+        // Person: Geburtsdatum Zeichen für Zeichen, Tab auf das ⓘ zum Planalter; nach dem Speichern bleibt der Fokus dort.
+        await page.locator('#managerSectionNav [data-manager-profile="muster_martin"]').click();
+        if (!await page.locator('#profileGeburtsdatum').isVisible()) await page.locator('#managerPersonToggle').click();
+        await page.locator('#profileGeburtsdatum').click(); await page.keyboard.press('Control+A'); await typeChars('16.03.1958'); await page.keyboard.press('Tab');
+        const info = await active();
+        await page.waitForTimeout(1500);
+        const after = await active();
+        assert(info.label === 'Wie wird das Planalter bestimmt?' && after.label === info.label, `Geburtsdatum + Tab: Fokus bleibt auf dem ⓘ zum Planalter (${info.id} ${info.label} → ${after.id} ${after.label})`);
+        assert(await page.evaluate(async () => {
+            const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
+            return persistenceStorage.getItem('profile_geburtsdatum');
+        }) === '1958-03-16', 'Geburtsdatum gespeichert');
+        smoke.assertNoErrors(['Update-Fehler: ValidationError']);
+    } finally { await smoke.close(); }
+}
+
+// VN-4 Nachtrag 1 N1: Schrittleiste im Verkauf (Plan teilweise umgesetzt, Kachel „Abrechnung · 1 von 2 · 1 teilweise“). Ein Name bricht
+// nie mitten im Wort um, die Pille rutscht bei Platzmangel unter den Namen, keine Kachel wird höher als zwei Zeilen. 1920, 2560 und 1366 px.
+async function runVn4StepBarSmoke(browser, baseUrl) {
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'max-erika', '2026-10-23', 'Balance.html', 'teilweise');
+    const { page } = smoke;
+    try {
+        await page.locator('[data-todo-sale-entry]').first().waitFor({ timeout: 30000 });
+        await page.locator('[data-todo-sale-entry]').first().click();
+        await page.locator('.sale-flow-dialog .close-dialog-step-title').first().waitFor();
+        for (const [width, height] of [[1920, 1080], [2560, 1440], [1366, 768]]) {
+            await page.setViewportSize({ width, height }); await page.waitForTimeout(250);
+            const tiles = await page.locator('.sale-flow-dialog .close-dialog-step-title').evaluateAll(nodes => nodes.map(node => {
+                const name = node.querySelector('.close-dialog-step-name');
+                const range = document.createRange(); range.selectNodeContents(name);
+                const lines = new Set([...range.getClientRects()].map(rect => Math.round(rect.top))).size;
+                const words = name.textContent.split(/\s+/).filter(Boolean);
+                const probe = document.createElement('span'); probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:inherit';
+                name.append(probe); const widest = Math.max(...words.map(word => { probe.textContent = word; return probe.getBoundingClientRect().width; })); probe.remove();
+                return { text: node.textContent.trim(), height: node.getBoundingClientRect().height, nameWidth: name.getBoundingClientRect().width, widest, lines, words: words.length };
+            }));
+            const overview = tiles[0].height, label = tiles.map(tile => `${tile.text} ${Math.round(tile.height)}px`).join(' | ');
+            assert(tiles.some(tile => /teilweise/.test(tile.text)), `${width}px: Teilabrechnung in der Schrittleiste (${label})`);
+            for (const tile of tiles) {
+                assert(tile.nameWidth + 0.5 >= tile.widest, `${width}px: Name „${tile.text}“ mindestens so breit wie sein längstes Wort (${Math.round(tile.nameWidth)} < ${Math.round(tile.widest)})`);
+                assert(tile.lines <= tile.words, `${width}px: Name „${tile.text}“ bricht nicht im Wort um (${tile.lines} Zeilen)`);
+                assert(tile.height <= Math.max(overview, 40) + 30, `${width}px: Kachel „${tile.text}“ höchstens zwei Zeilen (${label})`);
+            }
+        }
+        await page.setViewportSize({ width: 1920, height: 1080 });
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+}
+
+// VN-4 Nachtrag 1 N4: Die Kachel „Stück“ in „Tranche im Detail“ hat „ändern“ (Stückzahl ändern). Klick → Stückkorrektur im Dialog offen,
+// Enter speichert die neue Stückzahl. Martin und Petra, Grundfall.
+async function runVn4SharesEditSmoke(browser, baseUrl) {
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'martin-petra', '2026-10-23', 'depot-tranchen-manager.html');
+    const { page } = smoke;
+    const shares = () => page.evaluate(async () => {
+        const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
+        return JSON.parse(persistenceStorage.getItem('depot_tranchen') || '[]')[0]?.shares;
+    });
+    try {
+        await waitSuiteIdentity(page, 'muster_martin');
+        await page.locator('#tranchenTable .tranche-row').first().waitFor({ state: 'attached' });
+        await page.locator('#tranchenTable [data-asset-group]').evaluateAll(groups => groups.forEach(group => { group.open = true; }));
+        await page.locator('[data-action="edit-tranche"]').first().click();
+        await page.locator('#trancheModal.active').waitFor();
+        const edit = page.locator('#trancheDetailKpis [aria-label="Stückzahl ändern"]');
+        assert(await edit.count() === 1 && (await edit.textContent()).trim() === 'ändern', 'N4: Kachel „Stück“ mit „ändern“');
+        assert(await page.locator('#trancheDetailActions button').count() === 1, 'TD-1h: Aktionszeile enthält nur „Verkauf eintragen“');
+        await edit.click();
+        await page.locator('#shares').waitFor({ state: 'visible' });
+        assert(await page.evaluate(() => document.activeElement?.id) === 'shares', 'N4: Korrektur offen, Fokus im Stückfeld');
+        await page.keyboard.press('Control+A'); await page.keyboard.type('55'); await page.keyboard.press('Enter');
+        await waitForPageCondition(page, async () => {
+            const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
+            return JSON.parse(persistenceStorage.getItem('depot_tranchen') || '[]')[0]?.shares === 55;
+        }, null, { timeout: 15000 }).catch(() => {});
+        assert(await shares() === 55, `N4: Enter speichert 55 Stück (${await shares()})`);
+        smoke.assertNoErrors(['Update-Fehler: ValidationError']);
+    } finally { await smoke.close(); }
+}
+
+// VN-3 (Gutachten LDV): Kauf ohne Plan für Martin, „Anderes Wertpapier“. Suchstart per Eingabetaste behält den Fokus im Suchfeld
+// (Gemini Befund 2). „Ohne Treffer weiter“ setzt keine Anlageform; sie ist per Pfeiltaste frei wählbar, sperrt sich nicht und der
+// Fokus bleibt im Feld (Fable P2-2). Nach Gold → Aktien ist keine Teilfreistellung gewählt (Gemini Befund 3). Der Kurs von Hand
+// behält nach einer weiteren Eingabe seine vier Nachkommastellen (Codex F05).
+async function runVn3BuyKeyboardSmoke(browser, baseUrl) {
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'martin-petra', '2026-10-23', 'depot-tranchen-manager.html');
+    const { page } = smoke;
+    const focused = () => page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
+    try {
+        await waitSuiteIdentity(page, 'muster_martin');
+        await page.locator('#tranchenTable').waitFor({ state: 'attached' });
+        await page.locator('#depotAddTrancheBtn').click();
+        const buy = page.locator('#buyFlowDialog');
+        await buy.locator('[data-buy-flow-overview]').waitFor();
+        await buy.locator('[data-buy-flow-choice="other"]').check();
+        await buy.locator('#buyFlowQuery').click(); await page.keyboard.type('IE00BK5BQT80'); await page.keyboard.press('Enter');
+        assert(await focused() === 'buyFlowQuery', `Suchstart: Fokus bleibt im Suchfeld (${await focused()})`);
+        await buy.locator('[data-buy-flow-hit]').first().waitFor();
+        assert(await focused() === 'buyFlowQuery', `Suchantwort: Fokus bleibt im Suchfeld (${await focused()})`);
+        await buy.locator('[data-buy-flow-manual]').click();
+        const select = buy.locator('#buyFlow-assetClass');
+        await select.waitFor();
+        assert(await select.inputValue() === '', `Ohne Treffer weiter: Anlageform „Bitte wählen“ (${await select.inputValue()})`);
+        assert(await buy.locator('#buyFlowDialogTitle').textContent() === 'Kauf eintragen', 'Ohne Treffer weiter: Titel ohne Anlageform');
+        await select.focus();
+        for (const [steps, value] of [[1, 'equity'], [1, 'gold'], [2, 'money_market']]) {
+            for (let n = 0; n < steps; n++) await page.keyboard.press('ArrowDown');
+            await page.waitForTimeout(150);
+            assert(await select.inputValue() === value, `Pfeiltaste: Anlageform ${value} (${await select.inputValue()})`);
+            assert(await focused() === 'buyFlow-assetClass', `Pfeiltaste: Fokus bleibt in der Anlageform (${await focused()})`);
+            assert(!(await select.isDisabled()), 'Pfeiltaste: Anlageform bleibt änderbar');
+        }
+        await page.keyboard.press('ArrowUp'); await page.keyboard.press('ArrowUp'); await page.waitForTimeout(150);
+        assert(await select.inputValue() === 'gold', 'Pfeil hoch: zurück zu Gold');
+        await page.keyboard.press('ArrowUp'); await page.waitForTimeout(150);
+        assert(await select.inputValue() === 'equity', 'Pfeil hoch: Aktien');
+        assert(await buy.locator('[data-buy-flow-tqf][aria-pressed="true"]').count() === 0, 'Gold → Aktien: keine Teilfreistellung vorgewählt');
+        await buy.locator('[data-buy-flow-tqf="0.3"]').click();
+        await buy.locator('#buyFlow-price').click(); await page.keyboard.type('144,1234'); await page.keyboard.press('Tab');
+        await buy.locator('#buyFlow-name').click(); await page.keyboard.type('Handkurs ETF'); await page.waitForTimeout(150);
+        assert(await buy.locator('#buyFlow-price').inputValue() === '144,1234', `Kurs von Hand bleibt 144,1234 (${await buy.locator('#buyFlow-price').inputValue()})`);
+        // VN-4 Punkt 3 (Abnahme ST-2): Danach doch ein Treffer (ISIN-Suche, XEON.DE): Der Treffer setzt Anlageform und Titel, Weiter frei.
+        await buy.locator('#buyFlowQuery').click(); await page.keyboard.press('Control+A'); await page.keyboard.type('LU0290358497'); await page.keyboard.press('Enter');
+        await buy.locator('[data-buy-flow-hit="XEON.DE"]').check();
+        await page.waitForTimeout(150);
+        assert(await buy.locator('#buyFlowDialogTitle').textContent() === 'Geldmarkt kaufen', `Treffer nach „Ohne Treffer“: Titel Geldmarkt (${await buy.locator('#buyFlowDialogTitle').textContent()})`);
+        assert(await buy.locator('#buyFlow-assetClass').inputValue() === 'money_market', `Treffer nach „Ohne Treffer“: Anlageform Geldmarkt (${await buy.locator('#buyFlow-assetClass').inputValue()})`);
+        assert(!(await buy.locator('[data-buy-flow-primary]').isDisabled()), 'Treffer nach „Ohne Treffer“: Weiter frei');
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
+}
+
+// VN-1 Punkt 13 (Datenfehler): Kauf ohne Planbezug für Petra (kein Geldmarkt, keine Anleihen, kein Gold). Treffer Geldmarkt, Anleihen und
+// Gold sowie „Ohne Treffer weiter“ mit Anlageform Geldmarkt: Die neue Tranche trägt Name, ISIN, Kürzel und Anlageform der Wahl.
+async function runVn1FreeBuySecuritySmoke(browser, baseUrl) {
+    const DATE = '2026-10-23', PETRA = 'muster_petra';
+    const smoke = await openVk3dPlayArea(browser, baseUrl, 'martin-petra', DATE, 'depot-tranchen-manager.html');
+    const { page } = smoke;
+    const cases = [
+        { label: 'Treffer Geldmarkt', query: 'LU0290358497', hit: 'XEON.DE', expect: { name: 'Muster Geldmarkt', isin: 'LU0290358497', ticker: 'XEON.DE', category: 'money_market' }, title: 'Geldmarkt kaufen' },
+        { label: 'Treffer Anleihen', query: 'IE00B4WXJJ64', hit: 'EUNH.DE', expect: { name: 'iShares Core € Govt Bond ETF', isin: 'IE00B4WXJJ64', ticker: 'EUNH.DE', category: 'bonds' }, title: 'Anleihen kaufen' },
+        { label: 'Treffer Gold', query: 'DE000A0S9GB0', hit: '4GLD.DE', expect: { name: 'Xetra-Gold ETC', isin: 'DE000A0S9GB0', ticker: '4GLD.DE', category: 'gold' }, title: 'Gold kaufen' },
+        { label: 'Ohne Treffer, Geldmarkt', manual: { name: 'Handgeld Geldmarkt', isin: 'DE000VN10001', ticker: 'HAND.DE', price: '100' },
+            expect: { name: 'Handgeld Geldmarkt', isin: 'DE000VN10001', ticker: 'HAND.DE', category: 'money_market' }, title: 'Geldmarkt kaufen' }
+    ];
+    const tranches = () => page.evaluate(async id => {
+        const { persistenceStorage } = await import('./app/shared/persistence-facade.js');
+        return JSON.parse(JSON.parse(persistenceStorage.getItem('rs_profiles_v1')).profiles[id].data.depot_tranchen || '[]');
+    }, PETRA);
+    try {
+        await switchBrowserProfile(page, PETRA, { returnToOverview: false });
+        for (const item of cases) {
+            await page.locator('#tranchenTable').waitFor({ state: 'attached' });
+            const before = (await tranches()).length;
+            await page.locator('#depotAddTrancheBtn').click();
+            const buy = page.locator('#buyFlowDialog');
+            await buy.locator('[data-buy-flow-overview]').waitFor();
+            await buy.locator('[data-buy-flow-choice="other"]').check();
+            if (item.hit) {
+                await buy.locator('#buyFlowQuery').fill(item.query); await buy.locator('[data-buy-flow-search-button]').click();
+                await buy.locator(`[data-buy-flow-hit="${item.hit}"]`).check();
+            } else {
+                await buy.locator('[data-buy-flow-manual]').click();
+                for (const [name, value] of Object.entries(item.manual)) { await buy.locator(`#buyFlow-${name}`).fill(value); await buy.locator(`#buyFlow-${name}`).blur(); }
+                await buy.locator('#buyFlow-assetClass').selectOption('money_market');
+            }
+            await buy.locator('[data-buy-flow-security] input[data-buy-flow-field="name"]').waitFor();
+            // VN-1 Punkt 14: Der Titel folgt der gewählten Anlageform.
+            assert(await buy.locator('#buyFlowDialogTitle').textContent() === item.title, `${item.label}: Titel „${item.title}“`);
+            await page.setViewportSize({ width: 1920, height: 1000 });
+            // VN-1 Punkt 5: Wertpapierwahl mit Treffern und Feldern ohne Scrollen ganz sichtbar.
+            assert(await buy.locator('[data-close-dialog-content]').evaluate(content => content.scrollHeight <= content.clientHeight + 1), `${item.label}: Wertpapierwahl ohne Scrollen`);
+            await page.setViewportSize({ width: 1920, height: 1080 });
+            await buy.locator('[data-buy-flow-primary]').click();
+            const field = name => buy.locator(`[data-buy-flow-form] [data-buy-flow-field="${name}"]`);
+            await field('shares').fill('10'); await field('price').fill('121,48'); await field('fees').fill('0,99'); await field('fees').blur();
+            const settled = await buy.locator('[data-buy-flow-tranche]').textContent();
+            assert(settled.includes(item.expect.name) && settled.includes(item.expect.isin), `${item.label}: Abrechnung nennt das gewählte Wertpapier (${settled})`);
+            await buy.locator('[data-buy-flow-primary]').click();
+            await buy.locator('[data-buy-flow-debit-choice="later"]').check();
+            // Nach dem Schreiben lädt die Seite neu (neues Dokument ohne Merker) und zeigt danach die erste Person des Haushalts.
+            await page.evaluate(() => { window.__vn1Document = true; });
+            await buy.locator('[data-buy-flow-primary]').click();
+            await page.waitForFunction(() => !window.__vn1Document && document.getElementById('suiteProfileContext')?.dataset.profileId, null, { timeout: 30000 });
+            await page.locator('#managerSectionNav [data-manager-profile="muster_martin"][aria-selected="true"]').waitFor();
+            assert((await tranches()).length === before + 1, `${item.label}: genau eine neue Tranche bei Petra`);
+            const added = (await tranches()).at(-1);
+            for (const [key, value] of Object.entries(item.expect)) assert(added[key] === value, `${item.label}: Tranche ${key} = ${value}, gespeichert ${added[key]}`);
+            await switchBrowserProfile(page, PETRA, { returnToOverview: false });
+        }
+        smoke.assertNoErrors();
+    } finally { await smoke.close(); }
 }

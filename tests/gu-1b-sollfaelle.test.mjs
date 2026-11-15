@@ -138,7 +138,8 @@ const ERIKA = { profileId: 'muster_b', trancheId: 'muster_b_lot_2', net: 79950, 
     assertClose(a3.view.before.liquidity, 99362.50, 0.01, 'A3: heute 99.362,50 €');
     assertClose(a3.progress.restNet, 79950, 0.5, 'A3: offener Rest 79.950 €');
     assertClose(a3.view.after.liquidity, 179312.50, 0.5, 'A3: nach Umsetzung 179.312,50 € (Beleg-Cent von Max fällt unter die Erledigt-Grenze)');
-    assert(a3.card.values.includes('nach Umsetzung179.363 €'), 'A3: Reservekarte zeigt heute 99.362,50 € + angezeigter Rest 80.000 € = 179.363 €');
+    // VK-3d P4: Teilweise erledigt zählt der offene Rest auf den Euro wie in der Karte (vorher aufgerundet 80.000 € → 179.363 €).
+    assert(a3.card.values.includes('nach Umsetzung179.312 €'), 'A3: Reservekarte zeigt heute 99.362,50 € + offener Rest 79.950 € = 179.312 €');
     assert(a3.diagnosis.includes('79.950 € netto'), 'A3: Diagnose nennt den offenen Rest 79.950 € netto');
 
     // Planversuch: Die Karte rechnet wie vor GU-1 mit der Neuberechnung (89.185,46 € netto zu heutigen Kursen).
@@ -186,7 +187,7 @@ const ERIKA = { profileId: 'muster_b', trancheId: 'muster_b_lot_2', net: 79950, 
     assertEqual(projectBalanceFlexTrace({ ...projectedUi, nextYearBudget: b1.next }).cut, 0, 'B1: Folgejahr mit Projektion ohne Warnung');
     assertEqual(b1.card.cut, 'Dein Haushalts-Flex ist voll finanziert.', 'B1: Budgetkarte ohne Kürzungswarnung');
 
-    // B2: Abschluss 2026 gebucht (Plan danach 31.000 € + 31.000 €), Budgetkarte 2027 ohne Projektion.
+    // B2: Abschluss 2026 gebucht (Plan danach genau 30.642 € + 30.642 €, GN-1), Budgetkarte 2027 ohne Projektion.
     const records = createMusterHaushaltRecords('2026-12-15', 'max-erika');
     const key = 'ruhestandsmodellValues_v29_guardrails', state = JSON.parse(records[key]);
     state.annualPeriodMetadata.pendingCommit = { periodId: 'calendar-year:2026', snapshotId: 'gu1b-before', phase: 'writes_started' };
@@ -196,7 +197,7 @@ const ERIKA = { profileId: 'muster_b', trancheId: 'muster_b_lot_2', net: 79950, 
     const draft = computeAnnualPlanUpdate({ targetYear: 2026, marketData: annualTestMarketData, storage: annualRecordStorage(records), now });
     const booked = { ...records, ...prepareAnnualCommitRecords(draft, { engineApi: EngineAPI, now }).records };
     const plan = Object.values(JSON.parse(booked.household_plan_v1).entries)[0].values;
-    assertEqual(`${plan.floorBedarf} + ${plan.flexBedarf}`, '31000 + 31000', 'B2: Gebuchter Plan 31.000 € + 31.000 €');
+    assertEqual(`${plan.floorBedarf} + ${plan.flexBedarf}`, '30642 + 30642', 'B2: Gebuchter Plan 30.642 € + 30.642 € (GN-1: genau gespeichert)');
     const b2 = projectBalanceFlexTrace(evaluate(booked, '2027-01-02').current);
     assertClose(b2.budget, 5100, 1e-9, 'B2: Budget 5.100 € gegen Bedarf 5.166,67 €');
     assertEqual(b2.cut, 0, 'B2: Nach gebuchtem Jahresabschluss keine Warnung');
@@ -212,7 +213,8 @@ const ERIKA = { profileId: 'muster_b', trancheId: 'muster_b_lot_2', net: 79950, 
     const real = projectBalanceFlexTrace(own([step('guardrails', 2025, 1925), step('quantization', 1925, 1900)]));
     assertEqual(real.cut, 125, 'B3: Greift ein anderer Schritt, nennt die Warnung den vollen Unterschied zum Plan');
 
-    // B4: Renate rechnet im Folgejahr mit S-Kurve, Leitplanken und Glättung: echte Kürzung, voller Unterschied 166,67 €.
+    // B4: Renate rechnet im Folgejahr mit S-Kurve, Leitplanken und Glättung: echte Kürzung. GN-1: genau gespeichert ist der Bedarf
+    // 24.480 + 12.240 = 3.060 € im Monat (vorher aufgerundet 3.166,67 €), das Budget 2.900 € (vorher 3.000 €): voller Unterschied 160 €.
     const renateRecords = createMusterHaushaltRecords(DATE, 'renate');
     await freshArea({ ...renateRecords });
     const renate = evaluate(renateRecords, DATE);
@@ -220,8 +222,8 @@ const ERIKA = { profileId: 'muster_b', trancheId: 'muster_b_lot_2', net: 79950, 
     const renateUi = { ...renateNext.displayEvaluation.modelResult.ui, input: renateNext.displayEvaluation.inputData, nextYearBudget: renateNext };
     const renateTrace = projectBalanceFlexTrace(renateUi);
     assert(renateUi.spending.flexTrace.some(entry => entry.gegriffen && entry.schritt !== 'quantization'), 'B4: Bei Renate greifen Schritte außer der Rundung');
-    assertClose(renateTrace.cut, 3166.67 - 3000, 0.01, 'B4: Renate meldet den vollen Unterschied zum Plan, 167 € weniger');
-    assertClose(renateTrace.householdFlexRate, 84.615, 0.001, 'B4: Renate 84,6 % finanziert wie vor GU-1');
+    assertClose(renateTrace.cut, 3060 - 2900, 0.01, 'B4: Renate meldet den vollen Unterschied zum Plan, 160 € weniger');
+    assertClose(renateTrace.householdFlexRate, 860 / 1020 * 100, 0.001, 'B4: Renate 84,3 % finanziert (echte Lücke, nicht aus der Rundung)');
     P.resetPersistenceForTests(); setAppTestDate(null);
 }
 

@@ -1,3 +1,4 @@
+import { activeCarrier } from '../profile/household-withdrawal-mode.js';
 /** @import {EngineTranche, Market, NormalizedEngineInput, SaleContext, SaleResult, SimulationPortfolio, SimulatorInputs} from '../../typcheck/rechenkern.js' */
 /** Annual personal tax books. The Balance planner and settlement remain authoritative. */
 import { attributeHouseholdAction } from '../profile/profilverbund-action-attribution.js';
@@ -10,6 +11,7 @@ import { buildDetailedTranchesFromPortfolio } from './simulator-engine-direct-ut
 import { inheritanceSale } from '../profile/household-inheritance-sale.js';
 import { netPersonalAction, netActionEntriesOrOriginal, sumPersonalActions } from '../../engine/transactions/net-action.mjs';
 import { quantizeAmount } from '../../engine/transactions/transaction-utils.mjs';
+import { limitCashInvestment } from '../profile/household-carrier-action.js';
 
 const books = new WeakMap();
 const assessmentModes = new WeakMap();
@@ -147,28 +149,8 @@ export function personalCashInvestmentProfiles(portfolio, inputs, reserves, rule
     });
 }
 
-/**
- * @param action
- * @param capacity
- * @returns {void}
- */
-export function limitCashInvestment(action, capacity) {
-    const cash = (action.quellen || []).filter(source => source.kind === 'liquiditaet');
-    const requested = sum(cash, 'brutto'), invest = Math.min(requested, capacity);
-    if (invest >= requested) return;
-    let reduction = requested - invest;
-    action.verwendungen = { ...action.verwendungen };
-    for (const key of ['aktien', 'gold', 'bonds']) {
-        const take = Math.min(action.verwendungen[key] || 0, reduction);
-        if (take > 0) action.verwendungen[key] -= take; reduction -= take;
-    }
-    action.quellen = [...(invest > 0 ? [{ kind: 'liquiditaet', source: 'Liquidität', brutto: invest, netto: invest, steuer: 0 }] : []),
-        ...action.quellen.filter(source => source.kind !== 'liquiditaet')];
-    action.nettoErlös = (action.nettoErlös || 0) - requested + invest;
-    if (!action.quellen.length) action.type = 'NONE';
-    if (action.details) action.details = { ...action.details, kaufAkt: action.verwendungen.aktien || 0,
-        kaufGld: action.verwendungen.gold || 0, verkaufLiquiditaet: invest };
-}
+// Kürzung der Käufe aus Liquidität: gemeinsam mit der Balance (FR-80, TRG-1b).
+export { limitCashInvestment };
 
 /**
  * @param portfolio Veränderlicher Portfoliozustand.
@@ -544,6 +526,7 @@ export function settlePersonalTaxYear({ portfolio, book, personalInterest, actio
     const householdFunding = new Map(book.map(row => [row.profileId, new Map()]));
     const householdTaxSources = [];
     let householdDepotUsed = false;
+    const carrierId = activeCarrier(inputs.householdWithdrawalMode, portfolio.personAccounts || []);
     const cashInterestFor = row => Math.max(0, personalInterest.items.find(item => item.profileId === row.profileId)?.cashInterest || 0);
     // Zwischenspeicher je Zinsvariante: Zinsen, Pauschbeträge, Verlustvorträge und Kirchensteuer
     // sind im Jahresbuch konstant; nur die beiden Rohsummen je Zeile ändern sich zwischen den Aufrufen.
@@ -583,7 +566,7 @@ export function settlePersonalTaxYear({ portfolio, book, personalInterest, actio
                 } else {
                     let paid = debitAccount(portfolio, row.account, -delta).amount;
                     syncPersonalLiquidity(portfolio);
-                    if (paid + 1e-8 < -delta) {
+                    const householdCash = () => {
                         // FR-16: use household liquidity in Balance plan order before
                         // selling the taxpayer's own investments. Each account uses TG before MM.
                         const profiles = personalProfiles(portfolio, inputs).filter(profile => profile.profileId !== row.profileId);
@@ -599,12 +582,17 @@ export function settlePersonalTaxYear({ portfolio, book, personalInterest, actio
                             if (contribution > 0) funding.set(account.profileId, (funding.get(account.profileId) || 0) + contribution);
                             paid += contribution;
                         }
-                    }
+                    };
+                    // TRG-1c Punkt 1 (FR-80 Punkte 2 und 3): Die tragende Person zahlt ihre Steuer aus eigener Liquidität, dann aus dem eigenen
+                    // Depot; erst danach greift sie auf die andere Person zu (mit Hinweis). Sonst wie bisher erst die Haushaltsliquidität.
+                    const ownFirst = carrierId !== null && row.profileId === carrierId;
+                    if (!ownFirst && paid + 1e-8 < -delta) householdCash();
                     const need = -delta - paid;
                     if (need > 1e-8) {
                         fundPersonalCash(portfolio, row, need, {}, false, 'tax', householdTaxSources);
                         paid += debitAccount(portfolio, row.account, need).amount;
                     }
+                    if (ownFirst && paid + 1e-8 < -delta) householdCash();
                     if (paid + 1e-8 < -delta) {
                         // Erst nach Haushaltsliquidität und eigenem Depot die übrigen
                         // Depots in Planreihenfolge nutzen. Gewinne gehören weiterhin
@@ -665,6 +653,11 @@ export function settlePersonalTaxYear({ portfolio, book, personalInterest, actio
     actionResult.taxRawAggregate = { sumRealizedGainSigned: details.sumRealizedGainSigned,
         sumTaxableAfterTqfSigned: details.sumTaxableAfterTqfSigned };
     actionResult.personalAnnualTaxes = results;
+    // TRG-1c Punkt 1: Zahlt die andere Person einen Teil der Steuer der tragenden Person, steht das als Rückgriff im Hinweis.
+    if (carrierId) {
+        const helped = results.find(row => row.profileId === carrierId)?.householdTaxFunding?.filter(row => row.profileId !== carrierId && row.amount > 0.5) || [];
+        if (helped.length) actionResult.carrierTaxAttacked = helped.map(row => ({ profileId: row.profileId, amount: row.amount }));
+    }
     if (householdDepotUsed) actionResult.householdTaxSale = {
         gross: sum(householdTaxSources, 'brutto'), sources: householdTaxSources
     };

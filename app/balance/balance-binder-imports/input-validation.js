@@ -1,6 +1,7 @@
 // @ts-check
 import { failImport, isRecord, hasOwn } from './validation-core.js';
 import { DECUMULATION_FIELDS, HEALTH_BUCKET_FIELDS, GOLD_STRATEGY_DIAGNOSTIC_FIELDS, BALANCE_IMPORT_INPUT_SCHEMA_V2 } from './schema.js';
+import { isWithdrawalMode } from '../../profile/household-withdrawal-mode.js';
 import { normalizeTrancheCollection } from '../../../types/tranche-contract.js';
 import { LIQUIDITY_RUNWAY_CONTRACT_V1 } from '../../../types/liquidity-runway-contract.js';
 
@@ -170,6 +171,8 @@ export function validateBalanceInputsAgainstSchema(inputs) {
             validateTranchesOrNull(value);
         } else if (descriptor.type === 'goldStrategyDiagnostics') {
             validateGoldStrategyDiagnostics(value);
+        } else if (descriptor.type === 'withdrawalMode') {
+            if (!isWithdrawalMode(value)) failImport('invalid_core_value', 'Das Feld „inputs.householdWithdrawalMode“ ist keine bekannte Verteilung im Haushalt.');
         } else {
             validateSchemaField(`inputs.${field}`, value, descriptor);
         }

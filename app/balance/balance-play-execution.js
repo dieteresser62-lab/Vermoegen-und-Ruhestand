@@ -2,9 +2,7 @@ import { appNow, localCalendarDate } from '../shared/app-clock.js';
 import { canGenerateExampleExpenses } from '../demo/beispielausgaben.js';
 import { PersistenceFacade as P, persistenceStorage } from '../shared/persistence-facade.js';
 import { PROBELAUF_STATE_KEY } from '../shared/probelauf-state.js';
-import { withAnnualWriteAccess } from '../shared/annual-operation-lock.js';
-import { PROFILE_SCOPED_FIXED_KEYS } from '../profile/profile-state.js';
-import { prepareCashRecords, readCashPerson, parseCashInput } from '../profile/profile-cash-update.js';
+import { readCashPerson, parseCashInput } from '../profile/profile-cash-update.js';
 import { captureProfileData } from '../profile/profile-live-storage.js';
 import { PROFILE_CASH_HISTORY_KEY } from '../profile/profile-wealth-history.js';
 import { normalizeTrancheCollection, equityPurchaseTemplate } from '../../types/tranche-contract.js';
@@ -14,10 +12,11 @@ import { resolveLiquidityRunwayYears } from '../../types/liquidity-runway-contra
 import { syntheticQuote } from '../shared/probelauf-prices.js';
 import { recordTrancheCollection } from '../tranches/tranchen-recording.js';
 import { CONFIG } from './balance-config.js';
-import { HOUSEHOLD_PLAN_KEY, readBalanceHouseholdPlan } from '../profile/household-plan.js';
+import { readBalanceHouseholdPlan } from '../profile/household-plan.js';
 import { registeredPlanTrial } from '../shared/plan-trial.js';
 import { personalCashTargets } from './balance-liquidity-targets.js';
 import { commitTrancheReconciliation, commitCashPostingConfirmation, projectReconciliationCashStatuses } from '../tranches/tranche-reconciliation.js';
+import { captureHouseholdRecords, householdProfileStore, householdRecords, setHouseholdCash, commitHouseholdRecords } from '../tranches/household-sale-writer.js';
 
 const REGISTRY = 'rs_profiles_v1';
 const BATCHES = 'playActionExecutions';
@@ -291,58 +290,17 @@ export function canExecutePlayAction(controller) {
 function requirePlay(controller) {
     if (!canExecutePlayAction(controller)) throw new Error('Anweisungen lassen sich nur im bestätigten aktiven Spielbereich eintragen.');
 }
-function capture(storage) {
-    return Object.fromEntries([...new Set([...Object.keys(captureProfileData(storage)), ...PROFILE_SCOPED_FIXED_KEYS, ...writeKeys, CONFIG.STORAGE.LS_KEY, HOUSEHOLD_PLAN_KEY])].sort()
-        .map(key => [key, storage.getItem(key)]).filter(([, raw]) => raw !== null));
-}
+const capture = storage => captureHouseholdRecords(storage, writeKeys);
 function assertFresh(prepared, controller, storage) {
     requirePlay(controller);
     if (prepared.date !== localCalendarDate(appNow()) || JSON.stringify(capture(storage)) !== JSON.stringify(prepared.before)) {
         throw new Error('Bestand oder Spielbereich hat sich geändert. Bitte die Anweisung erneut öffnen.');
     }
 }
-function memory(data) {
-    const copy = { ...data };
-    return { copy, getItem: key => copy[key] ?? null, setItem: (key, raw) => { copy[key] = String(raw); }, removeItem: key => { delete copy[key]; } };
-}
-function profileStore(registry, id) {
-    const storage = memory({ ...registry.profiles[id].data, [REGISTRY]: JSON.stringify(registry), rs_current_profile: id, rs_active_profile: id });
-    const save = () => {
-        const next = JSON.parse(storage.getItem(REGISTRY));
-        for (const key of PROFILE_SCOPED_FIXED_KEYS) {
-            const raw = storage.getItem(key);
-            if (raw === null) delete next.profiles[id].data[key]; else next.profiles[id].data[key] = raw;
-        }
-        storage.setItem(REGISTRY, JSON.stringify(next)); return true;
-    };
-    const persistence = { async replaceRecordsTransactional(records, options) {
-        for (const key of writeKeys) if (options.allowKey(key)) {
-            if (records[key] === undefined) storage.removeItem(key); else storage.setItem(key, records[key]);
-        }
-        return { ok: true };
-    } };
-    return { storage, options: { storage, saveCurrentProfile: save, getCurrentProfileId: () => id, getActiveProfileId: () => id,
-        flush: async () => true, persistence }, save };
-}
-function updateCash(data, value, date) {
-    const changes = prepareCashRecords(data, cents(value), date);
-    if (changes[PROFILE_CASH_HISTORY_KEY]) {
-        const history = JSON.parse(changes[PROFILE_CASH_HISTORY_KEY]);
-        const entry = history.entries.find(item => item.date === date);
-        if (entry) entry.source = 'spielwert';
-        changes[PROFILE_CASH_HISTORY_KEY] = JSON.stringify(history);
-    }
-    Object.assign(data, changes);
-}
-function finalRecords(before, registry, activeId) {
-    const records = Object.fromEntries(Object.entries(before).filter(([key]) => writeKeys.has(key)));
-    records[REGISTRY] = JSON.stringify(registry);
-    for (const key of writeKeys) if (PROFILE_SCOPED_FIXED_KEYS.includes(key)) {
-        if (registry.profiles[activeId].data[key] === undefined) delete records[key];
-        else records[key] = registry.profiles[activeId].data[key];
-    }
-    return records;
-}
+// VK-1: Kopie, Registry und Zielrecords kommen aus dem gemeinsamen Haushaltsschreiber (Live und Spielbereich).
+const profileStore = (registry, id) => householdProfileStore(registry, id, writeKeys);
+const updateCash = (data, value, date) => setHouseholdCash(data, value, date, 'spielwert');
+const finalRecords = (before, registry, activeId) => householdRecords(before, registry, activeId, writeKeys);
 
 /** Nur private Stringrecords: dieselben Verkaufs-, Kauf- und Cashwriter wie im Manager. */
 /**
@@ -475,13 +433,9 @@ export function pendingPlayActions(registry = JSON.parse(persistenceStorage.getI
  */
 /** @param prepared Vorbereitete Buchung. @param {{controller?: import('../../typcheck/balance-ui.js').PlayController, storage?: typeof persistenceStorage, navigationOperation?: import('../../typcheck/speicher-integration.js').Operation, validate?: ()=>void}} [options] @returns Bestätigter Buchungsstapel. */
 export async function commitPlayAction(prepared, { controller, storage = persistenceStorage, navigationOperation, validate = () => {} } = {}) {
-    return withAnnualWriteAccess(async () => {
-        assertFresh(prepared, controller, storage); validate();
-        await P.replaceRecordsTransactional(prepared.records, { probelaufDomainWrite: true, navigationOperation,
-            allowKey: key => writeKeys.has(key), expectedRecords: Object.fromEntries(Object.entries(prepared.before).filter(([key]) => writeKeys.has(key))),
-            postValidate: () => { requirePlay(controller); return true; } });
-        return prepared.batch;
-    });
+    await commitHouseholdRecords(prepared, { storage, writeKeys, navigationOperation, validate,
+        assertFresh: () => assertFresh(prepared, controller, storage), postValidate: () => { requirePlay(controller); return true; } });
+    return prepared.batch;
 }
 
 /**

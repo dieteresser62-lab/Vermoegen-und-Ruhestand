@@ -20,8 +20,9 @@ import { resumeTimeLapse } from '../shared/probelauf-timelapse-ui.js';
 import { bindStartupPrices } from '../tranches/tranchen-startup-prices.js';
 import { projectOverviewWithAnnualArchive } from './overview-model.js';
 import { readLastFullBackup, storeMonthProvision } from './overview-storage.js';
-import { renderOverview, renderOverviewPersistenceRecovery, bindOverviewBackupTargets, openOverviewBackupTarget } from './overview-renderer.js';
+import { renderOverview, renderOverviewCoverage, renderOverviewPersistenceRecovery, bindOverviewBackupTargets, openOverviewBackupTarget } from './overview-renderer.js';
 import { requestOverviewMonthConfirmation } from './overview-month-confirmation.js';
+import { createOverviewReserves } from './overview-reserves.js';
 
 export { projectOverviewFromRecords } from './overview-model.js';
 
@@ -60,6 +61,16 @@ async function initializeOverview(doc, win) {
     let priceReport = null;
     let model = null;
     let monthControls, historyControls, exampleControls, annualControls;
+    // GN-2c: Deckung der Planansicht mit derselben Rechnung wie „Deine Reserven“ in der Balance.
+    // GN-2e: Nach dem Laden nur Tabelle und Deckungszeile neu zeichnen, kein ganzer Neuaufbau (Fokus, laufende Dialoge).
+    /** @type {Record<string, string>} */
+    let lastLiveData = {};
+    const navigation = getPageNavigationGuard(doc, win);
+    const reserves = createOverviewReserves({ isBusy: () => navigation.isBusy(), onReady: () => {
+        if (!model || PersistenceFacade.getPersistenceStatus().reloadRequired) return;
+        model = reserves.project(model, { storage: persistenceStorage, liveData: lastLiveData });
+        renderOverviewCoverage(doc, model);
+    } });
     const refresh = () => {
         // Nach einem Bereichswechsel lädt die Seite gleich neu; bis dahin nichts mehr lesen.
         if (PersistenceFacade.getPersistenceStatus().reloadRequired) return;
@@ -73,6 +84,8 @@ async function initializeOverview(doc, win) {
         model = projectOverviewWithAnnualArchive({ registry: available ? loadProfileRegistry().value : null,
             activeId: available ? getCurrentProfileId() : null, liveData, historyPeriod: historyControls.period, historyReport: historyControls.report, lastBackup: readLastFullBackup(), priceReport,
             recovery: Boolean(win.__profileRecoveryBlocker || PersistenceFacade.getPersistenceStatus().migrationWarning) }, { onChange: refresh });
+        lastLiveData = liveData;
+        model = reserves.project(model, { storage: persistenceStorage, liveData });
         model = monthControls.projectModel(model);
         model = exampleControls.projectModel(model);
         renderOverview(doc, model);

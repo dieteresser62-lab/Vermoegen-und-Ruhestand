@@ -3,6 +3,25 @@ import { UIUtils } from '../balance-utils.js';
 import { bindInfoPopovers, createInfoPopover } from '../../shared/designsystem-info-popover.js';
 import { displayDiagnosisText } from '../balance-diagnosis-transaction.js';
 import { describeBalanceActionSummary, summarizeBalanceAction } from '../balance-action-summary.js';
+import { readBalanceHouseholdPlan } from '../../profile/household-plan.js';
+import { persistenceStorage } from '../../shared/persistence-facade.js';
+import { withdrawalModeText } from '../../shared/household-plan-fields.js';
+
+/** Tagesgeld- oder Liquiditätsquelle (ohne Steuer). @param {any} source */
+const isCashSource = source => source?.kind === 'liquiditaet' || source?.source === 'Liquidität';
+
+/** VN-1 Punkt 11: Entnahmemodus des Haushalts in Klartext für den Kopf der Vorschau; bei einer Person leer.
+ * @param {any[]} fallback Personeneinträge der Empfehlung, falls die Haushaltsübersicht fehlt */
+function previewModeText(fallback = []) {
+    const summaries = globalThis.window?.__profilverbundProfileSummaries;
+    const entries = Array.isArray(summaries) && summaries.length ? summaries : fallback;
+    if (!(entries.length > 1)) return '';
+    try {
+        const plan = readBalanceHouseholdPlan({ storage: persistenceStorage, profileId: persistenceStorage.getItem('rs_current_profile') });
+        if (plan.status !== 'valid') return '';
+        return withdrawalModeText(plan.entry.values.householdWithdrawalMode || '', entries.map(entry => ({ id: entry.profileId, name: entry.name || entry.profileId })));
+    } catch { return ''; }
+}
 
 export const detailsMethods = {
 
@@ -22,6 +41,9 @@ export const detailsMethods = {
             content.appendChild(node); texts.push(text);
         };
         paragraph(origin.previewNotice);
+        // VN-1 Punkt 11: Im Haushalt nennt der Kopf den Entnahmemodus wie „Details & Drucken“ des Plans.
+        const modeText = previewModeText(this.profileActionResults || this._materialProfileActions?.() || []);
+        if (modeText) paragraph(`Entnahme: ${modeText}`);
         const title = plan?.threeBucketTrades ? 'Saldo je Anlageklasse' : displayDiagnosisText(plan?.title || action.title || original.title || '');
         paragraph([title, context.market?.szenarioText ? `Marktphase: ${context.market.szenarioText}` : '']
             .filter(Boolean).join(' · '), 'balance-action-detail-title');
@@ -108,7 +130,8 @@ export const detailsMethods = {
                     const q = row.source;
                     const sourceLabel = q?.isin && !row.label.includes(q.isin) ? `${row.label} · ${q.isin}` : row.label;
                     return [...(plan.household ? [row.profile] : []), sourceLabel, trancheText(q),
-                        row.amount, Number.isFinite(q?.steuer) ? q.steuer : null, Number.isFinite(q?.netto) ? q.netto : null];
+                        // VN-1 Punkt 11: Tagesgeld und Liquidität tragen keine Steuer; ihr Netto ist das Brutto.
+                        row.amount, Number.isFinite(q?.steuer) ? q.steuer : null, Number.isFinite(q?.netto) ? q.netto : isCashSource(q) ? row.amount : null];
                 });
                 content.appendChild(makeTable(`Woher das Geld kommt${isSale ? ' · Verkäufe' : ''}`, columns, values,
                     [...(plan.household ? [''] : []), 'Summe', '', plan.displayBrutto, plan.displaySteuer, plan.displayNetto]));
@@ -132,7 +155,8 @@ export const detailsMethods = {
                 const transfer = item.internalCashRebalance;
                 transfers.push([`${(transfer?.from || from).replace('Geldmarkt-ETF', 'Geldmarkt')} → ${(transfer?.to || to).replace('Geldmarkt-ETF', 'Geldmarkt')}`, ...(plan.household ? [entry?.name || 'Profil'] : []), amount,
                     transfer?.taxUnknown ? 'nicht ermittelbar' : transfer?.steuer ?? 0,
-                    transfer?.from === 'Geldmarkt-ETF' && !transfer.taxUnknown ? transfer.netto : null]);
+                    // VN-4 (Abnahme VN1-7): Geht das Geld vom Tagesgeld weg (in den Geldmarkt), fließt dem Tagesgeld nichts zu: 0 € statt „—“.
+                    transfer?.from === 'Geldmarkt-ETF' ? (transfer.taxUnknown ? null : transfer.netto) : !/Tagesgeld/.test(transfer?.to || to) ? 0 : null]);
             }
             if (transfers.length) content.appendChild(makeTable('Interne Umschichtung · erhöht die Liquidität nicht',
                 ['Umschichtung', ...(plan.household ? ['Profil'] : []), 'Betrag', 'Steuern', 'Zufluss Tagesgeld'], transfers));
@@ -153,7 +177,10 @@ export const detailsMethods = {
         for (const entry of targetEntries) if (entry.liquidityTargetBasis) {
             const basis = entry.liquidityTargetBasis;
             const prefix = targetEntries.length > 1 ? `${entry.name || entry.profileId}: ` : '';
-            const info = document.createElement('p');
+            // VN-1 Punkt 11: Das ⓘ steht nicht mehr allein, sondern hinter seiner Zeile „Tagesgeldziel …“.
+            const info = document.createElement('p'); info.className = 'ds-source balance-action-target-note';
+            const target = Number.isFinite(entry.input?.personalTagesgeldTarget) ? ` ${UIUtils.formatCurrency(entry.input.personalTagesgeldTarget)}` : '';
+            info.appendChild((content.ownerDocument || document).createTextNode(`${prefix}Tagesgeldziel${target} `)); texts.push(`${prefix}Tagesgeldziel${target}`);
             info.appendChild(createInfoPopover(content.ownerDocument || document, `${prefix}Tagesgeldziel`,
                 `${basis.notice ? basis.notice + ' ' : ''}${basis.source}: ${UIUtils.formatCurrency(basis.annualExpenses)} im Jahr. Rente ${UIUtils.formatCurrency(basis.pension)} und sonstige Einkünfte ${UIUtils.formatCurrency(basis.income)} in den kommenden zwölf Monaten. Bedarf ${UIUtils.formatCurrency(basis.need)}; Tagesgeldziel ${UIUtils.formatCurrency(entry.input.personalTagesgeldTarget)} einschließlich Mindestanteil der eisernen Reserve.`));
             content.appendChild(info);

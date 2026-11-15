@@ -161,6 +161,12 @@ Handbuch: 20 Aufgaben-/Begriffskapitel, mitlaufende Navigation, lokale Suche, er
 
 ## Ausnahmen und Prüfung
 
+### Stile und Eingabefelder
+
+Seiten haben keinen eingebetteten Stilblock. Seitenstile stehen in Stylesheets: Personen & Vermögen in `css/personen-vermoegen-seite.css` (vor `suite-frame.css`) und `css/personen-vermoegen.css`, Simulator in `simulator.css`, Handbuch in `css/handbuch.css`. Elementregeln außerhalb der Basis (`tokens`, `fonts`, `components`, `suite-frame`) sind auf ihre Seite begrenzt, etwa `:where(.personen-vermoegen-page) h1`; der Bestand von Balance und Simulator ist eingefroren. Schriftgrößen kommen aus den Stufen in `tokens.css`.
+
+Eurofelder stehen im `ds-unit-frame` mit „€“. Nach dem Verlassen: Abrechnungsbeträge mit zwei Nachkommastellen, Kurse mit zwei bis vier, Stück mit bis zu drei (mehr eingegebene Stellen bleiben stehen). Plan- und Bedarfswerte bleiben ganze Euro. Ausnahme: Plan- und Bedarfsfelder in Haushalt & Plan zeigen die Einheit im Feldtext (Planfeld-Muster). [ds-1-sollfaelle.test.mjs](../../tests/ds-1-sollfaelle.test.mjs) prüft Stilblöcke, Elementregeln und Eurofelder der Seiten.
+
 ### Begründete Abweichung
 
 Nur die folgenden belegten Deklarationen sind ausgenommen; keine zusätzliche Textdeckkraft oder Altpalette. Tooltip im sichtbaren Endzustand opak. Grafische Transparenz darf keine Textkinder betreffen.
@@ -184,14 +190,12 @@ Sweep-/Pareto-Kontextpunkte mit Deckkraft .6 und kritische Heatmapflächen mit .
 
 | Quelle | Selektor | Bestehende Deklaration |
 |---|---|---|
-| Simulator.html | `.log-export-buttons button` | `width: auto !important` |
-| Simulator.html | `.log-export-buttons button` | `min-width: 0 !important` |
-| Simulator.html | `.log-export-buttons button` | `flex: 0 0 auto !important` |
-| Simulator.html | `.ao-preset-btn:hover` | `border-color: var(--secondary-color) !important` |
-| Simulator.html | `.form-grid, .form-grid-three-col, .form-grid-four-col, .form-grid-compact` | `grid-template-columns: minmax(0, 1fr) !important` |
-| Simulator.html | `.care-sections, .care-section-grid, .care-duration-group, .care-grade-row` | `grid-template-columns: minmax(0, 1fr) !important` |
-| depot-tranchen-manager.html | `[aria-invalid="true"]` | `border-color: var(--bad) !important` |
-| depot-tranchen-manager.html | `[aria-invalid="true"]` | `box-shadow: 0 0 0 3px var(--bad) !important` |
+| simulator.css | `.log-export-buttons button` | `width: auto !important` |
+| simulator.css | `.log-export-buttons button` | `min-width: 0 !important` |
+| simulator.css | `.log-export-buttons button` | `flex: 0 0 auto !important` |
+| simulator.css | `.ao-preset-btn:hover` | `border-color: var(--secondary-color) !important` |
+| css/personen-vermoegen-seite.css | `:where(.personen-vermoegen-page) [aria-invalid="true"]:where(:not(dialog, dialog *))` | `border-color: var(--bad) !important` |
+| css/personen-vermoegen-seite.css | `:where(.personen-vermoegen-page) [aria-invalid="true"]:where(:not(dialog, dialog *))` | `box-shadow: 0 0 0 3px var(--bad) !important` |
 | css/balance.css | `.input-error` | `border-color: var(--danger-color) !important` |
 | css/balance.css | `.input-error` | `box-shadow: 0 0 0 3px var(--bad) !important` |
 | css/balance.css | `.tab-panel` | `display: block !important` |

@@ -1,5 +1,5 @@
 import { getAppTestDate } from './app-clock.js';
-import { syntheticQuote, syntheticChart, syntheticAnnualQuote, syntheticSymbol,
+import { syntheticQuote, syntheticChart, syntheticAnnualQuote, syntheticSymbol, syntheticSearch,
     syntheticAnnualInflation, syntheticAnnualCape, SYNTHETIC_MARKET_SOURCE } from './probelauf-prices.js';
 
 /** Die Uhr wird erst vom dauerhaft bestätigten, laufzeitgeprüften Koordinator gesetzt.
@@ -24,6 +24,8 @@ export function marketPriceAdapter(kind, args, provider) {
     if (kind === 'search') {
         try { return syntheticSymbol(args.query); } catch { return null; }
     }
+    // VK-2: strukturierte Trefferliste für die Kursprüfung beim Kauf.
+    if (kind === 'searchList') return { quotes: syntheticSearch(args.query) };
     if (kind === 'health') return { synthetic: true };
     throw new Error('Unbekannter Kursweg.');
 }

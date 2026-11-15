@@ -1,5 +1,6 @@
 // @ts-check
 import { finiteNumber, sum, normalizeUses, isLiquiditySource, actionAmountsChanged } from './amounts.js';
+import { activeCarrier } from '../household-withdrawal-mode.js';
 
 export function allocateLiquiditySources(totalAmount, profiles, mode) {
     const totalCents = Math.max(0, Math.round(finiteNumber(totalAmount) * 100));
@@ -16,10 +17,13 @@ export function allocateLiquiditySources(totalAmount, profiles, mode) {
     }
 
     const allocations = new Array(entries.length).fill(0);
-    if (mode === 'tax_optimized') {
+    // FR-80: Bei „Eine Person trägt“ zuerst ihre Liquidität, dann die der anderen wie steueroptimiert.
+    const carrierId = activeCarrier(mode, profiles.map(profile => ({ profileId: profile?.profileId })));
+    if (mode === 'tax_optimized' || String(mode).startsWith('one_carries')) {
         let remaining = totalCents;
         entries.slice()
-            .sort((left, right) => String(left.profile.profileId).localeCompare(String(right.profile.profileId)))
+            .sort((left, right) => Number(right.profile.profileId === carrierId) - Number(left.profile.profileId === carrierId)
+                || String(left.profile.profileId).localeCompare(String(right.profile.profileId)))
             .forEach(entry => {
                 const used = Math.min(remaining, entry.capacityCents);
                 allocations[entry.index] = used;

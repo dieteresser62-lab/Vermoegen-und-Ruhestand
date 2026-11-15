@@ -5,9 +5,11 @@ import { loadProfileRegistry } from '../../profile/profile-registry.js';
 import { switchManagerProfile } from './people.js';
 import { flushManagerHouseholdPlan, showProfileValidationStatus, managerInputSignature, byId } from './helpers.js';
 import { readProfileAssetValuesFromDom } from '../../profile/profile-asset-values.js';
-import { saveProfileValues } from './profile-values.js';
+import { saveProfileValues, reloadAfterHouseholdWrite } from './profile-values.js';
 import { getPageNavigationGuard } from '../../shared/navigation-guard-dialog.js';
 import { closeTrancheModal, closeCashPostingModal, closeManagerAuxiliaryDialog } from '../tranchen-manager-modal.js';
+import { openSaleFlow } from '../sale-flow-dialog.js';
+import { openBuyFlow } from '../buy-flow-dialog.js';
 import { clearReconciliationPreview } from './reconciliation.js';
 import { renderManagerView } from '../tranchen-manager-renderer.js';
 import { refreshManagerProfiles } from '../tranchen-manager-profiles.js';
@@ -44,7 +46,6 @@ export function selectManagerView(view, { opener = document.activeElement, doc =
                 guard.end(attempt); attempt = null;
                 closeTrancheModal(doc, { confirmed: true });
                 closeCashPostingModal(doc, { confirmed: true });
-                closeManagerAuxiliaryDialog('sale', doc, { confirmed: true });
                 closeManagerAuxiliaryDialog('people', doc, { confirmed: true });
                 clearReconciliationPreview({ resetForm: true });
                 state.historyStartDraft = null;
@@ -94,22 +95,25 @@ export const managerTargets = {
     stats: { kind: 'person', focus: 'managerDepotTitle' },
     reconciliationTitle: { kind: 'person', focus: 'reconciliationTitle' },
     reconciliationCashStatuses: { kind: 'person', focus: 'reconciliationTitle' },
-    // FR-77: „Verkauf eintragen“ aus der Balance öffnet den Verkaufsdialog, wenn möglich gleich mit der Tranche der Planzeile.
-    verkauf: { kind: 'person', sale: true, focus: 'depotOpenSaleEntryBtn' }
+    // FR-79: „Verkauf eintragen“ (z. B. „Umschichtung eintragen“ aus der Balance) öffnet den geführten Verkauf ohne Planbezug mit der Tranche.
+    verkauf: { kind: 'person', sale: true, focus: 'depotOpenSaleEntryBtn' },
+    // VK-2: „Geldmarkt kaufen“ (Sprungziel #kauf) öffnet den geführten Kauf mit dem Geldmarkt-ETF der Person und dem Betrag.
+    kauf: { kind: 'person', buy: true, focus: 'depotAddTrancheBtn' }
 };
 
 export function resolveManagerTarget(location) {
     const target = (location?.hash || '').slice(1);
     if (!Object.hasOwn(managerTargets, target)) return null;
     const params = new URLSearchParams(location?.search || '');
-    const allowed = target === 'verkauf' ? ['person', 'tranche'] : ['person'];
+    const allowed = target === 'verkauf' ? ['person', 'tranche'] : target === 'kauf' ? ['person', 'tranche', 'betrag'] : ['person'];
     if ([...params.keys()].some(key => !allowed.includes(key)) || params.getAll('person').length > 1 || params.get('person') === ''
-        || params.getAll('tranche').length > 1) return null;
+        || params.getAll('tranche').length > 1 || params.getAll('betrag').length > 1 || params.has('betrag') && !/^\d+(\.\d{1,2})?$/.test(params.get('betrag') || '')) return null;
     // Die bestehende Übersichtszielvalidierung bleibt für ihre Ziele verbindlich.
     if (['haushalt-plan', 'profileTagesgeld'].includes(target) && !parseOverviewTarget('manager', location)) return null;
     const person = params.get('person');
     if (person && !Object.hasOwn(loadProfileRegistry().value?.profiles || {}, person)) return null;
-    return { ...managerTargets[target], target, profileId: person || state.profileId, trancheId: params.get('tranche') || null };
+    return { ...managerTargets[target], target, profileId: person || state.profileId, trancheId: params.get('tranche') || null,
+        amount: params.has('betrag') ? Number(params.get('betrag')) : null };
 }
 
 export async function openManagerOverviewTarget(location, { ready = false, blocked = processingIsBlocked(), doc = document } = {}) {
@@ -127,14 +131,16 @@ export async function openManagerOverviewTarget(location, { ready = false, block
     if (target.sale) {
         const button = /** @type {HTMLButtonElement} */ (doc.getElementById('depotOpenSaleEntryBtn'));
         if (!button || button.disabled) return false;
-        button.click();
-        // Nur vorauswählen, wenn die Tranche noch im Bestand ist; sonst bleibt die Auswahl leer.
-        const select = /** @type {HTMLSelectElement|null} */ (doc.getElementById('reconcileTrancheId'));
-        if (select && target.trancheId && [...select.options].some(option => option.value === target.trancheId)) {
-            select.value = target.trancheId;
-            select.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        return true;
+        // Nur vorauswählen, wenn die Tranche noch im Bestand ist; sonst nimmt der Ablauf die erste Tranche.
+        return Boolean(openManagerSaleFlow(state.tranchen.some(tranche => tranche.trancheId === target.trancheId) ? target.trancheId : null, button));
+    }
+    if (target.buy) {
+        const button = /** @type {HTMLButtonElement} */ (doc.getElementById('depotAddTrancheBtn'));
+        if (!button || button.disabled) return false;
+        const template = state.tranchen.find(tranche => tranche.trancheId === target.trancheId) || null;
+        // Gutachten VK-1 P2-05: ohne eigenen Geldmarkt-ETF öffnet der Kauf mit Anlageform Geldmarkt und dem Betrag (keine fremde Vorlage).
+        return Boolean(openManagerBuyFlow(button, template || target.amount > 0 ? { assetClass: template?.category || 'money_market',
+            trancheId: template?.trancheId ?? null, amount: target.amount ?? undefined } : null));
     }
     const focusId = target.target === 'personendaten' && doc.getElementById('managerBirthSupplement')?.hidden === false
         ? 'managerBirthDate' : target.focus;
@@ -146,4 +152,33 @@ export async function openManagerOverviewTarget(location, { ready = false, block
     if (!['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'A'].includes(element.tagName)) element.setAttribute?.('tabindex', '-1');
     element.scrollIntoView?.({ block: 'start' }); element.focus?.();
     return true;
+}
+
+/** VK-2 (FR-79 Punkt 8): geführter Kauf ohne Planbezug für die geöffnete Person („Kauf eintragen“), wahlweise vorbelegt;
+ * nach einer Änderung lädt die Seite den Bestand neu. `#trancheModal` dient danach nur dem Bearbeiten.
+ * @param {HTMLElement|null} [opener] @param {{assetClass?: string, trancheId?: string|null, amount?: number}|null} [preset] */
+export function openManagerBuyFlow(opener = null, preset = null) {
+    if (!state.profileId) return null;
+    let changed = false;
+    const handle = openBuyFlow({ doc: document, profileId: state.profileId, preset, opener: opener || document.getElementById('depotAddTrancheBtn'),
+        onChanged: () => { changed = true; } });
+    void handle?.closed.then(() => {
+        if (!changed) return;
+        reloadAfterHouseholdWrite();
+    });
+    return handle;
+}
+
+/** Geführter Verkauf ohne Planbezug für die geöffnete Person; nach einer Änderung lädt die Seite den Bestand neu.
+ * @param {string|null} trancheId vorgewählte Tranche (Sprungziel #verkauf) @param {HTMLElement|null} [opener] */
+export function openManagerSaleFlow(trancheId, opener = null) {
+    if (!state.profileId) return null;
+    let changed = false;
+    const handle = openSaleFlow({ doc: document, profileId: state.profileId, trancheId, opener: opener || document.getElementById('depotOpenSaleEntryBtn'),
+        onChanged: () => { changed = true; } });
+    void handle?.closed.then(() => {
+        if (!changed) return;
+        reloadAfterHouseholdWrite();
+    });
+    return handle;
 }

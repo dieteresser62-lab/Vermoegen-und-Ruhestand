@@ -172,7 +172,7 @@ assert(doc.getElementById('dataSnapshotDetail').textContent.includes('01.01.2026
 assertEqual(doc.getElementById('dataContent').children.length, 6, 'Passender Bestand liefert sechs fachliche Chiparten');
 assert(textOf(doc.getElementById('dataContent')).includes('2 Tageskurse'), 'Chip zählt wirkliche Tageskurse statt Musterwert');
 assert(!doc.getElementById('dataBackupChanges').hidden
-    && doc.getElementById('dataBackupChanges').textContent === 'Keine Änderungen in Monatsabschlüssen, Tagesgeld-Einträgen und Tranchen.', 'Bekannter identischer Bestand zeigt ausdrücklich unveränderte Vergleichsbereiche');
+    && doc.getElementById('dataBackupChanges').textContent === 'Keine Änderungen in Monatsabschlüssen, Tagesgeld-Einträgen, Tranchen, Haushalt & Plan, Einkünften, Partnerschaft und Erbe sowie Pflege.', 'Bekannter identischer Bestand zeigt ausdrücklich unveränderte Vergleichsbereiche');
 assertEqual(doc.getElementById('dataBackupTitle').textContent, 'Seit der letzten Sicherung geändert:', 'Hauptblock zeigt Änderungen statt wiederholtem Sicherungsdatum');
 assert(!html.includes('id="dataStorageBar"'), 'Speicherzusammensetzung wird ohne Füllstandsbalken angezeigt');
 assertEqual(doc.getElementById('dataStorageTotal').textContent, doc.getElementById('dataStorageSize').textContent + ' lokal gespeichert', 'Kompakte Speicherangabe benutzt die unveränderte Gesamtgröße');

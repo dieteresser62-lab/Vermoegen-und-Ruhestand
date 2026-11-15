@@ -3,7 +3,8 @@
  * Eingabe schreibt. Lesen schreibt nie. */
 import { parseRememberedCareCosts, rememberedCareCostsRecord, resolveCareSetting } from './care-cost-resolver.js';
 import { careSettingsStorage, sharesHouseholdCareValues } from './care-profile-settings.js';
-import { OWN_CARE_PRICES_KEY, careValuesWithPrices, ownCarePricesWithPatch, resolveCarePrices } from './care-prices.js';
+import { OWN_CARE_PRICES_KEY, careDriftScheduleOf, careValuesWithPrices, ownCarePricesWithPatch, resolveCarePrices } from './care-prices.js';
+import { careDriftLabel, CARE_DRIFT_YEAR_RANGE } from './care-cost-drift.js';
 import { HOUSEHOLD_CARE_VALUES_KEY, officialCareCosts, parseCareValues, readCareValues, residentialComponents, residentialMonthly } from './household-care-values.js';
 import { defaultCareForm, normalizeCareForm } from './care-benefits.js';
 import { persistenceStorage } from './persistence-facade.js';
@@ -15,7 +16,9 @@ const GRADES = [1, 2, 3, 4, 5];
 export const PFLEGE_CUSTOM_COSTS_KEY = 'sim_pflegeCustomCosts';
 
 // FR-73 P8: Staffel, Deckel, eigene Ausgaben im Heim und Kostenanstieg besitzt der Pflegewerte-Record des Haushalts.
-export const CARE_PRICE_FIELD_IDS = new Set([...GRADES.map(grade => `pflegeStufe${grade}Zusatz`), 'pflegeMaxFloor', 'pflegeHeimEigeneAusgaben', 'pflegeKostenDrift']);
+// FR-73 Punkt 8 geändert: Kostenanstieg als Verlauf (erste Rate, letztes Jahr der ersten Rate, Rate danach).
+export const CARE_PRICE_FIELD_IDS = new Set([...GRADES.map(grade => `pflegeStufe${grade}Zusatz`), 'pflegeMaxFloor', 'pflegeHeimEigeneAusgaben', 'pflegeKostenDrift',
+    'pflegeKostenDriftBis', 'pflegeKostenDriftDanach']);
 /** PFA-11: Regionaler Zuschlag und Flex-Level je Grad rechnen auch in Balance; gespeichert bleiben sie als `sim_<id>` beim
  * Preisbesitzer, gelesen mit denselben Vorgaben wie in Balance (0 % und {@link CARE_FLEX_DEFAULT_PERCENT}). */
 export const CARE_SETTING_NUMBER_DEFAULTS = Object.freeze({ pflegeRegionalZuschlag: 0,
@@ -31,6 +34,7 @@ export const CARE_VALUE_FIELD_IDS = Object.freeze([...CARE_PRICE_FIELD_IDS, ...G
  * @returns {number} Feldwert.
  */
 export const carePriceValue = (id, prices) => id === 'pflegeMaxFloor' ? prices.maximumFloor : id === 'pflegeKostenDrift' ? prices.driftPercent
+    : id === 'pflegeKostenDriftBis' ? prices.driftUntilYear : id === 'pflegeKostenDriftDanach' ? prices.driftAfterPercent
     : id === 'pflegeHeimEigeneAusgaben' ? prices.ownExpensesMonthly : prices.costs[/^pflegeStufe([1-5])Zusatz$/.exec(id)?.[1]];
 
 /**
@@ -100,6 +104,13 @@ export function carePresetValues(presetKey, storage = persistenceStorage) {
     return PFLEGE_COST_PRESETS[presetKey]?.values ?? null;
 }
 
+/** GN-2b/GN-2c: Das letzte Jahr der ersten Rate ist ein ganzes Jahr von 2026 bis 2100; leer, negativ oder anders → ungültig.
+ * @param {unknown} raw Feldwert. @returns {boolean} */
+export function validCareDriftYear(raw) {
+    const text = String(raw ?? '').trim(), year = Number(text.replace(',', '.'));
+    return text !== '' && Number.isInteger(year) && year >= CARE_DRIFT_YEAR_RANGE.min && year <= CARE_DRIFT_YEAR_RANGE.max;
+}
+
 /** Bewusste Eingabe des Nutzers: Preisblock mit Herkunft „von Hand“ schreiben; die Markierung schützt vor Umdeutung (B3).
  * Haushaltsmitglieder schreiben den Pflegewerte-Record, Außenpersonen ihren eigenen Preisblock beim eigenen Preisbesitzer
  * (Gutachten PFA-4, Befund 2); abgeleitete amtliche Beträge werden nicht gespeichert.
@@ -115,7 +126,10 @@ export function writeCarePriceField(id, raw, { preset = /** @type {HTMLSelectEle
     if (!text || !Number.isFinite(value) || value < 0) return;
     const grade = /^pflegeStufe([1-5])Zusatz$/.exec(id)?.[1];
     const patch = id === 'pflegeMaxFloor' ? { maximumFloor: value } : id === 'pflegeHeimEigeneAusgaben' ? { ownExpensesMonthly: value }
-        : id === 'pflegeKostenDrift' ? { driftPercent: value } : { costs: { [grade]: value } };
+        : id === 'pflegeKostenDrift' ? { driftPercent: value }
+        : id === 'pflegeKostenDriftBis' ? (validCareDriftYear(text) ? { driftUntilYear: value } : null)
+        : id === 'pflegeKostenDriftDanach' ? { driftAfterPercent: value } : { costs: { [grade]: value } };
+    if (!patch) return;
     const priceYear = appNow().getFullYear(), owner = careSettingsStorage(persistenceStorage);
     if (!sharesHouseholdCareValues(persistenceStorage)) {
         owner.setItem(OWN_CARE_PRICES_KEY, JSON.stringify(ownCarePricesWithPatch(owner, patch, { priceYear })));
@@ -136,8 +150,12 @@ export function writeCarePriceField(id, raw, { preset = /** @type {HTMLSelectEle
 export function writeCareSettingField(id, value, options) {
     // PFA-12: Vor einem Flex-Level die Altbestandsregel des Simulatorstarts anwenden (wirksame Staffel samt Marke).
     if (CARE_FLEX_FIELD_KEYS.includes(`sim_${id}`)) migrateStoredCareFlex(persistenceStorage);
-    careSettingsStorage(persistenceStorage).setItem(`sim_${id}`, value);
+    // GN-2b (Fable P2-2): Erst den Preisblock aus dem bisherigen wirksamen Stand schreiben, dann den `sim_`-Wert; sonst läse der
+    // Block den neuen Wert schon als Altbestand (etwa 4 % → dauerhaft) und schriebe einen falschen Verlauf.
+    // GN-2c (Gemini P3-2): Ein ungültiges Jahr schreibt weder Preisblock noch `sim_`-Wert.
+    if (id === 'pflegeKostenDriftBis' && !validCareDriftYear(value)) return;
     if (CARE_PRICE_FIELD_IDS.has(id)) writeCarePriceField(id, value, options);
+    careSettingsStorage(persistenceStorage).setItem(`sim_${id}`, value);
 }
 
 /** Wahl einer Staffel wie im Simulator: eigene Beträge beim Verlassen von „Individuelle Werte“ merken, die Vorgabe
@@ -256,5 +274,5 @@ export function careValuesSummaryText(storage = persistenceStorage) {
     const percent = id => Number(values[id]).toLocaleString('de-DE');
     const regional = values.pflegeRegionalZuschlag === '0' ? '' : `, regionaler Zuschlag ${percent('pflegeRegionalZuschlag')} %`;
     const flex = `Flex-Level ${GRADES.map(grade => percent(`pflegeStufe${grade}FlexCut`)).join(' / ')} %`;
-    return `${shared ? '' : 'eigene Werte · '}${staffel}, Heim ${euro(careValues.residential.monthly)} €/Monat im ersten Jahr, Kostenanstieg Inflation + ${prices.driftPercent.toLocaleString('de-DE')} %${regional} · ${flex} · ${stand}`;
+    return `${shared ? '' : 'eigene Werte · '}${staffel}, Heim ${euro(careValues.residential.monthly)} €/Monat im ersten Jahr, Kostenanstieg ${careDriftLabel(careDriftScheduleOf(prices))}${regional} · ${flex} · ${stand}`;
 }

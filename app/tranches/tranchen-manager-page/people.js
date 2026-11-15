@@ -111,7 +111,6 @@ export async function executeManagerPerson(request) {
                 await flushManagerRecords(); confirmed = true;
                 closeTrancheModal(document, { confirmed: true, navigationOperation: operation });
                 closeCashPostingModal(document, { confirmed: true, navigationOperation: operation });
-                closeManagerAuxiliaryDialog('sale', document, { confirmed: true, navigationOperation: operation });
                 clearReconciliationPreview({ resetForm: true, navigationOperation: operation });
                 state.initializePage({ profileId: getCurrentProfileId() });
                 renderManagerView(document, { ...getManagerView(document), kind: request.kind === 'create' ? 'person' : getManagerView(document)?.kind || 'person', profileId: state.profileId });
@@ -180,7 +179,6 @@ export async function switchManagerProfile(profileId, opener) {
                 guard.revokeNative();
                 closeTrancheModal(document, { confirmed: true });
                 closeCashPostingModal(document, { confirmed: true });
-                closeManagerAuxiliaryDialog('sale', document, { confirmed: true });
                 closeManagerAuxiliaryDialog('people', document, { confirmed: true });
                 clearReconciliationPreview({ resetForm: true });
                 state.initializePage({ profileId });

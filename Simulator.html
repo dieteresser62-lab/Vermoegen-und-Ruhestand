@@ -10,369 +10,6 @@
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/monthly-flow.css">
     <link rel="stylesheet" href="simulator.css">
-    <style>
-        .debug-actions {
-            margin-left: auto;
-            display: inline-flex;
-            align-items: center;
-            gap: .5rem
-        }
-
-        .btn-debug {
-            font-size: var(--text-dense);
-            padding: .25rem .5rem;
-            border-radius: .5rem;
-            border: 1px solid var(--accent);
-            background: transparent;
-            color: var(--accent);
-            cursor: pointer
-        }
-
-        .btn-debug:hover {
-            background: var(--accent-soft)
-        }
-
-        .dev-only {
-            display: none
-        }
-
-        .dev-on .dev-only {
-            display: block
-        }
-
-        .debug-link {
-            font-size: var(--text-dense);
-            padding: .1rem .3rem;
-            border: 1px solid var(--border);
-            border-radius: .4rem;
-            color: var(--accent);
-            text-decoration: none
-        }
-
-        .debug-link:hover {
-            background: var(--accent-soft)
-        }
-
-        .section-title {
-            display: flex;
-            align-items: center;
-            justify-content: space-between
-        }
-
-        /* Log Export Buttons - wie toggle-btn */
-        .log-export-buttons {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
-            margin-top: 10px;
-            min-width: 0;
-            max-width: 100%;
-            flex-wrap: wrap;
-        }
-
-        .log-export-buttons button {
-            padding: 4px 10px;
-            font-size: var(--text-dense);
-            border: 1px solid var(--border-strong);
-            background-color: var(--surface-sunken);
-            color: var(--text-main);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            width: auto !important;
-            min-width: 0 !important;
-            flex: 0 0 auto !important;
-            max-width: 100%;
-            white-space: normal;
-            overflow-wrap: anywhere;
-        }
-
-        .log-export-buttons button:hover {
-            border-color: var(--accent);
-            background-color: var(--border);
-        }
-
-        /* Auto-Optimize Preset Buttons */
-        .ao-preset-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-card);
-            border-color: var(--secondary-color) !important;
-        }
-
-        .ao-preset-btn:active {
-            transform: translateY(0);
-        }
-
-        .profilverbund-profile-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 8px 12px;
-        }
-
-        .profilverbund-profile-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: var(--text-base);
-        }
-
-        .profilverbund-status {
-            font-size: var(--text-dense);
-            color: var(--text-muted);
-        }
-
-        .profilverbund-status[data-kind="ok"] {
-            color: var(--good);
-        }
-
-        .profilverbund-status[data-kind="error"] {
-            color: var(--bad);
-        }
-
-        .toast-container {
-            position: fixed;
-            right: 16px;
-            bottom: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            z-index: 9999;
-            pointer-events: none;
-        }
-
-        .toast {
-            max-width: 300px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            background: var(--text-main);
-            color: var(--surface);
-            font-size: var(--text-dense);
-            box-shadow: var(--shadow-card);
-            visibility: hidden;
-            transform: translateY(6px);
-            transition: transform 0.2s ease;
-        }
-
-        .toast-show {
-            visibility: visible;
-            transform: translateY(0);
-        }
-
-        /* Slice 02: Exaktwerte und Messhinweise duerfen auch mobil nicht
-           abgeschnitten oder als technische Kurzlabels missverstanden werden. */
-        .main-layout,
-        .panel,
-        .tab-content,
-        .tab-panel,
-        fieldset,
-        fieldset.collapsible .fieldset-content {
-            min-width: 0;
-            max-width: 100%;
-            box-sizing: border-box;
-        }
-
-        fieldset {
-            min-inline-size: 0;
-        }
-
-        fieldset.collapsible legend {
-            width: 100%;
-            min-width: 0;
-            box-sizing: border-box;
-        }
-
-        fieldset.collapsible legend .legend-text {
-            min-width: 0;
-            white-space: normal;
-            overflow-wrap: anywhere;
-        }
-
-        .care-panel,
-        .care-sections,
-        .care-section,
-        .care-section-grid,
-        .care-duration-group,
-        .care-grade-matrix,
-        .care-grade-row {
-            min-width: 0;
-            max-width: 100%;
-            box-sizing: border-box;
-        }
-
-        .tab-buttons {
-            max-width: 100%;
-            overflow-x: auto;
-            overflow-y: hidden;
-        }
-
-        .tab-btn {
-            flex: 0 0 auto;
-            width: auto;
-        }
-
-        #monteCarloResults,
-        #scenarioLogContainer,
-        #scenarioSelector,
-        #scenarioLogOutput,
-        .scenario-selector {
-            min-width: 0;
-            max-width: 100%;
-            box-sizing: border-box;
-        }
-
-        #scenarioLogOutput {
-            width: 100%;
-        }
-
-
-
-        #withdrawalRateChartContainer,
-        #heatmap-container {
-            min-width: 0;
-            max-width: 100%;
-            overflow: hidden;
-            box-sizing: border-box;
-        }
-
-        .kpi-card .sim-metric-heading>strong,
-        .summary-item .sim-metric-heading>strong {
-            white-space: normal;
-            overflow: visible;
-            text-overflow: clip;
-            overflow-wrap: anywhere;
-        }
-
-        .summary-item>span,
-        .kpi-card .value-line {
-            min-width: 0;
-            white-space: normal;
-            overflow-wrap: anywhere;
-            word-break: break-word;
-        }
-
-        .kpi-card.kpi-exact-value,
-        .summary-item.summary-exact-value {
-            min-width: 0;
-        }
-
-        .kpi-card.kpi-exact-value .sim-metric-heading>strong,
-        .summary-item.summary-exact-value .sim-metric-heading>strong {
-            white-space: normal;
-            overflow: visible;
-            text-overflow: clip;
-            overflow-wrap: anywhere;
-        }
-
-        .kpi-card.kpi-exact-value .value-line,
-        .kpi-card.kpi-exact-value .kpi-secondary-value,
-        .kpi-card.kpi-exact-value .kpi-status-line,
-        .summary-item.summary-exact-value>span,
-        .summary-item.summary-exact-value .summary-status-line {
-            min-width: 0;
-            white-space: normal;
-            overflow-wrap: anywhere;
-            word-break: break-word;
-        }
-
-        .kpi-secondary-value {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            margin: 2px 0 8px;
-            font-size: var(--text-dense);
-            color: var(--text-muted);
-        }
-
-        .kpi-secondary-value>strong {
-            color: var(--text-main);
-            font-size: 1rem;
-        }
-
-        .kpi-secondary-value>small,
-        .kpi-status-line,
-        .summary-status-line {
-            color: var(--bad);
-            font-size: var(--text-dense);
-            line-height: 1.3;
-        }
-
-        .summary-status-line {
-            display: block;
-            margin-top: 4px;
-        }
-
-        .reporting-reference-note {
-            max-width: 78ch;
-            margin: 10px auto 14px;
-            padding: 8px 10px;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            color: var(--text-muted);
-            font-size: var(--text-dense);
-            line-height: 1.4;
-            text-align: left;
-            overflow-wrap: anywhere;
-        }
-
-        .heatmap-v4-svg {
-            display: block;
-            width: 100%;
-            max-width: 100%;
-            height: auto;
-            overflow: hidden;
-        }
-
-        .kpi-grid.kpi-grid-pair {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .drawdown-pair-heading {
-            margin: 18px 0 0;
-            color: var(--primary-color);
-            text-align: center;
-        }
-
-        @media (max-width: 360px) {
-            body {
-                padding: 8px;
-            }
-
-            .panel {
-                padding: 14px;
-            }
-
-            .section-title {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .section-title>div {
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-
-            .summary-grid,
-            .kpi-grid,
-            .kpi-grid.kpi-grid-pair {
-                grid-template-columns: minmax(0, 1fr);
-            }
-
-            .form-grid,
-            .form-grid-three-col,
-            .form-grid-four-col,
-            .form-grid-compact {
-                grid-template-columns: minmax(0, 1fr) !important;
-            }
-
-            .care-sections,
-            .care-section-grid,
-            .care-duration-group,
-            .care-grade-row {
-                grid-template-columns: minmax(0, 1fr) !important;
-            }
-        }
-
-    </style>
     <link rel="stylesheet" href="css/suite-frame.css">
     <script type="module" src="app/shared/suite-frame.js"></script>
 </head>
@@ -394,7 +31,7 @@
                 </button>
                 <a href="index.html" data-profile-handoff aria-label="Übersicht" title="Übersicht"><span data-suite-icon="house" aria-hidden="true"></span><span>Übersicht</span></a>
                 <a href="depot-tranchen-manager.html" data-profile-handoff data-profile-handoff-export="false" aria-label="Personen &amp; Vermögen – Rente, Depot, Gold" title="Personen &amp; Vermögen"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Personen &amp; Vermögen<small class="ds-navigation-subtitle">Rente, Depot, Gold</small></span></a>
-                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="wallet" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
+                <a href="Ausgaben.html" data-profile-handoff aria-label="Ausgaben – Monate, Budget, Jahre" title="Ausgaben"><span data-suite-icon="receipt-text" aria-hidden="true"></span><span>Ausgaben<small class="ds-navigation-subtitle">Monate, Budget, Jahre</small></span></a>
                 <a href="Balance.html" data-profile-handoff aria-label="Balance – Jahresplanung" title="Balance"><span data-suite-icon="scale" aria-hidden="true"></span><span>Balance<small class="ds-navigation-subtitle">Jahresplanung</small></span></a>
                 <a href="Simulator.html" data-profile-handoff aria-current="page" aria-label="Simulator" title="Simulator"><span data-suite-icon="chart-no-axes-combined" aria-hidden="true"></span><span>Simulator</span></a>
                 <a href="Handbuch.html" data-profile-handoff aria-label="Handbuch" title="Handbuch"><span data-suite-icon="book-open" aria-hidden="true"></span><span>Handbuch</span></a>
@@ -430,7 +67,7 @@
                 </div>
                 <div id="tab-annahmen" class="tab-panel">
 
-                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Annahmen</p><h1>Womit gerechnet wird</h1><p class="sim-lead">Nach einer Änderung rechnet der Backtest neu, sobald du zum Ergebnis zurückkehrst; Monte-Carlo wird als veraltet markiert.</p><div class="ds-page-actions"><a href="Handbuch.html#simulator-eingaben" data-profile-handoff class="ds-help-link ds-button ds-button-secondary ds-icon-button" title="Hilfe" aria-label="Hilfe öffnen"><span aria-hidden="true">?</span></a></div></header>
+                    <header class="sim-page-head ds-page-head"><p class="sim-eyebrow">Simulator · Annahmen</p><h1>Womit gerechnet wird <span class="ds-info"><button type="button" class="ds-info-button" aria-label="Grenzen der Annahmen" aria-controls="simAssumptionLimitsInfo" aria-expanded="false">ⓘ</button><span id="simAssumptionLimitsInfo" class="ds-info-pop" role="tooltip">Nicht gerechnet: Vorabpauschale und die Grenze von 100.000 € Gewinn je Person für steuerfreie Alt-Anteile von vor 2009 (§ 56 Abs. 6 InvStG). Die historische Aktienreihe liegt mit rund 7,3 % real über vorsichtigen Schätzungen um 5 %; „Startjahre nach CAPE“ dämpft das. Anleihen verzinsen sich wie Geldmarkt, ohne Kursrisiko.</span></span></h1><p class="sim-lead">Nach einer Änderung rechnet der Backtest neu, sobald du zum Ergebnis zurückkehrst; Monte-Carlo wird als veraltet markiert.</p><div class="ds-page-actions"><a href="Handbuch.html#simulator-eingaben" data-profile-handoff class="ds-help-link ds-button ds-button-secondary ds-icon-button" title="Hilfe" aria-label="Hilfe öffnen"><span aria-hidden="true">?</span></a></div></header>
 
 
                     <p id="simAssumptionError" class="ds-note ds-note-error" role="alert" tabindex="-1" hidden></p>
@@ -806,7 +443,7 @@
                                 style="border-top: none; margin-top: 0; padding-top: 0;">
                                 <!-- Die Sektionen strukturieren die Pflegekonfiguration in überschaubare Teilbereiche
                                     -->
-                                <div class="household-plan-groups"><section class="household-plan-group"><h3>Pflegeverlauf</h3><div class="household-plan-rows"><div class="household-plan-field"><label
+                                <div class="household-plan-groups"><section class="household-plan-group"><h3>Pflegeverlauf <span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung zum angenommenen Pflegeverlauf" aria-expanded="false">ⓘ</button><span class="ds-info-pop" role="tooltip">Den Verlauf je Person („wie üblich“, „langsamer“, „deutlich langsamer“) stellst du in Personen &amp; Vermögen › Pflege ein. Der übliche Verlauf ist an Hochaltrigen geeicht. Bei jungen Pflegebedürftigen mit langsamem Verlauf wähle dort „langsamer“.</span></span></h3><div class="household-plan-rows"><div class="household-plan-field"><label
                                                     for="pflegeModellTyp">Pflegemodell-Typ <span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung zum Pflegemodell" aria-expanded="false">i</button><span class="ds-info-pop" role="tooltip">Eintritt ab 65 nach Alter und Geschlecht sowie Gradfortschritt sind fest im Modell hinterlegt und per Simulation auf Destatis 2023 abgestimmt (FR-41). Sie bleiben Modellannahmen. Beobachtete Pflegequoten sind keine jährlichen Eintrittswahrscheinlichkeiten.</span></span></label><select
                                                     id="pflegeModellTyp" class="ds-select">
                                                     <option value="chronisch" selected>Chronisch (bis Lebensende)
@@ -821,7 +458,7 @@
                                             </div></div></section></div>
 <div class="sim-care-table-scroll"><table class="sim-care-table" aria-label="Einstellungen pro Pflegegrad"><thead><tr><th scope="col">Pflegegrad</th><th scope="col">Sterblichkeitsfaktor <span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung zum Sterblichkeitsfaktor" aria-expanded="false">i</button><span class="ds-info-pop" role="tooltip">Werte bis 1 erhöhen das Sterberisiko nicht. Größere Werte multiplizieren das jährliche Basisrisiko ab dem ersten Jahr im jeweiligen Pflegegrad. Die Anstiegsdauer verändert nur den Kostenverlauf.</span></span></th></tr></thead><tbody><tr><td><strong>Pflegegrad 1</strong><small>Leichte Beeinträchtigung, Einstieg</small></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe1Mortality" aria-label="Pflegegrad 1 · Sterblichkeitsfaktor" value="1.5" min="0" step="0.1" class="ds-input"><span class="ds-field-unit" aria-hidden="true">×</span></div></td></tr><tr><td><strong>Pflegegrad 2</strong><small>Erhebliche Beeinträchtigung</small></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe2Mortality" aria-label="Pflegegrad 2 · Sterblichkeitsfaktor" value="2" min="0" step="0.1" class="ds-input"><span class="ds-field-unit" aria-hidden="true">×</span></div></td></tr><tr><td><strong>Pflegegrad 3</strong><small>Schwere Beeinträchtigung</small></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe3Mortality" aria-label="Pflegegrad 3 · Sterblichkeitsfaktor" value="3" min="0" step="0.1" class="ds-input"><span class="ds-field-unit" aria-hidden="true">×</span></div></td></tr><tr><td><strong>Pflegegrad 4</strong><small>Schwerste Beeinträchtigung</small></td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe4Mortality" aria-label="Pflegegrad 4 · Sterblichkeitsfaktor" value="4" min="0" step="0.1" class="ds-input"><span class="ds-field-unit" aria-hidden="true">×</span></div></td></tr><tr><td><strong>Pflegegrad 5</strong><small>Schwerste+besondere Anforderungen</small> </td><td><div class="ds-unit-frame"><input type="number" id="pflegeStufe5Mortality" aria-label="Pflegegrad 5 · Sterblichkeitsfaktor" value="5" min="0" step="0.1" class="ds-input"><span class="ds-field-unit" aria-hidden="true">×</span></div></td></tr></tbody></table></div>
 <!-- PFA-10/PFA-11: Träger der Pflegewerte (seit PFA-11 auch regionaler Zuschlag und Flex-Level je Grad) für Rechnung und Zusammenfassung. Eingegeben werden sie in Personen & Vermögen › Pflege; der Simulator liest sie beim Start aus dem Speicher und schreibt sie nicht. -->
-<div id="simCareValueCarrier" class="sim-care-values-carrier" hidden><div class="household-plan-field"><label for="pflegeRegionalZuschlag">Regionaler Zuschlag</label><div class="ds-unit-frame"><input type="number" id="pflegeRegionalZuschlag" value="0" step="0.5" min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><small>Erhöht Zusatz zu Hause und Heimkosten, z.&nbsp; B. für Metropol-Zuschläge.</small></div><div class="ds-unit-frame"><input type="number" id="pflegeStufe1FlexCut" aria-label="Pflegegrad 1 · Flex-Level in Prozent" value="100" min="0" max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><div class="ds-unit-frame"><input type="number" id="pflegeStufe2FlexCut" aria-label="Pflegegrad 2 · Flex-Level in Prozent" value="100" min="0" max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><div class="ds-unit-frame"><input type="number" id="pflegeStufe3FlexCut" aria-label="Pflegegrad 3 · Flex-Level in Prozent" value="50" min="0" max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><div class="ds-unit-frame"><input type="number" id="pflegeStufe4FlexCut" aria-label="Pflegegrad 4 · Flex-Level in Prozent" value="0" min="0" max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><div class="ds-unit-frame"><input type="number" id="pflegeStufe5FlexCut" aria-label="Pflegegrad 5 · Flex-Level in Prozent" value="0" min="0" max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><div class="household-plan-field"><label for="pflegeMaxFloor">Maximaler Pflege-Floor</label><div class="ds-unit-frame"><input type="number" id="pflegeMaxFloor" value="120000" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><small>Nur für Pflege zu Hause, je Person. Heimkosten sind nicht gedeckelt.</small></div><div class="household-plan-field"><label for="pflegeKostenDrift">Kostenanstieg über der Inflation</label><div class="ds-unit-frame"><input type="number" id="pflegeKostenDrift" value="5" step="0.1" min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><small>Vorsichtiger Aufschlag zusätzlich zur Inflation (Standard: 5&nbsp;%)</small></div><div class="household-plan-field"><label for="pflegeHeimEigeneAusgaben">Eigene Ausgaben im Heim</label><div class="ds-unit-frame"><input type="number" id="pflegeHeimEigeneAusgaben" value="500" step="50" min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€/Monat</span></div><small>Je Person im Heim: persönlicher Bedarf, weiterlaufende Versicherungen (auch private Krankenversicherung) und Extras für bessere Pflege. Steigt nur mit der Inflation.</small></div><select id="pflegeStufe1Form" class="ds-select" aria-label="Pflegegrad 1 · Pflegeform"><option value="family" selected>zu Hause durch Angehörige</option><option value="home-support">zu Hause mit externer Unterstützung</option><option value="residential">im Heim</option></select><div class="ds-unit-frame"><input type="number" id="pflegeStufe1Zusatz" aria-label="Pflegegrad 1 · Zusatzbedarf pro Jahr" value="3600" min="0" step="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><select id="pflegeStufe2Form" class="ds-select" aria-label="Pflegegrad 2 · Pflegeform"><option value="family" selected>zu Hause durch Angehörige</option><option value="home-support">zu Hause mit externer Unterstützung</option><option value="residential">im Heim</option></select><div class="ds-unit-frame"><input type="number" id="pflegeStufe2Zusatz" aria-label="Pflegegrad 2 · Zusatzbedarf pro Jahr" value="6000" min="0" step="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><select id="pflegeStufe3Form" class="ds-select" aria-label="Pflegegrad 3 · Pflegeform"><option value="family">zu Hause durch Angehörige</option><option value="home-support" selected>zu Hause mit externer Unterstützung</option><option value="residential">im Heim</option></select><div class="ds-unit-frame"><input type="number" id="pflegeStufe3Zusatz" aria-label="Pflegegrad 3 · Zusatzbedarf pro Jahr" value="18000" min="0" step="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><select id="pflegeStufe4Form" class="ds-select" aria-label="Pflegegrad 4 · Pflegeform"><option value="family">zu Hause durch Angehörige</option><option value="home-support">zu Hause mit externer Unterstützung</option><option value="residential" selected>im Heim</option></select><div class="ds-unit-frame"><input type="number" id="pflegeStufe4Zusatz" aria-label="Pflegegrad 4 · Zusatzbedarf pro Jahr" value="32000" min="0" step="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><select id="pflegeStufe5Form" class="ds-select" aria-label="Pflegegrad 5 · Pflegeform"><option value="family">zu Hause durch Angehörige</option><option value="home-support">zu Hause mit externer Unterstützung</option><option value="residential" selected>im Heim</option></select><div class="ds-unit-frame"><input type="number" id="pflegeStufe5Zusatz" aria-label="Pflegegrad 5 · Zusatzbedarf pro Jahr" value="60000" min="0" step="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><p class="ds-help" id="pflegeFormHint">Vorgabe: Grad 1–2 Angehörige, Grad 3 externe Unterstützung, Grad 4–5 Heim. Im Heim ersetzen Heimkosten den Anteil der Person am Grundbedarf. Sie kommen aus den Pflegewerten, gelten für Grad 2–5 gleich und sinken mit dem Zuschuss der Kasse nach Heimjahren. Die heutige Form steht je Person in Personen &amp; Vermögen; auch heutige Pflege rechnet der Simulator automatisch. Grundbedarf und Flex beschreiben den Haushalt ohne Pflege.</p><div class="sim-care-more"><div class="ds-field" style="grid-column: span 2;"><div class="sim-care-field-heading"><label id="pflegeKostenStaffelLabel" for="pflegeKostenStaffelPreset">Kostenstaffel je Pflegegrad</label><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Quellen der Pflegekostenstaffel" aria-expanded="false">i</button><span class="ds-info-pop" role="tooltip">Vergleich Angehörige/Pflegedienst/24-Stunden-Betreuung je Grad, €/Monat: 300/600/– · 500/700/– · 800/1.500/3.600 · 1.200/2.667/4.200 · 1.800/4.000/4.500 (Planungsansätze, Recherche 08.11.2026). „Amtlich“ nutzt Heimanteile nach Destatis 2023 und Heimwerte nach vdek; heutige Formen gelten auch im Backtest. <a href="docs/reference/PFLEGE.html#kostenstaffel" target="_blank">Quellen und Einordnung</a>.</span></span></div><select id="pflegeKostenStaffelPreset" class="ds-select"> <option value="custom" selected>Individuelle Werte</option> <option value="ambulant">Ambulant (ab 36 Tsd. €)</option> <option value="amtlich">Amtlicher Durchschnitt (Destatis/vdek)</option> </select><small id="pflegeStaffelPresetHint">Wähle ein Preset, um typische Staffelungen zu übernehmen.</small></div><div id="pflegePanel" class="care-sections"></div>
+<div id="simCareValueCarrier" class="sim-care-values-carrier" hidden><div class="household-plan-field"><label for="pflegeRegionalZuschlag">Regionaler Zuschlag</label><div class="ds-unit-frame"><input type="number" id="pflegeRegionalZuschlag" value="0" step="0.5" min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><small>Erhöht Zusatz zu Hause und Heimkosten, z.&nbsp; B. für Metropol-Zuschläge.</small></div><div class="ds-unit-frame"><input type="number" id="pflegeStufe1FlexCut" aria-label="Pflegegrad 1 · Flex-Level in Prozent" value="100" min="0" max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><div class="ds-unit-frame"><input type="number" id="pflegeStufe2FlexCut" aria-label="Pflegegrad 2 · Flex-Level in Prozent" value="100" min="0" max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><div class="ds-unit-frame"><input type="number" id="pflegeStufe3FlexCut" aria-label="Pflegegrad 3 · Flex-Level in Prozent" value="50" min="0" max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><div class="ds-unit-frame"><input type="number" id="pflegeStufe4FlexCut" aria-label="Pflegegrad 4 · Flex-Level in Prozent" value="0" min="0" max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><div class="ds-unit-frame"><input type="number" id="pflegeStufe5FlexCut" aria-label="Pflegegrad 5 · Flex-Level in Prozent" value="0" min="0" max="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><div class="household-plan-field"><label for="pflegeMaxFloor">Maximaler Pflege-Floor</label><div class="ds-unit-frame"><input type="number" id="pflegeMaxFloor" value="120000" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><small>Nur für Pflege zu Hause, je Person. Heimkosten sind nicht gedeckelt.</small></div><div class="household-plan-field"><label for="pflegeKostenDrift">Kostenanstieg über der Inflation</label><div class="ds-unit-frame"><input type="number" id="pflegeKostenDrift" value="5" step="0.1" min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><small>Vorsichtiger Aufschlag zusätzlich zur Inflation (Standard: 5&nbsp;%)</small></div><div class="household-plan-field"><label for="pflegeKostenDriftBis">Zusätzl. Kostenanstieg bis</label><input type="number" id="pflegeKostenDriftBis" value="2035" step="1" min="2026" max="2100" class="ds-input"><small>Letztes Jahr mit diesem Anstieg (Standard: 2035)</small></div><div class="household-plan-field"><label for="pflegeKostenDriftDanach">danach</label><div class="ds-unit-frame"><input type="number" id="pflegeKostenDriftDanach" value="2" step="0.1" min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">%</span></div><small>Über der Inflation, ab dem Folgejahr (Standard: 2&nbsp;%)</small></div><div class="household-plan-field"><label for="pflegeHeimEigeneAusgaben">Eigene Ausgaben im Heim</label><div class="ds-unit-frame"><input type="number" id="pflegeHeimEigeneAusgaben" value="500" step="50" min="0" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€/Monat</span></div><small>Je Person im Heim: persönlicher Bedarf, weiterlaufende Versicherungen (auch private Krankenversicherung) und Extras für bessere Pflege. Steigt nur mit der Inflation.</small></div><select id="pflegeStufe1Form" class="ds-select" aria-label="Pflegegrad 1 · Pflegeform"><option value="family" selected>zu Hause durch Angehörige</option><option value="home-support">zu Hause mit externer Unterstützung</option><option value="residential">im Heim</option></select><div class="ds-unit-frame"><input type="number" id="pflegeStufe1Zusatz" aria-label="Pflegegrad 1 · Zusatzbedarf pro Jahr" value="3600" min="0" step="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><select id="pflegeStufe2Form" class="ds-select" aria-label="Pflegegrad 2 · Pflegeform"><option value="family" selected>zu Hause durch Angehörige</option><option value="home-support">zu Hause mit externer Unterstützung</option><option value="residential">im Heim</option></select><div class="ds-unit-frame"><input type="number" id="pflegeStufe2Zusatz" aria-label="Pflegegrad 2 · Zusatzbedarf pro Jahr" value="6000" min="0" step="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><select id="pflegeStufe3Form" class="ds-select" aria-label="Pflegegrad 3 · Pflegeform"><option value="family">zu Hause durch Angehörige</option><option value="home-support" selected>zu Hause mit externer Unterstützung</option><option value="residential">im Heim</option></select><div class="ds-unit-frame"><input type="number" id="pflegeStufe3Zusatz" aria-label="Pflegegrad 3 · Zusatzbedarf pro Jahr" value="18000" min="0" step="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><select id="pflegeStufe4Form" class="ds-select" aria-label="Pflegegrad 4 · Pflegeform"><option value="family">zu Hause durch Angehörige</option><option value="home-support">zu Hause mit externer Unterstützung</option><option value="residential" selected>im Heim</option></select><div class="ds-unit-frame"><input type="number" id="pflegeStufe4Zusatz" aria-label="Pflegegrad 4 · Zusatzbedarf pro Jahr" value="32000" min="0" step="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><select id="pflegeStufe5Form" class="ds-select" aria-label="Pflegegrad 5 · Pflegeform"><option value="family">zu Hause durch Angehörige</option><option value="home-support">zu Hause mit externer Unterstützung</option><option value="residential" selected>im Heim</option></select><div class="ds-unit-frame"><input type="number" id="pflegeStufe5Zusatz" aria-label="Pflegegrad 5 · Zusatzbedarf pro Jahr" value="60000" min="0" step="100" class="ds-input"><span class="ds-field-unit" aria-hidden="true">€</span></div><p class="ds-help" id="pflegeFormHint">Vorgabe: Grad 1–2 Angehörige, Grad 3 externe Unterstützung, Grad 4–5 Heim. Im Heim ersetzen Heimkosten den Anteil der Person am Grundbedarf. Sie kommen aus den Pflegewerten, gelten für Grad 2–5 gleich und sinken mit dem Zuschuss der Kasse nach Heimjahren. Die heutige Form steht je Person in Personen &amp; Vermögen; auch heutige Pflege rechnet der Simulator automatisch. Grundbedarf und Flex beschreiben den Haushalt ohne Pflege.</p><div class="sim-care-more"><div class="ds-field" style="grid-column: span 2;"><div class="sim-care-field-heading"><label id="pflegeKostenStaffelLabel" for="pflegeKostenStaffelPreset">Kostenstaffel je Pflegegrad</label><span class="ds-info"><button type="button" class="ds-info-button" aria-label="Quellen der Pflegekostenstaffel" aria-expanded="false">i</button><span class="ds-info-pop" role="tooltip">Vergleich Angehörige/Pflegedienst/24-Stunden-Betreuung je Grad, €/Monat: 300/600/– · 500/700/– · 800/1.500/3.600 · 1.200/2.667/4.200 · 1.800/4.000/4.500 (Planungsansätze, Recherche 08.11.2026). „Amtlich“ nutzt Heimanteile nach Destatis 2023 und Heimwerte nach vdek; heutige Formen gelten auch im Backtest. <a href="docs/reference/PFLEGE.html#kostenstaffel" target="_blank">Quellen und Einordnung</a>.</span></span></div><select id="pflegeKostenStaffelPreset" class="ds-select"> <option value="custom" selected>Individuelle Werte</option> <option value="ambulant">Ambulant (ab 36 Tsd. €)</option> <option value="amtlich">Amtlicher Durchschnitt (Destatis/vdek)</option> </select><small id="pflegeStaffelPresetHint">Wähle ein Preset, um typische Staffelungen zu übernehmen.</small></div><div id="pflegePanel" class="care-sections"></div>
                                 </div></div>
                             </div></div></div></details></section><input type="hidden" id="depotwertAlt" data-no-persist="true"><input type="hidden" id="einstandAlt" data-no-persist="true"><input type="hidden" id="einstandNeu" data-no-persist="true"><input type="hidden" id="goldAllokationAktiv" data-no-persist="true"><input type="hidden" id="goldAllokationProzent" data-no-persist="true"><input type="hidden" id="goldFloorProzent" data-no-persist="true"><input type="hidden" id="goldSteuerfrei" data-no-persist="true"></div>
                 </div>
@@ -955,7 +592,7 @@
                                     <input type="range" id="mcStartYearHalfLife" min="5" max="50" value="20" class="ds-input">
                                     <output id="mcStartYearHalfLifeValue">20</output><span>Jahre</span>
                                 </div>
-                            </div></div><label class="mc-checkbox-row"><input type="checkbox" id="mcExcludeEstimatedHistory" class="ds-checkbox"><span>Geschätzte Jahre vor 1950 ausschließen</span></label><div id="mcStartYearCapeWarning" class="ds-help" style="display:none">CAPE-Auswahl hat Vorrang; die Daten-Gewichtung wird ignoriert.</div></fieldset><fieldset class="ds-control-group household-plan-group mc-parameter-group mc-stress-group" aria-labelledby="mcStressHeading"><legend id="mcStressHeading">Stresstest <span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung zum Stresstest" aria-controls="mcStressInfo" aria-expanded="false">ⓘ</button><span id="mcStressInfo" class="ds-info-pop" role="tooltip">Modellannahme für die Stressanalyse, keine Prognose. Historische Krisenjahre erhalten keinen zusätzlichen Renditeschock.</span></span></legend><div class="mc-field-grid"><div class="household-plan-field mc-wide-select"><label for="stressPreset">Start-Szenario</label><select id="stressPreset" class="ds-select">
+                            </div></div><label class="mc-checkbox-row"><input type="checkbox" id="mcExcludeEstimatedHistory" class="ds-checkbox"><span>Geschätzte Jahre vor 1950 ausschließen</span></label><div id="mcStartYearCapeWarning" class="ds-help" style="display:none">„Startjahre nach CAPE“ hat Vorrang: Daten-Gewichtung, Startjahr und Halbwertszeit gelten dann nicht und sind ausgegraut.</div></fieldset><fieldset class="ds-control-group household-plan-group mc-parameter-group mc-stress-group" aria-labelledby="mcStressHeading"><legend id="mcStressHeading">Stresstest <span class="ds-info"><button type="button" class="ds-info-button" aria-label="Erläuterung zum Stresstest" aria-controls="mcStressInfo" aria-expanded="false">ⓘ</button><span id="mcStressInfo" class="ds-info-pop" role="tooltip">Modellannahme für die Stressanalyse, keine Prognose. Historische Krisenjahre erhalten keinen zusätzlichen Renditeschock.</span></span></legend><div class="mc-field-grid"><div class="household-plan-field mc-wide-select"><label for="stressPreset">Start-Szenario</label><select id="stressPreset" class="ds-select">
                                 <!-- Wird per JavaScript befüllt -->
                             </select></div></div></fieldset><fieldset class="ds-control-group household-plan-group mc-parameter-group mc-tailrisk-group" aria-labelledby="mcTailRiskHeading"><legend id="mcTailRiskHeading">Extremereignisse</legend><label class="mc-checkbox-row"><input type="checkbox" id="tailRiskEnabled" class="ds-checkbox"><span>Zusätzliche Extremereignisse</span></label><div class="mc-field-grid mc-tailrisk-fields" role="group" aria-labelledby="mcTailRiskHeading"><div class="household-plan-field"><label for="tailRiskAnnualProbabilityPct">Wahrscheinlichkeit p.a.</label><div class="ds-unit-frame"><input
                                     type="number" id="tailRiskAnnualProbabilityPct" value="1" min="0" max="5" step="0.1"

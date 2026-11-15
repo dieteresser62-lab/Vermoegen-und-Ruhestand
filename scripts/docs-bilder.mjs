@@ -5,7 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import os from 'node:os';
 import { deflateSync, inflateSync } from 'node:zlib';
+import { shrinkPng, remapPng, comparePng, pngquantAvailable, NOISE_LIMIT } from './docs-bilder-png.mjs';
 import { chromium } from 'playwright';
 import { createSuiteServer } from './serve.mjs';
 import { IMAGE_FILES } from './docs-pruefen.mjs';
@@ -19,6 +21,10 @@ import { captureGV2 } from './gv2-kontakt.mjs';
 import { captureMH3 } from './mh3-bilder.mjs';
 import { captureWT1 } from './wt1-bilder.mjs';
 import { captureRD1 } from './rd1-bilder.mjs';
+import { captureGN1 } from './gn1-bilder.mjs';
+import { captureVK1, captureVK1Docs } from './vk1-bilder.mjs';
+import { captureVK2, captureVK2Docs } from './vk2-bilder.mjs';
+import { captureVK3, captureVK3Docs } from './vk3-bilder.mjs';
 import { captureLY1 } from './ly1-bilder.mjs';
 import { captureFJ2 } from './fj2-bilder.mjs';
 import { captureBP2 } from './bp2-bilder.mjs';
@@ -107,7 +113,19 @@ const captions = [
     'Erika übernimmt die Rentenanpassung von Max; der Grund steht unter der Rente.',
     'Unter „Alle Parameter“ steht die Karte „Fondskosten“ mit „Laufende Kosten Aktien-ETF“ in % pro Jahr.',
     'Max mit Rentenanpassung „wie Löhne“; darunter steht der Hinweis zur Lohnreihe.',
-    'Haushalt & Plan › Weitere Planwerte: Karte „Fondskosten“ mit „Laufende Kosten Aktien-ETF“, vorbelegt mit 0,5 % pro Jahr.'
+    'Haushalt & Plan › Weitere Planwerte: Karte „Fondskosten“ mit „Laufende Kosten Aktien-ETF“, vorbelegt mit 0,5 % pro Jahr.',
+    'Verkauf, Schritt 1: Was der Plan verkauft, mit Stückvorschlag je Person und „So gehst du vor“.',
+    'Verkauf, Schritt 2: Merkzettel für die Bank mit ISIN und Stück zum Kopieren; daneben die Schätzung.',
+    'Verkauf, Schritt 3: Abrechnung mit Gebühren und Steuern; rechts der Vergleich mit dem Plan.',
+    'Bewusst weniger verkauft: Die App fragt, was mit dem Rest passiert.',
+    'Verkauf, Schritt 4: Je Person „Schon da“ mit Kontostand oder „Kommt noch“.',
+    'Verkauf, Schritt 5: Tagesgeld bis zum Ziel, der Rest in den Geldmarkt-ETF.',
+    'Kauf, Schritt 1: Was der Plan kauft, Wertpapierwahl und Suche mit Kursprüfung.',
+    'Kauf, Schritt 2: Merkzettel für die Bank mit Wertpapier, ISIN, Stück und Ordertyp zum Kopieren.',
+    'Kauf, Schritt 3: Abrechnung mit Gebühren; rechts die neue Tranche.',
+    'Kauf, Schritt 4: Je Person „Schon abgegangen“ mit Kontostand oder „Kommt noch“.',
+    'Tranche im Detail: Kennzahlen, Wertpapier, Kauf und Steuer; rechts der Verlauf mit Kauf und Verkauf aus dem Plan.',
+    'Stückzahl an der Kachel „Stück“ ändern: Abweichung oder Aktiensplit mit Vorschau.'
 ];
 
 // Verlustfrei: nur den vorhandenen PNG-Datenstrom mit zlib Level 9 neu packen.
@@ -225,7 +243,7 @@ async function newProbelauf(browser, baseUrl, date, source = 'demo', householdId
             await dialog.getByLabel('Testdatum', { exact: true }).fill(date);
         } else await dialog.getByLabel('Echte Kurse von heute', { exact: true }).check();
         await reloadDate(page, () => dialog.getByRole('button', { name: 'Spielbereich starten', exact: true }).click(), date);
-        return { context, page, errors, household: householdId === 'sophie' ? 'Sophie Mustermann' : household };
+        return { context, page, errors, household: householdId === 'sophie' ? 'Sophie Mustermann' : householdId === 'martin-petra' ? 'Martin und Petra' : household };
     } catch (error) { await context.close(); throw error; }
 }
 
@@ -551,7 +569,7 @@ Mit \`npm run docs:bilder -- --szenarien\` erneuerst du nur das Bild des Pfadver
 
 Haushalt & Plan, Balance und Simulator zeigen ihre zunächst geschlossenen Planbereiche. Bei Max wird unter Einkünfte eine einmalige Rückzahlung über 50.000 € für Januar ${Number(maskDate.slice(0, 4)) + 2} als Personendatum gespeichert. Die vorhandene Aufnahme personen-max zeigt den Bereich Einkünfte mit diesem Eintrag und den Summen. Für die Monte-Carlo-Einstellungen öffnet Einstellungen → zeigen die Klappe im Monte-Carlo-Reiter; die Aufnahme zeigt gezielt die Monte-Carlo-Karte. Danach schließt das Werkzeug den Bereich und wechselt zum Rechnen zurück zu Monte Carlo. Die Aufnahme simulator-annahmen zeigt die Monatszeile über der Jahrestabelle in Einkünfte, Ausgaben und Bedarf. Der Eintrag bleibt nur im frischen Aufnahme-Spielbereich und wird mit dessen Browserkontext verworfen.
 
-Der Browser läuft mit 1920×1080 Pixeln, Skalierung 1, Deutsch und Europe/Berlin. Die technische Uhr ist festgesetzt; Zeitgeber für Speicher und UI laufen weiter. Ausschnitte und verlustfreie PNG-Kompression begrenzen die Bildgröße. Bilddateien, Unterschriften, Datum, Seite, Zustand, Git-Commit, Ausschnitt, Maße und Dateigröße stehen im [Manifest](manifest.json). Gleiche PNG-Bytes auf verschiedenen Plattformen sind nicht zugesichert.
+Der Browser läuft mit 1920×1080 Pixeln, Skalierung 1, Deutsch und Europe/Berlin. Die technische Uhr ist festgesetzt; Zeitgeber für Speicher und UI laufen weiter. Ausschnitte und pngquant (Farbpalette, Qualität 70–90, ohne pngquant verlustfreie Kompression) begrenzen die Bildgröße. Ohne pngquant bleibt eine vorhandene verkleinerte Datei stehen, solange die Maße gleich sind. Ein Bild wird nur neu geschrieben, wenn es sich sichtbar geändert hat: Die neue Aufnahme wird mit der Palette der vorhandenen Datei verkleinert; geändert ist sie bei anderen Maßen oder wenn mehr als 8 Pixel in einem Farbkanal um mehr als 32 abweichen; ein Versatz des ganzen Ausschnitts um ein Pixel zählt nicht. Bilddateien, Unterschriften, Datum, Seite, Zustand, Git-Commit, Ausschnitt, Maße und Dateigröße stehen im [Manifest](manifest.json). Gleiche PNG-Bytes auf verschiedenen Plattformen sind nicht zugesichert.
 
 Nach dem Lauf siehst du dir einige PNGs und beide Abläufe an. Prüfe den Zustand, lesbare Werte und fehlende Lade- oder Fehleranzeigen. Führe danach \`npm run docs:pruefen\` aus. Das Werkzeug meldet bei einem Abbruch Bild, Aktion und Grund; wiederhole den gesamten Lauf nach der Korrektur. Server und Browser werden auch bei Fehlern geschlossen.
 
@@ -1022,7 +1040,12 @@ async function captureUK1(browser, baseUrl, goto) {
             if (max) {
                 await goto(session, 'depot-tranchen-manager.html');
                 await page.locator('#managerSectionNav [data-manager-profile="muster_a"]').click();
-                await page.locator('#depotAddTrancheBtn').click();
+                // VK-2: „Kauf eintragen“ öffnet den geführten Kauf; für die Anleihenwarnung reicht der Tranchendialog.
+                await page.evaluate(async () => {
+                    const { openCreateTrancheModal } = await import('./app/tranches/tranchen-manager-modal.js');
+                    const { state } = await import('./app/tranches/tranchen-manager-page/state.js');
+                    state.editingIndex = -1; openCreateTrancheModal(document, document.getElementById('depotAddTrancheBtn'));
+                });
                 await page.locator('[data-tranche-category="bonds"]').click();
                 await page.locator('#name').fill('Musteranleihe');
                 await page.locator('#purchaseDate').fill('2026-01-01');
@@ -1187,6 +1210,12 @@ async function main() {
     if (git.status !== 0 || !/^[a-f0-9]{40}$/.test(commit)) throw new Error('Git-Commit für die Bildherkunft nicht lesbar.');
     const status = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
     const treeStatus = status.status === 0 && !status.stdout.trim() ? 'clean' : 'dirty';
+    // BV-1: Vorhandene Bilder und ihre Manifest-Einträge; ein sichtbar unverändertes Bild bleibt samt Eintrag stehen.
+    const previousEntries = new Map();
+    try { for (const item of JSON.parse(await fs.readFile(path.join(root, 'docs/ui/manifest.json'), 'utf8')).images || []) previousEntries.set(item.path, item); } catch { /* erster Lauf */ }
+    const imageStats = { written: 0, kept: 0, quantized: 0, keptUnshrunk: 0 };
+    const runBaseline = new Map(), baselineDir = await fs.mkdtemp(path.join(os.tmpdir(), 'docs-bilder-basis-'));
+    if (!pngquantAvailable()) console.log('pngquant fehlt: Bilder ohne Verkleinerung (nur verlustfreie Kompression).');
     const server = createSuiteServer({ root: process.env.GV2_SOURCE_ROOT || root });
     let browser, current = 'Server starten', activePage;
     await fs.mkdir(path.join(root, 'docs/ui'), { recursive: true });
@@ -1219,6 +1248,22 @@ async function main() {
         }
         if (process.argv.includes('--rd1')) {
             await captureRD1({ browser, baseUrl, newProbelauf, goto, tab, changeDate, poll, importExample, reviewRoot });
+            return;
+        }
+        if (process.argv.includes('--vk1') || process.argv.includes('--vk1-alle')) {
+            await captureVK1({ browser, baseUrl, newProbelauf, goto, tab, poll, reviewRoot });
+            return;
+        }
+        if (process.argv.includes('--vk2')) {
+            await captureVK2({ browser, baseUrl, newProbelauf, goto, tab, poll, reviewRoot });
+            return;
+        }
+        if (process.argv.includes('--vk3')) {
+            await captureVK3({ browser, baseUrl, newProbelauf, goto, reviewRoot });
+            return;
+        }
+        if (process.argv.includes('--gn1')) {
+            await captureGN1({ browser, baseUrl, newProbelauf, goto, tab, changeDate, poll, importExample, reviewRoot });
             return;
         }
         if (process.argv.includes('--ly1')) {
@@ -1299,6 +1344,10 @@ async function main() {
             await page.mouse.move(1910, 1070);
             await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
             if (errors.length) throw new Error(errors.join('; '));
+            // BV-1: Die gemessene Rechenzeit („Vergleich fertig · 14,3 Sekunden“) wechselt bei jedem Lauf und würde das Bild jedes Mal
+            // neu schreiben; im Handbuchbild steht deshalb eine feste Angabe.
+            await page.evaluate(() => { const status = document.getElementById('decisionStatus');
+                if (status && /fertig · [\d.,]+ Sekunden$/.test(status.textContent || '')) status.textContent = status.textContent.replace(/· [\d.,]+ Sekunden$/, '· 15 Sekunden'); });
             const visibleErrors = await page.locator('.ds-note-error:visible, .action-error-entry:visible, #mc-error-container:visible').allTextContents();
             if (visibleErrors.some(text => text.trim())) throw new Error(`Sichtbare Fehlermeldung: ${visibleErrors.join('; ')}`);
             const box = await page.locator(target).boundingBox();
@@ -1312,23 +1361,79 @@ async function main() {
                 // Halbe Pixel aus scrollIntoView sind keine Überschreitung.
                 if (box.y < -1 || box.y + box.height + 8 > 1080) throw new Error(`Pflegewerte passen nicht ins Bild (${Math.ceil(box.y + box.height)} px).`);
             }
-            const x = Math.max(0, Math.floor(box.x) - 8), y = Math.max(0, Math.floor(box.y) - 8);
-            const crop = { x, y, width: Math.min(1920 - x, Math.ceil(box.width) + 16),
-                height: Math.min(1080 - y, Math.ceil(box.height) + 16) };
+            // VN-1 Punkt 12: simulator-backtest pendelte zwischen zwei Fassungen mit gleichem Inhalt, um ein Pixel versetzt. Die Seite steht
+            // am Ende (Rollweg ausgeschöpft), die Oberkante des Bereichs liegt auf einem halben Pixel (≈ 247,5) und rundet je Lauf auf 239
+            // oder 240. Fest: Weicht der neue Ursprung höchstens ein Pixel vom gespeicherten Ausschnitt ab, bleibt der gespeicherte.
+            const kept = previousEntries.get(file)?.crop;
+            const pinned = (/** @type {number} */ value, /** @type {number|undefined} */ previous) => Number.isFinite(previous) && Math.abs(value - /** @type {number} */ (previous)) <= 1 ? /** @type {number} */ (previous) : value;
+            const x = pinned(Math.max(0, Math.round(box.x) - 8), kept?.x), y = pinned(Math.max(0, Math.round(box.y) - 8), kept?.y);
+            // BV-1: Ursprung und Maße gerundet statt ab- oder aufgerundet: Layoutwerte liegen nahe ganzen Pixeln, Abrunden kippte von Lauf zu Lauf um ein Pixel.
+            const crop = { x, y, width: Math.min(1920 - x, Math.round(box.width) + 16),
+                height: Math.min(1080 - y, Math.round(box.height) + 16) };
             const scrollPosition = await page.evaluate(() => ({ x: scrollX, y: scrollY,
                 closeDialogContent: document.querySelector('[data-close-dialog-host][open] [data-close-dialog-content]')?.scrollTop ?? 0 }));
             // Playwright verwendet bei Seitenscreenshots ohne fullPage Viewportkoordinaten.
-            const buffer = compressPng(await page.screenshot({ type: 'png', animations: 'disabled',
-                clip: crop }));
-            await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true });
-            await fs.writeFile(path.join(root, file), buffer);
+            // BV-1: mit pngquant verkleinern (ohne Werkzeug wie bisher verlustfrei), dann gegen die vorhandene Datei vergleichen.
+            const shot = await page.screenshot({ type: 'png', animations: 'disabled', clip: crop });
+            const shrunk = shrinkPng(shot, compressPng);
+            const buffer = shrunk.buffer;
+            if (shrunk.quantized) imageStats.quantized++;
             const caption = captions[IMAGE_FILES.indexOf(file)]
                 || HANDBOOK_BUDGET_CAPTURES.find(item => `docs/ui/${item.name}.png` === file)?.caption;
             if (!caption) throw new Error(`Bild ${file} fehlt in der Bilderliste.`);
-            images.push({ path: file, caption, household: session.household, date, viewport, scale: 1, crop,
+            // Vergleichsbasis ist die Fassung vom Laufbeginn, auch wenn dasselbe Bild im Lauf mehrfach aufgenommen wird (Zwischenstände).
+            if (!runBaseline.has(file)) {
+                const kept = previousEntries.get(file);
+                const bytes = kept ? await fs.readFile(path.join(root, file)).catch(() => null) : null;
+                const valid = bytes && kept.sha256 === createHash('sha256').update(bytes).digest('hex');
+                let paletteFile = null;
+                if (valid && bytes[25] === 3) {
+                    paletteFile = path.join(baselineDir, file.replaceAll('/', '_'));
+                    await fs.writeFile(paletteFile, bytes);
+                }
+                runBaseline.set(file, valid ? { entry: kept, bytes, paletteFile } : null);
+            }
+            const baseline = runBaseline.get(file);
+            let comparison = null;
+            // VK-3c (Fable P3-2): Ohne pngquant bleibt eine vorhandene verkleinerte Datei stehen, solange die Maße gleich sind; der verlustfreie
+            // Vergleich gegen die Palettendatei wiese sonst Rauschen als Änderung aus und schriebe unveränderte Bilder unverkleinert neu.
+            if (!pngquantAvailable() && baseline?.paletteFile && baseline.bytes.readUInt32BE(16) === shot.readUInt32BE(16) && baseline.bytes.readUInt32BE(20) === shot.readUInt32BE(20)) {
+                imageStats.kept++; imageStats.keptUnshrunk++; console.log('  behalten (ohne Verkleinerung, Maße gleich)');
+                const current = await fs.readFile(path.join(root, file)).catch(() => null);
+                if (!current || !current.equals(baseline.bytes)) await fs.writeFile(path.join(root, file), baseline.bytes);
+                images.push({ ...baseline.entry, caption, group });
+                return;
+            }
+            // Eine noch nicht verkleinerte Datei (keine Palette) wird bei verfügbarem pngquant einmal ersetzt.
+            const comparable = baseline && !(shrunk.quantized && !baseline.paletteFile);
+            // Vergleichsbild: die neue Aufnahme mit der Palette der vorhandenen Datei verkleinert (sonst die normale Verkleinerung).
+            try { comparison = comparable ? comparePng((baseline.paletteFile && remapPng(shot, baseline.paletteFile)) || buffer, baseline.bytes, NOISE_LIMIT) : null; } catch { comparison = null; }
+            if (comparison && !comparison.changed) {
+                // Kein Bildrauschen: Datei und Manifest-Eintrag (bytes, sha256, source.commit) bleiben; nur Unterschrift und Gruppe folgen der Liste.
+                imageStats.kept++; console.log(`  unverändert (${comparison.reason})`);
+                const current = await fs.readFile(path.join(root, file)).catch(() => null);
+                if (!current || !current.equals(baseline.bytes)) await fs.writeFile(path.join(root, file), baseline.bytes);
+                images.push({ ...baseline.entry, caption, group });
+                return;
+            }
+            // FI-1 Nachtrag 2: Gleiche Bytes wie die vorhandene Datei sind keine Änderung; Eintrag samt source.commit bleibt.
+            const previousEntry = previousEntries.get(file);
+            const sha256 = createHash('sha256').update(buffer).digest('hex');
+            if (previousEntry?.sha256 === sha256) {
+                imageStats.kept++; console.log('  unverändert (gleiche Bytes)');
+                const current = await fs.readFile(path.join(root, file)).catch(() => null);
+                if (!current || !current.equals(buffer)) await fs.writeFile(path.join(root, file), buffer);
+                images.push({ ...previousEntry, caption, group });
+                return;
+            }
+            imageStats.written++; if (comparison) console.log(`  geändert (${comparison.reason})`);
+            await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true });
+            await fs.writeFile(path.join(root, file), buffer);
+            const entry = { path: file, caption, household: session.household, date, viewport, scale: 1, crop,
                 width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20), bytes: buffer.length,
-                sha256: createHash('sha256').update(buffer).digest('hex'), group, seed,
-                source: { page: new URL(page.url()).pathname.slice(1), state, commit, treeStatus, scroll: scrollPosition } });
+                sha256, group, seed,
+                source: { page: new URL(page.url()).pathname.slice(1), state, commit, treeStatus, scroll: scrollPosition } };
+            images.push(entry);
         }
         if (fullRun || process.argv.includes('--ph1b')) {
             await capturePH1B({ browser, baseUrl, newProbelauf, newNormalSession, goto, tab, capture, root, reviewRoot, date: maskDate });
@@ -1345,8 +1450,13 @@ async function main() {
                 return;
             }
         }
-        if (process.argv.includes('--gf1') || process.argv.includes('--bd1') || process.argv.includes('--gu1b')) {
-            if (process.argv.includes('--gu1b')) {
+        if (process.argv.includes('--gf1') || process.argv.includes('--bd1') || process.argv.includes('--gu1b') || process.argv.includes('--vk1-doku') || process.argv.includes('--vk2-doku')) {
+            if (process.argv.includes('--vk2-doku')) {
+                await captureVK2Docs(browser, baseUrl, newProbelauf, goto, tab, poll, capture, maskDate);
+            } else if (process.argv.includes('--vk1-doku')) {
+                const session = await newProbelauf(browser, baseUrl, maskDate);
+                try { await captureVK1Docs(session, goto, tab, poll, capture, maskDate); } finally { await session.context.close(); }
+            } else if (process.argv.includes('--gu1b')) {
                 const session = await newProbelauf(browser, baseUrl, maskDate);
                 try { await captureGU1B(session, goto, capture); } finally { await session.context.close(); }
             } else await (process.argv.includes('--bd1') ? captureBD1 : captureGF1)(browser, baseUrl, goto, capture);
@@ -1907,13 +2017,19 @@ async function main() {
                         const planSuggestion = dialog.locator('[data-annual-need-suggestion="flexBedarf:plan"]');
                         const roundedPlan = Number((await planSuggestion.textContent()).split(' · ').at(-1).replace(/[.\s€]/g, ''));
                         await planSuggestion.click();
-                        await poll(page, async expected => {
+                        // GN-1 (FR-68 Punkt 7): Das Feld zeigt den glatten Betrag, der Entwurf hält den genauen Wert.
+                        await poll(page, expected => Number(String(document.querySelector('#annualPlan_flexBedarf')?.value ?? '').replace(/[^0-9,]/g, '').replace(',', '.')) === expected,
+                            roundedPlan, 'Glatter Planwert im Feld beim Wunschbedarf');
+                        const { exact, step, shownUp } = await page.evaluate(async shown => {
                             const { readHouseholdPlanField } = await import('./app/shared/household-plan-fields.js');
-                            return readHouseholdPlanField(document.querySelector('#annualPlan_flexBedarf'), 'flexBedarf') === expected;
-                        },
-                            roundedPlan, 'Aufgerundeter Planwert beim Wunschbedarf');
-                        if (!Number.isFinite(roundedPlan) || roundedPlan % 1000 !== 0)
-                            throw new Error('Der Planvorschlag muss auf volle Tausend aufgerundet sein.');
+                            const { displayRoundingStep, displayUp } = await import('./app/shared/display-rounding.js');
+                            const value = readHouseholdPlanField(document.querySelector('#annualPlan_flexBedarf'), 'flexBedarf');
+                            return { exact: value, step: displayRoundingStep(shown), shownUp: displayUp(value) };
+                        }, roundedPlan);
+                        if (!Number.isFinite(roundedPlan) || roundedPlan % step !== 0)
+                            throw new Error('Der Planvorschlag muss auf einer Stufe der Anzeigestaffel liegen.');
+                        if (!Number.isInteger(exact) || exact > roundedPlan || shownUp !== roundedPlan)
+                            throw new Error(`Der Entwurf muss den genauen Vorschlag halten (genau ${exact}, angezeigt ${roundedPlan}).`);
                     }
                 }
                 current = `${group} · Abschluss bestätigen`;
@@ -2056,7 +2172,13 @@ async function main() {
                 await page.locator('#simPlanParameters').evaluate(details => { details.open = false; });
                 await capture(session, 'simulator-annahmen', 'Monatszeile und Jahrestabelle', maskDate, 'masken', '#simPlanOverview', true);
                 if (!wealthOnly) await captureGU1B(session, goto, capture);
+                // VK-1: Handbuchbilder des geführten Verkaufs (schreibt im Spielbereich, deshalb zuletzt in dieser Sitzung).
+                if (!wealthOnly) await captureVK1Docs(session, goto, tab, poll, capture, maskDate);
             } finally { await session.context.close(); }
+            // VK-2-Handbuchbilder des geführten Kaufs gehören zum vollen Lauf (vorher nur mit --vk2-doku erzeugt).
+            if (!wealthOnly) await captureVK2Docs(browser, baseUrl, newProbelauf, goto, tab, poll, capture, maskDate);
+            // BV-1: „Tranche im Detail“ (Max, Neubestand nach dem Verkauf) als Handbuchbild.
+            if (!wealthOnly) await captureVK3Docs({ browser, baseUrl, newProbelauf, goto, capture, date: maskDate });
         }
         }
         if (!annualOnly && !inheritanceOnly && !partnershipOnly && (careOnly || !protocolOnly && !comparisonOnly && !historyOnly && !sophieOnly && !uiOnly && !wealthOnly)) {
@@ -2315,8 +2437,9 @@ async function main() {
         await fs.writeFile(path.join(root, 'docs/ui/jahresabschluss.html'), flowHtml('jahresabschluss', 'Jahr abschließen',
             'Du startest einen eigenen Spielbereich am 15.12.2026 und wechselst auf den 02.01.2027. Ein Hauptklick bestätigt 2026, schließt Dezember ab und schreibt den Plan für 2027.', images.filter(item => item.group === 'jahresabschluss')));
         // Erst der vollständige Lauf ersetzt das Manifest; Teilaufnahmen bleiben erkennbar.
+        // FI-1 Nachtrag 2: Die Laufzeit steht nur in der Schlusszeile; ein Lauf ohne Bildänderung ändert das Manifest nicht.
         await fs.writeFile(path.join(root, 'docs/ui/manifest.json'), JSON.stringify({
-            schemaVersion: 1, imageCount: images.length, totalBytes, durationSeconds, images
+            schemaVersion: 1, imageCount: images.length, totalBytes, images
         }, null, 2) + '\n');
         const handbookFile = path.join(root, 'Handbuch.html');
         let handbook = replaceGenerated(await fs.readFile(handbookFile, 'utf8'),
@@ -2326,6 +2449,7 @@ async function main() {
             handbook = handbook.replace(new RegExp(`(src="${item.path}" width=")\\d+(" height=")\\d+`), `$1${item.width}$2${item.height}`);
         }
         await fs.writeFile(handbookFile, handbook);
+        console.log(`Bilder neu geschrieben: ${imageStats.written} · unverändert: ${imageStats.kept} · mit pngquant verkleinert: ${imageStats.quantized}${pngquantAvailable() ? '' : ` (ohne Verkleinerung, ${imageStats.keptUnshrunk} Bilder behalten)`}`);
         console.log(`${images.length} Bilder · ${totalBytes} Bytes · ${(totalBytes / 1000000).toFixed(2)} MB · ${durationSeconds} Sekunden`);
         if (totalBytes > 4000000) console.log('Größenziel von etwa 4 MB überschritten; Ausschnitte im Ergebnisbericht bewerten.');
     } catch (error) {

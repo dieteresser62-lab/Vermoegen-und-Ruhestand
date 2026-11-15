@@ -28,7 +28,9 @@ for (const target of [price, percent, null]) {
     const name = target?.id || 'ohne Feld';
     assertEqual(readDecimalInput('2.088', target), 2.088, `${name}: „2.088“ bleibt 2,088`);
     assertEqual(readDecimalInput('2,5', target), 2.5, `${name}: „2,5“ → 2,5`);
-    assert(Number.isNaN(readDecimalInput('2.088,50', target)), `${name}: „2.088,50“ bleibt ungültig`);
+    // VK-3b (Gutachten VK3 Befund 5): Kursfelder lesen Tausenderpunkt mit Komma wie Betragsfelder; Prozent und ohne Feld bleiben ungültig.
+    if (target === price) assertEqual(readDecimalInput('2.088,50', target), 2088.5, `${name}: „2.088,50“ → 2.088,50`);
+    else assert(Number.isNaN(readDecimalInput('2.088,50', target)), `${name}: „2.088,50“ bleibt ungültig`);
     assert(Number.isNaN(readDecimalInput('1.234.567', target)), `${name}: „1.234.567“ bleibt ungültig`);
 }
 assertEqual(canonicalDecimalInput(''), '', 'Leer bleibt leer');

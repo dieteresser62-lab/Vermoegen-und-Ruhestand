@@ -129,6 +129,15 @@ export function debitAccount(portfolio, account, value) {
     return { profileId: account.profileId, tagesgeldUsed, geldmarktUsed, amount: tagesgeldUsed + geldmarktUsed };
 }
 
+/** VK-3b (Gutachten VK3-FABLE P2-2): Was eine Person in diesem Moment auszahlen kann (Tagesgeld und Geldmarkt, wie `debitAccount`).
+ * @param portfolio Veränderlicher Portfoliozustand. @param {string} profileId @returns {number} */
+export function payableLiquidity(portfolio, profileId) {
+    const account = (portfolio.personAccounts || []).find(entry => entry.profileId === profileId);
+    if (!account) return 0;
+    return amount(account.tagesgeld) + (portfolio.depotTranchesGeldmarkt || []).filter(lot => owner(portfolio, lot) === profileId)
+        .reduce((sum, lot) => sum + amount(lot.marketValue), 0);
+}
+
 /** Respect the Balance plan; report any liquidity-driven redistribution explicitly.
  *
  * @param portfolio Veränderlicher Portfoliozustand.
@@ -136,9 +145,10 @@ export function debitAccount(portfolio, account, value) {
  * @param [plan]
  * @returns Ergebnis der Operation.
  */
-export function debitPersonalLiquidity(portfolio, value, plan = null) {
+export function debitPersonalLiquidity(portfolio, value, plan = null, mode = undefined) {
     const total = Math.min(amount(value), portfolio.liquiditaet);
-    const distribution = plan || personalWithdrawalPlan(personalProfiles(portfolio), total);
+    // TRG-1c Punkt 3: Ohne fertigen Plan (Rückfallverkauf) gilt bei „Eine Person trägt“ der Modus, sonst wie bisher steueroptimiert.
+    const distribution = plan || personalWithdrawalPlan(personalProfiles(portfolio), total, mode);
     let targetRemaining = total;
     const rows = distribution.items.map(item => {
         const used = debitAccount(portfolio, portfolio.personAccounts.find(account => account.profileId === item.profileId),
@@ -158,7 +168,15 @@ export function debitPersonalLiquidity(portfolio, value, plan = null) {
         rest -= used.amount;
     }
     syncPersonalLiquidity(portfolio);
+    // TRG-1c Punkt 3: Zahlt bei „Eine Person trägt“ die andere Person mehr als geplant, ist das ein Rückgriff mit Hinweis.
+    const attacked = [...(distribution.attacked || []).map(row => ({ profileId: row.profileId, amount: row.amount }))];
+    if (distribution.carrierId) for (const row of rows) {
+        const extra = row.amount - (row.planned || 0);
+        if (row.profileId !== distribution.carrierId && extra > 0.5 && !attacked.some(item => item.profileId === row.profileId)) attacked.push({ profileId: row.profileId, amount: extra });
+    }
     return { mode: distribution.mode, items: rows, total: rows.reduce((sum, row) => sum + row.amount, 0),
+        // FR-80 Punkt 3: „Vermögen von … wird angegriffen“ im Protokoll.
+        ...(attacked.length ? { attacked } : {}),
         ...(rows.some(row => Math.abs(row.amount - row.planned) > 0.01)
             ? { restCause: 'personal_payout_exceeds_owned_liquidity' } : {}) };
 }

@@ -4,9 +4,7 @@
 import { inheritancePercent, hasTestament, testamentRule, hasInheritanceHomes } from '../profile/household-partnership.js';
 import { buildInputsCtxFromPortfolio } from './simulator-portfolio.js';
 import { buildDetailedTranchesFromPortfolio } from './simulator-engine-direct-utils.js';
-import { CONFIG } from '../../engine/config.mjs';
-import { decidedFixedIncomeSurplus } from '../../engine/planners/fixed-income-budget.mjs';
-import { quantizeAmount } from '../../engine/transactions/transaction-utils.mjs';
+import { cappedPurchaseAmount } from '../profile/household-carrier-action.js';
 
 const DEATH_YEAR_NO_PURCHASE = 'Kein Kauf im Sterbejahr: freie Liquidität gehört zum Nachlass';
 const DEATH_YEAR_LIMITED_PURCHASE = 'Kauf im Sterbejahr auf die eigene Liquidität begrenzt';
@@ -113,19 +111,7 @@ export function deathYearTransactionView({ portfolio, inputs, transition, share,
  * @returns {number} Anzulegender Betrag.
  */
 export function deathYearPurchaseAmount(requested, ownFree, rules, engineResult, capital) {
-    if (requested <= ownFree) return requested;
-    let rule = rules;
-    if (!rule) {
-        const isSavingsYear = decidedFixedIncomeSurplus({ input: engineResult.input, spending: engineResult.ui.spending,
-            vpw: engineResult.ui.vpw }) > 0;
-        const minTrade = Math.max(CONFIG.THRESHOLDS.STRATEGY.minTradeAmountStatic,
-            capital * CONFIG.THRESHOLDS.STRATEGY.minTradeAmountDynamicFactor);
-        rule = { minimum: isSavingsYear || !CONFIG.ANTI_PSEUDO_ACCURACY.ENABLED ? 500 : minTrade, isSavingsYear };
-    }
-    const amount = Math.max(0, ownFree);
-    if (rule.isSavingsYear ? amount < 500 : amount <= rule.minimum) return 0;
-    return rule.isSavingsYear ? Math.floor(amount * 100) / 100
-        : CONFIG.ANTI_PSEUDO_ACCURACY.ENABLED ? quantizeAmount(amount, 'floor') : amount;
+    return cappedPurchaseAmount(requested, ownFree, rules, engineResult, capital);
 }
 
 /** Protokoll und Diagnose nennen den tatsächlich angelegten Betrag.

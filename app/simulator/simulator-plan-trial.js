@@ -9,6 +9,7 @@ import { requestPageChoice } from '../shared/page-choice-dialog.js';
 import { setFieldState } from '../shared/field-state.js';
 import { syncSelectionText } from '../shared/designsystem-selection-text.js';
 import { projectHouseholdPlanParameters, resetHouseholdPlanParameterDetails } from '../shared/household-plan-presentation.js';
+import { createInfoPopover } from '../shared/designsystem-info-popover.js';
 
 import { createPlanTrial as createSharedPlanTrial, registerPlanTrial, registeredPlanTrial } from '../shared/plan-trial.js';
 export { planTrialDifferences, planTrialPatch, planTrialContextFor, bindPlanTrialContext } from '../shared/plan-trial.js';
@@ -117,8 +118,12 @@ export function renderSimulatorPlanTrial(doc = globalThis.document, { project = 
     projectHouseholdPlanFieldLabels(doc, SIMULATOR_PLAN_FIELD_MAP);
     for (const heading of /** @type {NodeListOf<HTMLElement>} */ (doc.querySelectorAll?.('[data-plan-card-label]')) || [])
         heading.textContent = HOUSEHOLD_PLAN_CARDS[heading.dataset.planCardLabel];
-    for (const hint of /** @type {NodeListOf<HTMLElement>} */ (doc.querySelectorAll?.('[data-plan-field-hint]')) || [])
-        hint.textContent = householdPlanFieldSpec(hint.dataset.planFieldHint)?.hint || '';
+    for (const hint of /** @type {NodeListOf<HTMLElement>} */ (doc.querySelectorAll?.('[data-plan-field-hint]')) || []) {
+        const spec = householdPlanFieldSpec(hint.dataset.planFieldHint);
+        hint.textContent = spec?.hint || '';
+        // VK-3d P10 (GH-1 Punkt 10): Erläuterung wie in Haushalt & Plan auch hier als ⓘ (z. B. Kranken- und Pflegeversicherung beim Grundbedarf).
+        if (spec?.infoHint && doc.createElement) hint.append(' ', createInfoPopover(doc, `Erläuterung zu ${spec.label}`, spec.infoHint, { handbookAnchor: spec.handbookAnchor }));
+    }
     for (const heading of /** @type {NodeListOf<HTMLElement>} */ (doc.querySelectorAll?.('[data-plan-group-label]')) || [])
         if (!/** @type {HTMLElement} */ (heading.closest?.('.household-plan-more'))) heading.textContent = HOUSEHOLD_PLAN_GROUPS[heading.dataset.planGroupLabel].label;
     const needSource = doc.getElementById('simNeedSource');

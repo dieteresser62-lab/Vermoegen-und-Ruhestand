@@ -1,0 +1,68 @@
+// GN-1: drei Prüfbilder im frischen Spielbereich, unversioniert unter auftrag/. Ändert keine Dokubilder.
+// Jahresabschluss Schritt „Plan“ (Renate, 02.01.2027), Balance-Überblick (Max und Erika, 23.10.2026),
+// Simulator Monte-Carlo-Ergebnis (Renate, 23.10.2026).
+import path from 'node:path';
+
+export async function captureGN1({ browser, baseUrl, newProbelauf, goto, tab, changeDate, poll, importExample, reviewRoot }) {
+    const shoot = async (page, selector, name) => {
+        await page.evaluate(async () => { await document.fonts.ready; });
+        await page.setViewportSize({ width: 1920, height: 1080 });
+        const target = page.locator(selector).first();
+        await target.scrollIntoViewIfNeeded();
+        await target.screenshot({ path: path.join(reviewRoot, `GN-1-pruefbild-${name}.png`), animations: 'disabled' });
+        console.log(`GN-1: ${name} · 1920×1080`);
+    };
+    {
+        const session = await newProbelauf(browser, baseUrl, '2026-12-15', 'demo', 'renate', 'grund');
+        try {
+            const { page } = session;
+            await changeDate(page, '2027-01-02');
+            await goto(session, 'index.html', '2027-01-02');
+            await page.locator('[data-overview-annual]').click();
+            const dialog = page.locator('#balanceAnnualClose');
+            await dialog.waitFor({ state: 'visible' });
+            for (const step of ['prices', 'expenses', 'budget', 'cash', 'care', 'market', 'preview']) {
+                await dialog.locator(`[data-close-dialog-activate="${step}"]`).click();
+                if (step === 'expenses') await importExample(page, dialog);
+                if (step === 'care') await dialog.locator('[data-annual-care-confirm]').click();
+                if (step === 'market' || step === 'preview') await poll(page, id => {
+                    const node = document.querySelector(`#balanceAnnualClose [data-close-dialog-step="${id}"]`);
+                    return node?.dataset.state === 'done' && (id === 'market'
+                        ? node.querySelector('[data-annual-market-status]')?.textContent === 'Vollständig vorbereitet · noch nicht gespeichert'
+                        : node.querySelector('[data-annual-plan-status]')?.textContent === 'Dein Plan ist gültig.');
+                }, step, step === 'market' ? 'Vollständige Marktdaten' : 'Gerechnete Planvorschau', 90000);
+            }
+            await shoot(page, '#balanceAnnualClose', 'jahresabschluss-plan-renate');
+            if (session.errors.length) throw new Error(session.errors.join('\n'));
+        } finally { await session.context.close(); }
+    }
+    {
+        const session = await newProbelauf(browser, baseUrl, '2026-10-23', 'demo', 'max-erika', 'grund');
+        try {
+            await goto(session, 'Balance.html', '2026-10-23'); await tab(session.page, 'overview');
+            await session.page.locator('#balanceAnnualAction [data-todo-plan]').waitFor();
+            await poll(session.page, () => /%/.test(document.getElementById('balanceReserveCoverage')?.textContent || ''), null, 'Reservekarte');
+            await shoot(session.page, '.balance-overview', 'balance-ueberblick-max-erika');
+            if (session.errors.length) throw new Error(session.errors.join('\n'));
+        } finally { await session.context.close(); }
+    }
+    {
+        const session = await newProbelauf(browser, baseUrl, '2026-10-23', 'demo', 'renate', 'grund');
+        try {
+            const { page } = session;
+            await goto(session, 'Simulator.html', '2026-10-23');
+            await tab(page, 'montecarlo');
+            await page.locator('#mcSettingsToggle').click();
+            await page.locator('#mcAnzahl').fill('500');
+            await page.locator('#mcSeed').fill('12345');
+            await page.locator('#mcSeed').blur();
+            await page.locator('#mcSettingsToggle').click();
+            await page.locator('#mcButton').click();
+            await poll(page, () => !document.querySelector('#mcButton')?.disabled && !document.querySelector('#exportMonteCarloRunJson')?.disabled,
+                null, 'GN-1 Monte Carlo', 120000);
+            await page.locator('#monteCarloAnswers .sim-coverage-assumptions').first().waitFor();
+            await shoot(page, '#monteCarloAnswers', 'simulator-mc-ergebnis-renate');
+            if (session.errors.length) throw new Error(session.errors.join('\n'));
+        } finally { await session.context.close(); }
+    }
+}

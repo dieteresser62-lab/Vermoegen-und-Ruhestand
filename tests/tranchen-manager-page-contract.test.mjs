@@ -10,6 +10,13 @@ import { bindPersonImmobilien } from '../app/tranches/tranchen-manager-immobilie
 import { bindDecimalInputDisplay } from '../app/tranches/tranchen-manager-decimal-input.js';
 import { IMMOBILIEN_KEY, readImmobilien, writeImmobilien } from '../app/profile/profile-immobilien.js';
 import { getAppTestDate, setAppTestDate } from '../app/shared/app-clock.js';
+import { PROFILE_INPUT_IDS } from '../app/tranches/tranchen-manager-page/state.js';
+import { managerInputSignature } from '../app/tranches/tranchen-manager-page/helpers.js';
+import { flushManagerCashInput } from '../app/tranches/tranchen-manager-page/profile-values.js';
+import { loadProfileAssetValues } from '../app/profile/profile-asset-values.js';
+import { persistenceStorage as storage } from '../app/shared/persistence-facade.js';
+import { createMusterHaushaltRecords } from '../app/demo/muster-haushalt.js';
+import { prepareTrancheDetailWrite, prepareSaleFlowWrite, commitSaleFlowWrite } from '../app/tranches/household-sale-writer.js';
 
 const page = fs.readFileSync(new URL('../depot-tranchen-manager.html', import.meta.url), 'utf8');
 const depot = page.match(/<section class="ds-card pv-depot"[\s\S]*?<\/section>/)[0];
@@ -91,4 +98,46 @@ try {
     globalThis.document = previous.document;
     Object.assign(state, { tranchen: previous.tranchen, profileId: previous.profileId, immobilien: previous.immobilien });
     resetPersistenceForTests();
+}
+
+// VK-3c (Gutachten VK3B-FABLE P1-1): Nach einem Schreibweg, der das Tagesgeld selbst ändert, überschreibt das unberührte Tagesgeldfeld der
+// Seite den neuen Stand nicht. Martin und Petra, 23.10.2026: 100.000 € → Kauf 98.930,75 € mit bestätigter Abbuchung → 1.069,25 € →
+// Storno mit Rücksetzen → 100.000 €.
+const DATE = '2026-10-23', MARTIN = 'muster_martin';
+const registryCash = () => JSON.parse(storage.getItem('rs_profiles_v1')).profiles[MARTIN].data.profile_tagesgeld;
+const buyTranche = id => ({ schemaVersion: 2, trancheId: id, name: 'Muster Aktien-ETF', type: 'aktien_neu', category: 'equity', ticker: 'VWCE.DE', isin: 'IE00BK5BQT80',
+    shares: 685, purchasePrice: 98930.75 / 685, currentPrice: 144.46978, purchaseDate: DATE, tqf: 0.3, taxExempt: false, notes: '' });
+{
+    const data = createMusterHaushaltRecords(DATE, 'martin-petra', 'grund');
+    const before = { date: getAppTestDate(), document: globalThis.document, baseline: state.profileBaseline, profileId: state.profileId };
+    setAppTestDate(DATE);
+    resetPersistenceForTests({ name: 'vk-3c-synthetic', loadAll: async () => ({ ...data }),
+        async saveBatch(batch) { batch.deletes.forEach(key => delete data[key]); batch.upserts.forEach(([key, value]) => { data[key] = value; }); },
+        writeSnapshot: async () => {}, readSnapshot: async () => null, listSnapshots: async () => [], deleteSnapshot: async () => true });
+    await P.init({ installLifecycleHooks: false, installTauriCloseHook: false });
+    const field = { id: 'profileTagesgeld', value: '100.000', getAttribute: name => name === 'inputmode' ? 'decimal' : null };
+    globalThis.document = { getElementById: id => id === 'profileTagesgeld' ? field : null, activeElement: null };
+    try {
+        // `profileCommitInFlight` macht sichtbar, ob das Feld gesichert würde: dann meldet die Sicherung „später“ (false) statt „nichts zu tun“ (true).
+        Object.assign(state, { profileId: MARTIN, profileBaseline: managerInputSignature(PROFILE_INPUT_IDS), profileCommitInFlight: true, pendingProfileValues: null });
+        assertEqual(loadProfileAssetValues().tagesgeld, 100000, 'Ausgangsstand 100.000 € im Feld und im Speicher');
+        await commitSaleFlowWrite(await prepareSaleFlowWrite({ buys: [{ profileId: MARTIN, actionId: 'vk3c-buy', executedAt: DATE, assetClass: 'equity',
+            tranche: buyTranche('vk3c_buy'), shares: 685, gross: 98920.85, fees: 9.9, cashValue: 1069.25 }] }));
+        assertEqual(flushManagerCashInput(), true, 'Kauf mit Abbuchung: das unberührte Feld (100.000) wird vor dem Neuladen nicht gesichert');
+        assertEqual(registryCash(), '1069.25', 'Kauf mit Abbuchung: 1.069,25 € bleiben stehen');
+        // Stand nach dem Neuladen: Feld und Grundlinie zeigen 1.069,25 €.
+        field.value = '1.069,25'; state.profileBaseline = managerInputSignature(PROFILE_INPUT_IDS);
+        await commitSaleFlowWrite(await prepareTrancheDetailWrite({ profileId: MARTIN, remove: 'vk3c_buy', cancelBuy: 'vk3c-buy', cashValue: 100000 }));
+        assertEqual(flushManagerCashInput(), true, 'Storno mit Rücksetzen: das unberührte Feld (1.069,25) wird nicht gesichert');
+        assertEqual(registryCash(), '100000', 'Storno mit Rücksetzen: 100.000 € bleiben stehen');
+        // Gegenprobe: Eine eigene Eingabe im Feld bleibt eine Eingabe und wird gesichert (hier läuft gerade ein Speichern, daher „später“).
+        field.value = '5.000';
+        assertEqual(flushManagerCashInput(), false, 'eigene Eingabe 5.000 €: wird gesichert, nicht verworfen');
+        assertEqual(registryCash(), '100000', 'ohne Sicherung kein Schreiben');
+    } finally {
+        setAppTestDate(before.date);
+        globalThis.document = before.document;
+        Object.assign(state, { profileBaseline: before.baseline, profileId: before.profileId, profileCommitInFlight: false, pendingProfileValues: null });
+        resetPersistenceForTests();
+    }
 }
